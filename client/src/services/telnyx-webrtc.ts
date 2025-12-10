@@ -391,24 +391,38 @@ class TelnyxWebRTCManager {
         const destinationNumber = call?.options?.destinationNumber;
         
         // Direction inference: 
-        // - If destinationNumber matches our callerIdNumber -> inbound (someone calling us)
-        // - Otherwise -> outbound (we're calling someone)
+        // - If destinationNumber is our SIP username -> inbound (someone calling us)
+        // - If destinationNumber is a phone number we're dialing -> outbound
         let inferredDirection = call?.direction;
         if (!inferredDirection && destinationNumber) {
+          // Get SIP username from store for comparison
+          const sipUsername = currentStore.sipUsername;
+          
           // Normalize numbers for comparison (remove + and non-digits, take last 10 digits)
           const normalizeNum = (n: string) => (n || '').replace(/\D/g, '').slice(-10);
           const normalizedDestination = normalizeNum(destinationNumber);
           const normalizedCallerIdNumber = normalizeNum(callerIdNumber || '');
           
-          // If destination matches our number, it's an inbound call
-          const isInbound = normalizedDestination === normalizedCallerIdNumber && normalizedCallerIdNumber.length > 0;
+          // Check if destination is our SIP username (inbound call)
+          // For inbound calls, destinationNumber = our SIP username
+          // For outbound calls, destinationNumber = the number we're dialing
+          const destLower = destinationNumber.toLowerCase();
+          const sipUsernameLower = (sipUsername || '').toLowerCase();
+          const isSipUsernameMatch = sipUsernameLower && destLower.includes(sipUsernameLower);
+          
+          // Also check if destination matches our phone number
+          const isPhoneNumberMatch = normalizedDestination === normalizedCallerIdNumber && normalizedCallerIdNumber.length > 0;
+          
+          // If destination is our SIP username or our phone number, it's inbound
+          const isInbound = isSipUsernameMatch || isPhoneNumberMatch;
           inferredDirection = isInbound ? 'inbound' : 'outbound';
           
           console.log('[Telnyx WebRTC] Direction inference:', {
             destinationNumber,
+            sipUsername,
             callerIdNumber,
-            normalizedDestination,
-            normalizedCallerIdNumber,
+            isSipUsernameMatch,
+            isPhoneNumberMatch,
             isInbound,
             inferredDirection,
           });
