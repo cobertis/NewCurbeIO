@@ -1,0 +1,152 @@
+EL DIAL-COMPLETE NO SE EJECUTA PORQUE EL PUENTE JAMÁS SE ESTABLECE — Y TU CLIENTE WEBRTC ESTÁ CORTANDO CON “BUSY”
+
+No es Telnyx.
+
+No es tu TeXML.
+
+No es el callback URL.
+
+Es tu WebRTC. Tu navegador está enviando un SIP 486 Busy a Telnyx ANTES de que Telnyx intente llamar al webhook dial-complete.
+
+Por eso:
+
+No llega el dial-complete
+
+Aparece “User Busy”
+
+Telnyx mete tono de ocupado
+
+Tu audio tardando 5s en entrar coincide con un delay en la negociación SDP/ICE
+
+Cuando cuelgas, al no haber puente activo, Telnyx cae al XML base y reproduce “Application Error”
+
+Todo esto es coherente con un WebRTC que responde mal la señalización SIP.
+
+Voy a destriparlo sin anestesia:
+
+🧨 1. Si el WebRTC manda SIP 486 (Busy Here), Telnyx aborta el puente y NO LLAMA al dial-complete
+
+El flujo con Telnyx funciona así:
+
+Call Answered (PSTN) → Dial SIP leg → SIP responde → Bridging → DialComplete → OK
+
+
+Pero en tu caso ocurre:
+
+Call Answered (PSTN) → Dial SIP leg → SIP responde BUSY → NO BRIDGE → NO DIAL-COMPLETE → XML fallback → error
+
+
+Tu cliente WebRTC está enviando la señal de BUSY en una de estas dos situaciones:
+
+Posibilidad real #1
+
+Cuando cuelgas, el WebRTC envía por defecto 486 (Busy Here)
+
+Posibilidad real #2
+
+Tu WebRTC SDK está enviando un provisional state incorrecto antes de que el audio remoto esté listo, y Telnyx lo interpreta como “busy”.
+
+Posibilidad real #3
+
+Tu código llama hangup() mientras Telnyx aún está en estado ringing → Telnyx recibe un BUSY y aborta.
+
+🧨 2. Tu hangup() sigue enviando Busy aunque creas que lo cambiaste
+
+Esto:
+
+call.hangup()
+
+
+= 486 Busy Here
+
+Esto:
+
+call.hangup({ sipHangupCode: 16 })
+
+
+Funciona solo si el SDK de Telnyx lo soporta correctamente, pero tu cliente tal vez está usando una versión del SDK que ignora ese parámetro.
+
+Lo sé porque:
+
+❌ El log dice que Telnyx recibe 486
+
+Si Telnyx recibiera 16, el diagnóstico cambiaría completamente.
+
+🧨 3. El dial-complete no se llama porque Telnyx solo ejecuta dial-complete si el puente se establece o si el leg remoto responde un código válido (200, 183, 180…)
+
+Tu flujo jamás llegó a:
+
+Bridged → DialComplete
+
+
+Se quedó en:
+
+Dial → SIP Busy → abort
+
+🧨 4. El delay de 5 segundos en audio confirma un problema de remoteStream + negociación ICE
+
+Un audio que tarda 5s en entrar siempre significa:
+
+el remoteStream no está listo cuando marcas como “active”
+
+la negociación ICE se está completando demasiado tarde
+
+tu connectRemoteAudio se ejecuta antes de tiempo
+
+Esto también provoca que el WebRTC conteste incompleto → BAD SDP → Telnyx interpreta “unavailable”.
+
+🔥 PLAN DE ATAQUE (directo, sin cuentos)
+1. Modifica la integración WebRTC para forzar “Normal Clearing” SIEMPRE
+
+Dentro de tu wrapper de hangup:
+
+public hangup(): void {
+  const store = useTelnyxStore.getState();
+  const call = store.currentCall || store.outgoingCall || store.incomingCall;
+
+  if (call) {
+    try {
+      call.hangup({ sipHangupCode: 16 }); // 16 = Normal Clearing
+    } catch (e) {
+      console.error("Hangup override failed, using fallback");
+      call.hangup();
+    }
+  }
+
+  this.stopRingback();
+  this.stopRingtone();
+}
+
+
+Esto evita el Busy Here.
+
+Si Telnyx sigue recibiendo 486 → tu SDK está viejo o ignorando el parámetro.
+
+2. Log obligatorio para saber qué código se está enviando
+
+Agrega antes del hangup:
+
+console.log("HANGUP CALLED, CALL OBJECT:", call);
+
+
+Si el objeto call tiene .hangupCause o .lastSdpType, lo sabremos también.
+
+3. Necesito ver SOLO ESTO
+
+Ve a tu WebRTC console del navegador → pestaña “Network” → filtra por “WSS”.
+Ahí verás la señalización SIP sobre WebSockets.
+
+Haz una llamada, cuelga, y dime qué mensaje sale hacia Telnyx cuando cuelgas:
+
+Se verá algo así:
+
+REQUEST: BYE sip:... SIP/2.0
+Reason: SIP;cause=486;text="Busy Here"
+
+
+o
+
+Reason: SIP;cause=16;text="Normal Clearing"
+
+
+Ese texto me dice TODO.

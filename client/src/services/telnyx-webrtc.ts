@@ -434,7 +434,8 @@ class TelnyxWebRTCManager {
     if (activeCall) {
       try {
         console.log("[Telnyx WebRTC] Hanging up call, state:", (activeCall as any).state);
-        activeCall.hangup();
+        // CRITICAL: Use sipHangupCode 16 (NORMAL_CLEARING) to avoid 486 Busy message
+        activeCall.hangup({ sipHangupCode: 16 });
       } catch (e) {
         console.error("[Telnyx WebRTC] Hangup error:", e);
       }
