@@ -26458,6 +26458,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // TeXML uses capitalized field names
       const { From: from, To: to, Direction: direction, CallSid: call_control_id } = req.body;
       
+      console.log("[Telnyx Voice] Raw body:", JSON.stringify(req.body, null, 2));
       console.log("[Telnyx Voice] Company webhook:", { companyId, from, to, direction, call_control_id });
       
       
