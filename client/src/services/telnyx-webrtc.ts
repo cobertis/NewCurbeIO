@@ -661,14 +661,10 @@ class TelnyxWebRTCManager {
       }
       
       if (serverHangupSuccess) {
-        // PSTN is terminated - safe to clean up WebRTC without 486 reaching caller
-        try {
-          console.log("[Telnyx WebRTC] PSTN terminated, cleaning up WebRTC...");
-          activeCall.hangup();
-          console.log("[Telnyx WebRTC] WebRTC cleanup complete");
-        } catch (e) {
-          console.error("[Telnyx WebRTC] WebRTC cleanup error:", e);
-        }
+        // PSTN is terminated - the call will automatically move to hangup/destroy state
+        // Do NOT call activeCall.hangup() as the call no longer exists on Telnyx's side
+        // This prevents the "CALL DOES NOT EXIST" error that disconnects the socket
+        console.log("[Telnyx WebRTC] PSTN terminated, waiting for SDK to clean up automatically...");
       } else {
         // Server failed to terminate PSTN - DON'T call SDK hangup (would send 486)
         // The call may still be active on PSTN side
