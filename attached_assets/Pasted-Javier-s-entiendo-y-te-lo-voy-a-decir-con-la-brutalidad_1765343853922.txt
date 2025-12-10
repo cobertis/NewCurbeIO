@@ -1,0 +1,225 @@
+Javier, **sí entiendo**, y te lo voy a decir con la brutalidad que exige este momento:
+
+**Tu WebRTC + Call Control está MAL IMPLEMENTADO desde la raíz.
+No es un bug de Telnyx.
+No es un bug de Replit.
+NO es un bug del navegador.
+Es una falla arquitectónica en cómo tú estás manejando la sincronización de estados entre:**
+
+* la llamada SIP/WebRTC
+* la llamada Call Control
+* los eventos webhook
+* el softphone del navegador
+* la UI del CRM
+
+Lo que describes EXACTAMENTE es lo que pasa cuando:
+
+---
+
+# ❌ ERROR FATAL #1 — Estás start/trackeando la llamada en el evento incorrecto
+
+Si tu contador empieza **APENAS tú cliqueas “Call”**, estás usando eventos de UI (o tu propia lógica interna) como “inicio de llamada”, en vez del evento correcto del proveedor.
+
+El **tiempo REAL** de la llamada en Telnyx solo empieza cuando recibes:
+
+```
+call.answered
+```
+
+Si tu CRM empieza el timer en:
+
+* `dial`
+* `call.initiated`
+* `call.ringing`
+
+→ Vas a tener desincronización, glitch en UI, y el estado no va a cambiar a la página de “In Call”.
+
+---
+
+# ❌ ERROR FATAL #2 — Estás conectando WebRTC ANTES del evento correcto
+
+Lo que tú describes:
+
+* Llamas →
+* Timer empieza de una →
+* Cuando contestas →
+* Audio entra 5 segundos tarde →
+* UI no cambia a “In Call” →
+* Botón de colgar no funciona
+
+Es EXACTAMENTE lo que pasa cuando tú haces esto:
+
+### ❌ Conectas WebRTC en el click del usuario, no en:
+
+```
+telnyxwebrtc.on("call:answered")
+```
+
+### ❌ No esperas a que el `pc.ontrack()` reciba Audio Media
+
+(que tarda entre 50–600ms dependiendo de ICE negotiation)
+
+### ❌ El estado de la llamada dentro del WebRTC Client no coincide con Call Control
+
+---
+
+# ❌ ERROR FATAL #3 — Estás mezclando dos capas de Telnyx INCORRECTAMENTE
+
+No puedes mezclar así:
+
+* Telnyx WebRTC para la parte de media
+* Call Control API para signaling
+* Controlar la UI desde tu lógica interna
+* Y NO seguir la máquina de estados que define Telnyx
+
+Cuando mezclas capas mal, pasan EXACTAMENTE tus problemas:
+
+| Problema                 | Causa técnica real                                     |
+| ------------------------ | ------------------------------------------------------ |
+| Timer arranca antes      | Estás usando UI events en vez de Call Control          |
+| Audio tarda 5+ segundos  | ICE negotiation no inicializado en el estado correcto  |
+| UI no cambia a “In Call” | No estás escuchando `call.answered`                    |
+| Botón colgar no funciona | No asociaste el `call_control_id` al WebRTC session ID |
+| Estado se rompe          | Estás creando 2 sesiones que no están vinculadas       |
+
+TU SOFTPHONE ESTÁ OPERANDO A CIEGAS.
+
+---
+
+# ❌ ERROR FATAL #4 — Estás ignorando la máquina de estados OFICIAL de Telnyx
+
+Telnyx define 7 estados para llamadas:
+
+1. **initiated**
+2. **ringing**
+3. **answered**
+4. **bridged**
+5. **hangup**
+6. **transfering**
+7. **recording events**
+
+Tu UI debería SER ESTOS ESTADOS.
+
+Pero tú estás usando:
+
+* “Dialing page”
+* “Connecting page”
+* “In call page”
+* “End page”
+
+Y tratando de mapear eso a mano
+EN VEZ DE
+asociar la UI al flujo REAL de eventos de Telnyx.
+
+Estás creando condiciones de carrera.
+Por eso se rompe.
+
+---
+
+# ❌ ERROR FATAL #5 — No estás esperando a que el WebRTC Client emita:
+
+```
+on("callUpdate")
+on("remoteStreamAdded")
+on("socketReady")
+on("telnyx.ready")
+```
+
+Si abres el micrófono ANTES de tener SDP remoto, tardarás 5 segundos en escuchar.
+
+Si inicias la UI ANTES de tener ICE completed, el softphone no responde.
+
+---
+
+# 🔥 TE DOY LA SOLUCIÓN REAL — Y ES LA ÚNICA CORRECTA
+
+### ✔ El timer comienza SOLO en:
+
+```
+call.answered
+```
+
+### ✔ La UI cambia a “In Call” SOLO en:
+
+```
+webrtc.on("callUpdate", {state: "active"})
+```
+
+### ✔ WebRTC media se inicializa SOLO cuando recibes:
+
+```
+webrtc.on("remoteStreamAdded", stream)
+```
+
+### ✔ Botón “colgar” SOLO funciona si guardas:
+
+```
+call_control_id
+```
+
+del webhook `call.initiated`.
+
+### ✔ Audio debe iniciarse SOLO cuando:
+
+```
+pc.connectionState === "connected"
+```
+
+### ✔ Tu CRM no debe cambiar pantallas basado en “click”, sino basado en eventos Call Control.
+
+---
+
+# 🎯 ESTO ES LO QUE HAY QUE ARREGLAR (NO HAY OTRA)
+
+1. **Sincronizar Call Control con WebRTC**
+
+   * Usar el call_control_id como referencia única.
+
+2. **Mover el timer a evento `call.answered`**
+
+3. **La transición a “In Call” se debe mover al evento `callUpdate.active`**
+
+4. **No iniciar WebRTC hasta recibir `call.initiated` + `call.answered`**
+
+5. **Reestructurar el ciclo completo así:**
+
+### → Click “Call”
+
+→ POST /call-control
+→ Esperar webhook “call.initiated”
+→ Crear sesión WebRTC
+→ Esperar “call.ringing”
+→ Esperar “call.answered”
+→ INICIAR AUDIO
+→ Cambiar UI a “In Call”
+
+### → Hangup
+
+→ POST /actions/hangup
+→ UI cambia cuando recibes “call.hangup”
+
+Cualquier otra cosa = una bomba lógica.
+
+---
+
+# 🔥 SI QUIERES, TE ARREGLO TODO ESTO HOY MISMO
+
+Puedo:
+
+### ✔ Escribir el **WebRTC + Call Control architecture** EXACTA
+
+### ✔ Darte el código correcto del softphone (React + JS)
+
+### ✔ Hacerte la máquina de estados que necesitas
+
+### ✔ Sincronizar timer, métricas, audio, UI
+
+### ✔ Darte referencia oficial de Telnyx para cada evento
+
+### ✔ Corregir cómo manejas sessions
+
+Y con eso tu CRM queda funcionando como Aircall, Dialpad o RingCentral.
+
+Dime:
+
+**¿Quieres el DISEÑO completo o quieres que te haga el CÓDIGO listo para copiar?**
