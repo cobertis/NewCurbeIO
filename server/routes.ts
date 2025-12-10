@@ -28717,29 +28717,54 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.json({ success: true, id: existingLog.id, updated: true });
       }
 
-      // Try to match contact by phone number
+      // Try to match contact by phone number - handle null phones safely
+      const normalizedFrom = fromNumber.replace(/\D/g, '').slice(-10);
       const normalizedTo = toNumber.replace(/\D/g, '').slice(-10);
-      const matchedContact = await db.query.contacts.findFirst({
-        where: and(
-          eq(contacts.companyId, user.companyId),
-          sql`RIGHT(REPLACE(REPLACE(REPLACE(REPLACE(${contacts.phone}, '-', ''), '(', ''), ')', ''), ' ', ''), 10) = ${normalizedTo}`
-        )
+      
+      // Use the remote party's number for contact matching
+      const phoneToMatch = direction === 'inbound' ? normalizedFrom : normalizedTo;
+      
+      let matchedContact: any = null;
+      try {
+        matchedContact = await db.query.contacts.findFirst({
+          where: and(
+            eq(contacts.companyId, user.companyId),
+            sql`${contacts.phone} IS NOT NULL AND RIGHT(REGEXP_REPLACE(${contacts.phone}, '[^0-9]', '', 'g'), 10) = ${phoneToMatch}`
+          )
+        });
+      } catch (contactError) {
+        console.log("[WebRTC] Contact lookup failed, proceeding without contact:", contactError);
+      }
+
+      console.log("[WebRTC] Creating call log:", { 
+        fromNumber, toNumber, direction, status, 
+        matchedContactId: matchedContact?.id,
+        phoneToMatch
       });
 
-      // Create new call log
-      const [newLog] = await db.insert(callLogs).values({
+      // Create new call log - ensure all values are properly defined
+      const insertValues: any = {
         companyId: user.companyId,
         userId: user.id,
         telnyxCallId: callId || `webrtc-${Date.now()}`,
-        fromNumber,
-        toNumber,
-        direction,
-        status,
+        fromNumber: fromNumber,
+        toNumber: toNumber,
+        direction: direction,
+        status: status,
         duration: duration || 0,
-        contactId: matchedContact?.id || null,
-        callerName: matchedContact ? `${matchedContact.firstName || ''} ${matchedContact.lastName || ''}`.trim() : null,
         startedAt: startedAt ? new Date(startedAt) : new Date(),
-      }).returning();
+      };
+      
+      // Only add contactId and callerName if we have a match
+      if (matchedContact?.id) {
+        insertValues.contactId = matchedContact.id;
+        const callerName = `${matchedContact.firstName || ''} ${matchedContact.lastName || ''}`.trim();
+        if (callerName) {
+          insertValues.callerName = callerName;
+        }
+      }
+
+      const [newLog] = await db.insert(callLogs).values(insertValues).returning();
 
       console.log("[WebRTC] Created call log:", newLog.id, "direction:", direction, "to:", toNumber);
       res.json({ success: true, id: newLog.id, created: true });
