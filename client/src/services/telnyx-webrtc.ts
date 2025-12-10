@@ -429,33 +429,53 @@ class TelnyxWebRTCManager {
     
     // Get the active call before we clean up state
     const activeCall = store.currentCall || store.outgoingCall || store.incomingCall;
+    if (!activeCall) {
+      console.log("[Telnyx WebRTC] No active call to hang up");
+      return;
+    }
+    
     const callState = (activeCall as any)?.state;
     const direction = (activeCall as any)?.direction || "unknown";
+    const webrtcCallId = (activeCall as any)?.id || (activeCall as any)?.callId;
     
-    console.log("[Telnyx WebRTC] Hanging up call, state:", callState, "direction:", direction);
+    console.log("[Telnyx WebRTC] Hanging up call:", { 
+      state: callState, 
+      direction, 
+      webrtcCallId 
+    });
 
     // CRITICAL: For INBOUND calls, use server-side hangup to avoid 486 Busy
     // The WebRTC SDK's hangup() sends "USER_BUSY" code which plays "User Busy" message to PSTN caller
     // Instead, we ask the server to terminate the PSTN leg via Telnyx Call Control API
-    if (direction === "inbound" && callState === "active") {
+    if (direction === "inbound") {
       console.log("[Telnyx WebRTC] Using server-side hangup for inbound call...");
       try {
         const response = await fetch("/api/webrtc/server-hangup", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          credentials: "include"
+          credentials: "include",
+          body: JSON.stringify({ webrtcCallId })
         });
         const result = await response.json();
         console.log("[Telnyx WebRTC] Server hangup result:", result);
+        
+        // CRITICAL: Use disconnect() to clean up locally WITHOUT sending SIP BYE
+        // This avoids the SDK sending "USER_BUSY" (486) to the caller
+        if (typeof (activeCall as any).disconnect === 'function') {
+          (activeCall as any).disconnect();
+          console.log("[Telnyx WebRTC] Local disconnect complete");
+        }
       } catch (e) {
         console.error("[Telnyx WebRTC] Server hangup failed:", e);
-        // Fall through to SDK hangup as backup
+        // Fallback to SDK hangup if server fails
+        try {
+          activeCall.hangup();
+        } catch (err) {
+          console.error("[Telnyx WebRTC] Fallback hangup error:", err);
+        }
       }
-    }
-    
-    // For outbound calls or as fallback, use SDK hangup
-    // Outbound calls don't have the 486 issue because we initiated them
-    if (activeCall && direction !== "inbound") {
+    } else {
+      // For OUTBOUND calls, use SDK hangup (no 486 issue because we initiated)
       try {
         activeCall.hangup();
       } catch (e) {
@@ -471,7 +491,6 @@ class TelnyxWebRTCManager {
 
     this.stopRingtone();
     this.stopRingback();
-  }
   }
 
   public toggleMute(): void {
