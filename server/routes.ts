@@ -26455,7 +26455,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/webhooks/telnyx/voice/:companyId", async (req: Request, res: Response) => {
     try {
       const { companyId } = req.params;
-      const { from, to, direction, call_control_id } = req.body;
+      // TeXML uses capitalized field names
+      const { From: from, To: to, Direction: direction, CallSid: call_control_id } = req.body;
       
       console.log("[Telnyx Voice] Company webhook:", { companyId, from, to, direction, call_control_id });
       
@@ -26509,8 +26510,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Normal behavior - ring WebRTC client
         texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Record action="https://${process.env.REPL_SLUG}.${(process.env.REPL_OWNER || "").toLowerCase()}.repl.co/webhooks/telnyx/recordings/${companyId}" channels="dual" format="mp3" playBeep="true" />
-  <Dial timeout="30">
+  <Dial timeout="30" record="record-from-answer-dual" recordingStatusCallback="https://${process.env.REPL_SLUG}.${(process.env.REPL_OWNER || "").toLowerCase()}.repl.co/webhooks/telnyx/recordings/${companyId}">
     <Client>${companyId}</Client>
   </Dial>
 </Response>`;
