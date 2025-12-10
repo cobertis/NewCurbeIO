@@ -108,6 +108,27 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
   ```
 - **NEVER DO:** Use `"disabled"`, `""`, or any other value - only `"SRTP"` or `null` are documented values in the OpenAPI spec.
 
+**Inbound Call Audio Delay Prevention: remoteElement Configuration**
+- **Issue:** 5-second delay before caller hears audio on inbound calls.
+- **Root Cause:** `client.remoteElement` not configured before answering, causing SDK to not know where to route audio.
+- **Solution:** Set `client.remoteElement` IMMEDIATELY after SDK creation and BEFORE answering calls.
+- **Official Telnyx Documentation:**
+  - **npm docs:** https://www.npmjs.com/package/@telnyx/webrtc
+  - **Quote:** "To hear/view calls in the browser, you'll need to specify an HTML media element: `client.remoteElement = 'remoteMedia';`"
+- **Implementation in `client/src/services/telnyx-webrtc.ts`:**
+  1. `setAudioElement()` - When audio element is registered, sets `client.remoteElement = elem`
+  2. `initialize()` - After creating TelnyxRTC client, if audioElement exists, sets `client.remoteElement = this.audioElement`
+  3. `answerCall()` - Before calling `incoming.answer()`, ensures `client.remoteElement` is set
+- **Key Code:**
+  ```typescript
+  // In answerCall(), BEFORE answering:
+  if (this.client && this.audioElement) {
+    this.client.remoteElement = this.audioElement;
+  }
+  incoming.answer();
+  ```
+- **NEVER DO:** Call `answer()` without first ensuring `client.remoteElement` is configured.
+
 ### System Design Choices
 The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings. A `node-cron` background scheduler manages reminder notifications. Phone numbers are standardized, and all message timestamps are normalized to UTC. Performance is optimized with database indexes and aggressive caching.
 

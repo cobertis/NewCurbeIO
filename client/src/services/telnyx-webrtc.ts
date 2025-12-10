@@ -193,6 +193,14 @@ class TelnyxWebRTCManager {
     console.log("[Telnyx WebRTC] 🔊 Audio element registered:", !!elem);
     this.audioElement = elem;
     
+    // CRITICAL: Per Telnyx docs, set client.remoteElement so SDK knows where to send audio
+    // Docs: https://www.npmjs.com/package/@telnyx/webrtc
+    // "To hear/view calls in the browser, you'll need to specify an HTML media element"
+    if (this.client && elem) {
+      console.log("[Telnyx WebRTC] 🔊 Setting client.remoteElement for SDK audio routing");
+      this.client.remoteElement = elem;
+    }
+    
     // If we already have a remoteStream waiting, connect it now
     const store = useTelnyxStore.getState();
     const currentCall = store.currentCall as any;
@@ -336,6 +344,15 @@ class TelnyxWebRTCManager {
       password: sipPass,
       debug: false,
     });
+
+    // CRITICAL: Per Telnyx docs, set client.remoteElement IMMEDIATELY after creation
+    // Docs: https://www.npmjs.com/package/@telnyx/webrtc
+    // "To hear/view calls in the browser, you'll need to specify an HTML media element"
+    // This ensures audio routing is ready BEFORE any calls arrive
+    if (this.audioElement) {
+      console.log("[Telnyx WebRTC] 🔊 Setting client.remoteElement during initialization");
+      this.client.remoteElement = this.audioElement;
+    }
 
     this.client.on("telnyx.ready", () => {
       console.log("[Telnyx WebRTC] Connected and ready");
@@ -659,6 +676,18 @@ class TelnyxWebRTCManager {
 
     console.log("[Telnyx WebRTC] 📞 Answering call...");
     this.stopRingtone();
+
+    // CRITICAL: Per Telnyx docs, ensure remoteElement is set BEFORE answering
+    // Docs: https://www.npmjs.com/package/@telnyx/webrtc
+    // "To hear/view calls in the browser, you'll need to specify an HTML media element"
+    // This prevents the 5-second audio delay on inbound calls
+    if (this.client && this.audioElement) {
+      console.log("[Telnyx WebRTC] 🔊 Ensuring client.remoteElement before answer");
+      this.client.remoteElement = this.audioElement;
+    }
+
+    // Reset stream connected flag so we can reconnect if needed
+    this.remoteStreamConnected = false;
 
     incoming.answer();
   }
