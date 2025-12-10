@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
 import { boot, shutdown, update, fetchIntercomJwt, type IntercomUserData } from '@/lib/intercom';
-import type { User } from '@shared/schema';
+import type { User, Company } from '@shared/schema';
 
 interface IntercomConfig {
   app_id: string;
@@ -29,6 +29,12 @@ export function IntercomProvider({ children }: IntercomProviderProps) {
   });
 
   const user = sessionData?.user;
+
+  const { data: companyData } = useQuery<{ company: Company }>({
+    queryKey: ['/api/companies', user?.companyId],
+    enabled: !!user?.companyId,
+    staleTime: 5 * 60 * 1000,
+  });
 
   const { data: intercomConfig } = useQuery<IntercomConfig>({
     queryKey: ['/api/system/intercom-config'],
@@ -70,6 +76,7 @@ export function IntercomProvider({ children }: IntercomProviderProps) {
     if (user.companyId) {
       userData.company = {
         company_id: user.companyId,
+        name: companyData?.company?.name || "Unknown Company",
       };
     }
 
@@ -80,7 +87,7 @@ export function IntercomProvider({ children }: IntercomProviderProps) {
       shutdown();
       isBooted.current = false;
     };
-  }, [user?.id, intercomConfig?.app_id, intercomConfig?.enabled, jwtData?.jwt]);
+  }, [user?.id, intercomConfig?.app_id, intercomConfig?.enabled, jwtData?.jwt, companyData?.company?.name]);
 
   useEffect(() => {
     if (!isBooted.current || !user) {

@@ -40,16 +40,20 @@ export function boot(appId: string, userData?: IntercomUserData, jwt?: string | 
     return;
   }
 
-  const settings: IntercomSettings & { api_base?: string } = {
+  const settings: Record<string, any> = {
     app_id: appId,
     api_base: "https://api-iam.intercom.io",
   };
 
+  // Always include userData if available
+  if (userData) {
+    Object.assign(settings, userData);
+  }
+
+  // Add JWT for identity verification if available
   if (jwt) {
     settings.intercom_user_jwt = jwt;
     console.log('[Intercom] Using JWT for identity verification');
-  } else if (userData) {
-    Object.assign(settings, userData);
   }
 
   if (isInitialized && currentAppId === appId) {
