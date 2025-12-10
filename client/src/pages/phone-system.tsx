@@ -602,137 +602,131 @@ export default function PhoneSystem() {
 
           {/* Settings Tab */}
           <TabsContent value="settings" className="p-6 m-0">
-            <div className="grid gap-6 max-w-3xl">
-              {/* Audio Settings */}
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Wallet & Billing - Primary Card */}
+              <Card className="border-slate-200 dark:border-border lg:col-span-2">
+                <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Wallet className="h-5 w-5 text-green-600" />Wallet Balance
+                      </CardTitle>
+                      <CardDescription>Your prepaid balance for calls and messaging</CardDescription>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-3xl font-bold text-slate-900 dark:text-white">{formatCurrency(walletBalance)}</p>
+                      <p className="text-xs text-slate-500">Available</p>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <Button onClick={() => setShowAddFunds(true)} className="h-12" data-testid="button-add-funds">
+                      <Plus className="h-4 w-4 mr-2" />Add Funds
+                    </Button>
+                    <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <div>
+                        <p className="font-medium text-sm text-slate-700 dark:text-foreground">Auto-Recharge</p>
+                        <p className="text-xs text-slate-500">Add funds when balance is low</p>
+                      </div>
+                      <Switch checked={autoRechargeEnabled} onCheckedChange={handleAutoRechargeToggle} data-testid="switch-auto-recharge" />
+                    </div>
+                  </div>
+                  {autoRechargeEnabled && (
+                    <div className="grid grid-cols-2 gap-4 mt-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                      <div>
+                        <Label className="text-xs">Threshold</Label>
+                        <div className="relative mt-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                          <Input type="number" min="5" max="100" value={autoRechargeThreshold} onChange={(e) => setAutoRechargeThreshold(e.target.value)} className="pl-7" data-testid="input-auto-recharge-threshold" />
+                        </div>
+                      </div>
+                      <div>
+                        <Label className="text-xs">Recharge Amount</Label>
+                        <div className="relative mt-1">
+                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                          <Input type="number" min="10" max="500" value={autoRechargeAmount} onChange={(e) => setAutoRechargeAmount(e.target.value)} className="pl-7" data-testid="input-auto-recharge-amount" />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Call Rates Card */}
+              <Card className="border-slate-200 dark:border-border">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Phone className="h-4 w-4" />Call Rates
+                  </CardTitle>
+                  <CardDescription>Per-minute rates by destination</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex justify-between p-2 rounded bg-slate-50 dark:bg-muted/50">
+                      <span className="text-slate-600 dark:text-slate-400">USA / Canada</span>
+                      <span className="font-medium">$0.02/min</span>
+                    </div>
+                    <div className="flex justify-between p-2 rounded bg-slate-50 dark:bg-muted/50">
+                      <span className="text-slate-600 dark:text-slate-400">Mexico (Landline)</span>
+                      <span className="font-medium">$0.035/min</span>
+                    </div>
+                    <div className="flex justify-between p-2 rounded bg-slate-50 dark:bg-muted/50">
+                      <span className="text-slate-600 dark:text-slate-400">Mexico (Mobile)</span>
+                      <span className="font-medium">$0.045/min</span>
+                    </div>
+                    <div className="flex justify-between p-2 rounded bg-slate-50 dark:bg-muted/50">
+                      <span className="text-slate-600 dark:text-slate-400">Toll-Free (1800/1888)</span>
+                      <span className="font-medium text-green-600">Free</span>
+                    </div>
+                    <div className="flex justify-between p-2 rounded bg-slate-50 dark:bg-muted/50">
+                      <span className="text-slate-600 dark:text-slate-400">UK / Germany / France</span>
+                      <span className="font-medium">$0.015-0.02/min</span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Audio Settings Card */}
               <Card className="border-slate-200 dark:border-border">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-base flex items-center gap-2">
                     <Volume2 className="h-4 w-4" />Audio Settings
                   </CardTitle>
-                  <CardDescription>Configure audio settings for all phone numbers</CardDescription>
+                  <CardDescription>Configure call audio quality</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50">
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
                     <div className="flex items-center gap-3">
-                      <div className="p-2 rounded-full bg-indigo-100 dark:bg-indigo-900/30">
-                        <Mic className="h-4 w-4 text-indigo-600" />
-                      </div>
+                      <Mic className="h-4 w-4 text-indigo-600" />
                       <div>
-                        <p className="font-medium text-slate-700 dark:text-foreground">Noise Suppression</p>
-                        <p className="text-sm text-slate-500">Reduces background noise during calls</p>
+                        <p className="font-medium text-sm text-slate-700 dark:text-foreground">Noise Suppression</p>
+                        <p className="text-xs text-slate-500">Reduces background noise</p>
                       </div>
                     </div>
                     <Switch
                       checked={noiseSuppressionData?.enabled || false}
                       onCheckedChange={(checked) => noiseSuppressionMutation.mutate({ enabled: checked, direction: noiseSuppressionData?.direction || 'outbound' })}
                       disabled={noiseSuppressionMutation.isPending}
+                      data-testid="switch-noise-suppression"
                     />
                   </div>
                   {noiseSuppressionData?.enabled && (
-                    <div className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700">
-                      <div>
-                        <Label>Direction</Label>
-                        <p className="text-xs text-slate-500 mt-0.5">Which side of the call to apply</p>
-                      </div>
+                    <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700">
+                      <Label className="text-sm">Direction</Label>
                       <Select
                         value={noiseSuppressionData?.direction || 'outbound'}
                         onValueChange={(value: 'inbound' | 'outbound' | 'both') => noiseSuppressionMutation.mutate({ enabled: true, direction: value })}
                       >
-                        <SelectTrigger className="w-[160px]"><SelectValue /></SelectTrigger>
+                        <SelectTrigger className="w-[140px] h-8"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="outbound">Outbound Only</SelectItem>
-                          <SelectItem value="inbound">Inbound Only</SelectItem>
+                          <SelectItem value="outbound">Outbound</SelectItem>
+                          <SelectItem value="inbound">Inbound</SelectItem>
                           <SelectItem value="both">Both</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-
-              {/* Billing Settings */}
-              <Card className="border-slate-200 dark:border-border">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Wallet className="h-4 w-4" />Billing & Wallet
-                  </CardTitle>
-                  <CardDescription>Manage your wallet and auto-recharge settings</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50">
-                    <div>
-                      <p className="font-medium text-slate-700 dark:text-foreground">Current Balance</p>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-white">{formatCurrency(walletBalance)}</p>
-                    </div>
-                    <Button onClick={() => setShowAddFunds(true)}>
-                      <Plus className="h-4 w-4 mr-2" />Add Funds
-                    </Button>
-                  </div>
-                  <div className="flex items-center justify-between p-4 rounded-lg border border-slate-200 dark:border-slate-700">
-                    <div>
-                      <p className="font-medium text-slate-700 dark:text-foreground">Auto-Recharge</p>
-                      <p className="text-sm text-slate-500">Automatically add funds when balance is low</p>
-                    </div>
-                    <Switch checked={autoRechargeEnabled} onCheckedChange={handleAutoRechargeToggle} />
-                  </div>
-                  {autoRechargeEnabled && (
-                    <div className="grid grid-cols-2 gap-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
-                      <div>
-                        <Label className="text-xs">When balance falls below</Label>
-                        <div className="relative mt-1">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
-                          <Input type="number" min="5" max="100" value={autoRechargeThreshold} onChange={(e) => setAutoRechargeThreshold(e.target.value)} className="pl-7" />
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-xs">Add this amount</Label>
-                        <div className="relative mt-1">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
-                          <Input type="number" min="10" max="500" value={autoRechargeAmount} onChange={(e) => setAutoRechargeAmount(e.target.value)} className="pl-7" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-
-              {/* Account Info */}
-              <Card className="border-slate-200 dark:border-border">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Settings2 className="h-4 w-4" />Account Information
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
-                      <p className="text-xs text-slate-500 mb-1">Account ID</p>
-                      <div className="flex items-center gap-2">
-                        <code className="text-xs text-slate-700 dark:text-foreground truncate flex-1">{accountId}</code>
-                        <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => copyToClipboard(accountId || "", "Account ID")}>
-                          <Copy className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
-                      <p className="text-xs text-slate-500 mb-1">Organization</p>
-                      <p className="text-sm text-slate-700 dark:text-foreground">{accountDetails?.organization_name || '-'}</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
-                      <p className="text-xs text-slate-500 mb-1">Created</p>
-                      <p className="text-sm text-slate-700 dark:text-foreground flex items-center gap-1">
-                        <Clock className="h-3 w-3" />
-                        {accountDetails?.created_at ? format(new Date(accountDetails.created_at), "MMM dd, yyyy") : '-'}
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
-                      <p className="text-xs text-slate-500 mb-1">Last Updated</p>
-                      <p className="text-sm text-slate-700 dark:text-foreground flex items-center gap-1">
-                        <RefreshCw className="h-3 w-3" />
-                        {accountDetails?.updated_at ? format(new Date(accountDetails.updated_at), "MMM dd, yyyy") : '-'}
-                      </p>
-                    </div>
-                  </div>
                 </CardContent>
               </Card>
             </div>
