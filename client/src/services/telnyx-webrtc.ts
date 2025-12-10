@@ -556,6 +556,17 @@ class TelnyxWebRTCManager {
       console.log('[Telnyx WebRTC] Answering call');
       this.stopRingtone(); // Stop ringtone when answering
       incomingCall.answer();
+      
+      // Immediately set as current call and connect audio
+      // Don't wait for state change - this reduces audio delay
+      store.setCurrentCall(incomingCall);
+      store.setIncomingCall(undefined);
+      
+      // Connect audio immediately after answer to reduce delay
+      setTimeout(() => {
+        console.log('[Telnyx WebRTC] Connecting audio after answer');
+        this.connectRemoteAudio(incomingCall);
+      }, 100);
     }
   }
   

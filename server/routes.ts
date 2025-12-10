@@ -26546,9 +26546,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // <Client> connects to registered SIP/WebRTC users on the same account
         console.log("[Telnyx Voice] Sending TeXML to ring WebRTC client");
         
+        // CRITICAL: Use action URL to handle call completion properly
+        // Without action, Telnyx may send "user busy" when agent hangs up
+        const baseUrl = process.env.REPLIT_DOMAIN 
+          ? `https://${process.env.REPLIT_DOMAIN}`
+          : process.env.PUBLIC_URL || 'https://curbe.replit.app';
+        
         texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial timeout="30" >
+  <Dial timeout="30" action="${baseUrl}/webhooks/telnyx/dial-complete/${companyId}">
     <Sip>sip:${sipUsername}@sip.telnyx.com</Sip>
   </Dial>
 </Response>`;
@@ -26568,7 +26574,37 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // POST /webhooks/telnyx/status/:companyId - Handle status callbacks per company
+  // POST /webhooks/telnyx/dial-complete/:companyId - Handle Dial completion (action callback)
+  // This prevents "user busy" message when agent hangs up
+  app.post("/webhooks/telnyx/dial-complete/:companyId", async (req: Request, res: Response) => {
+    try {
+      const { companyId } = req.params;
+      const { DialCallStatus, DialCallDuration, CallSid } = req.body;
+      
+      console.log("[Telnyx Voice] Dial completed:", { 
+        companyId, 
+        status: DialCallStatus,
+        duration: DialCallDuration,
+        callSid: CallSid
+      });
+      
+      // Return a clean hangup - no "user busy" message
+      res.set("Content-Type", "application/xml");
+      res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Hangup/>
+</Response>`);
+    } catch (error: any) {
+      console.error("[Telnyx Voice] Dial complete error:", error);
+      res.set("Content-Type", "application/xml");
+      res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Hangup/>
+</Response>`);
+    }
+  });
+
+    // POST /webhooks/telnyx/status/:companyId - Handle status callbacks per company
   app.post("/webhooks/telnyx/status/:companyId", async (req: Request, res: Response) => {
     try {
       const { companyId } = req.params;
