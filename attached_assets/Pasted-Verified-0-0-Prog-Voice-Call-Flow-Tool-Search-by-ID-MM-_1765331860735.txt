@@ -1,0 +1,393 @@
+Verified
+0
+0
+Prog. Voice Call Flow Tool
+​
+Search by ID
+
+MM/DD/YYYY hh:mm aa
+
+MM/DD/YYYY hh:mm aa
+
+e.g. +1 555 555 1234
+
+e.g. +1 555 555 1234 or user@sip.telnyx.com
+
+Connection ID
+Started At
+From
+To
+Product
+2846165965526271975
+Dec 10, 2025 01:56:20
++1 786 630 2522
++1 305 842 3033
+Voice API
+2846165965526271975
+Dec 10, 2025 01:55:00
++1 786 630 2522
++1 305 842 3033
+Voice API
+2846165965526271975
+Dec 10, 2025 01:54:55
++1 786 630 2522
++1 305 842 3033
+Voice API
+2846165965526271975
+Dec 10, 2025 01:54:49
++1 786 630 2522
++1 305 842 3033
+Voice API
+2846165965526271975
+Dec 10, 2025 01:53:36
++1 786 630 2522
++1 305 842 3033
+Voice API
+2846165965526271975
+Dec 10, 2025 01:47:06
++1 786 630 2522
++1 305 842 3033
+Voice API
+2846165965526271975
+Dec 10, 2025 01:47:00
++1 786 630 2522
++1 305 842 3033
+Voice API
+2846165965526271975
+Dec 10, 2025 01:43:53
++1 786 630 2522
++1 305 842 3033
+Voice API
+2846165965526271975
+Dec 10, 2025 01:41:13
++1 786 630 2522
++1 305 842 3033
+Voice API
+2846165965526271975
+Dec 10, 2025 01:36:35
++1 786 630 2522
++1 305 842 3033
+Voice API
+2846165965526271975
+Dec 10, 2025 01:24:41
++1 786 630 2522
++1 305 842 3033
+Voice API
+2846165965526271975
+Dec 10, 2025 01:12:52
++1 786 630 2522
++1 305 842 3033
+Voice API
+2846165965526271975
+Dec 10, 2025 01:09:19
++1 786 630 2522
++1 305 842 3033
+Voice API
+2846165965526271975
+Dec 10, 2025 01:04:53
++1 786 630 2522
++1 305 842 3033
+Voice API
+2846165965526271975
+Dec 10, 2025 01:04:49
++1 786 630 2522
++1 305 842 3033
+Voice API
+2846165965526271975
+Dec 10, 2025 00:57:22
++1 786 630 2522
++1 305 842 3033
+Voice API
+2846165965526271975
+Dec 10, 2025 00:53:29
++1 786 630 2522
++1 305 842 3033
+Voice API
+2846165965526271975
+Dec 9, 2025 23:48:01
++1 786 630 2522
++1 305 842 3033
+Voice API
+2846165965526271975
+Dec 9, 2025 23:47:47
++1 786 630 2522
++1 305 842 3033
+Voice API
+2846165965526271975
+Dec 9, 2025 23:47:32
++1 786 630 2522
++1 305 842 3033
+Voice API
+1 of 20
+12/07
+Dec 10, 2025 01:56:20
+Properties
+Application Session ID
+6c16f4be-d56b-11f0-8b46-02420aef2020
+
+Product
+Voice API
+
+From
++1 786 630 2522
+
+To
++1 305 842 3033
+
+Inspector
+Event	Occurred At	Time since last event	Status	Response Code	
+answer	Dec 10, 2025 01:56:20.596	-0.251 seconds	Completed	-	
+{
+  "client_state": "g3QAAAACbQAAAAtkYXRhX2NlbnRlcm0AAAADc3YxbQAAAApkZXBsb3ltZW50bQAAAAZjYW5hcnk=",
+  "finish_timestamp": "2025-12-10T01:56:21.779549Z",
+  "request_id": "GH-35r0htKTWltMVGdwB",
+  "request_timestamp": "2025-12-10T01:56:20.596218Z",
+  "send_silence_when_idle": false
+}
+call_initiated	Dec 10, 2025 01:56:22.161	1.314 seconds	Completed	-	
+{
+  "created_at": "2025-12-10T01:56:22.161739Z",
+  "event_type": "call_initiated",
+  "id": "ae9154a0-14a8-4a10-98ab-a4262d19ac6d",
+  "payload": {
+    "call_control_id": "v3:KRRSV9IliHfXGyfpAZv9qkzxMWS8CX8yLRDthmvjtXop6EljvqsPLw",
+    "call_leg_id": "6d3dc890-d56b-11f0-a27e-02420aef9520",
+    "call_session_id": "6c16f4be-d56b-11f0-8b46-02420aef2020",
+    "client_state": "g3QAAAADbQAAAAdjYWxsX2lkbQAAACQ2YzE2ZjRiZS1kNTZiLTExZjAtOGI0Ni0wMjQyMGFlZjIwMjBtAAAAC2RhdGFfY2VudGVybQAAAANzdjFtAAAACmRlcGxveW1lbnRtAAAABmNhbmFyeQ==",
+    "connection_id": "2846165965526271975",
+    "data_locality": "USA",
+    "direction": "outgoing",
+    "from": "+17866302522",
+    "occurred_at": "2025-12-10T01:56:22.095023Z",
+    "organization_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "state": "bridging",
+    "to": "sip:curbeb5325600gm3h@sip.telnyx.com;transport=tls",
+    "user_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "variable_nolocal:connection_name": null,
+    "xml_failover_url": null,
+    "xml_request_method": "post",
+    "xml_request_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/voice/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2",
+    "xml_status_callback_method": "post",
+    "xml_status_callback_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/status/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2"
+  },
+  "record_type": "event"
+}
+call_hangup	Dec 10, 2025 01:56:22.477	1.63 seconds	Completed	-	
+{
+  "created_at": "2025-12-10T01:56:22.477173Z",
+  "event_type": "call_hangup",
+  "id": "f021bf44-8500-42fe-9fba-407b5b6c7b6d",
+  "payload": {
+    "answered_time": null,
+    "call_control_id": "v3:KRRSV9IliHfXGyfpAZv9qkzxMWS8CX8yLRDthmvjtXop6EljvqsPLw",
+    "call_leg_id": "6d3dc890-d56b-11f0-a27e-02420aef9520",
+    "call_quality_stats": null,
+    "call_session_id": "6c16f4be-d56b-11f0-8b46-02420aef2020",
+    "client_state": "g3QAAAADbQAAAAdjYWxsX2lkbQAAACQ2YzE2ZjRiZS1kNTZiLTExZjAtOGI0Ni0wMjQyMGFlZjIwMjBtAAAAC2RhdGFfY2VudGVybQAAAANzdjFtAAAACmRlcGxveW1lbnRtAAAABmNhbmFyeQ==",
+    "connection_id": "2846165965526271975",
+    "data_locality": "USA",
+    "end_time": "2025-12-10T01:56:22.355050Z",
+    "from": "+17866302522",
+    "hangup_cause": "user_busy",
+    "hangup_source": "unknown",
+    "occurred_at": "2025-12-10T01:56:22.355050Z",
+    "organization_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "sip_hangup_cause": "403",
+    "start_time": "2025-12-10T01:56:22.095023Z",
+    "to": "sip:curbeb5325600gm3h@sip.telnyx.com;transport=tls",
+    "user_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "variable_nolocal:connection_name": null,
+    "xml_failover_url": null,
+    "xml_request_method": "post",
+    "xml_request_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/voice/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2",
+    "xml_status_callback_method": "post",
+    "xml_status_callback_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/status/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2"
+  },
+  "record_type": "event"
+}
+playback_stop	Dec 10, 2025 01:56:22.485	1.638 seconds	Completed	-	
+{
+  "finish_timestamp": "2025-12-10T01:56:22.487236Z",
+  "request_id": "GH-35y25K9v3I6kSDleC",
+  "request_timestamp": "2025-12-10T01:56:22.485115Z"
+}
+hangup	Dec 10, 2025 01:56:22.644	1.797 seconds	Completed	-	
+{
+  "finish_timestamp": "2025-12-10T01:56:22.872302Z",
+  "request_id": "GH-35zc4A2DGHiEPJ-nE",
+  "request_timestamp": "2025-12-10T01:56:22.644494Z"
+}
+call_initiated	Dec 10, 2025 01:56:20.291	-0.556 seconds	Completed	-	
+{
+  "created_at": "2025-12-10T01:56:20.291268Z",
+  "event_type": "call_initiated",
+  "id": "4a01fd59-04f3-41e1-ac8c-3324159d0cf7",
+  "payload": {
+    "call_control_id": "v3:4EN9m0k4zcmavIIv9KtqVWEivdTkl8hduwcfO9J6_naAStaLEUcjUw",
+    "call_leg_id": "6c16fe1e-d56b-11f0-8333-02420aef2020",
+    "call_session_id": "6c16f4be-d56b-11f0-8b46-02420aef2020",
+    "caller_id_name": "CABRERA JAVIER",
+    "calling_party_type": "pstn",
+    "client_state": null,
+    "connection_codecs": "G722,PCMA,PCMU,VP8,H264",
+    "connection_id": "2846165965526271975",
+    "custom_headers": [
+      {
+        "name": "P-Early-Media",
+        "value": "supported"
+      },
+      {
+        "name": "P-Visited-Network-ID",
+        "value": "msg.pc.t-mobile.com"
+      }
+    ],
+    "data_locality": "USA",
+    "direction": "incoming",
+    "from": "+17866302522",
+    "from_sip_uri": "+17866302522@172.57.113.19",
+    "occurred_at": "2025-12-10T01:56:19.995033Z",
+    "offered_codecs": "AMR-WB~OCTET-ALIGN=0; MODE-SET=0,16000H,AMR-WB~OCTET-ALIGN=1; MODE-SET=0,16000H,PCMU",
+    "organization_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "start_time": "2025-12-10T01:56:19.995033Z",
+    "state": "parked",
+    "to": "+13058423033",
+    "to_sip_uri": "+13058423033@64.16.250.10:5060",
+    "user_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "variable_nolocal:connection_name": null,
+    "xml_failover_url": null,
+    "xml_request_method": "post",
+    "xml_request_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/voice/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2",
+    "xml_status_callback_method": "post",
+    "xml_status_callback_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/status/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2"
+  },
+  "record_type": "event"
+}
+client_state_update	Dec 10, 2025 01:56:20.305	-0.542 seconds	Completed	-	
+{
+  "client_state": "g3QAAAACbQAAAAtkYXRhX2NlbnRlcm0AAAADc3YxbQAAAApkZXBsb3ltZW50bQAAAAZjYW5hcnk=",
+  "finish_timestamp": "2025-12-10T01:56:20.312017Z",
+  "request_id": "GH-35qvMwZliSTETWkXC",
+  "request_timestamp": "2025-12-10T01:56:20.305393Z"
+}
+call_answered	Dec 10, 2025 01:56:20.847	0 seconds	Completed	-	
+{
+  "created_at": "2025-12-10T01:56:20.847231Z",
+  "event_type": "call_answered",
+  "id": "d91aae6e-1d45-4443-9645-af2e89c3f9fa",
+  "payload": {
+    "call_control_id": "v3:4EN9m0k4zcmavIIv9KtqVWEivdTkl8hduwcfO9J6_naAStaLEUcjUw",
+    "call_leg_id": "6c16fe1e-d56b-11f0-8333-02420aef2020",
+    "call_session_id": "6c16f4be-d56b-11f0-8b46-02420aef2020",
+    "calling_party_type": "pstn",
+    "client_state": "g3QAAAACbQAAAAtkYXRhX2NlbnRlcm0AAAADc3YxbQAAAApkZXBsb3ltZW50bQAAAAZjYW5hcnk=",
+    "codec": "PCMU",
+    "connection_id": "2846165965526271975",
+    "custom_headers": [
+      {
+        "name": "P-Early-Media",
+        "value": "supported"
+      },
+      {
+        "name": "P-Visited-Network-ID",
+        "value": "msg.pc.t-mobile.com"
+      }
+    ],
+    "data_locality": "USA",
+    "from": "+17866302522",
+    "occurred_at": "2025-12-10T01:56:20.715023Z",
+    "organization_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "sampling_rate": 8000,
+    "start_time": "2025-12-10T01:56:19.995033Z",
+    "to": "+13058423033",
+    "user_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "variable_nolocal:connection_name": null,
+    "xml_failover_url": null,
+    "xml_request_method": "post",
+    "xml_request_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/voice/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2",
+    "xml_status_callback_method": "post",
+    "xml_status_callback_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/status/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2"
+  },
+  "record_type": "event"
+}
+playback_start	Dec 10, 2025 01:56:21.788	0.941 seconds	Completed	-	
+{
+  "audio_url": "tone_stream://${us-ring};loops=-1",
+  "cache_audio": false,
+  "finish_timestamp": "2025-12-10T01:56:21.790105Z",
+  "loop": 1,
+  "request_id": "GH-35wQsCddUwwMT2-SB",
+  "request_timestamp": "2025-12-10T01:56:21.788056Z"
+}
+dial	Dec 10, 2025 01:56:21.839	0.992 seconds	Completed	-	
+{
+  "client_state": "g3QAAAADbQAAAAdjYWxsX2lkbQAAACQ2YzE2ZjRiZS1kNTZiLTExZjAtOGI0Ni0wMjQyMGFlZjIwMjBtAAAAC2RhdGFfY2VudGVybQAAAANzdjFtAAAACmRlcGxveW1lbnRtAAAABmNhbmFyeQ==",
+  "connection_id": "2846165965526271975",
+  "custom_headers": [],
+  "finish_timestamp": "2025-12-10T01:56:22.221518Z",
+  "from": "+17866302522",
+  "link_to": "v3:4EN9m0k4zcmavIIv9KtqVWEivdTkl8hduwcfO9J6_naAStaLEUcjUw",
+  "request_id": "GH-35wczoE6TbbYSx2QC",
+  "request_timestamp": "2025-12-10T01:56:21.839005Z",
+  "sip_headers": [],
+  "sip_region": "US",
+  "time_limit_secs": 14400,
+  "timeout_secs": "30",
+  "to": "sip:curbeb5325600gm3h@sip.telnyx.com;transport=tls",
+  "user_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d"
+}
+call_hangup	Dec 10, 2025 01:56:22.906	2.059 seconds	Completed	-	
+{
+  "created_at": "2025-12-10T01:56:22.906373Z",
+  "event_type": "call_hangup",
+  "id": "900d17b3-613b-4a36-b75b-a97a58e13d24",
+  "payload": {
+    "answered_time": "2025-12-10T01:56:20.715023Z",
+    "call_control_id": "v3:4EN9m0k4zcmavIIv9KtqVWEivdTkl8hduwcfO9J6_naAStaLEUcjUw",
+    "call_leg_id": "6c16fe1e-d56b-11f0-8333-02420aef2020",
+    "call_quality_stats": {
+      "inbound": {
+        "jitter_max_variance": "36.36",
+        "jitter_packet_count": "0",
+        "mos": "4.50",
+        "packet_count": "59",
+        "skip_packet_count": "48"
+      },
+      "outbound": {
+        "packet_count": "30",
+        "skip_packet_count": "0"
+      }
+    },
+    "call_session_id": "6c16f4be-d56b-11f0-8b46-02420aef2020",
+    "calling_party_type": "pstn",
+    "client_state": "g3QAAAACbQAAAAtkYXRhX2NlbnRlcm0AAAADc3YxbQAAAApkZXBsb3ltZW50bQAAAAZjYW5hcnk=",
+    "connection_id": "2846165965526271975",
+    "custom_headers": [
+      {
+        "name": "P-Early-Media",
+        "value": "supported"
+      },
+      {
+        "name": "P-Visited-Network-ID",
+        "value": "msg.pc.t-mobile.com"
+      }
+    ],
+    "data_locality": "USA",
+    "end_time": "2025-12-10T01:56:22.775025Z",
+    "from": "+17866302522",
+    "hangup_cause": "normal_clearing",
+    "hangup_source": "callee",
+    "occurred_at": "2025-12-10T01:56:22.775025Z",
+    "organization_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "sip_hangup_cause": "unspecified",
+    "start_time": "2025-12-10T01:56:19.995033Z",
+    "to": "+13058423033",
+    "user_id": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+    "variable_nolocal:connection_name": null,
+    "xml_failover_url": null,
+    "xml_request_method": "post",
+    "xml_request_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/voice/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2",
+    "xml_status_callback_method": "post",
+    "xml_status_callback_url": "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/status/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2"
+  },
+  "record_type": "event"
+}
