@@ -1481,33 +1481,13 @@ export function WebPhoneFloatingWindow() {
     return () => window.removeEventListener('resize', handleResize);
   }, []);
   
-  // CRITICAL: Register audio elements UNCONDITIONALLY on mount
-  // Audio refs must be available regardless of visibility for active calls
+  // CRITICAL: Audio elements are now created PROGRAMMATICALLY outside React
+  // to avoid React Fiber references that cause "circular structure to JSON" errors
+  // The telnyxWebRTC.initialize() function handles this automatically
+  // No need to register React refs with the SDK anymore
   useEffect(() => {
-    // Small delay to ensure audio elements are rendered
-    const registerAudio = () => {
-      if (remoteAudioRef.current && localAudioRef.current) {
-        console.log('[WebPhone FloatingWindow] ✅ Registering audio elements (unconditional)');
-        setAudioElements(localAudioRef.current, remoteAudioRef.current);
-        telnyxWebRTC.setAudioElement(remoteAudioRef.current);
-      } else {
-        console.warn('[WebPhone FloatingWindow] ⚠️ Audio refs not ready, retrying...');
-        // Retry after a short delay if refs aren't ready yet
-        setTimeout(registerAudio, 100);
-      }
-    };
-    
-    registerAudio();
-  }, []); // Empty deps - run once on mount
-  
-  // Also re-register when visibility changes (in case refs were updated)
-  useEffect(() => {
-    if (remoteAudioRef.current && localAudioRef.current) {
-      console.log('[WebPhone FloatingWindow] ✅ Re-registering audio elements on visibility change');
-      setAudioElements(localAudioRef.current, remoteAudioRef.current);
-      telnyxWebRTC.setAudioElement(remoteAudioRef.current);
-    }
-  }, [isVisible, setAudioElements]);
+    console.log('[WebPhone FloatingWindow] ✅ Audio elements handled by TelnyxWebRTC (programmatic)');
+  }, []);
   
   // Debug callerInfo changes
   useEffect(() => {
@@ -1785,25 +1765,17 @@ export function WebPhoneFloatingWindow() {
     setIsEditMode(false);
   };
   
-  // CRITICAL: Audio elements must ALWAYS be rendered, even when dialpad is hidden
-  // This prevents audio stream destruction during active calls
-  const audioElements = (
-    <>
-      <audio id="telnyx-remote-audio" ref={remoteAudioRef} autoPlay playsInline />
-      <audio id="telnyx-local-audio" ref={localAudioRef} autoPlay muted playsInline />
-    </>
-  );
+  // Audio elements are now created PROGRAMMATICALLY by TelnyxWebRTCManager.initialize()
+  // This prevents React Fiber references that cause "circular structure to JSON" errors
+  // See ensureTelnyxAudioElements() in telnyx-webrtc.ts
   
   if (!isVisible) {
-    // Still render audio elements when hidden to maintain call audio
-    return audioElements;
+    // No need to render audio elements - they are programmatically created
+    return null;
   }
   
   return (
     <>
-      {/* Hidden audio elements - always rendered */}
-      {audioElements}
-      
       {/* iPhone-style Floating Window */}
       <div
         ref={windowRef}

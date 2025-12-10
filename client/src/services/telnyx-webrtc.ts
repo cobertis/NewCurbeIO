@@ -8,6 +8,83 @@ import { create } from "zustand";
 
 type TelnyxCall = ReturnType<TelnyxRTC["newCall"]>;
 
+// ============================================================================
+// CRITICAL: Audio elements must be created OUTSIDE of React to avoid
+// React Fiber references that cause "circular structure to JSON" errors
+// when the Telnyx SDK tries to serialize call data.
+// 
+// Per Telnyx docs: client.remoteElement accepts a string ID, and the SDK
+// will use document.getElementById internally. By creating the element
+// programmatically (not via JSX), we avoid React's __reactFiber$ properties.
+// ============================================================================
+const TELNYX_REMOTE_AUDIO_ID = "telnyx-remote-audio";
+const TELNYX_LOCAL_AUDIO_ID = "telnyx-local-audio";
+const TELNYX_MEDIA_ROOT_ID = "telnyx-media-root";
+
+/**
+ * Creates audio elements programmatically outside of React.
+ * This is required because React-rendered elements have __reactFiber$ properties
+ * that cause circular JSON serialization errors in the Telnyx SDK.
+ */
+function ensureTelnyxAudioElements(): { remote: HTMLAudioElement; local: HTMLAudioElement } {
+  // Check if elements already exist
+  let remote = document.getElementById(TELNYX_REMOTE_AUDIO_ID) as HTMLAudioElement | null;
+  let local = document.getElementById(TELNYX_LOCAL_AUDIO_ID) as HTMLAudioElement | null;
+  
+  if (remote && local) {
+    return { remote, local };
+  }
+  
+  // Create container if needed
+  let container = document.getElementById(TELNYX_MEDIA_ROOT_ID);
+  if (!container) {
+    container = document.createElement("div");
+    container.id = TELNYX_MEDIA_ROOT_ID;
+    container.style.display = "none";
+    container.style.position = "absolute";
+    container.style.pointerEvents = "none";
+    document.body.appendChild(container);
+    console.log("[Telnyx WebRTC] Created audio container:", TELNYX_MEDIA_ROOT_ID);
+  }
+  
+  // Create remote audio element (plays caller's voice)
+  if (!remote) {
+    remote = document.createElement("audio");
+    remote.id = TELNYX_REMOTE_AUDIO_ID;
+    remote.autoplay = true;
+    remote.setAttribute("playsinline", "true");
+    container.appendChild(remote);
+    console.log("[Telnyx WebRTC] Created remote audio element:", TELNYX_REMOTE_AUDIO_ID);
+  }
+  
+  // Create local audio element (optional, for monitoring own voice)
+  if (!local) {
+    local = document.createElement("audio");
+    local.id = TELNYX_LOCAL_AUDIO_ID;
+    local.autoplay = true;
+    local.muted = true; // Muted to prevent feedback
+    local.setAttribute("playsinline", "true");
+    container.appendChild(local);
+    console.log("[Telnyx WebRTC] Created local audio element:", TELNYX_LOCAL_AUDIO_ID);
+  }
+  
+  return { remote, local };
+}
+
+/**
+ * Get the programmatically created remote audio element
+ */
+export function getTelnyxRemoteAudioElement(): HTMLAudioElement | null {
+  return document.getElementById(TELNYX_REMOTE_AUDIO_ID) as HTMLAudioElement | null;
+}
+
+/**
+ * Get the programmatically created local audio element
+ */
+export function getTelnyxLocalAudioElement(): HTMLAudioElement | null {
+  return document.getElementById(TELNYX_LOCAL_AUDIO_ID) as HTMLAudioElement | null;
+}
+
 interface NetworkQualityMetrics {
   mos: number;
   jitter: number;
@@ -340,6 +417,13 @@ class TelnyxWebRTCManager {
       this.client = null;
     }
 
+    // CRITICAL: Create audio elements OUTSIDE of React BEFORE initializing TelnyxRTC
+    // This prevents React Fiber references from being attached to the elements,
+    // which would cause "circular structure to JSON" errors in the SDK
+    const audioElements = ensureTelnyxAudioElements();
+    this.audioElement = audioElements.remote;
+    console.log("[Telnyx WebRTC] 🔊 Using programmatic audio element (no React Fiber)");
+
     // Per official Telnyx SDK docs:
     // https://developers.telnyx.com/docs/voice/webrtc/js-sdk/interfaces/iclientoptions
     // https://developers.telnyx.com/docs/voice/webrtc/troubleshooting/debug-logs
@@ -354,11 +438,11 @@ class TelnyxWebRTCManager {
 
     // CRITICAL: Per Telnyx docs, set client.remoteElement IMMEDIATELY after creation
     // Docs: https://www.npmjs.com/package/@telnyx/webrtc
-    // Type: string | Function | HTMLMediaElement
-    // Using STRING ID to avoid circular JSON serialization errors when debug is enabled
-    // The SDK will use document.getElementById internally
-    console.log("[Telnyx WebRTC] 🔊 Setting client.remoteElement as string ID");
-    this.client.remoteElement = "telnyx-remote-audio";
+    // Using STRING ID - the SDK will use document.getElementById internally
+    // Since we created the element programmatically (not via React JSX),
+    // it won't have __reactFiber$ properties that cause circular JSON errors
+    console.log("[Telnyx WebRTC] 🔊 Setting client.remoteElement as string ID:", TELNYX_REMOTE_AUDIO_ID);
+    this.client.remoteElement = TELNYX_REMOTE_AUDIO_ID;
 
     this.client.on("telnyx.ready", async () => {
       console.log("[Telnyx WebRTC] Connected and ready");
