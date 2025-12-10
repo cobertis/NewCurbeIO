@@ -5086,6 +5086,7 @@ export const apiProviders = [
   "cms_api",
   "imap_bounce",
   "cloudflare",
+  "intercom",
 ] as const;
 export type ApiProvider = typeof apiProviders[number];
 

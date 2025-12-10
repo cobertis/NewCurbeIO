@@ -19,6 +19,7 @@
     "@google-cloud/storage": "^7.18.0",
     "@hapi/boom": "^10.0.1",
     "@hookform/resolvers": "^3.10.0",
+    "@intercom/messenger-js-sdk": "^0.0.18",
     "@jridgewell/trace-mapping": "^0.3.25",
     "@neondatabase/serverless": "^0.10.4",
     "@radix-ui/react-accordion": "^1.2.4",

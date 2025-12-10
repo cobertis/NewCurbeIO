@@ -27414,6 +27414,124 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to delete config" });
     }
   });
+
+  // =====================================================
+  // INTERCOM INTEGRATION ENDPOINTS
+  // =====================================================
+
+  // GET /api/system/intercom-config - Get Intercom app_id (public, no secret exposed)
+  app.get("/api/system/intercom-config", async (req: Request, res: Response) => {
+    try {
+      const { credentialProvider } = await import("./services/credential-provider");
+      const appId = await credentialProvider.get("intercom", "app_id");
+      
+      if (!appId) {
+        return res.json({ app_id: null, enabled: false });
+      }
+      
+      res.json({ app_id: appId, enabled: true });
+    } catch (error: any) {
+      console.error("[Intercom] Error getting config:", error);
+      res.json({ app_id: null, enabled: false });
+    }
+  });
+
+  // POST /api/intercom/track - Server-side event tracking
+  app.post("/api/intercom/track", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { event_name, metadata } = req.body;
+      
+      if (!event_name || typeof event_name !== "string") {
+        return res.status(400).json({ message: "event_name is required" });
+      }
+      
+      const { credentialProvider } = await import("./services/credential-provider");
+      const accessToken = await credentialProvider.get("intercom", "access_token");
+      
+      if (!accessToken) {
+        return res.status(503).json({ message: "Intercom not configured" });
+      }
+      
+      const eventPayload = {
+        event_name,
+        created_at: Math.floor(Date.now() / 1000),
+        user_id: user.id,
+        email: user.email,
+        metadata: metadata || {},
+      };
+      
+      const response = await fetch("https://api.intercom.io/events", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          "Intercom-Version": "2.11",
+        },
+        body: JSON.stringify(eventPayload),
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[Intercom] Failed to track event:", errorText);
+        return res.status(response.status).json({ message: "Failed to track event" });
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Intercom] Error tracking event:", error);
+      res.status(500).json({ message: "Failed to track event" });
+    }
+  });
+
+  // POST /api/intercom/webhook - Webhook endpoint with signature verification
+  app.post("/api/intercom/webhook", async (req: Request, res: Response) => {
+    try {
+      const signature = req.headers["x-hub-signature"] as string;
+      const rawBody = JSON.stringify(req.body);
+      
+      const { credentialProvider } = await import("./services/credential-provider");
+      const webhookSecret = await credentialProvider.get("intercom", "webhook_secret");
+      
+      if (webhookSecret && signature) {
+        const expectedSignature = "sha1=" + crypto
+          .createHmac("sha1", webhookSecret)
+          .update(rawBody)
+          .digest("hex");
+        
+        if (signature !== expectedSignature) {
+          console.warn("[Intercom Webhook] Invalid signature");
+          return res.status(401).json({ message: "Invalid signature" });
+        }
+      }
+      
+      const { topic, data } = req.body;
+      
+      console.log("[Intercom Webhook] Received:", topic);
+      
+      switch (topic) {
+        case "conversation.user.created":
+        case "conversation.user.replied":
+          console.log("[Intercom Webhook] Conversation event:", data?.item?.id);
+          break;
+        case "user.created":
+        case "user.tag.created":
+          console.log("[Intercom Webhook] User event:", data?.item?.id);
+          break;
+        case "contact.created":
+        case "contact.signed_up":
+          console.log("[Intercom Webhook] Contact event:", data?.item?.id);
+          break;
+        default:
+          console.log("[Intercom Webhook] Unhandled topic:", topic);
+      }
+      
+      res.status(200).json({ received: true });
+    } catch (error: any) {
+      console.error("[Intercom Webhook] Error processing:", error);
+      res.status(500).json({ message: "Webhook processing failed" });
+    }
+  });
   // GET /api/telnyx/available-numbers - Search available phone numbers
   app.get("/api/telnyx/available-numbers", requireAuth, async (req: Request, res: Response) => {
     try {

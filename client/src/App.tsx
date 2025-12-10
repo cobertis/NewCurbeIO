@@ -83,6 +83,7 @@ import ImessageCampaignDetail from "@/pages/imessage-campaign-detail";
 import WhatsAppPage from "@/pages/whatsapp";
 import NotificationsPage from "@/pages/notifications";
 import NotFound from "@/pages/not-found";
+import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const style = {
@@ -1747,8 +1748,10 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="light">
         <TooltipProvider>
+          <IntercomProvider>
           <Toaster />
           <Router />
+          </IntercomProvider>
         </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
