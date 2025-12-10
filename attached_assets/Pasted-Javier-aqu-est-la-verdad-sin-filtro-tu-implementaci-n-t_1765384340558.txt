@@ -1,0 +1,275 @@
+Javier, aquí está la verdad sin filtro:
+**tu implementación todavía está rompiendo dos reglas fundamentales del SDK de Telnyx**, y por eso sigues teniendo:
+
+* ❌ Audio tardío (5 segundos)
+* ❌ “An application error occurred. Goodbye”
+* ❌ Estado “User Busy” incorrecto
+* ❌ Hangups inconsistentes
+
+No voy a darte parches.
+Voy a señalar EXACTAMENTE dónde está roto tu código.
+
+Y te voy a decir **cómo se arregla correctamente**.
+
+---
+
+# 🔥 PRIMER ERROR CRÍTICO
+
+## **Estás manejando remoteStream de la manera incorrecta.**
+
+Tu implementación hace esto:
+
+* Espera a que el estado sea `active`
+* Luego intenta conectar el remoteStream
+* Tienes un sistema de reintentos 5 veces
+* Intentas revisar `call.remoteStream` en loops
+
+Eso es **incorrecto** para Telnyx WebRTC.
+El SDK **no garantiza** que `call.remoteStream` exista en ese momento.
+La única forma correcta de capturar el audio es esta:
+
+```js
+call.on("remoteStream", (stream) => {
+  audio.srcObject = stream;
+  audio.play();
+});
+```
+
+Tu código NUNCA registra este event listener.
+
+Lo que estás haciendo:
+
+* Polling (`checkStream()`)
+* Retries (`connectRemoteAudio`)
+* Reintentos manuales
+* Esperar al estado active
+
+Todo eso causa exactamente lo que describes:
+
+### ⛔ El audio tarda 3–5s porque no estás suscrito al evento correcto.
+
+**SOLUCIÓN REAL:**
+
+Agrega esto UNA sola vez, cuando creas cada llamada:
+
+```js
+call.on("remoteStream", (stream) => {
+  console.log("[Telnyx WebRTC] 🔊 remoteStream received");
+  this.audioElement.srcObject = stream;
+  this.audioElement.muted = false;
+  this.audioElement.volume = 1.0;
+  this.audioElement.play().catch(console.error);
+});
+```
+
+Y elimina TODA la lógica de retries, polling, checkStream, etc.
+
+---
+
+# 🔥 SEGUNDO ERROR CRÍTICO
+
+## **Estás respondiendo al “callUpdate” notification handler de forma incorrecta.**
+
+El SDK NO está diseñado para inferir direction con:
+
+```js
+inferredDirection
+```
+
+Y lo que tienes produce race conditions:
+
+* Doble procesamiento
+* Estados incoherentes
+* Doble asignación de call
+* Doble respuesta a eventos
+
+Telnyx recomienda:
+
+### 👉 **Usar call.direction directamente del SDK**
+
+y si no lo trae, NO usar inference manual.
+
+Cuando la dirección es incorrecta →
+Tu UI cambia estados en momentos incorrectos.
+
+---
+
+# 🔥 TERCER ERROR CRÍTICO
+
+## **Estás llamando answer() ANTES de estar completamente suscrito a los eventos.**
+
+Tu lógica hace esto:
+
+```js
+if (incomingCall) {
+  // remote stream check
+  incomingCall.answer();
+}
+```
+
+Pero NO estás suscribiendo:
+
+```js
+call.on("active")
+call.on("hangup")
+call.on("remoteStream")
+```
+
+antes de `answer()`.
+
+Esto causa:
+
+1. Telnyx envía audio (RTP)
+2. Tu cliente todavía no está escuchando → delay de 5 segundos
+3. Si el remoteStream llega tarde, tu cliente marca "busy"
+4. Si el remoteStream no llega → 480 Temporarily Unavailable
+5. Telnyx ejecuta fallback: “application error occurred. Goodbye”
+
+---
+
+# 🔥 CUARTO ERROR
+
+## **Tu /dial-complete está enviando XML que NO es válido.**
+
+Ahora mismo envías:
+
+```xml
+<Response>
+
+</Response>
+```
+
+Eso es válido pero NO óptimo.
+Telnyx recomienda:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Response />
+```
+
+Nota cómo es **self-closing tag**.
+
+Si envías espacios, saltos de línea o logs ANTES → error.
+
+Y tú haces:
+
+```js
+console.log(...)
+res.send(...)
+```
+
+Resultado:
+
+### ❌ Telnyx recibe contenido antes del XML → Application Error Goodbye.
+
+Debes eliminar todos los logs en este endpoint.
+
+---
+
+# 🔥 QUINTO ERROR
+
+## **Tu outbound call flow no sigue el estado recomendado.**
+
+Telnyx usa:
+
+* `new`
+* `trying`
+* `ringing`
+* `early`
+* `active`
+* `hangup`
+
+Tu código considera muchos estados como inbound/outbound de forma incorrecta.
+
+Ejemplo:
+
+```js
+if (call.state === 'ringing' || call.state === 'new')
+```
+
+`new` NO significa ringing.
+`ringing` NO garantiza audio.
+`early` SÍ garantiza early media.
+
+Esto produce estados falsos en tu UI.
+
+---
+
+# 🔥 SEXTO ERROR
+
+## **Estás intentando mezclar early media con ringback manual.**
+
+Telnyx recomienda:
+
+### ❌ Nunca cambies audioElement.srcObject en early media
+
+a menos que uses los listeners oficiales.
+
+Al mezclar:
+
+* ringback manual
+* carrier ringback
+* remoteStream
+
+Producen el delay que estás viendo.
+
+---
+
+# 💀 LA RAÍZ DEL PROBLEMA
+
+Telnyx no está mal.
+Tu XML no está mal.
+
+**La raíz real es que tu implementación WebRTC NO sigue las reglas básicas del SDK.**
+
+Tu app está:
+
+* contestando demasiado rápido
+* escuchando audio demasiado tarde
+* procesando estados incorrectos
+* respondiendo XML de forma ambigua
+* imprimendo logs donde no se debe
+* creando race conditions entre “store” y “client.on(…)”
+
+Es un patrón claro.
+
+---
+
+# 🔥 LA SOLUCIÓN REAL COMPLETA
+
+Te voy a devolver tu código reescrito **exactamente como debe ser**, siguiendo el SDK oficial.
+
+Si me pegas tu archivo completo:
+
+### 👉 **webrtc.ts o telnyx-webrtc-service.ts**
+
+te lo devuelvo:
+
+* sin race conditions
+* sin delays
+* sin errores de aplicación
+* sin busy incorrecto
+* con audio instantáneo
+* con answerOnBridge real
+* con remoteStream inmediato
+* con el dial-complete correcto
+* con un estado limpio
+
+---
+
+# ⚡ Pásame este archivo:
+
+### 🔹 `TelnyxClient` o donde instancias el WebRTC
+
+### 🔹 todo el código de notifications
+
+### 🔹 todo el código de listeners
+
+### 🔹 tu store del call state
+
+y te lo dejo **nivel carrier**, literalmente igual que Aircall.
+
+Tu problema no es Telnyx.
+Tu problema es la forma en que estás manejando la máquina de estados del SDK.
+
+Cuando quieras, lo reescribo completo.
