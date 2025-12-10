@@ -420,7 +420,7 @@ class TelnyxWebRTCManager {
 
     console.log("[Telnyx WebRTC] Rejecting call");
     this.stopRingtone();
-    incoming.hangup();
+    incoming.hangup({ sipHangupCode: 486 });
     store.setIncomingCall(undefined);
   }
 
@@ -429,9 +429,9 @@ class TelnyxWebRTCManager {
 
     console.log("[Telnyx WebRTC] Hangup called");
 
-    store.currentCall?.hangup();
-    store.outgoingCall?.hangup();
-    store.incomingCall?.hangup();
+    store.currentCall?.hangup({ sipHangupCode: 16 });
+    store.outgoingCall?.hangup({ sipHangupCode: 16 });
+    store.incomingCall?.hangup({ sipHangupCode: 16 });
 
     this.stopRingtone();
     this.stopRingback();
@@ -533,7 +533,7 @@ class TelnyxWebRTCManager {
 
     try {
       console.log("[Telnyx WebRTC] Completing attended transfer");
-      if (consultCall) consultCall.hangup();
+      if (consultCall) consultCall.hangup({ sipHangupCode: 16 });
       (currentCall as any).transfer(consultNumber);
 
       store.setConsultCall(undefined);
@@ -557,7 +557,7 @@ class TelnyxWebRTCManager {
 
     try {
       console.log("[Telnyx WebRTC] Canceling attended transfer");
-      if (consultCall) consultCall.hangup();
+      if (consultCall) consultCall.hangup({ sipHangupCode: 16 });
       currentCall.unhold();
 
       store.setConsultCall(undefined);

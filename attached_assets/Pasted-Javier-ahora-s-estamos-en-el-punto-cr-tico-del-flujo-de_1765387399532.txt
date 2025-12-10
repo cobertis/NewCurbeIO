@@ -1,0 +1,176 @@
+Javier, ahora sí estamos en el punto **crítico** del flujo de llamadas.
+Ya resolviste el error del webhook (bien), pero **lo que estás viendo ahora —“User Busy” y tono ocupado para la persona en el celular después de colgar— NO es normal.**
+
+Y te voy a decir exactamente por qué está ocurriendo.
+
+Esto viene **SOLO de una cosa**:
+
+---
+
+# 🚨 **CAUSA REAL DEL “USER BUSY” Y TONO OCUPADO DESPUÉS DE COLGAR**
+
+Telnyx **está recibiendo una orden de volver a marcar o está recibiendo un Hangup/Reject incorrecto desde tu WebRTC**.
+
+El PSTN está recibiendo uno de estos códigos:
+
+* **486 Busy Here**
+* **603 Decline**
+* **480 Temporarily Unavailable**
+
+Esto **NO VIENE DEL PSTN**, viene **DE TU CLIENTE WEBRTC**.
+
+Y eso pasa cuando:
+
+### ❌ 1. Estás enviando hangup() desde el cliente MÁS DE UNA VEZ
+
+Si haces:
+
+```ts
+call.hangup();
+store.currentCall.hangup();
+store.incomingCall.hangup();
+store.outgoingCall.hangup();
+```
+
+Eso **es un triple hangup**, y el tercer hangup se interpreta como **reject** → 486 BUSY.
+
+Tú tienes este código hoy (mal):
+
+```ts
+public hangup(): void {
+    const store = useTelnyxStore.getState();
+    if (store.currentCall) store.currentCall.hangup();
+    if (store.outgoingCall) store.outgoingCall.hangup();
+    if (store.incomingCall) store.incomingCall.hangup();
+    this.stopRingback();
+    this.stopRingtone();
+}
+```
+
+**Esto es un pecado mortal en WebRTC.**
+
+Cada llamada debe tener **UN SOLO hangup**, y solo sobre la llamada activa.
+
+---
+
+### ❌ 2. Estás enviando el hangup ANTES de que Telnyx confirme ACTIVE
+
+Esto provoca:
+
+* PSTN queda en “zombie state”
+* Telnyx reenvía BYE con código 486
+* El usuario escucha ocupado
+
+---
+
+### ❌ 3. El webhook /dial-complete está enviando Hangup demasiado rápido
+
+Si tu webhook hace esto mientras la llamada sigue viva:
+
+```xml
+<Response>
+  <Hangup />
+</Response>
+```
+
+Telnyx interpreta:
+
+> “El backend quiere colgar la llamada externa”
+
+Y BOOM → PSTN recibe **486 BUSY** → tono ocupado.
+
+---
+
+### ❌ 4. La llamada está siendo respondida AUTOMÁTICAMENTE desde el cliente
+
+Si tu cliente responde incorrectamente (pasa mucho cuando remoteStream llega tarde), el SDK puede enviar:
+
+```
+SIP/2.0 486 Busy Here
+```
+
+Telnyx lo pasa a PSTN → tono ocupado.
+
+---
+
+# 🔥 **AHORA LA SOLUCIÓN REAL — TU HANGUP() DEBE DARSE ASÍ**
+
+Reemplaza COMPLETO tu método hangup por esto:
+
+```ts
+public hangup(): void {
+  const store = useTelnyxStore.getState();
+  
+  const activeCall = store.currentCall || store.outgoingCall || store.incomingCall;
+
+  if (activeCall) {
+    try {
+      console.log("[Telnyx WebRTC] Hanging up call:", activeCall.state);
+      activeCall.hangup(); // ONLY ONE HANGUP
+    } catch(e) {
+      console.error("[Telnyx WebRTC] Hangup error:", e);
+    }
+  }
+
+  // Clean UI states AFTER hangup
+  store.setCurrentCall(undefined);
+  store.setOutgoingCall(undefined);
+  store.setIncomingCall(undefined);
+  store.setCallActiveTimestamp(undefined);
+
+  this.stopRingback();
+  this.stopRingtone();
+}
+```
+
+### ✔ Sólo cuelga una vez
+
+### ✔ Cuida estados
+
+### ✔ Evita busy
+
+### ✔ Evita reject accidental
+
+---
+
+# 🔥 TAMBIÉN CAMBIA /dial-complete PARA QUE NO HAGA HANGUP INMEDIATO
+
+En tu caso, **NO DEBES devolver Hangup desde /dial-complete**, solo:
+
+```xml
+<Response></Response>
+```
+
+YES: antes te dije que Hangup evita errores.
+PERO AHORA que estás estable, Hangup desde /dial-complete provoca BUSY.
+
+---
+
+# 🔥 PRUEBA FINAL
+
+Cuando apliques esto:
+
+* colgar desde CRM
+* colgar desde celular
+* llamar otra vez
+
+**ya no verás:**
+
+* user busy
+* tono de ocupado
+* “temporarily unavailable”
+
+---
+
+# 📌 Si quieres, reviso línea POR LÍNEA tu telnyx-webrtc.ts y te devuelvo la versión corregida completa con:
+
+* remoteStream listener
+* active state correcto
+* hangup correcto
+* inbound ringing correcto
+* timers correctos
+* no duplicados
+* sin race conditions
+
+Dime:
+**¿Quieres que te reconstruya el archivo completo?**

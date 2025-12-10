@@ -26577,8 +26577,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // POST /webhooks/telnyx/dial-complete/:companyId - Handle Dial completion
   app.post("/webhooks/telnyx/dial-complete/:companyId", async (_req: Request, res: Response) => {
-    res.set("Content-Type", "application/xml");
-    res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response />`);
+    res.status(200).json({ received: true });
   });
 
     // POST /webhooks/telnyx/status/:companyId - Handle status callbacks per company
