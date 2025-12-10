@@ -1503,7 +1503,7 @@ export function WebPhoneFloatingWindow() {
     }
   }, [callerInfo, currentCall]);
   
-  // Auto-open window when incoming call arrives
+  // Auto-open window when incoming call arrives (SIP.js)
   useEffect(() => {
     if (currentCall && currentCall.status === 'ringing' && currentCall.direction === 'inbound') {
       if (!isVisible) {
@@ -1511,6 +1511,16 @@ export function WebPhoneFloatingWindow() {
       }
     }
   }, [currentCall, isVisible, toggleDialpad]);
+  
+  // Auto-open window when Telnyx incoming call arrives
+  useEffect(() => {
+    if (telnyxIncomingCall) {
+      console.log('[WebPhone] 📱 Telnyx incoming call detected - opening phone panel');
+      if (!isVisible) {
+        toggleDialpad();
+      }
+    }
+  }, [telnyxIncomingCall, isVisible, toggleDialpad]);
   
   // Call timer
   useEffect(() => {

@@ -226,36 +226,14 @@ class TelnyxWebRTCManager {
   }
   
   private createRingtone(): void {
-    // Create a ringtone for incoming calls using Web Audio API
+    // Use a modern, pleasant ringtone from a reliable source
     try {
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const sampleRate = audioContext.sampleRate;
-      const duration = 3; // 1s ring, 2s silence
-      const bufferSize = sampleRate * duration;
-      const buffer = audioContext.createBuffer(1, bufferSize, sampleRate);
-      const data = buffer.getChannelData(0);
-      
-      // Generate classic phone ring: 440Hz + 480Hz alternating with silence
-      for (let i = 0; i < bufferSize; i++) {
-        const t = i / sampleRate;
-        if (t < 1) {
-          // Ring tone (1 second) - classic phone ring frequencies
-          const envelope = Math.sin(Math.PI * t / 1) * 0.5; // Fade in/out
-          data[i] = envelope * (Math.sin(2 * Math.PI * 440 * t) + Math.sin(2 * Math.PI * 480 * t));
-        } else {
-          // Silence (2 seconds)
-          data[i] = 0;
-        }
-      }
-      
-      // Convert to WAV and create blob URL
-      const wavBlob = this.audioBufferToWav(buffer);
-      const url = URL.createObjectURL(wavBlob);
       if (this.ringtoneAudio) {
-        this.ringtoneAudio.src = url;
+        // Modern smartphone-style ringtone
+        this.ringtoneAudio.src = 'https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3';
+        this.ringtoneAudio.volume = 0.7;
+        console.log('[Telnyx WebRTC] Modern ringtone configured');
       }
-      
-      audioContext.close();
     } catch (error) {
       console.error('[Telnyx WebRTC] Failed to create ringtone:', error);
     }
