@@ -1,6 +1,6 @@
 // ============================================================================
-//  TELNYX WEBRTC – VERSION CARRIER-GRADE (CURBE VOICE)
-//  100% compliant con el SDK oficial – sin delays, sin errores, sin busy falso
+//  TELNYX WEBRTC – CURBE VOICE
+//  Usando el patrón real del SDK de Telnyx (notification-based, no call.on)
 // ============================================================================
 
 import { TelnyxRTC } from "@telnyx/webrtc";
@@ -8,7 +8,6 @@ import { create } from "zustand";
 
 type TelnyxCall = ReturnType<TelnyxRTC["newCall"]>;
 
-// Network quality metrics for call quality monitoring
 interface NetworkQualityMetrics {
   mos: number;
   jitter: number;
@@ -88,6 +87,8 @@ class TelnyxWebRTCManager {
   private audioElement: HTMLAudioElement | null = null;
   private ringtone: HTMLAudioElement;
   private ringback: HTMLAudioElement;
+  private lastCallState: string | null = null;
+  private remoteStreamConnected: boolean = false;
 
   private constructor() {
     this.ringtone = new Audio();
@@ -182,6 +183,19 @@ class TelnyxWebRTCManager {
     this.audioElement = elem;
   }
 
+  private connectRemoteAudio(call: any): void {
+    if (this.remoteStreamConnected) return;
+    if (!this.audioElement) return;
+    if (!call?.remoteStream) return;
+
+    console.log("[Telnyx WebRTC] 🔊 Connecting remoteStream");
+    this.audioElement.srcObject = call.remoteStream;
+    this.audioElement.muted = false;
+    this.audioElement.volume = 1.0;
+    this.audioElement.play().catch(console.error);
+    this.remoteStreamConnected = true;
+  }
+
   public async initialize(sipUser: string, sipPass: string, callerId?: string): Promise<void> {
     const store = useTelnyxStore.getState();
     store.setConnectionStatus("connecting");
@@ -215,90 +229,111 @@ class TelnyxWebRTCManager {
       store.setConnectionStatus("error", e?.message);
     });
 
-    this.client.on("telnyx.notification", (n: any) => {
-      if (!n.call) return;
-      const call = n.call as any;
+    // NOTIFICATION HANDLER - El SDK de Telnyx usa este patrón
+    this.client.on("telnyx.notification", (notification: any) => {
+      const call = notification.call;
+      if (!call) return;
 
-      if (!call._curbeListenersAttached) {
-        this.attachCallListeners(call);
-        call._curbeListenersAttached = true;
+      const state = call.state;
+      const direction = call.direction;
+
+      // Capturar remoteStream tan pronto como esté disponible
+      if (call.remoteStream && this.audioElement && !this.remoteStreamConnected) {
+        console.log("[Telnyx WebRTC] 🔊 remoteStream detected in notification");
+        this.stopRingtone();
+        this.stopRingback();
+        this.audioElement.srcObject = call.remoteStream;
+        this.audioElement.muted = false;
+        this.audioElement.volume = 1.0;
+        this.audioElement.play().catch((e) => console.error("[Telnyx WebRTC] Audio play error:", e));
+        this.remoteStreamConnected = true;
+      }
+
+      // Evitar procesar el mismo estado dos veces
+      const stateKey = `${call.id}-${state}`;
+      if (this.lastCallState === stateKey) return;
+      this.lastCallState = stateKey;
+
+      console.log("[Telnyx WebRTC] Notification:", notification.type, { state, direction });
+
+      if (notification.type === "callUpdate") {
+        this.handleCallStateChange(call, state, direction);
       }
     });
 
     await this.client.connect();
   }
 
-  private attachCallListeners(call: any): void {
+  private handleCallStateChange(call: any, state: string, direction: string): void {
     const store = useTelnyxStore.getState();
 
-    call.on("remoteStream", (stream: MediaStream) => {
-      console.log("[Telnyx WebRTC] 🔊 remoteStream received");
-      if (!this.audioElement) return;
+    switch (state) {
+      case "new":
+      case "invite":
+      case "ringing":
+        if (direction === "inbound") {
+          console.log("[Telnyx WebRTC] 📞 Incoming call (state:", state, ")");
+          store.setIncomingCall(call);
+          this.startRingtone();
+        }
+        break;
 
-      this.stopRingback();
-      this.stopRingtone();
+      case "trying":
+        if (direction === "outbound") {
+          console.log("[Telnyx WebRTC] 📤 Outbound trying");
+          store.setOutgoingCall(call);
+          this.startRingback();
+        }
+        break;
 
-      this.audioElement.srcObject = stream;
-      this.audioElement.muted = false;
-      this.audioElement.volume = 1.0;
-      this.audioElement.play().catch(console.error);
-    });
+      case "early":
+        if (direction === "outbound") {
+          console.log("[Telnyx WebRTC] 📤 Early media");
+          this.stopRingback();
+          // Early media - conectar audio del carrier
+          if (call.remoteStream && this.audioElement) {
+            this.audioElement.srcObject = call.remoteStream;
+            this.audioElement.play().catch(console.error);
+          }
+        }
+        break;
 
-    call.on("ringing", () => {
-      console.log("[Telnyx WebRTC] 📞 Call ringing, direction:", call.direction);
-      if (call.direction === "inbound") {
-        console.log("[Telnyx WebRTC] 📞 Incoming call");
-        useTelnyxStore.getState().setIncomingCall(call);
-        this.startRingtone();
-      }
-    });
-
-    call.on("trying", () => {
-      console.log("[Telnyx WebRTC] 📤 Call trying, direction:", call.direction);
-      if (call.direction === "outbound") {
-        useTelnyxStore.getState().setOutgoingCall(call);
-        this.startRingback();
-      }
-    });
-
-    call.on("early", () => {
-      console.log("[Telnyx WebRTC] 📤 Early media (carrier ring)");
-      if (call.direction === "outbound") {
+      case "active":
+        console.log("[Telnyx WebRTC] 🟢 Call active");
         this.stopRingback();
-      }
-    });
+        this.stopRingtone();
 
-    call.on("active", () => {
-      console.log("[Telnyx WebRTC] 🟢 Call active");
+        store.setIncomingCall(undefined);
+        store.setOutgoingCall(undefined);
+        store.setCurrentCall(call);
+        store.setCallActiveTimestamp(Date.now());
 
-      this.stopRingback();
-      this.stopRingtone();
+        // Conectar audio remoto
+        this.remoteStreamConnected = false;
+        this.connectRemoteAudio(call);
 
-      const s = useTelnyxStore.getState();
-      s.setIncomingCall(undefined);
-      s.setOutgoingCall(undefined);
-      s.setCurrentCall(call);
-      s.setCallActiveTimestamp(Date.now());
+        this.logCallToServer(call, "active");
+        break;
 
-      this.logCallToServer(call, "active");
-    });
+      case "hangup":
+      case "destroy":
+        console.log("[Telnyx WebRTC] 🔴 Call ended");
+        this.stopRingback();
+        this.stopRingtone();
 
-    call.on("hangup", () => {
-      console.log("[Telnyx WebRTC] 🔴 Call hangup");
+        this.logCallToServer(call, "completed");
 
-      this.stopRingback();
-      this.stopRingtone();
+        store.setCurrentCall(undefined);
+        store.setIncomingCall(undefined);
+        store.setOutgoingCall(undefined);
+        store.setCallActiveTimestamp(undefined);
+        store.setMuted(false);
+        store.setOnHold(false);
 
-      this.logCallToServer(call, "completed");
-
-      const s = useTelnyxStore.getState();
-      s.setCurrentCall(undefined);
-      s.setIncomingCall(undefined);
-      s.setOutgoingCall(undefined);
-      s.setCallActiveTimestamp(undefined);
-      s.setMuted(false);
-      s.setOnHold(false);
-    });
+        this.remoteStreamConnected = false;
+        this.lastCallState = null;
+        break;
+    }
   }
 
   private async logCallToServer(call: any, status: string): Promise<void> {
@@ -332,6 +367,8 @@ class TelnyxWebRTCManager {
     store.setCurrentCall(undefined);
     store.setOutgoingCall(undefined);
     store.setCallActiveTimestamp(undefined);
+    this.remoteStreamConnected = false;
+    this.lastCallState = null;
 
     console.log("[Telnyx WebRTC] 📞 Making call to:", dest);
 
