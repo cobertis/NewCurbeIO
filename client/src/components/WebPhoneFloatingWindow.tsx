@@ -2535,6 +2535,24 @@ export function WebPhoneFloatingWindow() {
                           <div></div>
                         )}
                       </div>
+                      
+                      {/* Quick Action Icons - Phone and Chat */}
+                      <div className="flex items-center justify-center gap-8 py-2 sm:py-3">
+                        <button
+                          onClick={() => setViewMode('keypad')}
+                          className="flex flex-col items-center justify-center gap-1 p-2 hover:bg-muted/30 rounded-lg transition-all"
+                          data-testid="button-quick-phone"
+                        >
+                          <Phone className="h-5 w-5 sm:h-6 sm:w-6 text-foreground" />
+                        </button>
+                        <button
+                          onClick={() => setViewMode('keypad')}
+                          className="flex flex-col items-center justify-center gap-1 p-2 hover:bg-muted/30 rounded-lg transition-all"
+                          data-testid="button-quick-chat"
+                        >
+                          <MessageSquare className="h-5 w-5 sm:h-6 sm:w-6 text-foreground" />
+                        </button>
+                      </div>
                     </div>
                   )}
                   
