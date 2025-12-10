@@ -27457,14 +27457,29 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.json({ jwt: null });
       }
       
+      // Get company name if user has a company
+      let companyName: string | null = null;
+      if (user.companyId) {
+        const company = await storage.getCompany(user.companyId);
+        companyName = company?.name || null;
+      }
+      
       // Generate JWT using jsonwebtoken library
       const jwt = await import("jsonwebtoken");
       
-      const payload = {
+      const payload: Record<string, any> = {
         user_id: user.id,
         email: user.email,
         name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
       };
+      
+      // Add company info if available
+      if (user.companyId && companyName) {
+        payload.company = {
+          company_id: user.companyId,
+          name: companyName,
+        };
+      }
       
       const token = jwt.default.sign(payload, identitySecret, { expiresIn: '1h' });
       
