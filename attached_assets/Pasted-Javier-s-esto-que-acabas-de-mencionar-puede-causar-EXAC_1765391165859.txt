@@ -1,0 +1,133 @@
+Javier, **sí**, esto que acabas de mencionar *puede causar EXACTAMENTE un delay de 3–7 segundos*.
+
+Pero no te engañes: **solo causa ese delay si tu WebRTC y tu SIP Connection no tienen el mismo orden de codecs o alguno de los codecs negociados no coincide.**
+
+Ahora te explico sin anestesia.
+
+---
+
+# 🧨 **Resultados típicos de un MISMATCH de CODECS WebRTC ↔ Telnyx**
+
+Cuando los codecs NO están en el mismo orden o falta uno, la negociación SDP hace esto:
+
+1. WebRTC envía oferta con OPUS primero (siempre)
+2. Telnyx responde con G711/G722 primero
+3. Browser rechaza ese codec
+4. Se intenta renegociar con OPUS
+5. Tarda 3–5 segundos
+6. Cuando finalmente negocian OPUS → **recién ahí oyes audio**
+
+Esto es EXACTAMENTE el síntoma que tú tienes:
+
+**Audio PSTN → WebRTC tarda 5 segundos en activarse.**
+
+---
+
+# 🔥 **YO YA HABÍA SOSPECHADO QUE TENÍAS UN PROBLEMA DE NEGOCIACIÓN RTP… y ESTA CAPTURA LO CONFIRMA.**
+
+Mira tu screenshot:
+Telnyx tiene activado este orden:
+
+1. **G.711U**
+2. **G.711A**
+3. **G722**
+4. **OPUS**
+
+Mientras que WebRTC SIEMPRE usa:
+
+✔ OPUS (primero)
+✘ No usa G711 ni G722 como primera opción
+✔ Luego fallback
+
+### ¿Qué significa?
+
+Cada llamada inbound hace esta secuencia:
+
+* Telnyx → “Preferiría G711, toma mi SDP”
+* WebRTC → “OPUS o nada”
+* Telnyx → “Déjame intentar OPUS”
+* WebRTC → “Gracias, ahora sí, audio”
+
+Tiempo total: **3–6 segundos**
+Justo lo que sufres.
+
+---
+
+# 🎯 **Solución REAL para eliminar los 5 segundos**
+
+Tienes dos opciones, y solo una es la correcta para WebRTC:
+
+---
+
+## ✅ OPCIÓN 1 — Poner OPUS como PRIMER CODEC en Telnyx
+
+Es lo correcto para WebRTC.
+
+Orden recomendado:
+
+1. **OPUS** ← PONLO ARRIBA DE TODO
+2. G711U
+3. G711A
+4. G722
+
+Y si quieres, desactiva G722 (casi ningún browser lo usa).
+
+---
+
+### ❗ IMPORTANTE
+
+OPUS **SIEMPRE** debe ser el primer codec en Telnyx *si usas WebRTC inbound*.
+
+Si no lo haces → *negociación retardada → 5 segundos de silencio*.
+
+---
+
+## ❌ OPCIÓN 2 — Forzar WebRTC a usar G711 (NO LA USES)
+
+WebRTC puede usar G711, pero es un downgrade de calidad y no resuelve el problema del fallback.
+
+---
+
+# 😡 **Aquí está tu punto ciego**
+
+Tú te enfocaste en Telnyx SDK, hangup, TeXML, PRACK, ICE, answerOnBridge…
+
+Todo eso afecta otras cosas, pero **NO explica por qué el audio llega EXACTAMENTE a los 5 segundos**.
+
+Ese patrón es típico de:
+
+* codec mismatch
+* negociación tardía
+* fallback de OPUS
+* restricción del proxy (pero aquí el síntoma coincide con codecs)
+
+Tu screenshot confirma que OPUS está al fondo.
+**Telnyx ofrece primero codecs que WebRTC no quiere.**
+Eso genera fallback → delay.
+
+---
+
+# 🧪 TEST PARA CONFIRMAR AL 100%
+
+Luego de poner OPUS de primero:
+
+* Haz una llamada
+* Abre chrome://webrtc-internals
+* Mira la gráfica de ICE + RTP
+
+Si el audio aparece **en menos de 500ms**, ya lo resolviste.
+
+---
+
+# 🧨 CONCLUSIÓN BRUTAL
+
+Sí, Javier, **este setting de codecs puede ser EXACTAMENTE la causa del delay.**
+Y sí, **es muy probable que sea el culpable principal**.
+
+Porque esto no es un bug oscuro, es:
+
+**Un clásico error de configuración SIP–WebRTC que genera 5 segundos de silencio.**
+
+---
+
+# ¿Quieres que te diga el orden exacto de codecs que debe tener tu conexión Telnyx para WebRTC inbound?

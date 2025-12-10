@@ -69,12 +69,13 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 
 **Audio Delay Prevention: Codec Order Matching**
 - **Issue:** 5-second audio delay during call establishment caused by codec negotiation mismatch between WebRTC SDK and Telnyx SIP Connection settings.
-- **Root Cause:** SDK default codec order was Opus-first, but Telnyx SIP Connection was configured for G711 first. The SDK silently discards RTCRtpCodecCapability objects - it ONLY accepts string arrays.
-- **Solution:** Pass `preferred_codecs` as a **string array** `['PCMU', 'PCMA', 'G722', 'OPUS']` to `newCall()` matching the Telnyx SIP Connection order.
-- **CRITICAL:** The Telnyx WebRTC SDK expects `preferred_codecs` to be an array of **simple codec name strings**, NOT RTCRtpCodecCapability objects. Passing objects causes them to be silently ignored.
-- **Implementation:** `getPreferredCodecs()` returns `['PCMU', 'PCMA', 'G722', 'OPUS']` - simple strings matching Telnyx SIP Connection codec priority.
+- **Root Cause:** SDK default codec order was Opus-first, but Telnyx SIP Connection was configured for G711 first.
+- **Solution:** Pass `preferred_codecs` as an array of **RTCRtpCodecCapability objects** obtained from `RTCRtpReceiver.getCapabilities('audio').codecs` in the correct order.
+- **CRITICAL:** Per Telnyx documentation, `preferred_codecs` must be a sub-array of `RTCRtpReceiver.getCapabilities('audio').codecs`. See: https://developers.telnyx.com/docs/voice/webrtc/js-sdk/classes/telnyxrtc
+- **Implementation:** `getPreferredCodecs()` filters browser codecs and returns them ordered: PCMU → PCMA → G722 → OPUS (matching Telnyx SIP Connection settings).
 - **Key Code Location:** `client/src/services/telnyx-webrtc.ts` - `makeCall()` and `startAttendedTransfer()` methods.
 - **Telnyx Portal:** SIP Connection → Inbound tab → Codecs section shows the priority order to match.
+- **Console Log:** `[Telnyx WebRTC] Preferred codecs: [audio/PCMU, audio/PCMA, audio/G722, audio/opus]`
 
 **WebRTC Auto-Reconnect System**
 - **Issue:** HMR (Hot Module Replacement) and page reloads cause WebRTC socket disconnections, resulting in missed incoming calls.

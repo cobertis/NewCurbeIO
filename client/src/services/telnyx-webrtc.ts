@@ -442,14 +442,44 @@ class TelnyxWebRTCManager {
   }
 
   /**
-   * Get preferred codecs as MIME strings in Telnyx order: PCMU, PCMA, G722, OPUS
-   * The SDK expects string array, NOT RTCRtpCodecCapability objects
-   * Matching this order with the SIP Connection settings eliminates 5-second audio delay
+   * Get preferred codecs as RTCRtpCodecCapability objects in Telnyx SIP Connection order.
+   * Per Telnyx documentation: preferred_codecs must be a sub-array of 
+   * RTCRtpReceiver.getCapabilities('audio').codecs
+   * 
+   * Order matches Telnyx SIP Connection settings: PCMU -> PCMA -> G722 -> OPUS
+   * This eliminates codec negotiation delay that causes 5-second audio delay.
+   * 
+   * @see https://developers.telnyx.com/docs/voice/webrtc/js-sdk/classes/telnyxrtc
    */
-  private getPreferredCodecs(): string[] {
-    // Telnyx SDK expects simple codec name strings matching SIP Connection order
-    // Order: G711U (PCMU) -> G711A (PCMA) -> G722 -> OPUS
-    return ['PCMU', 'PCMA', 'G722', 'OPUS'];
+  private getPreferredCodecs(): RTCRtpCodecCapability[] {
+    try {
+      const capabilities = RTCRtpReceiver.getCapabilities('audio');
+      if (!capabilities?.codecs) {
+        console.warn("[Telnyx WebRTC] No audio codecs available from browser");
+        return [];
+      }
+      
+      const allCodecs = capabilities.codecs;
+      
+      // Order: PCMU -> PCMA -> G722 -> OPUS (matching Telnyx SIP Connection settings)
+      const codecOrder = ['pcmu', 'pcma', 'g722', 'opus'];
+      
+      const orderedCodecs: RTCRtpCodecCapability[] = [];
+      for (const codecName of codecOrder) {
+        const found = allCodecs.find(c => 
+          c.mimeType.toLowerCase().includes(codecName)
+        );
+        if (found) {
+          orderedCodecs.push(found);
+        }
+      }
+      
+      console.log("[Telnyx WebRTC] Preferred codecs:", orderedCodecs.map(c => c.mimeType));
+      return orderedCodecs;
+    } catch (error) {
+      console.error("[Telnyx WebRTC] Failed to get codecs:", error);
+      return [];
+    }
   }
 
   public makeCall(dest: string): TelnyxCall | null {
