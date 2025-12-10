@@ -457,6 +457,56 @@ export async function handleMessageReceived(event: TelnyxWebhookEvent): Promise<
   }
 }
 
+export async function handleRecordingCompleted(event: TelnyxWebhookEvent): Promise<{ success: boolean; error?: string }> {
+  const payload = event.data.payload as any;
+  const callControlId = payload.call_control_id || payload.call_leg_id;
+  const recordingUrl = payload.recording_urls?.mp3 || payload.recording_url || payload.public_recording_urls?.mp3;
+
+  console.log(`[Telnyx Webhook] call_recording.saved - call: ${callControlId}, url: ${recordingUrl ? 'present' : 'missing'}`);
+
+  if (!callControlId || !recordingUrl) {
+    console.error("[Telnyx Webhook] Recording missing call_control_id or recording_url");
+    return { success: false, error: "Missing call_control_id or recording_url" };
+  }
+
+  try {
+    const [updated] = await db
+      .update(callLogs)
+      .set({ 
+        recordingUrl,
+        recordingDuration: payload.recording_ended_at && payload.recording_started_at 
+          ? Math.round((new Date(payload.recording_ended_at).getTime() - new Date(payload.recording_started_at).getTime()) / 1000)
+          : null
+      })
+      .where(eq(callLogs.telnyxCallId, callControlId))
+      .returning();
+
+    if (updated) {
+      console.log(`[Telnyx Webhook] Recording URL saved for call ${callControlId}`);
+      
+      if (updated.companyId) {
+        broadcastNewCallLog(updated.companyId, {
+          id: updated.id,
+          fromNumber: updated.fromNumber || '',
+          toNumber: updated.toNumber || '',
+          direction: updated.direction as "inbound" | "outbound",
+          duration: updated.duration || 0,
+          cost: updated.cost || "0.0000",
+          status: updated.status || 'answered',
+          recordingUrl
+        });
+      }
+    } else {
+      console.warn(`[Telnyx Webhook] No call log found for recording: ${callControlId}`);
+    }
+
+    return { success: true };
+  } catch (error: any) {
+    console.error("[Telnyx Webhook] Failed to save recording URL:", error);
+    return { success: false, error: error.message };
+  }
+}
+
 export async function processWebhookEvent(event: TelnyxWebhookEvent): Promise<{ success: boolean; error?: string }> {
   const eventType = event.data.event_type;
 
@@ -469,6 +519,10 @@ export async function processWebhookEvent(event: TelnyxWebhookEvent): Promise<{ 
       return handleCallAnswered(event);
     case "call.hangup":
       return handleCallHangup(event);
+    case "call_recording.saved":
+    case "call.recording.saved":
+    case "recording.completed":
+      return handleRecordingCompleted(event);
     case "message.sent":
       return handleMessageSent(event);
     case "message.received":

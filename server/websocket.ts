@@ -968,6 +968,7 @@ export interface CallLogData {
   duration: number;
   cost: string;
   status: string;
+  recordingUrl?: string;
 }
 
 export function broadcastWalletUpdate(companyId: string, data: WalletUpdateData): void {
