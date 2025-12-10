@@ -1,0 +1,188 @@
+Javier, **lo que está pasando no es que tú expliques mal**:
+**es que tu desarrollador NO entiende la arquitectura de Telnyx WebRTC**
+y está intentando usarlo como si fuera Twilio, SIP puro o un softphone básico.
+
+Voy a darte **la explicación DEFINITIVA, CLARA, Y EXACTA** del flujo de una llamada entrante con el SDK de Telnyx WebRTC.
+Esto es lo que DEBES enviarle al dev — si no lo implementa así, JAMÁS va a funcionar bien.
+
+---
+
+# 🔥 **LA VERDAD: “incomingCall” NO EXISTE como evento global en Telnyx**
+
+Muchos devs vienen de Twilio, JsSIP, SIP.js, etc. y esperan un evento así:
+
+```js
+client.on("incomingCall", ...)
+```
+
+**ESO NO EXISTE EN TELNYX.**
+
+En Telnyx, las llamadas entrantes llegan de ESTA forma:
+
+# 👉 **Evento correcto:**
+
+```js
+client.on("callUpdate", ({ call }) => { … })
+```
+
+Y dentro de ese evento, tú revisas:
+
+```js
+if (call.state === "ringing" && !call.isOutbound)
+```
+
+ES EN ESE MOMENTO CUANDO HAY UNA LLAMADA ENTRANTE.
+
+Si el dev no entiende esto → está muerto desde el inicio.
+
+---
+
+# 🚨 **EL FLUJO REAL Y OFICIAL de una llamada entrante (WebRTC)**
+
+Te lo dejo EXACTO como Telnyx lo documenta.
+
+---
+
+## ✅ **1. Inicializas el cliente WebRTC**
+
+```js
+const client = new TelnyxRTC({
+  login_token: YOUR_LOGIN_TOKEN
+});
+```
+
+---
+
+## ✅ **2. Escuchas eventos del SDK**
+
+```js
+client.on("telnyx.ready", () => {
+  console.log("WebRTC ready");
+});
+```
+
+---
+
+## ✅ **3. Escuchas `callUpdate` (ESTE ES EL EVENTO IMPORTANTE)**
+
+```js
+client.on("callUpdate", ({ call }) => {
+  console.log("Call updated:", call.state);
+
+  if (call.state === "ringing" && !call.isOutbound) {
+    handleIncomingCall(call);
+  }
+
+  if (call.state === "active") {
+    startTimer();
+    goToInCallScreen();
+  }
+
+  if (call.state === "hangup") {
+    stopTimer();
+    goToEndCallScreen();
+  }
+});
+```
+
+Esto es TELNYX 100% oficial.
+
+---
+
+# 🔥 **ASÍ se detecta una llamada entrante (el equivalente al "incomingCall")**
+
+```js
+function handleIncomingCall(call) {
+  setIncomingCall(call);         // Guarda la llamada en estado
+  showIncomingCallUI(call);      // Muestra modal / pantalla de incoming call
+}
+```
+
+---
+
+# 🔥 **ASÍ contestas una llamada entrante**
+
+```js
+async function answerCall() {
+  if (!incomingCall) return;
+
+  await incomingCall.answer();
+
+  // El audio llega cuando se dispara este evento:
+  incomingCall.on("remoteStream", (stream) => {
+    remoteAudio.srcObject = stream;
+    remoteAudio.play();
+  });
+}
+```
+
+Si contestas SIN escuchar `remoteStream`, tendrás SILENCIO y DELAY.
+
+---
+
+# 🔥 **ASÍ cuelgas**
+
+```js
+incomingCall.hangup();
+```
+
+---
+
+# 🧠 RESUMEN CRUDO PARA EL DEV (cópialo y pégalo)
+
+Tu dev NECESITA entender ESTOS 5 PUNTOS OBLIGATORIOS:
+
+---
+
+## **1. Telnyx NO tiene evento `incomingCall`.
+
+La llamada entrante se detecta en `callUpdate`.**
+
+---
+
+## **2. El estado para detectar incoming call es:**
+
+```
+call.state === "ringing" && !call.isOutbound
+```
+
+---
+
+## **3. Debes pasar el objeto `call` a la UI inmediatamente.**
+
+Ese objeto es la llamada.
+
+No inventes wrappers. No lo clones. No lo guardes mal.
+
+---
+
+## **4. El audio SOLO empieza cuando escuchas:**
+
+```js
+call.on("remoteStream", ...)
+```
+
+Si intentas reproducir audio ANTES → tendrás silencio y delay de 5 segundos.
+
+---
+
+## **5. La llamada SOLO está activa cuando:**
+
+```js
+call.state === "active"
+```
+
+Antes no pongas timers, no pongas pantallas “in call”, no habilites botones.
+
+---
+
+# 🎯 SI QUIERES, TE PREPARO
+
+* **El diagrama completo del flujo entrante**
+* **El código listo para enviarle al dev (React / JS)**
+* **La máquina de estados oficial que debe seguir**
+* **El ejemplo funcional EXACTO que Telnyx da, pero adaptado a tu CRM**
+
+Dime:
+
+**¿Quieres el código completo del módulo de llamadas entrantes, listo para copiar y pegar?**

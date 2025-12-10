@@ -497,8 +497,22 @@ class TelnyxWebRTCManager {
             };
             this.logCallToServer('active');
             
-            // CRITICAL: Connect remote audio stream for bidirectional audio
-            this.connectRemoteAudio(call);
+            // OFFICIAL TELNYX PATTERN: Use call.on("remoteStream") for audio
+            // This is when SDP negotiation is complete and audio is ready
+            if (call.remoteStream) {
+              // Stream already available
+              console.log('[Telnyx WebRTC] ✅ remoteStream already available, connecting audio');
+              this.connectRemoteAudio(call);
+            }
+            
+            // Listen for remoteStream event (official pattern)
+            call.on('stream', (stream: MediaStream) => {
+              console.log('[Telnyx WebRTC] ✅ stream event received, connecting audio');
+              if (this.audioElement) {
+                this.audioElement.srcObject = stream;
+                this.audioElement.play().catch((e: Error) => console.error('[Telnyx WebRTC] Audio play error:', e));
+              }
+            });
           } else if (call.state === 'hangup' || call.state === 'destroy') {
             // Log detailed hangup information for debugging
             console.log('[Telnyx WebRTC] Call ended with details:', {
@@ -597,11 +611,20 @@ class TelnyxWebRTCManager {
       console.log('[Telnyx WebRTC] Answering call');
       this.stopRingtone(); // Stop ringtone when answering
       
+      // OFFICIAL TELNYX PATTERN: Register remoteStream listener BEFORE answer()
+      // This ensures audio connects as soon as SDP negotiation completes
+      incomingCall.on('stream', (stream: MediaStream) => {
+        console.log('[Telnyx WebRTC] ✅ remoteStream event on answered call');
+        if (this.audioElement) {
+          this.audioElement.srcObject = stream;
+          this.audioElement.play().catch((e: Error) => console.error('[Telnyx WebRTC] Audio play error:', e));
+        }
+      });
+      
       // CRITICAL: Just call answer() - do NOT set currentCall here
       // Wait for state === 'active' event which will:
       // 1. Set currentCall
       // 2. Set callActiveTimestamp (start timer)
-      // 3. Connect audio via remoteStream event
       incomingCall.answer();
       
       console.log('[Telnyx WebRTC] Answer sent, waiting for active state...');
