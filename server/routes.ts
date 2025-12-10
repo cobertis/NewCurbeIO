@@ -26537,7 +26537,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial callerId="${callerId}" timeout="30">
+  <Dial answerOnBridge="true" callerId="${callerId}" timeout="30" ringback="us-ring">
     <Number>${callForwardingDestination}</Number>
   </Dial>
 </Response>`;
@@ -26554,7 +26554,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial timeout="30" action="${baseUrl}/webhooks/telnyx/dial-complete/${companyId}">
+  <Dial answerOnBridge="true" timeout="30" ringback="us-ring" action="${baseUrl}/webhooks/telnyx/dial-complete/${companyId}">
     <Sip>sip:${sipUsername}@sip.telnyx.com</Sip>
   </Dial>
 </Response>`;

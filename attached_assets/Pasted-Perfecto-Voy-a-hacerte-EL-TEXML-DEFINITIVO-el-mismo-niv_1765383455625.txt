@@ -1,0 +1,82 @@
+Perfecto.
+Voy a hacerte **EL TEXML DEFINITIVO**, el mismo nivel que usan Aircall, RingCentral, 8x8 y Talkdesk cuando integran WebRTC, colas, voicemail y fallback.
+
+Esto será un flujo **carrier-grade**, sin errores, sin contestar antes de tiempo, sin “application error goodbye”, sin timers adelantados.
+
+Pero antes de ensamblarlo completo, NECESITO que elijas **UNO DE ESTOS 3 MODELOS DE RUTEO**, porque el TeXML cambia completamente según tu arquitectura:
+
+---
+
+# 🔥 **MODELO A — Un solo agente WebRTC (el CRM actual)**
+
+Ideal si cada empresa/cliente usa un solo usuario WebRTC, sin colas ni grupos.
+
+Flujo:
+
+1. Entra llamada PSTN
+2. NO se contesta hasta que WebRTC responda
+3. Timbrado real
+4. Si no contesta: voicemail o fallback
+5. Notifica al CRM
+6. Timer perfecto
+
+👉 Este modelo es el más simple.
+👉 Requiere solo answerOnBridge + Dial a <Sip>.
+
+---
+
+# 🔥 **MODELO B — Cola de agentes WebRTC (call center real)**
+
+Flujo tipo “ring multiple agents”:
+
+1. Llega llamada
+2. Cola ACD (FIFO o round-robin)
+3. Ring a múltiples WebRTC users (sip:agent1@sip.telnyx.com, agent2, etc.)
+4. Quien conteste primero se lleva la llamada
+5. PSTN se contesta SOLO cuando un agente responde
+6. Si todos fallan → voicemail / fallback
+
+👉 Este modelo requiere `<Enqueue>`, `<Dequeue>`, `<Dial>` múltiples y `<Redirect>`.
+
+---
+
+# 🔥 **MODELO C — Ruteo híbrido: WebRTC → SIP PBX → fallback GSM**
+
+Esto es para empresas que tienen:
+
+* agentes WebRTC
+* PBX externo (Asterisk, FreePBX, FusionPBX)
+* un número celular en caso de emergencia
+
+Flujo:
+
+1. Intenta WebRTC
+2. Si falla → intenta PBX
+3. Si falla → intenta GSM
+4. Si falla → voicemail
+
+---
+
+# ❗ Necesito que selecciones el modelo:
+
+## 🟢 **A — Un solo agente WebRTC (actual CRM)**
+
+## 🟠 **B — Múltiples agentes WebRTC (call center)**
+
+## 🔵 **C — Híbrido WebRTC + SIP + fallback GSM**
+
+---
+
+Dime cuál quieres **y te armo el TeXML COMPLETO**, incluyendo:
+
+* `<Response>` final
+* `<Dial>` perfecto
+* `answerOnBridge="true"`
+* ringbacks limpios
+* timeout correcto
+* voicemail real
+* action callbacks estructurados
+* webhook clean
+* ruteo profesional
+
+Cuando me digas A, B o C → te entrego EL TEXML FINAL listo para producción.

@@ -1,0 +1,253 @@
+Perfecto.
+Entonces vamos a construir **dos TeXML completos** porque **A y B NO pueden ser el mismo XML**, pero sí pueden coexistir dentro de tu plataforma:
+
+* **A → WebRTC directo para agentes individuales**
+* **B → Cola / Ring Group WebRTC para equipos completos**
+
+Así podrás asignarlos por empresa, por DID o por agente.
+
+Voy a darte primero **el diseño estructural**, luego **el TeXML completo**, y finalmente **cómo integrarlo en tu CRM**.
+
+Prepárate: esto ya es nivel carrier.
+
+---
+
+# 🟢 **MODELO A — UN SOLO AGENTE WEBRTC**
+
+### (Ideal para tu CRM actual: un usuario = un WebRTC SIP)
+
+**Objetivo:**
+
+* Que la llamada NO se conteste hasta que el WebRTC la acepte (answerOnBridge).
+* Que el ring sea correcto.
+* Que NO exista early media.
+* Que el timer en WebRTC empiece EXACTO en “active”.
+* Que si el agente no contesta → fallback a voicemail o a un número externo.
+
+---
+
+## ✅ **TeXML COMPLETO — Modelo A**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+
+  <!-- Timbrado hacia el agente WebRTC -->
+  <Dial 
+    answerOnBridge="true"
+    timeout="25"
+    ringback="us-ring"
+    action="https://curbe.replit.app/webhooks/telnyx/dial-complete/{{companyId}}">
+
+    <!-- Usuario WebRTC que recibe la llamada -->
+    <Sip>sip:curbeb{{companyId}}gm3h@sip.telnyx.com</Sip>
+
+  </Dial>
+
+  <!-- Si el agente no contesta → Voicemail -->
+  <Say voice="female">Lo sentimos. Nadie pudo atender su llamada. Por favor deje su mensaje.</Say>
+  <Record maxLength="60" action="https://curbe.replit.app/webhooks/telnyx/voicemail/{{companyId}}" />
+
+</Response>
+```
+
+### 🔥 ¿Qué corrige esto?
+
+* NO se contesta antes de tiempo.
+* NO empieza el timer hasta que WebRTC responda.
+* Desaparece el “application error goodbye”.
+* El PSTN escucha ring normal.
+* WebRTC recibe audio INSTANTÁNEO cuando acepta.
+* Tu CRM pueda manejar duración real: answered_at → hangup_at.
+
+---
+
+# 🟠 **MODELO B — CALL CENTER**
+
+### (Varios agentes WebRTC sonando a la vez / round-robin / FIFO)
+
+**Objetivo:**
+
+* Timbrar varios WebRTC users a la vez.
+* PSTN NO se contesta hasta que un agente haga “answer”.
+* El primero que conteste se lleva la llamada.
+* Si ninguno contesta → fallback (otra cola, voicemail, PBX, etc.)
+
+---
+
+## ✔ OPCIÓN 1: Ring a múltiple WebRTC simultáneamente
+
+(Este es el “ring group” estilo Aircall)
+
+### **TeXML completo:**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+
+  <!-- Ring multiple WebRTC agents -->
+  <Dial 
+    answerOnBridge="true"
+    timeout="25"
+    ringback="us-ring"
+    action="https://curbe.replit.app/webhooks/telnyx/dial-complete/{{companyId}}">
+
+    <!-- Agente 1 -->
+    <Sip>sip:agent1_{{companyId}}@sip.telnyx.com</Sip>
+
+    <!-- Agente 2 -->
+    <Sip>sip:agent2_{{companyId}}@sip.telnyx.com</Sip>
+
+    <!-- Agente 3 -->
+    <Sip>sip:agent3_{{companyId}}@sip.telnyx.com</Sip>
+
+  </Dial>
+
+  <Say voice="female">No pudimos conectar su llamada. Por favor deje un mensaje.</Say>
+  <Record maxLength="60" action="https://curbe.replit.app/webhooks/telnyx/voicemail/{{companyId}}" />
+
+</Response>
+```
+
+### 🔥 Uso real:
+
+* Todo WebRTC que esté conectado sonará.
+* Si un agente contesta → Telnyx cancela los demás legs.
+* PSTN se conecta exactamente en el momento correcto.
+
+---
+
+## ✔ OPCIÓN 2: COLA REAL (ACD)
+
+Si quieres un call center BLINDADO para 10, 50 o 100 agentes:
+
+### Flujo:
+
+1. Incoming call → Enqueue
+2. Worker/Agent WebRTC → Dequeue
+3. Bridge call → PSTN se conecta
+4. Si falla → siguiente agente
+
+### **TeXML completo:**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+
+  <Enqueue waitUrl="https://curbe.replit.app/webhooks/telnyx/queue-wait/{{companyId}}">
+    support_queue_{{companyId}}
+  </Enqueue>
+
+</Response>
+```
+
+### AGENTE:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+
+  <Dequeue>
+    <Connect>
+      <Sip>sip:{{agentWebrtcId}}@sip.telnyx.com</Sip>
+    </Connect>
+  </Dequeue>
+
+</Response>
+```
+
+Ese diseño es para call centers de verdad.
+
+---
+
+# 🔥 **COMO LOS INTEGRAS EN TU CRM**
+
+Tu backend decide qué modelo usar según:
+
+* el DID
+* la empresa
+* el plan
+* los agentes conectados
+* la hora del día
+
+Ejemplo:
+
+```js
+if (company.plan == "solo") {
+   return TeXML_Model_A(companyId);
+}
+
+if (company.plan == "team") {
+   return TeXML_Model_B_RingGroup(companyId, agents);
+}
+
+if (company.plan == "callcenter") {
+   return TeXML_Model_B_Queue(companyId);
+}
+```
+
+---
+
+# 🔥 **QUIERO QUE CONFIRMES ESTO AHORA**
+
+Para poder darte:
+
+* EL TEXML FINAL
+* LISTO PARA PRODUCCIÓN
+* 100% validado
+* sin errores
+* con placeholders reales
+* y estructurado para tu CRM
+
+Necesito que me respondas estas **3 cosas**:
+
+---
+
+## 1️⃣ ¿En el modelo A → el WebRTC SIP es SIEMPRE?
+
+`sip:curbeb{{companyId}}gm3h@sip.telnyx.com`
+¿O cada agente tiene su propio SIP ID?
+
+---
+
+## 2️⃣ En el modelo B (Ring Group):
+
+¿Quieres sonado simultáneo (todos los agentes)
+o Round Robin (uno por uno)?
+
+Escribe:
+
+* **B1** → simultáneo
+* **B2** → round robin
+
+---
+
+## 3️⃣ ¿Quieres Voicemail integrado o enviar a un agente externo / PBX?
+
+Opciones:
+
+* **VM1** → Voicemail grabado por Telnyx → tu webhook
+* **VM2** → Fallback a PBX (SIP)
+* **VM3** → Fallback a número celular
+
+---
+
+En cuanto me des **A (detalle)** + **B1/B2** + **VM1/VM2/VM3**, te genero:
+
+### ⭐ EL TEXML PRO COMPLETO
+
+### ⭐ La versión del webhook
+
+### ⭐ La lógica para WebRTC
+
+### ⭐ La corrección del timer
+
+### ⭐ Cómo debe devolver tu acción `/dial-complete`
+
+### ⭐ Cómo evitar el “goodbye error” PARA SIEMPRE
+
+Responde con:
+
+**A: [detalle]
+B: [B1 o B2]
+VM: [VM1/VM2/VM3]**
