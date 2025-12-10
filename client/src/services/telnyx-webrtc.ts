@@ -89,6 +89,13 @@ class TelnyxWebRTCManager {
   private ringback: HTMLAudioElement;
   private lastCallState: string | null = null;
   private remoteStreamConnected: boolean = false;
+  
+  // Auto-reconnect state
+  private savedCredentials: { sipUser: string; sipPass: string; callerId?: string } | null = null;
+  private reconnectAttempts: number = 0;
+  private maxReconnectAttempts: number = 10;
+  private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
+  private isReconnecting: boolean = false;
 
   private constructor() {
     this.ringtone = new Audio();
@@ -183,6 +190,51 @@ class TelnyxWebRTCManager {
     this.audioElement = elem;
   }
 
+  /**
+   * Schedule an automatic reconnection with exponential backoff
+   */
+  private scheduleReconnect(): void {
+    if (this.isReconnecting || !this.savedCredentials) return;
+    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
+      console.log("[Telnyx WebRTC] Max reconnect attempts reached, giving up");
+      return;
+    }
+
+    this.isReconnecting = true;
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000); // Max 30 seconds
+    this.reconnectAttempts++;
+
+    console.log(`[Telnyx WebRTC] Scheduling reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+
+    this.reconnectTimeout = setTimeout(async () => {
+      this.isReconnecting = false;
+      if (this.savedCredentials) {
+        try {
+          console.log("[Telnyx WebRTC] Attempting auto-reconnect...");
+          await this.initialize(
+            this.savedCredentials.sipUser,
+            this.savedCredentials.sipPass,
+            this.savedCredentials.callerId
+          );
+        } catch (error) {
+          console.error("[Telnyx WebRTC] Auto-reconnect failed:", error);
+          this.scheduleReconnect(); // Try again
+        }
+      }
+    }, delay);
+  }
+
+  /**
+   * Cancel any pending reconnection
+   */
+  private cancelReconnect(): void {
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    this.isReconnecting = false;
+  }
+
   private connectRemoteAudio(call: any): void {
     if (this.remoteStreamConnected) return;
     if (!this.audioElement) return;
@@ -199,6 +251,10 @@ class TelnyxWebRTCManager {
   public async initialize(sipUser: string, sipPass: string, callerId?: string): Promise<void> {
     const store = useTelnyxStore.getState();
     store.setConnectionStatus("connecting");
+
+    // Save credentials for auto-reconnect
+    this.savedCredentials = { sipUser, sipPass, callerId };
+    this.cancelReconnect(); // Cancel any pending reconnect
 
     if (callerId) store.setCallerIdNumber(callerId);
     store.setSipUsername(sipUser);
@@ -217,11 +273,18 @@ class TelnyxWebRTCManager {
     this.client.on("telnyx.ready", () => {
       console.log("[Telnyx WebRTC] Connected and ready");
       store.setConnectionStatus("connected");
+      // Reset reconnect counter on successful connection
+      this.reconnectAttempts = 0;
     });
 
     this.client.on("telnyx.socket.close", () => {
       console.log("[Telnyx WebRTC] Socket closed");
       store.setConnectionStatus("disconnected");
+      // Auto-reconnect if we have saved credentials and not currently in a call
+      const currentStore = useTelnyxStore.getState();
+      if (this.savedCredentials && !currentStore.currentCall && !currentStore.incomingCall && !currentStore.outgoingCall) {
+        this.scheduleReconnect();
+      }
     });
 
     this.client.on("telnyx.error", (e: any) => {

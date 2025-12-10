@@ -76,6 +76,19 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 - **Key Code Location:** `client/src/services/telnyx-webrtc.ts` - `makeCall()` and `startAttendedTransfer()` methods.
 - **Telnyx Portal:** SIP Connection → Inbound tab → Codecs section shows the priority order to match.
 
+**WebRTC Auto-Reconnect System**
+- **Issue:** HMR (Hot Module Replacement) and page reloads cause WebRTC socket disconnections, resulting in missed incoming calls.
+- **Solution:** Automatic reconnection with exponential backoff when the SIP socket closes unexpectedly.
+- **Implementation:**
+  1. `savedCredentials` stores `{sipUser, sipPass, callerId}` during `initialize()` for reconnection
+  2. `telnyx.socket.close` event triggers `scheduleReconnect()` if no active calls exist
+  3. Exponential backoff: 1s, 2s, 4s, 8s... up to 30s max delay
+  4. Max 10 reconnect attempts before giving up
+  5. Successful reconnection resets the attempt counter to 0
+  6. Pending reconnect is cancelled if new `initialize()` is called
+- **Key File:** `client/src/services/telnyx-webrtc.ts`
+- **Console Logs:** `[Telnyx WebRTC] Scheduling reconnect in Xms (attempt Y/10)` and `[Telnyx WebRTC] Attempting auto-reconnect...`
+
 ### System Design Choices
 The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings. A `node-cron` background scheduler manages reminder notifications. Phone numbers are standardized, and all message timestamps are normalized to UTC. Performance is optimized with database indexes and aggressive caching.
 
