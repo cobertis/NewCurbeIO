@@ -1,0 +1,116 @@
+Inspector
+Event	Occurred At	Time since last event	Status	Response Code	
+session.created	Dec 10, 2025 02:05:14.591	0 seconds	Completed	-	
+{}
+instructions.fetch	Dec 10, 2025 02:05:15.119	0.528 seconds	Completed	200	
+{
+  "request": {
+    "body": {
+      "AccountSid": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+      "CallInitiatedAt": "2025-12-10T02:05:14.235034Z",
+      "CallSid": "v3:UsAdMk7cT9keK5VH4qIchEzQZzJxRCdOn_wY6ZFLVr1UxH5xvyEYPg",
+      "CallSidLegacy": "v3:UsAdMk7cT9keK5VH4qIchEzQZzJxRCdOn_wY6ZFLVr1UxH5xvyEYPg",
+      "CallerId": "CABRERA JAVIER",
+      "CallingPartyType": "pstn",
+      "ConnectionId": "2846165965526271975",
+      "From": "+17866302522",
+      "FromSipUri": "+17866302522@172.57.117.27",
+      "SipHeader_P-Early-Media": "supported",
+      "SipHeader_P-Visited-Network-ID": "msg.pc.t-mobile.com",
+      "To": "+13058423033",
+      "ToSipUri": "+13058423033@64.16.250.10:5060"
+    },
+    "method": "post",
+    "urls": [
+      "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/voice/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2"
+    ]
+  },
+  "response": {
+    "body": "<?xml version=\"1.0\" encoding=\"UTF-8\"?>\n<Response>\n  <Dial timeout=\"30\" >\n    <Sip>sip:curbeb5325600gm3h@rtc.telnyx.com</Sip>\n  </Dial>\n</Response>",
+    "status": 200
+  },
+  "webhook_id": "b310e284-4f86-4682-934d-7a65358ab221"
+}
+Started At
+Dec 9, 2025 21:05:14.602
+
+Finished At
+Dec 9, 2025 21:05:15.119
+
+Status
+delivered
+
+User ID
+1db32018-deb6-47d0-89ce-24c3d3b6da3d
+
+Event Type
+callback
+
+Occurred At
+Dec 9, 2025 21:05:14.602
+
+"AccountSid=1db32018-deb6-47d0-89ce-24c3d3b6da3d&CallInitiatedAt=2025-12-10T02%3A05%3A14.235034Z&CallSid=v3%3AUsAdMk7cT9keK5VH4qIchEzQZzJxRCdOn_wY6ZFLVr1UxH5xvyEYPg&CallSidLegacy=v3%3AUsAdMk7cT9keK5VH4qIchEzQZzJxRCdOn_wY6ZFLVr1UxH5xvyEYPg&CallerId=CABRERA+JAVIER&CallingPartyType=pstn&ConnectionId=2846165965526271975&From=%2B17866302522&FromSipUri=%2B17866302522%40172.57.117.27&SipHeader_P-Early-Media=supported&SipHeader_P-Visited-Network-ID=msg.pc.t-mobile.com&To=%2B13058423033&ToSipUri=%2B13058423033%4064.16.250.10%3A5060"
+Attempts
+Status	Started At	Finished At	URL	Response Code
+delivered	Dec 9, 2025 21:05:14.602	Dec 9, 2025 21:05:15.119	https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/voice/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2	200
+outbound.initiated	Dec 10, 2025 02:05:16.866	2.275 seconds	Completed	-	
+{
+  "call_leg_id": "abec2842-d56c-11f0-a776-02420aef9620",
+  "to": "sip:curbeb5325600gm3h@rtc.telnyx.com"
+}
+status.callback	Dec 10, 2025 02:05:20.597	6.006 seconds	Completed	200	
+{
+  "request": {
+    "body": {
+      "AccountSid": "1db32018-deb6-47d0-89ce-24c3d3b6da3d",
+      "CallDuration": 5,
+      "CallSid": "v3:UsAdMk7cT9keK5VH4qIchEzQZzJxRCdOn_wY6ZFLVr1UxH5xvyEYPg",
+      "CallSidLegacy": "v3:UsAdMk7cT9keK5VH4qIchEzQZzJxRCdOn_wY6ZFLVr1UxH5xvyEYPg",
+      "CallStatus": "no-answer",
+      "CallbackSource": "call-progress-events",
+      "CallingPartyType": "pstn",
+      "ConnectionId": "2846165965526271975",
+      "From": "+17866302522",
+      "FromSipUri": "+17866302522@172.57.117.27",
+      "HangupSource": "callee",
+      "SequenceNumber": 0,
+      "SipHangupCause": "unspecified",
+      "Timestamp": "2025-12-10T02:05:20.500093Z",
+      "To": "+13058423033",
+      "ToSipUri": "+13058423033@64.16.250.10:5060"
+    },
+    "method": "post",
+    "urls": [
+      "https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/status/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2"
+    ]
+  },
+  "response": {
+    "body": "{\"received\":true}",
+    "status": 200
+  },
+  "webhook_id": "f9512c46-93e6-48b0-b942-b1e60fa29a45"
+}
+Started At
+Dec 9, 2025 21:05:20.500
+
+Finished At
+Dec 9, 2025 21:05:20.597
+
+Status
+delivered
+
+User ID
+1db32018-deb6-47d0-89ce-24c3d3b6da3d
+
+Event Type
+callback
+
+Occurred At
+Dec 9, 2025 21:05:20.500
+
+"AccountSid=1db32018-deb6-47d0-89ce-24c3d3b6da3d&CallDuration=5&CallSid=v3%3AUsAdMk7cT9keK5VH4qIchEzQZzJxRCdOn_wY6ZFLVr1UxH5xvyEYPg&CallSidLegacy=v3%3AUsAdMk7cT9keK5VH4qIchEzQZzJxRCdOn_wY6ZFLVr1UxH5xvyEYPg&CallStatus=no-answer&CallbackSource=call-progress-events&CallingPartyType=pstn&ConnectionId=2846165965526271975&From=%2B17866302522&FromSipUri=%2B17866302522%40172.57.117.27&HangupSource=callee&SequenceNumber=0&SipHangupCause=unspecified&Timestamp=2025-12-10+02%3A05%3A20.500093Z&To=%2B13058423033&ToSipUri=%2B13058423033%4064.16.250.10%3A5060"
+Attempts
+Status	Started At	Finished At	URL	Response Code
+delivered	Dec 9, 2025 21:05:20.500	Dec 9, 2025 21:05:20.597	https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telnyx/status/b5325600-9bf9-4eae-b34a-87d6ab2f5fb2	200
+session.stopped	Dec 10, 2025 02:05:20.599	6.008 seconds	Completed	-	
+{}

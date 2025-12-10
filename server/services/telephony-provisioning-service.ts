@@ -297,10 +297,10 @@ export class TelephonyProvisioningService {
           },
           inbound: {
             channel_limit: 10,
-            // CRITICAL: Enable SIP URI calling so TeXML can dial to this credential connection
-            sip_uri_calling_enabled: true,
-            sip_uri_calling_preference: "from_my_connections",
           },
+          // CRITICAL: Enable SIP URI calling so TeXML can dial to this credential connection
+          // This is a ROOT level field, not inside inbound
+          sip_uri_calling_preference: "unrestricted",
           webhook_event_url: `${webhookBaseUrl}/webhooks/telnyx/voice/status`,
         }
       );
@@ -320,6 +320,7 @@ export class TelephonyProvisioningService {
   /**
    * Enable SIP URI Calling on an existing credential connection
    * This allows TeXML <Sip> dials to reach WebRTC clients registered on this connection
+   * IMPORTANT: sip_uri_calling_preference is a ROOT level field, NOT inside inbound
    */
   async enableSipUriCalling(
     managedAccountId: string,
@@ -328,16 +329,14 @@ export class TelephonyProvisioningService {
     try {
       console.log(`[TelephonyProvisioning] Enabling SIP URI Calling on connection: ${connectionId}`);
       
+      // sip_uri_calling_preference must be at ROOT level, not inside inbound
+      // Options: "disabled", "unrestricted", "internal"
       const response = await this.makeApiRequest(
         managedAccountId,
         `/credential_connections/${connectionId}`,
         "PATCH",
         {
-          inbound: {
-            channel_limit: 10,
-            sip_uri_calling_enabled: true,
-            sip_uri_calling_preference: "from_my_connections",
-          },
+          sip_uri_calling_preference: "unrestricted",
         }
       );
 
@@ -347,7 +346,8 @@ export class TelephonyProvisioningService {
         return { success: false, error: `HTTP ${response.status}: ${errorText}` };
       }
 
-      console.log(`[TelephonyProvisioning] SIP URI Calling enabled successfully on connection: ${connectionId}`);
+      const data = await response.json();
+      console.log(`[TelephonyProvisioning] SIP URI Calling enabled successfully. Response:`, JSON.stringify(data.data?.sip_uri_calling_preference));
       return { success: true };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Network error";
