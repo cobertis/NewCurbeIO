@@ -379,26 +379,14 @@ class TelnyxWebRTCManager {
   }
 
   /**
-   * Get preferred codecs in Telnyx order: G711U, G711A, G722, OPUS
-   * Matching this order with the SIP Connection settings reduces audio delay
+   * Get preferred codecs as MIME strings in Telnyx order: PCMU, PCMA, G722, OPUS
+   * The SDK expects string array, NOT RTCRtpCodecCapability objects
+   * Matching this order with the SIP Connection settings eliminates 5-second audio delay
    */
-  private getPreferredCodecs(): any[] {
-    try {
-      const capabilities = RTCRtpReceiver.getCapabilities?.('audio');
-      if (!capabilities?.codecs) return [];
-      
-      const codecs = capabilities.codecs;
-      const preferredOrder = ['PCMU', 'PCMA', 'G722', 'opus'];
-      
-      return preferredOrder
-        .map(name => codecs.find(c => 
-          c.mimeType.toLowerCase().includes(name.toLowerCase())
-        ))
-        .filter(Boolean);
-    } catch (e) {
-      console.warn("[Telnyx WebRTC] Could not get codec capabilities:", e);
-      return [];
-    }
+  private getPreferredCodecs(): string[] {
+    // Telnyx SDK expects simple codec name strings matching SIP Connection order
+    // Order: G711U (PCMU) -> G711A (PCMA) -> G722 -> OPUS
+    return ['PCMU', 'PCMA', 'G722', 'OPUS'];
   }
 
   public makeCall(dest: string): TelnyxCall | null {
@@ -413,15 +401,15 @@ class TelnyxWebRTCManager {
 
     console.log("[Telnyx WebRTC] 📞 Making call to:", dest);
 
-    // Get codecs in Telnyx order to minimize negotiation delay
+    // Pass codec strings in Telnyx SIP Connection order to eliminate negotiation delay
     const preferredCodecs = this.getPreferredCodecs();
-    console.log("[Telnyx WebRTC] Using preferred codecs:", preferredCodecs.map(c => c?.mimeType));
+    console.log("[Telnyx WebRTC] Using preferred codecs:", preferredCodecs);
 
     const call = this.client.newCall({
       destinationNumber: dest,
       callerNumber: store.callerIdNumber,
       callerName: "Curbe",
-      preferred_codecs: preferredCodecs.length > 0 ? preferredCodecs : undefined,
+      preferred_codecs: preferredCodecs,
     });
 
     store.setOutgoingCall(call);
@@ -608,7 +596,7 @@ class TelnyxWebRTCManager {
         destinationNumber: consultNumber,
         callerNumber: store.callerIdNumber,
         callerName: "Curbe",
-        preferred_codecs: preferredCodecs.length > 0 ? preferredCodecs : undefined,
+        preferred_codecs: preferredCodecs,
       });
 
       store.setConsultCall(consultCall);

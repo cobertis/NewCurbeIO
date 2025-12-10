@@ -69,9 +69,10 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 
 **Audio Delay Prevention: Codec Order Matching**
 - **Issue:** 5-second audio delay during call establishment caused by codec negotiation mismatch between WebRTC SDK and Telnyx SIP Connection settings.
-- **Root Cause:** SDK default codec order didn't match Telnyx portal configuration, causing re-negotiation delays.
-- **Solution:** Pass `preferred_codecs` to `newCall()` in the same order as Telnyx SIP Connection: G711U (PCMU), G711A (PCMA), G722, OPUS.
-- **Implementation:** `getPreferredCodecs()` method in `telnyx-webrtc.ts` retrieves browser codecs via `RTCRtpReceiver.getCapabilities('audio')` and orders them to match Telnyx settings.
+- **Root Cause:** SDK default codec order was Opus-first, but Telnyx SIP Connection was configured for G711 first. The SDK silently discards RTCRtpCodecCapability objects - it ONLY accepts string arrays.
+- **Solution:** Pass `preferred_codecs` as a **string array** `['PCMU', 'PCMA', 'G722', 'OPUS']` to `newCall()` matching the Telnyx SIP Connection order.
+- **CRITICAL:** The Telnyx WebRTC SDK expects `preferred_codecs` to be an array of **simple codec name strings**, NOT RTCRtpCodecCapability objects. Passing objects causes them to be silently ignored.
+- **Implementation:** `getPreferredCodecs()` returns `['PCMU', 'PCMA', 'G722', 'OPUS']` - simple strings matching Telnyx SIP Connection codec priority.
 - **Key Code Location:** `client/src/services/telnyx-webrtc.ts` - `makeCall()` and `startAttendedTransfer()` methods.
 - **Telnyx Portal:** SIP Connection → Inbound tab → Codecs section shows the priority order to match.
 
