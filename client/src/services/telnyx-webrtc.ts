@@ -736,7 +736,40 @@ class TelnyxWebRTCManager {
     // Reset stream connected flag so we can reconnect if needed
     this.remoteStreamConnected = false;
 
+    // Per official Telnyx docs: answer() triggers getUserMedia internally
+    // https://developers.telnyx.com/docs/voice/webrtc/js-sdk/classes/call
     incoming.answer();
+
+    // Per official docs: After answering, verify localStream has audio tracks
+    // and ensure microphone is not muted
+    // https://developers.telnyx.com/docs/voice/webrtc/js-sdk/anatomy
+    setTimeout(() => {
+      const call = incoming as any;
+      
+      // Check localStream for audio tracks
+      if (call.localStream) {
+        const audioTracks = call.localStream.getAudioTracks();
+        console.log("[Telnyx WebRTC] 🎤 localStream audio tracks:", audioTracks.length);
+        audioTracks.forEach((track: MediaStreamTrack, i: number) => {
+          console.log(`[Telnyx WebRTC] 🎤 Track ${i}: enabled=${track.enabled}, muted=${track.muted}, readyState=${track.readyState}`);
+        });
+        
+        if (audioTracks.length === 0) {
+          console.error("[Telnyx WebRTC] ❌ No audio tracks in localStream - microphone may not be captured!");
+        }
+      } else {
+        console.error("[Telnyx WebRTC] ❌ No localStream available after answer!");
+      }
+      
+      // Check if microphone is muted and unmute if needed
+      // Per docs: https://developers.telnyx.com/docs/voice/webrtc/js-sdk/classes/call#unmuteaudio
+      if (call.audioMuted) {
+        console.log("[Telnyx WebRTC] 🎤 Microphone is muted, unmuting...");
+        call.unmuteAudio();
+      }
+      
+      console.log("[Telnyx WebRTC] 🎤 audioMuted:", call.audioMuted);
+    }, 1000);
   }
 
   public rejectCall(): void {
