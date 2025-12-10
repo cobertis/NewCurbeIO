@@ -26892,6 +26892,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             { keyName: "zone_id", label: "Zone ID", required: true, hint: "Found in your domain Overview page" },
           ]
         },
+        { 
+          provider: "intercom", 
+          label: "Intercom",
+          helpText: "Find your App ID in Intercom Settings > Installation > Web.",
+          helpUrl: "https://app.intercom.com/a/apps/_/settings/installation/web",
+          keys: [
+            { keyName: "app_id", label: "App ID", required: true, hint: "Your Intercom workspace app_id (e.g., gbo6nqvo)" },
+          ]
+        },
       ];
 
       res.json({ providers: providerConfigs, apiProviders });
