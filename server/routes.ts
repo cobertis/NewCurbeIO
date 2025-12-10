@@ -27457,30 +27457,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.json({ jwt: null });
       }
       
-      // Generate JWT using HS256
-      const crypto = await import("crypto");
+      // Generate JWT using jsonwebtoken library
+      const jwt = await import("jsonwebtoken");
       
-      const header = { alg: "HS256", typ: "JWT" };
       const payload = {
         user_id: user.id,
         email: user.email,
         name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
-        created_at: user.createdAt ? Math.floor(new Date(user.createdAt).getTime() / 1000) : Math.floor(Date.now() / 1000),
-        exp: Math.floor(Date.now() / 1000) + 3600 // 1 hour
       };
       
-      const base64UrlEncode = (data: string) => 
-        Buffer.from(data).toString("base64url");
+      const token = jwt.default.sign(payload, identitySecret, { expiresIn: '1h' });
       
-      const headerB64 = base64UrlEncode(JSON.stringify(header));
-      const payloadB64 = base64UrlEncode(JSON.stringify(payload));
-      const signature = crypto.createHmac("sha256", identitySecret)
-        .update(`${headerB64}.${payloadB64}`)
-        .digest("base64url");
-      
-      const jwt = `${headerB64}.${payloadB64}.${signature}`;
-      
-      res.json({ jwt });
+      res.json({ jwt: token });
     } catch (error: any) {
       console.error("[Intercom] Error generating JWT:", error);
       res.status(500).json({ message: "Failed to generate JWT" });

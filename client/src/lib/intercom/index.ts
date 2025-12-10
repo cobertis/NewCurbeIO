@@ -40,8 +40,9 @@ export function boot(appId: string, userData?: IntercomUserData, jwt?: string | 
     return;
   }
 
-  const settings: IntercomSettings = {
+  const settings: IntercomSettings & { api_base?: string } = {
     app_id: appId,
+    api_base: "https://api-iam.intercom.io",
   };
 
   if (jwt) {
