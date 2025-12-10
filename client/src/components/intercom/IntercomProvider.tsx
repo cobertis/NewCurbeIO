@@ -1,12 +1,16 @@
 import { useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useLocation } from 'wouter';
-import { boot, shutdown, update, type IntercomUserData } from '@/lib/intercom';
+import { boot, shutdown, update, fetchIntercomJwt, type IntercomUserData } from '@/lib/intercom';
 import type { User } from '@shared/schema';
 
 interface IntercomConfig {
   app_id: string;
   enabled: boolean;
+}
+
+interface JwtResponse {
+  jwt: string | null;
 }
 
 interface IntercomProviderProps {
@@ -30,6 +34,13 @@ export function IntercomProvider({ children }: IntercomProviderProps) {
     queryKey: ['/api/system/intercom-config'],
     enabled: !!user,
     staleTime: 5 * 60 * 1000,
+    retry: false,
+  });
+
+  const { data: jwtData } = useQuery<JwtResponse>({
+    queryKey: ['/api/intercom/jwt'],
+    enabled: !!user && !!intercomConfig?.enabled,
+    staleTime: 30 * 60 * 1000,
     retry: false,
   });
 
@@ -62,14 +73,14 @@ export function IntercomProvider({ children }: IntercomProviderProps) {
       };
     }
 
-    boot(intercomConfig.app_id, userData);
+    boot(intercomConfig.app_id, userData, jwtData?.jwt);
     isBooted.current = true;
 
     return () => {
       shutdown();
       isBooted.current = false;
     };
-  }, [user?.id, intercomConfig?.app_id, intercomConfig?.enabled]);
+  }, [user?.id, intercomConfig?.app_id, intercomConfig?.enabled, jwtData?.jwt]);
 
   useEffect(() => {
     if (!isBooted.current || !user) {

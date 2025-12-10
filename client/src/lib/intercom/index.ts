@@ -42,8 +42,14 @@ export function boot(appId: string, userData?: IntercomUserData, jwt?: string | 
 
   const settings: IntercomSettings = {
     app_id: appId,
-    ...userData,
   };
+
+  if (jwt) {
+    settings.intercom_user_jwt = jwt;
+    console.log('[Intercom] Using JWT for identity verification');
+  } else if (userData) {
+    Object.assign(settings, userData);
+  }
 
   if (isInitialized && currentAppId === appId) {
     update(userData);
@@ -54,7 +60,7 @@ export function boot(appId: string, userData?: IntercomUserData, jwt?: string | 
     Intercom(settings);
     isInitialized = true;
     currentAppId = appId;
-    console.log('[Intercom] Booted successfully');
+    console.log('[Intercom] Booted successfully', jwt ? '(with JWT)' : '(without JWT)');
   } catch (error) {
     console.error('[Intercom] Failed to boot:', error);
   }
