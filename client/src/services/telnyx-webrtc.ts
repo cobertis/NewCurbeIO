@@ -835,22 +835,11 @@ class TelnyxWebRTCManager {
     // Reset stream connected flag so we can reconnect if needed
     this.remoteStreamConnected = false;
 
-    // CRITICAL FIX: Set preferred_codecs on inbound call options BEFORE answering
-    // The SDK uses call.options when creating the Peer in answer()
-    // Per SDK source: BaseCall.answer() creates Peer with this.options
-    // Without this, inbound calls negotiate codecs server-side which takes 4-6 seconds
-    const incomingAny = incoming as any;
-    if (incomingAny.options) {
-      const preferredCodecs = this.getOutboundCodecs();
-      console.log("[Telnyx WebRTC] 🔊 Setting preferred_codecs on inbound call:", preferredCodecs.map(c => c.mimeType));
-      incomingAny.options.preferred_codecs = preferredCodecs;
-      // Also ensure audio settings match outbound
-      incomingAny.options.audio = true;
-      incomingAny.options.useStereo = true;
-    }
-
     // Per official Telnyx docs: answer() triggers getUserMedia internally
     // https://developers.telnyx.com/docs/voice/webrtc/js-sdk/classes/call
+    // NOTE: Do NOT modify incoming.options.preferred_codecs - the SDK does not
+    // honor codec preferences on inbound calls and modifying them causes a 4-6
+    // second audio delay due to local renegotiation conflict with server-side SDP
     incoming.answer();
 
     // Per official docs: After answering, verify localStream has audio tracks
