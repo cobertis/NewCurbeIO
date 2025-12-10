@@ -619,8 +619,20 @@ class TelnyxWebRTCManager {
     this.pendingOutboundDestination = this.normalizePhoneNumber(dest);
     console.log("[Telnyx WebRTC] 📞 Making call to:", dest, "normalized:", this.pendingOutboundDestination);
 
-    // Format destination number
-    const formattedDest = dest.startsWith('+') ? dest : `+1${dest.replace(/\D/g, '')}`;
+    // Format destination number to E.164 format
+    // Handle cases: "7866302522", "17866302522", "+17866302522"
+    const digits = dest.replace(/\D/g, '');
+    let formattedDest: string;
+    if (dest.startsWith('+')) {
+      formattedDest = dest; // Already has +, keep as is
+    } else if (digits.length === 11 && digits.startsWith('1')) {
+      formattedDest = `+${digits}`; // Has country code, just add +
+    } else if (digits.length === 10) {
+      formattedDest = `+1${digits}`; // 10-digit US number, add +1
+    } else {
+      formattedDest = `+1${digits}`; // Default: assume US
+    }
+    console.log("[Telnyx WebRTC] 📞 Formatted destination:", formattedDest);
 
     // Get ONLY PCMU/PCMA codecs (no OPUS/G722) to match Telnyx SIP Connection settings
     // This prevents 488 "Not Acceptable Here" errors on outbound calls
