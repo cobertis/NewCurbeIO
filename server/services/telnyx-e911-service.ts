@@ -287,6 +287,8 @@ async function getOrCreateCredentialConnection(
         password: sipPassword,
         active: true,
         anchorsite_override: "Latency",
+        // CRITICAL: Allow TeXML to dial SIP URI for inbound calls
+        sip_uri_calling_preference: "unrestricted",
         // WebRTC requires SRTP encryption
         encrypted_media: "SRTP",
         // DTMF type for WebRTC compatibility
@@ -1075,6 +1077,8 @@ export async function updateCredentialConnectionForWebRTC(
       method: "PATCH",
       headers: buildHeaders(config),
       body: JSON.stringify({
+        // CRITICAL: Allow TeXML to dial SIP URI for inbound calls
+        sip_uri_calling_preference: "unrestricted",
         // WebRTC requires SRTP encryption
         encrypted_media: "SRTP",
         // DTMF type for WebRTC compatibility
