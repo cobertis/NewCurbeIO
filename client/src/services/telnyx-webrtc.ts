@@ -426,12 +426,25 @@ class TelnyxWebRTCManager {
 
   public hangup(): void {
     const store = useTelnyxStore.getState();
+    
+    // CRITICAL: Only call hangup ONCE on the active call
+    // Calling hangup on multiple calls causes SIP 486 Busy
+    const activeCall = store.currentCall || store.outgoingCall || store.incomingCall;
 
-    console.log("[Telnyx WebRTC] Hangup called");
+    if (activeCall) {
+      try {
+        console.log("[Telnyx WebRTC] Hanging up call, state:", (activeCall as any).state);
+        activeCall.hangup();
+      } catch (e) {
+        console.error("[Telnyx WebRTC] Hangup error:", e);
+      }
+    }
 
-    store.currentCall?.hangup({ sipHangupCode: 16 });
-    store.outgoingCall?.hangup({ sipHangupCode: 16 });
-    store.incomingCall?.hangup({ sipHangupCode: 16 });
+    // Clean UI states AFTER hangup
+    store.setCurrentCall(undefined);
+    store.setOutgoingCall(undefined);
+    store.setIncomingCall(undefined);
+    store.setCallActiveTimestamp(undefined);
 
     this.stopRingtone();
     this.stopRingback();

@@ -26377,7 +26377,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error("[Telnyx Webhook] Processing failed: ${result.error}");
       }
 
-      res.status(200).json({ received: true });
+      res.set("Content-Type", "application/xml");
+    res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
     } catch (error: any) {
       console.error("[Telnyx Webhook] Error processing webhook:", error);
       res.status(500).json({ error: "Webhook processing failed" });
@@ -26424,7 +26425,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         state,
       });
 
-      res.status(200).json({ received: true });
+      res.set("Content-Type", "application/xml");
+    res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
     } catch (error: any) {
       console.error("[Telnyx Voice Status] Error:", error);
       res.status(500).json({ error: "Status callback processing failed" });
@@ -26577,7 +26579,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // POST /webhooks/telnyx/dial-complete/:companyId - Handle Dial completion
   app.post("/webhooks/telnyx/dial-complete/:companyId", async (_req: Request, res: Response) => {
-    res.status(200).json({ received: true });
+    res.set("Content-Type", "application/xml");
+    res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
   });
 
     // POST /webhooks/telnyx/status/:companyId - Handle status callbacks per company
@@ -26585,7 +26588,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const { companyId } = req.params;
       console.log("[Telnyx Status] Company:", companyId, "Event:", req.body.event_type);
-      res.status(200).json({ received: true });
+      res.set("Content-Type", "application/xml");
+    res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
     } catch (error: any) {
       console.error("[Telnyx Status] Error:", error);
       res.status(500).json({ error: "Status processing failed" });
@@ -27598,7 +27602,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.log("[Intercom Webhook] Unhandled topic:", topic);
       }
       
-      res.status(200).json({ received: true });
+      res.set("Content-Type", "application/xml");
+    res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
     } catch (error: any) {
       console.error("[Intercom Webhook] Error processing:", error);
       res.status(500).json({ message: "Webhook processing failed" });
