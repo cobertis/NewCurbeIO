@@ -52,11 +52,12 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 
 ### Telnyx WebRTC Configuration (Per Official Docs)
 All WebRTC implementations follow official Telnyx documentation:
-- **Client Options:** `debug: true`, `debugOutput: 'socket'`, `prefetchIceCandidates: true` per [IClientOptions docs](https://developers.telnyx.com/docs/voice/webrtc/js-sdk/interfaces/iclientoptions)
-- **Call Options:** `audio: true`, `useStereo: true`, `preferred_codecs` per [ICallOptions docs](https://developers.telnyx.com/docs/voice/webrtc/js-sdk/interfaces/icalloptions)
+- **Audio Elements:** Created PROGRAMMATICALLY outside React via `ensureTelnyxAudioElements()` to prevent React Fiber references (`__reactFiber$`) that cause "circular structure to JSON" serialization errors in the SDK
+- **Client Options:** `prefetchIceCandidates: true` per [IClientOptions docs](https://developers.telnyx.com/docs/voice/webrtc/js-sdk/interfaces/iclientoptions)
+- **Remote Element:** `client.remoteElement` set to STRING ID (`"telnyx-remote-audio"`) per [npm docs](https://www.npmjs.com/package/@telnyx/webrtc) - SDK uses `document.getElementById` internally
+- **Call Options:** `audio: true`, `useStereo: true`, `preferred_codecs` (PCMU/PCMA) per [ICallOptions docs](https://developers.telnyx.com/docs/voice/webrtc/js-sdk/interfaces/icalloptions)
 - **Audio Settings:** `setAudioSettings({echoCancellation, noiseSuppression, autoGainControl})` per [TelnyxRTC docs](https://developers.telnyx.com/docs/voice/webrtc/js-sdk/classes/telnyxrtc#setaudiosettings)
 - **Error Handling:** `userMediaError` event for microphone issues per [Error Handling docs](https://developers.telnyx.com/docs/voice/webrtc/js-sdk/error-handling)
-- **Debug Data:** Sent to Telnyx Cloud Storage, visualized at https://webrtc-debug.telnyx.com/ per [Debug Logs docs](https://developers.telnyx.com/docs/voice/webrtc/troubleshooting/debug-logs)
 - **SRTP Disabled:** `encrypted_media: null` for WebRTC compatibility per Telnyx OpenAPI spec
 
 ### System Design Choices
