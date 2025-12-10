@@ -1189,8 +1189,10 @@ export function WebPhoneFloatingWindow() {
   // Check if phone is available (either SIP extension or Telnyx number)
   const hasPhoneCapability = !!sipExtension || hasTelnyxNumber;
   
-  // Unified call state - prioritize Telnyx when using Telnyx numbers
-  const isTelnyxCall = hasTelnyxNumber && (telnyxCurrentCall || telnyxIncomingCall);
+  // Unified call state - detect Telnyx calls directly from store state
+  // CRITICAL: This must NOT depend on hasTelnyxNumber query since that can be slow/stale
+  // If there's a Telnyx call in the store, it's a Telnyx call - period
+  const isTelnyxCall = !!(telnyxCurrentCall || telnyxIncomingCall);
   
   // Build effective call object for UI rendering
   // Filter out default SDK caller names that aren't useful

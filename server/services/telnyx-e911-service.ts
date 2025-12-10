@@ -1008,28 +1008,9 @@ export async function generateWebRTCToken(
     
     console.log(`[WebRTC] Final callerIdNumber: ${callerIdNumber}`);
 
-    const response = await fetch(`${TELNYX_API_BASE}/telephony_credentials/${credResult.credentialId}/token`, {
-      method: "POST",
-      headers: buildHeaders(config),
-      body: JSON.stringify({}),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[WebRTC] Failed to generate token: ${response.status} - ${errorText}`);
-      // Still return credentials even if token generation fails
-      return { 
-        success: true, 
-        sipUsername: credResult.sipUsername,
-        sipPassword: credResult.sipPassword,
-        callerIdNumber,
-      };
-    }
-
-    const data = await response.json();
-    const token = data.data;
-
-    console.log(`[WebRTC] Token generated successfully for ${credResult.sipUsername}, callerIdNumber: ${callerIdNumber}`);
+    // Note: Telnyx WebRTC SDK uses SIP credentials directly (username/password)
+    // The token endpoint is deprecated and returns 400 - skip it entirely
+    console.log(`[WebRTC] Credentials ready for ${credResult.sipUsername}, callerIdNumber: ${callerIdNumber}`);
 
     await db.update(telephonyCredentials)
       .set({ lastUsedAt: new Date() })
@@ -1037,7 +1018,6 @@ export async function generateWebRTCToken(
 
     return { 
       success: true, 
-      token, 
       sipUsername: credResult.sipUsername,
       sipPassword: credResult.sipPassword,
       callerIdNumber,
