@@ -1,16 +1,14 @@
 import { db } from "../db";
 import { wallets, telephonySettings, callLogs } from "@shared/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq } from "drizzle-orm";
 import crypto from "crypto";
 import Decimal from "decimal.js";
+import { chargeCallToWallet, findRateByPrefix, calculateCallCost } from "./pricing-service";
 import { broadcastWalletUpdate, broadcastNewCallLog } from "../websocket";
 
 Decimal.set({ precision: 10, rounding: Decimal.ROUND_HALF_UP });
 
-const DEFAULT_RATE_PER_MINUTE = new Decimal("0.0200");
 const PRICE_PER_MESSAGE = new Decimal("0.01");
-const MIN_BILLABLE_SECONDS = 6;
-const BILLING_INCREMENT = 6;
 
 interface TelnyxWebhookEvent {
   data: {
@@ -87,22 +85,6 @@ export function verifyWebhookSignature(
     console.error("[Telnyx Webhook] Signature verification failed:", error);
     return false;
   }
-}
-
-function calculateBillableSeconds(durationSeconds: number): number {
-  if (durationSeconds <= 0) return 0;
-  let billable = Math.max(durationSeconds, MIN_BILLABLE_SECONDS);
-  const remainder = billable % BILLING_INCREMENT;
-  if (remainder > 0) {
-    billable += BILLING_INCREMENT - remainder;
-  }
-  return billable;
-}
-
-function calculateCallCost(durationSeconds: number): Decimal {
-  const billableSeconds = calculateBillableSeconds(durationSeconds);
-  const billableMinutes = new Decimal(billableSeconds).dividedBy(60);
-  return billableMinutes.times(DEFAULT_RATE_PER_MINUTE);
 }
 
 async function getCompanyByConnectionId(connectionId: string): Promise<{ companyId: string; wallet: typeof wallets.$inferSelect } | null> {
@@ -234,95 +216,121 @@ export async function handleCallHangup(event: TelnyxWebhookEvent): Promise<{ suc
     finalStatus = "missed";
   }
 
-  const cost = calculateCallCost(durationSeconds);
-  const billableSeconds = calculateBillableSeconds(durationSeconds);
-
+  const telnyxCallIdToUse = callControlId || event.data.id;
+  
   try {
-    const txResult = await db.transaction(async (tx) => {
-      const [wallet] = await tx
-        .select()
-        .from(wallets)
-        .where(eq(wallets.id, result.wallet.id))
-        .for("update");
-      
-      if (!wallet) {
-        throw new Error(`Wallet not found: ${result.wallet.id}`);
-      }
+    const [existingLog] = await db.select()
+      .from(callLogs)
+      .where(eq(callLogs.telnyxCallId, telnyxCallIdToUse));
 
-      const currentBalance = new Decimal(wallet.balance);
-      const newBalance = currentBalance.minus(cost);
+    let updatedLogId = existingLog?.id;
 
-      await tx
-        .update(wallets)
-        .set({ 
-          balance: newBalance.toFixed(4),
-          updatedAt: new Date()
+    if (existingLog) {
+      await db.update(callLogs)
+        .set({
+          status: finalStatus,
+          duration: durationSeconds,
+          endedAt: new Date(),
         })
-        .where(eq(wallets.id, wallet.id));
+        .where(eq(callLogs.id, existingLog.id));
+      console.log(`[Telnyx Webhook] Updated call log ${existingLog.id} to status=${finalStatus}, duration=${durationSeconds}s`);
+    } else {
+      const [newLog] = await db.insert(callLogs).values({
+        companyId: result.companyId,
+        telnyxCallId: telnyxCallIdToUse,
+        fromNumber: from,
+        toNumber: to,
+        direction: direction as "inbound" | "outbound",
+        status: finalStatus,
+        duration: durationSeconds,
+        startedAt: new Date(Date.now() - durationSeconds * 1000),
+        endedAt: new Date(),
+      }).returning();
+      updatedLogId = newLog.id;
+      console.log(`[Telnyx Webhook] Created call log ${newLog.id} on hangup`);
+    }
 
-      const [existingLog] = await tx.select()
-        .from(callLogs)
-        .where(eq(callLogs.telnyxCallId, callControlId || event.data.id));
+    if (durationSeconds <= 0) {
+      console.log("[Telnyx Webhook] Zero duration call, no charge applied");
+      
+      broadcastNewCallLog(result.companyId, {
+        id: updatedLogId!,
+        fromNumber: from,
+        toNumber: to,
+        direction: direction as "inbound" | "outbound",
+        duration: 0,
+        cost: "0.0000",
+        status: finalStatus
+      });
+      
+      return { success: true };
+    }
 
-      let callLog;
-      if (existingLog) {
-        [callLog] = await tx.update(callLogs)
-          .set({
-            status: finalStatus,
-            duration: durationSeconds,
-            billedDuration: billableSeconds,
-            cost: cost.toFixed(4),
-            costCurrency: "USD",
-            endedAt: new Date(),
-          })
-          .where(eq(callLogs.id, existingLog.id))
-          .returning();
-      } else {
-        [callLog] = await tx.insert(callLogs).values({
-          companyId: result.companyId,
-          telnyxCallId: callControlId || event.data.id,
+    const chargeResult = await chargeCallToWallet(result.companyId, {
+      telnyxCallId: telnyxCallIdToUse,
+      fromNumber: from,
+      toNumber: to,
+      direction: direction as "inbound" | "outbound",
+      durationSeconds,
+      status: finalStatus,
+      startedAt: new Date(Date.now() - durationSeconds * 1000),
+      endedAt: new Date(),
+    });
+
+    if (!chargeResult.success) {
+      console.error(`[Telnyx Webhook] Billing failed: ${chargeResult.error}`);
+      
+      if (chargeResult.insufficientFunds) {
+        console.warn(`[Telnyx Webhook] Call completed but not billed (insufficient funds) - call log updated atomically`);
+        
+        broadcastNewCallLog(result.companyId, {
+          id: chargeResult.callLogId || updatedLogId!,
           fromNumber: from,
           toNumber: to,
           direction: direction as "inbound" | "outbound",
-          status: finalStatus,
           duration: durationSeconds,
-          billedDuration: billableSeconds,
-          cost: cost.toFixed(4),
-          costCurrency: "USD",
-          startedAt: new Date(Date.now() - durationSeconds * 1000),
-          endedAt: new Date(),
-        }).returning();
+          cost: "0.0000",
+          status: "failed"
+        });
+        
+        return { success: true };
       }
+      
+      broadcastNewCallLog(result.companyId, {
+        id: updatedLogId!,
+        fromNumber: from,
+        toNumber: to,
+        direction: direction as "inbound" | "outbound",
+        duration: durationSeconds,
+        cost: "0.0000",
+        status: finalStatus
+      });
+      
+      return { success: false, error: chargeResult.error };
+    }
 
-      return { 
-        newBalance: newBalance.toFixed(4), 
-        callLog,
-        amountCharged: cost.toFixed(4)
-      };
-    });
-
-    console.log(`[Telnyx Webhook] ATOMIC: Charged $${txResult.amountCharged}, new balance: $${txResult.newBalance}`);
+    console.log(`[Telnyx Webhook] Charged $${chargeResult.amountCharged}, balance: $${chargeResult.newBalance}`);
 
     broadcastWalletUpdate(result.companyId, {
-      newBalance: txResult.newBalance,
-      lastCharge: txResult.amountCharged,
+      newBalance: chargeResult.newBalance!,
+      lastCharge: chargeResult.amountCharged!,
       chargeType: "CALL_COST",
       description: `Call to ${to} (${durationSeconds}s)`
     });
 
     broadcastNewCallLog(result.companyId, {
-      id: txResult.callLog.id,
+      id: chargeResult.callLogId || updatedLogId!,
       fromNumber: from,
       toNumber: to,
       direction: direction as "inbound" | "outbound",
       duration: durationSeconds,
-      cost: txResult.amountCharged,
+      cost: chargeResult.amountCharged!,
       status: finalStatus
     });
 
     return { success: true };
   } catch (error: any) {
-    console.error("[Telnyx Webhook] ATOMIC TRANSACTION FAILED:", error);
+    console.error("[Telnyx Webhook] Failed to process call hangup:", error);
     return { success: false, error: error.message };
   }
 }

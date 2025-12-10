@@ -31,6 +31,7 @@ export interface ChargeCallResult {
   amountCharged?: string;
   newBalance?: string;
   error?: string;
+  insufficientFunds?: boolean;
 }
 
 const DEFAULT_RATE: RateLookupResult = {
@@ -41,6 +42,8 @@ const DEFAULT_RATE: RateLookupResult = {
   prefix: "default",
   description: "Default Rate"
 };
+
+const MINIMUM_BALANCE_THRESHOLD = new Decimal("0.00");
 
 export async function findRateByPrefix(destinationNumber: string, companyId?: string): Promise<RateLookupResult> {
   const cleanNumber = destinationNumber.replace(/\D/g, '');
@@ -155,6 +158,63 @@ export async function chargeCallToWallet(
       const currentBalance = new Decimal(wallet.balance);
       const newBalance = currentBalance.minus(costResult.totalCost);
       
+      const [existingLog] = await tx
+        .select()
+        .from(callLogs)
+        .where(and(
+          eq(callLogs.telnyxCallId, callData.telnyxCallId),
+          eq(callLogs.companyId, companyId)
+        ));
+      
+      if (newBalance.lessThan(MINIMUM_BALANCE_THRESHOLD)) {
+        console.error(`[PricingService] INSUFFICIENT FUNDS: current=$${currentBalance.toFixed(4)}, cost=$${costResult.totalCost.toFixed(4)}`);
+        
+        let failedLogId = existingLog?.id;
+        if (existingLog) {
+          await tx
+            .update(callLogs)
+            .set({
+              status: "failed",
+              duration: callData.durationSeconds,
+              billedDuration: 0,
+              cost: "0.0000",
+              costCurrency: "USD",
+              endedAt: callData.endedAt || new Date(),
+            })
+            .where(eq(callLogs.id, existingLog.id));
+          console.log(`[PricingService] ATOMIC: Marked call log ${existingLog.id} as failed (insufficient funds)`);
+        } else {
+          const [newLog] = await tx
+            .insert(callLogs)
+            .values({
+              companyId,
+              userId: callData.userId,
+              telnyxCallId: callData.telnyxCallId,
+              fromNumber: callData.fromNumber,
+              toNumber: callData.toNumber,
+              direction: callData.direction,
+              status: "failed",
+              duration: callData.durationSeconds,
+              billedDuration: 0,
+              cost: "0.0000",
+              costCurrency: "USD",
+              contactId: callData.contactId,
+              callerName: callData.callerName,
+              startedAt: callData.startedAt,
+              endedAt: callData.endedAt || new Date(),
+            })
+            .returning();
+          failedLogId = newLog.id;
+          console.log(`[PricingService] ATOMIC: Created failed call log ${newLog.id} (insufficient funds)`);
+        }
+        
+        return {
+          insufficientFunds: true,
+          callLogId: failedLogId,
+          currentBalance: currentBalance.toFixed(4)
+        };
+      }
+      
       await tx
         .update(wallets)
         .set({ 
@@ -163,26 +223,44 @@ export async function chargeCallToWallet(
         })
         .where(eq(wallets.id, wallet.id));
       
-      const [callLog] = await tx
-        .insert(callLogs)
-        .values({
-          companyId,
-          userId: callData.userId,
-          telnyxCallId: callData.telnyxCallId,
-          fromNumber: callData.fromNumber,
-          toNumber: callData.toNumber,
-          direction: callData.direction,
-          status: callData.status as any,
-          duration: callData.durationSeconds,
-          billedDuration: costResult.billableSeconds,
-          cost: costResult.totalCost.toFixed(4),
-          costCurrency: "USD",
-          contactId: callData.contactId,
-          callerName: callData.callerName,
-          startedAt: callData.startedAt,
-          endedAt: callData.endedAt || new Date(),
-        })
-        .returning();
+      let callLog;
+      if (existingLog) {
+        [callLog] = await tx
+          .update(callLogs)
+          .set({
+            status: callData.status as any,
+            duration: callData.durationSeconds,
+            billedDuration: costResult.billableSeconds,
+            cost: costResult.totalCost.toFixed(4),
+            costCurrency: "USD",
+            endedAt: callData.endedAt || new Date(),
+          })
+          .where(eq(callLogs.id, existingLog.id))
+          .returning();
+        console.log(`[PricingService] Updated existing call log: ${callLog.id}`);
+      } else {
+        [callLog] = await tx
+          .insert(callLogs)
+          .values({
+            companyId,
+            userId: callData.userId,
+            telnyxCallId: callData.telnyxCallId,
+            fromNumber: callData.fromNumber,
+            toNumber: callData.toNumber,
+            direction: callData.direction,
+            status: callData.status as any,
+            duration: callData.durationSeconds,
+            billedDuration: costResult.billableSeconds,
+            cost: costResult.totalCost.toFixed(4),
+            costCurrency: "USD",
+            contactId: callData.contactId,
+            callerName: callData.callerName,
+            startedAt: callData.startedAt,
+            endedAt: callData.endedAt || new Date(),
+          })
+          .returning();
+        console.log(`[PricingService] Created new call log: ${callLog.id}`);
+      }
       
       const [transaction] = await tx
         .insert(walletTransactions)
@@ -204,12 +282,24 @@ export async function chargeCallToWallet(
       };
     });
     
+    if ('insufficientFunds' in result && result.insufficientFunds) {
+      return {
+        success: false,
+        insufficientFunds: true,
+        callLogId: result.callLogId,
+        error: `Insufficient funds. Balance: $${result.currentBalance}`
+      };
+    }
+    
     const elapsed = Date.now() - startTime;
     console.log(`[PricingService] Call charged in ${elapsed}ms: $${result.amountCharged}, new balance: $${result.newBalance}`);
     
     return {
       success: true,
-      ...result
+      callLogId: result.callLogId,
+      transactionId: result.transactionId,
+      amountCharged: result.amountCharged,
+      newBalance: result.newBalance
     };
     
   } catch (error: any) {
