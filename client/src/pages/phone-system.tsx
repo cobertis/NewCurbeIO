@@ -33,7 +33,10 @@ import {
   Zap,
   DollarSign,
   TrendingUp,
-  Volume2
+  Volume2,
+  Play,
+  Pause,
+  Square
 } from "lucide-react";
 import { format } from "date-fns";
 import { BuyNumbersDialog } from "@/components/WebPhoneFloatingWindow";
@@ -578,20 +581,45 @@ export default function PhoneSystem() {
                             </div>
                           </div>
                         </div>
-                        <div className="flex items-center gap-6 text-right">
+                        <div className="flex items-center gap-4 text-right">
                           {log.duration > 0 && (
-                            <div>
+                            <div className="text-center min-w-[50px]">
                               <p className="font-medium text-slate-700 dark:text-foreground">{Math.floor(log.duration / 60)}:{(log.duration % 60).toString().padStart(2, '0')}</p>
                               <p className="text-xs text-slate-400">duration</p>
                             </div>
                           )}
                           {log.cost && parseFloat(log.cost) > 0 && (
-                            <div>
+                            <div className="text-center min-w-[60px]">
                               <p className="font-medium text-amber-600">${parseFloat(log.cost).toFixed(4)}</p>
                               <p className="text-xs text-slate-400">cost</p>
                             </div>
                           )}
+                          {log.recordingUrl && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-8 px-3 text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:border-indigo-800 dark:hover:bg-indigo-950"
+                              onClick={() => {
+                                const audio = document.getElementById(`audio-${log.id}`) as HTMLAudioElement;
+                                if (audio) {
+                                  if (audio.paused) {
+                                    document.querySelectorAll('audio').forEach(a => a.pause());
+                                    audio.play();
+                                  } else {
+                                    audio.pause();
+                                  }
+                                }
+                              }}
+                              data-testid={`button-play-recording-${log.id}`}
+                            >
+                              <Play className="h-3 w-3 mr-1" />
+                              Listen
+                            </Button>
+                          )}
                         </div>
+                        {log.recordingUrl && (
+                          <audio id={`audio-${log.id}`} src={log.recordingUrl} className="hidden" preload="none" />
+                        )}
                       </div>
                     ))}
                   </div>
