@@ -96,6 +96,9 @@ class TelnyxWebRTCManager {
   private maxReconnectAttempts: number = 10;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private isReconnecting: boolean = false;
+  
+  // Track outbound call initiation to prevent misidentifying as inbound
+  private pendingOutboundDestination: string | null = null;
 
   private constructor() {
     this.ringtone = new Audio();
@@ -187,7 +190,16 @@ class TelnyxWebRTCManager {
   }
 
   public setAudioElement(elem: HTMLAudioElement) {
+    console.log("[Telnyx WebRTC] 🔊 Audio element registered:", !!elem);
     this.audioElement = elem;
+    
+    // If we already have a remoteStream waiting, connect it now
+    const store = useTelnyxStore.getState();
+    const currentCall = store.currentCall as any;
+    if (currentCall?.remoteStream && elem && !this.remoteStreamConnected) {
+      console.log("[Telnyx WebRTC] 🔊 Connecting waiting remoteStream to new audio element");
+      this.connectRemoteAudio(currentCall);
+    }
   }
 
   /**
@@ -235,17 +247,44 @@ class TelnyxWebRTCManager {
     this.isReconnecting = false;
   }
 
-  private connectRemoteAudio(call: any): void {
+  private connectRemoteAudio(call: any, retryCount: number = 0): void {
     if (this.remoteStreamConnected) return;
-    if (!this.audioElement) return;
-    if (!call?.remoteStream) return;
+    
+    if (!this.audioElement) {
+      console.warn("[Telnyx WebRTC] 🔊 No audio element, retry in 100ms (attempt", retryCount + 1, ")");
+      if (retryCount < 10) {
+        setTimeout(() => this.connectRemoteAudio(call, retryCount + 1), 100);
+      }
+      return;
+    }
+    
+    if (!call?.remoteStream) {
+      console.warn("[Telnyx WebRTC] 🔊 No remoteStream available");
+      return;
+    }
 
-    console.log("[Telnyx WebRTC] 🔊 Connecting remoteStream");
+    console.log("[Telnyx WebRTC] 🔊 Connecting remoteStream to audio element");
     this.audioElement.srcObject = call.remoteStream;
     this.audioElement.muted = false;
     this.audioElement.volume = 1.0;
-    this.audioElement.play().catch(console.error);
-    this.remoteStreamConnected = true;
+    
+    const playPromise = this.audioElement.play();
+    if (playPromise) {
+      playPromise
+        .then(() => {
+          console.log("[Telnyx WebRTC] 🔊 Audio playback started successfully");
+          this.remoteStreamConnected = true;
+        })
+        .catch((e) => {
+          console.error("[Telnyx WebRTC] 🔊 Audio play error:", e);
+          // Retry on autoplay error
+          if (retryCount < 5) {
+            setTimeout(() => this.connectRemoteAudio(call, retryCount + 1), 200);
+          }
+        });
+    } else {
+      this.remoteStreamConnected = true;
+    }
   }
 
   public async initialize(sipUser: string, sipPass: string, callerId?: string): Promise<void> {
@@ -304,11 +343,19 @@ class TelnyxWebRTCManager {
       let direction = call.direction;
       if (!direction) {
         const currentStore = useTelnyxStore.getState();
-        // Si hay un outgoingCall con el mismo ID, es outbound
-        // Si no, y el estado es new/invite/ringing, es inbound
-        if (currentStore.outgoingCall && (currentStore.outgoingCall as any).id === call.id) {
+        const destNumber = call.options?.destinationNumber;
+        const normalizedDest = destNumber ? this.normalizePhoneNumber(destNumber) : '';
+        
+        // Check 1: If we just initiated an outbound call to this destination
+        if (this.pendingOutboundDestination && normalizedDest === this.pendingOutboundDestination) {
           direction = "outbound";
-        } else if (state === "new" || state === "invite" || state === "ringing") {
+        }
+        // Check 2: If we have an outgoing call stored with matching ID
+        else if (currentStore.outgoingCall && (currentStore.outgoingCall as any).id === call.id) {
+          direction = "outbound";
+        }
+        // Check 3: Only then assume inbound for new/invite/ringing
+        else if (state === "new" || state === "invite" || state === "ringing") {
           direction = "inbound";
         }
       }
@@ -413,6 +460,8 @@ class TelnyxWebRTCManager {
 
         this.remoteStreamConnected = false;
         this.lastCallState = null;
+        // Clear pending outbound destination
+        this.pendingOutboundDestination = null;
         break;
     }
   }
@@ -482,6 +531,13 @@ class TelnyxWebRTCManager {
     }
   }
 
+  /**
+   * Normalize phone number to digits only for comparison
+   */
+  private normalizePhoneNumber(phone: string): string {
+    return phone.replace(/\D/g, '').slice(-10); // Last 10 digits
+  }
+
   public makeCall(dest: string): TelnyxCall | null {
     if (!this.client) return null;
 
@@ -492,17 +548,17 @@ class TelnyxWebRTCManager {
     this.remoteStreamConnected = false;
     this.lastCallState = null;
 
-    console.log("[Telnyx WebRTC] 📞 Making call to:", dest);
+    // CRITICAL: Set pending destination BEFORE newCall to prevent direction misidentification
+    this.pendingOutboundDestination = this.normalizePhoneNumber(dest);
+    console.log("[Telnyx WebRTC] 📞 Making call to:", dest, "normalized:", this.pendingOutboundDestination);
 
-    // Pass codec strings in Telnyx SIP Connection order to eliminate negotiation delay
-    const preferredCodecs = this.getPreferredCodecs();
-    console.log("[Telnyx WebRTC] Using preferred codecs:", preferredCodecs);
+    // Format destination number
+    const formattedDest = dest.startsWith('+') ? dest : `+1${dest.replace(/\D/g, '')}`;
 
     const call = this.client.newCall({
-      destinationNumber: dest,
+      destinationNumber: formattedDest,
       callerNumber: store.callerIdNumber,
       callerName: "Curbe",
-      preferred_codecs: preferredCodecs,
     });
 
     store.setOutgoingCall(call);

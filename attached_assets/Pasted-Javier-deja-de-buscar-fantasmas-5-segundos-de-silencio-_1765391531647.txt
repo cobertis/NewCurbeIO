@@ -1,0 +1,188 @@
+Javier, deja de buscar fantasmas: **5 segundos de silencio ANTES de escuchar a la persona que llama siempre significa LO MISMO en WebRTC:**
+
+### ❗ *La negociación de medios (SDP/ICE/Codecs) NO quedó establecida hasta 4–6 segundos después de contestar.*
+
+Esto NO es teoría. Es comportamiento típico y medible.
+Pero ahora tienes que **probarlo tú mismo** para dejar de adivinar.
+
+Te voy a dar la única forma REAL de saber qué pasa sin especular.
+
+---
+
+# 🔍 **PASO 1 — Abre la autopsia real: chrome://webrtc-internals**
+
+Hazlo en el navegador donde contestas la llamada WebRTC.
+
+1. Abre una nueva pestaña
+2. Escribe en la barra:
+
+   ```
+   chrome://webrtc-internals
+   ```
+3. Deja esa ventana abierta
+4. Contesta una llamada entrante
+5. Observa la sección:
+   **“ICE Candidate Pair Selected”**
+   y
+   **“Audio RTP Stats”**
+
+---
+
+# 🎯 **Qué debes ver para confirmar el PROBLEMA**
+
+## ✔ **Confirmación de delay causado por ICE**
+
+Se ve así:
+
+* ICE connection: *"checking"* durante 3–5 segundos
+* Luego cambia a *"connected"* justo cuando el audio aparece
+
+Esto significa:
+
+> El audio NO puede fluir hasta que ICE se completa.
+> Si ICE tarda → tu audio tarda.
+
+---
+
+## ✔ **Confirmación de delay causado por CODECS**
+
+Se ve así:
+
+* First audio packet timestamp llega 4–6 segundos después de la respuesta
+* La línea “codec” cambia durante ese tiempo (fallback)
+
+Ejemplo típico:
+
+```
+codec: PCMU → rejected
+codec: PCMA → rejected
+codec: OPUS → accepted (audio starts)
+```
+
+***Eso da EXACTAMENTE 4–6 segundos de silencio.***
+
+---
+
+# 🔥 PASO 2 — Abre la consola del navegador
+
+Mientras haces la llamada, presiona:
+
+```
+Ctrl + Shift + J   (Windows)
+Cmd + Option + J   (Mac)
+```
+
+Busca errores como:
+
+* `ICE failed`
+* `DTLS failed`
+* `setRemoteDescription took too long`
+* `No compatible codecs`
+
+Si ves alguno → ya sabes la causa.
+
+---
+
+# 🔥 PASO 3 — Mira el Telnyx Debugger (prueba definitiva)
+
+Ve a:
+
+**Telnyx → Voice → Debugger → SIP Logs**
+
+Haz una llamada y revisa:
+
+### ❗ Si ves líneas como:
+
+```
+Media negotiation retry
+Switching to OPUS
+Caller offered PCMU / browser only accepts OPUS
+```
+
+Bingo. Ese es tu 5-second delay.
+
+---
+
+# 🔥 ¿Qué CAUSA el delay de 5 segundos? (solo 3 posibles motivos)
+
+## 1️⃣ **CODECS no coinciden**
+
+Ya te lo dije antes, y tu screenshot lo confirmaba.
+
+Telnyx ofrece:
+`G711U, G711A, G722, OPUS`
+
+WebRTC ofrece:
+`OPUS`
+
+Resultado:
+**3 fallos → 1 éxito → 5 segundos de silencio**
+
+---
+
+## 2️⃣ **ICE tarda por NAT, proxy o Replit (muy probable en tu caso)**
+
+Replit usa un proxy complicado.
+ICE tiene que probar varios STUN paths antes de abrir el canal RTP.
+
+Si la conexión queda así:
+
+```
+ICE gathering → 3–5 seconds
+ICE connected → audio starts
+```
+
+Ya lo encontraste.
+
+---
+
+## 3️⃣ **answerOnBridge = true + WebRTC lento**
+
+Tu TeXML dice:
+
+```
+answerOnBridge="true"
+```
+
+Esto significa:
+Telnyx *no envía audio a WebRTC hasta que WebRTC esté listo.*
+Si WebRTC tarda (por ICE o codecs), el audio tarda.
+
+---
+
+# 🎯 **QUIERO QUE HAGAS ESTO AHORA MISMO**
+
+Haz una llamada y dime:
+
+### **En WebRTC Internals, la primera línea de audio packets llega a qué segundo EXACTO?**
+
+¿0.3s? → normal
+¿5.1s? → negociación lenta
+¿6.0s? → codecs mismatch
+¿4.5s? → ICE delay
+¿8s+? → problema severo de NAT en Replit
+
+### Y quiero que copies aquí UNA COSA:
+
+📌 **La parte donde dice “Chosen candidate pair”**
+
+Ejemplo:
+
+```
+local: srflx 172.17.0.2:54321
+remote: relay 64.16.12.10:3478
+```
+
+Con eso te digo EXACTAMENTE qué está generando tu delay.
+
+---
+
+# 🧠 Brutalmente honesto:
+
+Tú estás moviendo cosas a ciegas.
+Y Replit complica WebRTC porque NO es un servidor “real”.
+
+**Si no miras WebRTC Internals, estás adivinando y vas a perder horas.**
+
+Dame esa info y destrabamos esto en 2 minutos.
+Tu problema ya está entre 1 de 3 causas, falta identificar cuál.
