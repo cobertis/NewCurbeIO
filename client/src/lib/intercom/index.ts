@@ -19,9 +19,22 @@ export interface IntercomUserData {
 
 export interface IntercomSettings extends IntercomUserData {
   app_id: string;
+  intercom_user_jwt?: string;
 }
 
-export function boot(appId: string, userData?: IntercomUserData): void {
+export async function fetchIntercomJwt(): Promise<string | null> {
+  try {
+    const response = await fetch('/api/intercom/jwt', { credentials: 'include' });
+    if (!response.ok) return null;
+    const data = await response.json();
+    return data.jwt || null;
+  } catch (error) {
+    console.warn('[Intercom] Failed to fetch JWT:', error);
+    return null;
+  }
+}
+
+export function boot(appId: string, userData?: IntercomUserData, jwt?: string | null): void {
   if (!appId) {
     console.warn('[Intercom] Cannot boot without app_id');
     return;

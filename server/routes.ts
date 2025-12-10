@@ -26895,10 +26895,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         { 
           provider: "intercom", 
           label: "Intercom",
-          helpText: "Find your App ID in Intercom Settings > Installation > Web.",
-          helpUrl: "https://app.intercom.com/a/apps/_/settings/installation/web",
+          helpText: "Find your App ID in Settings > Installation > Web, and Secret Key in Settings > Messenger > Security.",
+          helpUrl: "https://app.intercom.com/a/apps/_/settings/messenger/security",
           keys: [
             { keyName: "app_id", label: "App ID", required: true, hint: "Your Intercom workspace app_id (e.g., gbo6nqvo)" },
+            { keyName: "identity_secret", label: "Identity Secret", required: false, hint: "Secret key for identity verification (from Security tab)" },
           ]
         },
       ];
@@ -27442,6 +27443,47 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("[Intercom] Error getting config:", error);
       res.json({ app_id: null, enabled: false });
+    }
+  });
+
+  // GET /api/intercom/jwt - Generate JWT for identity verification
+  app.get("/api/intercom/jwt", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { credentialProvider } = await import("./services/credential-provider");
+      const identitySecret = await credentialProvider.get("intercom", "identity_secret");
+      
+      if (!identitySecret) {
+        return res.json({ jwt: null });
+      }
+      
+      // Generate JWT using HS256
+      const crypto = await import("crypto");
+      
+      const header = { alg: "HS256", typ: "JWT" };
+      const payload = {
+        user_id: user.id,
+        email: user.email,
+        name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email,
+        created_at: user.createdAt ? Math.floor(new Date(user.createdAt).getTime() / 1000) : Math.floor(Date.now() / 1000),
+        exp: Math.floor(Date.now() / 1000) + 3600 // 1 hour
+      };
+      
+      const base64UrlEncode = (data: string) => 
+        Buffer.from(data).toString("base64url");
+      
+      const headerB64 = base64UrlEncode(JSON.stringify(header));
+      const payloadB64 = base64UrlEncode(JSON.stringify(payload));
+      const signature = crypto.createHmac("sha256", identitySecret)
+        .update(`${headerB64}.${payloadB64}`)
+        .digest("base64url");
+      
+      const jwt = `${headerB64}.${payloadB64}.${signature}`;
+      
+      res.json({ jwt });
+    } catch (error: any) {
+      console.error("[Intercom] Error generating JWT:", error);
+      res.status(500).json({ message: "Failed to generate JWT" });
     }
   });
 
