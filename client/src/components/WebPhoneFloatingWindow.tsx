@@ -1177,6 +1177,7 @@ export function WebPhoneFloatingWindow() {
   const telnyxConnectionStatus = useTelnyxStore(state => state.connectionStatus);
   const telnyxCurrentCall = useTelnyxStore(state => state.currentCall);
   const telnyxIncomingCall = useTelnyxStore(state => state.incomingCall);
+  const telnyxOutgoingCall = useTelnyxStore(state => state.outgoingCall);
   const telnyxIsMuted = useTelnyxStore(state => state.isMuted);
   const telnyxIsOnHold = useTelnyxStore(state => state.isOnHold);
   const telnyxIsConsulting = useTelnyxStore(state => state.isConsulting);
@@ -1191,8 +1192,8 @@ export function WebPhoneFloatingWindow() {
   
   // Unified call state - detect Telnyx calls directly from store state
   // CRITICAL: This must NOT depend on hasTelnyxNumber query since that can be slow/stale
-  // If there's a Telnyx call in the store, it's a Telnyx call - period
-  const isTelnyxCall = !!(telnyxCurrentCall || telnyxIncomingCall);
+  // If there's a Telnyx call in the store (current, incoming, or outgoing), it's a Telnyx call
+  const isTelnyxCall = !!(telnyxCurrentCall || telnyxIncomingCall || telnyxOutgoingCall);
   
   // Build effective call object for UI rendering
   // Filter out default SDK caller names that aren't useful
@@ -1203,35 +1204,43 @@ export function WebPhoneFloatingWindow() {
   };
   
   const effectiveCall = useMemo(() => {
+    // Priority: currentCall (active/answered) > outgoingCall (dialing) > incomingCall (ringing inbound)
     if (telnyxCurrentCall) {
+      // Call is ACTIVE (answered) - show "In Call" UI with timer
       const callState = (telnyxCurrentCall as any).state;
       const callDirection = (telnyxCurrentCall as any).direction || 'outbound';
-      // For inbound calls, remoteCallerNumber is the caller (other party)
-      // For outbound calls, destinationNumber is who we're calling (other party)
       const otherPartyNumber = callDirection === 'inbound'
         ? (telnyxCurrentCall as any).options?.remoteCallerNumber || 'Unknown'
         : (telnyxCurrentCall as any).options?.destinationNumber || 'Unknown';
-      // Priority for display name: 1) Database lookup, 2) Valid Telnyx CNAM, 3) null (fallback to "Unknown Caller")
       const sdkCallerName = (telnyxCurrentCall as any).options?.callerName || 
                             (telnyxCurrentCall as any).options?.callerIdName || 
                             (telnyxCurrentCall as any).options?.cnam_caller_id_name;
-      // Only use sdkCallerName if it's a valid/useful name
       const validSdkName = isValidCallerName(sdkCallerName) ? sdkCallerName : null;
       const displayName = telnyxCallerName || validSdkName || null;
       return {
         phoneNumber: otherPartyNumber,
         displayName,
-        status: callState === 'active' ? 'answered' : callState === 'ringing' ? 'ringing' : callState,
+        status: 'answered', // currentCall means call is ACTIVE
         direction: callDirection,
         isTelnyx: true,
       };
     }
+    if (telnyxOutgoingCall) {
+      // Outbound call is DIALING (not yet answered) - show "Calling..." UI, NO timer
+      const otherPartyNumber = (telnyxOutgoingCall as any).options?.destinationNumber || 'Unknown';
+      return {
+        phoneNumber: otherPartyNumber,
+        displayName: null,
+        status: 'ringing', // Use 'ringing' to show "Calling..." text
+        direction: 'outbound',
+        isTelnyx: true,
+      };
+    }
     if (telnyxIncomingCall) {
-      // Priority for display name: 1) Database lookup, 2) Valid Telnyx CNAM, 3) null (fallback to "Unknown Caller")
+      // Inbound call is RINGING - show answer/reject buttons
       const sdkCallerName = (telnyxIncomingCall as any).options?.callerName || 
                             (telnyxIncomingCall as any).options?.callerIdName || 
                             (telnyxIncomingCall as any).options?.cnam_caller_id_name;
-      // Only use sdkCallerName if it's a valid/useful name
       const validSdkName = isValidCallerName(sdkCallerName) ? sdkCallerName : null;
       const displayName = telnyxCallerName || validSdkName || null;
       return {
@@ -1246,7 +1255,7 @@ export function WebPhoneFloatingWindow() {
       return { ...currentCall, isTelnyx: false };
     }
     return null;
-  }, [telnyxCurrentCall, telnyxIncomingCall, currentCall, telnyxCallerName]);
+  }, [telnyxCurrentCall, telnyxOutgoingCall, telnyxIncomingCall, currentCall, telnyxCallerName]);
   
   // Effective mute/hold state
   const effectiveMuted = isTelnyxCall ? telnyxIsMuted : isMuted;

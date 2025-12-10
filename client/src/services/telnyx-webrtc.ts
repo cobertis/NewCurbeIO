@@ -18,6 +18,7 @@ interface TelnyxWebRTCState {
   connectionError?: string;
   currentCall?: TelnyxCall;
   incomingCall?: TelnyxCall;
+  outgoingCall?: TelnyxCall; // Call that is dialing/ringing but not yet answered
   consultCall?: TelnyxCall; // Second call for attended transfer
   isCallActive: boolean;
   isMuted: boolean;
@@ -32,6 +33,7 @@ interface TelnyxWebRTCState {
   setConnectionStatus: (status: TelnyxWebRTCState['connectionStatus'], error?: string) => void;
   setCurrentCall: (call?: TelnyxCall) => void;
   setIncomingCall: (call?: TelnyxCall) => void;
+  setOutgoingCall: (call?: TelnyxCall) => void;
   setConsultCall: (call?: TelnyxCall) => void;
   setMuted: (muted: boolean) => void;
   setOnHold: (hold: boolean) => void;
@@ -60,6 +62,7 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   }),
   setCurrentCall: (call) => set({ currentCall: call, isCallActive: !!call }),
   setIncomingCall: (call) => set({ incomingCall: call }),
+  setOutgoingCall: (call) => set({ outgoingCall: call }),
   setConsultCall: (call) => set({ consultCall: call }),
   setMuted: (muted) => set({ isMuted: muted }),
   setOnHold: (hold) => set({ isOnHold: hold }),
@@ -449,9 +452,12 @@ class TelnyxWebRTCManager {
             store.setIncomingCall(call);
             this.startRingtone(); // Play ringtone for incoming calls
           } else if (call.state === 'trying' || call.state === 'early' || call.state === 'ringing') {
-            // Outbound call is connecting - play ringback tone
+            // Outbound call is connecting - set as outgoingCall and play ringback
             if (inferredDirection === 'outbound') {
-              console.log('[Telnyx WebRTC] Outbound call connecting, starting ringback');
+              console.log('[Telnyx WebRTC] 📞 Outbound call state:', call.state);
+              // CRITICAL: Set outgoingCall for UI to show "Calling..." state
+              // Do NOT set currentCall here - timer must NOT start yet
+              store.setOutgoingCall(call);
               this.startRingback();
               
               // Also try to play early media if available (carrier ringback)
@@ -463,26 +469,31 @@ class TelnyxWebRTCManager {
               }
             }
           } else if (call.state === 'active') {
-            console.log('[Telnyx WebRTC] Call active - starting timer');
+            // CRITICAL: This is where we start the timer and set currentCall
+            // According to Telnyx docs, 'active' means call is ANSWERED
+            console.log('[Telnyx WebRTC] ✅ Call ANSWERED - state is now active');
             this.stopRingback(); // Stop ringback when call is answered
             this.stopRingtone(); // Stop ringtone when call is answered
+            
+            // NOW set currentCall and start timer
             store.setCurrentCall(call);
             store.setIncomingCall(undefined);
-            store.setCallActiveTimestamp(Date.now()); // Start timer from NOW
+            store.setOutgoingCall(undefined); // Clear outgoing state
+            store.setCallActiveTimestamp(Date.now()); // Start timer from NOW (call answered)
             
             // Record call start time and info for logging
             this.currentCallStartTime = new Date();
-            const fromNum = call.direction === 'inbound' 
+            const fromNum = inferredDirection === 'inbound' 
               ? (call.options?.remoteCallerNumber || 'Unknown')
               : (store.callerIdNumber || 'Unknown');
-            const toNum = call.direction === 'inbound'
+            const toNum = inferredDirection === 'inbound'
               ? (store.callerIdNumber || 'Unknown')
               : call.options?.destinationNumber || 'Unknown';
             this.currentCallInfo = {
               callId: call.id || `webrtc-${Date.now()}`,
               fromNumber: fromNum,
               toNumber: toNum,
-              direction: call.direction as 'inbound' | 'outbound',
+              direction: inferredDirection as 'inbound' | 'outbound',
             };
             this.logCallToServer('active');
             
@@ -509,8 +520,10 @@ class TelnyxWebRTCManager {
               this.currentCallStartTime = null;
             }
             
+            // Clear ALL call states
             store.setCurrentCall(undefined);
             store.setIncomingCall(undefined);
+            store.setOutgoingCall(undefined);
             store.setMuted(false);
             store.setOnHold(false);
             store.setCallActiveTimestamp(undefined); // Reset timer
@@ -546,7 +559,14 @@ class TelnyxWebRTCManager {
         callerName: 'Curbe',
       });
       
-      store.setCurrentCall(call);
+      // CRITICAL: Do NOT set currentCall here - wait for 'active' state
+      // This prevents timer from starting before call is answered
+      // The telnyx.notification handler will set currentCall when state === 'active'
+      
+      // Start ringback for outbound call
+      this.startRingback();
+      
+      console.log('[Telnyx WebRTC] Call initiated, waiting for state changes...');
       return call;
     } catch (error) {
       console.error('[Telnyx WebRTC] Make call error:', error);
@@ -561,18 +581,15 @@ class TelnyxWebRTCManager {
     if (incomingCall) {
       console.log('[Telnyx WebRTC] Answering call');
       this.stopRingtone(); // Stop ringtone when answering
+      
+      // CRITICAL: Just call answer() - do NOT set currentCall here
+      // Wait for state === 'active' event which will:
+      // 1. Set currentCall
+      // 2. Set callActiveTimestamp (start timer)
+      // 3. Connect audio via remoteStream event
       incomingCall.answer();
       
-      // Immediately set as current call and connect audio
-      // Don't wait for state change - this reduces audio delay
-      store.setCurrentCall(incomingCall);
-      store.setIncomingCall(undefined);
-      
-      // Connect audio immediately after answer to reduce delay
-      setTimeout(() => {
-        console.log('[Telnyx WebRTC] Connecting audio after answer');
-        this.connectRemoteAudio(incomingCall);
-      }, 100);
+      console.log('[Telnyx WebRTC] Answer sent, waiting for active state...');
     }
   }
   
@@ -591,12 +608,38 @@ class TelnyxWebRTCManager {
   public hangup(): void {
     const store = useTelnyxStore.getState();
     const currentCall = store.currentCall;
+    const incomingCall = store.incomingCall;
+    const outgoingCall = store.outgoingCall;
     
+    console.log('[Telnyx WebRTC] Hangup called. States:', {
+      hasCurrentCall: !!currentCall,
+      hasIncomingCall: !!incomingCall,
+      hasOutgoingCall: !!outgoingCall,
+    });
+    
+    // Hangup current active call
     if (currentCall) {
-      console.log('[Telnyx WebRTC] Hanging up');
+      console.log('[Telnyx WebRTC] Hanging up current call');
       currentCall.hangup();
-      store.setCurrentCall(undefined);
     }
+    
+    // Cancel outgoing call if still dialing
+    if (outgoingCall) {
+      console.log('[Telnyx WebRTC] Cancelling outgoing call');
+      outgoingCall.hangup();
+    }
+    
+    // Reject incoming call if present
+    if (incomingCall) {
+      console.log('[Telnyx WebRTC] Rejecting incoming call');
+      incomingCall.hangup();
+    }
+    
+    // Stop any playing tones
+    this.stopRingback();
+    this.stopRingtone();
+    
+    // State cleanup will happen in telnyx.notification handler on 'hangup' event
   }
   
   public toggleMute(): void {
