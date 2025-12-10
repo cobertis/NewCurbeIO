@@ -577,15 +577,35 @@ class TelnyxWebRTCManager {
         }
         break;
 
-      case "early":
-        if (direction === "outbound") {
-          console.log("[Telnyx WebRTC] 📤 Early media");
-          this.stopRingback();
-          // Early media - conectar audio del carrier
-          if (call.remoteStream && this.audioElement) {
+      case "answering":
+        // CRITICAL: For inbound calls, connect audio as early as possible
+        // This is the state right after answer() is called, before "active"
+        if (direction === "inbound") {
+          console.log("[Telnyx WebRTC] 📥 Answering state - connecting audio early");
+          this.stopRingtone();
+          if (call.remoteStream && this.audioElement && !this.remoteStreamConnected) {
+            console.log("[Telnyx WebRTC] 🔊 Connecting remoteStream in answering state");
             this.audioElement.srcObject = call.remoteStream;
+            this.audioElement.muted = false;
+            this.audioElement.volume = 1.0;
             this.audioElement.play().catch(console.error);
+            this.remoteStreamConnected = true;
           }
+        }
+        break;
+
+      case "early":
+        console.log("[Telnyx WebRTC] 📤 Early media state", { direction });
+        this.stopRingback();
+        this.stopRingtone();
+        // Early media - connect audio immediately for BOTH directions
+        if (call.remoteStream && this.audioElement && !this.remoteStreamConnected) {
+          console.log("[Telnyx WebRTC] 🔊 Connecting remoteStream in early state");
+          this.audioElement.srcObject = call.remoteStream;
+          this.audioElement.muted = false;
+          this.audioElement.volume = 1.0;
+          this.audioElement.play().catch(console.error);
+          this.remoteStreamConnected = true;
         }
         break;
 
