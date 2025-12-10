@@ -26451,16 +26451,29 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
   const httpServer = createServer(app);
 
-  // POST /webhooks/telnyx/voice/:companyId - Handle voice calls per company (TeXML)
+  // POST /webhooks/telnyx/voice/:companyId - Handle INBOUND voice calls per company (TeXML)
+  // This webhook receives calls from PSTN -> routes to WebRTC client
   app.post("/webhooks/telnyx/voice/:companyId", async (req: Request, res: Response) => {
     try {
       const { companyId } = req.params;
-      // TeXML uses capitalized field names
-      const { From: from, To: to, Direction: direction, CallSid: call_control_id } = req.body;
+      // TeXML fields - note: Direction is not sent by Telnyx TeXML
+      const { 
+        From: from, 
+        To: to, 
+        CallSid: callSid,
+        CallingPartyType: callingPartyType 
+      } = req.body;
       
-      console.log("[Telnyx Voice] Raw body:", JSON.stringify(req.body, null, 2));
-      console.log("[Telnyx Voice] Company webhook:", { companyId, from, to, direction, call_control_id });
+      console.log("[Telnyx Voice] INBOUND call received:", { 
+        companyId, 
+        from, 
+        to, 
+        callSid,
+        callingPartyType // "pstn" for inbound from phone network
+      });
       
+      // This webhook is for INBOUND calls only (PSTN -> WebRTC)
+      // Outbound calls don't go through this webhook - they're initiated by WebRTC client directly
       
       // Look up the SIP username for this company's WebRTC client
       const [credential] = await db
@@ -26475,15 +26488,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .orderBy(desc(telephonyCredentials.lastUsedAt))
         .limit(1);
       
-      const sipUsername = credential?.sipUsername || companyId;
-      console.log("[Telnyx Voice] Using SIP username:", sipUsername);
+      const sipUsername = credential?.sipUsername;
+      if (!sipUsername) {
+        console.error("[Telnyx Voice] No SIP credential found for company:", companyId);
+        res.set("Content-Type", "application/xml");
+        return res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say>Sorry, no agent is available to take your call.</Say>
+  <Hangup/>
+</Response>`);
+      }
+      
+      console.log("[Telnyx Voice] Routing to WebRTC client:", sipUsername);
+      
       // Check for call forwarding settings
       let callForwardingEnabled = false;
       let callForwardingDestination: string | null = null;
       let callForwardingKeepCallerId = true;
       
-      if (to && direction === "incoming") {
-        // Look up call forwarding settings for this number
+      if (to) {
         const [phoneRecord] = await db
           .select({
             callForwardingEnabled: telnyxPhoneNumbers.callForwardingEnabled,
@@ -26502,20 +26525,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           callForwardingEnabled = phoneRecord.callForwardingEnabled || false;
           callForwardingDestination = phoneRecord.callForwardingDestination;
           callForwardingKeepCallerId = phoneRecord.callForwardingKeepCallerId !== false;
-          console.log("[Telnyx Voice] Call forwarding settings:", { 
-            enabled: callForwardingEnabled, 
-            destination: callForwardingDestination,
-            keepCallerId: callForwardingKeepCallerId 
-          });
         }
       }
       
       let texmlResponse: string;
       
       if (callForwardingEnabled && callForwardingDestination) {
-        // Forward the call to the destination number
+        // Forward the call to an external number
         const callerId = callForwardingKeepCallerId ? from : to;
-        console.log(`[Telnyx Voice] Forwarding call to ${callForwardingDestination} with caller ID: ${callerId}`);
+        console.log(`[Telnyx Voice] Forwarding to ${callForwardingDestination}`);
         
         texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
@@ -26524,20 +26542,29 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   </Dial>
 </Response>`;
       } else {
-        // Normal behavior - ring WebRTC client
+        // Route to WebRTC client using <Client> tag (NOT <Sip>)
+        // <Client> connects to registered SIP/WebRTC users on the same account
+        console.log("[Telnyx Voice] Sending TeXML to ring WebRTC client");
+        
         texmlResponse = `<?xml version="1.0" encoding="UTF-8"?>
 <Response>
-  <Dial timeout="30" record="record-from-answer-dual" recordingStatusCallback="https://${process.env.REPL_SLUG}.${(process.env.REPL_OWNER || "").toLowerCase()}.repl.co/webhooks/telnyx/recordings/${companyId}">
-    <Sip>sip:${sipUsername}@rtc.telnyx.com</Sip>
+  <Dial timeout="30" record="record-from-answer-dual">
+    <Client>${sipUsername}</Client>
   </Dial>
 </Response>`;
       }
       
+      console.log("[Telnyx Voice] TeXML response:", texmlResponse);
       res.set("Content-Type", "application/xml");
       res.status(200).send(texmlResponse);
     } catch (error: any) {
-      console.error("[Telnyx Voice] Company webhook error:", error);
-      res.status(500).send('<?xml version="1.0" encoding="UTF-8"?><Response><Hangup /></Response>');
+      console.error("[Telnyx Voice] Webhook error:", error);
+      res.set("Content-Type", "application/xml");
+      res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say>An error occurred. Please try again later.</Say>
+  <Hangup/>
+</Response>`);
     }
   });
 

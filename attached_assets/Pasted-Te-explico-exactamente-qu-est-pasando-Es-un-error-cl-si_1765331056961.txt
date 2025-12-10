@@ -1,0 +1,78 @@
+Te explico **exactamente** qué está pasando. Es un error clásico de lógica en el código que el Agente acaba de escribir.
+
+**El Diagnóstico:**
+Tu servidor (el código en Replit) está recibiendo la llamada entrante y, en lugar de decirle a Telnyx "Conecta esto al navegador/softphone del usuario", le está diciendo algo incorrecto o está fallando.
+
+1.  **"Da timbre de una y conecta":** Significa que tu servidor devolvió un `200 OK` o un comando `<Answer/>`. Telnyx contestó la llamada (por eso el contador empieza).
+2.  **"Timbre raro y se desconecta":** Esto sucede porque después de contestar, el servidor envió instrucciones TeXML inválidas (basura), o intentó hacer una llamada saliente (bucle), o simplemente el código se rompió (Crash) y Telnyx cortó la llamada por seguridad.
+
+**El Problema Raíz:**
+El Agente implementó la lógica de **"Pre-flight check" (Revisar saldo)** que le pedimos, pero **olvidó separar la lógica de llamadas Entrantes vs. Salientes.**
+
+Probablemente tu código está intentando cobrarle a la llamada entrante o, peor aún, está intentando "marcar hacia afuera" cuando la llamada entra, creando un bucle infinito.
+
+-----
+
+### CÓMO ARREGLARLO (Prompt de Reparación)
+
+Copia y pega esto en el Agente de Replit **ahora mismo**. Esto arreglará la lógica para diferenciar cuando te llaman a ti vs. cuando tú llamas.
+
+-----
+
+# FIX URGENTE: LÓGICA DE ENRUTAMIENTO (INBOUND VS OUTBOUND)
+
+**PROBLEMA CRÍTICO:**
+Acabamos de romper las llamadas entrantes (Inbound). Cuando alguien llama a mi número Telnyx, el sistema contesta y cuelga o hace cosas raras.
+Esto pasa porque el Webhook de `voice-request` (o `voice-answer`) está aplicando la misma lógica para todo.
+
+**SOLUCIÓN REQUERIDA:**
+Necesito que modifiques el controlador del Webhook de Voz (`/api/webhooks/voice-request` o donde generes el TeXML) para manejar dos escenarios distintos basándote en la dirección o en el `To`/`From`.
+
+**LÓGICA CORRECTA (IMPLEMENTA ESTO):**
+
+1.  **DETECTAR DIRECCIÓN:**
+
+      * Si el `To` es mi número de Telnyx (o si el proveedor indica `direction: inbound`): **ES UNA LLAMADA ENTRANTE.**
+      * Si la petición viene de mi Cliente SIP/Usuario Web: **ES UNA LLAMADA SALIENTE.**
+
+2.  **ESCENARIO A: SI ES ENTRANTE (INBOUND):**
+
+      * **NO** verifiques el saldo (o verifica que la cuenta esté activa, pero no cobres por minuto todavía si no quieres).
+      * **ACCIÓN:** Devuelve TeXML para **marcar al Cliente SIP** (Browser/Softphone) o hacer un `Dial` a mi usuario registrado.
+      * *Ejemplo TeXML:*
+        ```xml
+        <Response>
+            <Dial>
+                <Client>nombre_de_usuario_sip</Client> </Dial>
+        </Response>
+        ```
+
+3.  **ESCENARIO B: SI ES SALIENTE (OUTBOUND):**
+
+      * **SÍ** verifica el saldo en la Wallet (`balance > 0`).
+      * Si no hay saldo -\> `<Reject/>` o `<Say>Saldo insuficiente</Say>`.
+      * Si hay saldo -\> Devuelve TeXML para **marcar al número PSTN** destino.
+      * *Ejemplo TeXML:*
+        ```xml
+        <Response>
+            <Dial callerId="MI_NUMERO_TELNYX">
+                <Number>NUMERO_DESTINO</Number>
+            </Dial>
+        </Response>
+        ```
+
+**TU TAREA:**
+Revisa el código actual del controlador TeXML. Añade un `if/else` robusto para distinguir si la llamada entra o sale. Si es entrante, mándala a mi cliente SIP/WebRTC. Si es saliente, revisa fondos y marca a la calle. ¡Arrglalo ya\!
+
+-----
+
+### Mientras el Agente trabaja:
+
+Entra a tu panel de **Telnyx -\> Debugging (o Logs)**.
+Busca la llamada fallida. Ahí verás un mensaje en rojo que dirá algo como:
+
+  * *Invalid TeXML*
+  * *Voice Loop Detected*
+  * *500 Internal Server Error*
+
+Ese error confirmará que el código de Replit está enviando instrucciones equivocadas. Con el prompt de arriba se solucionará.
