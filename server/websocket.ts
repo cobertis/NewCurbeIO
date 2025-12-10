@@ -948,3 +948,82 @@ export function broadcastWhatsAppTyping(companyId: string, remoteJid: string, is
   
   console.log(`[WebSocket] Broadcast whatsapp_typing to ${sentCount} client(s) for company ${companyId}`);
 }
+
+// =====================================================
+// WALLET/BILLING REAL-TIME UPDATES
+// =====================================================
+
+export interface WalletUpdateData {
+  newBalance: string;
+  lastCharge: string;
+  chargeType: "CALL_COST" | "SMS_COST" | "DEPOSIT" | "REFUND";
+  description?: string;
+}
+
+export interface CallLogData {
+  id: string;
+  fromNumber: string;
+  toNumber: string;
+  direction: "inbound" | "outbound";
+  duration: number;
+  cost: string;
+  status: string;
+}
+
+export function broadcastWalletUpdate(companyId: string, data: WalletUpdateData): void {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const payload = JSON.stringify({
+    type: 'wallet_updated',
+    companyId,
+    data
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    if (authClient.companyId === companyId) {
+      client.send(payload);
+      sentCount++;
+    }
+  });
+  
+  console.log(`[WebSocket] Broadcast wallet_updated to ${sentCount} client(s) for company ${companyId}`);
+}
+
+export function broadcastNewCallLog(companyId: string, callLog: CallLogData): void {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const payload = JSON.stringify({
+    type: 'new_call_log',
+    companyId,
+    data: callLog
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    if (authClient.companyId === companyId) {
+      client.send(payload);
+      sentCount++;
+    }
+  });
+  
+  console.log(`[WebSocket] Broadcast new_call_log to ${sentCount} client(s) for company ${companyId}`);
+}
