@@ -50,6 +50,15 @@ The frontend uses Wouter for routing and TanStack Query for state management. Th
 - **Custom Domain (White Label) System:** Allows organizations to connect custom domains via Cloudflare.
 - **Telnyx Phone System Integration:** Full white-label telephony with managed accounts, wallet-based billing, phone number purchase, E911, WebRTC provisioning, inbound call routing, DTMF keypad, visual mute, transfer dialogs, and network quality indicator.
 
+### Telnyx WebRTC Configuration (Per Official Docs)
+All WebRTC implementations follow official Telnyx documentation:
+- **Client Options:** `debug: true`, `debugOutput: 'socket'`, `prefetchIceCandidates: true` per [IClientOptions docs](https://developers.telnyx.com/docs/voice/webrtc/js-sdk/interfaces/iclientoptions)
+- **Call Options:** `audio: true`, `useStereo: true`, `preferred_codecs` per [ICallOptions docs](https://developers.telnyx.com/docs/voice/webrtc/js-sdk/interfaces/icalloptions)
+- **Audio Settings:** `setAudioSettings({echoCancellation, noiseSuppression, autoGainControl})` per [TelnyxRTC docs](https://developers.telnyx.com/docs/voice/webrtc/js-sdk/classes/telnyxrtc#setaudiosettings)
+- **Error Handling:** `userMediaError` event for microphone issues per [Error Handling docs](https://developers.telnyx.com/docs/voice/webrtc/js-sdk/error-handling)
+- **Debug Data:** Sent to Telnyx Cloud Storage, visualized at https://webrtc-debug.telnyx.com/ per [Debug Logs docs](https://developers.telnyx.com/docs/voice/webrtc/troubleshooting/debug-logs)
+- **SRTP Disabled:** `encrypted_media: null` for WebRTC compatibility per Telnyx OpenAPI spec
+
 ### System Design Choices
 The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings. A `node-cron` background scheduler manages reminder notifications. Phone numbers are standardized, and all message timestamps are normalized to UTC. Performance is optimized with database indexes and aggressive caching.
 

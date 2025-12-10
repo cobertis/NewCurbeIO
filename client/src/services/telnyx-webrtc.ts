@@ -340,10 +340,21 @@ class TelnyxWebRTCManager {
       this.client = null;
     }
 
+    // Per official Telnyx SDK docs:
+    // https://developers.telnyx.com/docs/voice/webrtc/js-sdk/interfaces/iclientoptions
+    // https://developers.telnyx.com/docs/voice/webrtc/troubleshooting/debug-logs
+    // IClientOptions includes: login, password, debug, debugOutput, prefetchIceCandidates, etc.
+    // Note: useStereo and audio are IVertoCallOptions (for newCall), NOT constructor options
     this.client = new TelnyxRTC({
       login: sipUser,
       password: sipPass,
-      debug: false,
+      // Per docs: Enable debug to collect WebRTC stats for troubleshooting
+      // https://developers.telnyx.com/docs/voice/webrtc/troubleshooting/debug-logs#enabling-debug
+      debug: true,
+      // Per docs: debugOutput 'socket' ships debug data frames to Telnyx over websocket
+      debugOutput: 'socket',
+      // Per docs: prefetchIceCandidates can improve connection time
+      prefetchIceCandidates: true,
     });
 
     // CRITICAL: Per Telnyx docs, set client.remoteElement IMMEDIATELY after creation
@@ -390,6 +401,17 @@ class TelnyxWebRTCManager {
     this.client.on("telnyx.error", (e: any) => {
       console.error("[Telnyx WebRTC] Error:", e);
       store.setConnectionStatus("error", e?.message);
+    });
+
+    // Per official Telnyx docs: Handle userMediaError for microphone issues
+    // https://developers.telnyx.com/docs/voice/webrtc/js-sdk/error-handling
+    // "User media errors occur when the browser cannot access the user's microphone or camera"
+    this.client.on("telnyx.notification", (notification: any) => {
+      if (notification.type === 'userMediaError') {
+        console.error("[Telnyx WebRTC] ❌ User media error (microphone/camera access denied):", notification.error);
+        store.setConnectionStatus("error", "Cannot access microphone. Check browser permissions.");
+        return;
+      }
     });
 
     // NOTIFICATION HANDLER - El SDK de Telnyx usa este patrón
@@ -672,11 +694,19 @@ class TelnyxWebRTCManager {
     const preferredCodecs = this.getOutboundCodecs();
     console.log("[Telnyx WebRTC] 📞 Using codecs for outbound:", preferredCodecs.map(c => c.mimeType));
 
+    // Per official Telnyx docs (ICallOptions):
+    // https://developers.telnyx.com/docs/voice/webrtc/js-sdk/interfaces/icalloptions
+    // audio: boolean - "Overrides client's default audio constraints. Defaults to true"
+    // useStereo: boolean - "Uses stereo audio instead of mono"
     const call = this.client.newCall({
       destinationNumber: formattedDest,
       callerNumber: store.callerIdNumber,
       callerName: "Curbe",
       preferred_codecs: preferredCodecs,
+      // Per docs: Explicitly enable audio (microphone) for outgoing calls
+      audio: true,
+      // Per docs: Use stereo audio for better quality
+      useStereo: true,
     });
 
     store.setOutgoingCall(call);
@@ -868,11 +898,17 @@ class TelnyxWebRTCManager {
       // Use same codec order as Telnyx connection settings
       const preferredCodecs = this.getPreferredCodecs();
       
+      // Per official Telnyx docs (ICallOptions):
+      // https://developers.telnyx.com/docs/voice/webrtc/js-sdk/interfaces/icalloptions
       const consultCall = this.client.newCall({
         destinationNumber: consultNumber,
         callerNumber: store.callerIdNumber,
         callerName: "Curbe",
         preferred_codecs: preferredCodecs,
+        // Per docs: Explicitly enable audio (microphone)
+        audio: true,
+        // Per docs: Use stereo audio for better quality
+        useStereo: true,
       });
 
       store.setConsultCall(consultCall);
