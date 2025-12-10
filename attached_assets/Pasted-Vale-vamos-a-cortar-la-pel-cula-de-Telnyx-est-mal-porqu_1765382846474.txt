@@ -1,0 +1,95 @@
+Vale, vamos a cortar la película de “Telnyx está mal” porque la documentación es clarísima y aquí el que está desalineado es tu código, no la red.
+
+### 1. Hecho duro: Telnyx **sí distingue** entre timbrando y contestado
+
+De la doc oficial del `call` del SDK:
+
+* `ringing` = “Someone is attempting to call you”
+* `active` = “Call has become active” (ya está conectada) ([Redoc][1])
+
+O sea: **NO** hay razón para que el tiempo “desde que timbra” y “desde que contestas” sea lo mismo, a menos que tú estés:
+
+* empezando el timer en `ringing`, `trying`, `requesting` o `early`,
+* o usando un campo de Telnyx que ya incluye el ring (ej: `call_sec`, `start_timestamp`).
+
+### 2. Qué está pasando en realidad
+
+Hay solo tres opciones lógicas:
+
+1. **Tu UI sigue arrancando el timer en el estado equivocado**, aunque hayas tocado algo.
+2. **Tu backend está usando los campos incorrectos de Telnyx** (`start_timestamp` / `call_sec`) para cobrar / mostrar duración, en vez de medir tú mismo desde `call.answered` / `state: 'active'`. ([Telnyx][2])
+3. Estás mezclando WebRTC + Voice API y tomando el tiempo del leg PSTN, no del leg WebRTC.
+
+Nada en la doc dice que Telnyx va a “retrasar el cronómetro hasta que tú contestes”. Ellos te dan estados y timestamps; **el comportamiento del timer en tu CRM es tu responsabilidad**.
+
+### 3. Cómo se hace BIEN (sin excusas)
+
+Te lo dejo minimalista; si haces esto y sigue contando mal, el log te va a demostrar dónde está el bug:
+
+```js
+client.on('telnyx.notification', (notification) => {
+  if (notification.type !== 'callUpdate') return;
+
+  const call = notification.call;
+  console.log('CALL STATE:', call.state, 'at', new Date().toISOString());
+
+  switch (call.state) {
+    case 'ringing':
+    case 'trying':
+    case 'requesting':
+    case 'early':
+      // ❌ AQUÍ JAMÁS INICIAS TIMER
+      setUI('ringing'); // solo UI de "timbrando"
+      break;
+
+    case 'active':
+      // ✅ AQUÍ Y SOLO AQUÍ EMPIEZA EL TIMER DE TU CRM
+      if (!callStarted) {
+        callStarted = Date.now();
+        startTimerUI();     // tu setInterval o lo que uses
+        setUI('inCall');
+      }
+      break;
+
+    case 'hangup':
+    case 'destroy':
+    case 'purge':
+      stopTimerUI();
+      setUI('ended');
+      break;
+  }
+});
+```
+
+Si tú pones un `console.log` de los estados como arriba, vas a ver algo así:
+
+* 12:00:01 → `ringing`
+* 12:00:03 → `active`
+
+Si tu timer empieza a las 12:00:01, **es porque tú lo estás arrancando ahí**, no Telnyx.
+
+### 4. Para el cobro desde el wallet
+
+No uses ni:
+
+* `start_timestamp`
+* `call_sec`
+
+de los CDR WebRTC; esos campos incluyen todo el ciclo de llamada. ([Telnyx][2])
+
+Hazlo tú:
+
+* guarda `answered_at` cuando recibas `call.answered` (webhook Voice API) o `state: 'active'` en WebRTC,
+* guarda `ended_at` en `call.hangup`,
+* duración facturable = `ended_at - answered_at` (redondeando a segundos / bloques como tú quieras).
+
+### 5. Conclusión brutal
+
+* Telnyx **sí** te da los estados correctos.
+* La SDK **sí** diferencia timbrando vs contestado.
+* El tiempo “desde que timbra” lo estás provocando tú en tu lógica de UI o billing, no el proveedor.
+
+Si quieres que dejemos de pelear con síntomas, el siguiente paso es que estructuremos **una sola máquina de estados** para Curbe Voice (con qué se muestra, cuándo se cobra, y qué evento dispara qué), y se la tiras al dev de Replit para que deje de improvisar.
+
+[1]: https://preview.redoc.ly/telnyx/FILE-557-Storage-Docs-Update/docs/v2/voice/webrtc/resources/js_call/?utm_source=chatgpt.com "WebRTC JS Call"
+[2]: https://telnyx.com/release-notes/webrtc-billing-and-reporting "Instituting Billing and Reporting for WebRTC"
