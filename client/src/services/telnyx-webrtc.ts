@@ -354,11 +354,27 @@ class TelnyxWebRTCManager {
     console.log("[Telnyx WebRTC] 🔊 Setting client.remoteElement as function getter during init");
     this.client.remoteElement = () => document.getElementById("telnyx-remote-audio");
 
-    this.client.on("telnyx.ready", () => {
+    this.client.on("telnyx.ready", async () => {
       console.log("[Telnyx WebRTC] Connected and ready");
       store.setConnectionStatus("connected");
       // Reset reconnect counter on successful connection
       this.reconnectAttempts = 0;
+      
+      // Per official Telnyx docs: Apply audio settings AFTER connection
+      // https://developers.telnyx.com/docs/voice/webrtc/js-sdk/classes/telnyxrtc#setaudiosettings
+      // This enables browser-level audio processing for noise reduction
+      try {
+        if (this.client) {
+          const audioSettings = await this.client.setAudioSettings({
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          });
+          console.log("[Telnyx WebRTC] 🔊 Audio settings applied:", audioSettings);
+        }
+      } catch (audioError) {
+        console.warn("[Telnyx WebRTC] ⚠️ Failed to apply audio settings:", audioError);
+      }
     });
 
     this.client.on("telnyx.socket.close", () => {
