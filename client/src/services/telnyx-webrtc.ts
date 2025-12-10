@@ -198,8 +198,8 @@ class TelnyxWebRTCManager {
     // Type: string | Function | HTMLMediaElement
     // Using Function to avoid circular JSON serialization errors with React DOM elements
     if (this.client) {
-      console.log("[Telnyx WebRTC] 🔊 Setting client.remoteElement as function getter");
-      this.client.remoteElement = () => document.getElementById("telnyx-remote-audio");
+      console.log("[Telnyx WebRTC] 🔊 Setting client.remoteElement as string ID");
+      this.client.remoteElement = "telnyx-remote-audio";
     }
     
     // If we already have a remoteStream waiting, connect it now
@@ -254,87 +254,6 @@ class TelnyxWebRTCManager {
       this.reconnectTimeout = null;
     }
     this.isReconnecting = false;
-  }
-
-  /**
-   * CRITICAL: Wait for ICE connection state to be "connected" before playing audio
-   * This fixes the 5-second audio delay issue - audio only flows when ICE is connected
-   * Per WebRTC spec: https://developer.mozilla.org/en-US/docs/Web/API/RTCPeerConnection/connectionState
-   */
-  private waitForIceConnectedThenPlay(call: any): void {
-    if (this.remoteStreamConnected) return;
-    
-    // Get the peer connection from the call
-    const peer = call.peer || call.peerConnection || (call as any)._peerConnection;
-    
-    if (!peer) {
-      console.warn("[Telnyx WebRTC] 🔊 No peer connection found, using fallback polling");
-      this.pollForIceConnected(call, 0);
-      return;
-    }
-    
-    const currentState = peer.connectionState || peer.iceConnectionState;
-    console.log("[Telnyx WebRTC] 🔊 Current ICE state:", currentState);
-    
-    if (currentState === "connected") {
-      console.log("[Telnyx WebRTC] 🔊 ICE already connected, playing audio now");
-      this.stopRingtone();
-      this.stopRingback();
-      this.connectRemoteAudio(call);
-      return;
-    }
-    
-    // Listen for connection state changes
-    const onStateChange = () => {
-      const state = peer.connectionState || peer.iceConnectionState;
-      console.log("[Telnyx WebRTC] 🔊 ICE state changed to:", state);
-      
-      if (state === "connected" && !this.remoteStreamConnected) {
-        console.log("[Telnyx WebRTC] 🔊 ICE connected! Playing audio now");
-        this.stopRingtone();
-        this.stopRingback();
-        this.connectRemoteAudio(call);
-        // Clean up listeners
-        peer.removeEventListener("connectionstatechange", onStateChange);
-        peer.removeEventListener("iceconnectionstatechange", onStateChange);
-      }
-    };
-    
-    peer.addEventListener("connectionstatechange", onStateChange);
-    peer.addEventListener("iceconnectionstatechange", onStateChange);
-    
-    // Fallback: If ICE doesn't connect in 5 seconds, try anyway
-    setTimeout(() => {
-      if (!this.remoteStreamConnected) {
-        console.log("[Telnyx WebRTC] 🔊 ICE timeout - forcing audio playback");
-        this.stopRingtone();
-        this.stopRingback();
-        this.connectRemoteAudio(call);
-      }
-    }, 5000);
-  }
-  
-  /**
-   * Fallback polling for ICE connected state when peer is not accessible
-   */
-  private pollForIceConnected(call: any, attempt: number): void {
-    if (this.remoteStreamConnected || attempt > 50) return;
-    
-    const peer = call.peer || call.peerConnection || (call as any)._peerConnection;
-    
-    if (peer) {
-      const state = peer.connectionState || peer.iceConnectionState;
-      if (state === "connected") {
-        console.log("[Telnyx WebRTC] 🔊 ICE connected (via polling), playing audio");
-        this.stopRingtone();
-        this.stopRingback();
-        this.connectRemoteAudio(call);
-        return;
-      }
-    }
-    
-    // Poll every 100ms
-    setTimeout(() => this.pollForIceConnected(call, attempt + 1), 100);
   }
 
   private connectRemoteAudio(call: any, retryCount: number = 0): void {
@@ -440,10 +359,10 @@ class TelnyxWebRTCManager {
     // CRITICAL: Per Telnyx docs, set client.remoteElement IMMEDIATELY after creation
     // Docs: https://www.npmjs.com/package/@telnyx/webrtc
     // Type: string | Function | HTMLMediaElement
-    // Using Function to avoid circular JSON serialization errors with React DOM elements
-    // This ensures audio routing is ready BEFORE any calls arrive
-    console.log("[Telnyx WebRTC] 🔊 Setting client.remoteElement as function getter during init");
-    this.client.remoteElement = () => document.getElementById("telnyx-remote-audio");
+    // Using STRING ID to avoid circular JSON serialization errors when debug is enabled
+    // The SDK will use document.getElementById internally
+    console.log("[Telnyx WebRTC] 🔊 Setting client.remoteElement as string ID");
+    this.client.remoteElement = "telnyx-remote-audio";
 
     this.client.on("telnyx.ready", async () => {
       console.log("[Telnyx WebRTC] Connected and ready");
@@ -530,13 +449,17 @@ class TelnyxWebRTCManager {
         destinationNumber: call.options?.destinationNumber
       });
 
-      // CRITICAL FIX: Do NOT play audio immediately when remoteStream is detected
-      // We must wait for ICE connection state to be "connected" before audio will actually flow
-      // The audio playback will be handled in connectRemoteAudio which waits for ICE
-      if (call.remoteStream && !this.remoteStreamConnected) {
-        console.log("[Telnyx WebRTC] 🔊 remoteStream detected, waiting for ICE connected...");
-        // Store reference but DON'T play yet - wait for ICE to connect
-        this.waitForIceConnectedThenPlay(call);
+      // Per Telnyx SDK: Connect remoteStream to audio element when available
+      // The SDK handles ICE negotiation internally
+      if (call.remoteStream && this.audioElement && !this.remoteStreamConnected) {
+        console.log("[Telnyx WebRTC] 🔊 remoteStream detected in notification");
+        this.stopRingtone();
+        this.stopRingback();
+        this.audioElement.srcObject = call.remoteStream;
+        this.audioElement.muted = false;
+        this.audioElement.volume = 1.0;
+        this.audioElement.play().catch((e) => console.error("[Telnyx WebRTC] Audio play error:", e));
+        this.remoteStreamConnected = true;
       }
 
       // Evitar procesar el mismo estado dos veces
@@ -803,11 +726,10 @@ class TelnyxWebRTCManager {
     // CRITICAL: Per Telnyx docs, ensure remoteElement is set BEFORE answering
     // Docs: https://www.npmjs.com/package/@telnyx/webrtc
     // Type: string | Function | HTMLMediaElement
-    // Using Function to avoid circular JSON serialization errors with React DOM elements
-    // This prevents the 5-second audio delay on inbound calls
+    // Using STRING ID to avoid circular JSON serialization errors when debug is enabled
     if (this.client) {
-      console.log("[Telnyx WebRTC] 🔊 Ensuring client.remoteElement as function getter before answer");
-      this.client.remoteElement = () => document.getElementById("telnyx-remote-audio");
+      console.log("[Telnyx WebRTC] 🔊 Ensuring client.remoteElement as string ID before answer");
+      this.client.remoteElement = "telnyx-remote-audio";
     }
 
     // Reset stream connected flag so we can reconnect if needed
