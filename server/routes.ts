@@ -28682,6 +28682,35 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to repair SIP URI calling" });
     }
   });
+
+  // POST /api/telnyx/provisioning/repair-srtp - Disable SRTP on credential connection for WebRTC compatibility
+  app.post("/api/telnyx/provisioning/repair-srtp", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const result = await telephonyProvisioningService.repairSrtpSettings(user.companyId);
+
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: "SRTP disabled successfully. Outbound WebRTC calls should now work."
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: result.error || "Failed to disable SRTP"
+        });
+      }
+    } catch (error: any) {
+      console.error("[Provisioning] SRTP repair error:", error);
+      res.status(500).json({ message: "Failed to repair SRTP settings" });
+    }
+  });
   // GET /api/telnyx/sip-credentials - Get SIP credentials for WebRTC client
   app.get("/api/telnyx/sip-credentials", requireAuth, async (req: Request, res: Response) => {
     try {

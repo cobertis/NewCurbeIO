@@ -386,6 +386,70 @@ export class TelephonyProvisioningService {
     return this.enableSipUriCalling(managedAccountId, settings.credentialConnectionId);
   }
 
+  /**
+   * Disable SRTP encrypted media on credential connection
+   * CRITICAL: WebRTC SDK uses DTLS-SRTP automatically, having SRTP enabled on the 
+   * SIP Connection causes 488 "Not Acceptable Here" errors on outbound calls
+   */
+  async disableSrtpEncryption(
+    managedAccountId: string,
+    connectionId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log(`[TelephonyProvisioning] Disabling SRTP on connection: ${connectionId}`);
+      
+      const response = await this.makeApiRequest(
+        managedAccountId,
+        `/credential_connections/${connectionId}`,
+        "PATCH",
+        {
+          // Setting to null disables SRTP - required for WebRTC which uses DTLS-SRTP
+          encrypted_media: null,
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[TelephonyProvisioning] Failed to disable SRTP: ${response.status} - ${errorText}`);
+        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      }
+
+      const data = await response.json();
+      console.log(`[TelephonyProvisioning] SRTP disabled successfully. encrypted_media:`, data.data?.encrypted_media);
+      return { success: true };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Network error";
+      console.error(`[TelephonyProvisioning] Error disabling SRTP:`, errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  /**
+   * Repair existing credential connection to disable SRTP for WebRTC compatibility
+   * Call this to fix 488 errors on outbound calls
+   */
+  async repairSrtpSettings(companyId: string): Promise<{ success: boolean; error?: string }> {
+    console.log(`[TelephonyProvisioning] Repairing SRTP settings for company: ${companyId}`);
+    
+    const [settings] = await db
+      .select()
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+
+    if (!settings || !settings.credentialConnectionId) {
+      return { success: false, error: "No credential connection found for company" };
+    }
+
+    const { getCompanyManagedAccountId } = await import("./telnyx-managed-accounts");
+    const managedAccountId = await getCompanyManagedAccountId(companyId);
+
+    if (!managedAccountId) {
+      return { success: false, error: "Company has no Telnyx managed account" };
+    }
+
+    return this.disableSrtpEncryption(managedAccountId, settings.credentialConnectionId);
+  }
+
   private async createSipCredential(
     managedAccountId: string,
     companyId: string,
