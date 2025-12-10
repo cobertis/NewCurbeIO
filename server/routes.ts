@@ -28352,6 +28352,37 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+  // POST /api/telnyx/provisioning/repair - Repair phone number routing (fix dual routing conflicts)
+  app.post("/api/telnyx/provisioning/repair", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const result = await telephonyProvisioningService.repairPhoneNumberRouting(user.companyId);
+
+      if (result.success) {
+        res.json({ 
+          success: true, 
+          message: `Phone number routing repaired successfully. ${result.repairedCount} numbers updated.`,
+          repairedCount: result.repairedCount
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: result.errors.join(", ") || "Repair failed",
+          errors: result.errors
+        });
+      }
+    } catch (error: any) {
+      console.error("[Provisioning] Repair error:", error);
+      res.status(500).json({ message: "Failed to repair phone number routing" });
+    }
+  });
   // GET /api/telnyx/sip-credentials - Get SIP credentials for WebRTC client
   app.get("/api/telnyx/sip-credentials", requireAuth, async (req: Request, res: Response) => {
     try {

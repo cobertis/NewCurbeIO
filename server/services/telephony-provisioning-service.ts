@@ -150,7 +150,10 @@ export class TelephonyProvisioningService {
       console.log(`[TelephonyProvisioning] SIP Credentials created: ${sipCredentials.username}`);
 
       console.log(`[TelephonyProvisioning] Step 5/5: Updating existing phone numbers...`);
-      const phoneUpdateResult = await this.updateExistingPhoneNumbers(managedAccountId, companyId, credentialConnectionId);
+      // CRITICAL: Assign phone numbers to TeXML app, NOT credential_connection
+      // This ensures only ONE routing path (TeXML webhook) handles inbound calls
+      // The credential_connection is ONLY for WebRTC client authentication/outbound
+      const phoneUpdateResult = await this.updateExistingPhoneNumbers(managedAccountId, companyId, texmlAppId);
       
       if (!phoneUpdateResult.success && phoneUpdateResult.failedCount > 0) {
         console.error(`[TelephonyProvisioning] Phone number updates failed: ${phoneUpdateResult.errors.join(", ")}`);
@@ -366,7 +369,7 @@ export class TelephonyProvisioningService {
   private async updateExistingPhoneNumbers(
     managedAccountId: string,
     companyId: string,
-    connectionId: string
+    texmlAppId: string
   ): Promise<{ success: boolean; updatedCount: number; failedCount: number; errors: string[] }> {
     const phoneNumbers = await db
       .select()
@@ -383,30 +386,37 @@ export class TelephonyProvisioningService {
 
     for (const phoneNumber of phoneNumbers) {
       try {
-        console.log(`[TelephonyProvisioning] Updating phone number ${phoneNumber.phoneNumber} with connection ${connectionId}`);
+        console.log(`[TelephonyProvisioning] Assigning phone number ${phoneNumber.phoneNumber} to TeXML app ${texmlAppId}`);
         
+        // CRITICAL: Assign to TeXML app ONLY, clear connection_id
+        // This ensures inbound calls route through TeXML webhook exclusively
+        // Prevents dual routing conflict that causes double billing
         const response = await this.makeApiRequest(
           managedAccountId,
           `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
           "PATCH",
-          { connection_id: connectionId }
+          { 
+            texml_application_id: texmlAppId,
+            connection_id: null  // Clear any existing connection assignment
+          }
         );
 
         if (!response.ok) {
           const errorText = await response.text();
-          const errorMsg = `Failed to update ${phoneNumber.phoneNumber}: HTTP ${response.status}`;
+          const errorMsg = `Failed to update ${phoneNumber.phoneNumber}: HTTP ${response.status} - ${errorText}`;
           console.error(`[TelephonyProvisioning] ${errorMsg}`);
           errors.push(errorMsg);
           failedCount++;
           continue;
         }
 
+        // Store texmlAppId in connectionId field for now (reusing existing column)
         await db
           .update(telnyxPhoneNumbers)
-          .set({ connectionId, updatedAt: new Date() })
+          .set({ connectionId: texmlAppId, updatedAt: new Date() })
           .where(eq(telnyxPhoneNumbers.id, phoneNumber.id));
 
-        console.log(`[TelephonyProvisioning] Phone number ${phoneNumber.phoneNumber} updated successfully`);
+        console.log(`[TelephonyProvisioning] Phone number ${phoneNumber.phoneNumber} assigned to TeXML app successfully`);
         updatedCount++;
       } catch (error) {
         const errorMsg = `Error updating ${phoneNumber.phoneNumber}: ${error instanceof Error ? error.message : 'Unknown'}`;
@@ -523,6 +533,83 @@ export class TelephonyProvisioningService {
     return {
       username: cred.username,
       password,
+    };
+  }
+
+  /**
+   * REPAIR FUNCTION: Fix phone numbers that were incorrectly assigned to credential_connection
+   * This reassigns them to the TeXML app to prevent dual routing conflicts
+   */
+  async repairPhoneNumberRouting(companyId: string): Promise<{
+    success: boolean;
+    repairedCount: number;
+    errors: string[];
+  }> {
+    console.log(`[TelephonyProvisioning] Starting phone number routing repair for company: ${companyId}`);
+    
+    // Get telephony settings to find the TeXML app ID
+    const [settings] = await db
+      .select()
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+
+    if (!settings) {
+      return { success: false, repairedCount: 0, errors: ["Telephony settings not found"] };
+    }
+
+    // Get managed account from company using the dedicated function
+    const { getCompanyManagedAccountId } = await import("./telnyx-managed-accounts");
+    const managedAccountId = await getCompanyManagedAccountId(companyId);
+
+    if (!managedAccountId) {
+      return { success: false, repairedCount: 0, errors: ["Company has no Telnyx managed account"] };
+    }
+
+    let texmlAppId = settings.texmlAppId;
+
+    // If no TeXML app exists, we need to create one
+    if (!texmlAppId) {
+      console.log(`[TelephonyProvisioning] No TeXML app found, creating one...`);
+      
+      const [companyData] = await db
+        .select({ name: companies.name })
+        .from(companies)
+        .where(eq(companies.id, companyId));
+
+      const companyName = companyData?.name || "Company";
+      const webhookBaseUrl = await getWebhookBaseUrl();
+
+      const texmlResult = await this.createTexmlApplication(
+        managedAccountId,
+        companyName,
+        webhookBaseUrl,
+        settings.outboundVoiceProfileId || ""
+      );
+
+      if (!texmlResult.success || !texmlResult.appId) {
+        return { success: false, repairedCount: 0, errors: [`Failed to create TeXML app: ${texmlResult.error}`] };
+      }
+
+      texmlAppId = texmlResult.appId;
+
+      // Update settings with the new TeXML app ID
+      await db
+        .update(telephonySettings)
+        .set({ texmlAppId, updatedAt: new Date() })
+        .where(eq(telephonySettings.companyId, companyId));
+
+      console.log(`[TelephonyProvisioning] Created TeXML app: ${texmlAppId}`);
+    }
+
+    // Now reassign all phone numbers to the TeXML app
+    const result = await this.updateExistingPhoneNumbers(managedAccountId, companyId, texmlAppId);
+
+    console.log(`[TelephonyProvisioning] Repair complete: ${result.updatedCount} phones repaired, ${result.failedCount} failed`);
+
+    return {
+      success: result.success,
+      repairedCount: result.updatedCount,
+      errors: result.errors,
     };
   }
 }
