@@ -1789,8 +1789,8 @@ export function WebPhoneFloatingWindow() {
   // This prevents audio stream destruction during active calls
   const audioElements = (
     <>
-      <audio ref={remoteAudioRef} autoPlay playsInline />
-      <audio ref={localAudioRef} autoPlay muted playsInline />
+      <audio id="telnyx-remote-audio" ref={remoteAudioRef} autoPlay playsInline />
+      <audio id="telnyx-local-audio" ref={localAudioRef} autoPlay muted playsInline />
     </>
   );
   

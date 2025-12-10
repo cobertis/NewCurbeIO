@@ -196,9 +196,10 @@ class TelnyxWebRTCManager {
     // CRITICAL: Per Telnyx docs, set client.remoteElement so SDK knows where to send audio
     // Docs: https://www.npmjs.com/package/@telnyx/webrtc
     // "To hear/view calls in the browser, you'll need to specify an HTML media element"
-    if (this.client && elem) {
-      console.log("[Telnyx WebRTC] 🔊 Setting client.remoteElement for SDK audio routing");
-      this.client.remoteElement = elem;
+    // Per docs: client.remoteElement = 'remoteMedia' (string ID, not DOM element)
+    if (this.client) {
+      console.log("[Telnyx WebRTC] 🔊 Setting client.remoteElement = 'telnyx-remote-audio'");
+      this.client.remoteElement = "telnyx-remote-audio";
     }
     
     // If we already have a remoteStream waiting, connect it now
@@ -348,11 +349,10 @@ class TelnyxWebRTCManager {
     // CRITICAL: Per Telnyx docs, set client.remoteElement IMMEDIATELY after creation
     // Docs: https://www.npmjs.com/package/@telnyx/webrtc
     // "To hear/view calls in the browser, you'll need to specify an HTML media element"
+    // Per docs: client.remoteElement = 'remoteMedia' (string ID, not DOM element)
     // This ensures audio routing is ready BEFORE any calls arrive
-    if (this.audioElement) {
-      console.log("[Telnyx WebRTC] 🔊 Setting client.remoteElement during initialization");
-      this.client.remoteElement = this.audioElement;
-    }
+    console.log("[Telnyx WebRTC] 🔊 Setting client.remoteElement = 'telnyx-remote-audio' during init");
+    this.client.remoteElement = "telnyx-remote-audio";
 
     this.client.on("telnyx.ready", () => {
       console.log("[Telnyx WebRTC] Connected and ready");
@@ -680,10 +680,11 @@ class TelnyxWebRTCManager {
     // CRITICAL: Per Telnyx docs, ensure remoteElement is set BEFORE answering
     // Docs: https://www.npmjs.com/package/@telnyx/webrtc
     // "To hear/view calls in the browser, you'll need to specify an HTML media element"
+    // Per docs: client.remoteElement = 'remoteMedia' (string ID, not DOM element)
     // This prevents the 5-second audio delay on inbound calls
-    if (this.client && this.audioElement) {
-      console.log("[Telnyx WebRTC] 🔊 Ensuring client.remoteElement before answer");
-      this.client.remoteElement = this.audioElement;
+    if (this.client) {
+      console.log("[Telnyx WebRTC] 🔊 Ensuring client.remoteElement = 'telnyx-remote-audio' before answer");
+      this.client.remoteElement = "telnyx-remote-audio";
     }
 
     // Reset stream connected flag so we can reconnect if needed
