@@ -235,7 +235,27 @@ class TelnyxWebRTCManager {
       if (!call) return;
 
       const state = call.state;
-      const direction = call.direction;
+      
+      // CRITICAL: Inferir direction si no está disponible
+      // El SDK moderno no siempre proporciona direction
+      let direction = call.direction;
+      if (!direction) {
+        const currentStore = useTelnyxStore.getState();
+        // Si hay un outgoingCall con el mismo ID, es outbound
+        // Si no, y el estado es new/invite/ringing, es inbound
+        if (currentStore.outgoingCall && (currentStore.outgoingCall as any).id === call.id) {
+          direction = "outbound";
+        } else if (state === "new" || state === "invite" || state === "ringing") {
+          direction = "inbound";
+        }
+      }
+
+      console.log("[Telnyx WebRTC] Notification:", notification.type, { 
+        state, 
+        direction,
+        remoteCallerNumber: call.options?.remoteCallerNumber,
+        destinationNumber: call.options?.destinationNumber
+      });
 
       // Capturar remoteStream tan pronto como esté disponible
       if (call.remoteStream && this.audioElement && !this.remoteStreamConnected) {
@@ -253,8 +273,6 @@ class TelnyxWebRTCManager {
       const stateKey = `${call.id}-${state}`;
       if (this.lastCallState === stateKey) return;
       this.lastCallState = stateKey;
-
-      console.log("[Telnyx WebRTC] Notification:", notification.type, { state, direction });
 
       if (notification.type === "callUpdate") {
         this.handleCallStateChange(call, state, direction);
