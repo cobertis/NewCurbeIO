@@ -519,19 +519,10 @@ class TelnyxWebRTCManager {
       password: sipPass,
     };
     
-    if (iceServers && iceServers.length > 0) {
-      // CRITICAL: Manual ICE injection with TURN credentials from /api/telnyx/turn-credentials
-      // Per Telnyx docs: iceRelay=true forces relay-only ICE candidates (no P2P/STUN)
-      // https://developers.telnyx.com/docs/voice/webrtc/js-sdk/interfaces/iclientoptions
-      clientOptions.iceServers = iceServers;
-      clientOptions.iceRelay = true; // Official Telnyx SDK option to force TURN relay
-      clientOptions.prefetchIceCandidates = false; // Disable automatic - we have manual TURN credentials
-      console.log("[Telnyx WebRTC] ⚡ RELAY MODE (iceRelay=true): Forcing TURN tunnel");
-    } else {
-      // Fallback to SDK prefetch if no servers provided
-      clientOptions.prefetchIceCandidates = true;
-      console.log("[Telnyx WebRTC] Using SDK prefetchIceCandidates (no manual servers)");
-    }
+    // Let SDK manage ICE servers automatically - uses STUN for fastest connection
+    // Do NOT inject manual iceServers or force relay - causes TURN fallback delays
+    clientOptions.prefetchIceCandidates = true;
+    console.log("[Telnyx WebRTC] ⚡ SDK default ICE (STUN preferred for fastest connection)");
     
     this.client = new TelnyxRTC(clientOptions);
 
