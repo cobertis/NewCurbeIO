@@ -82,8 +82,7 @@ import ImessageCampaigns from "@/pages/imessage-campaigns";
 import ImessageCampaignDetail from "@/pages/imessage-campaign-detail";
 import WhatsAppPage from "@/pages/whatsapp";
 import NotificationsPage from "@/pages/notifications";
-import VipPassDesigner from "@/pages/vip-pass-designer";
-import VipPassManagement from "@/pages/VipPassManagement";
+import VipPassPage from "@/pages/vip-pass";
 import NotFound from "@/pages/not-found";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 
@@ -884,34 +883,18 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             <TooltipContent side="right" className="font-medium">Landing Page</TooltipContent>
           </Tooltip>
 
-          <Popover>
-            <PopoverTrigger asChild>
+          <Tooltip>
+            <TooltipTrigger asChild>
               <button
+                onClick={() => setLocation("/vip-pass")}
                 data-testid="sidebar-button-vip-pass"
                 className={circularButtonClass}
               >
                 <Wallet className="h-[18px] w-[18px] text-amber-600" />
               </button>
-            </PopoverTrigger>
-            <PopoverContent side="right" className="w-48 p-2">
-              <div className="space-y-1">
-                <button
-                  onClick={() => setLocation("/vip-pass-designer")}
-                  className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-muted transition-colors"
-                  data-testid="menu-vip-pass-designer"
-                >
-                  VIP Pass Designer
-                </button>
-                <button
-                  onClick={() => setLocation("/vip-pass-management")}
-                  className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-muted transition-colors"
-                  data-testid="menu-vip-pass-management"
-                >
-                  VIP Pass Management
-                </button>
-              </div>
-            </PopoverContent>
-          </Popover>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">VIP Pass</TooltipContent>
+          </Tooltip>
 
           {/* Spacer to push bottom icons down */}
           <div className="flex-1" />
@@ -1702,17 +1685,10 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/vip-pass-designer">
+      <Route path="/vip-pass">
         <ProtectedRoute>
           <DashboardLayout>
-            <VipPassDesigner />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/vip-pass-management">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <VipPassManagement />
+            <VipPassPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
