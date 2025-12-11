@@ -82,6 +82,8 @@ import ImessageCampaigns from "@/pages/imessage-campaigns";
 import ImessageCampaignDetail from "@/pages/imessage-campaign-detail";
 import WhatsAppPage from "@/pages/whatsapp";
 import NotificationsPage from "@/pages/notifications";
+import VipPassDesigner from "@/pages/vip-pass-designer";
+import VipPassManagement from "@/pages/VipPassManagement";
 import NotFound from "@/pages/not-found";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 
@@ -1668,6 +1670,20 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <IntegrationsPage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/vip-pass-designer">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <VipPassDesigner />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/vip-pass-management">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <VipPassManagement />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
