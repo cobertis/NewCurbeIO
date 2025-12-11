@@ -1257,6 +1257,14 @@ export function WebPhoneFloatingWindow() {
       // Only show name if Caller ID Lookup is enabled
       const displayName = callerIdNameEnabled ? rawDisplayName : null;
       console.log("[WebPhone UI] Incoming call info:", telnyxIncomingCallInfo, "callerIdNameEnabled:", callerIdNameEnabled);
+      console.log("[WebPhone UI] displayName calculation:", {
+        telnyxCallerName,
+        sipCallerName: telnyxIncomingCallInfo.callerName,
+        isValid: isValidCallerName(telnyxIncomingCallInfo.callerName),
+        rawDisplayName,
+        callerIdNameEnabled,
+        finalDisplayName: displayName
+      });
       return {
         phoneNumber: telnyxIncomingCallInfo.remoteCallerNumber || 'Unknown',
         displayName,
