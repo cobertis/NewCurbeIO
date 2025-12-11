@@ -26,7 +26,7 @@ import { useWebSocket } from "@/hooks/use-websocket";
 import { formatDistanceToNow } from "date-fns";
 import { WebPhoneFloatingWindow } from '@/components/WebPhoneFloatingWindow';
 import { webPhone, useWebPhoneStore } from "@/services/webphone";
-import { useTelnyxStore } from "@/services/telnyx-webrtc";
+import { useTelnyxStore, telnyxWebRTC } from "@/services/telnyx-webrtc";
 import type { User } from "@shared/schema";
 import defaultLogo from "@assets/logo no fondo_1760457183587.png";
 import Login from "@/pages/login";
@@ -147,6 +147,16 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       webPhone.disconnect();
     }
   }, [user?.sipEnabled, user?.sipExtension, user?.sipPassword, user?.sipServer]);
+
+  // PRIORITY 2: Pre-warm Telnyx WebRTC ICE on login for sub-1s call connection
+  const telnyxPreWarmRef = useRef(false);
+  useEffect(() => {
+    if (hasTelnyxNumber && user && !telnyxPreWarmRef.current) {
+      telnyxPreWarmRef.current = true;
+      console.log('[Telnyx WebRTC] ⚡ Pre-warm ICE triggered from App.tsx');
+      telnyxWebRTC.preWarm().catch(console.error);
+    }
+  }, [hasTelnyxNumber, user]);
 
   const { data: notificationsData, isLoading: isLoadingNotifications, isError: isErrorNotifications } = useQuery<{ notifications: any[] }>({
     queryKey: ["/api/notifications"],

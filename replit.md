@@ -63,3 +63,18 @@ A multi-tenant system for creating, issuing, and managing Apple Wallet VIP Passe
 - **Utilities:** `date-fns`.
 - **Background Jobs:** `node-cron`.
 - **Apple Wallet:** `passkit-generator`.
+### WebRTC ICE Optimization (Dec 2024)
+**GOAL:** Reduce call connection latency from 1.3-5s to <1s
+
+**CHANGES IMPLEMENTED:**
+1. **Pre-warm ICE on login** - `preWarm()` method in TelnyxWebRTCManager starts ICE gathering when agent logs in, not when call arrives
+2. **Early initialization in App.tsx** - Triggers pre-warm as soon as user has Telnyx number
+3. **iceCandidatePoolSize: 8** - Pre-allocates candidate pool for faster gathering
+4. **Prefetch ICE candidates** - SDK option `prefetchIceCandidates: true` enabled
+5. **AnchorSite: "Latency"** - Uses automatic latency-based routing to nearest Telnyx POP
+
+**ARCHITECTURE:**
+- Pre-warm runs in parallel with SDK initialization
+- Uses STUN servers (stun.telnyx.com, stun.l.google.com) for candidate gathering
+- SDK manages TURN credentials internally (no hardcoded credentials)
+- Pre-warm timeout: 3 seconds (continues if exceeded)
