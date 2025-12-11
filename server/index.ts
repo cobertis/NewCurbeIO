@@ -253,8 +253,8 @@ app.use((req, res, next) => {
                 );
               });
             } else {
-              // Already has Call Control App - just repair routing
-              console.log(`[Routing Repair] Company ${setting.companyId} already has Call Control App, repairing routing...`);
+              // Already has Call Control App - repair routing (includes webhook URL update)
+              console.log(`[Routing Repair] Company ${setting.companyId} already has Call Control App, repairing...`);
               telephonyProvisioningService.repairPhoneNumberRouting(setting.companyId).then((result) => {
                 if (result.success && result.repairedCount > 0) {
                   console.log(`[Routing Repair] Fixed ${result.repairedCount} phone number(s) for company ${setting.companyId}`);

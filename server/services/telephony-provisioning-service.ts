@@ -121,6 +121,40 @@ export class TelephonyProvisioningService {
     }
   }
 
+  async updateCallControlAppWebhook(
+    managedAccountId: string,
+    appId: string,
+    webhookBaseUrl: string,
+    companyId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log(`[TelephonyProvisioning] Updating Call Control App ${appId} webhook to ${webhookBaseUrl}`);
+      
+      const response = await this.makeApiRequest(
+        managedAccountId,
+        `/call_control_applications/${appId}`,
+        "PATCH",
+        {
+          webhook_event_url: `${webhookBaseUrl}/webhooks/telnyx/call-control/${companyId}`,
+          webhook_event_failover_url: `${webhookBaseUrl}/webhooks/telnyx/call-control/${companyId}/fallback`,
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[TelephonyProvisioning] Call Control App webhook update failed: ${response.status} - ${errorText}`);
+        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      }
+
+      console.log(`[TelephonyProvisioning] Call Control App webhook updated successfully`);
+      return { success: true };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Network error";
+      console.error(`[TelephonyProvisioning] Call Control App webhook update error:`, errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  }
+
   private async makeApiRequest(
     managedAccountId: string,
     endpoint: string,
@@ -1025,6 +1059,27 @@ export class TelephonyProvisioningService {
     // Check if Call Control App is configured - use it if available
     if (settings.callControlAppId) {
       console.log(`[TelephonyProvisioning] Using Call Control App routing: ${settings.callControlAppId}`);
+      
+      // CRITICAL: Ensure webhook URL is set on the Call Control App
+      const webhookBaseUrl = `https://${process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS}`;
+      if (webhookBaseUrl && webhookBaseUrl !== "https://undefined") {
+        console.log(`[TelephonyProvisioning] Updating Call Control App webhook URL to ${webhookBaseUrl}...`);
+        const webhookResult = await this.updateCallControlAppWebhook(
+          managedAccountId,
+          settings.callControlAppId,
+          webhookBaseUrl,
+          companyId
+        );
+        if (webhookResult.success) {
+          console.log(`[TelephonyProvisioning] Webhook URL updated successfully`);
+          // Update the database with the webhook URL
+          await db.update(telephonySettings)
+            .set({ webhookBaseUrl })
+            .where(eq(telephonySettings.companyId, companyId));
+        } else {
+          console.log(`[TelephonyProvisioning] Webhook update failed: ${webhookResult.error}`);
+        }
+      }
       
       // Get all phone numbers
       const phoneNumbers = await db
