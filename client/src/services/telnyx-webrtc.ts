@@ -956,7 +956,7 @@ class TelnyxWebRTCManager {
     return call;
   }
 
-  public answerCall(): void {
+  public async answerCall(): Promise<void> {
     const store = useTelnyxStore.getState();
     const incoming = store.incomingCall;
     if (!incoming) return;
@@ -975,6 +975,31 @@ class TelnyxWebRTCManager {
     if (this.client) {
       console.log("[Telnyx WebRTC] 🔊 Ensuring client.remoteElement as string ID before answer");
       this.client.remoteElement = "telnyx-remote-audio";
+    }
+
+    // FIX: Wake up AudioContext BEFORE answering to eliminate 3-5s audio delay
+    // Chrome/Safari block outbound WebRTC audio until AudioContext is active
+    try {
+      const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
+      if (AudioCtx) {
+        const ctx = new AudioCtx();
+        if (ctx.state === "suspended") {
+          await ctx.resume();
+          console.log("[WebRTC AUDIO] AudioContext resumed (instant outbound audio)");
+        }
+      }
+    } catch (e) {
+      console.warn("[WebRTC AUDIO] Error waking AudioContext:", e);
+    }
+
+    // FIX: Play silent buffer to unlock WebRTC audio pipeline
+    console.log("[WebRTC AUDIO] Playing silent buffer to unlock audio");
+    try {
+      const silent = new Audio();
+      silent.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=";
+      await silent.play();
+    } catch (e) {
+      // Ignore - this is just a pre-unlock attempt
     }
 
     // Reset stream connected flag so we can reconnect if needed
