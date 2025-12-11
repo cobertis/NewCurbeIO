@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { wallets, companies, telnyxPhoneNumbers } from "@shared/schema";
+import { wallets, companies, telnyxPhoneNumbers, telephonySettings } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import { SecretsService } from "./secrets-service";
 import { assignPhoneNumberToCredentialConnection } from "./telnyx-e911-service";
@@ -549,6 +549,7 @@ export async function getVoiceSettings(
   };
   callRecording?: {
     inboundEnabled: boolean;
+    outboundEnabled: boolean;
     format: string;
     channels: string;
   };
@@ -598,6 +599,29 @@ export async function getVoiceSettings(
       .from(telnyxPhoneNumbers)
       .where(eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId));
     
+    // Check outbound voice profile recording status
+    let outboundEnabled = false;
+    const [companyTelephonySettings] = await db
+      .select()
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+    
+    if (companyTelephonySettings?.outboundVoiceProfileId) {
+      try {
+        const outboundResponse = await fetch(
+          `${TELNYX_API_BASE}/outbound_voice_profiles/${companyTelephonySettings.outboundVoiceProfileId}`,
+          { method: "GET", headers }
+        );
+        if (outboundResponse.ok) {
+          const outboundResult = await outboundResponse.json();
+          const outboundRecording = outboundResult.data?.call_recording;
+          outboundEnabled = outboundRecording?.call_recording_type === "all";
+        }
+      } catch (outboundError) {
+        console.error("[Telnyx Voice] Failed to get outbound profile recording status:", outboundError);
+      }
+    }
+    
     return {
       success: true,
       cnamListing: {
@@ -606,6 +630,7 @@ export async function getVoiceSettings(
       },
       callRecording: {
         inboundEnabled: data?.call_recording?.inbound_call_recording_enabled || false,
+        outboundEnabled,
         format: data?.call_recording?.inbound_call_recording_format || "mp3",
         channels: data?.call_recording?.inbound_call_recording_channels || "single",
       },
@@ -624,7 +649,7 @@ export async function getVoiceSettings(
 }
 
 /**
- * Update call recording settings for a phone number
+ * Update call recording settings for a phone number (inbound) and outbound voice profile (outbound)
  */
 export async function updateCallRecording(
   phoneNumberId: string,
@@ -632,7 +657,7 @@ export async function updateCallRecording(
   enabled: boolean,
   format: "mp3" | "wav" = "mp3",
   channels: "single" | "dual" = "single"
-): Promise<{ success: boolean; error?: string }> {
+): Promise<{ success: boolean; error?: string; inboundEnabled?: boolean; outboundEnabled?: boolean }> {
   try {
     const apiKey = await getTelnyxMasterApiKey();
     
@@ -651,7 +676,8 @@ export async function updateCallRecording(
       "x-managed-account-id": wallet.telnyxAccountId,
     };
     
-    const payload = {
+    // Update inbound call recording on the phone number
+    const inboundPayload = {
       call_recording: {
         inbound_call_recording_enabled: enabled,
         inbound_call_recording_format: format,
@@ -659,24 +685,73 @@ export async function updateCallRecording(
       },
     };
     
-    console.log(`[Telnyx Call Recording] Updating. Number ID: ${phoneNumberId}, enabled=${enabled}, format=${format}, channels=${channels}`);
+    console.log(`[Telnyx Call Recording] Updating inbound. Number ID: ${phoneNumberId}, enabled=${enabled}, format=${format}, channels=${channels}`);
     
-    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
+    const inboundResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
       method: "PATCH",
       headers,
-      body: JSON.stringify(payload),
+      body: JSON.stringify(inboundPayload),
     });
     
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[Telnyx Call Recording] Update error: ${response.status} - ${errorText}`);
-      return { success: false, error: `Failed to update call recording: ${response.status} - ${errorText}` };
+    if (!inboundResponse.ok) {
+      const errorText = await inboundResponse.text();
+      console.error(`[Telnyx Call Recording] Inbound update error: ${inboundResponse.status} - ${errorText}`);
+      return { success: false, error: `Failed to update inbound call recording: ${inboundResponse.status} - ${errorText}` };
     }
     
-    const result = await response.json();
-    console.log(`[Telnyx Call Recording] Update successful:`, JSON.stringify(result.data?.call_recording, null, 2));
+    const inboundResult = await inboundResponse.json();
+    console.log(`[Telnyx Call Recording] Inbound update successful:`, JSON.stringify(inboundResult.data?.call_recording, null, 2));
     
-    return { success: true };
+    // Also update outbound recording on the Outbound Voice Profile
+    let outboundEnabled = false;
+    const [companyTelephonySettings] = await db
+      .select()
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+    
+    if (companyTelephonySettings?.outboundVoiceProfileId) {
+      try {
+        const outboundPayload = enabled
+          ? {
+              call_recording: {
+                call_recording_type: "all",
+                call_recording_channels: channels,
+                call_recording_format: format,
+              },
+            }
+          : {
+              call_recording: {
+                call_recording_type: "none",
+              },
+            };
+        
+        console.log(`[Telnyx Call Recording] Updating outbound profile: ${companyTelephonySettings.outboundVoiceProfileId}, enabled=${enabled}`);
+        
+        const outboundResponse = await fetch(
+          `${TELNYX_API_BASE}/outbound_voice_profiles/${companyTelephonySettings.outboundVoiceProfileId}`,
+          {
+            method: "PATCH",
+            headers,
+            body: JSON.stringify(outboundPayload),
+          }
+        );
+        
+        if (!outboundResponse.ok) {
+          const errorText = await outboundResponse.text();
+          console.error(`[Telnyx Call Recording] Outbound profile update error: ${outboundResponse.status} - ${errorText}`);
+        } else {
+          const outboundResult = await outboundResponse.json();
+          console.log(`[Telnyx Call Recording] Outbound profile update successful:`, JSON.stringify(outboundResult.data?.call_recording, null, 2));
+          outboundEnabled = enabled;
+        }
+      } catch (outboundError) {
+        console.error(`[Telnyx Call Recording] Outbound profile update failed:`, outboundError);
+      }
+    } else {
+      console.log(`[Telnyx Call Recording] No outbound voice profile found for company ${companyId}`);
+    }
+    
+    return { success: true, inboundEnabled: enabled, outboundEnabled };
   } catch (error) {
     console.error("[Telnyx Call Recording] Update error:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to update call recording" };

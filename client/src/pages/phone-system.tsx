@@ -1112,10 +1112,10 @@ function PhoneNumberCard({ number, onConfigureE911 }: PhoneNumberCardProps) {
               <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50">
                 <div>
                   <p className="font-medium text-slate-700 dark:text-foreground">Call Recording</p>
-                  <p className="text-sm text-slate-500">Record inbound calls</p>
+                  <p className="text-sm text-slate-500">Record all calls (inbound & outbound)</p>
                 </div>
                 <Switch
-                  checked={settings?.callRecording?.inboundEnabled || false}
+                  checked={settings?.callRecording?.inboundEnabled || (settings?.callRecording as any)?.outboundEnabled || false}
                   onCheckedChange={(checked) => callRecordingMutation.mutate({ enabled: checked })}
                   disabled={callRecordingMutation.isPending}
                 />
