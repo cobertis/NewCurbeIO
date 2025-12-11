@@ -1,0 +1,89 @@
+¡Casi lo tenemos! Estás a milímetros de la victoria.
+
+Analicemos tus logs con precisión quirúrgica:
+
+La Buena Noticia: La llamada ENTRÓ. El WebSocket funcionó, el registro funcionó, y la UI mostró "Incoming call from: +1305...". Esto ya es un triunfo enorme comparado con antes.
+
+El Error Rojo (Invalid session state): Esto ocurrió porque hiciste clic en "Answer" dos veces.
+
+Clic 1 (10:27:46): El sistema empezó a conectar (Establishing).
+
+Clic 2 (10:27:48): Como el audio no sonó de inmediato, volviste a hacer clic. El sistema gritó: "¡Ya estoy conectando, no me apures!" (Invalid session state).
+
+El Problema Real: La llamada se quedó pegada en Establishing (Estableciendo) y nunca pasó a Connected.
+
+¿Por qué se quedó pegada? Porque SIP.js conectó la señal, pero no enchufó el audio al parlante. El navegador recibió los datos de voz, miró a su alrededor, no vio dónde reproducirlos y se quedó esperando.
+
+Necesitamos decirle al Agente: "Oye, cuando aceptes la llamada, agarra el cable de audio (Track) y conéctalo a la etiqueta <audio> del HTML automáticamente".
+
+Copia y pega este prompt para conectar el audio y bloquear el botón para que no le des doble clic.
+
+FIX FINAL: AUDIO BINDING & UI LOCK
+Agente, la llamada entra pero se queda en Establishing y sin audio.
+
+SÍNTOMAS:
+
+El usuario hizo clic en "Answer".
+
+La sesión pasó a estado Establishing.
+
+Nunca pasó a Connected ni se escuchó audio.
+
+El usuario hizo clic de nuevo y obtuvo Error: Invalid session state Establishing (Doble submit).
+
+CAUSA TÉCNICA: Falta el manejo del evento track del RTCPeerConnection. En SIP.js puro, el audio no se reproduce solo; hay que tomar el MediaStream remoto y asignarlo al elemento <audio> del DOM explícitamente.
+
+TU TAREA:
+
+Modifica client/src/services/telnyx-webrtc.ts: En el método answerCall (y call para salientes), debes interceptar la creación del sessionDescriptionHandler para enganchar el audio.
+
+JavaScript
+
+// Dentro de answerCall(session)
+const answerOptions = {
+    sessionDescriptionHandlerOptions: {
+        constraints: { audio: true, video: false },
+        peerConnectionOptions: {
+            rtcConfig: { /* ... tu config Relay ... */ }
+        }
+    }
+};
+
+// CRÍTICO: Escuchar el evento de delegación de medios
+session.stateChange.addListener((newState) => {
+    if (newState === SessionState.Established) {
+        this.setupRemoteMedia(session); // <--- ESTO FALTA
+    }
+});
+
+session.accept(answerOptions);
+Implementa el método setupRemoteMedia(session):
+
+JavaScript
+
+setupRemoteMedia(session) {
+    const sdh = session.sessionDescriptionHandler;
+    if (!sdh || !sdh.peerConnection) return;
+
+    const pc = sdh.peerConnection;
+    const remoteAudio = document.getElementById('remoteAudio'); // O el ID que uses
+
+    // Opción A: Escuchar evento track
+    pc.ontrack = (event) => {
+        if (event.streams && event.streams[0]) {
+            remoteAudio.srcObject = event.streams[0];
+            remoteAudio.play().catch(e => console.error("Audio play failed", e));
+        }
+    };
+
+    // Opción B: Si ya están los receivers
+    const receivers = pc.getReceivers();
+    if (receivers.length > 0 && receivers[0].track) {
+         const stream = new MediaStream([receivers[0].track]);
+         remoteAudio.srcObject = stream;
+         remoteAudio.play();
+    }
+}
+Fix UI (Doble Clic): En WebPhoneFloatingWindow.tsx, deshabilita el botón "Answer" si el estado es answering o establishing para evitar el error de "Invalid session state".
+
+Hazlo ahora. Conecta el stream de audio al elemento HTML.

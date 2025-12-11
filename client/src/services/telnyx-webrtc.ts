@@ -102,6 +102,7 @@ interface TelnyxWebRTCState {
   isMuted: boolean;
   isOnHold: boolean;
   isConsulting: boolean;
+  isAnswering: boolean; // Prevents double-click on Answer button
   callerIdNumber?: string;
   sipUsername?: string;
   networkQuality?: NetworkQualityMetrics;
@@ -121,6 +122,7 @@ interface TelnyxWebRTCState {
   setMuted: (muted: boolean) => void;
   setOnHold: (hold: boolean) => void;
   setConsulting: (consulting: boolean) => void;
+  setIsAnswering: (answering: boolean) => void;
   setCallerIdNumber: (number: string) => void;
   setSipUsername: (username: string) => void;
   setNetworkQuality: (metrics?: NetworkQualityMetrics) => void;
@@ -140,6 +142,7 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   isMuted: false,
   isOnHold: false,
   isConsulting: false,
+  isAnswering: false,
   callDuration: 0,
   callActiveTimestamp: undefined,
   activeTelnyxLegId: undefined,
@@ -160,6 +163,7 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   setMuted: (muted) => set({ isMuted: muted }),
   setOnHold: (hold) => set({ isOnHold: hold }),
   setConsulting: (consulting) => set({ isConsulting: consulting }),
+  setIsAnswering: (answering) => set({ isAnswering: answering }),
   setCallerIdNumber: (number) => set({ callerIdNumber: number }),
   setSipUsername: (username) => set({ sipUsername: username }),
   setNetworkQuality: (metrics) => set({ networkQuality: metrics }),
@@ -756,6 +760,67 @@ class TelnyxWebRTCManager {
   }
 
   /**
+   * Setup remote media - connect audio stream to HTML audio element
+   */
+  private setupRemoteMedia(session: Session): void {
+    const sdh = session.sessionDescriptionHandler as any;
+    if (!sdh || !sdh.peerConnection) {
+      console.warn("[SIP.js WebRTC] No peer connection for remote media setup");
+      return;
+    }
+
+    const pc = sdh.peerConnection as RTCPeerConnection;
+    const remoteAudio = this.remoteAudio;
+    
+    if (!remoteAudio) {
+      console.error("[SIP.js WebRTC] Remote audio element not found!");
+      return;
+    }
+
+    console.log("[SIP.js WebRTC] Setting up remote media...");
+
+    // Method 1: Listen for track events (for new tracks)
+    pc.ontrack = (event: RTCTrackEvent) => {
+      console.log("[SIP.js WebRTC] ontrack event - kind:", event.track.kind);
+      if (event.track.kind === 'audio' && event.streams && event.streams[0]) {
+        console.log("[SIP.js WebRTC] Connecting remote audio stream");
+        remoteAudio.srcObject = event.streams[0];
+        remoteAudio.play().then(() => {
+          console.log("[SIP.js WebRTC] Remote audio playing via ontrack");
+        }).catch(e => {
+          console.error("[SIP.js WebRTC] Audio play failed:", e);
+        });
+      }
+    };
+
+    // Method 2: Check if receivers already have tracks (for existing streams)
+    const receivers = pc.getReceivers();
+    console.log("[SIP.js WebRTC] Checking", receivers.length, "receivers for audio tracks");
+    
+    for (const receiver of receivers) {
+      if (receiver.track && receiver.track.kind === 'audio') {
+        console.log("[SIP.js WebRTC] Found existing audio track from receiver");
+        const stream = new MediaStream([receiver.track]);
+        remoteAudio.srcObject = stream;
+        remoteAudio.play().then(() => {
+          console.log("[SIP.js WebRTC] Remote audio playing via receiver");
+        }).catch(e => {
+          console.error("[SIP.js WebRTC] Audio play failed:", e);
+        });
+        break;
+      }
+    }
+
+    // Method 3: Check remote streams directly
+    const remoteStreams = (pc as any).getRemoteStreams?.();
+    if (remoteStreams && remoteStreams.length > 0) {
+      console.log("[SIP.js WebRTC] Found remote stream via getRemoteStreams");
+      remoteAudio.srcObject = remoteStreams[0];
+      remoteAudio.play().catch(e => console.error("[SIP.js WebRTC] Audio play failed:", e));
+    }
+  }
+
+  /**
    * Answer an incoming call
    */
   public async answerCall(): Promise<void> {
@@ -767,7 +832,32 @@ class TelnyxWebRTCManager {
       return;
     }
 
-    console.log("[SIP.js WebRTC] Answering call...");
+    // Check session state - only accept if in Initial state
+    const currentState = invitation.state;
+    console.log("[SIP.js WebRTC] Answering call, current state:", currentState);
+    
+    // If already establishing or established, don't call accept again
+    if (currentState === SessionState.Establishing) {
+      console.log("[SIP.js WebRTC] Call already being answered (Establishing), waiting...");
+      return; // Already in progress, don't double-accept
+    }
+    
+    if (currentState === SessionState.Established) {
+      console.log("[SIP.js WebRTC] Call already answered (Established)");
+      return; // Already connected
+    }
+    
+    if (currentState === SessionState.Terminated) {
+      console.log("[SIP.js WebRTC] Call already terminated");
+      store.setIncomingCall(undefined);
+      store.setIncomingCallInfo(undefined);
+      return;
+    }
+
+    // Mark as answering in store to prevent double-clicks
+    store.setIsAnswering(true);
+    
+    console.log("[SIP.js WebRTC] Proceeding to answer call...");
     this.stopRingtone();
 
     // Wake up AudioContext for instant audio
@@ -791,6 +881,19 @@ class TelnyxWebRTCManager {
       iceServersCount: rtcConfig.iceServers?.length
     }));
 
+    // Listen for state changes to setup media when established
+    const stateListener = (newState: SessionState) => {
+      console.log("[SIP.js WebRTC] Answer state change:", newState);
+      if (newState === SessionState.Established) {
+        console.log("[SIP.js WebRTC] Call established - setting up remote media");
+        this.setupRemoteMedia(invitation);
+        store.setIsAnswering(false);
+      } else if (newState === SessionState.Terminated) {
+        store.setIsAnswering(false);
+      }
+    };
+    invitation.stateChange.addListener(stateListener);
+
     try {
       // IMPORTANT: Pass peerConnectionConfiguration in sessionDescriptionHandlerOptions
       await invitation.accept({
@@ -802,9 +905,10 @@ class TelnyxWebRTCManager {
           }
         } as any
       });
-      console.log("[SIP.js WebRTC] Call answered successfully");
+      console.log("[SIP.js WebRTC] Call accept() completed");
     } catch (error) {
       console.error("[SIP.js WebRTC] Answer failed:", error);
+      store.setIsAnswering(false);
       // Reset state on failure
       store.setIncomingCall(undefined);
       store.setIncomingCallInfo(undefined);

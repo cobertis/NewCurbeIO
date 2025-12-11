@@ -1187,6 +1187,7 @@ export function WebPhoneFloatingWindow() {
   const telnyxCurrentCallInfo = useTelnyxStore(state => state.currentCallInfo);
   const telnyxIncomingCallInfo = useTelnyxStore(state => state.incomingCallInfo);
   const telnyxOutgoingCallInfo = useTelnyxStore(state => state.outgoingCallInfo);
+  const telnyxIsAnswering = useTelnyxStore(state => state.isAnswering);
   const [telnyxInitialized, setTelnyxInitialized] = useState(false);
   const [telnyxCallDuration, setTelnyxCallDuration] = useState(0);
   const telnyxTimerRef = useRef<NodeJS.Timeout>();
@@ -1946,18 +1947,26 @@ export function WebPhoneFloatingWindow() {
                       <div className="grid grid-cols-2 gap-4 sm:gap-6 px-4 sm:px-8">
                         <button
                           onClick={handleAnswerCall}
-                          className="flex flex-col items-center gap-2 sm:gap-3 transition-all active:scale-95"
+                          disabled={telnyxIsAnswering}
+                          className={`flex flex-col items-center gap-2 sm:gap-3 transition-all active:scale-95 ${telnyxIsAnswering ? 'opacity-50 cursor-not-allowed' : ''}`}
                           data-testid="button-accept-call"
                         >
-                          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center shadow-lg">
-                            <Phone className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+                          <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center shadow-lg ${telnyxIsAnswering ? 'bg-green-400' : 'bg-green-500 hover:bg-green-600'}`}>
+                            {telnyxIsAnswering ? (
+                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white" />
+                            ) : (
+                              <Phone className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+                            )}
                           </div>
-                          <span className="text-sm sm:text-base text-foreground font-medium">Accept</span>
+                          <span className="text-sm sm:text-base text-foreground font-medium">
+                            {telnyxIsAnswering ? 'Connecting...' : 'Accept'}
+                          </span>
                         </button>
                         
                         <button
                           onClick={handleRejectCall}
-                          className="flex flex-col items-center gap-2 sm:gap-3 transition-all active:scale-95"
+                          disabled={telnyxIsAnswering}
+                          className={`flex flex-col items-center gap-2 sm:gap-3 transition-all active:scale-95 ${telnyxIsAnswering ? 'opacity-50 cursor-not-allowed' : ''}`}
                           data-testid="button-reject-call"
                         >
                           <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg">
