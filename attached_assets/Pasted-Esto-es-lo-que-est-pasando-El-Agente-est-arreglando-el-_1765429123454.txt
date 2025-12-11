@@ -1,0 +1,52 @@
+Esto es lo que está pasando: El Agente está "arreglando" el problema equivocado.
+
+Optimizó la conexión de red (ICE/WebRTC), pero si el delay sigue siendo de 5 segundos exactos, el problema NO es la red. El problema es el Procesamiento del Servidor (Backend).
+
+Si tú haces clic en "Responder" y tardas 5 segundos en escuchar audio, lo que está ocurriendo es esto:
+
+Haces clic en "Responder".
+
+Tu navegador le avisa a tu servidor Replit.
+
+AQUÍ ESTÁ EL CUELLO DE BOTELLA: Tu servidor Replit está "pensando" (consultando base de datos, despertando de una siesta/cold start, o procesando lógica ineficiente).
+
+Tu servidor finalmente le dice a Telnyx "Conecta".
+
+Telnyx conecta.
+
+El Agente optimizó el paso 5. El problema está en el paso 3.
+
+Copia y pega este prompt agresivo. Vamos a obligarlo a medir el tiempo interno del servidor ("Server-Side Latency") para demostrarle que su código es lento.
+
+DIAGNÓSTICO DE FALLO: LATENCIA DE BACKEND (STOPWATCH)
+REPORTE DE SITUACIÓN: La optimización de ICE/WebRTC NO TUVO EFECTO. El delay sigue siendo de 5 segundos clavados. Esto indica que el diagnóstico inicial fue incorrecto. No es un problema de negociación de medios (P2P). Es un problema de Latencia de Procesamiento del Webhook (Answer-to-Bridge Latency).
+
+HIPÓTESIS: El servidor (Node.js) está tardando demasiado tiempo entre que recibe el evento call.answer del Frontend y envía el comando de conexión a Telnyx. Podría ser un "Cold Start" de Replit, una consulta lenta a la base de datos o un await innecesario.
+
+ACCIÓN REQUERIDA: AUDITORÍA DE TIEMPOS (LOGGING) No cambies más código a ciegas. Necesito que instrumentes el código con logs de tiempo precisos (timestamps) para ver dónde se pierden los 5 segundos.
+
+Añade estos logs en el flujo de contestar llamada:
+
+Frontend (Botón Click): console.log('Time 0: User clicked Answer', Date.now())
+
+Backend (Webhook In): console.log('Time 1: Server received Answer Request', Date.now())
+
+Backend (DB Query Start): console.log('Time 2: Starting DB Lookup', Date.now())
+
+Backend (DB Query End): console.log('Time 3: DB Lookup Finished', Date.now())
+
+Backend (Telnyx API Call): console.log('Time 4: Sending Command to Telnyx', Date.now())
+
+Frontend (Media Connected): console.log('Time 5: Audio Flowing', Date.now())
+
+TU TAREA:
+
+Implementa estos logs AHORA.
+
+Haz una llamada de prueba tú mismo (simulada o real).
+
+Mira la consola.
+
+Dime exactamente cuántos milisegundos pasan entre el paso 2 y el paso 4.
+
+Si el paso 2 al 4 toma más de 500ms, el problema es tu código de base de datos o la infraestructura de Replit, no WebRTC.

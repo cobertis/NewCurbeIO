@@ -26624,6 +26624,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // This allows server-side hangup with NORMAL_CLEARING instead of SDK's 486 USER_BUSY
   
   app.post("/webhooks/telnyx/call-control/:companyId", async (req: Request, res: Response) => {
+    // LATENCY DIAGNOSTIC
+    const T0 = Date.now();
+    console.log(`[LATENCY] T0: Webhook received at ${T0} (${new Date(T0).toISOString()})`);
+
     // CRITICAL: Respond immediately to meet 200ms webhook requirement
     res.status(200).json({ received: true });
     
@@ -26654,10 +26658,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return;
       }
       telnyxApiKey = telnyxApiKey.trim().replace(/[\r\n\t]/g, "");
+    const T1 = Date.now();
+    console.log(`[LATENCY] T1: Secrets fetched (+${T1-T0}ms)`);
       
       // Get managed account ID for this company
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId);
+      const T2 = Date.now();
+      console.log(`[LATENCY] T2: Managed account fetched (+${T2-T0}ms)`);
       
       switch (eventType) {
         case "call.initiated": {
@@ -26666,6 +26674,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             // Per Telnyx docs: transfer does NOT require answer first
             console.log("[Telnyx Call Control] Incoming call - transferring to WebRTC");
             
+            const T3 = Date.now();
+            console.log(`[LATENCY] T3: Starting SIP lookup (+${T3-T0}ms)`);
             // Get SIP username from cache or DB
             const cached = sipUsernameCache.get(companyId);
             let sipUsername: string | null = null;
@@ -26725,6 +26735,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             const sipUri = `sip:${sipUsername}@sip.telnyx.com`;
             console.log("[Telnyx Call Control] Transferring to:", sipUri);
             
+            const T4 = Date.now();
+            console.log(`[LATENCY] T4: Starting Telnyx transfer API call (+${T4-T0}ms)`);
             const transferRes = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/transfer`, {
               method: "POST",
               headers: {
@@ -26755,6 +26767,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               return;
             }
             
+            const T5 = Date.now();
+            console.log(`[LATENCY] T5: Transfer API complete (+${T5-T0}ms, API took ${T5-T4}ms)`);
             console.log("[Telnyx Call Control] Transfer initiated successfully");
           }
           break;
@@ -29244,6 +29258,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       telnyxApiKey = telnyxApiKey.trim().replace(/[\r\n\t]/g, "");
+    const T1 = Date.now();
+    console.log(`[LATENCY] T1: Secrets fetched (+${T1-T0}ms)`);
       
       // Hang up both legs if available (PSTN and WebRTC legs)
       const hangupPromises: Promise<Response>[] = [];
@@ -29367,6 +29383,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         // Clean the API key
         telnyxApiKey = telnyxApiKey.trim().replace(/[\r\n\t]/g, "");
+    const T1 = Date.now();
+    console.log(`[LATENCY] T1: Secrets fetched (+${T1-T0}ms)`);
         console.log("[WebRTC Server Hangup] Using API key prefix:", telnyxApiKey.substring(0, 10));
 
         const hangupResponse = await fetch(

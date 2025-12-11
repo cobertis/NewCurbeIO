@@ -695,6 +695,8 @@ class TelnyxWebRTCManager {
         break;
 
       case "active":
+        // LATENCY DIAGNOSTIC
+        console.log(`[LATENCY] CALL_ACTIVE: Audio connected at ${Date.now()} (${new Date().toISOString()})`);
         console.log("[Telnyx WebRTC] 🟢 Call active");
         this.stopRingback();
         this.stopRingtone();
@@ -928,6 +930,10 @@ class TelnyxWebRTCManager {
     const incoming = store.incomingCall;
     if (!incoming) return;
 
+    // LATENCY DIAGNOSTIC
+    const ANSWER_T0 = Date.now();
+    console.log(`[LATENCY] ANSWER_T0: User clicked Answer at ${ANSWER_T0} (${new Date(ANSWER_T0).toISOString()})`);
+    
     console.log("[Telnyx WebRTC] 📞 Answering call...");
     this.stopRingtone();
 
