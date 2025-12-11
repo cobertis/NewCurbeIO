@@ -85,7 +85,10 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
     }
     
     if (params.national_destination_code) {
-      queryParams.append("filter[national_destination_code]", params.national_destination_code);
+      // Use phone_number starts_with filter for exact area code matching
+      // Format: +1XXX for US numbers where XXX is the area code
+      const areaCode = params.national_destination_code;
+      queryParams.append("filter[phone_number][starts_with]", `+1${areaCode}`);
     }
     
     if (params.starts_with) {
