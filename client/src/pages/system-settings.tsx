@@ -19,7 +19,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import { Key, Eye, EyeOff, Plus, Pencil, Trash2, Shield, Clock, User as UserIcon, Activity, ExternalLink, HelpCircle, Settings2, Check, Save, Globe, Lock, Unlock } from "lucide-react";
+import { Key, Eye, EyeOff, Plus, Pencil, Trash2, Shield, Clock, User as UserIcon, Activity, ExternalLink, HelpCircle, Settings2, Check, Save, Globe, Lock, Unlock, DollarSign, Phone } from "lucide-react";
 import { Switch } from "@/components/ui/switch";
 import type { 
   SystemApiCredential, 
@@ -27,7 +27,8 @@ import type {
   ApiProvider, 
   CredentialAuditAction,
   User,
-  SystemConfig
+  SystemConfig,
+  TelnyxGlobalPricing
 } from "@shared/schema";
 import { apiProviders } from "@shared/schema";
 
@@ -92,6 +93,229 @@ const revealPasswordSchema = z.object({
 
 type RevealPasswordData = z.infer<typeof revealPasswordSchema>;
 
+
+// Telnyx Global Pricing Section Component
+function TelnyxPricingSection() {
+  const { toast } = useToast();
+  const [formValues, setFormValues] = useState<Partial<TelnyxGlobalPricing>>({});
+  const [hasChanges, setHasChanges] = useState(false);
+
+  const { data: pricingData, isLoading } = useQuery<{ pricing: TelnyxGlobalPricing }>({
+    queryKey: ["/api/telnyx/global-pricing"],
+  });
+
+  useEffect(() => {
+    if (pricingData?.pricing) {
+      setFormValues(pricingData.pricing);
+      setHasChanges(false);
+    }
+  }, [pricingData]);
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: Partial<TelnyxGlobalPricing>) => {
+      return apiRequest("PUT", "/api/telnyx/global-pricing", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/global-pricing"] });
+      setHasChanges(false);
+      toast({
+        title: "Pricing Updated",
+        description: "Telnyx global pricing has been updated successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error?.message || "Failed to update pricing.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleValueChange = (field: keyof TelnyxGlobalPricing, value: string | number) => {
+    setFormValues(prev => ({ ...prev, [field]: value }));
+    setHasChanges(true);
+  };
+
+  const handleSave = () => {
+    updateMutation.mutate(formValues);
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <LoadingSpinner fullScreen={false} />
+      </div>
+    );
+  }
+
+  const PricingInput = ({ 
+    field, 
+    label, 
+    step = "0.0001",
+    prefix = "$"
+  }: { 
+    field: keyof TelnyxGlobalPricing; 
+    label: string;
+    step?: string;
+    prefix?: string;
+  }) => (
+    <div className="flex items-center justify-between py-2">
+      <label className="text-sm font-medium text-muted-foreground">{label}</label>
+      <div className="flex items-center gap-1">
+        <span className="text-sm text-muted-foreground">{prefix}</span>
+        <Input
+          type="number"
+          step={step}
+          min="0"
+          value={formValues[field] as string || ""}
+          onChange={(e) => handleValueChange(field, e.target.value)}
+          className="w-28 text-right"
+          data-testid={`input-pricing-${field}`}
+        />
+      </div>
+    </div>
+  );
+
+  const IntegerInput = ({ 
+    field, 
+    label, 
+    suffix = ""
+  }: { 
+    field: keyof TelnyxGlobalPricing; 
+    label: string;
+    suffix?: string;
+  }) => (
+    <div className="flex items-center justify-between py-2">
+      <label className="text-sm font-medium text-muted-foreground">{label}</label>
+      <div className="flex items-center gap-1">
+        <Input
+          type="number"
+          step="1"
+          min="0"
+          value={formValues[field] as number || ""}
+          onChange={(e) => handleValueChange(field, parseInt(e.target.value) || 0)}
+          className="w-28 text-right"
+          data-testid={`input-pricing-${field}`}
+        />
+        {suffix && <span className="text-sm text-muted-foreground">{suffix}</span>}
+      </div>
+    </div>
+  );
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-muted-foreground">
+            Configure base rates for Telnyx telephony services. These rates apply globally across all organizations.
+          </p>
+        </div>
+        <Button
+          onClick={handleSave}
+          disabled={!hasChanges || updateMutation.isPending}
+          data-testid="button-save-pricing"
+        >
+          {updateMutation.isPending ? (
+            <>
+              <LoadingSpinner fullScreen={false} />
+              <span className="ml-2">Saving...</span>
+            </>
+          ) : (
+            <>
+              <Save className="h-4 w-4 mr-2" />
+              Save Changes
+            </>
+          )}
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <Card data-testid="card-voice-rates">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Phone className="h-4 w-4" />
+              Voice Rates (per minute)
+            </CardTitle>
+            <CardDescription className="text-xs">
+              60/60 billing increment
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            <PricingInput field="voiceLocalOutbound" label="Local Outbound" />
+            <PricingInput field="voiceLocalInbound" label="Local Inbound" />
+            <PricingInput field="voiceTollfreeOutbound" label="Toll-Free Outbound" />
+            <PricingInput field="voiceTollfreeInbound" label="Toll-Free Inbound" />
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-sms-rates">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Activity className="h-4 w-4" />
+              SMS Rates (per message)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            <PricingInput field="smsLongcodeOutbound" label="Longcode Outbound" />
+            <PricingInput field="smsLongcodeInbound" label="Longcode Inbound" />
+            <PricingInput field="smsTollfreeOutbound" label="Toll-Free Outbound" />
+            <PricingInput field="smsTollfreeInbound" label="Toll-Free Inbound" />
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-addons">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Settings2 className="h-4 w-4" />
+              Add-ons
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            <PricingInput field="callControlInbound" label="Call Control Inbound" />
+            <PricingInput field="callControlOutbound" label="Call Control Outbound" />
+            <PricingInput field="recordingPerMinute" label="Recording (per minute)" />
+            <PricingInput field="cnamLookup" label="CNAM Lookup" />
+          </CardContent>
+        </Card>
+
+        <Card data-testid="card-dids">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <DollarSign className="h-4 w-4" />
+              DIDs (monthly)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-1">
+            <PricingInput field="didLocal" label="Local DID" step="0.01" />
+            <PricingInput field="didTollfree" label="Toll-Free DID" step="0.01" />
+          </CardContent>
+        </Card>
+
+        <Card className="md:col-span-2" data-testid="card-billing-config">
+          <CardHeader className="pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              Billing Configuration
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <IntegerInput field="billingIncrement" label="Billing Increment" suffix="seconds" />
+              <IntegerInput field="minBillableSeconds" label="Min Billable Seconds" suffix="seconds" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {pricingData?.pricing?.updatedAt && (
+        <p className="text-xs text-muted-foreground text-right" data-testid="text-last-updated">
+          Last updated: {format(new Date(pricingData.pricing.updatedAt), "PPpp")}
+        </p>
+      )}
+    </div>
+  );
+}
 
 // Deployment Section Component
 function DeploymentSection() {
@@ -1117,10 +1341,14 @@ export default function SystemSettings() {
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-4 max-w-2xl" data-testid="settings-tabs">
+        <TabsList className="grid w-full grid-cols-5 max-w-3xl" data-testid="settings-tabs">
           <TabsTrigger value="credentials" data-testid="tab-credentials">
             <Key className="h-4 w-4 mr-2" />
             API Credentials
+          </TabsTrigger>
+          <TabsTrigger value="pricing" data-testid="tab-pricing">
+            <DollarSign className="h-4 w-4 mr-2" />
+            Telnyx Pricing
           </TabsTrigger>
           <TabsTrigger value="config" data-testid="tab-config">
             <Settings2 className="h-4 w-4 mr-2" />
@@ -1261,6 +1489,20 @@ export default function SystemSettings() {
                   })}
                 </div>
               )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="pricing" className="mt-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-lg">Telnyx Global Pricing</CardTitle>
+              <CardDescription>
+                Configure global pricing rates for Telnyx telephony services
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <TelnyxPricingSection />
             </CardContent>
           </Card>
         </TabsContent>
