@@ -905,12 +905,14 @@ class TelnyxWebRTCManager {
       webrtcCallId 
     });
 
-    // CRITICAL: For INBOUND calls, use server-side hangup first to terminate PSTN cleanly
-    // ONLY clean up WebRTC after server confirms PSTN is terminated (to avoid 486 Busy)
+    // For INBOUND calls routed directly to Credential Connection (no TeXML),
+    // we can use SDK hangup() directly since there's no intermediate TeXML leg
+    // For legacy TeXML routing, we try server-side hangup first
     if (direction === "inbound") {
-      console.log("[Telnyx WebRTC] Using server-side hangup for inbound call...");
-      let serverHangupSuccess = false;
+      console.log("[Telnyx WebRTC] Attempting to hang up inbound call...");
       
+      // First try server-side hangup (for legacy TeXML routing)
+      let serverHasActiveCall = false;
       try {
         const response = await fetch("/api/webrtc/server-hangup", {
           method: "POST",
@@ -921,25 +923,26 @@ class TelnyxWebRTCManager {
         const result = await response.json();
         console.log("[Telnyx WebRTC] Server hangup result:", result);
         
-        // Only proceed with WebRTC cleanup if server confirmed PSTN termination
-        serverHangupSuccess = result.success === true;
+        // Check if server had an active call to hang up
+        serverHasActiveCall = result.message !== "No active call to hang up";
+        
+        if (serverHasActiveCall && result.success) {
+          console.log("[Telnyx WebRTC] Server terminated PSTN call (TeXML routing)");
+          // PSTN is terminated - the call will automatically move to hangup/destroy state
+        }
       } catch (e) {
-        console.error("[Telnyx WebRTC] Server hangup failed:", e);
-        serverHangupSuccess = false;
+        console.error("[Telnyx WebRTC] Server hangup error (non-fatal):", e);
       }
       
-      if (serverHangupSuccess) {
-        // PSTN is terminated - the call will automatically move to hangup/destroy state
-        // Do NOT call activeCall.hangup() as the call no longer exists on Telnyx's side
-        // This prevents the "CALL DOES NOT EXIST" error that disconnects the socket
-        console.log("[Telnyx WebRTC] PSTN terminated, waiting for SDK to clean up automatically...");
-      } else {
-        // Server failed to terminate PSTN - DON'T call SDK hangup (would send 486)
-        // The call may still be active on PSTN side
-        console.error("[Telnyx WebRTC] Server hangup failed - NOT cleaning up WebRTC to avoid 486 Busy");
-        console.error("[Telnyx WebRTC] User may need to wait for remote party to hang up");
-        // Don't clean up state - let the call remain "active" until remote hangs up
-        return;
+      // If server had no active call, we're using direct Credential Connection routing
+      // In this case, use SDK hangup() directly - it will send SIP BYE to terminate
+      if (!serverHasActiveCall) {
+        console.log("[Telnyx WebRTC] Using SDK hangup for direct Credential Connection routing");
+        try {
+          activeCall.hangup();
+        } catch (e) {
+          console.error("[Telnyx WebRTC] SDK hangup error:", e);
+        }
       }
     } else {
       // For OUTBOUND calls, use SDK hangup (no 486 issue because we initiated)
