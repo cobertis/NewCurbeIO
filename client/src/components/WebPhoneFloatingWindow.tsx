@@ -1763,26 +1763,66 @@ export function WebPhoneFloatingWindow() {
       case 'missed':
         return {
           color: 'text-red-500',
+          bgColor: 'bg-red-500/10',
+          borderColor: 'border-red-500/20',
           icon: PhoneMissed,
           label: 'Missed'
         };
       case 'answered':
         return {
           color: 'text-green-600',
+          bgColor: 'bg-green-500/10',
+          borderColor: 'border-green-500/20',
           icon: Phone,
           label: 'Answered'
         };
       case 'ended':
         return {
-          color: 'text-foreground',
+          color: 'text-blue-500',
+          bgColor: 'bg-blue-500/10',
+          borderColor: 'border-blue-500/20',
           icon: Phone,
-          label: 'Ended'
+          label: 'Completed'
+        };
+      case 'busy':
+        return {
+          color: 'text-orange-500',
+          bgColor: 'bg-orange-500/10',
+          borderColor: 'border-orange-500/20',
+          icon: PhoneOff,
+          label: 'Busy'
+        };
+      case 'no_answer':
+        return {
+          color: 'text-yellow-600',
+          bgColor: 'bg-yellow-500/10',
+          borderColor: 'border-yellow-500/20',
+          icon: Clock,
+          label: 'No Answer'
+        };
+      case 'failed':
+        return {
+          color: 'text-red-600',
+          bgColor: 'bg-red-600/10',
+          borderColor: 'border-red-600/20',
+          icon: PhoneOff,
+          label: 'Failed'
+        };
+      case 'ringing':
+        return {
+          color: 'text-blue-400',
+          bgColor: 'bg-blue-400/10',
+          borderColor: 'border-blue-400/20',
+          icon: Phone,
+          label: 'Ringing'
         };
       default:
         return {
           color: 'text-muted-foreground',
+          bgColor: 'bg-muted/50',
+          borderColor: 'border-muted',
           icon: Phone,
-          label: status
+          label: status || 'Unknown'
         };
     }
   };
@@ -2430,13 +2470,18 @@ export function WebPhoneFloatingWindow() {
                                 ? call.callerName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
                                 : '';
                               const timeStr = format(new Date(call.startedAt), 'h:mma');
+                              const dateStr = format(new Date(call.startedAt), 'MMM d');
                               const statusStyle = getCallStatusStyle(call.status);
                               const isSelected = selectedCallIds.has(call.id);
+                              const durationStr = formatDuration(call.duration || 0);
+                              const StatusIcon = statusStyle.icon;
+                              const DirectionIcon = call.direction === 'inbound' ? PhoneIncoming : PhoneOutgoing;
                               
                               return (
                                 <div 
                                   key={call.id} 
-                                  className="flex items-center gap-2 px-2 sm:px-4 py-1.5 sm:py-2 hover:bg-muted/30 transition-colors"
+                                  className="flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-2 sm:py-3 hover:bg-muted/30 transition-colors"
+                                  data-testid={`call-log-${call.id}`}
                                 >
                                   {/* Checkbox - Only in Edit Mode */}
                                   {isEditMode && (
@@ -2456,45 +2501,77 @@ export function WebPhoneFloatingWindow() {
                                     </div>
                                   )}
                                   
-                                  {/* Avatar */}
-                                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                                    {initials ? (
-                                      <span className="text-xs sm:text-sm font-medium text-muted-foreground">{initials}</span>
-                                    ) : (
-                                      <User className="h-4 w-4 sm:h-5 sm:w-5 text-muted-foreground" />
-                                    )}
+                                  {/* Avatar with Direction Indicator */}
+                                  <div className="relative flex-shrink-0">
+                                    <div className={cn(
+                                      "w-9 h-9 sm:w-11 sm:h-11 rounded-full flex items-center justify-center",
+                                      statusStyle.bgColor
+                                    )}>
+                                      {initials ? (
+                                        <span className={cn("text-xs sm:text-sm font-semibold", statusStyle.color)}>{initials}</span>
+                                      ) : (
+                                        <StatusIcon className={cn("h-4 w-4 sm:h-5 sm:w-5", statusStyle.color)} />
+                                      )}
+                                    </div>
+                                    {/* Direction indicator badge */}
+                                    <div className={cn(
+                                      "absolute -bottom-0.5 -right-0.5 w-4 h-4 rounded-full flex items-center justify-center border-2 border-background",
+                                      call.direction === 'inbound' ? 'bg-blue-500' : 'bg-green-500'
+                                    )}>
+                                      <DirectionIcon className="h-2 w-2 text-white" />
+                                    </div>
                                   </div>
                                   
                                   {/* Call Info */}
                                   <div className="flex-1 min-w-0">
-                                    <div className="mb-0.5">
+                                    <div className="flex items-center gap-2 mb-0.5">
                                       <span className={cn(
-                                        "text-sm sm:text-base font-normal truncate",
-                                        call.status === 'missed' ? statusStyle.color : 'text-foreground'
+                                        "text-sm sm:text-base font-medium truncate",
+                                        call.status === 'missed' || call.status === 'failed' ? statusStyle.color : 'text-foreground'
                                       )}>
                                         {call.callerName || "Unknown Caller"}
                                       </span>
+                                      {/* Status Badge */}
+                                      <span className={cn(
+                                        "inline-flex items-center gap-1 px-1.5 py-0.5 rounded-full text-[10px] sm:text-xs font-medium border",
+                                        statusStyle.bgColor,
+                                        statusStyle.borderColor,
+                                        statusStyle.color
+                                      )}>
+                                        {statusStyle.label}
+                                      </span>
                                     </div>
-                                    <div className="flex items-center gap-1 sm:gap-1.5 text-[10px] sm:text-xs text-muted-foreground">
+                                    <div className="flex items-center gap-1.5 sm:gap-2 text-[10px] sm:text-xs text-muted-foreground">
                                       <span>{formatCallerNumber((call.direction === 'inbound' ? call.fromNumber : call.toNumber))}</span>
+                                      {durationStr && (
+                                        <>
+                                          <span className="text-muted-foreground/50">•</span>
+                                          <span className="text-muted-foreground">{durationStr}</span>
+                                        </>
+                                      )}
                                     </div>
                                   </div>
                                   
                                   {/* Time and Call Button */}
                                   {!isEditMode && (
-                                    <div className="flex items-center gap-2 sm:gap-3 flex-shrink-0">
-                                      <span className="text-xs sm:text-sm text-muted-foreground">{timeStr}</span>
-                                      <button
-                                        onClick={() => {
-                                          setViewMode('keypad');
-                                          setDialNumber((call.direction === 'inbound' ? call.fromNumber : call.toNumber));
-                                        }}
-                                        className="text-blue-500 hover:opacity-80 transition-opacity"
-                                        data-testid={`button-call-${call.id}`}
-                                      >
-                                        <Phone className="h-4 w-4 sm:h-5 sm:w-5" />
-                                      </button>
+                                    <div className="flex flex-col items-end gap-1 flex-shrink-0">
+                                      <span className="text-xs text-muted-foreground">{timeStr}</span>
+                                      <span className="text-[10px] text-muted-foreground/60">{dateStr}</span>
                                     </div>
+                                  )}
+                                  
+                                  {/* Call Button */}
+                                  {!isEditMode && (
+                                    <button
+                                      onClick={() => {
+                                        setViewMode('keypad');
+                                        setDialNumber((call.direction === 'inbound' ? call.fromNumber : call.toNumber));
+                                      }}
+                                      className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center transition-colors"
+                                      data-testid={`button-call-${call.id}`}
+                                    >
+                                      <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
+                                    </button>
                                   )}
                                   
                                   {/* Time Only in Edit Mode */}

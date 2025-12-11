@@ -29789,6 +29789,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         callerName,
         telnyxCallId,
         telnyxSessionId,
+        sipCallId,
+        hangupCause,
         startedAt,
         answeredAt,
         endedAt
@@ -29811,16 +29813,60 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           callerName,
           telnyxCallId,
           telnyxSessionId,
+        sipCallId,
+        hangupCause,
           startedAt: startedAt ? new Date(startedAt) : new Date(),
           answeredAt: answeredAt ? new Date(answeredAt) : null,
           endedAt: endedAt ? new Date(endedAt) : null,
         })
         .returning();
 
-      res.json({ success: true, log });
+      res.json({ success: true, id: log.id, log });
     } catch (error: any) {
       console.error("[Call Logs] Create error:", error);
       res.status(500).json({ message: "Failed to create call log" });
+    }
+  });
+
+
+  // PATCH /api/call-logs/:id - Update a call log entry
+  app.patch("/api/call-logs/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { status, duration, answeredAt, endedAt, hangupCause, recordingUrl } = req.body;
+
+      const updateData: any = {};
+      if (status !== undefined) updateData.status = status;
+      if (duration !== undefined) updateData.duration = duration;
+      if (answeredAt !== undefined) updateData.answeredAt = new Date(answeredAt);
+      if (endedAt !== undefined) updateData.endedAt = new Date(endedAt);
+      if (hangupCause !== undefined) updateData.hangupCause = hangupCause;
+      if (recordingUrl !== undefined) updateData.recordingUrl = recordingUrl;
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No fields to update" });
+      }
+
+      const [updated] = await db
+        .update(callLogs)
+        .set(updateData)
+        .where(and(eq(callLogs.id, id), eq(callLogs.companyId, user.companyId)))
+        .returning();
+
+      if (!updated) {
+        return res.status(404).json({ message: "Call log not found" });
+      }
+
+      res.json({ success: true, log: updated });
+    } catch (error: any) {
+      console.error("[Call Logs] Update error:", error);
+      res.status(500).json({ message: "Failed to update call log" });
     }
   });
 

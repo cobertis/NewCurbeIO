@@ -334,6 +334,13 @@ class TelnyxWebRTCManager {
   private maxReconnectAttempts: number = 10;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private isReconnecting: boolean = false;
+  
+  // Call logging state
+  private currentSipCallId: string | null = null;
+  private callStartTime: Date | null = null;
+  private callAnswerTime: Date | null = null;
+  private callLogId: string | null = null;
+  private callWasAnswered: boolean = false;
 
   private constructor() {
     // CRITICAL: Create audio element immediately in constructor
@@ -437,6 +444,151 @@ class TelnyxWebRTCManager {
   public setAudioElement(elem: HTMLAudioElement) {
     console.log("[SIP.js WebRTC] Audio element registered:", !!elem);
     this.audioElement = elem;
+  }
+
+  // ============================================================================
+  // CALL LOGGING FUNCTIONS
+  // ============================================================================
+  
+  /**
+   * Generate unique SIP call ID for tracking
+   */
+  private generateSipCallId(): string {
+    return `sip-${Date.now()}-${Math.random().toString(36).substring(2, 11)}`;
+  }
+  
+  /**
+   * Reset call logging state
+   */
+  private resetCallLoggingState(): void {
+    this.currentSipCallId = null;
+    this.callStartTime = null;
+    this.callAnswerTime = null;
+    this.callLogId = null;
+    this.callWasAnswered = false;
+  }
+  
+  /**
+   * Create call log entry when call starts
+   */
+  private async logCallStart(callInfo: SipCallInfo): Promise<void> {
+    try {
+      this.currentSipCallId = this.generateSipCallId();
+      this.callStartTime = new Date();
+      this.callWasAnswered = false;
+      
+      const store = useTelnyxStore.getState();
+      const fromNumber = callInfo.direction === "outbound" 
+        ? (store.callerIdNumber || "Unknown")
+        : callInfo.remoteCallerNumber;
+      const toNumber = callInfo.direction === "outbound" 
+        ? callInfo.remoteCallerNumber 
+        : (store.callerIdNumber || "Unknown");
+      
+      console.log(`[SIP.js CallLog] Creating call log: ${callInfo.direction} from ${fromNumber} to ${toNumber}`);
+      
+      const response = await fetch("/api/call-logs", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          sipCallId: this.currentSipCallId,
+          fromNumber,
+          toNumber,
+          direction: callInfo.direction,
+          status: "ringing",
+          callerName: callInfo.callerName || null,
+          startedAt: this.callStartTime.toISOString(),
+        }),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        this.callLogId = data.id;
+        console.log(`[SIP.js CallLog] Call log created: ${this.callLogId}`);
+      } else {
+        console.error(`[SIP.js CallLog] Failed to create call log: ${response.status}`);
+      }
+    } catch (error) {
+      console.error("[SIP.js CallLog] Error creating call log:", error);
+    }
+  }
+  
+  /**
+   * Update call log when call is answered
+   */
+  private async logCallAnswered(): Promise<void> {
+    if (!this.callLogId) {
+      console.warn("[SIP.js CallLog] No call log ID to update for answered");
+      return;
+    }
+    
+    try {
+      this.callAnswerTime = new Date();
+      this.callWasAnswered = true;
+      
+      console.log(`[SIP.js CallLog] Updating call log ${this.callLogId} to answered`);
+      
+      await fetch(`/api/call-logs/${this.callLogId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          status: "answered",
+          answeredAt: this.callAnswerTime.toISOString(),
+        }),
+      });
+    } catch (error) {
+      console.error("[SIP.js CallLog] Error updating call log to answered:", error);
+    }
+  }
+  
+  /**
+   * Finalize call log when call ends
+   */
+  private async logCallEnd(hangupCause?: string): Promise<void> {
+    if (!this.callLogId) {
+      console.warn("[SIP.js CallLog] No call log ID to finalize");
+      this.resetCallLoggingState();
+      return;
+    }
+    
+    try {
+      const endTime = new Date();
+      let duration = 0;
+      let finalStatus: "answered" | "missed" | "busy" | "failed" | "no_answer" = "missed";
+      
+      if (this.callWasAnswered && this.callAnswerTime) {
+        duration = Math.round((endTime.getTime() - this.callAnswerTime.getTime()) / 1000);
+        finalStatus = "answered";
+      } else if (hangupCause) {
+        if (hangupCause.includes("busy") || hangupCause === "486") {
+          finalStatus = "busy";
+        } else if (hangupCause.includes("no_answer") || hangupCause === "408" || hangupCause === "480") {
+          finalStatus = "no_answer";
+        } else if (hangupCause.includes("failed") || hangupCause.includes("error")) {
+          finalStatus = "failed";
+        }
+      }
+      
+      console.log(`[SIP.js CallLog] Finalizing call log ${this.callLogId}: status=${finalStatus}, duration=${duration}s`);
+      
+      await fetch(`/api/call-logs/${this.callLogId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({
+          status: finalStatus,
+          duration,
+          endedAt: endTime.toISOString(),
+          hangupCause: hangupCause || "normal_clearing",
+        }),
+      });
+    } catch (error) {
+      console.error("[SIP.js CallLog] Error finalizing call log:", error);
+    } finally {
+      this.resetCallLoggingState();
+    }
   }
 
   /**
@@ -649,6 +801,9 @@ class TelnyxWebRTCManager {
     
     // Extract call info for UI
     const callInfo = this.extractCallerInfo(session, isOutgoing, destination);
+    
+    // Log call start when session is created (ringing/establishing phase)
+    this.logCallStart(callInfo);
 
     session.stateChange.addListener((state: SessionState) => {
       console.log("[SIP.js WebRTC] Session state changed:", state);
@@ -679,6 +834,8 @@ class TelnyxWebRTCManager {
           store.setMuted(false);
           store.setOnHold(false);
           this.setupRemoteAudio(session);
+          // Log call answered
+          this.logCallAnswered();
           break;
 
         case SessionState.Terminating:
@@ -699,6 +856,8 @@ class TelnyxWebRTCManager {
           store.setActiveTelnyxLegId(undefined);
           store.setMuted(false);
           store.setOnHold(false);
+          // Log call end with final status
+          this.logCallEnd();
           break;
       }
     });

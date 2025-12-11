@@ -231,9 +231,10 @@ export async function handleCallHangup(event: TelnyxWebhookEvent): Promise<{ suc
           status: finalStatus,
           duration: durationSeconds,
           endedAt: new Date(),
+          hangupCause: hangupCause,
         })
         .where(eq(callLogs.id, existingLog.id));
-      console.log(`[Telnyx Webhook] Updated call log ${existingLog.id} to status=${finalStatus}, duration=${durationSeconds}s`);
+      console.log(`[Telnyx Webhook] Updated call log ${existingLog.id} to status=${finalStatus}, duration=${durationSeconds}s, cause=${hangupCause}`);
     } else {
       const [newLog] = await db.insert(callLogs).values({
         companyId: result.companyId,
@@ -243,11 +244,12 @@ export async function handleCallHangup(event: TelnyxWebhookEvent): Promise<{ suc
         direction: direction as "inbound" | "outbound",
         status: finalStatus,
         duration: durationSeconds,
+        hangupCause: hangupCause,
         startedAt: new Date(Date.now() - durationSeconds * 1000),
         endedAt: new Date(),
       }).returning();
       updatedLogId = newLog.id;
-      console.log(`[Telnyx Webhook] Created call log ${newLog.id} on hangup`);
+      console.log(`[Telnyx Webhook] Created call log ${newLog.id} on hangup with cause=${hangupCause}`);
     }
 
     if (durationSeconds <= 0) {
