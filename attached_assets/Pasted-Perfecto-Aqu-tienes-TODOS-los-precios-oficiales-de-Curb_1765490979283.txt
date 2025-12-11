@@ -1,0 +1,152 @@
+Perfecto.
+Aquí tienes **TODOS los precios oficiales** de Curbe.io — **limpios, exactos, sin relleno**, organizados en formato perfecto para que tu agente NO tenga excusas y pueda configurarlo todo en tu dashboard.
+
+Te lo doy en tres formatos:
+
+1. **Listado simple** (humano)
+2. **JSON listo para copiar/pegar en código**
+3. **Variables estilo `.env`**
+
+---
+
+# ✅ **1. LISTA COMPLETA DE PRECIOS (TU PRECIO FINAL AL CLIENTE)**
+
+## 📞 **VOZ (por minuto – 60/60)**
+
+* **Local Outbound:** **0.0100**
+* **Local Inbound:** **0.0080**
+* **Toll-Free Outbound:** **0.0180**
+* **Toll-Free Inbound:** **0.0130**
+
+---
+
+## 💬 **SMS (por mensaje)**
+
+* **SMS Longcode Outbound:** **0.0060**
+* **SMS Longcode Inbound:** **0.0060**
+* **SMS Toll-Free Outbound:** **0.0070**
+* **SMS Toll-Free Inbound:** **0.0070**
+
+---
+
+## 📟 **Call Control / Recording / CNAM**
+
+* **Call Control Inbound:** **0.0020**
+* **Call Control Outbound:** **0.0020**
+* **Recording per minute:** **0.0020**
+* **CNAM Lookup:** **0.0045**
+
+---
+
+## ☎️ **DIDs (por número al mes)**
+
+* **Local DID:** **1.00**
+* **Toll-Free DID:** **1.50**
+
+---
+
+# ✅ **2. JSON COMPLETO PARA EL AGENTE (copiar/pegar)**
+
+Tu agente SOLO necesita copiar esto y pegarlo en el archivo de configuración:
+
+```json
+{
+  "voice": {
+    "local_outbound": {
+      "price": 0.0100,
+      "billing": "60/60"
+    },
+    "local_inbound": {
+      "price": 0.0080,
+      "billing": "60/60"
+    },
+    "tollfree_outbound": {
+      "price": 0.0180,
+      "billing": "60/60"
+    },
+    "tollfree_inbound": {
+      "price": 0.0130,
+      "billing": "60/60"
+    }
+  },
+
+  "sms": {
+    "longcode_outbound": {
+      "price": 0.0060
+    },
+    "longcode_inbound": {
+      "price": 0.0060
+    },
+    "tollfree_outbound": {
+      "price": 0.0070
+    },
+    "tollfree_inbound": {
+      "price": 0.0070
+    }
+  },
+
+  "addons": {
+    "call_control_inbound": {
+      "price": 0.0020
+    },
+    "call_control_outbound": {
+      "price": 0.0020
+    },
+    "recording": {
+      "price": 0.0020
+    },
+    "cnam_lookup": {
+      "price": 0.0045
+    }
+  },
+
+  "dids": {
+    "local": {
+      "price": 1.00
+    },
+    "tollfree": {
+      "price": 1.50
+    }
+  }
+}
+```
+
+---
+
+# ✅ **3. FORMATO `.env` / CONFIG**
+
+Si tu agente usa variables de entorno:
+
+```env
+VOICE_LOCAL_OUTBOUND_PRICE=0.0100
+VOICE_LOCAL_INBOUND_PRICE=0.0080
+VOICE_TF_OUTBOUND_PRICE=0.0180
+VOICE_TF_INBOUND_PRICE=0.0130
+
+SMS_LONGCODE_OUTBOUND_PRICE=0.0060
+SMS_LONGCODE_INBOUND_PRICE=0.0060
+SMS_TF_OUTBOUND_PRICE=0.0070
+SMS_TF_INBOUND_PRICE=0.0070
+
+CALL_CONTROL_INBOUND_PRICE=0.0020
+CALL_CONTROL_OUTBOUND_PRICE=0.0020
+RECORDING_PRICE=0.0020
+CNAM_LOOKUP_PRICE=0.0045
+
+DID_LOCAL_PRICE=1.00
+DID_TF_PRICE=1.50
+```
+
+---
+
+# ⚡ Nada más. Esto es TODO lo que tu agente necesita.
+
+Si no puede configurarlo con esto, entonces el problema no es la lista, es la persona.
+
+Si quieres:
+🔥 que genere el archivo JSON final descargable
+🔥 un PDF elegante para documentación interna
+🔥 un módulo de cálculo para tu CRM
+🔥 la tabla para mostrar precios en tu dashboard
+
+te lo hago inmediatamente.

@@ -4633,6 +4633,53 @@ export type WhatsappMessage = typeof whatsappMessages.$inferSelect;
 export type InsertWhatsappMessage = z.infer<typeof insertWhatsappMessageSchema>;
 
 // =====================================================
+// TELNYX GLOBAL PRICING (Super Admin Configuration)
+// =====================================================
+// These prices are set by Super Admin and apply to all companies.
+// They represent the customer-facing rates (what companies pay us).
+
+export const telnyxGlobalPricing = pgTable("telnyx_global_pricing", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Voice rates (per minute, 60/60 billing)
+  voiceLocalOutbound: numeric("voice_local_outbound", { precision: 10, scale: 4 }).notNull().default("0.0100"),
+  voiceLocalInbound: numeric("voice_local_inbound", { precision: 10, scale: 4 }).notNull().default("0.0080"),
+  voiceTollfreeOutbound: numeric("voice_tollfree_outbound", { precision: 10, scale: 4 }).notNull().default("0.0180"),
+  voiceTollfreeInbound: numeric("voice_tollfree_inbound", { precision: 10, scale: 4 }).notNull().default("0.0130"),
+  
+  // SMS rates (per message)
+  smsLongcodeOutbound: numeric("sms_longcode_outbound", { precision: 10, scale: 4 }).notNull().default("0.0060"),
+  smsLongcodeInbound: numeric("sms_longcode_inbound", { precision: 10, scale: 4 }).notNull().default("0.0060"),
+  smsTollfreeOutbound: numeric("sms_tollfree_outbound", { precision: 10, scale: 4 }).notNull().default("0.0070"),
+  smsTollfreeInbound: numeric("sms_tollfree_inbound", { precision: 10, scale: 4 }).notNull().default("0.0070"),
+  
+  // Add-on rates
+  callControlInbound: numeric("call_control_inbound", { precision: 10, scale: 4 }).notNull().default("0.0020"),
+  callControlOutbound: numeric("call_control_outbound", { precision: 10, scale: 4 }).notNull().default("0.0020"),
+  recordingPerMinute: numeric("recording_per_minute", { precision: 10, scale: 4 }).notNull().default("0.0020"),
+  cnamLookup: numeric("cnam_lookup", { precision: 10, scale: 4 }).notNull().default("0.0045"),
+  
+  // DID monthly rates
+  didLocal: numeric("did_local", { precision: 10, scale: 2 }).notNull().default("1.00"),
+  didTollfree: numeric("did_tollfree", { precision: 10, scale: 2 }).notNull().default("1.50"),
+  
+  // Billing configuration
+  billingIncrement: integer("billing_increment").notNull().default(60),
+  minBillableSeconds: integer("min_billable_seconds").notNull().default(60),
+  
+  // Metadata
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedBy: varchar("updated_by").references(() => users.id, { onDelete: "set null" }),
+});
+
+export const insertTelnyxGlobalPricingSchema = createInsertSchema(telnyxGlobalPricing).omit({
+  id: true, updatedAt: true
+});
+
+export type TelnyxGlobalPricing = typeof telnyxGlobalPricing.$inferSelect;
+export type InsertTelnyxGlobalPricing = z.infer<typeof insertTelnyxGlobalPricingSchema>;
+
+// =====================================================
 // WALLET SYSTEM (Transactional Billing)
 // =====================================================
 

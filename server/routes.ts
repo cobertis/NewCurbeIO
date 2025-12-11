@@ -90,7 +90,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, or, sql, inArray, count, isNotNull, isNull } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, vipPassDevices, vipPassInstances } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, vipPassDevices, vipPassInstances, telnyxGlobalPricing } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -28769,6 +28769,144 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to enable managed account" });
     }
   });
+
+  // =====================================================
+  // TELNYX GLOBAL PRICING ENDPOINTS (Super Admin Only)
+  // =====================================================
+  
+  // GET /api/telnyx/global-pricing - Get global pricing configuration
+  app.get("/api/telnyx/global-pricing", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Super Admin access required" });
+      }
+
+      const [pricing] = await db.select().from(telnyxGlobalPricing).limit(1);
+      
+      if (!pricing) {
+        // Return default pricing if none exists
+        return res.json({
+          pricing: {
+            voice: {
+              localOutbound: 0.0100,
+              localInbound: 0.0080,
+              tollfreeOutbound: 0.0180,
+              tollfreeInbound: 0.0130,
+            },
+            sms: {
+              longcodeOutbound: 0.0060,
+              longcodeInbound: 0.0060,
+              tollfreeOutbound: 0.0070,
+              tollfreeInbound: 0.0070,
+            },
+            addons: {
+              callControlInbound: 0.0020,
+              callControlOutbound: 0.0020,
+              recordingPerMinute: 0.0020,
+              cnamLookup: 0.0045,
+            },
+            dids: {
+              local: 1.00,
+              tollfree: 1.50,
+            },
+            billing: {
+              increment: 60,
+              minBillableSeconds: 60,
+            }
+          }
+        });
+      }
+
+      res.json({
+        pricing: {
+          id: pricing.id,
+          voice: {
+            localOutbound: parseFloat(pricing.voiceLocalOutbound || "0.0100"),
+            localInbound: parseFloat(pricing.voiceLocalInbound || "0.0080"),
+            tollfreeOutbound: parseFloat(pricing.voiceTollfreeOutbound || "0.0180"),
+            tollfreeInbound: parseFloat(pricing.voiceTollfreeInbound || "0.0130"),
+          },
+          sms: {
+            longcodeOutbound: parseFloat(pricing.smsLongcodeOutbound || "0.0060"),
+            longcodeInbound: parseFloat(pricing.smsLongcodeInbound || "0.0060"),
+            tollfreeOutbound: parseFloat(pricing.smsTollfreeOutbound || "0.0070"),
+            tollfreeInbound: parseFloat(pricing.smsTollfreeInbound || "0.0070"),
+          },
+          addons: {
+            callControlInbound: parseFloat(pricing.callControlInbound || "0.0020"),
+            callControlOutbound: parseFloat(pricing.callControlOutbound || "0.0020"),
+            recordingPerMinute: parseFloat(pricing.recordingPerMinute || "0.0020"),
+            cnamLookup: parseFloat(pricing.cnamLookup || "0.0045"),
+          },
+          dids: {
+            local: parseFloat(pricing.didLocal || "1.00"),
+            tollfree: parseFloat(pricing.didTollfree || "1.50"),
+          },
+          billing: {
+            increment: pricing.billingIncrement || 60,
+            minBillableSeconds: pricing.minBillableSeconds || 60,
+          },
+          updatedAt: pricing.updatedAt,
+          updatedBy: pricing.updatedBy,
+        }
+      });
+    } catch (error: any) {
+      console.error("[Global Pricing] GET error:", error);
+      res.status(500).json({ message: "Failed to get pricing configuration" });
+    }
+  });
+
+  // PUT /api/telnyx/global-pricing - Update global pricing configuration
+  app.put("/api/telnyx/global-pricing", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Super Admin access required" });
+      }
+
+      const { voice, sms, addons, dids, billing } = req.body;
+
+      // Get existing pricing or create new
+      const [existing] = await db.select().from(telnyxGlobalPricing).limit(1);
+
+      const pricingData = {
+        voiceLocalOutbound: voice?.localOutbound?.toString() || "0.0100",
+        voiceLocalInbound: voice?.localInbound?.toString() || "0.0080",
+        voiceTollfreeOutbound: voice?.tollfreeOutbound?.toString() || "0.0180",
+        voiceTollfreeInbound: voice?.tollfreeInbound?.toString() || "0.0130",
+        smsLongcodeOutbound: sms?.longcodeOutbound?.toString() || "0.0060",
+        smsLongcodeInbound: sms?.longcodeInbound?.toString() || "0.0060",
+        smsTollfreeOutbound: sms?.tollfreeOutbound?.toString() || "0.0070",
+        smsTollfreeInbound: sms?.tollfreeInbound?.toString() || "0.0070",
+        callControlInbound: addons?.callControlInbound?.toString() || "0.0020",
+        callControlOutbound: addons?.callControlOutbound?.toString() || "0.0020",
+        recordingPerMinute: addons?.recordingPerMinute?.toString() || "0.0020",
+        cnamLookup: addons?.cnamLookup?.toString() || "0.0045",
+        didLocal: dids?.local?.toString() || "1.00",
+        didTollfree: dids?.tollfree?.toString() || "1.50",
+        billingIncrement: billing?.increment || 60,
+        minBillableSeconds: billing?.minBillableSeconds || 60,
+        updatedAt: new Date(),
+        updatedBy: user.id,
+      };
+
+      if (existing) {
+        await db.update(telnyxGlobalPricing)
+          .set(pricingData)
+          .where(eq(telnyxGlobalPricing.id, existing.id));
+      } else {
+        await db.insert(telnyxGlobalPricing).values(pricingData);
+      }
+
+      console.log("[Global Pricing] Updated by user:", user.id);
+      res.json({ success: true, message: "Pricing configuration updated successfully" });
+    } catch (error: any) {
+      console.error("[Global Pricing] PUT error:", error);
+      res.status(500).json({ message: "Failed to update pricing configuration" });
+    }
+  });
+
 
   // POST /api/telnyx/provisioning/trigger - Trigger WebRTC infrastructure provisioning
   app.post("/api/telnyx/provisioning/trigger", requireAuth, async (req: Request, res: Response) => {
