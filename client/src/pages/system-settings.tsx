@@ -470,7 +470,20 @@ function DeploymentSection() {
 
 export default function SystemSettings() {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("credentials");
+  
+  // Read initial tab from URL query param
+  const getInitialTab = () => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab');
+      if (tab && ['credentials', 'pricing', 'config', 'audit', 'deploy'].includes(tab)) {
+        return tab;
+      }
+    }
+    return 'credentials';
+  };
+  
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const [addDialogOpen, setAddDialogOpen] = useState(false);
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [revealDialogOpen, setRevealDialogOpen] = useState(false);
