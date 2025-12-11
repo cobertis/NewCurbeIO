@@ -18,7 +18,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, ChevronLeft, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard, Shield, FileText, DollarSign, Phone, PhoneMissed, Share2, Star, ClipboardList, Clock, Megaphone, MessageCircle, Users as UsersIcon, Gift, Layout } from "lucide-react";
+import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, ChevronLeft, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard, Shield, FileText, DollarSign, Phone, PhoneMissed, Share2, Star, ClipboardList, Clock, Megaphone, MessageCircle, Users as UsersIcon, Gift, Layout, Wallet } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -883,6 +883,35 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             </TooltipTrigger>
             <TooltipContent side="right" className="font-medium">Landing Page</TooltipContent>
           </Tooltip>
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                data-testid="sidebar-button-vip-pass"
+                className={circularButtonClass}
+              >
+                <Wallet className="h-[18px] w-[18px] text-amber-600" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent side="right" className="w-48 p-2">
+              <div className="space-y-1">
+                <button
+                  onClick={() => setLocation("/vip-pass-designer")}
+                  className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-muted transition-colors"
+                  data-testid="menu-vip-pass-designer"
+                >
+                  VIP Pass Designer
+                </button>
+                <button
+                  onClick={() => setLocation("/vip-pass-management")}
+                  className="w-full text-left px-3 py-2 text-sm rounded-md hover:bg-muted transition-colors"
+                  data-testid="menu-vip-pass-management"
+                >
+                  VIP Pass Management
+                </button>
+              </div>
+            </PopoverContent>
+          </Popover>
 
           {/* Spacer to push bottom icons down */}
           <div className="flex-1" />
