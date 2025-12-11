@@ -919,6 +919,14 @@ class TelnyxWebRTCManager {
     const activeCall = store.currentCall || store.outgoingCall || store.incomingCall;
     if (!activeCall) {
       console.log("[Telnyx WebRTC] No active call to hang up");
+      // Still clean up UI states in case of orphaned state
+      store.setCurrentCall(undefined);
+      store.setOutgoingCall(undefined);
+      store.setIncomingCall(undefined);
+      store.setCallActiveTimestamp(undefined);
+      store.setActiveTelnyxLegId(undefined);
+      this.stopRingtone();
+      this.stopRingback();
       return;
     }
     
@@ -934,13 +942,29 @@ class TelnyxWebRTCManager {
       telnyxLegId
     });
 
-    // CRITICAL: The Telnyx WebRTC SDK has a BUG where hangup() ALWAYS sends 486 USER_BUSY
-    // This is hardcoded in BaseCall.ts: cause: 'USER_BUSY', causeCode: 17
-    // The only way to properly hangup with NORMAL_CLEARING (16) is via Call Control API
-    
+    // Clean UI states IMMEDIATELY for responsive feedback
+    store.setCurrentCall(undefined);
+    store.setOutgoingCall(undefined);
+    store.setIncomingCall(undefined);
+    store.setCallActiveTimestamp(undefined);
+    store.setActiveTelnyxLegId(undefined);
+    this.stopRingtone();
+    this.stopRingback();
+
+    // ALWAYS call SDK hangup first to terminate WebRTC session immediately
+    // This ensures the call ends even if Call Control API fails
+    console.log("[Telnyx WebRTC] Terminating WebRTC session via SDK");
+    try {
+      activeCall.hangup();
+    } catch (e) {
+      console.error("[Telnyx WebRTC] SDK hangup error:", e);
+    }
+
+    // For inbound calls, ALSO try Call Control API to properly terminate PSTN leg
+    // This only works when using Call Control Application routing (not Credential Connection)
+    // The server will check activeCallsMap for the real PSTN call_control_id
     if (direction === "inbound" && telnyxLegId) {
-      // For inbound calls with leg ID: Use Call Control API to hangup properly
-      console.log("[Telnyx WebRTC] Using Call Control API hangup for inbound call");
+      console.log("[Telnyx WebRTC] Also trying Call Control API for PSTN leg");
       try {
         const response = await fetch("/api/webrtc/call-control-hangup", {
           method: "POST",
@@ -949,36 +973,12 @@ class TelnyxWebRTCManager {
           body: JSON.stringify({ telnyxLegId })
         });
         const result = await response.json();
-        console.log("[Telnyx WebRTC] Call Control hangup result:", result);
-        
-        if (!result.success) {
-          console.error("[Telnyx WebRTC] Call Control hangup failed, falling back to SDK");
-          activeCall.hangup();
-        }
+        console.log("[Telnyx WebRTC] Call Control API result:", result);
       } catch (e) {
-        console.error("[Telnyx WebRTC] Call Control hangup error:", e);
-        // Fallback to SDK hangup
-        activeCall.hangup();
-      }
-    } else {
-      // For outbound calls or no leg ID: use SDK hangup
-      console.log("[Telnyx WebRTC] Using SDK hangup");
-      try {
-        activeCall.hangup();
-      } catch (e) {
-        console.error("[Telnyx WebRTC] SDK hangup error:", e);
+        // Ignore errors - SDK hangup already terminated the call
+        console.log("[Telnyx WebRTC] Call Control API error (ignored, SDK already hung up):", e);
       }
     }
-
-    // Clean UI states AFTER hangup
-    store.setCurrentCall(undefined);
-    store.setOutgoingCall(undefined);
-    store.setIncomingCall(undefined);
-    store.setCallActiveTimestamp(undefined);
-    store.setActiveTelnyxLegId(undefined);
-
-    this.stopRingtone();
-    this.stopRingback();
   }
 
   public toggleMute(): void {
