@@ -735,30 +735,29 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
           </div>
         </div>
 
-        {/* Filters Section */}
-        <div className="px-6 py-4 border-b border-border bg-muted/30 space-y-4">
-          {/* Row 1: Country, Features, Type */}
-          <div className="grid grid-cols-12 gap-3">
-            <div className="col-span-3">
+        {/* Filters Section - All in one row */}
+        <div className="px-4 py-3 border-b border-border bg-muted/30">
+          <div className="flex items-end gap-2">
+            <div className="w-28">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Country</label>
               <Select value={countryCode} onValueChange={setCountryCode}>
-                <SelectTrigger className="w-full" data-testid="select-country">
+                <SelectTrigger className="h-9" data-testid="select-country">
                   <SelectValue placeholder="Country" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="US">United States +1</SelectItem>
-                  <SelectItem value="CA">Canada +1</SelectItem>
+                  <SelectItem value="US">US +1</SelectItem>
+                  <SelectItem value="CA">CA +1</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="col-span-3">
+            <div className="w-28">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Features</label>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between" data-testid="select-features">
-                    {selectedFeatures.length === 0 ? "Any feature" : `${selectedFeatures.length} selected`}
-                    <ChevronDown className="h-4 w-4 ml-2" />
+                  <Button variant="outline" className="w-full h-9 justify-between text-sm" data-testid="select-features">
+                    {selectedFeatures.length === 0 ? "Any" : `${selectedFeatures.length}`}
+                    <ChevronDown className="h-3 w-3 ml-1" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-48">
@@ -784,69 +783,57 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
               </DropdownMenu>
             </div>
 
-            <div className="col-span-2">
+            <div className="w-24">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
               <Select value={numberType} onValueChange={setNumberType}>
-                <SelectTrigger className="w-full" data-testid="select-type">
-                  <SelectValue placeholder="All types" />
+                <SelectTrigger className="h-9" data-testid="select-type">
+                  <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All types</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
                   <SelectItem value="local">Local</SelectItem>
                   <SelectItem value="toll_free">Toll-free</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="col-span-2">
+            <div className="w-24">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Search By</label>
               <Select value={searchBy} onValueChange={setSearchBy}>
-                <SelectTrigger className="w-full" data-testid="select-search-by">
-                  <SelectValue placeholder="Area code" />
+                <SelectTrigger className="h-9" data-testid="select-search-by">
+                  <SelectValue placeholder="Area" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="area_code">Area code</SelectItem>
                   <SelectItem value="starts_with">Starts with</SelectItem>
                   <SelectItem value="ends_with">Ends with</SelectItem>
                   <SelectItem value="contains">Contains</SelectItem>
-                  <SelectItem value="city">City/Region</SelectItem>
-                  <SelectItem value="state">State/Province</SelectItem>
+                  <SelectItem value="city">City</SelectItem>
+                  <SelectItem value="state">State</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="col-span-2">
+            <div className="flex-1">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                {searchBy === "area_code" ? "Area Code" : 
-                 searchBy === "city" ? "City" : 
-                 searchBy === "state" ? "State" : "Value"}
+                {searchBy === "area_code" ? "Code" : searchBy === "city" ? "City" : searchBy === "state" ? "State" : "Value"}
               </label>
               <Input
-                placeholder={searchBy === "area_code" ? "e.g. 305" : 
-                            searchBy === "city" ? "e.g. Miami" :
-                            searchBy === "state" ? "e.g. FL" : "Enter value"}
+                placeholder={searchBy === "area_code" ? "305" : searchBy === "city" ? "Miami" : searchBy === "state" ? "FL" : "Value"}
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
-                className="w-full"
+                className="h-9"
                 data-testid="input-search-value"
               />
             </div>
-          </div>
 
-          {/* Row 2: Search Button */}
-          <div className="flex justify-end">
             <Button
               onClick={handleSearch}
               disabled={isLoading}
-              className="gap-2 bg-primary"
+              className="h-9 px-4 bg-primary"
               data-testid="button-search-numbers"
             >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Search className="h-4 w-4" />
-              )}
-              Search Numbers
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
             </Button>
           </div>
         </div>
