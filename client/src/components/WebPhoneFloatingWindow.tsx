@@ -1158,6 +1158,14 @@ export function WebPhoneFloatingWindow() {
   });
   
   const hasTelnyxNumber = (telnyxNumbersData?.numbers?.length || 0) > 0;
+  const primaryTelnyxNumberId = telnyxNumbersData?.numbers?.[0]?.id;
+
+  // Query for voice settings to check callerIdNameEnabled
+  const { data: voiceSettingsData } = useQuery<{ callerIdNameEnabled?: boolean }>({
+    queryKey: [`/api/telnyx/voice-settings/${primaryTelnyxNumberId}`],
+    enabled: !!primaryTelnyxNumberId,
+  });
+  const callerIdNameEnabled = voiceSettingsData?.callerIdNameEnabled ?? false;
 
   // Query for call logs from backend
   const { data: callLogsData, refetch: refetchCallLogs } = useQuery<{ logs: any[] }>({
@@ -1211,10 +1219,13 @@ export function WebPhoneFloatingWindow() {
   const effectiveCall = useMemo(() => {
     // Priority: currentCall (active/answered) > outgoingCall (dialing) > incomingCall (ringing inbound)
     // Use SipCallInfo from store for reliable caller info extraction
+    // IMPORTANT: Only show caller name if callerIdNameEnabled is true (Caller ID Lookup setting)
     if (telnyxCurrentCall && telnyxCurrentCallInfo) {
       // Call is ACTIVE (answered) - show "In Call" UI with timer
-      const displayName = telnyxCallerName || 
+      const rawDisplayName = telnyxCallerName || 
                           (isValidCallerName(telnyxCurrentCallInfo.callerName) ? telnyxCurrentCallInfo.callerName : null);
+      // Only show name if Caller ID Lookup is enabled
+      const displayName = callerIdNameEnabled ? rawDisplayName : null;
       return {
         phoneNumber: telnyxCurrentCallInfo.remoteCallerNumber || 'Unknown',
         displayName,
@@ -1235,9 +1246,11 @@ export function WebPhoneFloatingWindow() {
     }
     if (telnyxIncomingCall && telnyxIncomingCallInfo) {
       // Inbound call is RINGING - show answer/reject buttons
-      const displayName = telnyxCallerName || 
+      const rawDisplayName = telnyxCallerName || 
                           (isValidCallerName(telnyxIncomingCallInfo.callerName) ? telnyxIncomingCallInfo.callerName : null);
-      console.log("[WebPhone UI] Incoming call info:", telnyxIncomingCallInfo);
+      // Only show name if Caller ID Lookup is enabled
+      const displayName = callerIdNameEnabled ? rawDisplayName : null;
+      console.log("[WebPhone UI] Incoming call info:", telnyxIncomingCallInfo, "callerIdNameEnabled:", callerIdNameEnabled);
       return {
         phoneNumber: telnyxIncomingCallInfo.remoteCallerNumber || 'Unknown',
         displayName,
@@ -1261,7 +1274,7 @@ export function WebPhoneFloatingWindow() {
       return { ...currentCall, isTelnyx: false };
     }
     return null;
-  }, [telnyxCurrentCall, telnyxOutgoingCall, telnyxIncomingCall, telnyxCurrentCallInfo, telnyxOutgoingCallInfo, telnyxIncomingCallInfo, currentCall, telnyxCallerName]);
+  }, [telnyxCurrentCall, telnyxOutgoingCall, telnyxIncomingCall, telnyxCurrentCallInfo, telnyxOutgoingCallInfo, telnyxIncomingCallInfo, currentCall, telnyxCallerName, callerIdNameEnabled]);
   
   // Effective mute/hold state
   const effectiveMuted = isTelnyxCall ? telnyxIsMuted : isMuted;
