@@ -28997,43 +28997,59 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const user = req.user!;
       
       if (!user.companyId) {
+        console.error("[TURN Credentials] No companyId for user:", user.id);
         return res.status(400).json({ message: "No company associated with user" });
       }
 
-      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
-      const credentials = await telephonyProvisioningService.getSipCredentials(user.companyId);
+      // Use the SAME method as /api/webrtc/token - query telephonyCredentials table directly
+      const [credential] = await db
+        .select({ 
+          sipUsername: telephonyCredentials.sipUsername,
+          sipPassword: telephonyCredentials.sipPassword
+        })
+        .from(telephonyCredentials)
+        .where(
+          and(
+            eq(telephonyCredentials.companyId, user.companyId),
+            eq(telephonyCredentials.isActive, true)
+          )
+        )
+        .orderBy(desc(telephonyCredentials.lastUsedAt))
+        .limit(1);
 
-      if (!credentials) {
+      if (!credential || !credential.sipUsername || !credential.sipPassword) {
+        console.error("[TURN Credentials] No active credentials found for company:", user.companyId);
         return res.status(404).json({ 
           message: "No SIP credentials found. Please provision WebRTC infrastructure first." 
         });
       }
 
+      console.log("[TURN Credentials] Returning TURN servers for:", credential.sipUsername);
+
       // Per Telnyx documentation: SIP credentials work for TURN authentication
       // TURN servers provide relay candidates that bypass NAT/firewall issues
       res.json({
-        username: credentials.username,
-        credential: credentials.password,
+        username: credential.sipUsername,
+        credential: credential.sipPassword,
         iceServers: [
           { urls: "stun:stun.telnyx.com:3478" },
           {
             urls: "turn:turn.telnyx.com:3478?transport=udp",
-            username: credentials.username,
-            credential: credentials.password
+            username: credential.sipUsername,
+            credential: credential.sipPassword
           },
           {
             urls: "turn:turn.telnyx.com:443?transport=tcp",
-            username: credentials.username,
-            credential: credentials.password
+            username: credential.sipUsername,
+            credential: credential.sipPassword
           }
         ]
       });
     } catch (error: any) {
-      console.error("[TURN Credentials] Error:", error);
-      res.status(500).json({ message: "Failed to get TURN credentials" });
+      console.error("[TURN Credentials] Error:", error.message, error.stack);
+      res.status(500).json({ message: "Failed to get TURN credentials", error: error.message });
     }
   });
-
   // POST /api/telnyx/update-webrtc-config - Update existing credential connection for WebRTC
   app.post("/api/telnyx/update-webrtc-config", requireAuth, async (req: Request, res: Response) => {
     try {
