@@ -1229,10 +1229,15 @@ export function WebPhoneFloatingWindow() {
     // IMPORTANT: Only show caller name if callerIdNameEnabled is true (Caller ID Lookup setting)
     if (telnyxCurrentCall && telnyxCurrentCallInfo) {
       // Call is ACTIVE (answered) - show "In Call" UI with timer
-      const rawDisplayName = telnyxCallerName || 
-                          (isValidCallerName(telnyxCurrentCallInfo.callerName) ? telnyxCurrentCallInfo.callerName : null);
-      // Only show name if Caller ID Lookup is enabled
-      const displayName = callerIdNameEnabled ? rawDisplayName : null;
+      // Priority: 1) DB lookup name (always show), 2) SIP header name (only if callerIdNameEnabled)
+      let displayName: string | null = null;
+      if (telnyxCallerName) {
+        // Always show name from DB (policies/contacts)
+        displayName = telnyxCallerName;
+      } else if (callerIdNameEnabled && isValidCallerName(telnyxCurrentCallInfo.callerName)) {
+        // Only show SIP header name if Caller ID Lookup is enabled
+        displayName = telnyxCurrentCallInfo.callerName || null;
+      }
       return {
         phoneNumber: telnyxCurrentCallInfo.remoteCallerNumber || 'Unknown',
         displayName,
@@ -1253,16 +1258,18 @@ export function WebPhoneFloatingWindow() {
     }
     if (telnyxIncomingCall && telnyxIncomingCallInfo) {
       // Inbound call is RINGING - show answer/reject buttons
-      const rawDisplayName = telnyxCallerName || 
-                          (isValidCallerName(telnyxIncomingCallInfo.callerName) ? telnyxIncomingCallInfo.callerName : null);
-      // Only show name if Caller ID Lookup is enabled
-      const displayName = callerIdNameEnabled ? rawDisplayName : null;
-      console.log("[WebPhone UI] Incoming call info:", telnyxIncomingCallInfo, "callerIdNameEnabled:", callerIdNameEnabled);
-      console.log("[WebPhone UI] displayName calculation:", {
-        telnyxCallerName,
-        sipCallerName: telnyxIncomingCallInfo.callerName,
-        isValid: isValidCallerName(telnyxIncomingCallInfo.callerName),
-        rawDisplayName,
+      // Priority: 1) DB lookup name (always show), 2) SIP header name (only if callerIdNameEnabled)
+      let displayName: string | null = null;
+      if (telnyxCallerName) {
+        // Always show name from DB (policies/contacts)
+        displayName = telnyxCallerName;
+      } else if (callerIdNameEnabled && isValidCallerName(telnyxIncomingCallInfo.callerName)) {
+        // Only show SIP header name if Caller ID Lookup is enabled
+        displayName = telnyxIncomingCallInfo.callerName || null;
+      }
+      console.log("[WebPhone UI] Incoming call displayName:", {
+        dbName: telnyxCallerName,
+        sipName: telnyxIncomingCallInfo.callerName,
         callerIdNameEnabled,
         finalDisplayName: displayName
       });
