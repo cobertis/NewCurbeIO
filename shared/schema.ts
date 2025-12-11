@@ -4636,30 +4636,53 @@ export type InsertWhatsappMessage = z.infer<typeof insertWhatsappMessageSchema>;
 // TELNYX GLOBAL PRICING (Super Admin Configuration)
 // =====================================================
 // These prices are set by Super Admin and apply to all companies.
-// They represent the customer-facing rates (what companies pay us).
+// Cost = What Telnyx charges us (wholesale)
+// Price = What we charge clients (retail)
 
 export const telnyxGlobalPricing = pgTable("telnyx_global_pricing", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   
-  // Voice rates (per minute, 60/60 billing)
+  // Voice rates - COST (what Telnyx charges us, per minute)
+  voiceLocalOutboundCost: numeric("voice_local_outbound_cost", { precision: 10, scale: 4 }).notNull().default("0.0047"),
+  voiceLocalInboundCost: numeric("voice_local_inbound_cost", { precision: 10, scale: 4 }).notNull().default("0.0035"),
+  voiceTollfreeOutboundCost: numeric("voice_tollfree_outbound_cost", { precision: 10, scale: 4 }).notNull().default("0.0047"),
+  voiceTollfreeInboundCost: numeric("voice_tollfree_inbound_cost", { precision: 10, scale: 4 }).notNull().default("0.0060"),
+  
+  // Voice rates - PRICE (what we charge clients, per minute)
   voiceLocalOutbound: numeric("voice_local_outbound", { precision: 10, scale: 4 }).notNull().default("0.0100"),
   voiceLocalInbound: numeric("voice_local_inbound", { precision: 10, scale: 4 }).notNull().default("0.0080"),
   voiceTollfreeOutbound: numeric("voice_tollfree_outbound", { precision: 10, scale: 4 }).notNull().default("0.0180"),
   voiceTollfreeInbound: numeric("voice_tollfree_inbound", { precision: 10, scale: 4 }).notNull().default("0.0130"),
   
-  // SMS rates (per message)
+  // SMS rates - COST (what Telnyx charges us, per message)
+  smsLongcodeOutboundCost: numeric("sms_longcode_outbound_cost", { precision: 10, scale: 4 }).notNull().default("0.0040"),
+  smsLongcodeInboundCost: numeric("sms_longcode_inbound_cost", { precision: 10, scale: 4 }).notNull().default("0.0040"),
+  smsTollfreeOutboundCost: numeric("sms_tollfree_outbound_cost", { precision: 10, scale: 4 }).notNull().default("0.0040"),
+  smsTollfreeInboundCost: numeric("sms_tollfree_inbound_cost", { precision: 10, scale: 4 }).notNull().default("0.0040"),
+  
+  // SMS rates - PRICE (what we charge clients, per message)
   smsLongcodeOutbound: numeric("sms_longcode_outbound", { precision: 10, scale: 4 }).notNull().default("0.0060"),
   smsLongcodeInbound: numeric("sms_longcode_inbound", { precision: 10, scale: 4 }).notNull().default("0.0060"),
   smsTollfreeOutbound: numeric("sms_tollfree_outbound", { precision: 10, scale: 4 }).notNull().default("0.0070"),
   smsTollfreeInbound: numeric("sms_tollfree_inbound", { precision: 10, scale: 4 }).notNull().default("0.0070"),
   
-  // Add-on rates
+  // Add-on rates - COST
+  callControlInboundCost: numeric("call_control_inbound_cost", { precision: 10, scale: 4 }).notNull().default("0.0010"),
+  callControlOutboundCost: numeric("call_control_outbound_cost", { precision: 10, scale: 4 }).notNull().default("0.0010"),
+  recordingPerMinuteCost: numeric("recording_per_minute_cost", { precision: 10, scale: 4 }).notNull().default("0.0010"),
+  cnamLookupCost: numeric("cnam_lookup_cost", { precision: 10, scale: 4 }).notNull().default("0.0025"),
+  
+  // Add-on rates - PRICE
   callControlInbound: numeric("call_control_inbound", { precision: 10, scale: 4 }).notNull().default("0.0020"),
   callControlOutbound: numeric("call_control_outbound", { precision: 10, scale: 4 }).notNull().default("0.0020"),
   recordingPerMinute: numeric("recording_per_minute", { precision: 10, scale: 4 }).notNull().default("0.0020"),
   cnamLookup: numeric("cnam_lookup", { precision: 10, scale: 4 }).notNull().default("0.0045"),
   
-  // DID monthly rates
+  // DID monthly rates - COST
+  didLocalCost: numeric("did_local_cost", { precision: 10, scale: 2 }).notNull().default("0.50"),
+  didTollfreeCost: numeric("did_tollfree_cost", { precision: 10, scale: 2 }).notNull().default("0.75"),
+  
+  // DID monthly rates - PRICE
   didLocal: numeric("did_local", { precision: 10, scale: 2 }).notNull().default("1.00"),
   didTollfree: numeric("did_tollfree", { precision: 10, scale: 2 }).notNull().default("1.50"),
   

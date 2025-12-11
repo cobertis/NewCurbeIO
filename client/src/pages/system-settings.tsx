@@ -149,24 +149,51 @@ function TelnyxPricingSection() {
     );
   }
 
-  const renderPricingInput = (field: keyof TelnyxGlobalPricing, label: string, step = "0.0001", prefix = "$") => {
-    const value = formValues[field];
-    const displayValue = value !== undefined && value !== null ? String(value) : "";
+  const renderPricingRow = (
+    label: string, 
+    costField: keyof TelnyxGlobalPricing, 
+    priceField: keyof TelnyxGlobalPricing,
+    step = "0.0001"
+  ) => {
+    const costValue = formValues[costField];
+    const priceValue = formValues[priceField];
+    const costDisplay = costValue !== undefined && costValue !== null ? String(costValue) : "";
+    const priceDisplay = priceValue !== undefined && priceValue !== null ? String(priceValue) : "";
+    
+    const cost = parseFloat(costDisplay) || 0;
+    const price = parseFloat(priceDisplay) || 0;
+    const margin = price > 0 && cost > 0 ? ((price - cost) / cost * 100).toFixed(0) : "--";
+    
     return (
-      <div key={field} className="flex items-center justify-between py-2">
-        <label className="text-sm font-medium text-muted-foreground">{label}</label>
+      <div key={costField} className="grid grid-cols-4 gap-2 items-center py-1.5 border-b border-border/50 last:border-0">
+        <span className="text-sm font-medium text-muted-foreground">{label}</span>
         <div className="flex items-center gap-1">
-          <span className="text-sm text-muted-foreground">{prefix}</span>
+          <span className="text-xs text-muted-foreground">$</span>
           <Input
             type="number"
             step={step}
             min="0"
-            value={displayValue}
-            onChange={(e) => handleValueChange(field, e.target.value)}
-            className="w-28 text-right"
-            data-testid={`input-pricing-${field}`}
+            value={costDisplay}
+            onChange={(e) => handleValueChange(costField, e.target.value)}
+            className="w-24 text-right text-sm h-8"
+            data-testid={`input-pricing-${costField}`}
           />
         </div>
+        <div className="flex items-center gap-1">
+          <span className="text-xs text-muted-foreground">$</span>
+          <Input
+            type="number"
+            step={step}
+            min="0"
+            value={priceDisplay}
+            onChange={(e) => handleValueChange(priceField, e.target.value)}
+            className="w-24 text-right text-sm h-8"
+            data-testid={`input-pricing-${priceField}`}
+          />
+        </div>
+        <span className={`text-sm font-medium text-right ${margin !== "--" && Number(margin) > 0 ? "text-green-600" : "text-muted-foreground"}`}>
+          {margin !== "--" ? `+${margin}%` : margin}
+        </span>
       </div>
     );
   };
@@ -192,6 +219,15 @@ function TelnyxPricingSection() {
       </div>
     );
   };
+
+  const TableHeader = () => (
+    <div className="grid grid-cols-4 gap-2 pb-2 border-b border-border mb-1">
+      <span className="text-xs font-semibold text-muted-foreground uppercase">Service</span>
+      <span className="text-xs font-semibold text-muted-foreground uppercase">Telnyx Cost</span>
+      <span className="text-xs font-semibold text-muted-foreground uppercase">Client Price</span>
+      <span className="text-xs font-semibold text-muted-foreground uppercase text-right">Margin</span>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -220,7 +256,7 @@ function TelnyxPricingSection() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card data-testid="card-voice-rates">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
@@ -231,11 +267,12 @@ function TelnyxPricingSection() {
               60/60 billing increment
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-1">
-            {renderPricingInput("voiceLocalOutbound", "Local Outbound")}
-            {renderPricingInput("voiceLocalInbound", "Local Inbound")}
-            {renderPricingInput("voiceTollfreeOutbound", "Toll-Free Outbound")}
-            {renderPricingInput("voiceTollfreeInbound", "Toll-Free Inbound")}
+          <CardContent>
+            <TableHeader />
+            {renderPricingRow("Local Outbound", "voiceLocalOutboundCost", "voiceLocalOutbound")}
+            {renderPricingRow("Local Inbound", "voiceLocalInboundCost", "voiceLocalInbound")}
+            {renderPricingRow("Toll-Free Out", "voiceTollfreeOutboundCost", "voiceTollfreeOutbound")}
+            {renderPricingRow("Toll-Free In", "voiceTollfreeInboundCost", "voiceTollfreeInbound")}
           </CardContent>
         </Card>
 
@@ -246,11 +283,12 @@ function TelnyxPricingSection() {
               SMS Rates (per message)
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1">
-            {renderPricingInput("smsLongcodeOutbound", "Longcode Outbound")}
-            {renderPricingInput("smsLongcodeInbound", "Longcode Inbound")}
-            {renderPricingInput("smsTollfreeOutbound", "Toll-Free Outbound")}
-            {renderPricingInput("smsTollfreeInbound", "Toll-Free Inbound")}
+          <CardContent>
+            <TableHeader />
+            {renderPricingRow("Longcode Out", "smsLongcodeOutboundCost", "smsLongcodeOutbound")}
+            {renderPricingRow("Longcode In", "smsLongcodeInboundCost", "smsLongcodeInbound")}
+            {renderPricingRow("Toll-Free Out", "smsTollfreeOutboundCost", "smsTollfreeOutbound")}
+            {renderPricingRow("Toll-Free In", "smsTollfreeInboundCost", "smsTollfreeInbound")}
           </CardContent>
         </Card>
 
@@ -261,11 +299,12 @@ function TelnyxPricingSection() {
               Add-ons
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1">
-            {renderPricingInput("callControlInbound", "Call Control Inbound")}
-            {renderPricingInput("callControlOutbound", "Call Control Outbound")}
-            {renderPricingInput("recordingPerMinute", "Recording (per minute)")}
-            {renderPricingInput("cnamLookup", "CNAM Lookup")}
+          <CardContent>
+            <TableHeader />
+            {renderPricingRow("Call Ctrl In", "callControlInboundCost", "callControlInbound")}
+            {renderPricingRow("Call Ctrl Out", "callControlOutboundCost", "callControlOutbound")}
+            {renderPricingRow("Recording/min", "recordingPerMinuteCost", "recordingPerMinute")}
+            {renderPricingRow("CNAM Lookup", "cnamLookupCost", "cnamLookup")}
           </CardContent>
         </Card>
 
@@ -276,13 +315,14 @@ function TelnyxPricingSection() {
               DIDs (monthly)
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-1">
-            {renderPricingInput("didLocal", "Local DID", "0.01")}
-            {renderPricingInput("didTollfree", "Toll-Free DID", "0.01")}
+          <CardContent>
+            <TableHeader />
+            {renderPricingRow("Local DID", "didLocalCost", "didLocal", "0.01")}
+            {renderPricingRow("Toll-Free DID", "didTollfreeCost", "didTollfree", "0.01")}
           </CardContent>
         </Card>
 
-        <Card className="md:col-span-2" data-testid="card-billing-config">
+        <Card className="lg:col-span-2" data-testid="card-billing-config">
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Clock className="h-4 w-4" />
