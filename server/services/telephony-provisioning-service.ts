@@ -808,12 +808,16 @@ export class TelephonyProvisioningService {
     try {
       console.log(`[TelephonyProvisioning] Assigning phone number ${phoneNumberId} to Call Control App ${callControlAppId}`);
       
+      // CRITICAL FIX: Per Telnyx API docs, use call_control_application_id (NOT connection_id)
+      // to route inbound calls through a Call Control Application.
+      // Also clear the old connection_id to avoid conflicts.
       const response = await this.makeApiRequest(
         managedAccountId,
         `/phone_numbers/${phoneNumberId}`,
         "PATCH",
         {
-          connection_id: callControlAppId,
+          call_control_application_id: callControlAppId,
+          connection_id: null,
         }
       );
 

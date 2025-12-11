@@ -59,7 +59,28 @@ All WebRTC implementations follow official Telnyx documentation:
 - **Audio Settings:** `setAudioSettings({echoCancellation, noiseSuppression, autoGainControl})` per [TelnyxRTC docs](https://developers.telnyx.com/docs/voice/webrtc/js-sdk/classes/telnyxrtc#setaudiosettings)
 - **Error Handling:** `userMediaError` event for microphone issues per [Error Handling docs](https://developers.telnyx.com/docs/voice/webrtc/js-sdk/error-handling)
 - **SRTP Disabled:** `encrypted_media: null` for WebRTC compatibility per Telnyx OpenAPI spec
-- **Inbound Call Routing (CRITICAL FIX - Dec 2024):** Phone numbers are assigned DIRECTLY to the Credential Connection (NOT TeXML app). Per Telnyx docs, TeXML `<Dial><Sip>` routing creates a second SIP leg that anchors media at the TeXML application, causing 4-6 second audio delay on inbound calls. Direct credential connection routing eliminates this intermediate leg for immediate audio.
+
+### Telnyx Call Control Application Architecture (Dec 2024)
+**TWO ROUTING OPTIONS AVAILABLE:**
+1. **Credential Connection Routing (Legacy):** Phone numbers assigned directly to Credential Connection for zero-latency but with SDK hangup bug (busy tone).
+2. **Call Control Application Routing (New):** Uses Call Control API for proper hangup via REST API.
+
+**Call Control Application Flow:**
+- Phone numbers assigned to Call Control App via `call_control_application_id` (NOT `connection_id`)
+- Webhook endpoint: `/webhooks/telnyx/call-control/:companyId`
+- Flow: `call.initiated` → answer PSTN leg → dial to SIP credential → `call.answered` → bridge legs
+- Hangup uses REST API: `POST /v2/calls/{call_control_id}/actions/hangup` with NORMAL_CLEARING (16)
+- SIP username cache with 5-min TTL for <200ms webhook response
+- `anchorsite_override: "Latency"` for optimal audio routing
+
+**Migration Endpoint:** `POST /api/telephony/migrate-to-call-control`
+- Creates Call Control Application if not exists
+- Reassigns phone numbers using `{ call_control_application_id: appId, connection_id: null }`
+- Stores `callControlAppId` in `telephonySettings` table
+
+**Repair Routine Logic:**
+- If `callControlAppId` exists → assign numbers to Call Control App
+- Otherwise → assign to Credential Connection (backward compatible)
 
 ### System Design Choices
 The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Security includes robust password management and 2FA. Dates are handled as `yyyy-MM-dd` strings. A `node-cron` background scheduler manages reminder notifications. Phone numbers are standardized, and all message timestamps are normalized to UTC. Performance is optimized with database indexes and aggressive caching.
