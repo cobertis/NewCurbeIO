@@ -886,15 +886,14 @@ export class TelephonyProvisioningService {
       }
       
       // STEP 2: Assign to Call Control Application
-      // Per Telnyx API docs, use call_control_application_id (NOT connection_id)
-      // to route inbound calls through a Call Control Application.
+      // Per Telnyx API docs, use connection_id with the Call Control App ID
+      // The Call Control App ID IS a connection ID and can be used as such
       const response = await this.makeApiRequest(
         managedAccountId,
         `/phone_numbers/${phoneNumberId}`,
         "PATCH",
         {
-          call_control_application_id: callControlAppId,
-          connection_id: null,
+          connection_id: callControlAppId,
         }
       );
 
