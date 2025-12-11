@@ -26688,13 +26688,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 .limit(1);
               
               const [settings] = await db
-                .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
+                .select({ 
+                  credentialConnectionId: telephonySettings.credentialConnectionId,
+                  callControlAppId: telephonySettings.callControlAppId
+                })
                 .from(telephonySettings)
                 .where(eq(telephonySettings.companyId, companyId));
               
               if (credential?.sipUsername) {
                 sipUsername = credential.sipUsername;
-                credentialConnectionId = settings?.credentialConnectionId || null;
+                // Use Call Control App ID for dial, not Credential Connection ID
+                credentialConnectionId = settings?.callControlAppId || settings?.credentialConnectionId || null;
                 sipUsernameCache.set(companyId, { 
                   username: sipUsername, 
                   timestamp: Date.now(),
@@ -26749,7 +26753,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             console.log("[Telnyx Call Control] Call answered successfully");
             
             // Step 2: Dial to SIP credential (WebRTC client)
-            console.log("[Telnyx Call Control] Dialing to SIP:", sipUsername);
+            console.log("[Telnyx Call Control] Dialing to SIP:", sipUsername, "with connection_id:", credentialConnectionId);
             const dialRes = await fetch("https://api.telnyx.com/v2/calls", {
               method: "POST",
               headers: {
