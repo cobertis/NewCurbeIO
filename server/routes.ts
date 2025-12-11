@@ -22173,6 +22173,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           return res.status(200).json({ message: "Delivery receipt acknowledged" });
         }
 
+        console.log(`[Telnyx Sync] Recording ${rec.id}: checking for match...`);
         // Normalize phone numbers to 11-digit format for consistency
         const from = formatForStorage(rawFrom);
         const to = formatForStorage(rawTo);
@@ -29197,13 +29198,23 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(500).json({ error: "Telnyx API key not configured" });
       }
 
+      // Get the company's managed account ID from wallet
+      const [wallet] = await db.select().from(wallets).where(eq(wallets.companyId, user.companyId)).limit(1);
+      const managedAccountId = wallet?.telnyxAccountId;
+      
+      console.log(`[Telnyx Sync] Fetching recordings for company ${user.companyId}, managed account: ${managedAccountId || "none"}`);
+
+      // Build headers with managed account if available
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      };
+      if (managedAccountId) {
+        headers['x-managed-account-id'] = managedAccountId;
+      }
+
       // Fetch recent recordings from Telnyx
-      const response = await fetch('https://api.telnyx.com/v2/recordings?page[size]=50', {
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json'
-        }
-      });
+      const response = await fetch('https://api.telnyx.com/v2/recordings?page[size]=50', { headers });
 
       const data = await response.json();
       
@@ -29213,6 +29224,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const recordings = data.data || [];
+      console.log(`[Telnyx Sync] Processing ${recordings.length} recordings from Telnyx API`);
       let synced = 0;
       let skipped = 0;
 
@@ -29223,14 +29235,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           continue;
         }
 
+        console.log(`[Telnyx Sync] Recording ${rec.id}: checking for match...`);
         // Normalize phone numbers
         const fromNumber = (rec.from || '').replace(/[^\d+]/g, '');
         const toNumber = (rec.to || '').replace(/[^\d+]/g, '');
         const recordingDate = new Date(rec.created_at);
+        console.log(`[Telnyx Sync] Recording: from=${fromNumber}, to=${toNumber}, date=${recordingDate.toISOString()}`);
         
-        // Search time window: 2 minutes before/after recording start
-        const searchStart = new Date(recordingDate.getTime() - 2 * 60 * 1000);
-        const searchEnd = new Date(recordingDate.getTime() + 2 * 60 * 1000);
+        // Search time window: 2 HOURS before recording (recordings can be created hours after call ends)
+        const searchStart = new Date(recordingDate.getTime() - 2 * 60 * 60 * 1000);
+        const searchEnd = new Date(recordingDate.getTime() + 5 * 60 * 1000);
 
         // Find matching call log without recording
         const matchingCalls = await db

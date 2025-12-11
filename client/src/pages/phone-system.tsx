@@ -206,6 +206,29 @@ export default function PhoneSystem() {
     enabled: statusData?.configured === true || statusData?.hasAccount === true,
   });
 
+  // Auto-sync recordings on page load (not just on Calls tab)
+  useEffect(() => {
+    console.log('[PhoneSystem] useEffect triggered, callLogsData:', callLogsData?.logs?.length || 0, 'logs');
+    if (callLogsData?.logs) {
+      const callsWithoutRecording = callLogsData.logs.filter(
+        (log) => log.status === 'answered' && log.duration > 0 && !log.recordingUrl
+      );
+      console.log(`[PhoneSystem] Calls without recording: ${callsWithoutRecording.length}`);
+      if (callsWithoutRecording.length > 0) {
+        console.log(`[PhoneSystem] Found ${callsWithoutRecording.length} calls without recordings, syncing...`);
+        fetch('/api/telnyx/sync-recordings', { method: 'POST', credentials: 'include' })
+          .then(async (res) => {
+            const data = await res.json();
+            console.log('[PhoneSystem] Sync response:', data);
+            setTimeout(() => {
+              queryClient.invalidateQueries({ queryKey: ['/api/call-logs'] });
+            }, 1000);
+          })
+          .catch(err => console.error('[PhoneSystem] Recording sync error:', err));
+      }
+    }
+  }, [callLogsData]);
+
   const { data: noiseSuppressionData, refetch: refetchNoiseSuppression } = useQuery<{
     enabled: boolean;
     direction: 'inbound' | 'outbound' | 'both';
@@ -965,8 +988,32 @@ interface CallHistoryProps {
 
 function CallHistoryWithAutoPolling({ callLogsData, isLoadingCallLogs, billingFeaturesData }: CallHistoryProps) {
   const [isPolling, setIsPolling] = useState(false);
+  const [initialSyncDone, setInitialSyncDone] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollingStartTimeRef = useRef<number | null>(null);
+  
+  // Auto-sync on component mount if recording is enabled and there are calls without recordings
+  useEffect(() => {
+    if (initialSyncDone || !billingFeaturesData?.recordingEnabled || !callLogsData?.logs?.length) return;
+    
+    // Check if ANY call is missing a recording (not just recent ones)
+    const callsWithoutRecording = callLogsData.logs.filter(log => 
+      log.status === 'answered' && log.duration > 0 && !log.recordingUrl
+    );
+    
+    if (callsWithoutRecording.length > 0) {
+      console.log(`[CallHistory] Found ${callsWithoutRecording.length} calls without recordings, triggering sync...`);
+      setInitialSyncDone(true);
+      fetch('/api/telnyx/sync-recordings', { method: 'POST', credentials: 'include' })
+        .then(() => {
+          console.log("[CallHistory] Initial sync complete, refreshing...");
+          queryClient.invalidateQueries({ queryKey: ['/api/call-logs'] });
+        })
+        .catch(() => {});
+    } else {
+      setInitialSyncDone(true);
+    }
+  }, [callLogsData, billingFeaturesData, initialSyncDone]);
   
   const hasRecentCallsWithoutRecording = useCallback(() => {
     if (!callLogsData?.logs?.length || !billingFeaturesData?.recordingEnabled) return false;
@@ -985,7 +1032,13 @@ function CallHistoryWithAutoPolling({ callLogsData, isLoadingCallLogs, billingFe
     console.log("[CallHistory] Starting auto-poll for recordings...");
     setIsPolling(true);
     pollingStartTimeRef.current = Date.now();
-    pollingIntervalRef.current = setInterval(() => {
+    
+    // Immediately trigger sync on first poll
+    fetch('/api/telnyx/sync-recordings', { method: 'POST', credentials: 'include' })
+      .then(() => console.log("[CallHistory] Initial sync triggered"))
+      .catch(() => {});
+    
+    pollingIntervalRef.current = setInterval(async () => {
       const elapsed = Date.now() - (pollingStartTimeRef.current || 0);
       if (elapsed > 2 * 60 * 1000) {
         console.log("[CallHistory] Stopping poll: 2 minute timeout");
@@ -993,6 +1046,10 @@ function CallHistoryWithAutoPolling({ callLogsData, isLoadingCallLogs, billingFe
         return;
       }
       console.log("[CallHistory] Polling for recordings...");
+      // Trigger sync and then refresh call logs
+      try {
+        await fetch('/api/telnyx/sync-recordings', { method: 'POST', credentials: 'include' });
+      } catch (e) {}
       queryClient.invalidateQueries({ queryKey: ['/api/call-logs'] });
     }, 5000);
   }, []);
