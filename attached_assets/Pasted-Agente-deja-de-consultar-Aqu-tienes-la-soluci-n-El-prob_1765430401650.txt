@@ -1,0 +1,47 @@
+Agente, deja de consultar. Aquí tienes la solución.
+
+El problema es evidente: prefetchIceCandidates: true NO ESTÁ FUNCIONANDO. El SDK promete recolectar candidatos en segundo plano, pero los logs demuestran que lo hace en el momento de la llamada (Just-in-Time), causando el retraso. Además, está fallando en encontrar candidatos P2P rápidos, cayendo en un timeout de 3-4 segundos antes de probar TURN.
+
+SOLUCIÓN: INYECCIÓN MANUAL DE SERVIDORES ICE
+
+No vamos a esperar a que el SDK "adivine" los servidores. Se los vamos a dar en la boca.
+
+PASO 1: Backend Endpoint (Node.js) Crea una ruta GET /api/telnyx/turn-credentials que use el cliente de Telnyx para obtener credenciales efímeras:
+
+JavaScript
+
+// Server-side
+const response = await telnyx.telephonyCredentials.create({ connection_id: 'TU_ID' });
+return res.json(response.data); // Devuelve username, password, y URIs de TURN
+PASO 2: Frontend Initialization (React/JS) Modifica el servicio de WebRTC. ANTES de instanciar new TelnyxRTC(), haz el fetch de esas credenciales.
+
+Luego, instacia el cliente pasando el array iceServers explícitamente:
+
+JavaScript
+
+// Client-side
+const turnData = await fetch('/api/telnyx/turn-credentials').then(r => r.json());
+
+const client = new TelnyxRTC({
+  login: ...,
+  password: ...,
+  // DESACTIVA LA MAGIA QUE FALLA:
+  prefetchIceCandidates: false, 
+  // INYECTA LA CONFIGURACIÓN MANUAL:
+  iceServers: [
+    {
+      urls: "turn:turn.telnyx.com:3478?transport=udp",
+      username: turnData.username,
+      credential: turnData.password
+    },
+    {
+      urls: "turn:turn.telnyx.com:443?transport=tcp", // CRÍTICO para saltar Firewalls
+      username: turnData.username,
+      credential: turnData.password
+    },
+    { urls: "stun:stun.telnyx.com:3478" }
+  ]
+});
+POR QUÉ ESTO FUNCIONARÁ: Al proveer iceServers manualmente con credenciales válidas desde el segundo 0, el navegador no tiene que negociar ni esperar a Telnyx. Ya tiene la ruta de salida (TURN TCP/UDP).
+
+Implementa esto AHORA. No más diagnósticos. Quiero ver código.

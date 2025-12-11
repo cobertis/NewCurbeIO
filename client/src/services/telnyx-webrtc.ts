@@ -651,6 +651,14 @@ class TelnyxWebRTCManager {
           console.log("[Telnyx WebRTC] 📞 Incoming call (state:", state, ")");
           store.setIncomingCall(call);
           this.startRingtone();
+          
+          // CRITICAL ICE OPTIMIZATION: Pre-fetch ICE candidates BEFORE user presses Answer
+          // Per Telnyx docs: call.prefetchIceCandidates() starts ICE gathering early
+          // This eliminates the ~1 second delay when answering the call
+          if (typeof call.prefetchIceCandidates === 'function') {
+            console.log("[Telnyx WebRTC] ⚡ Pre-fetching ICE candidates while ringing...");
+            call.prefetchIceCandidates();
+          }
         }
         break;
 
