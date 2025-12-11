@@ -39,11 +39,11 @@ export const PRICING = {
   
   // Billing increments
   billing: {
-    // Minimum billable duration in seconds
-    min_billable_seconds: 6,
+    // Minimum billable duration in seconds (60 = 1 minute, matching Telnyx billing)
+    min_billable_seconds: 60,
     
-    // Billing increment in seconds (round up to nearest increment)
-    billing_increment: 6,
+    // Billing increment in seconds (60 = 1 minute, rounded up - matching Telnyx)
+    billing_increment: 60,
   },
 } as const;
 
@@ -59,15 +59,14 @@ export function calculateCallCostWithFeatures(
   cnamCost: number;
   totalCost: number;
   billableMinutes: number;
+  billedDurationSeconds: number;
 } {
-  // Calculate billable seconds (minimum 6 seconds, round up to 6-second increments)
-  let billableSeconds = Math.max(durationSeconds, PRICING.billing.min_billable_seconds);
-  const remainder = billableSeconds % PRICING.billing.billing_increment;
-  if (remainder > 0) {
-    billableSeconds += PRICING.billing.billing_increment - remainder;
-  }
-  
-  const billableMinutes = billableSeconds / 60;
+  // BUSINESS RULE: Telnyx bills in 60-second (1 minute) increments, rounded UP
+  // Math.ceil(61 / 60) = 2 minutes
+  // Math.ceil(10 / 60) = 1 minute
+  // Math.ceil(0 / 60) = 0 minutes (no charge for unanswered)
+  const billableMinutes = durationSeconds > 0 ? Math.ceil(durationSeconds / 60) : 0;
+  const billedDurationSeconds = billableMinutes * 60;
   
   // Base rate based on direction
   const baseRate = direction === 'inbound' 
@@ -93,7 +92,8 @@ export function calculateCallCostWithFeatures(
     recordingCost: Math.round(recordingCost * 10000) / 10000,
     cnamCost: Math.round(cnamCost * 10000) / 10000,
     totalCost: Math.round(totalCost * 10000) / 10000,
-    billableMinutes: Math.round(billableMinutes * 100) / 100,
+    billableMinutes,
+    billedDurationSeconds,
   };
 }
 

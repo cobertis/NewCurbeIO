@@ -96,20 +96,22 @@ export async function findRateByPrefix(destinationNumber: string, companyId?: st
 export function calculateCallCost(durationSeconds: number, rate: RateLookupResult): CallCostResult {
   const actualDuration = Math.max(0, durationSeconds);
   
-  let billableSeconds = 0;
-  if (actualDuration > 0) {
-    billableSeconds = Math.max(actualDuration, rate.minBillableSeconds);
-    const remainder = billableSeconds % rate.billingIncrement;
-    if (remainder > 0) {
-      billableSeconds += rate.billingIncrement - remainder;
-    }
-  }
+  // BUSINESS RULE: Telnyx bills in 60-second (1 minute) increments, rounded UP
+  // Math.ceil(61 / 60) = 2 minutes
+  // Math.ceil(10 / 60) = 1 minute  
+  // Math.ceil(0 / 60) = 0 minutes (no charge for unanswered)
+  const billableMinutesInt = actualDuration > 0 ? Math.ceil(actualDuration / 60) : 0;
+  const billableSeconds = billableMinutesInt * 60; // Store as seconds for DB
   
-  const billableMinutes = new Decimal(billableSeconds).dividedBy(60);
+  const billableMinutes = new Decimal(billableMinutesInt);
   const callCost = billableMinutes.times(rate.ratePerMinute);
   const totalCost = callCost.plus(rate.connectionFee);
 
-  console.log(`[PricingService] Cost calculation: ${actualDuration}s -> ${billableSeconds}s billable, ${totalCost.toFixed(4)} USD`);
+  console.log(`[PricingService] Cost calculation (60s increments):`);
+  console.log(`  - Actual duration: ${actualDuration}s`);
+  console.log(`  - Billable minutes: ${billableMinutesInt} (Math.ceil(${actualDuration}/60))`);
+  console.log(`  - Rate per minute: $${rate.ratePerMinute.toFixed(4)}`);
+  console.log(`  - Total cost: $${totalCost.toFixed(4)} USD`);
 
   return {
     billableSeconds,
@@ -292,7 +294,8 @@ export async function chargeCallToWallet(
       }
       
       // Build description with feature costs if applicable
-      let costBreakdown = `${costResult.billableSeconds}s @ $${rate.ratePerMinute.toFixed(4)}/min`;
+      const billableMinutesInt = costResult.billableSeconds / 60;
+      let costBreakdown = `${callData.durationSeconds}s actual → ${billableMinutesInt} min billed @ $${rate.ratePerMinute.toFixed(4)}/min`;
       if (recordingEnabled) costBreakdown += ` + recording`;
       if (cnamEnabled && callData.direction === "inbound") costBreakdown += ` + CNAM`;
       
