@@ -951,20 +951,10 @@ class TelnyxWebRTCManager {
     this.stopRingtone();
     this.stopRingback();
 
-    // ALWAYS call SDK hangup first to terminate WebRTC session immediately
-    // This ensures the call ends even if Call Control API fails
-    console.log("[Telnyx WebRTC] Terminating WebRTC session via SDK");
-    try {
-      activeCall.hangup();
-    } catch (e) {
-      console.error("[Telnyx WebRTC] SDK hangup error:", e);
-    }
-
-    // For inbound calls, ALSO try Call Control API to properly terminate PSTN leg
-    // This only works when using Call Control Application routing (not Credential Connection)
-    // The server will check activeCallsMap for the real PSTN call_control_id
+    // For inbound calls, call Call Control API FIRST to terminate PSTN leg with NORMAL_CLEARING
+    // This MUST happen BEFORE SDK hangup, otherwise SDK sends 486 USER_BUSY
     if (direction === "inbound" && telnyxLegId) {
-      console.log("[Telnyx WebRTC] Also trying Call Control API for PSTN leg");
+      console.log("[Telnyx WebRTC] Calling Call Control API FIRST for proper PSTN hangup");
       try {
         const response = await fetch("/api/webrtc/call-control-hangup", {
           method: "POST",
@@ -975,9 +965,16 @@ class TelnyxWebRTCManager {
         const result = await response.json();
         console.log("[Telnyx WebRTC] Call Control API result:", result);
       } catch (e) {
-        // Ignore errors - SDK hangup already terminated the call
-        console.log("[Telnyx WebRTC] Call Control API error (ignored, SDK already hung up):", e);
+        console.log("[Telnyx WebRTC] Call Control API error:", e);
       }
+    }
+
+    // NOW terminate WebRTC session via SDK
+    console.log("[Telnyx WebRTC] Terminating WebRTC session via SDK");
+    try {
+      activeCall.hangup();
+    } catch (e) {
+      console.error("[Telnyx WebRTC] SDK hangup error:", e);
     }
   }
 
