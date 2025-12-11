@@ -28785,68 +28785,96 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const [pricing] = await db.select().from(telnyxGlobalPricing).limit(1);
       
       if (!pricing) {
-        // Return default pricing if none exists
+        // Return default pricing with flat field names
         return res.json({
           pricing: {
-            voice: {
-              localOutbound: 0.0100,
-              localInbound: 0.0080,
-              tollfreeOutbound: 0.0180,
-              tollfreeInbound: 0.0130,
-            },
-            sms: {
-              longcodeOutbound: 0.0060,
-              longcodeInbound: 0.0060,
-              tollfreeOutbound: 0.0070,
-              tollfreeInbound: 0.0070,
-            },
-            addons: {
-              callControlInbound: 0.0020,
-              callControlOutbound: 0.0020,
-              recordingPerMinute: 0.0020,
-              cnamLookup: 0.0045,
-            },
-            dids: {
-              local: 1.00,
-              tollfree: 1.50,
-            },
-            billing: {
-              increment: 60,
-              minBillableSeconds: 60,
-            }
+            // Voice Cost
+            voiceLocalOutboundCost: "0.0047",
+            voiceLocalInboundCost: "0.0035",
+            voiceTollfreeOutboundCost: "0.0047",
+            voiceTollfreeInboundCost: "0.0060",
+            // Voice Price
+            voiceLocalOutbound: "0.0100",
+            voiceLocalInbound: "0.0080",
+            voiceTollfreeOutbound: "0.0180",
+            voiceTollfreeInbound: "0.0130",
+            // SMS Cost
+            smsLongcodeOutboundCost: "0.0040",
+            smsLongcodeInboundCost: "0.0040",
+            smsTollfreeOutboundCost: "0.0040",
+            smsTollfreeInboundCost: "0.0040",
+            // SMS Price
+            smsLongcodeOutbound: "0.0060",
+            smsLongcodeInbound: "0.0060",
+            smsTollfreeOutbound: "0.0070",
+            smsTollfreeInbound: "0.0070",
+            // Add-ons Cost
+            callControlInboundCost: "0.0010",
+            callControlOutboundCost: "0.0010",
+            recordingPerMinuteCost: "0.0010",
+            cnamLookupCost: "0.0025",
+            // Add-ons Price
+            callControlInbound: "0.0020",
+            callControlOutbound: "0.0020",
+            recordingPerMinute: "0.0020",
+            cnamLookup: "0.0045",
+            // DIDs Cost
+            didLocalCost: "0.50",
+            didTollfreeCost: "0.75",
+            // DIDs Price
+            didLocal: "1.00",
+            didTollfree: "1.50",
+            // Billing
+            billingIncrement: 60,
+            minBillableSeconds: 60,
           }
         });
       }
 
+      // Return flat field names directly from database
       res.json({
         pricing: {
           id: pricing.id,
-          voice: {
-            localOutbound: parseFloat(pricing.voiceLocalOutbound || "0.0100"),
-            localInbound: parseFloat(pricing.voiceLocalInbound || "0.0080"),
-            tollfreeOutbound: parseFloat(pricing.voiceTollfreeOutbound || "0.0180"),
-            tollfreeInbound: parseFloat(pricing.voiceTollfreeInbound || "0.0130"),
-          },
-          sms: {
-            longcodeOutbound: parseFloat(pricing.smsLongcodeOutbound || "0.0060"),
-            longcodeInbound: parseFloat(pricing.smsLongcodeInbound || "0.0060"),
-            tollfreeOutbound: parseFloat(pricing.smsTollfreeOutbound || "0.0070"),
-            tollfreeInbound: parseFloat(pricing.smsTollfreeInbound || "0.0070"),
-          },
-          addons: {
-            callControlInbound: parseFloat(pricing.callControlInbound || "0.0020"),
-            callControlOutbound: parseFloat(pricing.callControlOutbound || "0.0020"),
-            recordingPerMinute: parseFloat(pricing.recordingPerMinute || "0.0020"),
-            cnamLookup: parseFloat(pricing.cnamLookup || "0.0045"),
-          },
-          dids: {
-            local: parseFloat(pricing.didLocal || "1.00"),
-            tollfree: parseFloat(pricing.didTollfree || "1.50"),
-          },
-          billing: {
-            increment: pricing.billingIncrement || 60,
-            minBillableSeconds: pricing.minBillableSeconds || 60,
-          },
+          // Voice Cost
+          voiceLocalOutboundCost: pricing.voiceLocalOutboundCost,
+          voiceLocalInboundCost: pricing.voiceLocalInboundCost,
+          voiceTollfreeOutboundCost: pricing.voiceTollfreeOutboundCost,
+          voiceTollfreeInboundCost: pricing.voiceTollfreeInboundCost,
+          // Voice Price
+          voiceLocalOutbound: pricing.voiceLocalOutbound,
+          voiceLocalInbound: pricing.voiceLocalInbound,
+          voiceTollfreeOutbound: pricing.voiceTollfreeOutbound,
+          voiceTollfreeInbound: pricing.voiceTollfreeInbound,
+          // SMS Cost
+          smsLongcodeOutboundCost: pricing.smsLongcodeOutboundCost,
+          smsLongcodeInboundCost: pricing.smsLongcodeInboundCost,
+          smsTollfreeOutboundCost: pricing.smsTollfreeOutboundCost,
+          smsTollfreeInboundCost: pricing.smsTollfreeInboundCost,
+          // SMS Price
+          smsLongcodeOutbound: pricing.smsLongcodeOutbound,
+          smsLongcodeInbound: pricing.smsLongcodeInbound,
+          smsTollfreeOutbound: pricing.smsTollfreeOutbound,
+          smsTollfreeInbound: pricing.smsTollfreeInbound,
+          // Add-ons Cost
+          callControlInboundCost: pricing.callControlInboundCost,
+          callControlOutboundCost: pricing.callControlOutboundCost,
+          recordingPerMinuteCost: pricing.recordingPerMinuteCost,
+          cnamLookupCost: pricing.cnamLookupCost,
+          // Add-ons Price
+          callControlInbound: pricing.callControlInbound,
+          callControlOutbound: pricing.callControlOutbound,
+          recordingPerMinute: pricing.recordingPerMinute,
+          cnamLookup: pricing.cnamLookup,
+          // DIDs Cost
+          didLocalCost: pricing.didLocalCost,
+          didTollfreeCost: pricing.didTollfreeCost,
+          // DIDs Price
+          didLocal: pricing.didLocal,
+          didTollfree: pricing.didTollfree,
+          // Billing
+          billingIncrement: pricing.billingIncrement,
+          minBillableSeconds: pricing.minBillableSeconds,
+          // Metadata
           updatedAt: pricing.updatedAt,
           updatedBy: pricing.updatedBy,
         }
@@ -28856,7 +28884,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to get pricing configuration" });
     }
   });
-
   // PUT /api/telnyx/global-pricing - Update global pricing configuration
   app.put("/api/telnyx/global-pricing", requireAuth, async (req: Request, res: Response) => {
     try {
