@@ -310,26 +310,26 @@ class TelnyxWebRTCManager {
    * Forces TURN relay with localhost STUN blackhole for instant failover
    */
   private getZeroLatencyRTCConfig(): RTCConfiguration {
-    // With iceTransportPolicy: "relay", we ONLY need TURN servers
-    // NO STUN servers needed - they would cause errors with relay-only policy
+    // Use "all" policy to allow host/srflx candidates while TURN resolves
+    // This ensures we get SOME candidates even if TURN is slow
+    const iceServers: RTCIceServer[] = [
+      // Telnyx public STUN for fast host/srflx candidates
+      { urls: "stun:stun.telnyx.com:3478" },
+      // Add dynamic TURN servers from credentials
+      ...this.turnServers
+    ];
+    
     const config: RTCConfiguration = {
-      iceTransportPolicy: "relay", // FORCE TURN tunnel - skip STUN gathering
-      iceServers: this.turnServers.length > 0 ? this.turnServers : [
-        // Fallback if no TURN servers provided yet
-        {
-          urls: "turn:turn.telnyx.com:3478?transport=udp",
-          username: "user",
-          credential: "pass"
-        }
-      ],
+      iceTransportPolicy: "all", // Allow all candidate types for reliability
+      iceServers,
       bundlePolicy: "balanced",
       rtcpMuxPolicy: "require"
     };
     
-    console.log("[SIP.js WebRTC] Zero-latency ICE config:", JSON.stringify({
+    console.log("[SIP.js WebRTC] ICE config:", JSON.stringify({
       iceTransportPolicy: config.iceTransportPolicy,
       iceServersCount: config.iceServers?.length,
-      hasRealTurnServers: this.turnServers.length > 0
+      turnServersCount: this.turnServers.length
     }));
     
     return config;
