@@ -47,7 +47,80 @@ async function getWebhookBaseUrl(): Promise<string> {
 }
 
 export class TelephonyProvisioningService {
-  
+
+  async createCallControlApplication(
+    managedAccountId: string,
+    businessName: string,
+    webhookBaseUrl: string,
+    outboundVoiceProfileId: string,
+    companyId: string
+  ): Promise<{ success: boolean; appId?: string; error?: string }> {
+    try {
+      console.log(`[TelephonyProvisioning] Creating Call Control Application for company: ${companyId}`);
+      
+      const response = await this.makeApiRequest(
+        managedAccountId,
+        "/call_control_applications",
+        "POST",
+        {
+          application_name: `Curbe Call Control - ${businessName}`,
+          webhook_event_url: `${webhookBaseUrl}/webhooks/telnyx/call-control/${companyId}`,
+          webhook_event_failover_url: `${webhookBaseUrl}/webhooks/telnyx/call-control/${companyId}/fallback`,
+          webhook_api_version: "2",
+          webhook_timeout_secs: 25,
+          first_command_timeout: true,
+          first_command_timeout_secs: 30,
+          anchorsite_override: "Latency",
+          outbound: {
+            channel_limit: 10,
+            outbound_voice_profile_id: outboundVoiceProfileId,
+          },
+          inbound: {
+            channel_limit: 10,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[TelephonyProvisioning] Call Control App creation failed: ${response.status} - ${errorText}`);
+        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      }
+
+      const data = await response.json();
+      const appId = data.data?.id;
+      console.log(`[TelephonyProvisioning] Call Control Application created: ${appId}`);
+      return { success: true, appId };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Network error";
+      console.error(`[TelephonyProvisioning] Call Control App creation error:`, errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  async getCallControlAppDetails(
+    managedAccountId: string,
+    appId: string
+  ): Promise<{ success: boolean; data?: any; error?: string }> {
+    try {
+      const response = await this.makeApiRequest(
+        managedAccountId,
+        `/call_control_applications/${appId}`,
+        "GET"
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      }
+
+      const data = await response.json();
+      return { success: true, data: data.data };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : "Network error" };
+    }
+  }
+
   private async makeApiRequest(
     managedAccountId: string,
     endpoint: string,

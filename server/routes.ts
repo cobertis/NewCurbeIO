@@ -122,7 +122,23 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 // Maps sipUsername to their active PSTN call control ID
 // This allows the server to hang up the PSTN leg cleanly instead of
 // relying on WebRTC SDK hangup() which sends 486 Busy
-const activeCallsMap = new Map<string, { callSid: string; from: string; to: string; companyId: string; startTime: Date }>();
+const activeCallsMap = new Map<string, { 
+  callSid: string; 
+  from: string; 
+  to: string; 
+  companyId: string; 
+  startTime: Date;
+  callControlId?: string;  // For Call Control API hangup
+  dialedLegControlId?: string;  // The SIP leg control ID for bridging
+}>();
+
+// Call Control: Maps call_control_id to sipUsername for call event tracking
+const callControlToSipMap = new Map<string, { sipUsername: string; companyId: string; from: string; to: string }>();
+
+// SIP username cache for fast lookup during Call Control webhook handling
+// CRITICAL: Call Control webhooks must respond in under 200ms, so DB queries are too slow
+const sipUsernameCache = new Map<string, { username: string; timestamp: number }>();
+const SIP_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
 // Security constants for note image uploads
 const ALLOWED_IMAGE_MIME_TYPES = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
@@ -26601,6 +26617,238 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
   });
 
+  // ==== CALL CONTROL API WEBHOOKS (proper hangup support) ====
+  // These handle inbound calls via Call Control Application (not TeXML)
+  // This allows server-side hangup with NORMAL_CLEARING instead of SDK's 486 USER_BUSY
+  
+  app.post("/webhooks/telnyx/call-control/:companyId", async (req: Request, res: Response) => {
+    // CRITICAL: Respond immediately to meet 200ms webhook requirement
+    res.status(200).json({ received: true });
+    
+    try {
+      const { companyId } = req.params;
+      const payload = req.body.data?.payload || req.body;
+      const eventType = req.body.data?.event_type || req.body.event_type;
+      const callControlId = payload.call_control_id;
+      const from = payload.from;
+      const to = payload.to;
+      const direction = payload.direction;
+      
+      console.log("[Telnyx Call Control] Event received:", {
+        eventType,
+        callControlId,
+        direction,
+        from,
+        to,
+        companyId
+      });
+      
+      // Get Telnyx API key for API calls
+      const { SecretsService } = await import("./services/secrets-service");
+      const secretsService = new SecretsService();
+      let telnyxApiKey = await secretsService.getCredential("telnyx", "api_key");
+      if (!telnyxApiKey) {
+        console.error("[Telnyx Call Control] API key not configured");
+        return;
+      }
+      telnyxApiKey = telnyxApiKey.trim().replace(/[\r\n\t]/g, "");
+      
+      // Get managed account ID for this company
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId);
+      
+      switch (eventType) {
+        case "call.initiated": {
+          if (direction === "incoming") {
+            // INBOUND CALL: Answer and dial to SIP credential
+            console.log("[Telnyx Call Control] Incoming call - answering and dialing to WebRTC");
+            
+            // Get SIP username from cache or DB
+            const cached = sipUsernameCache.get(companyId);
+            let sipUsername: string | null = null;
+            
+            if (cached && Date.now() - cached.timestamp < SIP_CACHE_TTL) {
+              sipUsername = cached.username;
+            } else {
+              const [credential] = await db
+                .select({ sipUsername: telephonyCredentials.sipUsername })
+                .from(telephonyCredentials)
+                .where(
+                  and(
+                    eq(telephonyCredentials.companyId, companyId),
+                    eq(telephonyCredentials.isActive, true)
+                  )
+                )
+                .orderBy(desc(telephonyCredentials.lastUsedAt))
+                .limit(1);
+              
+              if (credential?.sipUsername) {
+                sipUsername = credential.sipUsername;
+                sipUsernameCache.set(companyId, { username: sipUsername, timestamp: Date.now() });
+              }
+            }
+            
+            if (!sipUsername) {
+              console.error("[Telnyx Call Control] No SIP credential for company:", companyId);
+              // Reject the call
+              await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/hangup`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${telnyxApiKey}`,
+                  ...(managedAccountId && { "X-Managed-Account-Id": managedAccountId })
+                },
+                body: JSON.stringify({ cause: "USER_BUSY" })
+              });
+              return;
+            }
+            
+            // Store mapping for later hangup
+            callControlToSipMap.set(callControlId, { sipUsername, companyId, from, to });
+            activeCallsMap.set(sipUsername, {
+              callSid: callControlId,
+              from,
+              to,
+              companyId,
+              startTime: new Date(),
+              callControlId: callControlId
+            });
+            
+            // Step 1: Answer the inbound call
+            console.log("[Telnyx Call Control] Answering call:", callControlId);
+            const answerRes = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/answer`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${telnyxApiKey}`,
+                ...(managedAccountId && { "X-Managed-Account-Id": managedAccountId })
+              },
+              body: JSON.stringify({})
+            });
+            
+            if (!answerRes.ok) {
+              const errText = await answerRes.text();
+              console.error("[Telnyx Call Control] Answer failed:", answerRes.status, errText);
+              return;
+            }
+            console.log("[Telnyx Call Control] Call answered successfully");
+            
+            // Step 2: Dial to SIP credential (WebRTC client)
+            console.log("[Telnyx Call Control] Dialing to SIP:", sipUsername);
+            const dialRes = await fetch("https://api.telnyx.com/v2/calls", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${telnyxApiKey}`,
+                ...(managedAccountId && { "X-Managed-Account-Id": managedAccountId })
+              },
+              body: JSON.stringify({
+                connection_id: undefined, // Will use the credential connection
+                to: `sip:${sipUsername}@sip.telnyx.com`,
+                from: from,
+                answering_machine_detection: "disabled",
+                webhook_url: `https://${process.env.REPLIT_DEV_DOMAIN || "curbe.io"}/webhooks/telnyx/call-control/${companyId}`,
+                webhook_url_method: "POST"
+              })
+            });
+            
+            if (!dialRes.ok) {
+              const errText = await dialRes.text();
+              console.error("[Telnyx Call Control] Dial to SIP failed:", dialRes.status, errText);
+              // Hang up the PSTN leg since we can't reach WebRTC
+              await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/hangup`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${telnyxApiKey}`,
+                  ...(managedAccountId && { "X-Managed-Account-Id": managedAccountId })
+                },
+                body: JSON.stringify({})
+              });
+              return;
+            }
+            
+            const dialData = await dialRes.json();
+            const dialedLegControlId = dialData.data?.call_control_id;
+            console.log("[Telnyx Call Control] Dialed leg created:", dialedLegControlId);
+            
+            // Store the dialed leg ID for bridging
+            const existingCall = activeCallsMap.get(sipUsername);
+            if (existingCall) {
+              existingCall.dialedLegControlId = dialedLegControlId;
+              activeCallsMap.set(sipUsername, existingCall);
+            }
+            
+            // Also map the dialed leg
+            callControlToSipMap.set(dialedLegControlId, { sipUsername, companyId, from, to });
+          }
+          break;
+        }
+        
+        case "call.answered": {
+          // Check if this is the SIP leg answering (WebRTC client picked up)
+          const mapping = callControlToSipMap.get(callControlId);
+          if (mapping) {
+            const call = activeCallsMap.get(mapping.sipUsername);
+            if (call && call.dialedLegControlId === callControlId) {
+              // This is the WebRTC leg answering - bridge to PSTN leg
+              console.log("[Telnyx Call Control] WebRTC answered - bridging calls");
+              const pstnLegId = call.callControlId;
+              
+              const bridgeRes = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/bridge`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${telnyxApiKey}`,
+                  ...(managedAccountId && { "X-Managed-Account-Id": managedAccountId })
+                },
+                body: JSON.stringify({
+                  call_control_id: pstnLegId
+                })
+              });
+              
+              if (!bridgeRes.ok) {
+                const errText = await bridgeRes.text();
+                console.error("[Telnyx Call Control] Bridge failed:", bridgeRes.status, errText);
+              } else {
+                console.log("[Telnyx Call Control] Calls bridged successfully");
+              }
+            }
+          }
+          break;
+        }
+        
+        case "call.hangup": {
+          // Clean up tracking maps
+          const mapping = callControlToSipMap.get(callControlId);
+          if (mapping) {
+            console.log("[Telnyx Call Control] Call hangup - cleaning up:", mapping.sipUsername);
+            activeCallsMap.delete(mapping.sipUsername);
+            callControlToSipMap.delete(callControlId);
+            
+            // Also clean up the other leg if exists
+            const call = activeCallsMap.get(mapping.sipUsername);
+            if (call?.dialedLegControlId) {
+              callControlToSipMap.delete(call.dialedLegControlId);
+            }
+          }
+          break;
+        }
+        
+        default:
+          console.log("[Telnyx Call Control] Unhandled event:", eventType);
+      }
+    } catch (error: any) {
+      console.error("[Telnyx Call Control] Webhook error:", error);
+    }
+  });
+  
+  // Fallback handler for Call Control webhooks
+  app.post("/webhooks/telnyx/call-control/:companyId/fallback", async (req: Request, res: Response) => {
+    console.error("[Telnyx Call Control Fallback] Fallback triggered:", req.body);
+    res.status(200).json({ received: true });
+  });
+
     // POST /webhooks/telnyx/status/:companyId - Handle status callbacks per company
   app.post("/webhooks/telnyx/status/:companyId", async (req: Request, res: Response) => {
     try {
@@ -28957,14 +29205,42 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { telnyxLegId } = req.body;
+
+      // First, try to get the stored PSTN call_control_id from activeCallsMap
+      // This is set by the Call Control webhook when calls come through the Call Control App
+      const [credential] = await db
+        .select({ sipUsername: telephonyCredentials.sipUsername })
+        .from(telephonyCredentials)
+        .where(
+          and(
+            eq(telephonyCredentials.companyId, user.companyId),
+            eq(telephonyCredentials.isActive, true)
+          )
+        )
+        .orderBy(desc(telephonyCredentials.lastUsedAt))
+        .limit(1);
+
+      let callControlIdToHangup = telnyxLegId;
+      let dialedLegToHangup: string | undefined;
+
+      if (credential?.sipUsername) {
+        const activeCall = activeCallsMap.get(credential.sipUsername);
+        if (activeCall?.callControlId) {
+          console.log("[Call Control Hangup] Using stored PSTN call_control_id:", activeCall.callControlId);
+          callControlIdToHangup = activeCall.callControlId;
+          dialedLegToHangup = activeCall.dialedLegControlId;
+        }
+      }
       
-      if (!telnyxLegId) {
-        console.log("[Call Control Hangup] No telnyxLegId provided");
-        return res.status(400).json({ success: false, message: "telnyxLegId required" });
+      if (!callControlIdToHangup) {
+        console.log("[Call Control Hangup] No callControlId available");
+        return res.status(400).json({ success: false, message: "No call to hang up" });
       }
 
       console.log("[Call Control Hangup] Hanging up call via Call Control API:", { 
-        telnyxLegId,
+        callControlIdToHangup,
+        dialedLegToHangup,
+        providedTelnyxLegId: telnyxLegId,
         companyId: user.companyId
       });
 
@@ -28980,10 +29256,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       telnyxApiKey = telnyxApiKey.trim().replace(/[\r\n\t]/g, "");
       
-      // Use Telnyx Call Control API to hang up with proper SIP code
-      // Per docs: POST /v2/calls/{call_control_id}/actions/hangup
-      const hangupResponse = await fetch(
-        `https://api.telnyx.com/v2/calls/${telnyxLegId}/actions/hangup`,
+      // Hang up both legs if available (PSTN and WebRTC legs)
+      const hangupPromises: Promise<Response>[] = [];
+      
+      // Hang up the PSTN leg (primary)
+      hangupPromises.push(fetch(
+        `https://api.telnyx.com/v2/calls/${callControlIdToHangup}/actions/hangup`,
         {
           method: "POST",
           headers: {
@@ -28992,24 +29270,48 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           },
           body: JSON.stringify({})
         }
-      );
+      ));
 
-      if (hangupResponse.ok) {
-        // Telnyx Call Control API may return empty body on success
-        let result = null;
-        const text = await hangupResponse.text();
-        if (text) {
-          try { result = JSON.parse(text); } catch { /* empty response OK */ }
+      // Also hang up the dialed leg (WebRTC SIP leg) if exists
+      if (dialedLegToHangup && dialedLegToHangup !== callControlIdToHangup) {
+        hangupPromises.push(fetch(
+          `https://api.telnyx.com/v2/calls/${dialedLegToHangup}/actions/hangup`,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              "Authorization": `Bearer ${telnyxApiKey}`
+            },
+            body: JSON.stringify({})
+          }
+        ));
+      }
+
+      const hangupResponses = await Promise.allSettled(hangupPromises);
+      const primaryResult = hangupResponses[0];
+
+      // Clean up activeCallsMap
+      if (credential?.sipUsername) {
+        activeCallsMap.delete(credential.sipUsername);
+        callControlToSipMap.delete(callControlIdToHangup);
+        if (dialedLegToHangup) {
+          callControlToSipMap.delete(dialedLegToHangup);
         }
-        console.log("[Call Control Hangup] Call terminated successfully:", { telnyxLegId, result });
+      }
+
+      if (primaryResult.status === 'fulfilled' && primaryResult.value.ok) {
+        console.log("[Call Control Hangup] Call terminated successfully:", callControlIdToHangup);
         return res.json({ success: true, message: "Call terminated via Call Control API" });
-      } else {
-        const errorText = await hangupResponse.text();
-        console.error("[Call Control Hangup] API error:", hangupResponse.status, errorText);
-        if (hangupResponse.status === 404) {
+      } else if (primaryResult.status === 'fulfilled') {
+        const errorText = await primaryResult.value.text();
+        console.error("[Call Control Hangup] API error:", primaryResult.value.status, errorText);
+        if (primaryResult.value.status === 404 || primaryResult.value.status === 422) {
           return res.json({ success: true, message: "Call already ended" });
         }
-        return res.json({ success: false, message: "API error: " + hangupResponse.status });
+        return res.json({ success: false, message: "API error: " + primaryResult.value.status });
+      } else {
+        console.error("[Call Control Hangup] Request failed:", primaryResult.reason);
+        return res.json({ success: false, message: "Request failed" });
       }
     } catch (error: any) {
       console.error("[Call Control Hangup] Error:", error);
