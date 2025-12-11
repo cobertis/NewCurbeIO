@@ -162,6 +162,34 @@ export default function CompanyDetail() {
     enabled: !!companyId && activeTab === "phone" && phoneStatusData?.configured === true,
   });
 
+  // Call Billing Analytics query
+  const { data: callBillingData, isLoading: isLoadingCallBilling, refetch: refetchCallBilling } = useQuery<{
+    success: boolean;
+    records: any[];
+    summary: {
+      totalCalls: number;
+      callsWithCdrData: number;
+      totalClientCost: number;
+      totalClientCostFormatted: string;
+      totalTelnyxCost: number;
+      totalTelnyxCostFormatted: string;
+      totalProfit: number;
+      totalProfitFormatted: string;
+      overallProfitMargin: string;
+      cdrNote: string;
+    };
+  }>({
+    queryKey: ["/api/telnyx/call-billing", companyId],
+    queryFn: async () => {
+      const res = await fetch(`/api/telnyx/call-billing?companyId=${companyId}&limit=50`, {
+        credentials: "include",
+      });
+      if (!res.ok) throw new Error("Failed to fetch call billing");
+      return res.json();
+    },
+    enabled: !!companyId && activeTab === "phone" && phoneStatusData?.configured === true,
+  });
+
   const company = companyData?.company;
   const allUsers = usersData?.users || [];
   const companyUsers = allUsers.filter(user => user.companyId === companyId);
@@ -1082,6 +1110,134 @@ export default function CompanyDetail() {
               )}
             </CardContent>
           </Card>
+
+          {/* Call Billing Analytics Card - Only visible for superadmin */}
+          {phoneStatusData?.configured && (
+            <Card data-testid="card-call-billing" className="mt-4">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <CreditCard className="h-5 w-5" />
+                      Call Billing Analytics
+                    </CardTitle>
+                    <CardDescription>Compare client charges vs Telnyx wholesale costs</CardDescription>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => refetchCallBilling()}
+                    data-testid="button-refresh-billing"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-1" />
+                    Refresh
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {isLoadingCallBilling ? (
+                  <LoadingSpinner fullScreen={false} />
+                ) : callBillingData?.records && callBillingData.records.length > 0 ? (
+                  <div className="space-y-4">
+                    {/* Summary Section */}
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 bg-muted/50 rounded-lg">
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Total Calls</p>
+                        <p className="text-lg font-bold">{callBillingData.summary.totalCalls}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Client Revenue</p>
+                        <p className="text-lg font-bold text-blue-600">{callBillingData.summary.totalClientCostFormatted}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Telnyx Cost</p>
+                        <p className="text-lg font-bold text-orange-600">{callBillingData.summary.totalTelnyxCostFormatted}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-xs text-muted-foreground">Profit</p>
+                        <p className="text-lg font-bold text-green-600">{callBillingData.summary.totalProfitFormatted}</p>
+                        <p className="text-xs text-green-600">({callBillingData.summary.overallProfitMargin})</p>
+                      </div>
+                    </div>
+
+                    {callBillingData.summary.cdrNote && (
+                      <div className="flex items-center gap-2 p-2 bg-yellow-50 dark:bg-yellow-900/20 rounded border border-yellow-200 dark:border-yellow-800">
+                        <AlertCircle className="h-4 w-4 text-yellow-600 flex-shrink-0" />
+                        <p className="text-xs text-yellow-800 dark:text-yellow-200">{callBillingData.summary.cdrNote}</p>
+                      </div>
+                    )}
+
+                    {/* Calls Table */}
+                    <div className="border rounded-lg overflow-hidden">
+                      <div className="overflow-x-auto">
+                        <table className="w-full text-sm">
+                          <thead className="bg-muted/50">
+                            <tr>
+                              <th className="text-left p-2 font-medium">Date/Time</th>
+                              <th className="text-left p-2 font-medium">Direction</th>
+                              <th className="text-left p-2 font-medium">From/To</th>
+                              <th className="text-right p-2 font-medium">Duration</th>
+                              <th className="text-right p-2 font-medium">Client Cost</th>
+                              <th className="text-right p-2 font-medium">Telnyx Cost</th>
+                              <th className="text-right p-2 font-medium">Profit</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {callBillingData.records.map((call: any) => (
+                              <tr key={call.id} className="border-t hover:bg-muted/30">
+                                <td className="p-2 text-xs">
+                                  {call.startedAt ? new Date(call.startedAt).toLocaleString('en-US', {
+                                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                                  }) : 'N/A'}
+                                </td>
+                                <td className="p-2">
+                                  <Badge variant={call.direction === 'inbound' ? 'secondary' : 'outline'} className="text-xs">
+                                    {call.direction === 'inbound' ? 'IN' : 'OUT'}
+                                  </Badge>
+                                </td>
+                                <td className="p-2 text-xs">
+                                  <div className="flex flex-col">
+                                    <span className="text-muted-foreground">{formatForDisplay(call.fromNumber)}</span>
+                                    <span>{formatForDisplay(call.toNumber)}</span>
+                                  </div>
+                                </td>
+                                <td className="p-2 text-right text-xs font-mono">
+                                  {Math.floor(call.duration / 60)}:{String(call.duration % 60).padStart(2, '0')}
+                                  {call.billedDuration > 0 && call.billedDuration !== call.duration && (
+                                    <span className="text-muted-foreground ml-1">({Math.ceil(call.billedDuration / 60)}m billed)</span>
+                                  )}
+                                </td>
+                                <td className="p-2 text-right font-mono text-blue-600">{call.clientCostFormatted}</td>
+                                <td className="p-2 text-right font-mono">
+                                  {call.hasTelnyxData ? (
+                                    <span className="text-orange-600">{call.telnyxCostFormatted}</span>
+                                  ) : (
+                                    <span className="text-muted-foreground text-xs">Pending</span>
+                                  )}
+                                </td>
+                                <td className="p-2 text-right font-mono">
+                                  {call.hasTelnyxData ? (
+                                    <span className="text-green-600">{call.profitFormatted}</span>
+                                  ) : (
+                                    <span className="text-muted-foreground text-xs">-</span>
+                                  )}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <CreditCard className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    <p className="text-sm">No call records found</p>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+          )}
         </TabsContent>
 
         {/* Activity Logs Tab */}

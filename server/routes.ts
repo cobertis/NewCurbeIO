@@ -29380,6 +29380,168 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
 
+  // GET /api/telnyx/call-billing - Get call billing analytics (client cost vs Telnyx cost)
+  app.get("/api/telnyx/call-billing", requireAuth, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    if (user.role !== "admin" && user.role !== "super_admin" && user.role !== "superadmin") {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    try {
+      const { companyId, limit = "50" } = req.query;
+      
+      if (!companyId) {
+        return res.status(400).json({ error: "companyId is required" });
+      }
+
+      // 1. Get call logs from our database (client billing)
+      const dbCalls = await db.select()
+        .from(callLogs)
+        .where(eq(callLogs.companyId, String(companyId)))
+        .orderBy(desc(callLogs.startedAt))
+        .limit(Number(limit));
+
+      // 2. Get Telnyx CDR for cost comparison
+      const { SecretsService } = await import("./services/secrets-service");
+      const secretsService = new SecretsService();
+      let apiKey = await secretsService.getCredential("telnyx", "api_key");
+      
+      let telnyxCdrMap: Map<string, any> = new Map();
+      
+      if (apiKey && dbCalls.length > 0) {
+        apiKey = apiKey.trim().replace(/[\r\n\t]/g, "");
+        
+        // Get managed account ID
+        const [wallet] = await db.select().from(wallets).where(eq(wallets.companyId, String(companyId))).limit(1);
+        const managedAccountId = wallet?.telnyxAccountId;
+        
+        if (managedAccountId) {
+          const headers: Record<string, string> = {
+            'Authorization': `Bearer ${apiKey}`,
+            'Accept': 'application/json',
+            'x-managed-account-id': managedAccountId
+          };
+          
+          // Determine date range from call logs (oldest call to now)
+          const oldestCallDate = dbCalls[dbCalls.length - 1]?.startedAt;
+          const daysSinceOldest = oldestCallDate 
+            ? Math.ceil((Date.now() - new Date(oldestCallDate).getTime()) / (1000 * 60 * 60 * 24))
+            : 7;
+          // Use appropriate date range filter
+          const dateRange = daysSinceOldest <= 1 ? 'today' 
+            : daysSinceOldest <= 7 ? 'last_7_days' 
+            : 'last_30_days';
+          
+          // Fetch CDRs from both call-control and webrtc record types
+          const recordTypes = ['call-control', 'webrtc'];
+          
+          for (const recordType of recordTypes) {
+            try {
+              const params = new URLSearchParams();
+              params.set('filter[record_type]', recordType);
+              params.set('filter[date_range]', dateRange);
+              params.set('page[size]', '200');
+              
+              const url = `https://api.telnyx.com/v2/detail_records?${params.toString()}`;
+              
+              const response = await fetch(url, { headers });
+              const data = await response.json();
+              
+              if (response.ok && data.data) {
+                // Map CDR records by telnyx_session_id for lookup
+                for (const record of data.data) {
+                  if (record.telnyx_session_id) {
+                    // Only add if not already present (avoid duplicates)
+                    if (!telnyxCdrMap.has(record.telnyx_session_id)) {
+                      telnyxCdrMap.set(record.telnyx_session_id, {
+                        call_sec: record.call_sec,
+                        billed_sec: record.billed_sec,
+                        rate: parseFloat(record.rate || '0'),
+                        cost: parseFloat(record.cost || '0'),
+                        currency: record.currency,
+                        started_at: record.started_at,
+                        finished_at: record.finished_at,
+                        record_type: recordType
+                      });
+                    }
+                  }
+                }
+              }
+            } catch (cdrError) {
+              console.error(`[Call Billing] CDR fetch error (${recordType}):`, cdrError);
+            }
+          }
+        }
+      }
+
+      // 3. Combine data
+      const billingRecords = dbCalls.map((call) => {
+        const clientCost = parseFloat(call.cost || '0');
+        
+        // Try to match with Telnyx CDR by session ID
+        const telnyxData = call.telnyxSessionId ? telnyxCdrMap.get(call.telnyxSessionId) : null;
+        const telnyxCost = telnyxData?.cost || 0;
+        
+        // Calculate profit
+        const profit = clientCost - telnyxCost;
+        const profitMargin = clientCost > 0 ? ((profit / clientCost) * 100) : 0;
+        
+        return {
+          id: call.id,
+          direction: call.direction,
+          status: call.status,
+          fromNumber: call.fromNumber,
+          toNumber: call.toNumber,
+          callerName: call.callerName,
+          duration: call.duration || 0,
+          billedDuration: call.billedDuration || 0,
+          startedAt: call.startedAt,
+          endedAt: call.endedAt,
+          // Billing comparison
+          clientCost: clientCost,
+          clientCostFormatted: `$${clientCost.toFixed(4)}`,
+          telnyxCost: telnyxCost,
+          telnyxCostFormatted: telnyxData ? `$${telnyxCost.toFixed(4)}` : 'Pending',
+          profit: profit,
+          profitFormatted: telnyxData ? `$${profit.toFixed(4)}` : 'Pending',
+          profitMargin: profitMargin.toFixed(1) + '%',
+          hasTelnyxData: !!telnyxData,
+          // Additional info
+          recordingUrl: call.recordingUrl,
+          telnyxSessionId: call.telnyxSessionId
+        };
+      });
+
+      // 4. Calculate totals
+      const totalClientCost = billingRecords.reduce((sum, r) => sum + r.clientCost, 0);
+      const totalTelnyxCost = billingRecords.filter(r => r.hasTelnyxData).reduce((sum, r) => sum + r.telnyxCost, 0);
+      const totalProfit = billingRecords.filter(r => r.hasTelnyxData).reduce((sum, r) => sum + r.profit, 0);
+      const callsWithCdr = billingRecords.filter(r => r.hasTelnyxData).length;
+
+      res.json({
+        success: true,
+        records: billingRecords,
+        summary: {
+          totalCalls: billingRecords.length,
+          callsWithCdrData: callsWithCdr,
+          totalClientCost: totalClientCost,
+          totalClientCostFormatted: `$${totalClientCost.toFixed(4)}`,
+          totalTelnyxCost: totalTelnyxCost,
+          totalTelnyxCostFormatted: `$${totalTelnyxCost.toFixed(4)}`,
+          totalProfit: totalProfit,
+          totalProfitFormatted: `$${totalProfit.toFixed(4)}`,
+          overallProfitMargin: totalClientCost > 0 ? ((totalProfit / totalClientCost) * 100).toFixed(1) + '%' : 'N/A',
+          cdrNote: callsWithCdr < billingRecords.length 
+            ? `${billingRecords.length - callsWithCdr} calls pending CDR (Telnyx has ~3hr processing delay)`
+            : 'All calls have CDR data'
+        }
+      });
+    } catch (error: any) {
+      console.error('[Call Billing] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+
   // =====================================================
   // E911 EMERGENCY ADDRESS ENDPOINTS
   // =====================================================
