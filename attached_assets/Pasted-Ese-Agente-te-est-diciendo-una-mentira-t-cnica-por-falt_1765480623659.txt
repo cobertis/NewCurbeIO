@@ -1,0 +1,69 @@
+Ese Agente te está diciendo una **mentira técnica** por falta de conocimiento profundo de la plataforma Telnyx.
+
+**La verdad es esta:**
+No necesitas cambiar la arquitectura. No necesitas "Call Control API". No necesitas grabar en el navegador (que es una chapuza).
+
+Telnyx **SÍ PUEDE** grabar las llamadas salientes hechas por SIP.js (WebRTC). El truco es que **no se activa por código, se activa por Configuración en el Portal.**
+
+Si configuras el "Outbound Profile" en Telnyx para que grabe *todo*, Telnyx grabará la llamada a nivel de red, sin importar si usas un teléfono de plástico, un softphone o tu código SIP.js.
+
+### TU SOLUCIÓN EN 2 PASOS (Sin programar nada nuevo)
+
+#### PASO 1: Activar el "Grabador Fantasma" (Tú haces esto)
+Ve a tu portal de Telnyx ahora mismo. Aquí es donde obligamos al sistema a grabar aunque el Agente diga que no se puede.
+
+1.  Entra a [portal.telnyx.com](https://portal.telnyx.com).
+2.  En el menú izquierdo, ve a **Voice** -> **Outbound Profiles**.
+3.  Verás un perfil (probablemente el que usa tu conexión SIP). Haz clic en el botón de editar (o en el nombre).
+4.  Busca la sección **"Call Recording"**.
+5.  Cambia la opción a: **"Record all calls"** (Grabar todas las llamadas).
+6.  **Guardar.**
+
+*Al hacer esto, Telnyx ignora lo que diga tu código y graba el audio a la fuerza. Generará un archivo `.mp3` o `.wav` al final de cada llamada saliente.*
+
+---
+
+#### PASO 2: Ordenarle al Agente que recoja la cinta (Prompt)
+Ahora que Telnyx está grabando, el problema es que tu base de datos no se entera. Telnyx enviará un "aviso" (Webhook) diciendo: *"Ya terminé de grabar, aquí está el link"*.
+
+El Agente tiene que programar la **recepción** de ese link.
+
+Copia y pega esto al Agente para cerrarles la boca a sus excusas:
+
+***
+
+# FIX: HANDLING OUTBOUND RECORDINGS (WEBHOOK STRATEGY)
+
+**Agente, estás equivocado sobre la grabación saliente.**
+
+No necesito cambiar la arquitectura a Call Control API.
+Ya he configurado el **Outbound Profile** en el portal de Telnyx con la opción **"Record all calls"**. Esto fuerza la grabación a nivel de red para cualquier sesión SIP iniciada por mi usuario.
+
+**TU TAREA:**
+El problema no es crear la grabación (Telnyx ya lo hace), el problema es que mi backend no está escuchando cuando la grabación termina.
+
+**1. Implementa el Webhook `call.recording.saved` en `server/routes.ts`:**
+Telnyx enviará este evento unos segundos después de colgar.
+* **Payload:** Contiene `recording_url` y los IDs de la llamada (`call_leg_id`, `call_session_id`).
+* **Acción:**
+    1.  Busca la llamada en la tabla `call_logs` usando el ID de Telnyx.
+    2.  Actualiza el campo `recording_url` con el link recibido.
+    3.  Actualiza el estado a `completed` si no lo estaba.
+
+**2. Frontend (Polling o Socket):**
+En la tabla de historial de llamadas, si una llamada reciente no tiene grabación, haz que el frontend re-consulte (poll) cada 5 segundos durante un minuto, o espera una señal de socket, para que el botón "Play" aparezca mágicamente cuando llegue el webhook.
+
+**Implementa esto. La grabación ya existe, solo necesitamos guardar la URL.**
+
+***
+
+### ¿Qué va a pasar?
+1.  Haces la llamada saliente.
+2.  Cuelgas.
+3.  Tu sistema te cobra (inmediato).
+4.  Esperas unos 5-10 segundos.
+5.  Telnyx procesa el audio y le grita a tu servidor: "¡Toma el link!".
+6.  Tu servidor lo guarda.
+7.  El botón de "Play" aparece en tu historial.
+
+¡Hazlo! No dejes que te cambie la arquitectura por una configuración que se arregla con un clic.

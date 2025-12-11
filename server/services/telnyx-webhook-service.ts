@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { wallets, telephonySettings, callLogs } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, or, gte, desc } from "drizzle-orm";
 import crypto from "crypto";
 import Decimal from "decimal.js";
 import { chargeCallToWallet, findRateByPrefix, calculateCallCost } from "./pricing-service";
@@ -503,45 +503,155 @@ export async function handleMessageReceived(event: TelnyxWebhookEvent): Promise<
 
 export async function handleRecordingCompleted(event: TelnyxWebhookEvent): Promise<{ success: boolean; error?: string }> {
   const payload = event.data.payload as any;
-  const callControlId = payload.call_control_id || payload.call_leg_id;
+  
+  // Extract all possible identifiers from webhook
+  const callControlId = payload.call_control_id;
+  const callLegId = payload.call_leg_id;
+  const callSessionId = payload.call_session_id;
+  const fromNumber = payload.from || '';
+  const toNumber = payload.to || '';
+  
+  // Get recording URL from various possible locations
   const recordingUrl = payload.recording_urls?.mp3 || payload.recording_url || payload.public_recording_urls?.mp3;
+  
+  // Calculate recording duration if available
+  const recordingDuration = payload.recording_ended_at && payload.recording_started_at 
+    ? Math.round((new Date(payload.recording_ended_at).getTime() - new Date(payload.recording_started_at).getTime()) / 1000)
+    : null;
 
-  console.log(`[Telnyx Webhook] call_recording.saved - call: ${callControlId}, url: ${recordingUrl ? 'present' : 'missing'}`);
+  console.log(`[Telnyx Webhook] call_recording.saved - Identifiers:`, {
+    callControlId,
+    callLegId,
+    callSessionId,
+    fromNumber,
+    toNumber,
+    recordingUrl: recordingUrl ? 'present' : 'missing',
+    recordingDuration
+  });
 
-  if (!callControlId || !recordingUrl) {
-    console.error("[Telnyx Webhook] Recording missing call_control_id or recording_url");
-    return { success: false, error: "Missing call_control_id or recording_url" };
+  if (!recordingUrl) {
+    console.error("[Telnyx Webhook] Recording webhook missing recording URL");
+    return { success: false, error: "Missing recording URL" };
   }
 
+  // Use call_control_id or call_leg_id as the primary identifier
+  const primaryId = callControlId || callLegId;
+
   try {
+    let callLog: typeof callLogs.$inferSelect | undefined;
+    let matchMethod = '';
+
+    // 1. First try to find by telnyxCallId (current behavior)
+    if (primaryId) {
+      const [found] = await db
+        .select()
+        .from(callLogs)
+        .where(eq(callLogs.telnyxCallId, primaryId));
+      
+      if (found) {
+        callLog = found;
+        matchMethod = 'telnyxCallId';
+        console.log(`[Telnyx Webhook] Found call log by telnyxCallId: ${found.id}`);
+      }
+    }
+
+    // 2. If not found, try searching by sipCallId (for WebRTC calls)
+    if (!callLog && (callLegId || callSessionId)) {
+      const sipIdToSearch = callLegId || callSessionId;
+      const [found] = await db
+        .select()
+        .from(callLogs)
+        .where(eq(callLogs.sipCallId, sipIdToSearch));
+      
+      if (found) {
+        callLog = found;
+        matchMethod = 'sipCallId';
+        console.log(`[Telnyx Webhook] Found call log by sipCallId: ${found.id}`);
+      }
+    }
+
+    // 3. If still not found, search by phone numbers and recent timestamp (within last 5 minutes)
+    if (!callLog && (fromNumber || toNumber)) {
+      const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+      
+      // Normalize phone numbers by removing any formatting
+      const normalizePhone = (phone: string) => phone.replace(/[^\d+]/g, '');
+      const normalizedFrom = normalizePhone(fromNumber);
+      const normalizedTo = normalizePhone(toNumber);
+      
+      console.log(`[Telnyx Webhook] Searching for recent calls with from=${normalizedFrom}, to=${normalizedTo}`);
+      
+      // For outbound WebRTC calls, the fromNumber in webhook matches our toNumber (destination)
+      // So we search for calls where either:
+      // - fromNumber matches (inbound) OR toNumber matches (outbound)
+      const recentCalls = await db
+        .select()
+        .from(callLogs)
+        .where(
+          and(
+            gte(callLogs.startedAt, fiveMinutesAgo),
+            or(
+              eq(callLogs.fromNumber, normalizedFrom),
+              eq(callLogs.toNumber, normalizedFrom),
+              eq(callLogs.fromNumber, normalizedTo),
+              eq(callLogs.toNumber, normalizedTo)
+            )
+          )
+        )
+        .orderBy(desc(callLogs.startedAt))
+        .limit(5);
+      
+      if (recentCalls.length > 0) {
+        // Prefer calls that don't already have a recording
+        const callWithoutRecording = recentCalls.find(c => !c.recordingUrl);
+        callLog = callWithoutRecording || recentCalls[0];
+        matchMethod = 'phoneNumber+timestamp';
+        console.log(`[Telnyx Webhook] Found call log by phone number match: ${callLog.id} (checked ${recentCalls.length} recent calls)`);
+      }
+    }
+
+    if (!callLog) {
+      console.warn(`[Telnyx Webhook] No call log found for recording. Tried:`, {
+        primaryId,
+        callLegId,
+        callSessionId,
+        fromNumber,
+        toNumber
+      });
+      return { success: true }; // Don't fail, just log warning
+    }
+
+    // Update the call log with recording info
+    const updateData: any = {
+      recordingUrl,
+      recordingDuration
+    };
+
+    // If found by alternative method, update telnyxCallId for future matching
+    if (matchMethod !== 'telnyxCallId' && primaryId && !callLog.telnyxCallId) {
+      updateData.telnyxCallId = primaryId;
+      console.log(`[Telnyx Webhook] Updating telnyxCallId to ${primaryId} for future matching`);
+    }
+
     const [updated] = await db
       .update(callLogs)
-      .set({ 
-        recordingUrl,
-        recordingDuration: payload.recording_ended_at && payload.recording_started_at 
-          ? Math.round((new Date(payload.recording_ended_at).getTime() - new Date(payload.recording_started_at).getTime()) / 1000)
-          : null
-      })
-      .where(eq(callLogs.telnyxCallId, callControlId))
+      .set(updateData)
+      .where(eq(callLogs.id, callLog.id))
       .returning();
 
-    if (updated) {
-      console.log(`[Telnyx Webhook] Recording URL saved for call ${callControlId}`);
-      
-      if (updated.companyId) {
-        broadcastNewCallLog(updated.companyId, {
-          id: updated.id,
-          fromNumber: updated.fromNumber || '',
-          toNumber: updated.toNumber || '',
-          direction: updated.direction as "inbound" | "outbound",
-          duration: updated.duration || 0,
-          cost: updated.cost || "0.0000",
-          status: updated.status || 'answered',
-          recordingUrl
-        });
-      }
-    } else {
-      console.warn(`[Telnyx Webhook] No call log found for recording: ${callControlId}`);
+    console.log(`[Telnyx Webhook] Recording URL saved for call ${callLog.id} (matched via ${matchMethod})`);
+    
+    if (updated.companyId) {
+      broadcastNewCallLog(updated.companyId, {
+        id: updated.id,
+        fromNumber: updated.fromNumber || '',
+        toNumber: updated.toNumber || '',
+        direction: updated.direction as "inbound" | "outbound",
+        duration: updated.duration || 0,
+        cost: updated.cost || "0.0000",
+        status: updated.status || 'answered',
+        recordingUrl
+      });
     }
 
     return { success: true };
