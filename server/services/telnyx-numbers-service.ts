@@ -138,6 +138,20 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[Telnyx Numbers] Search error: ${response.status} - ${errorText}`);
+      
+      // Handle "no numbers found" as empty result, not error
+      if (response.status === 400 && errorText.includes("10031")) {
+        console.log("[Telnyx Numbers] No exact matches found for filters");
+        return {
+          success: true,
+          numbers: [],
+          totalCount: 0,
+          currentPage: 1,
+          totalPages: 0,
+          pageSize: params.limit || 50,
+        };
+      }
+      
       return {
         success: false,
         error: `Telnyx API error: ${response.status}`,
