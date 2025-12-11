@@ -669,6 +669,8 @@ class TelnyxWebRTCManager {
       case "ringing":
         if (direction === "inbound") {
           console.log("[Telnyx WebRTC] 📞 Incoming call (state:", state, ")");
+          // CRITICAL: Reset remoteStreamConnected for new inbound call
+          this.remoteStreamConnected = false;
           store.setIncomingCall(call);
           this.startRingtone();
           

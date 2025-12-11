@@ -29032,7 +29032,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         username: credential.sipUsername,
         credential: credential.sipPassword,
         iceServers: [
-          { urls: "stun:stun.telnyx.com:3478" },
           {
             urls: "turn:turn.telnyx.com:3478?transport=udp",
             username: credential.sipUsername,
@@ -29231,8 +29230,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             username: result.sipUsername,
             credential: result.sipPassword
           },
-          { urls: "stun:stun.telnyx.com:3478" },
-          { urls: "stun:stun.l.google.com:19302" }
         ]
       });
     } catch (error: any) {
