@@ -29290,7 +29290,98 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // GET /api/telnyx/cdr - Get Call Detail Records from Telnyx for billing analysis
+  app.get("/api/telnyx/cdr", requireAuth, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    if (user.role !== "admin" && user.role !== "super_admin" && user.role !== "superadmin") {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    try {
+      const { SecretsService } = await import("./services/secrets-service");
+      const secretsService = new SecretsService();
+      let apiKey = await secretsService.getCredential("telnyx", "api_key");
+      if (!apiKey) {
+        return res.status(500).json({ error: "Telnyx API key not configured" });
+      }
+      apiKey = apiKey.trim().replace(/[\r\n\t]/g, "");
 
+      const { companyId, fromNumber, toNumber, startDate, endDate } = req.query;
+      
+      // Get managed account ID if company specified
+      let managedAccountId: string | undefined;
+      if (companyId) {
+        const [wallet] = await db.select().from(wallets).where(eq(wallets.companyId, String(companyId))).limit(1);
+        managedAccountId = wallet?.telnyxAccountId || undefined;
+      }
+
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${apiKey}`,
+        'Accept': 'application/json'
+      };
+      if (managedAccountId) {
+        headers['x-managed-account-id'] = managedAccountId;
+      }
+
+      // Build query params for Telnyx API
+      const params = new URLSearchParams();
+      params.set('filter[record_type]', 'call');
+      params.set('filter[date_range]', 'last_7_days');
+      params.set('page[size]', '100');
+      
+      if (startDate) params.set('filter[created_at][gte]', String(startDate));
+      if (endDate) params.set('filter[created_at][lte]', String(endDate));
+
+      const url = `https://api.telnyx.com/v2/detail_records?${params.toString()}`;
+      console.log(`[Telnyx CDR] Fetching: ${url}, managed account: ${managedAccountId || 'none'}`);
+
+      const response = await fetch(url, { headers });
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('[Telnyx CDR] Error:', data);
+        return res.status(response.status).json({ error: data.errors?.[0]?.detail || 'Failed to fetch CDR' });
+      }
+
+      // Filter by phone numbers if specified
+      let records = data.data || [];
+      if (fromNumber || toNumber) {
+        records = records.filter((r: any) => {
+          if (fromNumber && r.from !== fromNumber && r.caller_id !== fromNumber) return false;
+          if (toNumber && r.to !== toNumber && r.destination !== toNumber) return false;
+          return true;
+        });
+      }
+
+      res.json({
+        success: true,
+        managedAccountId,
+        totalRecords: records.length,
+        records: records.map((r: any) => ({
+          id: r.id,
+          createdAt: r.created_at,
+          from: r.from || r.caller_id,
+          to: r.to || r.destination,
+          direction: r.direction,
+          duration: r.duration,
+          billedDuration: r.billed_duration,
+          rate: r.rate,
+          cost: r.cost,
+          currency: r.currency,
+          recordType: r.record_type,
+          status: r.status,
+          carrierFees: r.carrier_fees,
+          features: r.features
+        }))
+      });
+    } catch (error: any) {
+      console.error('[Telnyx CDR] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+
+  // =====================================================
+  // E911 EMERGENCY ADDRESS ENDPOINTS
   // =====================================================
   // E911 EMERGENCY ADDRESS ENDPOINTS
   // =====================================================
