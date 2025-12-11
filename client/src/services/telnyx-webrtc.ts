@@ -522,10 +522,12 @@ class TelnyxWebRTCManager {
     if (iceServers && iceServers.length > 0) {
       // CRITICAL: Manual ICE injection with TURN credentials from /api/telnyx/turn-credentials
       // Per Telnyx docs: SIP credentials authenticate with TURN servers
-      // NOTE: forceRelayCandidate breaks incoming calls in Telnyx SDK - DO NOT USE
+      // iceTransportPolicy: 'relay' forces immediate TURN tunnel usage
+      // This eliminates P2P/STUN attempts that fail silently for ~4 seconds
       clientOptions.iceServers = iceServers;
+      clientOptions.iceTransportPolicy = 'relay'; // Force TURN only - skip P2P/STUN attempts
       clientOptions.prefetchIceCandidates = false; // Disable automatic - we have manual TURN credentials
-      console.log("[Telnyx WebRTC] ⚡ Manual ICE servers injected:", iceServers.length, "servers");
+      console.log("[Telnyx WebRTC] ⚡ RELAY MODE: Forcing TURN tunnel (no P2P/STUN)");
     } else {
       // Fallback to SDK prefetch if no servers provided
       clientOptions.prefetchIceCandidates = true;
