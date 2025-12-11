@@ -9,7 +9,8 @@ import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
-import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppMessage, broadcastWhatsAppChatUpdate, broadcastWhatsAppConnection, broadcastWhatsAppQrCode, broadcastWhatsAppTyping, broadcastWhatsAppMessageStatus, broadcastWhatsAppEvent } from "./websocket";
+import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppMessage, broadcastWhatsAppChatUpdate, broadcastWhatsAppConnection, broadcastWhatsAppQrCode, broadcastWhatsAppTyping, broadcastWhatsAppMessageStatus, broadcastWhatsAppEvent, broadcastWalletUpdate, broadcastNewCallLog } from "./websocket";
+import { chargeCallToWallet } from "./services/pricing-service";
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
 import { notificationService } from "./notification-service";
@@ -29932,7 +29933,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated with user" });
       }
 
-      const { status, duration, answeredAt, endedAt, hangupCause, recordingUrl } = req.body;
+      const { status, duration, answeredAt, endedAt, hangupCause, recordingUrl, fromNumber, toNumber, direction, sipCallId, startedAt, contactId, callerName } = req.body;
+
+      // First, get the existing call log to check current state
+      const [existingLog] = await db
+        .select()
+        .from(callLogs)
+        .where(and(eq(callLogs.id, id), eq(callLogs.companyId, user.companyId)));
+
+      if (!existingLog) {
+        return res.status(404).json({ message: "Call log not found" });
+      }
 
       const updateData: any = {};
       if (status !== undefined) updateData.status = status;
@@ -29946,15 +29957,70 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No fields to update" });
       }
 
+      // Check if this is a call ending and needs billing
+      // Conditions: status is "ended" or "completed", duration > 0, cost not already set
+      const isCallEnding = (status === "ended" || status === "completed");
+      const hasDuration = (duration !== undefined && duration > 0) || (existingLog.duration && existingLog.duration > 0);
+      const notAlreadyBilled = !existingLog.cost || existingLog.cost === "0" || existingLog.cost === "0.0000";
+      
+      if (isCallEnding && hasDuration && notAlreadyBilled) {
+        console.log(`[Call Logs] WebRTC call ended - charging to wallet. ID: ${id}, Duration: ${duration || existingLog.duration}s`);
+        
+        // Use provided values or fall back to existing log values
+        const callDuration = duration !== undefined ? duration : (existingLog.duration || 0);
+        const callFromNumber = fromNumber || existingLog.fromNumber;
+        const callToNumber = toNumber || existingLog.toNumber;
+        const callDirection = direction || existingLog.direction;
+        const callStartedAt = startedAt ? new Date(startedAt) : (existingLog.startedAt || new Date());
+        const callEndedAt = endedAt ? new Date(endedAt) : new Date();
+        
+        // Charge the call to the wallet
+        const chargeResult = await chargeCallToWallet(user.companyId, {
+          telnyxCallId: existingLog.telnyxCallId || existingLog.sipCallId || id,
+          fromNumber: callFromNumber,
+          toNumber: callToNumber,
+          direction: callDirection as "inbound" | "outbound",
+          durationSeconds: callDuration,
+          status: status,
+          startedAt: callStartedAt,
+          endedAt: callEndedAt,
+          userId: existingLog.userId || user.id,
+          contactId: contactId || existingLog.contactId || undefined,
+          callerName: callerName || existingLog.callerName || undefined,
+        });
+
+        if (chargeResult.success) {
+          console.log(`[Call Logs] WebRTC call charged successfully: $${chargeResult.amountCharged}, new balance: $${chargeResult.newBalance}`);
+          
+          // Update the call log with the cost from charging
+          updateData.cost = chargeResult.amountCharged;
+          updateData.costCurrency = "USD";
+          updateData.billedDuration = callDuration;
+          
+          // Broadcast wallet update to clients
+          broadcastWalletUpdate(user.companyId, {
+            balance: chargeResult.newBalance!,
+            transactionType: "CALL_COST",
+            description: `Call to ${callToNumber}`
+          });
+        } else if (chargeResult.insufficientFunds) {
+          console.error(`[Call Logs] Insufficient funds for WebRTC call: ${chargeResult.error}`);
+          // Still update the call log but mark as failed billing
+          updateData.cost = "0.0000";
+          updateData.costCurrency = "USD";
+        } else {
+          console.error(`[Call Logs] Failed to charge WebRTC call: ${chargeResult.error}`);
+        }
+      }
+
       const [updated] = await db
         .update(callLogs)
         .set(updateData)
         .where(and(eq(callLogs.id, id), eq(callLogs.companyId, user.companyId)))
         .returning();
 
-      if (!updated) {
-        return res.status(404).json({ message: "Call log not found" });
-      }
+      // Broadcast the updated call log
+      broadcastNewCallLog(user.companyId, updated as any);
 
       res.json({ success: true, log: updated });
     } catch (error: any) {
