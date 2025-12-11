@@ -369,8 +369,6 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
 
   const { data: numbersData, isLoading, refetch } = useQuery<{ 
     numbers: AvailablePhoneNumber[]; 
-    alternativeNumbers?: AvailablePhoneNumber[];
-    hasAlternatives?: boolean;
     totalCount?: number;
     currentPage?: number;
     totalPages?: number;
@@ -906,61 +904,6 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
                 })}
               </tbody>
             </table>
-          ) : numbersData?.hasAlternatives && numbersData.alternativeNumbers && numbersData.alternativeNumbers.length > 0 ? (
-            <>
-              <div className="bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-800 px-4 py-2">
-                <p className="text-sm text-amber-700 dark:text-amber-400">
-                  No exact matches found for your search. Showing suggested alternatives:
-                </p>
-              </div>
-              <table className="w-full">
-                <thead className="bg-muted/50 sticky top-0">
-                  <tr className="text-left text-sm text-muted-foreground">
-                    <th className="px-4 py-3 font-medium">Number</th>
-                    <th className="px-4 py-3 font-medium">Location/Rate Center</th>
-                    <th className="px-4 py-3 font-medium">Number Type</th>
-                    <th className="px-4 py-3 font-medium">Features</th>
-                    <th className="px-4 py-3 font-medium text-right">Monthly Price</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border">
-                  {numbersData.alternativeNumbers.map((number) => {
-                    const isSelected = selectedNumber === number.phone_number;
-                    return (
-                      <tr
-                        key={number.phone_number}
-                        onClick={() => selectNumber(number.phone_number)}
-                        className={cn(
-                          "cursor-pointer transition-colors",
-                          isSelected ? "bg-blue-50 dark:bg-blue-950/50" : "hover:bg-muted/30"
-                        )}
-                        data-testid={`number-row-${number.phone_number}`}
-                      >
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className={cn(
-                              "w-4 h-4 rounded-full border-2 flex items-center justify-center",
-                              isSelected ? "border-blue-500 bg-blue-500" : "border-muted-foreground"
-                            )}>
-                              {isSelected && <div className="w-2 h-2 rounded-full bg-white" />}
-                            </div>
-                            <span className="font-mono font-medium">{formatPhoneNumber(number.phone_number)}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 text-sm text-muted-foreground uppercase">
-                          {number.rate_center || number.locality || 'N/A'}{number.region ? `, ${number.region}` : ''}
-                        </td>
-                        <td className="px-4 py-3 text-sm">{formatNumberType(number.phone_number_type)}</td>
-                        <td className="px-4 py-3">{getCapabilityBadges(number.features || [])}</td>
-                        <td className="px-4 py-3 text-right">
-                          <span className="font-semibold">${getConfiguredPrice(number.phone_number_type)}/mo</span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </>
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
               <Phone className="h-12 w-12 text-muted-foreground mb-4" />

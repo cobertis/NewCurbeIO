@@ -85,10 +85,7 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
     }
     
     if (params.national_destination_code) {
-      // Use phone_number starts_with filter for exact area code matching
-      // Format: +1XXX for US numbers where XXX is the area code
-      const areaCode = params.national_destination_code;
-      queryParams.append("filter[phone_number][starts_with]", `+1${areaCode}`);
+      queryParams.append("filter[national_destination_code]", params.national_destination_code);
     }
     
     if (params.starts_with) {
@@ -109,8 +106,13 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
       });
     }
     
-    // Always use best_effort to get results, we'll filter exact matches on our side
-    queryParams.append("filter[best_effort]", "true");
+    // Use best_effort=false when filtering by area code to get exact matches only
+    // Use best_effort=true only for general searches without specific filters
+    const hasSpecificFilters = params.national_destination_code || 
+                               params.starts_with || 
+                               params.ends_with || 
+                               params.contains;
+    queryParams.append("filter[best_effort]", hasSpecificFilters ? "false" : "true");
     
     // Use page[size] and page[number] for proper pagination
     const pageSize = params.limit || 50;
@@ -154,54 +156,17 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
     const result = await response.json();
     
     const meta = result.meta || {};
-    const allNumbers = result.data || [];
+    const numbers = result.data || [];
     
-    // Filter exact matches based on search criteria
-    let exactMatches: typeof allNumbers = [];
-    let alternativeMatches: typeof allNumbers = [];
-    
-    if (params.national_destination_code) {
-      // Filter by area code - check if phone number contains the area code
-      const areaCode = params.national_destination_code;
-      
-      // Debug: log first few numbers to see format
-      if (allNumbers.length > 0) {
-        console.log(`[Telnyx Numbers] Sample numbers received:`, allNumbers.slice(0, 3).map((n: any) => n.phone_number));
-        console.log(`[Telnyx Numbers] Looking for area code: ${areaCode}`);
-      }
-      
-      exactMatches = allNumbers.filter((n: any) => {
-        const phone = n.phone_number?.replace(/^\+1/, '') || '';
-        const matches = phone.startsWith(areaCode);
-        return matches;
-      });
-      alternativeMatches = allNumbers.filter((n: any) => {
-        const phone = n.phone_number?.replace(/^\+1/, '') || '';
-        return !phone.startsWith(areaCode);
-      });
-    } else if (params.starts_with) {
-      exactMatches = allNumbers.filter((n: any) => 
-        n.phone_number?.includes(params.starts_with)
-      );
-      alternativeMatches = allNumbers.filter((n: any) => 
-        !n.phone_number?.includes(params.starts_with)
-      );
-    } else {
-      // No specific filter, all are considered matches
-      exactMatches = allNumbers;
-    }
-    
-    console.log(`[Telnyx Numbers] Found ${allNumbers.length} total, ${exactMatches.length} exact matches, ${alternativeMatches.length} alternatives`);
+    console.log(`[Telnyx Numbers] Found ${numbers.length} numbers on page ${meta.page_number || pageNumber}`);
 
     return {
       success: true,
-      numbers: exactMatches,
-      alternativeNumbers: alternativeMatches,
+      numbers: numbers,
       totalCount: meta.total_results,
       currentPage: meta.page_number || pageNumber,
       totalPages: meta.total_pages || 1,
       pageSize: meta.page_size || pageSize,
-      hasAlternatives: alternativeMatches.length > 0 && exactMatches.length === 0,
     };
   } catch (error) {
     console.error("[Telnyx Numbers] Search error:", error);
