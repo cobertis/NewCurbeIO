@@ -184,11 +184,15 @@ export class VipPassService {
     return instance;
   }
 
-  async getPassInstanceById(passInstanceId: string) {
+  async getPassInstanceById(passInstanceId: string, companyId?: string) {
+    const conditions = [eq(vipPassInstances.id, passInstanceId)];
+    if (companyId) {
+      conditions.push(eq(vipPassInstances.companyId, companyId));
+    }
     const [instance] = await db
       .select()
       .from(vipPassInstances)
-      .where(eq(vipPassInstances.id, passInstanceId))
+      .where(and(...conditions))
       .limit(1);
     
     return instance;
@@ -221,12 +225,8 @@ export class VipPassService {
     }
   }
 
-  async generatePkpassFile(passInstanceId: string): Promise<{ buffer: Buffer; filename: string }> {
-    const [instance] = await db
-      .select()
-      .from(vipPassInstances)
-      .where(eq(vipPassInstances.id, passInstanceId))
-      .limit(1);
+  async generatePkpassFile(passInstanceId: string, companyId?: string): Promise<{ buffer: Buffer; filename: string }> {
+    const instance = await this.getPassInstanceById(passInstanceId, companyId);
     
     if (!instance) {
       throw new Error("Pass instance not found");
@@ -374,7 +374,12 @@ export class VipPassService {
     };
   }
 
-  async revokePassInstance(passInstanceId: string) {
+  async revokePassInstance(passInstanceId: string, companyId?: string) {
+    const instance = await this.getPassInstanceById(passInstanceId, companyId);
+    if (!instance) {
+      throw new Error("Pass instance not found");
+    }
+    
     await db
       .update(vipPassInstances)
       .set({
@@ -384,7 +389,12 @@ export class VipPassService {
       .where(eq(vipPassInstances.id, passInstanceId));
   }
 
-  async deletePassInstance(passInstanceId: string) {
+  async deletePassInstance(passInstanceId: string, companyId?: string) {
+    const instance = await this.getPassInstanceById(passInstanceId, companyId);
+    if (!instance) {
+      throw new Error("Pass instance not found");
+    }
+    
     await db
       .delete(vipPassInstances)
       .where(eq(vipPassInstances.id, passInstanceId));

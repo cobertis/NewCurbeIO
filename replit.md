@@ -115,3 +115,50 @@ The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Sec
 - **WORKAROUND**: For inbound calls, the system captures `telnyxLegId` when the call becomes active, then uses the Telnyx Call Control REST API (`POST /v2/calls/{call_control_id}/actions/hangup`) instead of the SDK's `hangup()` method.
 - **ENDPOINT**: `/api/webrtc/call-control-hangup` accepts `{ telnyxLegId }` and terminates the call with proper NORMAL_CLEARING (16).
 - **SOURCE**: https://github.com/team-telnyx/webrtc/blob/main/packages/js/src/Modules/Verto/webrtc/BaseCall.ts
+
+### Apple Wallet VIP Pass System (Dec 2024)
+Multi-tenant Apple Wallet VIP Pass platform with per-company branding, pass issuance, and APNs push notifications.
+
+**Database Tables:**
+- `vip_pass_designs`: Per-company VIP Pass configuration (colors, fields, branding, Apple credentials)
+- `vip_pass_instances`: Individual issued passes with unique serial numbers and authentication tokens
+- `vip_pass_devices`: Device registrations for push notifications (linked by deviceLibraryIdentifier)
+- `vip_pass_notifications`: Push notification history and delivery tracking
+
+**Backend Services:**
+- `server/services/vip-pass-service.ts`: Pass design CRUD, instance creation, .pkpass file generation using passkit-generator
+- `server/services/vip-pass-apns-service.ts`: APNs push notifications, device registration, JWT token caching
+
+**API Endpoints (Authenticated):**
+- `GET/POST /api/vip-pass/design` - VIP Pass design configuration (admin only)
+- `GET/POST/DELETE /api/vip-pass/instances` - Pass instance management
+- `GET /api/vip-pass/instances/:id/download` - Download .pkpass file
+- `POST /api/vip-pass/notifications/send` - Send push notifications (admin only)
+- `GET /api/vip-pass/notifications/history` - Notification history
+- `GET /api/vip-pass/stats` - VIP Pass statistics
+
+**Apple Wallet PassKit Web Service Endpoints (Per Apple Spec):**
+- `POST /v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier/:serialNumber` - Device registration
+- `DELETE /v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier/:serialNumber` - Device unregistration
+- `GET /v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier` - Get registered passes
+- `GET /v1/passes/:passTypeIdentifier/:serialNumber` - Get latest pass version
+- `POST /v1/log` - Receive Apple Wallet error logs
+
+**Frontend Pages:**
+- `/vip-pass-designer` - Visual pass designer with real-time preview
+- `/vip-pass-management` - Pass management dashboard with stats, issue passes, send notifications
+
+**Template Variables for Pass Fields:**
+- `{{serialNumber}}`, `{{memberId}}`, `{{recipientName}}`, `{{tierLevel}}`, `{{companyName}}`
+
+**Apple Developer Requirements:**
+- Pass Type Identifier (e.g., pass.com.company.vip)
+- Team Identifier
+- Pass signing certificate (pass-cert.pem, pass-key.pem)
+- Apple WWDR certificate (wwdr.pem)
+- APNs Auth Key (.p8) for push notifications
+
+**Security:**
+- PassKit endpoints validate `Authorization: ApplePass <authenticationToken>` header
+- All service methods enforce companyId scoping for multi-tenant isolation
+- Device registrations are per-pass with unique constraint on (deviceLibraryIdentifier, passInstanceId)

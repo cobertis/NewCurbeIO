@@ -30234,13 +30234,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const { id } = req.params;
       
-      // Verify the instance belongs to this company
-      const instance = await vipPassService.getPassInstanceById(id);
-      if (!instance || instance.companyId !== user.companyId) {
-        return res.status(404).json({ error: "Pass instance not found" });
-      }
-      
-      const { buffer, filename } = await vipPassService.generatePkpassFile(id);
+      // Generate pass file with companyId verification (prevents cross-tenant access)
+      const { buffer, filename } = await vipPassService.generatePkpassFile(id, user.companyId);
       
       res.set({
         "Content-Type": "application/vnd.apple.pkpass",
@@ -30250,6 +30245,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.send(buffer);
     } catch (error: any) {
       console.error("[VIP Pass] Error generating pkpass:", error);
+      if (error.message === "Pass instance not found") {
+        return res.status(404).json({ error: "Pass instance not found" });
+      }
       return res.status(500).json({ error: error.message || "Failed to generate .pkpass file" });
     }
   });
@@ -30264,16 +30262,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const { id } = req.params;
       
-      // Verify the instance belongs to this company
-      const instance = await vipPassService.getPassInstanceById(id);
-      if (!instance || instance.companyId !== user.companyId) {
+      // Revoke pass with companyId verification (prevents cross-tenant access)
+      await vipPassService.revokePassInstance(id, user.companyId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[VIP Pass] Error revoking instance:", error);
+      if (error.message === "Pass instance not found") {
         return res.status(404).json({ error: "Pass instance not found" });
       }
-      
-      await vipPassService.revokePassInstance(id);
-      return res.json({ success: true });
-    } catch (error) {
-      console.error("[VIP Pass] Error revoking instance:", error);
       return res.status(500).json({ error: "Failed to revoke VIP Pass instance" });
     }
   });
