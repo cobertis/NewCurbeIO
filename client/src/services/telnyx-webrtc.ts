@@ -905,52 +905,23 @@ class TelnyxWebRTCManager {
       webrtcCallId 
     });
 
-    // For INBOUND calls routed directly to Credential Connection (no TeXML),
-    // we can use SDK hangup() directly since there's no intermediate TeXML leg
-    // For legacy TeXML routing, we try server-side hangup first
-    if (direction === "inbound") {
-      console.log("[Telnyx WebRTC] Attempting to hang up inbound call...");
-      
-      // First try server-side hangup (for legacy TeXML routing)
-      let serverHasActiveCall = false;
-      try {
-        const response = await fetch("/api/webrtc/server-hangup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ webrtcCallId })
-        });
-        const result = await response.json();
-        console.log("[Telnyx WebRTC] Server hangup result:", result);
-        
-        // Check if server had an active call to hang up
-        serverHasActiveCall = result.message !== "No active call to hang up";
-        
-        if (serverHasActiveCall && result.success) {
-          console.log("[Telnyx WebRTC] Server terminated PSTN call (TeXML routing)");
-          // PSTN is terminated - the call will automatically move to hangup/destroy state
-        }
-      } catch (e) {
-        console.error("[Telnyx WebRTC] Server hangup error (non-fatal):", e);
-      }
-      
-      // If server had no active call, we're using direct Credential Connection routing
-      // In this case, use SDK hangup() directly - it will send SIP BYE to terminate
-      if (!serverHasActiveCall) {
-        console.log("[Telnyx WebRTC] Using SDK hangup for direct Credential Connection routing");
-        try {
-          activeCall.hangup();
-        } catch (e) {
-          console.error("[Telnyx WebRTC] SDK hangup error:", e);
-        }
-      }
-    } else {
-      // For OUTBOUND calls, use SDK hangup (no 486 issue because we initiated)
-      try {
+    // CRITICAL: For inbound calls, we MUST use sipHangupCode: 16 (NORMAL_CLEARING)
+    // Otherwise the SDK defaults to 486 (User Busy) for inbound call hangups
+    // This is per Telnyx WebRTC documentation for proper call termination
+    const hangupCode = direction === "inbound" ? 16 : undefined;
+    
+    console.log("[Telnyx WebRTC] Hanging up with code:", hangupCode || "default");
+    
+    try {
+      if (hangupCode) {
+        // For inbound calls: explicitly send NORMAL_CLEARING (16) to avoid 486 Busy
+        activeCall.hangup({ sipHangupCode: hangupCode });
+      } else {
+        // For outbound calls: default hangup is fine
         activeCall.hangup();
-      } catch (e) {
-        console.error("[Telnyx WebRTC] SDK hangup error:", e);
       }
+    } catch (e) {
+      console.error("[Telnyx WebRTC] SDK hangup error:", e);
     }
 
     // Clean UI states AFTER hangup
