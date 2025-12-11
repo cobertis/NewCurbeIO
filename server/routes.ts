@@ -29182,22 +29182,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/telnyx/sync-recordings - Sync recordings from Telnyx to call logs
+  app.post("/api/telnyx/sync-recordings", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ error: "Admin access required" });
+      }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+      // Get Telnyx API key from secrets service (same as other Telnyx endpoints)
+      const { SecretsService } = await import("./services/secrets-service");
+      const secretsService = new SecretsService();
+      let apiKey = await secretsService.getCredential("telnyx", "api_key");
+      if (!apiKey) {
+        return res.status(500).json({ error: "Telnyx API key not configured" });
+      }
+      apiKey = apiKey.trim().replace(/[\r\n\t]/g, "");
       // Get the company's managed account ID from wallet
       const [wallet] = await db.select().from(wallets).where(eq(wallets.companyId, user.companyId)).limit(1);
       const managedAccountId = wallet?.telnyxAccountId;
