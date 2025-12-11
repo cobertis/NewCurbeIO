@@ -516,38 +516,37 @@ class TelnyxWebRTCManager {
       password: sipPass,
     };
     
-    if (iceServers && iceServers.length > 0) {
-      // Verify no STUN in the array
-      const hasStun = iceServers.some(s => {
-        const urls = Array.isArray(s.urls) ? s.urls : [s.urls];
-        return urls.some(u => u.startsWith('stun:'));
-      });
-      console.log("[Telnyx WebRTC] ⚡ ICE SERVERS RECEIVED:", JSON.stringify(iceServers));
-      console.log("[Telnyx WebRTC] ⚡ Contains STUN:", hasStun, "| Count:", iceServers.length);
-      
-      // Level 1: SDK Standard options
-      clientOptions.iceServers = iceServers;
-      clientOptions.iceTransportPolicy = 'relay';
-      clientOptions.prefetchIceCandidates = false;
-      
-      // Level 2: Native RTCPeerConnection passthrough
-      clientOptions.rtcConfig = {
-        iceServers: iceServers,
-        iceTransportPolicy: 'relay',
-        bundlePolicy: 'max-bundle',
-        rtcpMuxPolicy: 'require'
-      };
-      
-      // Level 3: Force empty STUN to kill SDK defaults
-      clientOptions.turnServers = iceServers;
-      clientOptions.stunServers = []; // EXPLICIT EMPTY ARRAY
-      
-      console.log("[Telnyx WebRTC] ⚡ FULL RELAY CONFIG: stunServers=[], turnServers set, rtcConfig.iceTransportPolicy='relay'");
-    } else {
-      // Fallback if no TURN credentials provided
-      clientOptions.prefetchIceCandidates = true;
-      console.log("[Telnyx WebRTC] Using SDK default ICE (no TURN credentials)");
-    }
+    // HACK: Localhost STUN fail-fast trick
+    // Browser attempts 127.0.0.1 -> rejected in microseconds -> skips to TURN immediately
+    // This prevents the SDK's default Google STUN from causing 1 second timeout
+    const failFastStun: RTCIceServer = { urls: "stun:127.0.0.1:3478" };
+    
+    // Build final ICE servers: fail-fast STUN first, then real TURN
+    const finalIceServers: RTCIceServer[] = [
+      failFastStun,
+      ...(iceServers || [])
+    ];
+    
+    console.log("[Telnyx WebRTC] ⚡ FAIL-FAST ICE CONFIG:", JSON.stringify(finalIceServers));
+    
+    // Apply at ALL levels to override SDK defaults
+    clientOptions.iceServers = finalIceServers;
+    clientOptions.iceTransportPolicy = 'all'; // Allow all to get fail-fast behavior
+    clientOptions.prefetchIceCandidates = false;
+    
+    // Native RTCPeerConnection passthrough
+    clientOptions.rtcConfig = {
+      iceServers: finalIceServers,
+      iceTransportPolicy: 'all',
+      bundlePolicy: 'max-bundle',
+      rtcpMuxPolicy: 'require'
+    };
+    
+    // Force our servers to override SDK defaults
+    clientOptions.stunServers = [failFastStun];
+    clientOptions.turnServers = iceServers || [];
+    
+    console.log("[Telnyx WebRTC] ⚡ LOCALHOST STUN HACK ACTIVE: 127.0.0.1:3478 for instant fail-over to TURN");
     
     this.client = new TelnyxRTC(clientOptions);
 

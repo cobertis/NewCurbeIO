@@ -505,14 +505,15 @@ class WebPhoneManager {
           iceGatheringTimeout: 300, // 300ms - just enough to capture ICE candidates
           peerConnectionConfiguration: {  // FIXED: Correct property name for SIP.js 0.21
             iceServers: [
-              // NO STUN - causes 1 second timeout
+              // HACK: Localhost STUN fail-fast - rejected in microseconds
+              { urls: 'stun:127.0.0.1:3478' },
               {
                 urls: 'turn:sip.curbe.io:3478',
                 username: 'curbe',
                 credential: 'CurbeTurn2025'
               }
             ],
-            iceTransportPolicy: 'relay',  // TURN only - no STUN timeout
+            iceTransportPolicy: 'all',  // Allow all for fail-fast behavior
             bundlePolicy: 'balanced',
             rtcpMuxPolicy: 'require'
           }
