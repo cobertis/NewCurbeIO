@@ -89,7 +89,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte, desc, or, sql, inArray, count } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, vipPassDevices, vipPassInstances } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -114,6 +114,8 @@ import { getCalendarHolidays } from "./services/holidays";
 import { blacklistService } from "./services/blacklist-service";
 import { evolutionApi } from "./services/evolution-api";
 import { getManagedAccountConfig, buildHeaders } from "./services/telnyx-e911-service";
+import { vipPassService } from "./services/vip-pass-service";
+import { vipPassApnsService } from "./services/vip-pass-apns-service";
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -30133,6 +30135,427 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to get deployment status" });
     }
   });
+
+  // ========================================
+  // VIP PASS CONFIGURATION ENDPOINTS
+  // ========================================
+
+  // GET /api/vip-pass/design - Get VIP Pass design for company
+  app.get("/api/vip-pass/design", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+      
+      const design = await vipPassService.getPassDesign(user.companyId);
+      if (!design) {
+        return res.json(null);
+      }
+      
+      // Parse JSON fields for frontend
+      return res.json({
+        ...design,
+        primaryFields: design.primaryFields ? JSON.parse(design.primaryFields) : [],
+        secondaryFields: design.secondaryFields ? JSON.parse(design.secondaryFields) : [],
+        auxiliaryFields: design.auxiliaryFields ? JSON.parse(design.auxiliaryFields) : [],
+        backFields: design.backFields ? JSON.parse(design.backFields) : [],
+      });
+    } catch (error) {
+      console.error("[VIP Pass] Error getting design:", error);
+      return res.status(500).json({ error: "Failed to get VIP Pass design" });
+    }
+  });
+
+  // POST /api/vip-pass/design - Create or update VIP Pass design
+  app.post("/api/vip-pass/design", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+      
+      // Check admin role
+      if (user.role !== "admin" && user.role !== "superadmin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      
+      const design = await vipPassService.upsertPassDesign(user.companyId, req.body);
+      return res.json(design);
+    } catch (error) {
+      console.error("[VIP Pass] Error saving design:", error);
+      return res.status(500).json({ error: "Failed to save VIP Pass design" });
+    }
+  });
+
+  // ========================================
+  // VIP PASS INSTANCE ENDPOINTS
+  // ========================================
+
+  // GET /api/vip-pass/instances - Get all pass instances for company
+  app.get("/api/vip-pass/instances", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+      
+      const instances = await vipPassService.getPassInstances(user.companyId);
+      return res.json(instances);
+    } catch (error) {
+      console.error("[VIP Pass] Error getting instances:", error);
+      return res.status(500).json({ error: "Failed to get VIP Pass instances" });
+    }
+  });
+
+  // POST /api/vip-pass/instances - Create a new pass instance
+  app.post("/api/vip-pass/instances", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+      
+      const instance = await vipPassService.createPassInstance(user.companyId, req.body);
+      return res.json(instance);
+    } catch (error: any) {
+      console.error("[VIP Pass] Error creating instance:", error);
+      return res.status(500).json({ error: error.message || "Failed to create VIP Pass instance" });
+    }
+  });
+
+  // GET /api/vip-pass/instances/:id/download - Download .pkpass file
+  app.get("/api/vip-pass/instances/:id/download", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+      
+      const { id } = req.params;
+      
+      // Verify the instance belongs to this company
+      const instance = await vipPassService.getPassInstanceById(id);
+      if (!instance || instance.companyId !== user.companyId) {
+        return res.status(404).json({ error: "Pass instance not found" });
+      }
+      
+      const { buffer, filename } = await vipPassService.generatePkpassFile(id);
+      
+      res.set({
+        "Content-Type": "application/vnd.apple.pkpass",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+      });
+      
+      return res.send(buffer);
+    } catch (error: any) {
+      console.error("[VIP Pass] Error generating pkpass:", error);
+      return res.status(500).json({ error: error.message || "Failed to generate .pkpass file" });
+    }
+  });
+
+  // DELETE /api/vip-pass/instances/:id - Revoke a pass instance
+  app.delete("/api/vip-pass/instances/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+      
+      const { id } = req.params;
+      
+      // Verify the instance belongs to this company
+      const instance = await vipPassService.getPassInstanceById(id);
+      if (!instance || instance.companyId !== user.companyId) {
+        return res.status(404).json({ error: "Pass instance not found" });
+      }
+      
+      await vipPassService.revokePassInstance(id);
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("[VIP Pass] Error revoking instance:", error);
+      return res.status(500).json({ error: "Failed to revoke VIP Pass instance" });
+    }
+  });
+
+  // ========================================
+  // VIP PASS PUSH NOTIFICATIONS ENDPOINTS
+  // ========================================
+
+  // POST /api/vip-pass/notifications/send - Send push notification
+  app.post("/api/vip-pass/notifications/send", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+      
+      // Check admin role
+      if (user.role !== "admin" && user.role !== "superadmin") {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+      
+      const { passInstanceId, message } = req.body;
+      
+      if (!message) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+      
+      let result;
+      if (passInstanceId) {
+        // Send to specific pass
+        result = await vipPassApnsService.sendPushToPass(user.companyId, passInstanceId, message);
+      } else {
+        // Send to all passes
+        result = await vipPassApnsService.sendPushToAllPasses(user.companyId, message);
+      }
+      
+      return res.json(result);
+    } catch (error) {
+      console.error("[VIP Pass] Error sending notification:", error);
+      return res.status(500).json({ error: "Failed to send push notification" });
+    }
+  });
+
+  // GET /api/vip-pass/notifications/history - Get notification history
+  app.get("/api/vip-pass/notifications/history", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+      
+      const history = await vipPassApnsService.getNotificationHistory(user.companyId);
+      return res.json(history);
+    } catch (error) {
+      console.error("[VIP Pass] Error getting notification history:", error);
+      return res.status(500).json({ error: "Failed to get notification history" });
+    }
+  });
+
+  // GET /api/vip-pass/stats - Get VIP Pass statistics
+  app.get("/api/vip-pass/stats", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+      
+      const [instances, deviceCount] = await Promise.all([
+        vipPassService.getPassInstances(user.companyId),
+        vipPassApnsService.getDevicesCount(user.companyId),
+      ]);
+      
+      const activeCount = instances.filter(i => i.status === "active").length;
+      const revokedCount = instances.filter(i => i.status === "revoked").length;
+      const totalDownloads = instances.reduce((sum, i) => sum + (i.downloadCount || 0), 0);
+      
+      return res.json({
+        totalPasses: instances.length,
+        activePasses: activeCount,
+        revokedPasses: revokedCount,
+        registeredDevices: deviceCount,
+        totalDownloads,
+      });
+    } catch (error) {
+      console.error("[VIP Pass] Error getting stats:", error);
+      return res.status(500).json({ error: "Failed to get VIP Pass statistics" });
+    }
+  });
+
+  // ========================================
+  // APPLE WALLET PASSKIT WEB SERVICE ENDPOINTS
+  // Per Apple PassKit Web Service Reference
+  // ========================================
+
+  // POST /v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier/:serialNumber
+  // Called when a pass is added to a device
+  app.post(
+    "/v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier/:serialNumber",
+    async (req: Request, res: Response) => {
+      try {
+        const { deviceLibraryIdentifier, passTypeIdentifier, serialNumber } = req.params;
+        const { pushToken } = req.body;
+        
+        console.log("[PassKit] Device registration:", { 
+          deviceLibraryIdentifier, 
+          passTypeIdentifier, 
+          serialNumber,
+          hasPushToken: !!pushToken 
+        });
+        
+        // Find the pass instance by serial number
+        const passInstance = await vipPassService.getPassInstanceBySerialNumber(serialNumber);
+        if (!passInstance) {
+          console.log("[PassKit] Pass not found:", serialNumber);
+          return res.status(404).send();
+        }
+        
+        // Validate authentication token from header
+        const authHeader = req.headers.authorization;
+        const expectedToken = `ApplePass ${passInstance.authenticationToken}`;
+        if (authHeader !== expectedToken) {
+          console.log("[PassKit] Invalid auth token");
+          return res.status(401).send();
+        }
+        
+        // Register the device
+        const isNew = await vipPassApnsService.registerDevice(
+          passInstance.companyId,
+          serialNumber,
+          deviceLibraryIdentifier,
+          pushToken
+        );
+        
+        if (isNew) {
+          return res.status(201).send(); // Created
+        } else {
+          return res.status(200).send(); // Already registered
+        }
+      } catch (error) {
+        console.error("[PassKit] Error registering device:", error);
+        return res.status(500).send();
+      }
+    }
+  );
+
+  // DELETE /v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier/:serialNumber
+  // Called when a pass is removed from a device
+  app.delete(
+    "/v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier/:serialNumber",
+    async (req: Request, res: Response) => {
+      try {
+        const { deviceLibraryIdentifier, passTypeIdentifier, serialNumber } = req.params;
+        
+        console.log("[PassKit] Device unregistration:", { 
+          deviceLibraryIdentifier, 
+          passTypeIdentifier, 
+          serialNumber 
+        });
+        
+        // Find the pass instance
+        const passInstance = await vipPassService.getPassInstanceBySerialNumber(serialNumber);
+        if (!passInstance) {
+          return res.status(404).send();
+        }
+        
+        // Validate authentication token
+        const authHeader = req.headers.authorization;
+        const expectedToken = `ApplePass ${passInstance.authenticationToken}`;
+        if (authHeader !== expectedToken) {
+          return res.status(401).send();
+        }
+        
+        // Unregister the device
+        await vipPassApnsService.unregisterDevice(
+          passInstance.companyId,
+          serialNumber,
+          deviceLibraryIdentifier
+        );
+        
+        return res.status(200).send();
+      } catch (error) {
+        console.error("[PassKit] Error unregistering device:", error);
+        return res.status(500).send();
+      }
+    }
+  );
+
+  // GET /v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier
+  // Returns serial numbers of passes registered for a device
+  app.get(
+    "/v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier",
+    async (req: Request, res: Response) => {
+      try {
+        const { deviceLibraryIdentifier, passTypeIdentifier } = req.params;
+        const passesUpdatedSince = req.query.passesUpdatedSince as string | undefined;
+        
+        // This endpoint is used by Apple to get a list of passes that need updating
+        // For simplicity, we return all passes registered for this device
+        // In production, you'd filter by passesUpdatedSince timestamp
+        
+        const devices = await db
+          .select()
+          .from(vipPassDevices)
+          .where(eq(vipPassDevices.deviceLibraryIdentifier, deviceLibraryIdentifier));
+        
+        if (devices.length === 0) {
+          return res.status(204).send(); // No Content
+        }
+        
+        // Get serial numbers from pass instances
+        const serialNumbers: string[] = [];
+        for (const device of devices) {
+          const [instance] = await db
+            .select({ serialNumber: vipPassInstances.serialNumber })
+            .from(vipPassInstances)
+            .where(eq(vipPassInstances.id, device.passInstanceId))
+            .limit(1);
+          
+          if (instance) {
+            serialNumbers.push(instance.serialNumber);
+          }
+        }
+        
+        return res.json({
+          serialNumbers,
+          lastUpdated: new Date().toISOString(),
+        });
+      } catch (error) {
+        console.error("[PassKit] Error getting registrations:", error);
+        return res.status(500).send();
+      }
+    }
+  );
+
+  // GET /v1/passes/:passTypeIdentifier/:serialNumber
+  // Returns the latest version of a pass
+  app.get(
+    "/v1/passes/:passTypeIdentifier/:serialNumber",
+    async (req: Request, res: Response) => {
+      try {
+        const { passTypeIdentifier, serialNumber } = req.params;
+        
+        console.log("[PassKit] Pass request:", { passTypeIdentifier, serialNumber });
+        
+        // Find the pass instance
+        const passInstance = await vipPassService.getPassInstanceBySerialNumber(serialNumber);
+        if (!passInstance) {
+          return res.status(404).send();
+        }
+        
+        // Validate authentication token
+        const authHeader = req.headers.authorization;
+        const expectedToken = `ApplePass ${passInstance.authenticationToken}`;
+        if (authHeader !== expectedToken) {
+          return res.status(401).send();
+        }
+        
+        // Generate and return the pass
+        const { buffer, filename } = await vipPassService.generatePkpassFile(passInstance.id);
+        
+        res.set({
+          "Content-Type": "application/vnd.apple.pkpass",
+          "Last-Modified": new Date().toUTCString(),
+        });
+        
+        return res.send(buffer);
+      } catch (error: any) {
+        console.error("[PassKit] Error serving pass:", error);
+        return res.status(500).send();
+      }
+    }
+  );
+
+  // POST /v1/log - Receive error logs from Apple Wallet
+  app.post("/v1/log", (req: Request, res: Response) => {
+    const { logs } = req.body;
+    if (logs && Array.isArray(logs)) {
+      console.log("[PassKit] Wallet logs received:", logs);
+    }
+    return res.status(200).send();
+  });
+
 
   return httpServer;
 }
