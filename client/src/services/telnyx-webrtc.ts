@@ -637,11 +637,10 @@ class TelnyxWebRTCManager {
             audio: true,
             video: false
           },
-          // CRITICAL: Disable Trickle ICE - wait for ALL candidates before sending SDP
-          // Without this, SIP.js sends 200 OK with c=0.0.0.0 and no candidates
+          // Disable Trickle ICE - include candidates in initial SDP
           disableTrickleIce: true,
-          // Timeout for ICE gathering - 2 seconds is enough for host candidates
-          iceGatheringTimeout: 2000
+          // Ultra-fast timeout - host candidates ready in ~50ms
+          iceGatheringTimeout: 200
         },
         // Contact name for SIP REGISTER
         contactName: sipUser,
