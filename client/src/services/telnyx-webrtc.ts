@@ -932,6 +932,24 @@ class TelnyxWebRTCManager {
       useStereo: true,
     });
 
+    // CRITICAL: Listen for remoteStream event - this is THE reliable way to connect audio
+    // In outbound calls, remoteStream arrives AFTER 'active' state, causing 5s audio delay
+    // By listening to this event directly, audio connects as soon as it's available
+    (call as any).on('remoteStream', (stream: MediaStream) => {
+      console.log("[Telnyx WebRTC] 🔊 OUTBOUND remoteStream event received!");
+      const audioTracks = stream.getAudioTracks();
+      console.log("[Telnyx WebRTC] 🔊 Remote audio tracks:", audioTracks.length);
+      
+      if (this.audioElement && audioTracks.length > 0) {
+        this.audioElement.srcObject = stream;
+        this.audioElement.play().then(() => {
+          console.log("[Telnyx WebRTC] 🔊 OUTBOUND audio playback started via remoteStream event");
+        }).catch((err) => {
+          console.error("[Telnyx WebRTC] ❌ OUTBOUND audio play error:", err);
+        });
+      }
+    });
+
     store.setOutgoingCall(call);
     this.startRingback();
 
