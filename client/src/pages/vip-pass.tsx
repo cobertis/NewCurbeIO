@@ -482,11 +482,11 @@ export default function VipPassPage() {
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
           <TabsList className="grid w-full max-w-md grid-cols-2">
-            <TabsTrigger value="designer" data-testid="tab-designer">
-              <Palette className="h-4 w-4 mr-2" /> Designer
-            </TabsTrigger>
             <TabsTrigger value="management" data-testid="tab-management">
               <CreditCard className="h-4 w-4 mr-2" /> Management
+            </TabsTrigger>
+            <TabsTrigger value="designer" data-testid="tab-designer">
+              <Palette className="h-4 w-4 mr-2" /> Designer
             </TabsTrigger>
           </TabsList>
 
