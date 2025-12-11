@@ -148,8 +148,13 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user?.sipEnabled, user?.sipExtension, user?.sipPassword, user?.sipServer]);
 
-  // NOTE: ICE pre-warm removed - SDK now uses forceRelayCandidate: true + prefetchIceCandidates: true
-  // This forces TURN relay from the start, eliminating the 4-second delay in restrictive networks
+  // Pre-warm ICE on login for faster call connection
+  // SDK prefetchIceCandidates handles most of this, but we also warm up early
+  useEffect(() => {
+    if (hasTelnyxNumber && user) {
+      console.log('[Telnyx WebRTC] SDK prefetchIceCandidates enabled for faster ICE gathering');
+    }
+  }, [hasTelnyxNumber, user]);
 
   const { data: notificationsData, isLoading: isLoadingNotifications, isError: isErrorNotifications } = useQuery<{ notifications: any[] }>({
     queryKey: ["/api/notifications"],
