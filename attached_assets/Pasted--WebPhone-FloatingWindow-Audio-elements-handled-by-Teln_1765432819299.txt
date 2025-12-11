@@ -1,0 +1,87 @@
+[WebPhone FloatingWindow] ✅ Audio elements handled by TelnyxWebRTC (programmatic)
+injected.js:37 [WebPhone UI] CallerInfo changed: null
+injected.js:37 [WebPhone UI] Current call: undefined
+2
+injected.js:37 [WebSocket] Connected - server will authenticate using session
+injected.js:37 [WebPhone] Initializing Telnyx WebRTC...
+injected.js:37 [WebPhone] Step 1: Fetching TURN credentials...
+injected.js:37 [Telnyx WebRTC] SDK prefetchIceCandidates enabled for faster ICE gathering
+injected.js:37 [WebPhone] TURN credentials received: 3 servers
+injected.js:37 [WebPhone] Step 2: Fetching WebRTC SIP credentials...
+injected.js:37 [WebPhone] Got Telnyx SIP credentials: 
+{sipUsername: 'curbeb5325600gm3h', callerIdNumber: '+13058423033', iceServersProvided: true}
+injected.js:37 [Telnyx WebRTC] Created audio container: telnyx-media-root
+injected.js:37 [Telnyx WebRTC] Created remote audio element: telnyx-remote-audio
+injected.js:37 [Telnyx WebRTC] Created local audio element: telnyx-local-audio
+injected.js:37 [Telnyx WebRTC] 🔊 Using programmatic audio element (no React Fiber)
+injected.js:37 [Telnyx WebRTC] ⚡ SDK default ICE (STUN preferred for fastest connection)
+injected.js:37 SDK version: 2.25.10
+injected.js:37 [Telnyx WebRTC] 🔊 Setting client.remoteElement as string ID: telnyx-remote-audio
+injected.js:37 [WebPhone] Telnyx WebRTC initialized successfully
+injected.js:37 [Telnyx WebRTC] Connected and ready
+injected.js:37 [Telnyx WebRTC] 🔊 Audio settings applied: 
+{echoCancellation: true, noiseSuppression: true, autoGainControl: true}
+injected.js:37 [Telnyx WebRTC] Notification: callUpdate 
+{state: 'new', direction: 'inbound', remoteCallerNumber: '13058423033', destinationNumber: 'curbeb5325600gm3h'}
+injected.js:37 [Telnyx WebRTC] 📞 Incoming call (state: new )
+injected.js:37 [Telnyx WebRTC] Notification: callUpdate 
+{state: 'ringing', direction: 'inbound', remoteCallerNumber: '13058423033', destinationNumber: 'curbeb5325600gm3h'}
+injected.js:37 [Telnyx WebRTC] 📞 Incoming call (state: ringing )
+injected.js:37 [Telnyx Caller Lookup] Looking up: 13058423033
+2
+injected.js:37 [WebPhone] 📱 Telnyx incoming call detected - opening phone panel
+injected.js:37 [Telnyx Caller Lookup] Looking up: 13058423033
+injected.js:37 [Telnyx Caller Lookup] Result: 
+{found: false}
+injected.js:37 [Telnyx Caller Lookup] Result: 
+{found: false}
+injected.js:37 [LATENCY] ANSWER_T0: User clicked Answer at 1765432752389 (2025-12-11T05:59:12.389Z)
+injected.js:37 [Telnyx WebRTC] 📞 Answering call...
+injected.js:37 [Telnyx WebRTC] 🔊 Ensuring client.remoteElement as string ID before answer
+injected.js:37 [2025-12-11T05:59:12.667Z] ICE Gathering State gathering
+injected.js:37 [2025-12-11T05:59:12.668Z] ICE Connection State checking
+injected.js:37 [2025-12-11T05:59:12.669Z] Connection State changed: new -> connecting
+injected.js:37 [2025-12-11T05:59:12.920Z] ICE Gathering State complete
+injected.js:37 [Telnyx WebRTC] Notification: callUpdate 
+{state: 'answering', direction: 'inbound', remoteCallerNumber: '13058423033', destinationNumber: 'curbeb5325600gm3h'}
+injected.js:37 [Telnyx WebRTC] 🔊 remoteStream detected in notification
+injected.js:37 [Telnyx WebRTC] 📥 Answering state - connecting audio early
+injected.js:37 [Telnyx WebRTC] Notification: callUpdate 
+{state: 'active', direction: 'inbound', remoteCallerNumber: '13058423033', destinationNumber: 'curbeb5325600gm3h'}
+injected.js:37 [LATENCY] CALL_ACTIVE: Audio connected at 1765432752963 (2025-12-11T05:59:12.963Z)
+injected.js:37 [Telnyx WebRTC] 🟢 Call active
+injected.js:37 [Telnyx WebRTC] 📞 Call IDs available: 
+{telnyxCallControlId: undefined, callControlId: undefined, telnyxLegId: '83684b0e-d656-11f0-a94d-02420aef35a1', callId: 'a976a7f4-c13f-4331-b5fa-fb71b49a2f2c'}
+injected.js:37 [Telnyx WebRTC] 📞 Using call_control_id: v3:pHfQsywwsof8k1QwUP1DZREHcVmSyNb0BNkb-7837qyeZ7KYryHAkw
+injected.js:37 [Telnyx WebRTC] 🔊 Connecting remoteStream, audio tracks: 1
+injected.js:37 [Telnyx WebRTC] 🔊 Track 0: enabled=true, muted=false, readyState=live
+injected.js:37 [Telnyx Caller Lookup] Looking up: 13058423033
+@telnyx_webrtc.js?v=c334bbab:1979 Performance Metrics
+injected.js:37 
+(index)
+duration
+Peer Creation	'273.20ms'
+ICE Gathering	'256.60ms'
+SDP Send	'55.80ms'
+Total Duration	'587.70ms'
+Object
+2
+injected.js:37 [Telnyx WebRTC] 🔊 Audio playback started successfully
+injected.js:37 [2025-12-11T05:59:13.038Z] ICE Connection State connected
+injected.js:37 [2025-12-11T05:59:13.258Z] Connection State changed: connecting -> connected
+injected.js:37 [Telnyx WebRTC] 🎤 localStream audio tracks: 1
+injected.js:37 [Telnyx WebRTC] 🎤 Track 0: enabled=true, muted=false, readyState=live
+injected.js:37 [Telnyx WebRTC] 🎤 audioMuted: undefined
+injected.js:37 [Telnyx Caller Lookup] Result: 
+{found: false}
+injected.js:37 [Telnyx WebRTC] Notification: callUpdate 
+{state: 'hangup', direction: 'inbound', remoteCallerNumber: '13058423033', destinationNumber: 'curbeb5325600gm3h'}
+injected.js:37 [Telnyx WebRTC] 🔴 Call ended 
+{cause: 'NORMAL_CLEARING', causeCode: 16, sipCode: 200, sipReason: null, direction: 'inbound'}
+injected.js:37 [Telnyx WebRTC] Notification: callUpdate 
+{state: 'destroy', direction: 'inbound', remoteCallerNumber: '13058423033', destinationNumber: 'curbeb5325600gm3h'}
+injected.js:37 [Telnyx WebRTC] 🔊 remoteStream detected in notification
+injected.js:37 [Telnyx WebRTC] 🔴 Call ended 
+{cause: 'NORMAL_CLEARING', causeCode: 16, sipCode: 200, sipReason: null, direction: 'inbound'}
+injected.js:37 2025-12-11 05:59:37.807 - No ping/pong received, forcing PING ACK to keep alive
+﻿
