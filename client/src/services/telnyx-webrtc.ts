@@ -81,6 +81,15 @@ interface NetworkQualityMetrics {
   qualityLevel: "excellent" | "good" | "poor";
 }
 
+// Extended call info for UI compatibility (matches legacy SDK structure)
+export interface SipCallInfo {
+  remoteCallerNumber: string;
+  callerName?: string;
+  direction: "inbound" | "outbound";
+  state: "ringing" | "establishing" | "active" | "terminated";
+  destinationNumber?: string;
+}
+
 interface TelnyxWebRTCState {
   isConnected: boolean;
   connectionStatus: "disconnected" | "connecting" | "connected" | "error";
@@ -99,6 +108,10 @@ interface TelnyxWebRTCState {
   callDuration: number;
   callActiveTimestamp?: number;
   activeTelnyxLegId?: string;
+  // NEW: Call info for UI compatibility
+  currentCallInfo?: SipCallInfo;
+  incomingCallInfo?: SipCallInfo;
+  outgoingCallInfo?: SipCallInfo;
 
   setConnectionStatus: (status: TelnyxWebRTCState["connectionStatus"], error?: string) => void;
   setCurrentCall: (call?: Session) => void;
@@ -114,6 +127,10 @@ interface TelnyxWebRTCState {
   setCallDuration: (duration: number) => void;
   setCallActiveTimestamp: (timestamp?: number) => void;
   setActiveTelnyxLegId: (legId?: string) => void;
+  // NEW: Call info setters
+  setCurrentCallInfo: (info?: SipCallInfo) => void;
+  setIncomingCallInfo: (info?: SipCallInfo) => void;
+  setOutgoingCallInfo: (info?: SipCallInfo) => void;
 }
 
 export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
@@ -126,6 +143,9 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   callDuration: 0,
   callActiveTimestamp: undefined,
   activeTelnyxLegId: undefined,
+  currentCallInfo: undefined,
+  incomingCallInfo: undefined,
+  outgoingCallInfo: undefined,
 
   setConnectionStatus: (status, error) =>
     set({
@@ -146,6 +166,9 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   setCallDuration: (duration) => set({ callDuration: duration }),
   setCallActiveTimestamp: (timestamp) => set({ callActiveTimestamp: timestamp }),
   setActiveTelnyxLegId: (legId) => set({ activeTelnyxLegId: legId }),
+  setCurrentCallInfo: (info) => set({ currentCallInfo: info }),
+  setIncomingCallInfo: (info) => set({ incomingCallInfo: info }),
+  setOutgoingCallInfo: (info) => set({ outgoingCallInfo: info }),
 }));
 
 export type { NetworkQualityMetrics };
@@ -279,7 +302,8 @@ class TelnyxWebRTCManager {
         { urls: "stun:127.0.0.1:3478" }, // Blackhole STUN for instant fail
         ...this.turnServers
       ],
-      bundlePolicy: "max-bundle",
+      // Use "balanced" instead of "max-bundle" - Telnyx SDP may not have BUNDLE group
+      bundlePolicy: "balanced",
       rtcpMuxPolicy: "require"
     };
     
@@ -385,10 +409,70 @@ class TelnyxWebRTCManager {
   }
 
   /**
+   * Extract caller info from SIP.js session for UI compatibility
+   */
+  private extractCallerInfo(session: Session, isOutgoing: boolean, destination?: string): SipCallInfo {
+    let callerNumber = "Unknown";
+    let callerName: string | undefined;
+    
+    if (session instanceof Invitation) {
+      // Incoming call - extract from From header or remoteIdentity
+      try {
+        // Try remoteIdentity first (SIP.js standard)
+        const remoteUri = session.remoteIdentity?.uri;
+        if (remoteUri) {
+          callerNumber = remoteUri.user || "Unknown";
+        }
+        // Also try to get display name
+        callerName = session.remoteIdentity?.displayName || undefined;
+      } catch (e) {
+        console.warn("[SIP.js WebRTC] Error extracting remoteIdentity:", e);
+      }
+      
+      // Fallback: parse From header
+      if (callerNumber === "Unknown") {
+        try {
+          const request = session.request;
+          const fromHeader = request.getHeader("From") || "";
+          // Parse display name: "Name" <sip:number@domain>
+          const nameMatch = fromHeader.match(/^"([^"]+)"/);
+          if (nameMatch) callerName = nameMatch[1];
+          // Parse number
+          const numberMatch = fromHeader.match(/<sip:([^@]+)@/);
+          if (numberMatch) callerNumber = numberMatch[1];
+        } catch (e) {
+          console.warn("[SIP.js WebRTC] Error parsing From header:", e);
+        }
+      }
+    } else if (session instanceof Inviter) {
+      // Outgoing call
+      callerNumber = destination || "Unknown";
+    }
+    
+    // Clean up caller number (remove + prefix for display if needed)
+    const cleanNumber = callerNumber.replace(/^\+?1?/, "");
+    const formattedNumber = callerNumber.startsWith("+") ? callerNumber : 
+                            (cleanNumber.length === 10 ? `+1${cleanNumber}` : callerNumber);
+    
+    console.log("[SIP.js WebRTC] Extracted caller info:", { callerNumber: formattedNumber, callerName, isOutgoing });
+    
+    return {
+      remoteCallerNumber: formattedNumber,
+      callerName,
+      direction: isOutgoing ? "outbound" : "inbound",
+      state: "ringing",
+      destinationNumber: isOutgoing ? destination : undefined
+    };
+  }
+
+  /**
    * Handle session state changes
    */
-  private setupSessionHandlers(session: Session, isOutgoing: boolean): void {
+  private setupSessionHandlers(session: Session, isOutgoing: boolean, destination?: string): void {
     const store = useTelnyxStore.getState();
+    
+    // Extract call info for UI
+    const callInfo = this.extractCallerInfo(session, isOutgoing, destination);
 
     session.stateChange.addListener((state: SessionState) => {
       console.log("[SIP.js WebRTC] Session state changed:", state);
@@ -396,15 +480,25 @@ class TelnyxWebRTCManager {
       switch (state) {
         case SessionState.Establishing:
           console.log("[SIP.js WebRTC] Call establishing...");
+          callInfo.state = "establishing";
+          if (isOutgoing) {
+            store.setOutgoingCallInfo({ ...callInfo });
+          } else {
+            store.setIncomingCallInfo({ ...callInfo });
+          }
           break;
 
         case SessionState.Established:
           console.log("[SIP.js WebRTC] Call established");
           this.stopRingtone();
           this.stopRingback();
+          callInfo.state = "active";
           store.setCurrentCall(session);
+          store.setCurrentCallInfo({ ...callInfo });
           store.setIncomingCall(undefined);
           store.setOutgoingCall(undefined);
+          store.setIncomingCallInfo(undefined);
+          store.setOutgoingCallInfo(undefined);
           store.setCallActiveTimestamp(Date.now());
           store.setMuted(false);
           store.setOnHold(false);
@@ -422,6 +516,9 @@ class TelnyxWebRTCManager {
           store.setCurrentCall(undefined);
           store.setIncomingCall(undefined);
           store.setOutgoingCall(undefined);
+          store.setCurrentCallInfo(undefined);
+          store.setIncomingCallInfo(undefined);
+          store.setOutgoingCallInfo(undefined);
           store.setCallActiveTimestamp(undefined);
           store.setActiveTelnyxLegId(undefined);
           store.setMuted(false);
@@ -437,15 +534,14 @@ class TelnyxWebRTCManager {
   private handleIncomingCall(invitation: Invitation): void {
     const store = useTelnyxStore.getState();
     
-    // Extract caller info from the INVITE request
-    const request = invitation.request;
-    const fromHeader = request.getHeader("From") || "";
-    const callerMatch = fromHeader.match(/<sip:([^@]+)@/);
-    const callerNumber = callerMatch ? callerMatch[1] : "Unknown";
+    // Extract caller info using the standard method
+    const callInfo = this.extractCallerInfo(invitation, false);
     
-    console.log("[SIP.js WebRTC] Incoming call from:", callerNumber);
+    console.log("[SIP.js WebRTC] Incoming call from:", callInfo.remoteCallerNumber, "Name:", callInfo.callerName);
     
+    // Set both the invitation AND the call info for UI
     store.setIncomingCall(invitation);
+    store.setIncomingCallInfo(callInfo);
     this.startRingtone();
     
     // Setup handlers for incoming call
@@ -456,6 +552,7 @@ class TelnyxWebRTCManager {
       if (state === SessionState.Terminated) {
         this.stopRingtone();
         store.setIncomingCall(undefined);
+        store.setIncomingCallInfo(undefined);
       }
     });
   }
@@ -637,8 +734,13 @@ class TelnyxWebRTCManager {
       peerConnectionConfiguration: rtcConfig
     };
 
-    this.setupSessionHandlers(inviter, true);
+    // Setup handlers with destination for caller info extraction
+    this.setupSessionHandlers(inviter, true, formattedDest);
+    
+    // Set both the inviter AND the call info for UI
+    const callInfo = this.extractCallerInfo(inviter, true, formattedDest);
     store.setOutgoingCall(inviter);
+    store.setOutgoingCallInfo(callInfo);
     this.startRingback();
 
     try {
@@ -684,19 +786,28 @@ class TelnyxWebRTCManager {
 
     // CRITICAL: Zero-latency RTCConfiguration for answer
     const rtcConfig = this.getZeroLatencyRTCConfig();
+    console.log("[SIP.js WebRTC] Zero-latency ICE config:", JSON.stringify({
+      iceTransportPolicy: rtcConfig.iceTransportPolicy,
+      iceServersCount: rtcConfig.iceServers?.length
+    }));
 
     try {
+      // IMPORTANT: Pass peerConnectionConfiguration in sessionDescriptionHandlerOptions
       await invitation.accept({
         sessionDescriptionHandlerOptions: {
+          peerConnectionConfiguration: rtcConfig,
           constraints: {
             audio: true,
             video: false
           }
         } as any
       });
-      console.log("[SIP.js WebRTC] Call answered");
+      console.log("[SIP.js WebRTC] Call answered successfully");
     } catch (error) {
       console.error("[SIP.js WebRTC] Answer failed:", error);
+      // Reset state on failure
+      store.setIncomingCall(undefined);
+      store.setIncomingCallInfo(undefined);
     }
   }
 
@@ -713,6 +824,7 @@ class TelnyxWebRTCManager {
     this.stopRingtone();
     invitation.reject({ statusCode: 486 });
     store.setIncomingCall(undefined);
+    store.setIncomingCallInfo(undefined);
   }
 
   /**
@@ -740,6 +852,9 @@ class TelnyxWebRTCManager {
     store.setCurrentCall(undefined);
     store.setOutgoingCall(undefined);
     store.setIncomingCall(undefined);
+    store.setCurrentCallInfo(undefined);
+    store.setOutgoingCallInfo(undefined);
+    store.setIncomingCallInfo(undefined);
     store.setCallActiveTimestamp(undefined);
     store.setActiveTelnyxLegId(undefined);
     this.stopRingtone();

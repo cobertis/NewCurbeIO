@@ -1183,6 +1183,10 @@ export function WebPhoneFloatingWindow() {
   const telnyxIsConsulting = useTelnyxStore(state => state.isConsulting);
   const telnyxNetworkQuality = useTelnyxStore(state => state.networkQuality);
   const telnyxCallActiveTimestamp = useTelnyxStore(state => state.callActiveTimestamp);
+  // NEW: SipCallInfo from store for UI display (replaces SDK extraction)
+  const telnyxCurrentCallInfo = useTelnyxStore(state => state.currentCallInfo);
+  const telnyxIncomingCallInfo = useTelnyxStore(state => state.incomingCallInfo);
+  const telnyxOutgoingCallInfo = useTelnyxStore(state => state.outgoingCallInfo);
   const [telnyxInitialized, setTelnyxInitialized] = useState(false);
   const [telnyxCallDuration, setTelnyxCallDuration] = useState(0);
   const telnyxTimerRef = useRef<NodeJS.Timeout>();
@@ -1205,49 +1209,50 @@ export function WebPhoneFloatingWindow() {
   
   const effectiveCall = useMemo(() => {
     // Priority: currentCall (active/answered) > outgoingCall (dialing) > incomingCall (ringing inbound)
-    if (telnyxCurrentCall) {
+    // Use SipCallInfo from store for reliable caller info extraction
+    if (telnyxCurrentCall && telnyxCurrentCallInfo) {
       // Call is ACTIVE (answered) - show "In Call" UI with timer
-      const callState = (telnyxCurrentCall as any).state;
-      const callDirection = (telnyxCurrentCall as any).direction || 'outbound';
-      const otherPartyNumber = callDirection === 'inbound'
-        ? (telnyxCurrentCall as any).options?.remoteCallerNumber || 'Unknown'
-        : (telnyxCurrentCall as any).options?.destinationNumber || 'Unknown';
-      const sdkCallerName = (telnyxCurrentCall as any).options?.callerName || 
-                            (telnyxCurrentCall as any).options?.callerIdName || 
-                            (telnyxCurrentCall as any).options?.cnam_caller_id_name;
-      const validSdkName = isValidCallerName(sdkCallerName) ? sdkCallerName : null;
-      const displayName = telnyxCallerName || validSdkName || null;
+      const displayName = telnyxCallerName || 
+                          (isValidCallerName(telnyxCurrentCallInfo.callerName) ? telnyxCurrentCallInfo.callerName : null);
       return {
-        phoneNumber: otherPartyNumber,
+        phoneNumber: telnyxCurrentCallInfo.remoteCallerNumber || 'Unknown',
         displayName,
         status: 'answered', // currentCall means call is ACTIVE
-        direction: callDirection,
+        direction: telnyxCurrentCallInfo.direction || 'outbound',
         isTelnyx: true,
       };
     }
-    if (telnyxOutgoingCall) {
+    if (telnyxOutgoingCall && telnyxOutgoingCallInfo) {
       // Outbound call is DIALING (not yet answered) - show "Calling..." UI, NO timer
-      const otherPartyNumber = (telnyxOutgoingCall as any).options?.destinationNumber || 'Unknown';
       return {
-        phoneNumber: otherPartyNumber,
+        phoneNumber: telnyxOutgoingCallInfo.remoteCallerNumber || telnyxOutgoingCallInfo.destinationNumber || 'Unknown',
         displayName: null,
         status: 'ringing', // Use 'ringing' to show "Calling..." text
         direction: 'outbound',
         isTelnyx: true,
       };
     }
-    if (telnyxIncomingCall) {
+    if (telnyxIncomingCall && telnyxIncomingCallInfo) {
       // Inbound call is RINGING - show answer/reject buttons
-      const sdkCallerName = (telnyxIncomingCall as any).options?.callerName || 
-                            (telnyxIncomingCall as any).options?.callerIdName || 
-                            (telnyxIncomingCall as any).options?.cnam_caller_id_name;
-      const validSdkName = isValidCallerName(sdkCallerName) ? sdkCallerName : null;
-      const displayName = telnyxCallerName || validSdkName || null;
+      const displayName = telnyxCallerName || 
+                          (isValidCallerName(telnyxIncomingCallInfo.callerName) ? telnyxIncomingCallInfo.callerName : null);
+      console.log("[WebPhone UI] Incoming call info:", telnyxIncomingCallInfo);
       return {
-        phoneNumber: (telnyxIncomingCall as any).options?.remoteCallerNumber || 'Unknown',
+        phoneNumber: telnyxIncomingCallInfo.remoteCallerNumber || 'Unknown',
         displayName,
         status: 'ringing',
         direction: 'inbound',
+        isTelnyx: true,
+      };
+    }
+    // Fallback: if we have session but no callInfo (shouldn't happen)
+    if (telnyxCurrentCall || telnyxOutgoingCall || telnyxIncomingCall) {
+      console.warn("[WebPhone UI] Have Telnyx session but missing callInfo");
+      return {
+        phoneNumber: 'Unknown',
+        displayName: null,
+        status: telnyxCurrentCall ? 'answered' : 'ringing',
+        direction: telnyxIncomingCall ? 'inbound' : 'outbound',
         isTelnyx: true,
       };
     }
@@ -1255,7 +1260,7 @@ export function WebPhoneFloatingWindow() {
       return { ...currentCall, isTelnyx: false };
     }
     return null;
-  }, [telnyxCurrentCall, telnyxOutgoingCall, telnyxIncomingCall, currentCall, telnyxCallerName]);
+  }, [telnyxCurrentCall, telnyxOutgoingCall, telnyxIncomingCall, telnyxCurrentCallInfo, telnyxOutgoingCallInfo, telnyxIncomingCallInfo, currentCall, telnyxCallerName]);
   
   // Effective mute/hold state
   const effectiveMuted = isTelnyxCall ? telnyxIsMuted : isMuted;
@@ -1330,24 +1335,18 @@ export function WebPhoneFloatingWindow() {
       }
     };
     
-    // Check for Telnyx inbound call
-    const telnyxCall = telnyxCurrentCall || telnyxIncomingCall;
-    if (telnyxCall) {
-      const direction = (telnyxCall as any).direction || 
-        ((telnyxCall as any).options?.destinationNumber === telnyxCallerIdNumber ? 'inbound' : 'outbound');
-      
-      if (direction === 'inbound') {
-        const callerNumber = (telnyxCall as any).options?.remoteCallerNumber;
-        if (callerNumber) {
-          performTelnyxCallerLookup(callerNumber);
-        }
+    // Check for Telnyx inbound call using SipCallInfo (not session extraction)
+    const callInfo = telnyxCurrentCallInfo || telnyxIncomingCallInfo;
+    if (callInfo) {
+      if (callInfo.direction === 'inbound' && callInfo.remoteCallerNumber) {
+        performTelnyxCallerLookup(callInfo.remoteCallerNumber);
       }
     } else {
       // Reset when call ends
       setTelnyxCallerName(null);
       setTelnyxCallerLookupPhone(null);
     }
-  }, [telnyxCurrentCall, telnyxIncomingCall, telnyxCallerIdNumber, telnyxCallerLookupPhone, telnyxCallerName]);
+  }, [telnyxCurrentCallInfo, telnyxIncomingCallInfo, telnyxCallerLookupPhone, telnyxCallerName]);
   
   // Unified call handlers
   const handleMuteToggle = useCallback(() => {
