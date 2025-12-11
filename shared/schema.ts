@@ -4890,6 +4890,7 @@ export const callLogs = pgTable("call_logs", {
   // Call identifiers
   telnyxCallId: text("telnyx_call_id"), // Telnyx call control ID
   telnyxSessionId: text("telnyx_session_id"), // Telnyx session ID
+  sipCallId: text("sip_call_id"), // SIP.js call ID for WebRTC calls
   
   // Phone numbers
   fromNumber: text("from_number").notNull(),
@@ -4898,6 +4899,7 @@ export const callLogs = pgTable("call_logs", {
   // Call info
   direction: text("direction").notNull().$type<CallDirection>(),
   status: text("status").notNull().$type<CallStatus>(),
+  hangupCause: text("hangup_cause"), // SIP hangup cause code (e.g., "normal_clearing", "busy", "no_answer")
   
   // Duration in seconds
   duration: integer("duration").default(0),
@@ -4928,6 +4930,7 @@ export const callLogs = pgTable("call_logs", {
   statusIdx: index("call_logs_status_idx").on(table.status),
   startedAtIdx: index("call_logs_started_at_idx").on(table.startedAt),
   telnyxCallIdIdx: index("call_logs_telnyx_call_id_idx").on(table.telnyxCallId),
+  sipCallIdIdx: index("call_logs_sip_call_id_idx").on(table.sipCallId),
 }));
 
 // Call Logs Insert Schema
