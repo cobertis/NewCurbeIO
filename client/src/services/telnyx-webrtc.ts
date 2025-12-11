@@ -3,6 +3,45 @@
 //  Usando el patrón real del SDK de Telnyx (notification-based, no call.on)
 // ============================================================================
 
+// ============================================================================
+// MONKEY-PATCH: Intercept RTCPeerConnection to force our ICE configuration
+// The Telnyx SDK v2.25.10 ignores iceServers options, so we patch globally
+// ============================================================================
+const OriginalRTCPeerConnection = window.RTCPeerConnection;
+let forcedIceServers: RTCIceServer[] | null = null;
+
+// Patch constructor to inject our ICE servers
+(window as any).RTCPeerConnection = function(config?: RTCConfiguration) {
+  const patchedConfig: RTCConfiguration = {
+    ...config,
+    // FORCE: Localhost STUN for instant fail + no default STUN
+    iceServers: forcedIceServers || [
+      { urls: "stun:127.0.0.1:3478" } // Fail-fast, then SDK's internal TURN
+    ],
+    iceTransportPolicy: "all", // Allow fail-fast STUN to fail quickly
+    bundlePolicy: "max-bundle",
+    rtcpMuxPolicy: "require"
+  };
+  
+  console.log("[RTCPeerConnection PATCH] Injecting ICE config:", JSON.stringify(patchedConfig.iceServers));
+  
+  return new OriginalRTCPeerConnection(patchedConfig);
+};
+
+// Copy static methods and prototype
+(window as any).RTCPeerConnection.prototype = OriginalRTCPeerConnection.prototype;
+(window as any).RTCPeerConnection.generateCertificate = OriginalRTCPeerConnection.generateCertificate;
+
+// Function to set forced ICE servers from our TURN credentials
+export function setForcedIceServers(servers: RTCIceServer[]) {
+  // Always prepend localhost STUN for fail-fast
+  forcedIceServers = [
+    { urls: "stun:127.0.0.1:3478" },
+    ...servers
+  ];
+  console.log("[RTCPeerConnection PATCH] Forced ICE servers set:", JSON.stringify(forcedIceServers));
+}
+
 import { TelnyxRTC } from "@telnyx/webrtc";
 import { create } from "zustand";
 
