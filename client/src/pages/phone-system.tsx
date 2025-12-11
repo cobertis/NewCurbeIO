@@ -39,7 +39,12 @@ import {
   Square,
   AlertTriangle,
   User,
-  Download
+  Download,
+  ArrowUpDown,
+  ArrowUp,
+  ArrowDown,
+  Filter,
+  Search
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
@@ -980,13 +985,13 @@ export default function PhoneSystem() {
   );
 }
 
-/* Inline Audio Player Component */
+/* Compact Inline Audio Player Component */
 interface AudioPlayerProps {
   recordingUrl: string;
   logId: string;
 }
 
-function InlineAudioPlayer({ recordingUrl, logId }: AudioPlayerProps) {
+function CompactAudioPlayer({ recordingUrl, logId }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -998,14 +1003,8 @@ function InlineAudioPlayer({ recordingUrl, logId }: AudioPlayerProps) {
     if (!audio) return;
 
     const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-      setIsLoading(false);
-    };
-    const handleEnded = () => {
-      setIsPlaying(false);
-      setCurrentTime(0);
-    };
+    const handleLoadedMetadata = () => { setDuration(audio.duration); setIsLoading(false); };
+    const handleEnded = () => { setIsPlaying(false); setCurrentTime(0); };
     const handlePlay = () => setIsPlaying(true);
     const handlePause = () => setIsPlaying(false);
     const handleWaiting = () => setIsLoading(true);
@@ -1033,18 +1032,9 @@ function InlineAudioPlayer({ recordingUrl, logId }: AudioPlayerProps) {
   const togglePlayPause = () => {
     const audio = audioRef.current;
     if (!audio) return;
-    
-    // Stop all other audio players first
-    document.querySelectorAll('audio').forEach(a => {
-      if (a !== audio) a.pause();
-    });
-    
-    if (audio.paused) {
-      setIsLoading(true);
-      audio.play().catch(() => setIsLoading(false));
-    } else {
-      audio.pause();
-    }
+    document.querySelectorAll('audio').forEach(a => { if (a !== audio) a.pause(); });
+    if (audio.paused) { setIsLoading(true); audio.play().catch(() => setIsLoading(false)); }
+    else { audio.pause(); }
   };
 
   const handleStop = () => {
@@ -1059,9 +1049,8 @@ function InlineAudioPlayer({ recordingUrl, logId }: AudioPlayerProps) {
   const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
     const audio = audioRef.current;
     if (!audio) return;
-    const newTime = parseFloat(e.target.value);
-    audio.currentTime = newTime;
-    setCurrentTime(newTime);
+    audio.currentTime = parseFloat(e.target.value);
+    setCurrentTime(audio.currentTime);
   };
 
   const handleDownload = async () => {
@@ -1076,77 +1065,28 @@ function InlineAudioPlayer({ recordingUrl, logId }: AudioPlayerProps) {
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
-    } catch {
-      window.open(recordingUrl, '_blank');
-    }
+    } catch { window.open(recordingUrl, '_blank'); }
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = Math.floor(seconds % 60);
-    return `${mins}:${secs.toString().padStart(2, '0')}`;
-  };
-
+  const formatTime = (s: number) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <div className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg px-3 py-2 min-w-[220px]">
+    <div className="flex items-center gap-1.5">
       <audio ref={audioRef} src={recordingUrl} preload="metadata" />
-      
-      <button
-        onClick={togglePlayPause}
-        disabled={isLoading}
-        className="w-8 h-8 flex items-center justify-center rounded-full bg-indigo-600 hover:bg-indigo-700 text-white transition-colors disabled:opacity-50"
-        data-testid={`button-play-pause-${logId}`}
-      >
-        {isLoading ? (
-          <Loader2 className="h-4 w-4 animate-spin" />
-        ) : isPlaying ? (
-          <Pause className="h-4 w-4" />
-        ) : (
-          <Play className="h-4 w-4 ml-0.5" />
-        )}
+      <button onClick={togglePlayPause} disabled={isLoading} className="w-6 h-6 flex items-center justify-center rounded-full bg-indigo-600 hover:bg-indigo-700 text-white transition-colors disabled:opacity-50" data-testid={`button-play-${logId}`}>
+        {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : isPlaying ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3 ml-0.5" />}
       </button>
-
-      <button
-        onClick={handleStop}
-        className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 transition-colors"
-        data-testid={`button-stop-${logId}`}
-      >
-        <Square className="h-3 w-3" />
+      <button onClick={handleStop} className="w-5 h-5 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 text-slate-500" data-testid={`button-stop-${logId}`}>
+        <Square className="h-2 w-2" />
       </button>
-
-      <div className="flex-1 flex items-center gap-2 min-w-[80px]">
-        <span className="text-xs text-slate-500 dark:text-slate-400 w-9 text-right font-mono">
-          {formatTime(currentTime)}
-        </span>
-        <div className="flex-1 relative h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-          <div 
-            className="absolute left-0 top-0 h-full bg-indigo-500 transition-all duration-100"
-            style={{ width: `${progress}%` }}
-          />
-          <input
-            type="range"
-            min="0"
-            max={duration || 100}
-            value={currentTime}
-            onChange={handleSeek}
-            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-            data-testid={`slider-seek-${logId}`}
-          />
-        </div>
-        <span className="text-xs text-slate-500 dark:text-slate-400 w-9 font-mono">
-          {formatTime(duration)}
-        </span>
+      <div className="relative w-16 h-1.5 bg-slate-200 dark:bg-slate-600 rounded-full overflow-hidden">
+        <div className="absolute left-0 top-0 h-full bg-indigo-500" style={{ width: `${progress}%` }} />
+        <input type="range" min="0" max={duration || 100} value={currentTime} onChange={handleSeek} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
       </div>
-
-      <button
-        onClick={handleDownload}
-        className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 transition-colors"
-        title="Download recording"
-        data-testid={`button-download-${logId}`}
-      >
-        <Download className="h-3.5 w-3.5" />
+      <span className="text-[10px] text-slate-500 font-mono w-8">{formatTime(currentTime)}</span>
+      <button onClick={handleDownload} className="w-5 h-5 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-600 hover:bg-slate-300 text-slate-500" title="Download" data-testid={`button-download-${logId}`}>
+        <Download className="h-2.5 w-2.5" />
       </button>
     </div>
   );
@@ -1159,33 +1099,31 @@ interface CallHistoryProps {
   billingFeaturesData: { recordingEnabled?: boolean } | undefined;
 }
 
+type SortField = 'date' | 'duration' | 'cost';
+type SortDir = 'asc' | 'desc';
+
 function CallHistoryWithAutoPolling({ callLogsData, isLoadingCallLogs, billingFeaturesData }: CallHistoryProps) {
   const [isPolling, setIsPolling] = useState(false);
   const [initialSyncDone, setInitialSyncDone] = useState(false);
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const pollingStartTimeRef = useRef<number | null>(null);
   
-  // Auto-sync on component mount if recording is enabled and there are calls without recordings
+  // Filters & Sorting
+  const [directionFilter, setDirectionFilter] = useState<'all' | 'inbound' | 'outbound'>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'answered' | 'missed' | 'failed'>('all');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [sortField, setSortField] = useState<SortField>('date');
+  const [sortDir, setSortDir] = useState<SortDir>('desc');
+  
   useEffect(() => {
     if (initialSyncDone || !billingFeaturesData?.recordingEnabled || !callLogsData?.logs?.length) return;
-    
-    // Check if ANY call is missing a recording (not just recent ones)
-    const callsWithoutRecording = callLogsData.logs.filter(log => 
-      log.status === 'answered' && log.duration > 0 && !log.recordingUrl
-    );
-    
+    const callsWithoutRecording = callLogsData.logs.filter(log => log.status === 'answered' && log.duration > 0 && !log.recordingUrl);
     if (callsWithoutRecording.length > 0) {
-      console.log(`[CallHistory] Found ${callsWithoutRecording.length} calls without recordings, triggering sync...`);
       setInitialSyncDone(true);
       fetch('/api/telnyx/sync-recordings', { method: 'POST', credentials: 'include' })
-        .then(() => {
-          console.log("[CallHistory] Initial sync complete, refreshing...");
-          queryClient.invalidateQueries({ queryKey: ['/api/call-logs'] });
-        })
+        .then(() => queryClient.invalidateQueries({ queryKey: ['/api/call-logs'] }))
         .catch(() => {});
-    } else {
-      setInitialSyncDone(true);
-    }
+    } else { setInitialSyncDone(true); }
   }, [callLogsData, billingFeaturesData, initialSyncDone]);
   
   const hasRecentCallsWithoutRecording = useCallback(() => {
@@ -1193,141 +1131,180 @@ function CallHistoryWithAutoPolling({ callLogsData, isLoadingCallLogs, billingFe
     const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
     return callLogsData.logs.some(log => {
       const logTime = new Date(log.startedAt).getTime();
-      return logTime > fiveMinutesAgo && 
-             log.status === 'answered' && 
-             log.duration > 0 &&
-             !log.recordingUrl;
+      return logTime > fiveMinutesAgo && log.status === 'answered' && log.duration > 0 && !log.recordingUrl;
     });
   }, [callLogsData, billingFeaturesData]);
   
   const startPolling = useCallback(() => {
     if (pollingIntervalRef.current) return;
-    console.log("[CallHistory] Starting auto-poll for recordings...");
     setIsPolling(true);
     pollingStartTimeRef.current = Date.now();
-    
-    // Immediately trigger sync on first poll
-    fetch('/api/telnyx/sync-recordings', { method: 'POST', credentials: 'include' })
-      .then(() => console.log("[CallHistory] Initial sync triggered"))
-      .catch(() => {});
-    
+    fetch('/api/telnyx/sync-recordings', { method: 'POST', credentials: 'include' }).catch(() => {});
     pollingIntervalRef.current = setInterval(async () => {
       const elapsed = Date.now() - (pollingStartTimeRef.current || 0);
-      if (elapsed > 2 * 60 * 1000) {
-        console.log("[CallHistory] Stopping poll: 2 minute timeout");
-        stopPolling();
-        return;
-      }
-      console.log("[CallHistory] Polling for recordings...");
-      // Trigger sync and then refresh call logs
-      try {
-        await fetch('/api/telnyx/sync-recordings', { method: 'POST', credentials: 'include' });
-      } catch (e) {}
+      if (elapsed > 2 * 60 * 1000) { stopPolling(); return; }
+      try { await fetch('/api/telnyx/sync-recordings', { method: 'POST', credentials: 'include' }); } catch {}
       queryClient.invalidateQueries({ queryKey: ['/api/call-logs'] });
     }, 5000);
   }, []);
   
   const stopPolling = useCallback(() => {
-    if (pollingIntervalRef.current) {
-      clearInterval(pollingIntervalRef.current);
-      pollingIntervalRef.current = null;
-    }
+    if (pollingIntervalRef.current) { clearInterval(pollingIntervalRef.current); pollingIntervalRef.current = null; }
     pollingStartTimeRef.current = null;
     setIsPolling(false);
-    console.log("[CallHistory] Auto-poll stopped");
   }, []);
   
   useEffect(() => {
-    if (hasRecentCallsWithoutRecording()) {
-      startPolling();
-    } else if (isPolling) {
-      stopPolling();
-    }
+    if (hasRecentCallsWithoutRecording()) { startPolling(); }
+    else if (isPolling) { stopPolling(); }
     return () => stopPolling();
   }, [callLogsData, hasRecentCallsWithoutRecording, startPolling, stopPolling, isPolling]);
   
   const callsMissingRecording = callLogsData?.logs?.filter(log => {
     const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
     const logTime = new Date(log.startedAt).getTime();
-    return logTime > fiveMinutesAgo && 
-           log.status === 'answered' && 
-           log.duration > 0 &&
-           !log.recordingUrl;
+    return logTime > fiveMinutesAgo && log.status === 'answered' && log.duration > 0 && !log.recordingUrl;
   }) || [];
+
+  const toggleSort = (field: SortField) => {
+    if (sortField === field) { setSortDir(sortDir === 'asc' ? 'desc' : 'asc'); }
+    else { setSortField(field); setSortDir('desc'); }
+  };
+
+  const filteredAndSortedLogs = callLogsData?.logs
+    ?.filter(log => {
+      if (directionFilter !== 'all' && log.direction !== directionFilter) return false;
+      if (statusFilter !== 'all' && log.status !== statusFilter) return false;
+      if (searchQuery) {
+        const q = searchQuery.toLowerCase();
+        const phone = (log.direction === 'inbound' ? log.fromNumber : log.toNumber) || '';
+        if (!phone.toLowerCase().includes(q) && !(log.callerName || '').toLowerCase().includes(q)) return false;
+      }
+      return true;
+    })
+    ?.sort((a, b) => {
+      let cmp = 0;
+      if (sortField === 'date') cmp = new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime();
+      else if (sortField === 'duration') cmp = (b.duration || 0) - (a.duration || 0);
+      else if (sortField === 'cost') cmp = parseFloat(b.cost || '0') - parseFloat(a.cost || '0');
+      return sortDir === 'asc' ? -cmp : cmp;
+    }) || [];
+
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) return <ArrowUpDown className="h-3 w-3 text-slate-400" />;
+    return sortDir === 'asc' ? <ArrowUp className="h-3 w-3 text-indigo-600" /> : <ArrowDown className="h-3 w-3 text-indigo-600" />;
+  };
   
   return (
     <Card className="border-slate-200 dark:border-border">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
+      <CardHeader className="pb-2">
+        <div className="flex items-center justify-between gap-4 flex-wrap">
           <CardTitle className="text-base flex items-center gap-2">
             <History className="h-4 w-4" />Call History
+            {callLogsData?.logs?.length ? <span className="text-xs font-normal text-slate-400">({filteredAndSortedLogs.length})</span> : null}
           </CardTitle>
-          {isPolling && callsMissingRecording.length > 0 && (
-            <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
-              <Loader2 className="h-3 w-3 animate-spin" />
-              <span>Processing audio...</span>
+          <div className="flex items-center gap-2 flex-wrap">
+            {isPolling && callsMissingRecording.length > 0 && (
+              <div className="flex items-center gap-1.5 text-xs text-amber-600">
+                <Loader2 className="h-3 w-3 animate-spin" />
+                <span>Syncing...</span>
+              </div>
+            )}
+            <div className="relative">
+              <Search className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-slate-400" />
+              <Input placeholder="Search..." value={searchQuery} onChange={e => setSearchQuery(e.target.value)} className="h-7 w-32 pl-7 text-xs" data-testid="input-search-calls" />
             </div>
-          )}
+            <Select value={directionFilter} onValueChange={(v: any) => setDirectionFilter(v)}>
+              <SelectTrigger className="h-7 w-24 text-xs" data-testid="select-direction-filter"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All</SelectItem>
+                <SelectItem value="inbound">Inbound</SelectItem>
+                <SelectItem value="outbound">Outbound</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+              <SelectTrigger className="h-7 w-24 text-xs" data-testid="select-status-filter"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">All Status</SelectItem>
+                <SelectItem value="answered">Answered</SelectItem>
+                <SelectItem value="missed">Missed</SelectItem>
+                <SelectItem value="failed">Failed</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       </CardHeader>
-      <CardContent>
+      <CardContent className="p-0">
         {isLoadingCallLogs ? (
-          <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
+          <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-slate-400" /></div>
         ) : !callLogsData?.logs?.length ? (
-          <div className="text-center py-12 text-slate-400">
-            <Phone className="h-10 w-10 mx-auto mb-3 opacity-50" />
-            <p className="font-medium">No calls yet</p>
-            <p className="text-sm mt-1">Your call history will appear here</p>
+          <div className="text-center py-8 text-slate-400">
+            <Phone className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm font-medium">No calls yet</p>
+          </div>
+        ) : filteredAndSortedLogs.length === 0 ? (
+          <div className="text-center py-8 text-slate-400">
+            <Filter className="h-6 w-6 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No calls match filters</p>
           </div>
         ) : (
-          <div className="space-y-2 max-h-[600px] overflow-y-auto">
-            {callLogsData.logs.map((log) => {
-              const isMissingRecording = callsMissingRecording.some(c => c.id === log.id);
-              return (
-                <div key={log.id} className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-muted/50 hover:bg-slate-100 dark:hover:bg-muted transition-colors">
-                  <div className={`p-2 rounded-full shrink-0 ${log.direction === 'inbound' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
-                    {log.direction === 'inbound' ? <PhoneIncoming className="h-4 w-4 text-blue-600" /> : <PhoneOutgoing className="h-4 w-4 text-green-600" />}
-                  </div>
-                  <div className="min-w-[140px] shrink-0">
-                    <p className="font-medium text-slate-800 dark:text-foreground text-sm">
-                      {formatPhoneDisplay(log.direction === 'inbound' ? log.fromNumber : log.toNumber)}
-                    </p>
-                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
-                      <span>{format(new Date(log.startedAt), "MMM dd 'at' h:mm a")}</span>
-                      <span className={log.status === 'answered' ? 'text-green-600' : log.status === 'failed' ? 'text-red-500' : 'text-amber-600'}>
-                        {log.status}
-                      </span>
-                    </div>
-                  </div>
-                  {log.recordingUrl ? (
-                    <div className="flex-1">
-                      <InlineAudioPlayer recordingUrl={log.recordingUrl} logId={log.id} />
-                    </div>
-                  ) : isMissingRecording && billingFeaturesData?.recordingEnabled ? (
-                    <div className="flex-1 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
-                      <Loader2 className="h-3 w-3 animate-spin" />
-                      <span>Processing audio...</span>
-                    </div>
-                  ) : (
-                    <div className="flex-1" />
-                  )}
-                  <div className="flex items-center gap-3 shrink-0">
-                    {log.duration > 0 && (
-                      <div className="text-center min-w-[45px]">
-                        <p className="font-medium text-slate-700 dark:text-foreground text-sm">{Math.floor(log.duration / 60)}:{(log.duration % 60).toString().padStart(2, '0')}</p>
-                        <p className="text-[10px] text-slate-400">duration</p>
-                      </div>
-                    )}
-                    {log.cost && parseFloat(log.cost) > 0 && (
-                      <div className="text-center min-w-[55px]">
-                        <p className="font-medium text-amber-600 text-sm">${parseFloat(log.cost).toFixed(4)}</p>
-                        <p className="text-[10px] text-slate-400">cost</p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead className="bg-slate-50 dark:bg-muted/50 border-y border-slate-100 dark:border-border">
+                <tr>
+                  <th className="px-3 py-2 text-left font-medium text-slate-500 w-8"></th>
+                  <th className="px-3 py-2 text-left font-medium text-slate-500">Phone</th>
+                  <th className="px-3 py-2 text-left font-medium text-slate-500 cursor-pointer hover:text-slate-700" onClick={() => toggleSort('date')}>
+                    <span className="flex items-center gap-1">Date <SortIcon field="date" /></span>
+                  </th>
+                  <th className="px-3 py-2 text-left font-medium text-slate-500">Status</th>
+                  <th className="px-3 py-2 text-left font-medium text-slate-500">Recording</th>
+                  <th className="px-3 py-2 text-right font-medium text-slate-500 cursor-pointer hover:text-slate-700" onClick={() => toggleSort('duration')}>
+                    <span className="flex items-center justify-end gap-1">Duration <SortIcon field="duration" /></span>
+                  </th>
+                  <th className="px-3 py-2 text-right font-medium text-slate-500 cursor-pointer hover:text-slate-700" onClick={() => toggleSort('cost')}>
+                    <span className="flex items-center justify-end gap-1">Cost <SortIcon field="cost" /></span>
+                  </th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-border max-h-[400px] overflow-y-auto">
+                {filteredAndSortedLogs.map(log => {
+                  const isMissing = callsMissingRecording.some(c => c.id === log.id);
+                  return (
+                    <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-muted/30 transition-colors">
+                      <td className="px-3 py-1.5">
+                        {log.direction === 'inbound' ? <PhoneIncoming className="h-3.5 w-3.5 text-blue-500" /> : <PhoneOutgoing className="h-3.5 w-3.5 text-green-500" />}
+                      </td>
+                      <td className="px-3 py-1.5 font-medium text-slate-700 dark:text-foreground whitespace-nowrap">
+                        {formatPhoneDisplay(log.direction === 'inbound' ? log.fromNumber : log.toNumber)}
+                      </td>
+                      <td className="px-3 py-1.5 text-slate-500 whitespace-nowrap">
+                        {format(new Date(log.startedAt), "MM/dd/yy h:mm a")}
+                      </td>
+                      <td className="px-3 py-1.5">
+                        <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                          log.status === 'answered' ? 'bg-green-100 text-green-700' : 
+                          log.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
+                        }`}>{log.status}</span>
+                      </td>
+                      <td className="px-3 py-1.5">
+                        {log.recordingUrl ? (
+                          <CompactAudioPlayer recordingUrl={log.recordingUrl} logId={log.id} />
+                        ) : isMissing && billingFeaturesData?.recordingEnabled ? (
+                          <span className="flex items-center gap-1 text-amber-500"><Loader2 className="h-3 w-3 animate-spin" />Syncing</span>
+                        ) : <span className="text-slate-300">-</span>}
+                      </td>
+                      <td className="px-3 py-1.5 text-right font-mono text-slate-600">
+                        {log.duration > 0 ? `${Math.floor(log.duration / 60)}:${(log.duration % 60).toString().padStart(2, '0')}` : '-'}
+                      </td>
+                      <td className="px-3 py-1.5 text-right font-mono text-amber-600">
+                        {log.cost && parseFloat(log.cost) > 0 ? `$${parseFloat(log.cost).toFixed(4)}` : '-'}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </CardContent>
