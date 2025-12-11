@@ -29623,17 +29623,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
 
   // GET /api/caller-lookup/:phoneNumber - Lookup caller by phone number in quotes/policies/contacts
+  // CRITICAL: This endpoint must NEVER fail with 500 - it's called during incoming calls
   app.get("/api/caller-lookup/:phoneNumber", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
       const { phoneNumber } = req.params;
       
       if (!phoneNumber) {
-        return res.status(400).json({ message: "Phone number is required" });
+        return res.json({ found: false });
       }
       
       if (!user.companyId) {
-        return res.status(400).json({ message: "No company associated with user" });
+        return res.json({ found: false });
       }
       
       // Normalize phone number (keep only last 10 digits)
@@ -29643,68 +29644,105 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.json({ found: false });
       }
       
-      // Search in quotes first (most common source for client data)
-      const matchedQuote = await db.query.quotes.findFirst({
-        where: and(
-          eq(quotes.companyId, user.companyId),
-          sql`REPLACE(REPLACE(REPLACE(REPLACE(${quotes.clientPhone}, '-', ''), '(', ''), ')', ''), ' ', '') LIKE '%' || ${normalizedPhone}`
-        )
-      });
-      
-      if (matchedQuote) {
-        return res.json({
-          found: true,
-          source: 'quote',
-          clientFirstName: matchedQuote.clientFirstName,
-          clientLastName: matchedQuote.clientLastName,
-          clientPhone: matchedQuote.clientPhone
-        });
+      // Wrap each lookup in try/catch to prevent any single failure from crashing
+      try {
+        // Search in quotes first (most common source for client data)
+        const matchedQuote = await db
+          .select({
+            clientFirstName: quotes.clientFirstName,
+            clientLastName: quotes.clientLastName,
+            clientPhone: quotes.clientPhone
+          })
+          .from(quotes)
+          .where(
+            and(
+              eq(quotes.companyId, user.companyId),
+              sql`RIGHT(REGEXP_REPLACE(${quotes.clientPhone}, '[^0-9]', '', 'g'), 10) = ${normalizedPhone}`
+            )
+          )
+          .limit(1);
+        
+        if (matchedQuote.length > 0) {
+          return res.json({
+            found: true,
+            source: 'quote',
+            clientFirstName: matchedQuote[0].clientFirstName,
+            clientLastName: matchedQuote[0].clientLastName,
+            clientPhone: matchedQuote[0].clientPhone
+          });
+        }
+      } catch (quoteError) {
+        console.warn("[Caller Lookup] Quote search failed, continuing:", quoteError);
       }
       
-      // Search in policies
-      const matchedPolicy = await db.query.policies.findFirst({
-        where: and(
-          eq(policies.companyId, user.companyId),
-          sql`REPLACE(REPLACE(REPLACE(REPLACE(${policies.clientPhone}, '-', ''), '(', ''), ')', ''), ' ', '') LIKE '%' || ${normalizedPhone}`
-        )
-      });
-      
-      if (matchedPolicy) {
-        return res.json({
-          found: true,
-          source: 'policy',
-          clientFirstName: matchedPolicy.clientFirstName,
-          clientLastName: matchedPolicy.clientLastName,
-          clientPhone: matchedPolicy.clientPhone
-        });
+      try {
+        // Search in policies
+        const matchedPolicy = await db
+          .select({
+            clientFirstName: policies.clientFirstName,
+            clientLastName: policies.clientLastName,
+            clientPhone: policies.clientPhone
+          })
+          .from(policies)
+          .where(
+            and(
+              eq(policies.companyId, user.companyId),
+              sql`RIGHT(REGEXP_REPLACE(${policies.clientPhone}, '[^0-9]', '', 'g'), 10) = ${normalizedPhone}`
+            )
+          )
+          .limit(1);
+        
+        if (matchedPolicy.length > 0) {
+          return res.json({
+            found: true,
+            source: 'policy',
+            clientFirstName: matchedPolicy[0].clientFirstName,
+            clientLastName: matchedPolicy[0].clientLastName,
+            clientPhone: matchedPolicy[0].clientPhone
+          });
+        }
+      } catch (policyError) {
+        console.warn("[Caller Lookup] Policy search failed, continuing:", policyError);
       }
       
-      // Search in contacts table
-      const matchedContact = await db.query.contacts.findFirst({
-        where: and(
-          eq(contacts.companyId, user.companyId),
-          sql`REPLACE(REPLACE(REPLACE(REPLACE(${contacts.phone}, '-', ''), '(', ''), ')', ''), ' ', '') LIKE '%' || ${normalizedPhone}`
-        )
-      });
-      
-      if (matchedContact) {
-        return res.json({
-          found: true,
-          source: 'contact',
-          clientFirstName: matchedContact.firstName,
-          clientLastName: matchedContact.lastName,
-          clientPhone: matchedContact.phone
-        });
+      try {
+        // Search in contacts table
+        const matchedContact = await db
+          .select({
+            firstName: contacts.firstName,
+            lastName: contacts.lastName,
+            phone: contacts.phone
+          })
+          .from(contacts)
+          .where(
+            and(
+              eq(contacts.companyId, user.companyId),
+              sql`RIGHT(REGEXP_REPLACE(${contacts.phone}, '[^0-9]', '', 'g'), 10) = ${normalizedPhone}`
+            )
+          )
+          .limit(1);
+        
+        if (matchedContact.length > 0) {
+          return res.json({
+            found: true,
+            source: 'contact',
+            clientFirstName: matchedContact[0].firstName,
+            clientLastName: matchedContact[0].lastName,
+            clientPhone: matchedContact[0].phone
+          });
+        }
+      } catch (contactError) {
+        console.warn("[Caller Lookup] Contact search failed, continuing:", contactError);
       }
       
-      // Not found
+      // Not found - always return 200 OK
       res.json({ found: false });
     } catch (error: any) {
-      console.error("[Caller Lookup] Error:", error);
-      res.status(500).json({ message: "Failed to lookup caller" });
+      // CRITICAL: Never return 500 for caller lookup - just return not found
+      console.error("[Caller Lookup] Unexpected error (returning 200):", error.message);
+      res.json({ found: false });
     }
   });
-
   // GET /api/call-logs - Get call history for company
   app.get("/api/call-logs", requireAuth, async (req: Request, res: Response) => {
     try {
