@@ -26662,19 +26662,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       switch (eventType) {
         case "call.initiated": {
           if (direction === "incoming") {
-            // INBOUND CALL: Answer and dial to SIP credential
-            console.log("[Telnyx Call Control] Incoming call - answering and dialing to WebRTC");
+            // INBOUND CALL: Use TRANSFER to route directly to SIP credential
+            // Per Telnyx docs: transfer does NOT require answer first
+            console.log("[Telnyx Call Control] Incoming call - transferring to WebRTC");
             
-            // Get SIP username and credential connection ID from cache or DB
+            // Get SIP username from cache or DB
             const cached = sipUsernameCache.get(companyId);
             let sipUsername: string | null = null;
-            let credentialConnectionId: string | null = null;
             
             if (cached && Date.now() - cached.timestamp < SIP_CACHE_TTL) {
               sipUsername = cached.username;
-              credentialConnectionId = (cached as any).connectionId || null;
             } else {
-              // Query both credentials and settings
               const [credential] = await db
                 .select({ sipUsername: telephonyCredentials.sipUsername })
                 .from(telephonyCredentials)
@@ -26687,29 +26685,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 .orderBy(desc(telephonyCredentials.lastUsedAt))
                 .limit(1);
               
-              const [settings] = await db
-                .select({ 
-                  credentialConnectionId: telephonySettings.credentialConnectionId,
-                  callControlAppId: telephonySettings.callControlAppId
-                })
-                .from(telephonySettings)
-                .where(eq(telephonySettings.companyId, companyId));
-              
               if (credential?.sipUsername) {
                 sipUsername = credential.sipUsername;
-                // Use Call Control App ID for dial, not Credential Connection ID
-                credentialConnectionId = settings?.callControlAppId || settings?.credentialConnectionId || null;
                 sipUsernameCache.set(companyId, { 
                   username: sipUsername, 
-                  timestamp: Date.now(),
-                  connectionId: credentialConnectionId 
+                  timestamp: Date.now()
                 } as any);
               }
             }
             
             if (!sipUsername) {
               console.error("[Telnyx Call Control] No SIP credential for company:", companyId);
-              // Reject the call
+              // Reject the call with busy signal
               await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/hangup`, {
                 method: "POST",
                 headers: {
@@ -26722,7 +26709,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               return;
             }
             
-            // Store mapping for later hangup
+            // Store mapping for tracking
             callControlToSipMap.set(callControlId, { sipUsername, companyId, from, to });
             activeCallsMap.set(sipUsername, {
               callSid: callControlId,
@@ -26733,28 +26720,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               callControlId: callControlId
             });
             
-            // Step 1: Answer the inbound call
-            console.log("[Telnyx Call Control] Answering call:", callControlId);
-            const answerRes = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/answer`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${telnyxApiKey}`,
-                ...(managedAccountId && { "X-Managed-Account-Id": managedAccountId })
-              },
-              body: JSON.stringify({})
-            });
+            // Use TRANSFER command - per Telnyx docs this transfers the call
+            // directly to the SIP URI without needing to answer first
+            const sipUri = `sip:${sipUsername}@sip.telnyx.com`;
+            console.log("[Telnyx Call Control] Transferring to:", sipUri);
             
-            if (!answerRes.ok) {
-              const errText = await answerRes.text();
-              console.error("[Telnyx Call Control] Answer failed:", answerRes.status, errText);
-              return;
-            }
-            console.log("[Telnyx Call Control] Call answered successfully");
-            
-            // Step 2: Dial to SIP credential (WebRTC client)
-            console.log("[Telnyx Call Control] Dialing to SIP:", sipUsername, "with connection_id:", credentialConnectionId);
-            const dialRes = await fetch("https://api.telnyx.com/v2/calls", {
+            const transferRes = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/transfer`, {
               method: "POST",
               headers: {
                 "Content-Type": "application/json",
@@ -26762,19 +26733,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 ...(managedAccountId && { "X-Managed-Account-Id": managedAccountId })
               },
               body: JSON.stringify({
-                connection_id: credentialConnectionId,
-                to: `sip:${sipUsername}@sip.telnyx.com`,
-                from: from,
-                answering_machine_detection: "disabled",
-                webhook_url: `https://${process.env.REPLIT_DEV_DOMAIN || "curbe.io"}/webhooks/telnyx/call-control/${companyId}`,
-                webhook_url_method: "POST"
+                to: sipUri,
+                from: to, // The DID that was called becomes the caller ID
+                timeout_secs: 30
               })
             });
             
-            if (!dialRes.ok) {
-              const errText = await dialRes.text();
-              console.error("[Telnyx Call Control] Dial to SIP failed:", dialRes.status, errText);
-              // Hang up the PSTN leg since we can't reach WebRTC
+            if (!transferRes.ok) {
+              const errText = await transferRes.text();
+              console.error("[Telnyx Call Control] Transfer failed:", transferRes.status, errText);
+              // Hang up since transfer failed
               await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/hangup`, {
                 method: "POST",
                 headers: {
@@ -26782,58 +26750,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                   "Authorization": `Bearer ${telnyxApiKey}`,
                   ...(managedAccountId && { "X-Managed-Account-Id": managedAccountId })
                 },
-                body: JSON.stringify({})
+                body: JSON.stringify({ cause: "NORMAL_CLEARING" })
               });
               return;
             }
             
-            const dialData = await dialRes.json();
-            const dialedLegControlId = dialData.data?.call_control_id;
-            console.log("[Telnyx Call Control] Dialed leg created:", dialedLegControlId);
-            
-            // Store the dialed leg ID for bridging
-            const existingCall = activeCallsMap.get(sipUsername);
-            if (existingCall) {
-              existingCall.dialedLegControlId = dialedLegControlId;
-              activeCallsMap.set(sipUsername, existingCall);
-            }
-            
-            // Also map the dialed leg
-            callControlToSipMap.set(dialedLegControlId, { sipUsername, companyId, from, to });
+            console.log("[Telnyx Call Control] Transfer initiated successfully");
           }
           break;
         }
         
         case "call.answered": {
-          // Check if this is the SIP leg answering (WebRTC client picked up)
+          // With transfer, bridging is automatic when the SIP endpoint answers
           const mapping = callControlToSipMap.get(callControlId);
           if (mapping) {
-            const call = activeCallsMap.get(mapping.sipUsername);
-            if (call && call.dialedLegControlId === callControlId) {
-              // This is the WebRTC leg answering - bridge to PSTN leg
-              console.log("[Telnyx Call Control] WebRTC answered - bridging calls");
-              const pstnLegId = call.callControlId;
-              
-              const bridgeRes = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/bridge`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": `Bearer ${telnyxApiKey}`,
-                  ...(managedAccountId && { "X-Managed-Account-Id": managedAccountId })
-                },
-                body: JSON.stringify({
-                  call_control_id: pstnLegId
-                })
-              });
-              
-              if (!bridgeRes.ok) {
-                const errText = await bridgeRes.text();
-                console.error("[Telnyx Call Control] Bridge failed:", bridgeRes.status, errText);
-              } else {
-                console.log("[Telnyx Call Control] Calls bridged successfully");
-              }
-            }
+            console.log("[Telnyx Call Control] Call answered - transfer auto-bridged:", mapping.sipUsername);
           }
+          break;
+        }
+        
+        case "call.bridged": {
+          // Calls are now connected
+          console.log("[Telnyx Call Control] Calls bridged successfully");
           break;
         }
         
