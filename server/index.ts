@@ -228,6 +228,20 @@ app.use((req, res, next) => {
                 console.log(`[SRTP Repair] Could not repair SRTP for ${setting.companyId}: ${result.error}`);
               }
             }).catch((err) => console.error(`[SRTP Repair] Error:`, err));
+            
+            // CRITICAL: Auto-repair phone number routing on startup
+            // This fixes 4-6 second audio delay on inbound calls by routing
+            // directly to Credential Connection instead of TeXML app
+            console.log(`[Routing Repair] Checking phone routing for company ${setting.companyId}...`);
+            telephonyProvisioningService.repairPhoneNumberRouting(setting.companyId).then((result) => {
+              if (result.success && result.repairedCount > 0) {
+                console.log(`[Routing Repair] Fixed ${result.repairedCount} phone number(s) for company ${setting.companyId}`);
+              } else if (result.success) {
+                console.log(`[Routing Repair] Phone routing OK for company ${setting.companyId}`);
+              } else {
+                console.log(`[Routing Repair] Could not repair for ${setting.companyId}: ${result.errors?.join(', ')}`);
+              }
+            }).catch((err) => console.error(`[Routing Repair] Error:`, err));
           }
         }
       }).catch((err) => console.error(`[SRTP Repair] Error loading db:`, err));
