@@ -88,7 +88,7 @@ import {
   createCampaignWithDetailsSchema
 } from "@shared/schema";
 import { db } from "./db";
-import { and, eq, ne, gte, desc, or, sql, inArray, count } from "drizzle-orm";
+import { and, eq, ne, gte, desc, or, sql, inArray, count, isNotNull } from "drizzle-orm";
 import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, vipPassDevices, vipPassInstances } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -29548,7 +29548,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         matchedContact = await db.query.contacts.findFirst({
           where: and(
             eq(contacts.companyId, user.companyId),
-            sql`${contacts.phone} IS NOT NULL AND RIGHT(REGEXP_REPLACE(${contacts.phone}, '[^0-9]', '', 'g'), 10) = ${phoneToMatch}`
+            isNotNull(contacts.phone),
+            sql`RIGHT(REGEXP_REPLACE(phone, '[^0-9]', '', 'g'), 10) = ${phoneToMatch}`
           )
         });
       } catch (contactError) {
