@@ -4672,6 +4672,7 @@ export const telnyxGlobalPricing = pgTable("telnyx_global_pricing", {
   recordingPerMinuteCost: numeric("recording_per_minute_cost", { precision: 10, scale: 4 }).notNull().default("0.0010"),
   cnamLookupCost: numeric("cnam_lookup_cost", { precision: 10, scale: 4 }).notNull().default("0.0025"),
   e911AddressCost: numeric("e911_address_cost", { precision: 10, scale: 2 }).notNull().default("1.50"),
+  portOutFeeCost: numeric("port_out_fee_cost", { precision: 10, scale: 2 }).notNull().default("6.00"),
   
   // Add-on rates - PRICE
   callControlInbound: numeric("call_control_inbound", { precision: 10, scale: 4 }).notNull().default("0.0020"),
@@ -4679,6 +4680,7 @@ export const telnyxGlobalPricing = pgTable("telnyx_global_pricing", {
   recordingPerMinute: numeric("recording_per_minute", { precision: 10, scale: 4 }).notNull().default("0.0020"),
   cnamLookup: numeric("cnam_lookup", { precision: 10, scale: 4 }).notNull().default("0.0045"),
   e911Address: numeric("e911_address", { precision: 10, scale: 2 }).notNull().default("2.00"),
+  portOutFee: numeric("port_out_fee", { precision: 10, scale: 2 }).notNull().default("10.00"),
   
   // DID monthly rates - COST
   didLocalCost: numeric("did_local_cost", { precision: 10, scale: 2 }).notNull().default("0.50"),
