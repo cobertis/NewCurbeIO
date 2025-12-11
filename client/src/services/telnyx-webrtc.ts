@@ -770,7 +770,14 @@ class TelnyxWebRTCManager {
     }
 
     const pc = sdh.peerConnection as RTCPeerConnection;
-    const remoteAudio = this.remoteAudio;
+    
+    // Ensure audio element exists - create if needed
+    if (!this.audioElement) {
+      const audioElements = ensureTelnyxAudioElements();
+      this.audioElement = audioElements.remote;
+    }
+    
+    const remoteAudio = this.audioElement;
     
     if (!remoteAudio) {
       console.error("[SIP.js WebRTC] Remote audio element not found!");
