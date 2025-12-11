@@ -106,18 +106,8 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
       });
     }
     
-    // Only use best_effort when there are NO specific search filters
-    // This ensures exact matches when user specifies area code, starts_with, etc.
-    const hasSpecificFilters = params.national_destination_code || 
-                               params.starts_with || 
-                               params.ends_with || 
-                               params.contains ||
-                               params.locality ||
-                               params.administrative_area;
-    
-    if (!hasSpecificFilters) {
-      queryParams.append("filter[best_effort]", "true");
-    }
+    // Always use best_effort to get results, we'll filter exact matches on our side
+    queryParams.append("filter[best_effort]", "true");
     
     // Use page[size] and page[number] for proper pagination
     const pageSize = params.limit || 50;
@@ -161,15 +151,46 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
     const result = await response.json();
     
     const meta = result.meta || {};
-    console.log(`[Telnyx Numbers] Found ${result.data?.length || 0} numbers on page ${meta.page_number || pageNumber} of ${meta.total_pages || 1}`);
+    const allNumbers = result.data || [];
+    
+    // Filter exact matches based on search criteria
+    let exactMatches: typeof allNumbers = [];
+    let alternativeMatches: typeof allNumbers = [];
+    
+    if (params.national_destination_code) {
+      // Filter by area code - check if phone number contains the area code
+      const areaCode = params.national_destination_code;
+      exactMatches = allNumbers.filter((n: any) => {
+        const phone = n.phone_number?.replace(/^\+1/, '') || '';
+        return phone.startsWith(areaCode);
+      });
+      alternativeMatches = allNumbers.filter((n: any) => {
+        const phone = n.phone_number?.replace(/^\+1/, '') || '';
+        return !phone.startsWith(areaCode);
+      });
+    } else if (params.starts_with) {
+      exactMatches = allNumbers.filter((n: any) => 
+        n.phone_number?.includes(params.starts_with)
+      );
+      alternativeMatches = allNumbers.filter((n: any) => 
+        !n.phone_number?.includes(params.starts_with)
+      );
+    } else {
+      // No specific filter, all are considered matches
+      exactMatches = allNumbers;
+    }
+    
+    console.log(`[Telnyx Numbers] Found ${allNumbers.length} total, ${exactMatches.length} exact matches, ${alternativeMatches.length} alternatives`);
 
     return {
       success: true,
-      numbers: result.data || [],
+      numbers: exactMatches,
+      alternativeNumbers: alternativeMatches,
       totalCount: meta.total_results,
       currentPage: meta.page_number || pageNumber,
       totalPages: meta.total_pages || 1,
       pageSize: meta.page_size || pageSize,
+      hasAlternatives: alternativeMatches.length > 0 && exactMatches.length === 0,
     };
   } catch (error) {
     console.error("[Telnyx Numbers] Search error:", error);
