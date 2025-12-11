@@ -1161,8 +1161,14 @@ export function WebPhoneFloatingWindow() {
   const primaryTelnyxNumberId = telnyxNumbersData?.numbers?.[0]?.id;
 
   // Query for voice settings to check callerIdNameEnabled
+  // Use array format to match phone-system.tsx invalidation pattern
   const { data: voiceSettingsData } = useQuery<{ callerIdNameEnabled?: boolean }>({
-    queryKey: [`/api/telnyx/voice-settings/${primaryTelnyxNumberId}`],
+    queryKey: ["/api/telnyx/voice-settings", primaryTelnyxNumberId],
+    queryFn: async () => {
+      const res = await fetch(`/api/telnyx/voice-settings/${primaryTelnyxNumberId}`, { credentials: "include" });
+      if (!res.ok) throw new Error("Failed to fetch voice settings");
+      return res.json();
+    },
     enabled: !!primaryTelnyxNumberId,
   });
   const callerIdNameEnabled = voiceSettingsData?.callerIdNameEnabled ?? false;
