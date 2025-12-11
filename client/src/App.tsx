@@ -1,4 +1,4 @@
-import { useState, useCallback, useEffect, useRef, useMemo } from "react";
+import { useState, useCallback, useEffect, useMemo } from "react";
 import { Switch, Route, useLocation, Link, Redirect } from "wouter";
 import { queryClient, getCompanyQueryOptions } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
@@ -148,15 +148,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     }
   }, [user?.sipEnabled, user?.sipExtension, user?.sipPassword, user?.sipServer]);
 
-  // PRIORITY 2: Pre-warm Telnyx WebRTC ICE on login for sub-1s call connection
-  const telnyxPreWarmRef = useRef(false);
-  useEffect(() => {
-    if (hasTelnyxNumber && user && !telnyxPreWarmRef.current) {
-      telnyxPreWarmRef.current = true;
-      console.log('[Telnyx WebRTC] ⚡ Pre-warm ICE triggered from App.tsx');
-      telnyxWebRTC.preWarm().catch(console.error);
-    }
-  }, [hasTelnyxNumber, user]);
+  // NOTE: ICE pre-warm removed - SDK now uses forceRelayCandidate: true + prefetchIceCandidates: true
+  // This forces TURN relay from the start, eliminating the 4-second delay in restrictive networks
 
   const { data: notificationsData, isLoading: isLoadingNotifications, isError: isErrorNotifications } = useQuery<{ notifications: any[] }>({
     queryKey: ["/api/notifications"],

@@ -511,14 +511,15 @@ class TelnyxWebRTCManager {
     this.audioElement = audioElements.remote;
     console.log("[Telnyx WebRTC] 🔊 Using programmatic audio element (no React Fiber)");
 
-    // ICE OPTIMIZATION: Start pre-warm in parallel with SDK init
-    this.preWarm().catch(console.error);
-
-    // Per official Telnyx SDK docs - let SDK manage TURN servers
+    // Per official Telnyx SDK docs:
+    // https://developers.telnyx.com/docs/voice/webrtc/js-sdk/interfaces/iclientoptions
+    // - prefetchIceCandidates: Pre-gather ICE candidates for faster connection
+    // - forceRelayCandidate: Force TURN relay to avoid slow P2P negotiation in restrictive networks
     this.client = new TelnyxRTC({
       login: sipUser,
       password: sipPass,
       prefetchIceCandidates: true,
+      forceRelayCandidate: true, // Force TURN relay - eliminates 4-second delay in restrictive networks
     });
 
     // CRITICAL: Per Telnyx docs, set client.remoteElement IMMEDIATELY after creation
