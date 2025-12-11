@@ -304,7 +304,7 @@ function TelnyxPricingSection() {
             {renderPricingRow("Call Ctrl In", "callControlInboundCost", "callControlInbound")}
             {renderPricingRow("Call Ctrl Out", "callControlOutboundCost", "callControlOutbound")}
             {renderPricingRow("Recording/min", "recordingPerMinuteCost", "recordingPerMinute")}
-            {renderPricingRow("CNAM Lookup", "cnamLookupCost", "cnamLookup")}
+            {renderPricingRow("CNAM /num/mo", "cnamLookupCost", "cnamLookup")}
           </CardContent>
         </Card>
 
