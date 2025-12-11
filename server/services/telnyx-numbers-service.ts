@@ -106,6 +106,9 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
       });
     }
     
+    // Always use best_effort to return results even if exact match not available
+    queryParams.append("filter[best_effort]", "true");
+    
     // Use page[size] and page[number] for proper pagination
     const pageSize = params.limit || 50;
     const pageNumber = params.page || 1;
