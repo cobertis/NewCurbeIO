@@ -14,15 +14,18 @@ let forcedIceServers: RTCIceServer[] | null = null;
 (window as any).RTCPeerConnection = function(config?: RTCConfiguration) {
   const patchedConfig: RTCConfiguration = {
     ...config,
-    // FORCE: Localhost STUN for instant fail + no default STUN
+    // FORCE: Localhost STUN for instant fail + TURN servers
     iceServers: forcedIceServers || [
-      { urls: "stun:127.0.0.1:3478" } // Fail-fast, then SDK's internal TURN
+      { urls: "stun:127.0.0.1:3478" } // Fail-fast blackhole
     ],
-    iceTransportPolicy: "all" // Allow fail-fast STUN to fail quickly
-    // NOTE: Do NOT set bundlePolicy - let SDK handle it to avoid SDP incompatibility
+    iceTransportPolicy: "relay", // FORCE TURN tunnel - skip STUN gathering
+    bundlePolicy: "balanced" // Compatible with Telnyx SDP
   };
   
-  console.log("[RTCPeerConnection PATCH] Injecting ICE config:", JSON.stringify(patchedConfig.iceServers));
+  console.log("[RTCPeerConnection PATCH] Injecting config:", JSON.stringify({
+    iceServers: patchedConfig.iceServers,
+    iceTransportPolicy: patchedConfig.iceTransportPolicy
+  }));
   
   return new OriginalRTCPeerConnection(patchedConfig);
 };
