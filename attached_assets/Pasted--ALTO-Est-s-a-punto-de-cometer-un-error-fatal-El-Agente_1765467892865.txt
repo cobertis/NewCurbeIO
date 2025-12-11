@@ -1,0 +1,57 @@
+¡ALTO! 🛑 Estás a punto de cometer un error fatal.
+
+El Agente tiene razón en una cosa, pero está equivocado en la otra.
+
+TIENE RAZÓN: En SIP.js 0.21, pasar opciones a session.accept() a menudo es ignorado. La configuración debe ir en el Constructor del UserAgent (sessionDescriptionHandlerFactoryOptions).
+
+ESTÁ EQUIVOCADO: No borres el "Blackhole STUN" (127.0.0.1).
+
+El error no es que el Blackhole cause fallos.
+
+El error (INCOMPATIBLE_DESTINATION) ocurre porque SIP.js envía la respuesta 200 OK demasiado rápido, antes de que el proceso ICE termine de recolectar la IP del TURN. Envía 0.0.0.0 y Telnyx cuelga.
+
+LA SOLUCIÓN REAL: Mantén el Blackhole (para velocidad) y mueve toda la configuración al constructor global, agregando un iceGatheringTimeout para obligar a SIP.js a esperar a tener una IP válida antes de responder.
+
+Copia y pega este prompt correctivo urgente:
+
+CORRECCIÓN DE ARQUITECTURA: MOVER CONFIG AL CONSTRUCTOR (NO BORRAR BLACKHOLE)
+Agente, detente. No borres el servidor stun:127.0.0.1.
+
+Ese servidor falso es vital para la estrategia "Fail-Fast" que elimina la latencia de red. El problema no es ese servidor.
+
+EL DIAGNÓSTICO CORRECTO: La llamada se corta con INCOMPATIBLE_DESTINATION porque el SDP enviado en el 200 OK contiene c=0.0.0.0. Esto sucede porque SIP.js responde inmediatamente (Trickle ICE por defecto) y no espera a recolectar los candidatos TURN. Telnyx requiere el candidato en el SDP inicial.
+
+LA SOLUCIÓN (GLOBAL CONFIG): Tienes razón en que accept() llega tarde. Debemos inyectar la configuración en la inicialización del UserAgent.
+
+TU TAREA: Modifica client/src/services/telnyx-webrtc.ts. En el constructor donde haces new UserAgent({...}), define sessionDescriptionHandlerFactoryOptions así:
+
+JavaScript
+
+this.userAgent = new UserAgent({
+    // ... tus credenciales y servidor WSS ...
+    
+    sessionDescriptionHandlerFactoryOptions: {
+        // 1. OBLIGATORIO: Esperar a tener candidatos antes de enviar OK
+        iceGatheringTimeout: 2000, 
+        
+        peerConnectionOptions: {
+            rtcConfig: {
+                // 2. MANTENER RELAY (Latencia cero)
+                iceTransportPolicy: 'relay',
+                iceServers: [
+                    // 3. MANTENER BLACKHOLE (Velocidad de gathering)
+                    { urls: "stun:127.0.0.1:3478" },
+                    // ... tus servidores TURN dinámicos aquí ...
+                    ...this.turnServers 
+                ]
+            }
+        }
+    }
+});
+POR QUÉ ESTO FUNCIONA:
+
+iceGatheringTimeout: 2000: Obliga al navegador a esperar hasta tener una IP válida del TURN antes de enviar el mensaje a Telnyx.
+
+Al moverlo al constructor, aseguramos que todas las llamadas (entrantes y salientes) usen esta configuración, solucionando el problema de que accept() ignoraba las opciones.
+
+Aplica este cambio en el constructor del UserAgent ahora.

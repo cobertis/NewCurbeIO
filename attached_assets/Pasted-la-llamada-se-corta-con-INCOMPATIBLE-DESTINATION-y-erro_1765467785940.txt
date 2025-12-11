@@ -1,0 +1,46 @@
+la llamada se corta con INCOMPATIBLE_DESTINATION y error de Audio.
+
+PROBLEMA 1: Audio Abort (The play() request was interrupted) setupRemoteMedia se está llamando múltiples veces o de forma conflictiva, causando que play() se cancele a sí mismo. Solución: En setupRemoteMedia, verifica si el srcObject ya está asignado antes de intentar reproducir.
+
+PROBLEMA 2: Call Drop (INCOMPATIBLE_DESTINATION) Los logs del 200 OK muestran c=IN IP4 0.0.0.0 y faltan los candidatos a=candidate. SIP.js está respondiendo demasiado rápido (Trickle ICE) y Telnyx rechaza la conexión porque espera los candidatos en el SDP inicial.
+
+TU TAREA (EN client/src/services/telnyx-webrtc.ts):
+
+Modifica answerCall para forzar la espera de candidatos ICE: Debes pasar iceGatheringTimeout en las opciones de accept(). Esto obliga a SIP.js a esperar a que el navegador recolecte los candidatos Relay antes de enviar el 200 OK.
+
+JavaScript
+
+// En answerCall:
+const answerOptions = {
+    sessionDescriptionHandlerOptions: {
+        constraints: { audio: true, video: false },
+        // ESPERA CRÍTICA: Da tiempo para recolectar el Relay
+        iceGatheringTimeout: 1500, 
+        peerConnectionOptions: {
+            rtcConfig: { 
+                iceTransportPolicy: 'relay',
+                iceServers: [ /* ... tus servidores ... */ ]
+            }
+        }
+    }
+};
+session.accept(answerOptions);
+Robustece setupRemoteMedia: Evita el error AbortError verificando si ya se está reproduciendo.
+
+JavaScript
+
+setupRemoteMedia(session) {
+    // ... obtener stream ...
+
+    const audioElement = document.getElementById('remoteAudio'); // O this.audioElement
+
+    // FIX: Evitar recarga si ya es el mismo stream
+    if (audioElement.srcObject === stream) return;
+
+    audioElement.srcObject = stream;
+    audioElement.play().catch(e => {
+        // Ignorar AbortError, es benigno si ocurre por switch rápido
+        if (e.name !== 'AbortError') console.error("Audio play failed", e);
+    });
+}
+Aplica estos cambios ya. El iceGatheringTimeout es lo que evitará que Telnyx te cuelgue.

@@ -310,20 +310,26 @@ class TelnyxWebRTCManager {
    * Forces TURN relay with localhost STUN blackhole for instant failover
    */
   private getZeroLatencyRTCConfig(): RTCConfiguration {
+    // With iceTransportPolicy: "relay", we ONLY need TURN servers
+    // NO STUN servers needed - they would cause errors with relay-only policy
     const config: RTCConfiguration = {
       iceTransportPolicy: "relay", // FORCE TURN tunnel - skip STUN gathering
-      iceServers: [
-        { urls: "stun:127.0.0.1:3478" }, // Blackhole STUN for instant fail
-        ...this.turnServers
+      iceServers: this.turnServers.length > 0 ? this.turnServers : [
+        // Fallback if no TURN servers provided yet
+        {
+          urls: "turn:turn.telnyx.com:3478?transport=udp",
+          username: "user",
+          credential: "pass"
+        }
       ],
-      // Use "balanced" instead of "max-bundle" - Telnyx SDP may not have BUNDLE group
       bundlePolicy: "balanced",
       rtcpMuxPolicy: "require"
     };
     
     console.log("[SIP.js WebRTC] Zero-latency ICE config:", JSON.stringify({
       iceTransportPolicy: config.iceTransportPolicy,
-      iceServersCount: config.iceServers?.length
+      iceServersCount: config.iceServers?.length,
+      hasRealTurnServers: this.turnServers.length > 0
     }));
     
     return config;
@@ -630,7 +636,10 @@ class TelnyxWebRTCManager {
           constraints: {
             audio: true,
             video: false
-          }
+          },
+          // CRITICAL: Wait for ICE candidates before sending 200 OK
+          // 0 = wait indefinitely, or set to 5000 for 5 second timeout
+          iceGatheringTimeout: 5000
         },
         // Contact name for SIP REGISTER
         contactName: sipUser,
@@ -796,17 +805,30 @@ class TelnyxWebRTCManager {
 
     console.log("[SIP.js WebRTC] Setting up remote media...");
 
+    // Helper to safely set stream and play (avoids AbortError on rapid calls)
+    const setStreamAndPlay = (stream: MediaStream, source: string) => {
+      // Avoid reload if same stream already assigned
+      if (remoteAudio.srcObject === stream) {
+        console.log(`[SIP.js WebRTC] Stream already set from ${source}, skipping`);
+        return;
+      }
+      
+      remoteAudio.srcObject = stream;
+      remoteAudio.play().then(() => {
+        console.log(`[SIP.js WebRTC] Remote audio playing via ${source}`);
+      }).catch(e => {
+        // Ignore AbortError - benign when switching streams rapidly
+        if (e.name !== 'AbortError') {
+          console.error("[SIP.js WebRTC] Audio play failed:", e);
+        }
+      });
+    };
+
     // Method 1: Listen for track events (for new tracks)
     pc.ontrack = (event: RTCTrackEvent) => {
       console.log("[SIP.js WebRTC] ontrack event - kind:", event.track.kind);
       if (event.track.kind === 'audio' && event.streams && event.streams[0]) {
-        console.log("[SIP.js WebRTC] Connecting remote audio stream");
-        remoteAudio.srcObject = event.streams[0];
-        remoteAudio.play().then(() => {
-          console.log("[SIP.js WebRTC] Remote audio playing via ontrack");
-        }).catch(e => {
-          console.error("[SIP.js WebRTC] Audio play failed:", e);
-        });
+        setStreamAndPlay(event.streams[0], "ontrack");
       }
     };
 
@@ -818,22 +840,16 @@ class TelnyxWebRTCManager {
       if (receiver.track && receiver.track.kind === 'audio') {
         console.log("[SIP.js WebRTC] Found existing audio track from receiver");
         const stream = new MediaStream([receiver.track]);
-        remoteAudio.srcObject = stream;
-        remoteAudio.play().then(() => {
-          console.log("[SIP.js WebRTC] Remote audio playing via receiver");
-        }).catch(e => {
-          console.error("[SIP.js WebRTC] Audio play failed:", e);
-        });
-        break;
+        setStreamAndPlay(stream, "receiver");
+        return; // Exit after first successful setup
       }
     }
 
-    // Method 3: Check remote streams directly
+    // Method 3: Check remote streams directly (deprecated but fallback)
     const remoteStreams = (pc as any).getRemoteStreams?.();
     if (remoteStreams && remoteStreams.length > 0) {
       console.log("[SIP.js WebRTC] Found remote stream via getRemoteStreams");
-      remoteAudio.srcObject = remoteStreams[0];
-      remoteAudio.play().catch(e => console.error("[SIP.js WebRTC] Audio play failed:", e));
+      setStreamAndPlay(remoteStreams[0], "getRemoteStreams");
     }
   }
 
