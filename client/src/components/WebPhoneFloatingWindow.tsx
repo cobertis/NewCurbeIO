@@ -1948,25 +1948,20 @@ export function WebPhoneFloatingWindow() {
                         <button
                           onClick={handleAnswerCall}
                           disabled={telnyxIsAnswering}
-                          className={`flex flex-col items-center gap-2 sm:gap-3 transition-all active:scale-95 ${telnyxIsAnswering ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          className="flex flex-col items-center gap-2 sm:gap-3 transition-all active:scale-95"
                           data-testid="button-accept-call"
                         >
-                          <div className={`w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center shadow-lg ${telnyxIsAnswering ? 'bg-green-400' : 'bg-green-500 hover:bg-green-600'}`}>
-                            {telnyxIsAnswering ? (
-                              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white" />
-                            ) : (
-                              <Phone className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
-                            )}
+                          <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full flex items-center justify-center shadow-lg bg-green-500 hover:bg-green-600">
+                            <Phone className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
                           </div>
                           <span className="text-sm sm:text-base text-foreground font-medium">
-                            {telnyxIsAnswering ? 'Connecting...' : 'Accept'}
+                            Accept
                           </span>
                         </button>
                         
                         <button
                           onClick={handleRejectCall}
-                          disabled={telnyxIsAnswering}
-                          className={`flex flex-col items-center gap-2 sm:gap-3 transition-all active:scale-95 ${telnyxIsAnswering ? 'opacity-50 cursor-not-allowed' : ''}`}
+                          className="flex flex-col items-center gap-2 sm:gap-3 transition-all active:scale-95"
                           data-testid="button-reject-call"
                         >
                           <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg">
