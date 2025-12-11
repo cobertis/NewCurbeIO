@@ -1415,7 +1415,28 @@ export function WebPhoneFloatingWindow() {
       console.log('[WebPhone] Initializing Telnyx WebRTC...');
       
       try {
-        // Fetch WebRTC credentials
+        // STEP 1: Fetch TURN credentials FIRST for manual ICE injection
+        // Per Telnyx docs: This eliminates ~4 second delay in audio connection
+        console.log('[WebPhone] Step 1: Fetching TURN credentials...');
+        let iceServers: RTCIceServer[] | undefined;
+        try {
+          const turnResponse = await fetch('/api/telnyx/turn-credentials', {
+            method: 'GET',
+            credentials: 'include',
+          });
+          if (turnResponse.ok) {
+            const turnData = await turnResponse.json();
+            iceServers = turnData.iceServers;
+            console.log('[WebPhone] TURN credentials received:', iceServers?.length, 'servers');
+          } else {
+            console.warn('[WebPhone] TURN credentials not available, will use SDK prefetch');
+          }
+        } catch (turnError) {
+          console.warn('[WebPhone] Failed to fetch TURN credentials:', turnError);
+        }
+
+        // STEP 2: Fetch WebRTC SIP credentials
+        console.log('[WebPhone] Step 2: Fetching WebRTC SIP credentials...');
         const response = await fetch('/api/webrtc/token', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1429,10 +1450,9 @@ export function WebPhoneFloatingWindow() {
           if (data.error === 'INSUFFICIENT_BALANCE') {
             console.error('[WebPhone] BLOCKED - Insufficient wallet balance:', data.message);
             telnyxInitRef.current = false; // Allow retry after adding funds
-            // Note: Toast shown in error handler below
-            return; // Don't throw, just stop initialization
+            return;
           }
-          telnyxInitRef.current = false; // Allow retry on other errors
+          telnyxInitRef.current = false;
           throw new Error(`Failed to fetch WebRTC credentials: ${response.status} ${JSON.stringify(data)}`);
         }
         
@@ -1440,9 +1460,10 @@ export function WebPhoneFloatingWindow() {
           throw new Error(data.error || 'Invalid WebRTC credentials');
         }
         
-        console.log('[WebPhone] Got Telnyx credentials:', { 
+        console.log('[WebPhone] Got Telnyx SIP credentials:', { 
           sipUsername: data.sipUsername,
-          callerIdNumber: data.callerIdNumber 
+          callerIdNumber: data.callerIdNumber,
+          iceServersProvided: !!iceServers
         });
         
         // Register audio element for Telnyx
@@ -1450,11 +1471,13 @@ export function WebPhoneFloatingWindow() {
           telnyxWebRTC.setAudioElement(remoteAudioRef.current);
         }
         
-        // Initialize Telnyx WebRTC
+        // STEP 3: Initialize Telnyx WebRTC with manual ICE servers
+        // This is the CRITICAL optimization - pre-loaded TURN credentials
         await telnyxWebRTC.initialize(
           data.sipUsername,
           data.sipPassword,
-          data.callerIdNumber || telnyxCallerIdNumber
+          data.callerIdNumber || telnyxCallerIdNumber,
+          iceServers // Pass pre-fetched ICE servers for instant connection
         );
         
         setTelnyxInitialized(true);

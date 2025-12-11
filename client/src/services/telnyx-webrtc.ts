@@ -490,7 +490,7 @@ class TelnyxWebRTCManager {
     return this.warmUpPromise;
   }
 
-  public async initialize(sipUser: string, sipPass: string, callerId?: string): Promise<void> {
+  public async initialize(sipUser: string, sipPass: string, callerId?: string, iceServers?: RTCIceServer[]): Promise<void> {
     const store = useTelnyxStore.getState();
     store.setConnectionStatus("connecting");
 
@@ -511,15 +511,28 @@ class TelnyxWebRTCManager {
     this.audioElement = audioElements.remote;
     console.log("[Telnyx WebRTC] 🔊 Using programmatic audio element (no React Fiber)");
 
-    // Per official Telnyx SDK docs:
-    // https://developers.telnyx.com/docs/voice/webrtc/js-sdk/interfaces/iclientoptions
-    // - prefetchIceCandidates: Pre-gather ICE candidates for faster connection
-    // NOTE: forceRelayCandidate breaks incoming calls in JS SDK - not using it
-    this.client = new TelnyxRTC({
+    // CRITICAL ICE OPTIMIZATION: Manual ICE server injection
+    // When iceServers are provided, we inject them directly with TURN credentials
+    // This eliminates the ~4 second delay waiting for ICE candidate discovery
+    const clientOptions: any = {
       login: sipUser,
       password: sipPass,
-      prefetchIceCandidates: true,
-    });
+    };
+    
+    if (iceServers && iceServers.length > 0) {
+      // CRITICAL: Manual ICE injection with TURN credentials from /api/telnyx/turn-credentials
+      // This eliminates the ~4 second delay waiting for ICE candidate discovery
+      // Per Telnyx docs: SIP credentials authenticate with TURN servers
+      clientOptions.iceServers = iceServers;
+      clientOptions.prefetchIceCandidates = false; // Disable automatic - we have manual TURN credentials
+      console.log("[Telnyx WebRTC] ⚡ Manual ICE servers injected:", iceServers.length, "servers (prefetch DISABLED)");
+    } else {
+      // Fallback to SDK prefetch if no servers provided
+      clientOptions.prefetchIceCandidates = true;
+      console.log("[Telnyx WebRTC] Using SDK prefetchIceCandidates (no manual servers)");
+    }
+    
+    this.client = new TelnyxRTC(clientOptions);
 
     // CRITICAL: Per Telnyx docs, set client.remoteElement IMMEDIATELY after creation
     // Docs: https://www.npmjs.com/package/@telnyx/webrtc

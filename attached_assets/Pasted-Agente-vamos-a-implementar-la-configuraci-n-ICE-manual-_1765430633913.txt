@@ -1,0 +1,63 @@
+Agente, vamos a implementar la configuración ICE manual siguiendo la documentación de Telnyx.
+
+El problema de latencia persiste porque el cliente no tiene credenciales TURN válidas al momento de iniciar la llamada. Vamos a inyectarlas explícitamente.
+
+DATOS TÉCNICOS DE TELNYX:
+
+STUN URI: stun:stun.telnyx.com:3478
+
+TURN URIs: turn:turn.telnyx.com:3478?transport=udp y turn:turn.telnyx.com:443?transport=tcp
+
+PASO 1: BACKEND - GENERADOR DE CREDENCIALES (Node.js) En server/routes.ts, crea un endpoint GET /api/telnyx/turn-credentials. Usa el cliente oficial de Telnyx para generar credenciales efímeras. Referencia API: telnyx.telephonyCredentials.create()
+
+JavaScript
+
+// Ejemplo de implementación requerida en Backend:
+app.get('/api/telnyx/turn-credentials', async (req, res) => {
+  try {
+    const { data } = await telnyx.telephonyCredentials.create({
+      connection_id: 'TU_CONNECTION_ID_SIP' // Opcional, o general
+    });
+    // Esto devuelve username y password para el TURN
+    res.json({
+      username: data.sip_username, // O el campo que devuelva la API para TURN
+      password: data.sip_password
+    });
+  } catch (e) {
+    res.status(500).send(e);
+  }
+});
+PASO 2: FRONTEND - INYECCIÓN EN EL CLIENTE (React) En client/src/services/telnyx-webrtc.ts:
+
+Haz fetch a este nuevo endpoint ANTES de crear la instancia new TelnyxRTC().
+
+Construye el array iceServers manualmente.
+
+JavaScript
+
+// Configuración a inyectar en el constructor de TelnyxRTC:
+const iceServers = [
+  {
+    urls: "stun:stun.telnyx.com:3478"
+  },
+  {
+    urls: "turn:turn.telnyx.com:3478?transport=udp",
+    username: credentials.username,
+    credential: credentials.password
+  },
+  {
+    urls: "turn:turn.telnyx.com:443?transport=tcp", // CRÍTICO para saltar Firewalls
+    username: credentials.username,
+    credential: credentials.password
+  }
+];
+
+// Inicializar:
+this.client = new TelnyxRTC({
+  // ... login options ...
+  iceServers: iceServers,  // <--- AQUÍ ESTÁ LA MAGIA
+  prefetchIceCandidates: false // Apagar el automático
+});
+OBJETIVO: Al tener el servidor TURN configurado con usuario y contraseña desde el arranque, el navegador negociará la salida de audio inmediatamente, eliminando el silencio de 4 segundos.
+
+Implementa el endpoint y la configuración del frontend ahora.

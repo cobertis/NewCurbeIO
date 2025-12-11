@@ -28989,6 +28989,51 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // GET /api/telnyx/turn-credentials - Generate TURN server credentials for WebRTC ICE
+  // Per Telnyx docs: SIP credentials authenticate with TURN servers
+  // This enables manual ICE server injection for faster call connection (<1 second vs 4+ seconds)
+  app.get("/api/telnyx/turn-credentials", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const credentials = await telephonyProvisioningService.getSipCredentials(user.companyId);
+
+      if (!credentials) {
+        return res.status(404).json({ 
+          message: "No SIP credentials found. Please provision WebRTC infrastructure first." 
+        });
+      }
+
+      // Per Telnyx documentation: SIP credentials work for TURN authentication
+      // TURN servers provide relay candidates that bypass NAT/firewall issues
+      res.json({
+        username: credentials.username,
+        credential: credentials.password,
+        iceServers: [
+          { urls: "stun:stun.telnyx.com:3478" },
+          {
+            urls: "turn:turn.telnyx.com:3478?transport=udp",
+            username: credentials.username,
+            credential: credentials.password
+          },
+          {
+            urls: "turn:turn.telnyx.com:443?transport=tcp",
+            username: credentials.username,
+            credential: credentials.password
+          }
+        ]
+      });
+    } catch (error: any) {
+      console.error("[TURN Credentials] Error:", error);
+      res.status(500).json({ message: "Failed to get TURN credentials" });
+    }
+  });
+
   // POST /api/telnyx/update-webrtc-config - Update existing credential connection for WebRTC
   app.post("/api/telnyx/update-webrtc-config", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -29150,13 +29195,30 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       }
 
+      // Include TURN server credentials for manual ICE configuration
+      // Per Telnyx: SIP credentials work for TURN authentication
       res.json({
         success: true,
         token: result.token,
         sipUsername: result.sipUsername,
         sipPassword: result.sipPassword,
         callerIdNumber: result.callerIdNumber,
-        });
+        // ICE servers for manual injection - eliminates prefetch delay
+        iceServers: [
+          {
+            urls: "turn:turn.telnyx.com:3478?transport=udp",
+            username: result.sipUsername,
+            credential: result.sipPassword
+          },
+          {
+            urls: "turn:turn.telnyx.com:443?transport=tcp",
+            username: result.sipUsername,
+            credential: result.sipPassword
+          },
+          { urls: "stun:stun.telnyx.com:3478" },
+          { urls: "stun:stun.l.google.com:19302" }
+        ]
+      });
     } catch (error: any) {
       console.error("[WebRTC] Token generation error:", error);
       res.status(500).json({ message: "Failed to generate WebRTC token" });
