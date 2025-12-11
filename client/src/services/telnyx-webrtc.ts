@@ -18,9 +18,8 @@ let forcedIceServers: RTCIceServer[] | null = null;
     iceServers: forcedIceServers || [
       { urls: "stun:127.0.0.1:3478" } // Fail-fast, then SDK's internal TURN
     ],
-    iceTransportPolicy: "all", // Allow fail-fast STUN to fail quickly
-    bundlePolicy: "max-bundle",
-    rtcpMuxPolicy: "require"
+    iceTransportPolicy: "all" // Allow fail-fast STUN to fail quickly
+    // NOTE: Do NOT set bundlePolicy - let SDK handle it to avoid SDP incompatibility
   };
   
   console.log("[RTCPeerConnection PATCH] Injecting ICE config:", JSON.stringify(patchedConfig.iceServers));
