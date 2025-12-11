@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -42,6 +42,7 @@ import {
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
+import { useWebSocket } from "@/hooks/use-websocket";
 import { BuyNumbersDialog } from "@/components/WebPhoneFloatingWindow";
 import { E911ConfigDialog } from "@/components/E911ConfigDialog";
 
@@ -95,6 +96,17 @@ function formatPhoneDisplay(phone: string): string {
 
 export default function PhoneSystem() {
   const { toast } = useToast();
+
+  // WebSocket handler for real-time call log updates
+  const handleWebSocketMessage = useCallback((message: any) => {
+    if (message.type === 'NEW_CALL_LOG' || message.type === 'CALL_LOG_UPDATED') {
+      // Refetch call logs when a new call is logged or updated
+      queryClient.invalidateQueries({ queryKey: ['/api/call-logs'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/wallet'] });
+    }
+  }, []);
+
+  useWebSocket(handleWebSocketMessage);
   const [isSettingUp, setIsSettingUp] = useState(false);
   const [showBuyNumber, setShowBuyNumber] = useState(false);
   const [showE911Dialog, setShowE911Dialog] = useState(false);
