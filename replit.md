@@ -61,9 +61,11 @@ All WebRTC implementations follow official Telnyx documentation:
 - **SRTP Disabled:** `encrypted_media: null` for WebRTC compatibility per Telnyx OpenAPI spec
 
 ### Telnyx Call Control Application Architecture (Dec 2024)
+**CURRENT STATUS:** Call Control Application routing is ACTIVE and working.
+
 **TWO ROUTING OPTIONS AVAILABLE:**
 1. **Credential Connection Routing (Legacy):** Phone numbers assigned directly to Credential Connection for zero-latency but with SDK hangup bug (busy tone).
-2. **Call Control Application Routing (New):** Uses Call Control API for proper hangup via REST API.
+2. **Call Control Application Routing (Current):** Uses Call Control API for proper hangup via REST API.
 
 **Call Control Application Flow:**
 - Phone numbers assigned to Call Control App via `call_control_application_id` (NOT `connection_id`)
@@ -78,8 +80,14 @@ All WebRTC implementations follow official Telnyx documentation:
 - Reassigns phone numbers using `{ call_control_application_id: appId, connection_id: null }`
 - Stores `callControlAppId` in `telephonySettings` table
 
+**E911 Disable Requirement (CRITICAL):**
+- Before reassigning phone numbers to Call Control App, E911 must be disabled
+- Use dedicated endpoint: `POST /phone_numbers/{id}/actions/enable_emergency` with `emergency_enabled: false`
+- The generic PATCH endpoint does NOT fully disable E911 - must use the dedicated actions endpoint
+- After E911 is disabled, phone number can be reassigned to Call Control Application
+
 **Repair Routine Logic:**
-- If `callControlAppId` exists → assign numbers to Call Control App
+- If `callControlAppId` exists → disable E911 first → assign numbers to Call Control App
 - Otherwise → assign to Credential Connection (backward compatible)
 
 ### System Design Choices

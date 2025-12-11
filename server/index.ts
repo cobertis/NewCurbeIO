@@ -212,14 +212,15 @@ app.use((req, res, next) => {
       console.error("[EMAIL] Error importing email service:", error);
     });
     
-    // CRITICAL: Auto-repair SRTP settings on startup for WebRTC compatibility
-    // This fixes 488 "Not Acceptable Here" errors on outbound calls
+    // CRITICAL: Auto-repair SRTP settings and migrate to Call Control on startup
+    // This fixes 488 "Not Acceptable Here" errors and USER_BUSY hangup issues
     import("./services/telephony-provisioning-service").then(({ telephonyProvisioningService }) => {
       import("./db").then(async ({ db }) => {
         const { telephonySettings } = await import("@shared/schema");
         const settings = await db.select().from(telephonySettings);
         for (const setting of settings) {
           if (setting.credentialConnectionId) {
+            // SRTP Repair
             console.log(`[SRTP Repair] Checking SRTP for company ${setting.companyId}...`);
             telephonyProvisioningService.repairSrtpSettings(setting.companyId).then((result) => {
               if (result.success) {
@@ -229,19 +230,41 @@ app.use((req, res, next) => {
               }
             }).catch((err) => console.error(`[SRTP Repair] Error:`, err));
             
-            // CRITICAL: Auto-repair phone number routing on startup
-            // This fixes 4-6 second audio delay on inbound calls by routing
-            // directly to Credential Connection instead of TeXML app
-            console.log(`[Routing Repair] Checking phone routing for company ${setting.companyId}...`);
-            telephonyProvisioningService.repairPhoneNumberRouting(setting.companyId).then((result) => {
-              if (result.success && result.repairedCount > 0) {
-                console.log(`[Routing Repair] Fixed ${result.repairedCount} phone number(s) for company ${setting.companyId}`);
-              } else if (result.success) {
-                console.log(`[Routing Repair] Phone routing OK for company ${setting.companyId}`);
-              } else {
-                console.log(`[Routing Repair] Could not repair for ${setting.companyId}: ${result.errors?.join(', ')}`);
-              }
-            }).catch((err) => console.error(`[Routing Repair] Error:`, err));
+            // CRITICAL: Auto-migrate to Call Control Application if not already done
+            // This fixes USER_BUSY hangup issue by enabling Call Control API for proper call termination
+            if (!setting.callControlAppId) {
+              console.log(`[Call Control Migration] Company ${setting.companyId} needs migration to Call Control...`);
+              telephonyProvisioningService.migrateToCallControl(setting.companyId).then((result) => {
+                if (result.success) {
+                  console.log(`[Call Control Migration] Successfully migrated company ${setting.companyId} to Call Control App: ${result.callControlAppId}`);
+                } else {
+                  console.log(`[Call Control Migration] Could not migrate ${setting.companyId}: ${result.errors?.join(', ')}`);
+                  // Fall back to Credential Connection routing repair
+                  console.log(`[Routing Repair] Falling back to Credential Connection for ${setting.companyId}...`);
+                  telephonyProvisioningService.repairPhoneNumberRouting(setting.companyId).catch((err) => 
+                    console.error(`[Routing Repair] Error:`, err)
+                  );
+                }
+              }).catch((err) => {
+                console.error(`[Call Control Migration] Error:`, err);
+                // Fall back to Credential Connection routing repair
+                telephonyProvisioningService.repairPhoneNumberRouting(setting.companyId).catch((e) => 
+                  console.error(`[Routing Repair] Error:`, e)
+                );
+              });
+            } else {
+              // Already has Call Control App - just repair routing
+              console.log(`[Routing Repair] Company ${setting.companyId} already has Call Control App, repairing routing...`);
+              telephonyProvisioningService.repairPhoneNumberRouting(setting.companyId).then((result) => {
+                if (result.success && result.repairedCount > 0) {
+                  console.log(`[Routing Repair] Fixed ${result.repairedCount} phone number(s) for company ${setting.companyId}`);
+                } else if (result.success) {
+                  console.log(`[Routing Repair] Phone routing OK for company ${setting.companyId}`);
+                } else {
+                  console.log(`[Routing Repair] Could not repair for ${setting.companyId}: ${result.errors?.join(', ')}`);
+                }
+              }).catch((err) => console.error(`[Routing Repair] Error:`, err));
+            }
           }
         }
       }).catch((err) => console.error(`[SRTP Repair] Error loading db:`, err));

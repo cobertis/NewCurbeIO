@@ -808,9 +808,52 @@ export class TelephonyProvisioningService {
     try {
       console.log(`[TelephonyProvisioning] Assigning phone number ${phoneNumberId} to Call Control App ${callControlAppId}`);
       
-      // CRITICAL FIX: Per Telnyx API docs, use call_control_application_id (NOT connection_id)
+      // STEP 1: First disable E911 emergency services using the dedicated endpoint
+      // Telnyx requires disabling E911 before changing routing/connection
+      // Per Telnyx API: POST /phone_numbers/{id}/actions/enable_emergency with emergency_enabled: false
+      console.log(`[TelephonyProvisioning] Disabling E911 on phone number ${phoneNumberId} via dedicated endpoint...`);
+      
+      // Use the dedicated enable_emergency endpoint to disable E911
+      const disableE911Response = await this.makeApiRequest(
+        managedAccountId,
+        `/phone_numbers/${phoneNumberId}/actions/enable_emergency`,
+        "POST",
+        {
+          emergency_enabled: false,
+        }
+      );
+      
+      if (!disableE911Response.ok) {
+        const errorText = await disableE911Response.text();
+        console.log(`[TelephonyProvisioning] E911 disable via dedicated endpoint: ${disableE911Response.status} - ${errorText}`);
+        
+        // Try fallback with voice settings endpoint
+        console.log(`[TelephonyProvisioning] Trying fallback: PATCH phone_numbers/voice...`);
+        const fallbackResponse = await this.makeApiRequest(
+          managedAccountId,
+          `/phone_numbers/${phoneNumberId}/voice`,
+          "PATCH",
+          {
+            emergency: {
+              emergency_enabled: false,
+              emergency_address_id: null,
+            }
+          }
+        );
+        
+        if (!fallbackResponse.ok) {
+          const fallbackError = await fallbackResponse.text();
+          console.log(`[TelephonyProvisioning] E911 fallback also failed: ${fallbackResponse.status} - ${fallbackError}`);
+        } else {
+          console.log(`[TelephonyProvisioning] E911 disabled via voice settings fallback`);
+        }
+      } else {
+        console.log(`[TelephonyProvisioning] E911 disabled successfully via dedicated endpoint`);
+      }
+      
+      // STEP 2: Assign to Call Control Application
+      // Per Telnyx API docs, use call_control_application_id (NOT connection_id)
       // to route inbound calls through a Call Control Application.
-      // Also clear the old connection_id to avoid conflicts.
       const response = await this.makeApiRequest(
         managedAccountId,
         `/phone_numbers/${phoneNumberId}`,
