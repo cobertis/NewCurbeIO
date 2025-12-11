@@ -28865,28 +28865,53 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Super Admin access required" });
       }
 
-      const { voice, sms, addons, dids, billing } = req.body;
+      const data = req.body;
+      console.log("[Global Pricing] Received data:", JSON.stringify(data, null, 2));
 
       // Get existing pricing or create new
       const [existing] = await db.select().from(telnyxGlobalPricing).limit(1);
 
+      // Accept flat field names directly from frontend
       const pricingData = {
-        voiceLocalOutbound: voice?.localOutbound?.toString() || "0.0100",
-        voiceLocalInbound: voice?.localInbound?.toString() || "0.0080",
-        voiceTollfreeOutbound: voice?.tollfreeOutbound?.toString() || "0.0180",
-        voiceTollfreeInbound: voice?.tollfreeInbound?.toString() || "0.0130",
-        smsLongcodeOutbound: sms?.longcodeOutbound?.toString() || "0.0060",
-        smsLongcodeInbound: sms?.longcodeInbound?.toString() || "0.0060",
-        smsTollfreeOutbound: sms?.tollfreeOutbound?.toString() || "0.0070",
-        smsTollfreeInbound: sms?.tollfreeInbound?.toString() || "0.0070",
-        callControlInbound: addons?.callControlInbound?.toString() || "0.0020",
-        callControlOutbound: addons?.callControlOutbound?.toString() || "0.0020",
-        recordingPerMinute: addons?.recordingPerMinute?.toString() || "0.0020",
-        cnamLookup: addons?.cnamLookup?.toString() || "0.0045",
-        didLocal: dids?.local?.toString() || "1.00",
-        didTollfree: dids?.tollfree?.toString() || "1.50",
-        billingIncrement: billing?.increment || 60,
-        minBillableSeconds: billing?.minBillableSeconds || 60,
+        // Voice Cost (what Telnyx charges us)
+        voiceLocalOutboundCost: data.voiceLocalOutboundCost?.toString() || existing?.voiceLocalOutboundCost || "0.0047",
+        voiceLocalInboundCost: data.voiceLocalInboundCost?.toString() || existing?.voiceLocalInboundCost || "0.0035",
+        voiceTollfreeOutboundCost: data.voiceTollfreeOutboundCost?.toString() || existing?.voiceTollfreeOutboundCost || "0.0047",
+        voiceTollfreeInboundCost: data.voiceTollfreeInboundCost?.toString() || existing?.voiceTollfreeInboundCost || "0.0060",
+        // Voice Price (what we charge clients)
+        voiceLocalOutbound: data.voiceLocalOutbound?.toString() || existing?.voiceLocalOutbound || "0.0100",
+        voiceLocalInbound: data.voiceLocalInbound?.toString() || existing?.voiceLocalInbound || "0.0080",
+        voiceTollfreeOutbound: data.voiceTollfreeOutbound?.toString() || existing?.voiceTollfreeOutbound || "0.0180",
+        voiceTollfreeInbound: data.voiceTollfreeInbound?.toString() || existing?.voiceTollfreeInbound || "0.0130",
+        // SMS Cost
+        smsLongcodeOutboundCost: data.smsLongcodeOutboundCost?.toString() || existing?.smsLongcodeOutboundCost || "0.0040",
+        smsLongcodeInboundCost: data.smsLongcodeInboundCost?.toString() || existing?.smsLongcodeInboundCost || "0.0040",
+        smsTollfreeOutboundCost: data.smsTollfreeOutboundCost?.toString() || existing?.smsTollfreeOutboundCost || "0.0040",
+        smsTollfreeInboundCost: data.smsTollfreeInboundCost?.toString() || existing?.smsTollfreeInboundCost || "0.0040",
+        // SMS Price
+        smsLongcodeOutbound: data.smsLongcodeOutbound?.toString() || existing?.smsLongcodeOutbound || "0.0060",
+        smsLongcodeInbound: data.smsLongcodeInbound?.toString() || existing?.smsLongcodeInbound || "0.0060",
+        smsTollfreeOutbound: data.smsTollfreeOutbound?.toString() || existing?.smsTollfreeOutbound || "0.0070",
+        smsTollfreeInbound: data.smsTollfreeInbound?.toString() || existing?.smsTollfreeInbound || "0.0070",
+        // Add-ons Cost
+        callControlInboundCost: data.callControlInboundCost?.toString() || existing?.callControlInboundCost || "0.0010",
+        callControlOutboundCost: data.callControlOutboundCost?.toString() || existing?.callControlOutboundCost || "0.0010",
+        recordingPerMinuteCost: data.recordingPerMinuteCost?.toString() || existing?.recordingPerMinuteCost || "0.0010",
+        cnamLookupCost: data.cnamLookupCost?.toString() || existing?.cnamLookupCost || "0.0025",
+        // Add-ons Price
+        callControlInbound: data.callControlInbound?.toString() || existing?.callControlInbound || "0.0020",
+        callControlOutbound: data.callControlOutbound?.toString() || existing?.callControlOutbound || "0.0020",
+        recordingPerMinute: data.recordingPerMinute?.toString() || existing?.recordingPerMinute || "0.0020",
+        cnamLookup: data.cnamLookup?.toString() || existing?.cnamLookup || "0.0045",
+        // DIDs Cost
+        didLocalCost: data.didLocalCost?.toString() || existing?.didLocalCost || "0.50",
+        didTollfreeCost: data.didTollfreeCost?.toString() || existing?.didTollfreeCost || "0.75",
+        // DIDs Price
+        didLocal: data.didLocal?.toString() || existing?.didLocal || "1.00",
+        didTollfree: data.didTollfree?.toString() || existing?.didTollfree || "1.50",
+        // Billing config
+        billingIncrement: parseInt(data.billingIncrement) || existing?.billingIncrement || 60,
+        minBillableSeconds: parseInt(data.minBillableSeconds) || existing?.minBillableSeconds || 60,
         updatedAt: new Date(),
         updatedBy: user.id,
       };
