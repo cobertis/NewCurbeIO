@@ -26658,8 +26658,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return;
       }
       telnyxApiKey = telnyxApiKey.trim().replace(/[\r\n\t]/g, "");
-    const T1 = Date.now();
-    console.log(`[LATENCY] T1: Secrets fetched (+${T1-T0}ms)`);
       
       // Get managed account ID for this company
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
@@ -29258,8 +29256,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       telnyxApiKey = telnyxApiKey.trim().replace(/[\r\n\t]/g, "");
-    const T1 = Date.now();
-    console.log(`[LATENCY] T1: Secrets fetched (+${T1-T0}ms)`);
       
       // Hang up both legs if available (PSTN and WebRTC legs)
       const hangupPromises: Promise<Response>[] = [];
@@ -29383,8 +29379,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         // Clean the API key
         telnyxApiKey = telnyxApiKey.trim().replace(/[\r\n\t]/g, "");
-    const T1 = Date.now();
-    console.log(`[LATENCY] T1: Secrets fetched (+${T1-T0}ms)`);
         console.log("[WebRTC Server Hangup] Using API key prefix:", telnyxApiKey.substring(0, 10));
 
         const hangupResponse = await fetch(
