@@ -19,6 +19,140 @@ const TELNYX_LOCAL_AUDIO_ID = "telnyx-local-audio";
 const TELNYX_MEDIA_ROOT_ID = "telnyx-media-root";
 
 // ============================================================================
+// WEBSOCKET MESSAGE INTERCEPTOR
+// ============================================================================
+// This class wraps the WebSocket to rewrite incoming INVITE Request-URIs
+// When Telnyx sends calls directly to the DID (e.g., sip:13058423033@...)
+// instead of the SIP username (sip:curbeb5325600gm3h@...), SIP.js rejects
+// with 404. This interceptor rewrites the Request-URI to match our registered user.
+class SipWebSocketInterceptor {
+  private static registeredUser: string | null = null;
+  private static originalWebSocket: typeof WebSocket | null = null;
+  private static isInstalled = false;
+  
+  static install(sipUsername: string) {
+    if (this.isInstalled) {
+      this.registeredUser = sipUsername;
+      return;
+    }
+    
+    this.registeredUser = sipUsername;
+    this.originalWebSocket = window.WebSocket;
+    
+    const interceptor = this;
+    
+    // Create intercepting WebSocket class
+    window.WebSocket = class InterceptedWebSocket extends EventTarget {
+      private ws: WebSocket;
+      public binaryType: BinaryType = "blob";
+      public bufferedAmount: number = 0;
+      public extensions: string = "";
+      public protocol: string = "";
+      public readyState: number = WebSocket.CONNECTING;
+      public url: string;
+      
+      public onopen: ((this: WebSocket, ev: Event) => any) | null = null;
+      public onclose: ((this: WebSocket, ev: CloseEvent) => any) | null = null;
+      public onerror: ((this: WebSocket, ev: Event) => any) | null = null;
+      public onmessage: ((this: WebSocket, ev: MessageEvent) => any) | null = null;
+      
+      static readonly CONNECTING = 0;
+      static readonly OPEN = 1;
+      static readonly CLOSING = 2;
+      static readonly CLOSED = 3;
+      
+      constructor(url: string | URL, protocols?: string | string[]) {
+        super();
+        this.url = url.toString();
+        this.ws = new interceptor.originalWebSocket!(url, protocols);
+        this.ws.binaryType = this.binaryType;
+        
+        this.ws.onopen = (ev) => {
+          this.readyState = this.ws.readyState;
+          this.protocol = this.ws.protocol;
+          this.extensions = this.ws.extensions;
+          if (this.onopen) this.onopen.call(this as any, ev);
+          this.dispatchEvent(new Event("open"));
+        };
+        
+        this.ws.onclose = (ev) => {
+          this.readyState = this.ws.readyState;
+          if (this.onclose) this.onclose.call(this as any, ev);
+          this.dispatchEvent(new CloseEvent("close", ev));
+        };
+        
+        this.ws.onerror = (ev) => {
+          this.readyState = this.ws.readyState;
+          if (this.onerror) this.onerror.call(this as any, ev);
+          this.dispatchEvent(new Event("error"));
+        };
+        
+        this.ws.onmessage = (ev) => {
+          this.readyState = this.ws.readyState;
+          let data = ev.data;
+          
+          // Only intercept SIP messages for Telnyx
+          if (this.url.includes("telnyx.com") && typeof data === "string" && data.startsWith("INVITE")) {
+            data = interceptor.rewriteInviteRequestUri(data);
+          }
+          
+          const newEvent = new MessageEvent("message", { data });
+          if (this.onmessage) this.onmessage.call(this as any, newEvent);
+          this.dispatchEvent(newEvent);
+        };
+      }
+      
+      send(data: string | ArrayBufferLike | Blob | ArrayBufferView) {
+        this.ws.send(data);
+      }
+      
+      close(code?: number, reason?: string) {
+        this.ws.close(code, reason);
+      }
+    } as any;
+    
+    this.isInstalled = true;
+    console.log("[SIP.js WebRTC] WebSocket interceptor installed for Request-URI rewriting");
+  }
+  
+  static uninstall() {
+    if (this.originalWebSocket) {
+      window.WebSocket = this.originalWebSocket;
+      this.isInstalled = false;
+    }
+  }
+  
+  private static rewriteInviteRequestUri(message: string): string {
+    if (!this.registeredUser) return message;
+    
+    // Match INVITE request line: INVITE sip:XXXXXXX@domain SIP/2.0
+    const inviteLineMatch = message.match(/^(INVITE sip:)([^@]+)(@[^\s]+)(\s+SIP\/2\.0)/);
+    if (!inviteLineMatch) return message;
+    
+    const originalUser = inviteLineMatch[2];
+    
+    // If already matches our registered user, no change needed
+    if (originalUser === this.registeredUser) return message;
+    
+    // Rewrite the Request-URI to use our registered username
+    const newMessage = message.replace(
+      inviteLineMatch[0],
+      `${inviteLineMatch[1]}${this.registeredUser}${inviteLineMatch[3]}${inviteLineMatch[4]}`
+    );
+    
+    // Also rewrite the To header to match
+    const toRewritten = newMessage.replace(
+      /(\r\n[tT]:\s*<sip:)([^@]+)(@[^>]+>)/,
+      `$1${this.registeredUser}$3`
+    );
+    
+    console.log(`[SIP.js WebRTC] Rewriting Request-URI: ${originalUser} -> ${this.registeredUser}`);
+    
+    return toRewritten;
+  }
+}
+
+// ============================================================================
 // AUDIO ELEMENT MANAGEMENT
 // ============================================================================
 function ensureTelnyxAudioElements(): { remote: HTMLAudioElement; local: HTMLAudioElement } {
@@ -632,12 +766,18 @@ class TelnyxWebRTCManager {
     const audioElements = ensureTelnyxAudioElements();
     this.audioElement = audioElements.remote;
 
-    // Build SIP URI
+    // Build SIP URI - must use credential username for registration
     const uri = UserAgent.makeURI(`sip:${sipUser}@sip.telnyx.com`);
     if (!uri) {
       store.setConnectionStatus("error", "Invalid SIP URI");
       return;
     }
+    
+    // Install WebSocket interceptor to rewrite Request-URI for direct inward dial
+    // This allows calls to the DID number to be accepted by SIP.js
+    SipWebSocketInterceptor.install(sipUser);
+    
+    console.log("[SIP.js WebRTC] Using URI:", uri.toString());
 
     // CRITICAL: Zero-latency RTCConfiguration
     const rtcConfig = this.getZeroLatencyRTCConfig();
@@ -664,8 +804,11 @@ class TelnyxWebRTCManager {
           // Ultra-fast timeout - host candidates ready in ~50ms
           iceGatheringTimeout: 200
         },
-        // Contact name for SIP REGISTER
+        // Contact name for SIP REGISTER - must use credential username
+        // even though URI uses DID for accepting inbound calls
         contactName: sipUser,
+        // Store the original caller ID for later use
+        userAgentString: `SIP.js/0.21.1 Curbe/${callerId || sipUser}`,
         displayName: "Curbe",
         // Debug level to see SIP messages
         logLevel: "debug",
