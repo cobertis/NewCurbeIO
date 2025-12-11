@@ -202,6 +202,16 @@ class TelnyxWebRTCManager {
   private isReconnecting: boolean = false;
 
   private constructor() {
+    // CRITICAL: Create audio element immediately in constructor
+    // This ensures it exists before any call attempt
+    this.audioElement = document.createElement('audio');
+    this.audioElement.id = 'telnyx-remote-audio-programmatic';
+    this.audioElement.autoplay = true;
+    this.audioElement.setAttribute('playsinline', 'true');
+    this.audioElement.style.display = 'none';
+    document.body.appendChild(this.audioElement);
+    console.log("[SIP.js WebRTC] Audio element created in constructor");
+
     this.ringtone = new Audio();
     this.ringtone.loop = true;
     this.ringtone.src = "https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3";
