@@ -1,0 +1,154 @@
+WebSocket disconnected
+ 
+ GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/src/index.css?t=1765468935863&v=-51A6RkqwBeWxF8SJNKVf net::ERR_ABORTED 502 (Bad Gateway)
+importUpdatedModule	@	client:602
+fetchUpdate	@	client:211
+queueUpdate	@	client:186
+(anonymous)	@	client:642
+handleMessage	@	client:640
+(anonymous)	@	client:550
+ 
+ GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/src/index.css?t=1765468935863&v=-51A6RkqwBeWxF8SJNKVf net::ERR_ABORTED 502 (Bad Gateway)
+importUpdatedModule	@	client:602
+fetchUpdate	@	client:211
+queueUpdate	@	client:186
+(anonymous)	@	client:642
+handleMessage	@	client:640
+(anonymous)	@	client:550
+ 
+ GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/src/index.css?t=1765468935863&v=-51A6RkqwBeWxF8SJNKVf net::ERR_ABORTED 502 (Bad Gateway)
+importUpdatedModule	@	8bb41dbe-f08e-48eb-a…ev/@vite/client:602
+fetchUpdate	@	8bb41dbe-f08e-48eb-a…ev/@vite/client:211
+queueUpdate	@	8bb41dbe-f08e-48eb-a…ev/@vite/client:186
+(anonymous)	@	8bb41dbe-f08e-48eb-a…ev/@vite/client:642
+handleMessage	@	8bb41dbe-f08e-48eb-a…ev/@vite/client:640
+(anonymous)	@	8bb41dbe-f08e-48eb-a…ev/@vite/client:550
+ [hmr] Failed to reload /src/index.css?v=-51A6RkqwBeWxF8SJNKVf. This could be due to syntax errors or importing non-existent modules. (see errors above)
+(anonymous)	@	injected.js:37
+warnFailedUpdate	@	client:176
+fetchUpdate	@	client:213
+await in fetchUpdate		
+queueUpdate	@	client:186
+(anonymous)	@	client:642
+handleMessage	@	client:640
+(anonymous)	@	client:550
+ 
+ GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/src/components/WebPhoneFloatingWindow.tsx?t=1765468935863 net::ERR_ABORTED 502 (Bad Gateway)
+importUpdatedModule	@	client:602
+fetchUpdate	@	client:211
+queueUpdate	@	client:186
+(anonymous)	@	client:642
+handleMessage	@	client:640
+(anonymous)	@	client:550
+ 
+ GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/src/components/WebPhoneFloatingWindow.tsx?t=1765468935863 net::ERR_ABORTED 502 (Bad Gateway)
+importUpdatedModule	@	client:602
+fetchUpdate	@	client:211
+queueUpdate	@	client:186
+(anonymous)	@	client:642
+handleMessage	@	client:640
+(anonymous)	@	client:550
+ 
+ GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/src/components/WebPhoneFloatingWindow.tsx?t=1765468935863 net::ERR_ABORTED 502 (Bad Gateway)
+importUpdatedModule	@	8bb41dbe-f08e-48eb-a…ev/@vite/client:602
+fetchUpdate	@	8bb41dbe-f08e-48eb-a…ev/@vite/client:211
+queueUpdate	@	8bb41dbe-f08e-48eb-a…ev/@vite/client:186
+(anonymous)	@	8bb41dbe-f08e-48eb-a…ev/@vite/client:642
+handleMessage	@	8bb41dbe-f08e-48eb-a…ev/@vite/client:640
+(anonymous)	@	8bb41dbe-f08e-48eb-a…ev/@vite/client:550
+ [hmr] Failed to reload /src/components/WebPhoneFloatingWindow.tsx. This could be due to syntax errors or importing non-existent modules. (see errors above)
+(anonymous)	@	injected.js:37
+warnFailedUpdate	@	client:176
+fetchUpdate	@	client:213
+await in fetchUpdate		
+queueUpdate	@	client:186
+(anonymous)	@	client:642
+handleMessage	@	client:640
+(anonymous)	@	client:550
+ 
+ GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/ 502 (Bad Gateway)
+apply	@	injected.js:214
+ping	@	client:736
+waitForSuccessfulPing	@	client:749
+(anonymous)	@	client:561
+ 
+ GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/ 502 (Bad Gateway)
+apply	@	injected.js:214
+ping	@	client:736
+waitForSuccessfulPing	@	client:749
+(anonymous)	@	client:561
+ 
+ GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/ 502 (Bad Gateway)
+apply	@	8bb41dbe-f08e-48eb-a…ols/injected.js:214
+ping	@	8bb41dbe-f08e-48eb-a…ev/@vite/client:736
+waitForSuccessfulPing	@	8bb41dbe-f08e-48eb-a…ev/@vite/client:749
+(anonymous)	@	8bb41dbe-f08e-48eb-a…ev/@vite/client:561
+ 
+ GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/dashboard 502 (Bad Gateway)
+(anonymous)	@	client:562
+ 
+ GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/dashboard 502 (Bad Gateway)
+(anonymous)	@	8bb41dbe-f08e-48eb-a…ev/@vite/client:562
+workspace_iframe.htm…F&id=%3Ar1c1%3A:151 
+ GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev:3000/ 502 (Bad Gateway)
+(anonymous)	@	workspace_iframe.htm…F&id=%3Ar1c1%3A:151
+ 
+ GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev:3000/ 502 (Bad Gateway)
+(anonymous)	@	8bb41dbe-f08e-48eb-a…F&id=%3Ar1c1%3A:151
+injected.js:37 [SIP.js WebRTC] Audio element created in constructor
+injected.js:37 [Intercom] Booted successfully (without JWT)
+injected.js:37 [Intercom] Shut down successfully
+injected.js:37 [Intercom] Using JWT for identity verification
+injected.js:37 [Intercom] Booted successfully (with JWT)
+frame-modern.2a41a6e8.js:1 [Intercom] Launcher is disabled in settings or current page does not match display conditions
+frame-modern.2a41a6e8.js:1 
+ POST https://api-iam.intercom.io/messenger/web/ping 403 (Forbidden)
+o	@	frame-modern.2a41a6e8.js:1
+(anonymous)	@	frame-modern.2a41a6e8.js:1
+c	@	frame-modern.2a41a6e8.js:1
+post	@	frame-modern.2a41a6e8.js:1
+createOrUpdateUser	@	frame-modern.2a41a6e8.js:1
+(anonymous)	@	frame-modern.2a41a6e8.js:1
+(anonymous)	@	frame-modern.2a41a6e8.js:1
+r	@	frame-modern.2a41a6e8.js:1
+Promise.then		
+(anonymous)	@	frame-modern.2a41a6e8.js:1
+(anonymous)	@	frame-modern.2a41a6e8.js:1
+(anonymous)	@	vendor-modern.598d3471.js:2
+(anonymous)	@	vendor-modern.598d3471.js:2
+createOrUpdateUser	@	frame-modern.2a41a6e8.js:1
+createOrUpdateUser	@	frame-modern.2a41a6e8.js:1
+boot	@	frame-modern.2a41a6e8.js:1
+n	@	frame-modern.2a41a6e8.js:1
+boot	@	frame-modern.2a41a6e8.js:1
+(anonymous)	@	frame-modern.2a41a6e8.js:1
+20877	@	frame-modern.2a41a6e8.js:1
+a	@	frame-modern.2a41a6e8.js:1
+31913	@	frame-modern.2a41a6e8.js:1
+a	@	frame-modern.2a41a6e8.js:1
+(anonymous)	@	frame-modern.2a41a6e8.js:1
+a.O	@	frame-modern.2a41a6e8.js:1
+t	@	frame-modern.2a41a6e8.js:1
+(anonymous)	@	vendor-modern.598d3471.js:2
+frame-modern.2a41a6e8.js:1 Intercom Messenger error: Missing user_hash or intercom_user_jwt. A valid user_hash or intercom_user_jwt is required to authenticate users when Messenger Security is enforced. For more details, see https://www.intercom.com/help/en/collections/12295815-messenger-security
+s	@	frame-modern.2a41a6e8.js:1
+(anonymous)	@	frame-modern.2a41a6e8.js:1
+Y	@	frame-modern.2a41a6e8.js:1
+(anonymous)	@	frame-modern.2a41a6e8.js:1
+await in (anonymous)		
+(anonymous)	@	vendor-modern.598d3471.js:2
+(anonymous)	@	vendor-modern.598d3471.js:2
+createOrUpdateUser	@	frame-modern.2a41a6e8.js:1
+createOrUpdateUser	@	frame-modern.2a41a6e8.js:1
+boot	@	frame-modern.2a41a6e8.js:1
+n	@	frame-modern.2a41a6e8.js:1
+boot	@	frame-modern.2a41a6e8.js:1
+(anonymous)	@	frame-modern.2a41a6e8.js:1
+20877	@	frame-modern.2a41a6e8.js:1
+a	@	frame-modern.2a41a6e8.js:1
+31913	@	frame-modern.2a41a6e8.js:1
+a	@	frame-modern.2a41a6e8.js:1
+(anonymous)	@	frame-modern.2a41a6e8.js:1
+a.O	@	frame-modern.2a41a6e8.js:1
+t	@	frame-modern.2a41a6e8.js:1
+(anonymous)	@	vendor-modern.598d3471.js:2
