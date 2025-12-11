@@ -318,6 +318,19 @@ interface PurchasedNumberInfo {
   isProvisioning: boolean;
 }
 
+// Format phone number for display: +1XXXXXXXXXX -> (XXX) XXX-XXXX
+function formatUSPhoneNumber(phone: string): string {
+  if (!phone) return "";
+  const digits = phone.replace(/\D/g, '');
+  if (digits.length === 11 && digits.startsWith("1")) {
+    return `(${digits.substring(1, 4)}) ${digits.substring(4, 7)}-${digits.substring(7)}`;
+  }
+  if (digits.length === 10) {
+    return `(${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}`;
+  }
+  return phone;
+}
+
 export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyNumbersDialogProps) {
   const { toast } = useToast();
   const [countryCode, setCountryCode] = useState("US");
@@ -903,7 +916,7 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
                           )}>
                             {isSelected && <Check className="h-3 w-3 text-white" />}
                           </div>
-                          <span className="font-medium font-mono text-sm">{number.phone_number}</span>
+                          <span className="font-medium font-mono text-sm">{formatUSPhoneNumber(number.phone_number)}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
