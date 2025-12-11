@@ -36,8 +36,11 @@ import {
   Volume2,
   Play,
   Pause,
-  Square
+  Square,
+  AlertTriangle,
+  User
 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { BuyNumbersDialog } from "@/components/WebPhoneFloatingWindow";
 import { E911ConfigDialog } from "@/components/E911ConfigDialog";
@@ -106,6 +109,8 @@ export default function PhoneSystem() {
   const isInitialLoadRef = useRef(true);
   const debounceTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedStateRef = useRef({ enabled: false, threshold: "10", amount: "50" });
+  const [showRecordingConfirm, setShowRecordingConfirm] = useState(false);
+  const [showCnamConfirm, setShowCnamConfirm] = useState(false);
 
   const { data: statusData, isLoading: isLoadingStatus, refetch } = useQuery<StatusResponse>({
     queryKey: ["/api/telnyx/managed-accounts/status"],
@@ -197,6 +202,14 @@ export default function PhoneSystem() {
     enabled: statusData?.configured === true || statusData?.hasAccount === true,
   });
 
+  const { data: billingFeaturesData, refetch: refetchBillingFeatures } = useQuery<{
+    recordingEnabled: boolean;
+    cnamEnabled: boolean;
+  }>({
+    queryKey: ["/api/telnyx/billing-features"],
+    enabled: statusData?.configured === true || statusData?.hasAccount === true,
+  });
+
   const setupMutation = useMutation({
     mutationFn: async () => {
       setIsSettingUp(true);
@@ -268,6 +281,39 @@ export default function PhoneSystem() {
       toast({ title: "Failed to Update", description: error.message, variant: "destructive" });
     },
   });
+
+  const billingFeaturesMutation = useMutation({
+    mutationFn: async (data: { recordingEnabled?: boolean; cnamEnabled?: boolean }) => {
+      return await apiRequest("POST", "/api/telnyx/billing-features", data);
+    },
+    onSuccess: (response: { success: boolean; recordingEnabled: boolean; cnamEnabled: boolean }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/billing-features"] });
+      refetchBillingFeatures();
+      toast({
+        title: "Billing Features Updated",
+        description: "Your billing feature settings have been saved.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to Update", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleRecordingToggle = (enabled: boolean) => {
+    if (enabled) {
+      setShowRecordingConfirm(true);
+    } else {
+      billingFeaturesMutation.mutate({ recordingEnabled: false });
+    }
+  };
+
+  const handleCnamToggle = (enabled: boolean) => {
+    if (enabled) {
+      setShowCnamConfirm(true);
+    } else {
+      billingFeaturesMutation.mutate({ cnamEnabled: false });
+    }
+  };
 
   const copyToClipboard = (text: string, label: string) => {
     navigator.clipboard.writeText(text);
@@ -715,6 +761,50 @@ export default function PhoneSystem() {
                 </CardContent>
               </Card>
 
+              {/* Billing Features Card */}
+              <Card className="border-slate-200 dark:border-border">
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <DollarSign className="h-4 w-4" />Billing Features
+                  </CardTitle>
+                  <CardDescription>Enable paid features for enhanced call functionality</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
+                    <div className="flex items-center gap-3">
+                      <Mic className="h-4 w-4 text-red-600" />
+                      <div>
+                        <p className="font-medium text-sm text-slate-700 dark:text-foreground">Call Recording</p>
+                        <p className="text-xs text-slate-500">Record all calls for quality assurance</p>
+                        <Badge variant="outline" className="mt-1 text-xs text-amber-600 border-amber-300">$0.005/min</Badge>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={billingFeaturesData?.recordingEnabled || false}
+                      onCheckedChange={handleRecordingToggle}
+                      disabled={billingFeaturesMutation.isPending}
+                      data-testid="switch-call-recording"
+                    />
+                  </div>
+                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
+                    <div className="flex items-center gap-3">
+                      <User className="h-4 w-4 text-blue-600" />
+                      <div>
+                        <p className="font-medium text-sm text-slate-700 dark:text-foreground">CNAM (Caller ID Name)</p>
+                        <p className="text-xs text-slate-500">Display caller names for incoming calls</p>
+                        <Badge variant="outline" className="mt-1 text-xs text-amber-600 border-amber-300">$1.00/month + $0.01 per inbound call</Badge>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={billingFeaturesData?.cnamEnabled || false}
+                      onCheckedChange={handleCnamToggle}
+                      disabled={billingFeaturesMutation.isPending}
+                      data-testid="switch-cnam"
+                    />
+                  </div>
+                </CardContent>
+              </Card>
+
               {/* Audio Settings Card */}
               <Card className="border-slate-200 dark:border-border">
                 <CardHeader className="pb-3">
@@ -815,6 +905,85 @@ export default function PhoneSystem() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Call Recording Confirmation Dialog */}
+      <AlertDialog open={showRecordingConfirm} onOpenChange={setShowRecordingConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Enable Call Recording
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                Call Recording is a paid feature that will add <span className="font-semibold text-foreground">$0.005 per minute</span> to your call costs.
+              </p>
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm">
+                <p className="text-amber-800 dark:text-amber-200">
+                  <strong>Example:</strong> A 10-minute call would cost an additional $0.05 for recording.
+                </p>
+              </div>
+              <p className="text-sm">
+                You can disable this feature at any time. Charges will only apply to calls made while recording is enabled.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-recording">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                billingFeaturesMutation.mutate({ recordingEnabled: true });
+                setShowRecordingConfirm(false);
+              }}
+              className="bg-indigo-600 hover:bg-indigo-700"
+              data-testid="button-confirm-recording"
+            >
+              Enable Recording
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* CNAM Confirmation Dialog */}
+      <AlertDialog open={showCnamConfirm} onOpenChange={setShowCnamConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-amber-500" />
+              Enable CNAM (Caller ID Name)
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3">
+              <p>
+                CNAM is a paid feature with the following costs:
+              </p>
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 space-y-2 text-sm">
+                <p className="text-amber-800 dark:text-amber-200">
+                  <strong>Monthly fee:</strong> $1.00/month
+                </p>
+                <p className="text-amber-800 dark:text-amber-200">
+                  <strong>Per-call fee:</strong> $0.01 per inbound call
+                </p>
+              </div>
+              <p className="text-sm">
+                This feature displays the caller's name on incoming calls. You can disable this feature at any time.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-cnam">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                billingFeaturesMutation.mutate({ cnamEnabled: true });
+                setShowCnamConfirm(false);
+              }}
+              className="bg-indigo-600 hover:bg-indigo-700"
+              data-testid="button-confirm-cnam"
+            >
+              Enable CNAM
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

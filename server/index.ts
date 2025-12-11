@@ -10,6 +10,7 @@ import { startReminderScheduler } from "./reminder-scheduler";
 import { startBirthdayScheduler } from "./birthday-scheduler";
 import { startImessageCampaignProcessor } from "./imessage-campaign-processor";
 import { startBounceProcessor } from "./bounce-processor";
+import { startMonthlyBillingScheduler } from "./monthly-billing-scheduler";
 import { seedCampaignStudioData } from "./scripts/seedCampaignStudio";
 
 // Handle unhandled promise rejections to prevent server crashes
@@ -196,6 +197,9 @@ app.use((req, res, next) => {
     
     // Start the bounce email processor for handling bounced emails
     startBounceProcessor();
+    
+    // Start the monthly billing scheduler for telephony fees
+    startMonthlyBillingScheduler();
     
     // Test email service on startup
     import("./email").then(({ emailService }) => {

@@ -28514,6 +28514,99 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
 
+  // GET /api/telnyx/billing-features - Get current billing features settings (recording, CNAM)
+  app.get("/api/telnyx/billing-features", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      const [settings] = await db
+        .select({
+          recordingEnabled: telephonySettings.recordingEnabled,
+          cnamEnabled: telephonySettings.cnamEnabled,
+        })
+        .from(telephonySettings)
+        .where(eq(telephonySettings.companyId, user.companyId));
+      
+      res.json({
+        recordingEnabled: settings?.recordingEnabled || false,
+        cnamEnabled: settings?.cnamEnabled || false,
+      });
+    } catch (error: any) {
+      console.error("[Billing Features] Get settings error:", error);
+      res.status(500).json({ message: "Failed to get billing features settings" });
+    }
+  });
+
+  // POST /api/telnyx/billing-features - Update billing features (recording, CNAM)
+  app.post("/api/telnyx/billing-features", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { recordingEnabled, cnamEnabled } = req.body;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      // Only admins can change billing features
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Only administrators can change billing features" });
+      }
+      
+      // Build update object for only provided fields
+      const updateData: { recordingEnabled?: boolean; cnamEnabled?: boolean; updatedAt: Date } = {
+        updatedAt: new Date(),
+      };
+      
+      if (typeof recordingEnabled === 'boolean') {
+        updateData.recordingEnabled = recordingEnabled;
+      }
+      if (typeof cnamEnabled === 'boolean') {
+        updateData.cnamEnabled = cnamEnabled;
+      }
+      
+      // Check if settings exist, if not create them (upsert)
+      const [existingSettings] = await db
+        .select()
+        .from(telephonySettings)
+        .where(eq(telephonySettings.companyId, user.companyId));
+      
+      let updatedSettings;
+      if (existingSettings) {
+        // Update existing settings
+        [updatedSettings] = await db.update(telephonySettings)
+          .set(updateData)
+          .where(eq(telephonySettings.companyId, user.companyId))
+          .returning();
+      } else {
+        // Insert new settings with billing features
+        [updatedSettings] = await db.insert(telephonySettings)
+          .values({
+            companyId: user.companyId,
+            recordingEnabled: typeof recordingEnabled === 'boolean' ? recordingEnabled : false,
+            cnamEnabled: typeof cnamEnabled === 'boolean' ? cnamEnabled : false,
+          })
+          .returning();
+        console.log(`[Billing Features] Created new settings for company ${user.companyId}`);
+      }
+      
+      console.log(`[Billing Features] Updated for company ${user.companyId}: recording=${updatedSettings?.recordingEnabled}, cnam=${updatedSettings?.cnamEnabled}`);
+      
+      res.json({
+        success: true,
+        recordingEnabled: updatedSettings?.recordingEnabled || false,
+        cnamEnabled: updatedSettings?.cnamEnabled || false,
+      });
+    } catch (error: any) {
+      console.error("[Billing Features] Update error:", error);
+      res.status(500).json({ message: "Failed to update billing features settings" });
+    }
+  });
+
+
   // =====================================================
   // TELNYX MANAGED ACCOUNTS ENDPOINTS
   // =====================================================

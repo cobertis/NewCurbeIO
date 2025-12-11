@@ -1,7 +1,8 @@
 import { db } from "../db";
-import { callRates, wallets, walletTransactions, callLogs } from "@shared/schema";
+import { callRates, wallets, walletTransactions, callLogs, telephonySettings } from "@shared/schema";
 import { eq, and, desc, sql, isNull, or } from "drizzle-orm";
 import Decimal from "decimal.js";
+import { PRICING } from "./pricing-config";
 
 Decimal.set({ precision: 10, rounding: Decimal.ROUND_HALF_UP });
 
@@ -141,8 +142,36 @@ export async function chargeCallToWallet(
   const startTime = Date.now();
   
   try {
+    // Get telephony settings for recording/CNAM features
+    const [settings] = await db
+      .select()
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+    
+    const recordingEnabled = settings?.recordingEnabled ?? false;
+    const cnamEnabled = settings?.cnamEnabled ?? false;
+    
     const rate = await findRateByPrefix(callData.toNumber, companyId);
     const costResult = calculateCallCost(callData.durationSeconds, rate);
+    
+    // Calculate additional feature costs
+    const billableMinutes = costResult.billableMinutes;
+    let recordingCost = new Decimal(0);
+    let cnamCost = new Decimal(0);
+    
+    if (recordingEnabled) {
+      recordingCost = billableMinutes.times(new Decimal(PRICING.usage.recording_minute));
+      console.log(`[PricingService] Recording cost: $${recordingCost.toFixed(4)} (${billableMinutes.toFixed(2)} min * $${PRICING.usage.recording_minute}/min)`);
+    }
+    
+    if (cnamEnabled && callData.direction === "inbound") {
+      cnamCost = new Decimal(PRICING.usage.cnam_lookup_per_call);
+      console.log(`[PricingService] CNAM lookup cost: $${cnamCost.toFixed(4)}`);
+    }
+    
+    // Total cost includes base + recording + CNAM
+    const totalCostWithFeatures = costResult.totalCost.plus(recordingCost).plus(cnamCost);
+    console.log(`[PricingService] Total cost: $${totalCostWithFeatures.toFixed(4)} (base: $${costResult.totalCost.toFixed(4)}, recording: $${recordingCost.toFixed(4)}, cnam: $${cnamCost.toFixed(4)})`);
     
     const result = await db.transaction(async (tx) => {
       const [wallet] = await tx
@@ -156,7 +185,7 @@ export async function chargeCallToWallet(
       }
       
       const currentBalance = new Decimal(wallet.balance);
-      const newBalance = currentBalance.minus(costResult.totalCost);
+      const newBalance = currentBalance.minus(totalCostWithFeatures);
       
       const [existingLog] = await tx
         .select()
@@ -167,7 +196,7 @@ export async function chargeCallToWallet(
         ));
       
       if (newBalance.lessThan(MINIMUM_BALANCE_THRESHOLD)) {
-        console.error(`[PricingService] INSUFFICIENT FUNDS: current=$${currentBalance.toFixed(4)}, cost=$${costResult.totalCost.toFixed(4)}`);
+        console.error(`[PricingService] INSUFFICIENT FUNDS: current=$${currentBalance.toFixed(4)}, cost=$${totalCostWithFeatures.toFixed(4)}`);
         
         let failedLogId = existingLog?.id;
         if (existingLog) {
@@ -231,7 +260,7 @@ export async function chargeCallToWallet(
             status: callData.status as any,
             duration: callData.durationSeconds,
             billedDuration: costResult.billableSeconds,
-            cost: costResult.totalCost.toFixed(4),
+            cost: totalCostWithFeatures.toFixed(4),
             costCurrency: "USD",
             endedAt: callData.endedAt || new Date(),
           })
@@ -251,7 +280,7 @@ export async function chargeCallToWallet(
             status: callData.status as any,
             duration: callData.durationSeconds,
             billedDuration: costResult.billableSeconds,
-            cost: costResult.totalCost.toFixed(4),
+            cost: totalCostWithFeatures.toFixed(4),
             costCurrency: "USD",
             contactId: callData.contactId,
             callerName: callData.callerName,
@@ -262,13 +291,18 @@ export async function chargeCallToWallet(
         console.log(`[PricingService] Created new call log: ${callLog.id}`);
       }
       
+      // Build description with feature costs if applicable
+      let costBreakdown = `${costResult.billableSeconds}s @ $${rate.ratePerMinute.toFixed(4)}/min`;
+      if (recordingEnabled) costBreakdown += ` + recording`;
+      if (cnamEnabled && callData.direction === "inbound") costBreakdown += ` + CNAM`;
+      
       const [transaction] = await tx
         .insert(walletTransactions)
         .values({
           walletId: wallet.id,
-          amount: costResult.totalCost.negated().toFixed(4),
+          amount: totalCostWithFeatures.negated().toFixed(4),
           type: "CALL_COST",
-          description: `Call to ${callData.toNumber} (${costResult.billableSeconds}s @ $${rate.ratePerMinute.toFixed(4)}/min)`,
+          description: `Call to ${callData.toNumber} (${costBreakdown})`,
           externalReferenceId: callLog.id,
           balanceAfter: newBalance.toFixed(4),
         })
@@ -277,7 +311,7 @@ export async function chargeCallToWallet(
       return {
         callLogId: callLog.id,
         transactionId: transaction.id,
-        amountCharged: costResult.totalCost.toFixed(4),
+        amountCharged: totalCostWithFeatures.toFixed(4),
         newBalance: newBalance.toFixed(4)
       };
     });

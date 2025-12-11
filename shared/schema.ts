@@ -4642,6 +4642,8 @@ export const walletTransactionTypes = [
   "CALL_COST",
   "SMS_COST",
   "NUMBER_RENTAL",
+  "MONTHLY_FEE",
+  "SUBSCRIPTION",
   "REFUND",
   "ADJUSTMENT",
 ] as const;
