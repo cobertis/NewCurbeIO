@@ -797,9 +797,158 @@ export class TelephonyProvisioningService {
   }
 
   /**
-   * REPAIR FUNCTION: Fix phone numbers to route directly to Credential Connection
-   * This eliminates the TeXML intermediate leg that causes 4-6 second audio delay
-   * Per Telnyx docs, assigning numbers to credential connection routes calls directly to WebRTC
+   * Assign a phone number to a Call Control Application
+   * This enables REST API call management with call_control_id
+   */
+  async assignPhoneNumberToCallControlApp(
+    managedAccountId: string,
+    phoneNumberId: string,
+    callControlAppId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log(`[TelephonyProvisioning] Assigning phone number ${phoneNumberId} to Call Control App ${callControlAppId}`);
+      
+      const response = await this.makeApiRequest(
+        managedAccountId,
+        `/phone_numbers/${phoneNumberId}`,
+        "PATCH",
+        {
+          connection_id: callControlAppId,
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[TelephonyProvisioning] Failed to assign phone to Call Control App: ${response.status} - ${errorText}`);
+        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      }
+
+      console.log(`[TelephonyProvisioning] Phone number ${phoneNumberId} assigned to Call Control App successfully`);
+      return { success: true };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Network error";
+      console.error(`[TelephonyProvisioning] Error assigning phone to Call Control App:`, errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  /**
+   * Migrate company from Credential Connection routing to Call Control Application routing
+   * This enables REST API call management with call_control_id for hangup functionality
+   */
+  async migrateToCallControl(companyId: string): Promise<{
+    success: boolean;
+    callControlAppId?: string;
+    migratedCount: number;
+    errors: string[];
+  }> {
+    console.log(`[TelephonyProvisioning] Starting Call Control migration for company: ${companyId}`);
+    
+    const errors: string[] = [];
+    let migratedCount = 0;
+
+    // Get telephony settings
+    const [settings] = await db
+      .select()
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+
+    if (!settings) {
+      return { success: false, migratedCount: 0, errors: ["Telephony settings not found"] };
+    }
+
+    if (!settings.outboundVoiceProfileId) {
+      return { success: false, migratedCount: 0, errors: ["No outbound voice profile found - please provision telephony first"] };
+    }
+
+    // Get managed account
+    const { getCompanyManagedAccountId } = await import("./telnyx-managed-accounts");
+    const managedAccountId = await getCompanyManagedAccountId(companyId);
+
+    if (!managedAccountId) {
+      return { success: false, migratedCount: 0, errors: ["Company has no Telnyx managed account"] };
+    }
+
+    // Get company name for the app
+    const [company] = await db
+      .select({ name: companies.name })
+      .from(companies)
+      .where(eq(companies.id, companyId));
+    const companyName = company?.name || "Company";
+
+    // Create Call Control Application if not exists
+    let callControlAppId = settings.callControlAppId;
+    
+    if (!callControlAppId) {
+      const webhookBaseUrl = await getWebhookBaseUrl();
+      const ccResult = await this.createCallControlApplication(
+        managedAccountId,
+        companyName,
+        webhookBaseUrl,
+        settings.outboundVoiceProfileId,
+        companyId
+      );
+
+      if (!ccResult.success || !ccResult.appId) {
+        return { success: false, migratedCount: 0, errors: [`Failed to create Call Control App: ${ccResult.error}`] };
+      }
+
+      callControlAppId = ccResult.appId;
+      console.log(`[TelephonyProvisioning] Created Call Control App: ${callControlAppId}`);
+
+      // Store the Call Control App ID
+      await db
+        .update(telephonySettings)
+        .set({
+          callControlAppId,
+          updatedAt: new Date(),
+        })
+        .where(eq(telephonySettings.companyId, companyId));
+    } else {
+      console.log(`[TelephonyProvisioning] Using existing Call Control App: ${callControlAppId}`);
+    }
+
+    // Get all phone numbers for the company
+    const phoneNumbers = await db
+      .select()
+      .from(telnyxPhoneNumbers)
+      .where(eq(telnyxPhoneNumbers.companyId, companyId));
+
+    if (phoneNumbers.length === 0) {
+      console.log(`[TelephonyProvisioning] No phone numbers to migrate`);
+      return { success: true, callControlAppId, migratedCount: 0, errors: [] };
+    }
+
+    // Reassign each phone number to the Call Control App
+    for (const phoneNumber of phoneNumbers) {
+      const result = await this.assignPhoneNumberToCallControlApp(
+        managedAccountId,
+        phoneNumber.telnyxPhoneNumberId,
+        callControlAppId
+      );
+
+      if (result.success) {
+        migratedCount++;
+      } else {
+        errors.push(`Failed to migrate ${phoneNumber.phoneNumber}: ${result.error}`);
+      }
+    }
+
+    const success = errors.length === 0;
+    console.log(`[TelephonyProvisioning] Migration complete: ${migratedCount}/${phoneNumbers.length} numbers migrated`);
+
+    return {
+      success,
+      callControlAppId,
+      migratedCount,
+      errors,
+    };
+  }
+
+  /**
+   * REPAIR FUNCTION: Fix phone numbers routing
+   * If Call Control App is configured, assign numbers to it
+   * Otherwise, assign to Credential Connection for backward compatibility
    */
   async repairPhoneNumberRouting(companyId: string): Promise<{
     success: boolean;
@@ -808,7 +957,7 @@ export class TelephonyProvisioningService {
   }> {
     console.log(`[TelephonyProvisioning] Starting phone number routing repair for company: ${companyId}`);
     
-    // Get telephony settings to find the credential connection ID
+    // Get telephony settings
     const [settings] = await db
       .select()
       .from(telephonySettings)
@@ -818,11 +967,7 @@ export class TelephonyProvisioningService {
       return { success: false, repairedCount: 0, errors: ["Telephony settings not found"] };
     }
 
-    if (!settings.credentialConnectionId) {
-      return { success: false, repairedCount: 0, errors: ["No credential connection found - please re-provision telephony"] };
-    }
-
-    // Get managed account from company using the dedicated function
+    // Get managed account from company
     const { getCompanyManagedAccountId } = await import("./telnyx-managed-accounts");
     const managedAccountId = await getCompanyManagedAccountId(companyId);
 
@@ -830,11 +975,52 @@ export class TelephonyProvisioningService {
       return { success: false, repairedCount: 0, errors: ["Company has no Telnyx managed account"] };
     }
 
-    // Reassign all phone numbers to the Credential Connection (NOT TeXML app)
-    // This routes inbound calls directly to WebRTC client without delay
+    // Check if Call Control App is configured - use it if available
+    if (settings.callControlAppId) {
+      console.log(`[TelephonyProvisioning] Using Call Control App routing: ${settings.callControlAppId}`);
+      
+      // Get all phone numbers
+      const phoneNumbers = await db
+        .select()
+        .from(telnyxPhoneNumbers)
+        .where(eq(telnyxPhoneNumbers.companyId, companyId));
+
+      if (phoneNumbers.length === 0) {
+        return { success: true, repairedCount: 0, errors: [] };
+      }
+
+      const errors: string[] = [];
+      let repairedCount = 0;
+
+      for (const phoneNumber of phoneNumbers) {
+        const result = await this.assignPhoneNumberToCallControlApp(
+          managedAccountId,
+          phoneNumber.telnyxPhoneNumberId,
+          settings.callControlAppId
+        );
+
+        if (result.success) {
+          repairedCount++;
+        } else {
+          errors.push(`Failed to repair ${phoneNumber.phoneNumber}: ${result.error}`);
+        }
+      }
+
+      console.log(`[TelephonyProvisioning] Repair complete (Call Control): ${repairedCount} phones repaired`);
+      return { success: errors.length === 0, repairedCount, errors };
+    }
+
+    // Fall back to Credential Connection routing
+    if (!settings.credentialConnectionId) {
+      return { success: false, repairedCount: 0, errors: ["No credential connection or Call Control App found - please re-provision telephony"] };
+    }
+
+    console.log(`[TelephonyProvisioning] Using Credential Connection routing: ${settings.credentialConnectionId}`);
+
+    // Reassign all phone numbers to the Credential Connection
     const result = await this.updateExistingPhoneNumbers(managedAccountId, companyId, settings.credentialConnectionId);
 
-    console.log(`[TelephonyProvisioning] Repair complete: ${result.updatedCount} phones repaired, ${result.failedCount} failed`);
+    console.log(`[TelephonyProvisioning] Repair complete (Credential Connection): ${result.updatedCount} phones repaired, ${result.failedCount} failed`);
 
     return {
       success: result.success,

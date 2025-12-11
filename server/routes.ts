@@ -28959,6 +28959,38 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to repair SRTP settings" });
     }
   });
+
+  // POST /api/telephony/migrate-to-call-control - Migrate from Credential Connection to Call Control Application
+  app.post("/api/telephony/migrate-to-call-control", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const companyId = user.companyId!;
+
+      console.log(`[Migration] Starting Call Control migration for company: ${companyId}`);
+
+      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const result = await telephonyProvisioningService.migrateToCallControl(companyId);
+
+      if (result.success) {
+        res.json({
+          success: true,
+          message: `Successfully migrated to Call Control Application. ${result.migratedCount} phone numbers reassigned.`,
+          callControlAppId: result.callControlAppId,
+          migratedCount: result.migratedCount,
+        });
+      } else {
+        res.status(500).json({
+          success: false,
+          message: result.errors.join(", ") || "Migration failed",
+          errors: result.errors,
+          migratedCount: result.migratedCount,
+        });
+      }
+    } catch (error: any) {
+      console.error("[Migration] Call Control migration error:", error);
+      res.status(500).json({ message: "Failed to migrate to Call Control Application" });
+    }
+  });
   // GET /api/telnyx/sip-credentials - Get SIP credentials for WebRTC client
   app.get("/api/telnyx/sip-credentials", requireAuth, async (req: Request, res: Response) => {
     try {

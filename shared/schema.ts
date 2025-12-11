@@ -4810,6 +4810,7 @@ export const telephonySettings = pgTable("telephony_settings", {
   texmlAppId: text("texml_app_id"),
   credentialConnectionId: text("credential_connection_id"),
   messagingProfileId: text("messaging_profile_id"),
+  callControlAppId: text("call_control_app_id"), // Call Control Application ID for REST API call management
   
   // Provisioning Status
   provisioningStatus: text("provisioning_status").notNull().default("pending").$type<TelephonyProvisioningStatus>(),

@@ -1,0 +1,630 @@
+PROMPT PARA REPLIT — IMPLEMENTAR “CURBE VIP GOLD PASS” (APPLE WALLET + PUSH)
+
+Estás actuando como un ingeniero backend Node.js responsable y detallista.
+Necesito que construyas un backend completo en Node.js para emitir un Apple Wallet Pass llamado “Curbe VIP Gold Pass” y poder enviar push notifications a esos pases.
+
+El pase es gratis, solo sirve para:
+
+Darle al cliente la sensación de un pase VIP Gold (psicológico, marketing).
+
+Hacer que el cliente lo agregue a Apple Wallet.
+
+Capturar el device push token y permitir enviarle push notifications después.
+
+No puedes omitir pasos. No asumas que ya existe nada. Debes dejar el proyecto funcionando end-to-end.
+
+1. TECNOLOGÍA Y VERSIONES
+
+Usa:
+
+Node.js 18 o superior
+
+Express como framework HTTP.
+
+SQLite como base de datos simple (archivo local).
+
+Librerías:
+
+passkit-generator (generar el .pkpass)
+
+better-sqlite3 o sqlite3 (elige UNA, pero úsala bien)
+
+dotenv (variables de entorno)
+
+http2 (nativo de Node) para APNs
+
+jsonwebtoken para generar el JWT de APNs
+
+2. ESTRUCTURA DEL PROYECTO
+
+Crea esta estructura de archivos:
+
+project-root/
+  package.json
+  .env.example
+  .env                # NO subir a git
+  src/
+    index.js
+    db.js
+    passConfig.js
+    passService.js
+    pushService.js
+    routes/
+      healthRoutes.js
+      passRoutes.js
+      appleWalletRoutes.js
+      adminRoutes.js
+  pkpass/
+    certificates/
+      pass-cert.pem         # Certificado del Pass (placeholder)
+      pass-key.pem          # Private key del Pass (placeholder)
+      authkey.p8            # APNs Auth Key (.p8, placeholder)
+    assets/
+      icon.png
+      icon@2x.png
+      logo.png
+      logo@2x.png
+      background.png        # opcional
+
+
+Debes crear TODOS esos archivos con contenido mínimo funcional.
+Los certificados/llaves serán placeholders, pero el código debe esperar esos paths.
+
+3. package.json E INICIALIZACIÓN
+
+Inicializa el proyecto:
+
+npm init -y
+
+
+Instala dependencias:
+
+npm install express dotenv passkit-generator jsonwebtoken better-sqlite3
+
+
+(Opcionalmente, si prefieres sqlite3 en vez de better-sqlite3, usa esa, pero implementa correctamente la conexión.)
+
+4. VARIABLES DE ENTORNO
+
+Crea un archivo .env.example con ESTE contenido (usa estos nombres EXACTOS):
+
+PORT=3000
+
+# Apple Wallet Pass info
+PASS_TYPE_ID=pass.com.curbe.vipgold
+PASS_TEAM_ID=YOUR_TEAM_ID_HERE
+PASS_ORG_NAME=Curbe.io
+
+PASS_CERTIFICATE_PATH=./pkpass/certificates/pass-cert.pem
+PASS_CERTIFICATE_KEY_PATH=./pkpass/certificates/pass-key.pem
+PASS_CERTIFICATE_PASSWORD=your_cert_password
+
+# APNs (para Push de Passes)
+APNS_TEAM_ID=YOUR_TEAM_ID_HERE
+APNS_KEY_ID=YOUR_KEY_ID_HERE
+APNS_AUTH_KEY_PATH=./pkpass/certificates/authkey.p8
+
+# Bundle ID del Pass (igual que PASS_TYPE_ID generalmente)
+APNS_PASSTYPE_ID=pass.com.curbe.vipgold
+
+# Entorno APNs (development o production)
+APNS_ENV=development
+
+
+Crea .env copiando .env.example y deja valores de ejemplo.
+El código debe leer estas variables con dotenv.
+
+5. BASE DE DATOS (src/db.js)
+
+Usa SQLite para almacenar:
+
+Tabla passes:
+
+id INTEGER PK
+
+serialNumber TEXT UNIQUE
+
+userId TEXT
+
+createdAt TEXT (ISO string)
+
+Tabla devices:
+
+id INTEGER PK
+
+deviceLibraryIdentifier TEXT
+
+serialNumber TEXT
+
+pushToken TEXT
+
+createdAt TEXT
+
+Implementa db.js así (ejemplo usando better-sqlite3):
+
+// src/db.js
+const Database = require('better-sqlite3');
+const path = require('path');
+
+const dbPath = path.join(__dirname, '..', 'curbe_vip.db');
+const db = new Database(dbPath);
+
+// Crear tablas si no existen
+db.exec(`
+  CREATE TABLE IF NOT EXISTS passes (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    serialNumber TEXT UNIQUE,
+    userId TEXT,
+    createdAt TEXT
+  );
+
+  CREATE TABLE IF NOT EXISTS devices (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    deviceLibraryIdentifier TEXT,
+    serialNumber TEXT,
+    pushToken TEXT,
+    createdAt TEXT
+  );
+`);
+
+module.exports = db;
+
+
+También crea funciones helper opcionales si quieres, pero mínimo esto debe funcionar.
+
+6. CONFIGURACIÓN DEL PASSE VIP GOLD (src/passConfig.js)
+
+Crea un módulo que prepare el objeto base del Pass “Curbe VIP Gold”:
+
+// src/passConfig.js
+require('dotenv').config();
+
+const basePassConfig = (serialNumber, userId) => ({
+  formatVersion: 1,
+  passTypeIdentifier: process.env.PASS_TYPE_ID,
+  teamIdentifier: process.env.PASS_TEAM_ID,
+  organizationName: process.env.PASS_ORG_NAME || 'Curbe.io',
+  description: 'Curbe VIP Gold Pass',
+  serialNumber,
+  logoText: 'VIP GOLD',
+  foregroundColor: 'rgb(255,255,255)',
+  backgroundColor: 'rgb(0,0,0)',
+  generic: {
+    primaryFields: [
+      {
+        key: 'member',
+        label: 'Member ID',
+        value: `C-${userId}`
+      }
+    ],
+    auxiliaryFields: [
+      {
+        key: 'tier',
+        label: 'Tier',
+        value: 'Gold'
+      },
+      {
+        key: 'priority',
+        label: 'Support Level',
+        value: 'Priority Access'
+      }
+    ],
+    backFields: [
+      {
+        key: 'info',
+        label: 'VIP Gold Benefits',
+        value:
+          'Priority customer service\nExclusive updates\nFast-lane handling'
+      }
+    ]
+  }
+});
+
+module.exports = { basePassConfig };
+
+7. GENERADOR DE PASSES (src/passService.js)
+
+Usa passkit-generator para crear el .pkpass.
+
+// src/passService.js
+require('dotenv').config();
+const path = require('path');
+const { PKPass } = require('passkit-generator');
+const { basePassConfig } = require('./passConfig');
+const db = require('./db');
+
+const CERT_PATH = process.env.PASS_CERTIFICATE_PATH;
+const KEY_PATH = process.env.PASS_CERTIFICATE_KEY_PATH;
+const CERT_PASSWORD = process.env.PASS_CERTIFICATE_PASSWORD;
+
+async function createVipPassForUser(userId) {
+  // 1. Generar serialNumber único simple
+  const serialNumber = `CURBE-VIP-${userId}-${Date.now()}`;
+
+  const passJSON = basePassConfig(serialNumber, userId);
+
+  // 2. Crear instancia de PKPass
+  const pass = await PKPass.from(
+    {
+      model: path.join(__dirname, '..', 'pkpass', 'assets'),
+      certificates: {
+        wwdr: '', // se puede omitir si no se usa, depende de la lib
+        signerCert: CERT_PATH,
+        signerKey: KEY_PATH,
+        signerKeyPassphrase: CERT_PASSWORD
+      }
+    },
+    passJSON
+  );
+
+  // (Opcional) Configurar imágenes si la lib lo requiere de forma explícita
+
+  // 3. Guardar el pass en la base de datos
+  const stmt = db.prepare(
+    'INSERT INTO passes (serialNumber, userId, createdAt) VALUES (?, ?, ?)'
+  );
+  stmt.run(serialNumber, userId, new Date().toISOString());
+
+  // 4. Devolver el Buffer del .pkpass y el serialNumber
+  const buffer = pass.getAsBuffer();
+  return { buffer, serialNumber };
+}
+
+module.exports = {
+  createVipPassForUser
+};
+
+
+Ajusta lo necesario según la documentación de passkit-generator, pero la idea es ESA: crear un pass a partir de JSON + certificados + assets.
+
+8. SERVICIO DE PUSH A APNs (src/pushService.js)
+
+Implementa un servicio que:
+
+Lea APNS_TEAM_ID, APNS_KEY_ID, APNS_AUTH_KEY_PATH, APNS_PASSTYPE_ID, APNS_ENV.
+
+Genere un JWT para APNs.
+
+Use http2 para mandar push a https://api.push.apple.com/3/device/:pushToken.
+
+// src/pushService.js
+require('dotenv').config();
+const fs = require('fs');
+const jwt = require('jsonwebtoken');
+const http2 = require('http2');
+
+const APNS_TEAM_ID = process.env.APNS_TEAM_ID;
+const APNS_KEY_ID = process.env.APNS_KEY_ID;
+const APNS_AUTH_KEY_PATH = process.env.APNS_AUTH_KEY_PATH;
+const APNS_PASSTYPE_ID = process.env.APNS_PASSTYPE_ID;
+const APNS_ENV = process.env.APNS_ENV || 'development';
+
+const authKey = fs.readFileSync(APNS_AUTH_KEY_PATH);
+
+function createApnsJwt() {
+  const now = Math.floor(Date.now() / 1000);
+  const token = jwt.sign(
+    {
+      iss: APNS_TEAM_ID,
+      iat: now
+    },
+    authKey,
+    {
+      algorithm: 'ES256',
+      header: {
+        alg: 'ES256',
+        kid: APNS_KEY_ID
+      }
+    }
+  );
+  return token;
+}
+
+function getApnsHost() {
+  return APNS_ENV === 'production'
+    ? 'https://api.push.apple.com'
+    : 'https://api.development.push.apple.com';
+}
+
+/**
+ * Envía una notificación de actualización a un deviceToken de un Pass.
+ */
+async function sendPassPush(deviceToken, serialNumber) {
+  const jwtToken = createApnsJwt();
+  const host = getApnsHost();
+
+  const client = http2.connect(host);
+
+  return new Promise((resolve, reject) => {
+    client.on('error', (err) => {
+      client.close();
+      reject(err);
+    });
+
+    const headers = {
+      ':method': 'POST',
+      ':path': `/3/device/${deviceToken}`,
+      authorization: `bearer ${jwtToken}`,
+      'apns-topic': APNS_PASSTYPE_ID
+    };
+
+    const req = client.request(headers);
+
+    const payload = JSON.stringify({
+      aps: {
+        alert: `Your Curbe VIP Gold Pass has been updated.`,
+        sound: 'default'
+      },
+      serialNumber
+    });
+
+    req.setEncoding('utf8');
+
+    let data = '';
+    req.on('data', (chunk) => {
+      data += chunk;
+    });
+
+    req.on('end', () => {
+      client.close();
+      resolve(data);
+    });
+
+    req.on('error', (err) => {
+      client.close();
+      reject(err);
+    });
+
+    req.write(payload);
+    req.end();
+  });
+}
+
+module.exports = {
+  sendPassPush
+};
+
+9. RUTAS EXPRESS
+
+Crea los routers en src/routes/.
+
+9.1. healthRoutes.js
+// src/routes/healthRoutes.js
+const express = require('express');
+const router = express.Router();
+
+router.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+module.exports = router;
+
+9.2. passRoutes.js — Crear y servir el VIP Pass
+// src/routes/passRoutes.js
+const express = require('express');
+const router = express.Router();
+const { createVipPassForUser } = require('../passService');
+
+router.get('/passes/vip/:userId', async (req, res) => {
+  try {
+    const { userId } = req.params;
+
+    const { buffer, serialNumber } = await createVipPassForUser(userId);
+
+    res.set({
+      'Content-Type': 'application/vnd.apple.pkpass',
+      'Content-Disposition': `attachment; filename=curbe_vip_${serialNumber}.pkpass`
+    });
+
+    res.send(buffer);
+  } catch (err) {
+    console.error('Error generating VIP Pass:', err);
+    res.status(500).json({ error: 'Error generating pass' });
+  }
+});
+
+module.exports = router;
+
+9.3. appleWalletRoutes.js — Registro de dispositivos (especificación PassKit simplificada)
+
+Apple, cuando el usuario añade el Pass, llama algo así como:
+
+POST /v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier/:serialNumber
+
+Implementa:
+
+// src/routes/appleWalletRoutes.js
+const express = require('express');
+const router = express.Router();
+const db = require('../db');
+
+router.post(
+  '/v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier/:serialNumber',
+  express.json(),
+  (req, res) => {
+    const { deviceLibraryIdentifier, passTypeIdentifier, serialNumber } =
+      req.params;
+
+    const { pushToken } = req.body;
+
+    // Validar que el passTypeIdentifier coincide
+    if (passTypeIdentifier !== process.env.PASS_TYPE_ID) {
+      return res.status(404).send('Unknown passTypeIdentifier');
+    }
+
+    // Insertar o ignorar si ya existe
+    const stmt = db.prepare(
+      'INSERT INTO devices (deviceLibraryIdentifier, serialNumber, pushToken, createdAt) VALUES (?, ?, ?, ?)'
+    );
+    try {
+      stmt.run(
+        deviceLibraryIdentifier,
+        serialNumber,
+        pushToken,
+        new Date().toISOString()
+      );
+    } catch (e) {
+      // podría ser UNIQUE constraint, simplemente ignoramos
+      console.warn('Device may already be registered', e.message);
+    }
+
+    // Apple espera 201 Created si es nuevo, 200 si ya estaba.
+    res.status(201).send(); // simplificado
+  }
+);
+
+module.exports = router;
+
+
+Puedes agregar también DELETE para desregistrar, pero no es obligatorio en la primera versión.
+
+9.4. adminRoutes.js — Enviar push manual a un Pass VIP
+
+Creamos un endpoint sencillo para disparar una notificación a todos los dispositivos de un serialNumber.
+
+// src/routes/adminRoutes.js
+const express = require('express');
+const router = express.Router();
+const db = require('../db');
+const { sendPassPush } = require('../pushService');
+
+router.post('/admin/push/vip/:serialNumber', async (req, res) => {
+  const { serialNumber } = req.params;
+
+  try {
+    const stmt = db.prepare(
+      'SELECT pushToken FROM devices WHERE serialNumber = ?'
+    );
+    const devices = stmt.all(serialNumber);
+
+    if (!devices || devices.length === 0) {
+      return res
+        .status(404)
+        .json({ error: 'No devices registered for this pass' });
+    }
+
+    const results = [];
+
+    for (const d of devices) {
+      try {
+        const response = await sendPassPush(d.pushToken, serialNumber);
+        results.push({ token: d.pushToken, ok: true, response });
+      } catch (err) {
+        console.error('Error sending push to device', d.pushToken, err);
+        results.push({ token: d.pushToken, ok: false, error: err.message });
+      }
+    }
+
+    res.json({ status: 'done', results });
+  } catch (err) {
+    console.error('Error in admin push route:', err);
+    res.status(500).json({ error: 'Error sending push notifications' });
+  }
+});
+
+module.exports = router;
+
+10. SERVIDOR PRINCIPAL (src/index.js)
+
+Monta todo:
+
+// src/index.js
+require('dotenv').config();
+const express = require('express');
+const healthRoutes = require('./routes/healthRoutes');
+const passRoutes = require('./routes/passRoutes');
+const appleWalletRoutes = require('./routes/appleWalletRoutes');
+const adminRoutes = require('./routes/adminRoutes');
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+// Middlewares
+app.use(express.json());
+
+// Rutas
+app.use(healthRoutes);
+app.use(passRoutes);
+app.use(appleWalletRoutes);
+app.use(adminRoutes);
+
+app.listen(PORT, () => {
+  console.log(`Curbe VIP Gold Pass server running on port ${PORT}`);
+});
+
+
+Asegúrate de que node src/index.js arranca sin errores.
+
+11. ASSETS PARA EL PASS (pkpass/assets/)
+
+Coloca en pkpass/assets/ al menos:
+
+icon.png
+
+icon@2x.png
+
+logo.png
+
+(opcional) background.png
+
+Debe ser:
+
+Fondo negro / muy oscuro
+
+Texto o logo en blanco
+
+Estilo tarjeta premium (tipo Amex black, simple, nada infantil)
+
+Asegúrate de que passkit-generator use esa carpeta como modelo.
+
+12. FLUJO DE PRUEBA QUE DEBES DEJAR DOCUMENTADO
+
+Levantar servidor:
+
+node src/index.js
+
+
+Desde un navegador en iPhone, abrir:
+
+https://<dominio-o-url-replit>/passes/vip/1234
+
+
+Esto debe descargar un archivo .pkpass.
+
+El iPhone debe ofrecer “Add to Apple Wallet”.
+
+Al agregarlo, Apple llamará a tu endpoint de registro:
+
+POST /v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier/:serialNumber
+
+Verifica en la base de datos (devices table) que se guardó el pushToken.
+
+Para enviar un push a ese pase:
+
+Toma el serialNumber usado.
+
+Haz un POST (puede ser con curl o Postman):
+
+curl -X POST https://<dominio>/admin/push/vip/<serialNumber>
+
+
+El iPhone debe recibir una notificación del Wallet.
+
+13. DOCUMENTACIÓN FINAL
+
+Debes entregar además:
+
+Un breve archivo README.md explicando:
+
+Cómo configurar .env
+
+Dónde poner los certificados (pass-cert.pem, pass-key.pem, authkey.p8)
+
+Cómo arrancar el servidor
+
+Cómo generar un VIP Pass
+
+Cómo probar el envío de push
+
+NO OMITAS NADA DE LO ANTERIOR.
+Si alguna parte no se puede probar en Replit por falta de certificados reales, deja el código y explica en comentarios dónde irían los certificados y cómo probarlo en producción.
