@@ -151,10 +151,10 @@ export class TelephonyProvisioningService {
       console.log(`[TelephonyProvisioning] SIP Credentials created: ${sipCredentials.username}`);
 
       console.log(`[TelephonyProvisioning] Step 5/5: Updating existing phone numbers...`);
-      // CRITICAL: Assign phone numbers to TeXML app, NOT credential_connection
-      // This ensures only ONE routing path (TeXML webhook) handles inbound calls
-      // The credential_connection is ONLY for WebRTC client authentication/outbound
-      const phoneUpdateResult = await this.updateExistingPhoneNumbers(managedAccountId, companyId, texmlAppId);
+      // CRITICAL FIX: Assign phone numbers to Credential Connection DIRECTLY
+      // Per Telnyx docs, this routes inbound calls directly to WebRTC client
+      // without TeXML intermediate leg that causes 4-6 second audio delay
+      const phoneUpdateResult = await this.updateExistingPhoneNumbers(managedAccountId, companyId, credentialConnectionId);
       
       if (!phoneUpdateResult.success && phoneUpdateResult.failedCount > 0) {
         console.error(`[TelephonyProvisioning] Phone number updates failed: ${phoneUpdateResult.errors.join(", ")}`);
@@ -508,7 +508,7 @@ export class TelephonyProvisioningService {
   private async updateExistingPhoneNumbers(
     managedAccountId: string,
     companyId: string,
-    texmlAppId: string
+    credentialConnectionId: string
   ): Promise<{ success: boolean; updatedCount: number; failedCount: number; errors: string[] }> {
     const phoneNumbers = await db
       .select()
@@ -525,18 +525,19 @@ export class TelephonyProvisioningService {
 
     for (const phoneNumber of phoneNumbers) {
       try {
-        console.log(`[TelephonyProvisioning] Assigning phone number ${phoneNumber.phoneNumber} to TeXML app ${texmlAppId}`);
+        console.log(`[TelephonyProvisioning] Assigning phone number ${phoneNumber.phoneNumber} to Credential Connection ${credentialConnectionId}`);
         
-        // CRITICAL: Assign to TeXML app ONLY, clear connection_id
-        // This ensures inbound calls route through TeXML webhook exclusively
-        // Prevents dual routing conflict that causes double billing
+        // CRITICAL FIX: Assign to Credential Connection DIRECTLY (not TeXML app)
+        // Per Telnyx docs, this routes inbound calls directly to WebRTC client
+        // without TeXML intermediate leg that causes 4-6 second audio delay
+        // TeXML routing creates a second SIP leg that anchors media at the TeXML app
         const response = await this.makeApiRequest(
           managedAccountId,
           `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
           "PATCH",
           { 
-            texml_application_id: texmlAppId,
-            connection_id: null  // Clear any existing connection assignment
+            connection_id: credentialConnectionId,
+            texml_application_id: null  // Clear TeXML app to prevent dual routing
           }
         );
 
@@ -549,13 +550,12 @@ export class TelephonyProvisioningService {
           continue;
         }
 
-        // Store texmlAppId in connectionId field for now (reusing existing column)
         await db
           .update(telnyxPhoneNumbers)
-          .set({ connectionId: texmlAppId, updatedAt: new Date() })
+          .set({ connectionId: credentialConnectionId, updatedAt: new Date() })
           .where(eq(telnyxPhoneNumbers.id, phoneNumber.id));
 
-        console.log(`[TelephonyProvisioning] Phone number ${phoneNumber.phoneNumber} assigned to TeXML app successfully`);
+        console.log(`[TelephonyProvisioning] Phone number ${phoneNumber.phoneNumber} assigned to Credential Connection successfully`);
         updatedCount++;
       } catch (error) {
         const errorMsg = `Error updating ${phoneNumber.phoneNumber}: ${error instanceof Error ? error.message : 'Unknown'}`;
@@ -724,8 +724,9 @@ export class TelephonyProvisioningService {
   }
 
   /**
-   * REPAIR FUNCTION: Fix phone numbers that were incorrectly assigned to credential_connection
-   * This reassigns them to the TeXML app to prevent dual routing conflicts
+   * REPAIR FUNCTION: Fix phone numbers to route directly to Credential Connection
+   * This eliminates the TeXML intermediate leg that causes 4-6 second audio delay
+   * Per Telnyx docs, assigning numbers to credential connection routes calls directly to WebRTC
    */
   async repairPhoneNumberRouting(companyId: string): Promise<{
     success: boolean;
@@ -734,7 +735,7 @@ export class TelephonyProvisioningService {
   }> {
     console.log(`[TelephonyProvisioning] Starting phone number routing repair for company: ${companyId}`);
     
-    // Get telephony settings to find the TeXML app ID
+    // Get telephony settings to find the credential connection ID
     const [settings] = await db
       .select()
       .from(telephonySettings)
@@ -742,6 +743,10 @@ export class TelephonyProvisioningService {
 
     if (!settings) {
       return { success: false, repairedCount: 0, errors: ["Telephony settings not found"] };
+    }
+
+    if (!settings.credentialConnectionId) {
+      return { success: false, repairedCount: 0, errors: ["No credential connection found - please re-provision telephony"] };
     }
 
     // Get managed account from company using the dedicated function
@@ -752,45 +757,9 @@ export class TelephonyProvisioningService {
       return { success: false, repairedCount: 0, errors: ["Company has no Telnyx managed account"] };
     }
 
-    let texmlAppId = settings.texmlAppId;
-
-    // If no TeXML app exists, we need to create one
-    if (!texmlAppId) {
-      console.log(`[TelephonyProvisioning] No TeXML app found, creating one...`);
-      
-      const [companyData] = await db
-        .select({ name: companies.name })
-        .from(companies)
-        .where(eq(companies.id, companyId));
-
-      const companyName = companyData?.name || "Company";
-      const webhookBaseUrl = await getWebhookBaseUrl();
-
-      const texmlResult = await this.createTexmlApplication(
-        managedAccountId,
-        companyName,
-        webhookBaseUrl,
-        settings.outboundVoiceProfileId || "",
-        companyId
-      );
-
-      if (!texmlResult.success || !texmlResult.appId) {
-        return { success: false, repairedCount: 0, errors: [`Failed to create TeXML app: ${texmlResult.error}`] };
-      }
-
-      texmlAppId = texmlResult.appId;
-
-      // Update settings with the new TeXML app ID
-      await db
-        .update(telephonySettings)
-        .set({ texmlAppId, updatedAt: new Date() })
-        .where(eq(telephonySettings.companyId, companyId));
-
-      console.log(`[TelephonyProvisioning] Created TeXML app: ${texmlAppId}`);
-    }
-
-    // Now reassign all phone numbers to the TeXML app
-    const result = await this.updateExistingPhoneNumbers(managedAccountId, companyId, texmlAppId);
+    // Reassign all phone numbers to the Credential Connection (NOT TeXML app)
+    // This routes inbound calls directly to WebRTC client without delay
+    const result = await this.updateExistingPhoneNumbers(managedAccountId, companyId, settings.credentialConnectionId);
 
     console.log(`[TelephonyProvisioning] Repair complete: ${result.updatedCount} phones repaired, ${result.failedCount} failed`);
 
