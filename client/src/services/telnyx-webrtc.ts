@@ -511,18 +511,33 @@ class TelnyxWebRTCManager {
     this.audioElement = audioElements.remote;
     console.log("[Telnyx WebRTC] 🔊 Using programmatic audio element (no React Fiber)");
 
-    // CRITICAL ICE OPTIMIZATION: Manual ICE server injection
-    // When iceServers are provided, we inject them directly with TURN credentials
-    // This eliminates the ~4 second delay waiting for ICE candidate discovery
+    // CRITICAL ICE OPTIMIZATION: Deep injection of relay policy
+    // Must pass iceTransportPolicy at BOTH SDK level AND rtcConfig level
+    // to ensure browser receives the directive directly
     const clientOptions: any = {
       login: sipUser,
       password: sipPass,
     };
     
-    // Let SDK manage ICE servers automatically - uses STUN for fastest connection
-    // Do NOT inject manual iceServers or force relay - causes TURN fallback delays
-    clientOptions.prefetchIceCandidates = true;
-    console.log("[Telnyx WebRTC] ⚡ SDK default ICE (STUN preferred for fastest connection)");
+    if (iceServers && iceServers.length > 0) {
+      // Level 1: SDK Standard options
+      clientOptions.iceServers = iceServers;
+      clientOptions.iceTransportPolicy = 'relay';
+      clientOptions.prefetchIceCandidates = false;
+      
+      // Level 2: Native RTCPeerConnection passthrough (CRITICAL)
+      // This forces the browser to obey: "No local candidates, no STUN, TURN only"
+      clientOptions.rtcConfig = {
+        iceServers: iceServers,
+        iceTransportPolicy: 'relay'
+      };
+      
+      console.log("[Telnyx WebRTC] ⚡ DEEP RELAY INJECTION: rtcConfig + iceTransportPolicy='relay'");
+    } else {
+      // Fallback if no TURN credentials provided
+      clientOptions.prefetchIceCandidates = true;
+      console.log("[Telnyx WebRTC] Using SDK default ICE (no TURN credentials)");
+    }
     
     this.client = new TelnyxRTC(clientOptions);
 
