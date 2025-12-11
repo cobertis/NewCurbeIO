@@ -825,9 +825,7 @@ export default function Billing() {
   // Sync phone numbers mutation
   const syncPhonesMutation = useMutation({
     mutationFn: async () => {
-      return await apiRequest('/api/billing/sync-phone-numbers', {
-        method: 'POST',
-      });
+      return await apiRequest('POST', '/api/billing/sync-phone-numbers');
     },
     onSuccess: (data: any) => {
       toast({
