@@ -360,10 +360,15 @@ async function assignConnectionToPhoneNumber(
   console.log(`[E911] Assigning credential connection ${connectionId} to phone number ${phoneNumberId}...`);
 
   try {
+    // CRITICAL FIX: Clear texml_application_id to route calls directly to WebRTC
+    // Per Telnyx docs, TeXML routing creates second SIP leg causing 4-6s audio delay
     const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
       method: "PATCH",
       headers: buildHeaders(config),
-      body: JSON.stringify({ connection_id: connectionId }),
+      body: JSON.stringify({ 
+        connection_id: connectionId,
+        texml_application_id: null  // Clear TeXML to enable direct WebRTC routing
+      }),
     });
 
     if (!response.ok) {
@@ -372,7 +377,7 @@ async function assignConnectionToPhoneNumber(
       return { success: false, error: `Failed to assign connection: ${response.status}` };
     }
 
-    console.log(`[E911] Credential connection assigned successfully`);
+    console.log(`[E911] Credential connection assigned successfully (TeXML cleared for direct WebRTC routing)`);
     return { success: true };
   } catch (error) {
     console.error("[E911] Assign connection error:", error);
