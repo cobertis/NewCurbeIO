@@ -521,15 +521,11 @@ class TelnyxWebRTCManager {
     
     if (iceServers && iceServers.length > 0) {
       // CRITICAL: Manual ICE injection with TURN credentials from /api/telnyx/turn-credentials
-      // This eliminates the ~4 second delay waiting for ICE candidate discovery
       // Per Telnyx docs: SIP credentials authenticate with TURN servers
+      // NOTE: forceRelayCandidate breaks incoming calls in Telnyx SDK - DO NOT USE
       clientOptions.iceServers = iceServers;
       clientOptions.prefetchIceCandidates = false; // Disable automatic - we have manual TURN credentials
-      // CRITICAL: Force relay candidates ONLY - skip local/STUN gathering entirely
-      // This is safe now because we have valid TURN credentials injected
-      // Reduces ICE gathering from ~1000ms to ~0ms
-      clientOptions.forceRelayCandidate = true;
-      console.log("[Telnyx WebRTC] ⚡ Manual ICE + FORCE RELAY: 0ms gathering expected");
+      console.log("[Telnyx WebRTC] ⚡ Manual ICE servers injected:", iceServers.length, "servers");
     } else {
       // Fallback to SDK prefetch if no servers provided
       clientOptions.prefetchIceCandidates = true;
