@@ -352,6 +352,21 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
     { value: "fax", label: "Fax" },
   ];
 
+  // Fetch pricing configuration to show configured prices
+  const { data: pricingData } = useQuery<{ pricing: { didLocal: string; didTollfree: string } }>({
+    queryKey: ['/api/telnyx/global-pricing'],
+    enabled: open,
+  });
+  
+  // Get price based on number type
+  const getConfiguredPrice = (numberType: string | undefined): string => {
+    if (!pricingData?.pricing) return "1.00";
+    if (numberType === "toll_free") {
+      return pricingData.pricing.didTollfree || "1.50";
+    }
+    return pricingData.pricing.didLocal || "1.00";
+  };
+
   const { data: numbersData, isLoading, refetch } = useQuery<{ 
     numbers: AvailablePhoneNumber[]; 
     totalCount?: number;
@@ -730,43 +745,9 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
                 <SelectTrigger className="w-full" data-testid="select-country">
                   <SelectValue placeholder="Country" />
                 </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
+                <SelectContent>
                   <SelectItem value="US">United States +1</SelectItem>
                   <SelectItem value="CA">Canada +1</SelectItem>
-                  <SelectItem value="GB">United Kingdom +44</SelectItem>
-                  <SelectItem value="MX">Mexico +52</SelectItem>
-                  <SelectItem value="AU">Australia +61</SelectItem>
-                  <SelectItem value="DE">Germany +49</SelectItem>
-                  <SelectItem value="FR">France +33</SelectItem>
-                  <SelectItem value="ES">Spain +34</SelectItem>
-                  <SelectItem value="IT">Italy +39</SelectItem>
-                  <SelectItem value="NL">Netherlands +31</SelectItem>
-                  <SelectItem value="BE">Belgium +32</SelectItem>
-                  <SelectItem value="AT">Austria +43</SelectItem>
-                  <SelectItem value="CH">Switzerland +41</SelectItem>
-                  <SelectItem value="SE">Sweden +46</SelectItem>
-                  <SelectItem value="NO">Norway +47</SelectItem>
-                  <SelectItem value="DK">Denmark +45</SelectItem>
-                  <SelectItem value="FI">Finland +358</SelectItem>
-                  <SelectItem value="IE">Ireland +353</SelectItem>
-                  <SelectItem value="PT">Portugal +351</SelectItem>
-                  <SelectItem value="PL">Poland +48</SelectItem>
-                  <SelectItem value="CZ">Czech Republic +420</SelectItem>
-                  <SelectItem value="BR">Brazil +55</SelectItem>
-                  <SelectItem value="AR">Argentina +54</SelectItem>
-                  <SelectItem value="CL">Chile +56</SelectItem>
-                  <SelectItem value="CO">Colombia +57</SelectItem>
-                  <SelectItem value="PE">Peru +51</SelectItem>
-                  <SelectItem value="JP">Japan +81</SelectItem>
-                  <SelectItem value="KR">South Korea +82</SelectItem>
-                  <SelectItem value="SG">Singapore +65</SelectItem>
-                  <SelectItem value="HK">Hong Kong +852</SelectItem>
-                  <SelectItem value="IN">India +91</SelectItem>
-                  <SelectItem value="PH">Philippines +63</SelectItem>
-                  <SelectItem value="NZ">New Zealand +64</SelectItem>
-                  <SelectItem value="ZA">South Africa +27</SelectItem>
-                  <SelectItem value="IL">Israel +972</SelectItem>
-                  <SelectItem value="AE">UAE +971</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -929,7 +910,7 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
                         {getCapabilityBadges(number.features)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className="font-medium">${number.cost_information.monthly_cost}</span>
+                        <span className="font-medium">${getConfiguredPrice(number.phone_number_type)}/mo</span>
                       </td>
                     </tr>
                   );
