@@ -1280,58 +1280,51 @@ function CallHistoryWithAutoPolling({ callLogsData, isLoadingCallLogs, billingFe
             <p className="text-sm mt-1">Your call history will appear here</p>
           </div>
         ) : (
-          <div className="space-y-3 max-h-[600px] overflow-y-auto">
+          <div className="space-y-2 max-h-[600px] overflow-y-auto">
             {callLogsData.logs.map((log) => {
               const isMissingRecording = callsMissingRecording.some(c => c.id === log.id);
               return (
-                <div key={log.id} className="p-4 rounded-lg bg-slate-50 dark:bg-muted/50 hover:bg-slate-100 dark:hover:bg-muted transition-colors">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className={`p-2.5 rounded-full ${log.direction === 'inbound' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
-                        {log.direction === 'inbound' ? <PhoneIncoming className="h-5 w-5 text-blue-600" /> : <PhoneOutgoing className="h-5 w-5 text-green-600" />}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <p className="font-medium text-slate-800 dark:text-foreground">
-                            {formatPhoneDisplay(log.direction === 'inbound' ? log.fromNumber : log.toNumber)}
-                          </p>
-                          {log.callerName && <span className="text-sm text-slate-500">({log.callerName})</span>}
-                        </div>
-                        <div className="flex items-center gap-2 text-sm text-slate-500">
-                          <span>{format(new Date(log.startedAt), "MMM dd, yyyy 'at' h:mm a")}</span>
-                          <span className="text-slate-300">|</span>
-                          <span className={log.status === 'answered' ? 'text-green-600' : log.status === 'failed' ? 'text-red-500' : 'text-amber-600'}>
-                            {log.status}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-4 text-right">
-                      {log.duration > 0 && (
-                        <div className="text-center min-w-[50px]">
-                          <p className="font-medium text-slate-700 dark:text-foreground">{Math.floor(log.duration / 60)}:{(log.duration % 60).toString().padStart(2, '0')}</p>
-                          <p className="text-xs text-slate-400">duration</p>
-                        </div>
-                      )}
-                      {log.cost && parseFloat(log.cost) > 0 && (
-                        <div className="text-center min-w-[60px]">
-                          <p className="font-medium text-amber-600">${parseFloat(log.cost).toFixed(4)}</p>
-                          <p className="text-xs text-slate-400">cost</p>
-                        </div>
-                      )}
-                      {isMissingRecording && billingFeaturesData?.recordingEnabled && (
-                        <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 min-w-[100px]">
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                          <span>Processing...</span>
-                        </div>
-                      )}
+                <div key={log.id} className="flex items-center gap-3 p-3 rounded-lg bg-slate-50 dark:bg-muted/50 hover:bg-slate-100 dark:hover:bg-muted transition-colors">
+                  <div className={`p-2 rounded-full shrink-0 ${log.direction === 'inbound' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
+                    {log.direction === 'inbound' ? <PhoneIncoming className="h-4 w-4 text-blue-600" /> : <PhoneOutgoing className="h-4 w-4 text-green-600" />}
+                  </div>
+                  <div className="min-w-[140px] shrink-0">
+                    <p className="font-medium text-slate-800 dark:text-foreground text-sm">
+                      {formatPhoneDisplay(log.direction === 'inbound' ? log.fromNumber : log.toNumber)}
+                    </p>
+                    <div className="flex items-center gap-1.5 text-xs text-slate-500">
+                      <span>{format(new Date(log.startedAt), "MMM dd 'at' h:mm a")}</span>
+                      <span className={log.status === 'answered' ? 'text-green-600' : log.status === 'failed' ? 'text-red-500' : 'text-amber-600'}>
+                        {log.status}
+                      </span>
                     </div>
                   </div>
-                  {log.recordingUrl && (
-                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                  {log.recordingUrl ? (
+                    <div className="flex-1">
                       <InlineAudioPlayer recordingUrl={log.recordingUrl} logId={log.id} />
                     </div>
+                  ) : isMissingRecording && billingFeaturesData?.recordingEnabled ? (
+                    <div className="flex-1 flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      <span>Processing audio...</span>
+                    </div>
+                  ) : (
+                    <div className="flex-1" />
                   )}
+                  <div className="flex items-center gap-3 shrink-0">
+                    {log.duration > 0 && (
+                      <div className="text-center min-w-[45px]">
+                        <p className="font-medium text-slate-700 dark:text-foreground text-sm">{Math.floor(log.duration / 60)}:{(log.duration % 60).toString().padStart(2, '0')}</p>
+                        <p className="text-[10px] text-slate-400">duration</p>
+                      </div>
+                    )}
+                    {log.cost && parseFloat(log.cost) > 0 && (
+                      <div className="text-center min-w-[55px]">
+                        <p className="font-medium text-amber-600 text-sm">${parseFloat(log.cost).toFixed(4)}</p>
+                        <p className="text-[10px] text-slate-400">cost</p>
+                      </div>
+                    )}
+                  </div>
                 </div>
               );
             })}
