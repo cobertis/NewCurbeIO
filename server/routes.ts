@@ -26665,13 +26665,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             // INBOUND CALL: Answer and dial to SIP credential
             console.log("[Telnyx Call Control] Incoming call - answering and dialing to WebRTC");
             
-            // Get SIP username from cache or DB
+            // Get SIP username and credential connection ID from cache or DB
             const cached = sipUsernameCache.get(companyId);
             let sipUsername: string | null = null;
+            let credentialConnectionId: string | null = null;
             
             if (cached && Date.now() - cached.timestamp < SIP_CACHE_TTL) {
               sipUsername = cached.username;
+              credentialConnectionId = (cached as any).connectionId || null;
             } else {
+              // Query both credentials and settings
               const [credential] = await db
                 .select({ sipUsername: telephonyCredentials.sipUsername })
                 .from(telephonyCredentials)
@@ -26684,9 +26687,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 .orderBy(desc(telephonyCredentials.lastUsedAt))
                 .limit(1);
               
+              const [settings] = await db
+                .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
+                .from(telephonySettings)
+                .where(eq(telephonySettings.companyId, companyId));
+              
               if (credential?.sipUsername) {
                 sipUsername = credential.sipUsername;
-                sipUsernameCache.set(companyId, { username: sipUsername, timestamp: Date.now() });
+                credentialConnectionId = settings?.credentialConnectionId || null;
+                sipUsernameCache.set(companyId, { 
+                  username: sipUsername, 
+                  timestamp: Date.now(),
+                  connectionId: credentialConnectionId 
+                } as any);
               }
             }
             
@@ -26745,7 +26758,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 ...(managedAccountId && { "X-Managed-Account-Id": managedAccountId })
               },
               body: JSON.stringify({
-                connection_id: undefined, // Will use the credential connection
+                connection_id: credentialConnectionId,
                 to: `sip:${sipUsername}@sip.telnyx.com`,
                 from: from,
                 answering_machine_detection: "disabled",
