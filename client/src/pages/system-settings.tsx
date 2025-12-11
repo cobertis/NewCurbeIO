@@ -307,6 +307,7 @@ function TelnyxPricingSection() {
             {renderPricingRow("CNAM /num/mo", "cnamLookupCost", "cnamLookup")}
             {renderPricingRow("E911 /num/mo", "e911AddressCost", "e911Address", "0.01")}
             {renderPricingRow("Port Out Fee", "portOutFeeCost", "portOutFee", "0.01")}
+            {renderPricingRow("Unreg E911 Call", "unregisteredE911Cost", "unregisteredE911", "1.00")}
           </CardContent>
         </Card>
 
