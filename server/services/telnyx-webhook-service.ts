@@ -171,9 +171,51 @@ export async function handleCallAnswered(event: TelnyxWebhookEvent): Promise<{ s
   console.log(`[Telnyx Webhook] call.answered - call: ${callControlId}`);
 
   try {
-    await db.update(callLogs)
-      .set({ status: "answered" })
-      .where(eq(callLogs.telnyxCallId, callControlId));
+    // Update call status
+    const [callLog] = await db.update(callLogs)
+      .set({ status: "answered", answeredAt: new Date() })
+      .where(eq(callLogs.telnyxCallId, callControlId))
+      .returning();
+
+    // If we have a call log and company, check if recording is enabled
+    if (callLog?.companyId) {
+      const [settings] = await db
+        .select()
+        .from(telephonySettings)
+        .where(eq(telephonySettings.companyId, callLog.companyId));
+
+      if (settings?.recordingEnabled) {
+        console.log(`[Telnyx Webhook] Recording enabled for company ${callLog.companyId}, starting recording...`);
+        
+        // Start recording via Telnyx Call Control API
+        try {
+          const telnyxApiKey = process.env.TELNYX_API_KEY;
+          if (telnyxApiKey) {
+            const response = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/record_start`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${telnyxApiKey}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                format: 'mp3',
+                channels: 'dual',
+                play_beep: false
+              })
+            });
+
+            if (response.ok) {
+              console.log(`[Telnyx Webhook] Recording started for call ${callControlId}`);
+            } else {
+              const errorText = await response.text();
+              console.error(`[Telnyx Webhook] Failed to start recording: ${response.status} - ${errorText}`);
+            }
+          }
+        } catch (recordError: any) {
+          console.error(`[Telnyx Webhook] Error starting recording:`, recordError.message);
+        }
+      }
+    }
 
     return { success: true };
   } catch (error: any) {
