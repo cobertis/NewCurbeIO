@@ -5210,3 +5210,161 @@ export const insertDeploymentJobSchema = createInsertSchema(deploymentJobs).omit
   id: true,
   completedAt: true,
 });
+
+// =====================================================
+// VIP PASS SYSTEM (Apple Wallet Integration)
+// =====================================================
+
+// VIP Pass Designs - Per-company configuration for their VIP Pass design
+export const vipPassDesigns = pgTable("vip_pass_designs", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Pass identity
+  passName: text("pass_name").notNull().default("VIP Gold Pass"),
+  passDescription: text("pass_description").notNull().default("VIP Member Pass"),
+  logoText: text("logo_text").notNull().default("VIP GOLD"),
+  
+  // Colors (RGB format for Apple Wallet)
+  backgroundColor: text("background_color").notNull().default("rgb(0,0,0)"),
+  foregroundColor: text("foreground_color").notNull().default("rgb(255,255,255)"),
+  labelColor: text("label_color").notNull().default("rgb(200,200,200)"),
+  
+  // Field configurations (JSON stored as text)
+  primaryFields: text("primary_fields"),
+  secondaryFields: text("secondary_fields"),
+  auxiliaryFields: text("auxiliary_fields"),
+  backFields: text("back_fields"),
+  
+  // Images (stored as Object Storage URLs or base64)
+  iconUrl: text("icon_url"),
+  logoUrl: text("logo_url"),
+  stripUrl: text("strip_url"),
+  backgroundUrl: text("background_url"),
+  
+  // Apple certificates (stored paths/references)
+  passTypeIdentifier: text("pass_type_identifier"),
+  teamIdentifier: text("team_identifier"),
+  
+  // Pass style
+  passStyle: text("pass_style").notNull().default("generic"),
+  
+  // Barcode configuration
+  barcodeFormat: text("barcode_format").default("PKBarcodeFormatQR"),
+  barcodeMessage: text("barcode_message").default("{{serialNumber}}"),
+  
+  // Status
+  isActive: boolean("is_active").notNull().default(true),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// VIP Pass Instances - Individual issued passes
+export const vipPassInstances = pgTable("vip_pass_instances", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  designId: text("design_id").notNull().references(() => vipPassDesigns.id, { onDelete: "cascade" }),
+  
+  // Pass identification
+  serialNumber: text("serial_number").notNull().unique(),
+  authenticationToken: text("authentication_token").notNull(),
+  
+  // Linked contact (optional)
+  contactId: text("contact_id").references(() => contacts.id, { onDelete: "set null" }),
+  
+  // Recipient info
+  recipientName: text("recipient_name"),
+  recipientEmail: text("recipient_email"),
+  recipientPhone: text("recipient_phone"),
+  
+  // Pass data
+  memberId: text("member_id"),
+  tierLevel: text("tier_level").default("Gold"),
+  
+  // Status
+  status: text("status").notNull().default("active"),
+  
+  // Tracking
+  downloadCount: integer("download_count").notNull().default(0),
+  lastDownloadAt: timestamp("last_download_at"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// VIP Pass Devices - Device registrations for push notifications
+export const vipPassDevices = pgTable("vip_pass_devices", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  passInstanceId: text("pass_instance_id").notNull().references(() => vipPassInstances.id, { onDelete: "cascade" }),
+  
+  // Apple device info
+  deviceLibraryIdentifier: text("device_library_identifier").notNull(),
+  pushToken: text("push_token").notNull(),
+  
+  // Status
+  isActive: boolean("is_active").notNull().default(true),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  devicePassUnique: uniqueIndex("vip_pass_devices_device_pass_unique").on(table.deviceLibraryIdentifier, table.passInstanceId),
+}));
+
+// VIP Pass Notifications - Log of sent push notifications
+export const vipPassNotifications = pgTable("vip_pass_notifications", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Target (either single pass or all passes)
+  passInstanceId: text("pass_instance_id").references(() => vipPassInstances.id, { onDelete: "set null" }),
+  targetType: text("target_type").notNull().default("single"),
+  
+  // Notification content
+  message: text("message").notNull(),
+  
+  // Results
+  sentCount: integer("sent_count").notNull().default(0),
+  successCount: integer("success_count").notNull().default(0),
+  failedCount: integer("failed_count").notNull().default(0),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Insert Schemas for VIP Pass
+export const insertVipPassDesignSchema = createInsertSchema(vipPassDesigns).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertVipPassInstanceSchema = createInsertSchema(vipPassInstances).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertVipPassDeviceSchema = createInsertSchema(vipPassDevices).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertVipPassNotificationSchema = createInsertSchema(vipPassNotifications).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types for VIP Pass
+export type VipPassDesign = typeof vipPassDesigns.$inferSelect;
+export type InsertVipPassDesign = z.infer<typeof insertVipPassDesignSchema>;
+
+export type VipPassInstance = typeof vipPassInstances.$inferSelect;
+export type InsertVipPassInstance = z.infer<typeof insertVipPassInstanceSchema>;
+
+export type VipPassDevice = typeof vipPassDevices.$inferSelect;
+export type InsertVipPassDevice = z.infer<typeof insertVipPassDeviceSchema>;
+
+export type VipPassNotification = typeof vipPassNotifications.$inferSelect;
+export type InsertVipPassNotification = z.infer<typeof insertVipPassNotificationSchema>;
