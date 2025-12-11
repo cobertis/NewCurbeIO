@@ -1055,30 +1055,10 @@ export class TelephonyProvisioningService {
       return { success: false, repairedCount: 0, errors: ["Company has no Telnyx managed account"] };
     }
 
-    // Check if Call Control App is configured - use it if available
-    if (settings.callControlAppId) {
-      console.log(`[TelephonyProvisioning] Using Call Control App routing: ${settings.callControlAppId}`);
-      
-      // CRITICAL: Ensure webhook URL is set on the Call Control App
-      const webhookBaseUrl = `https://${process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS}`;
-      if (webhookBaseUrl && webhookBaseUrl !== "https://undefined") {
-        console.log(`[TelephonyProvisioning] Updating Call Control App webhook URL to ${webhookBaseUrl}...`);
-        const webhookResult = await this.updateCallControlAppWebhook(
-          managedAccountId,
-          settings.callControlAppId,
-          webhookBaseUrl,
-          companyId
-        );
-        if (webhookResult.success) {
-          console.log(`[TelephonyProvisioning] Webhook URL updated successfully`);
-          // Update the database with the webhook URL
-          await db.update(telephonySettings)
-            .set({ webhookBaseUrl })
-            .where(eq(telephonySettings.companyId, companyId));
-        } else {
-          console.log(`[TelephonyProvisioning] Webhook update failed: ${webhookResult.error}`);
-        }
-      }
+    // DIRECT ROUTING: Assign phone numbers directly to Credential Connection
+    // This provides ZERO latency for inbound calls (no Call Control webhook delay)
+    if (settings.credentialConnectionId) {
+      console.log(`[TelephonyProvisioning] Using DIRECT routing to Credential Connection: ${settings.credentialConnectionId}`);
       
       // Get all phone numbers
       const phoneNumbers = await db
@@ -1094,20 +1074,38 @@ export class TelephonyProvisioningService {
       let repairedCount = 0;
 
       for (const phoneNumber of phoneNumbers) {
-        const result = await this.assignPhoneNumberToCallControlApp(
-          managedAccountId,
-          phoneNumber.telnyxPhoneNumberId,
-          settings.callControlAppId
-        );
+        try {
+          // Assign directly to Credential Connection (not Call Control App)
+          const response = await this.makeApiRequest(
+            managedAccountId,
+            `phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
+            "PATCH",
+            { 
+              connection_id: settings.credentialConnectionId,
+              call_control_application_id: null // Clear Call Control App for direct routing
+            }
+          );
 
-        if (result.success) {
+          if (!response.ok) {
+            const errorText = await response.text();
+            errors.push(`Failed to repair ${phoneNumber.phoneNumber}: HTTP ${response.status} - ${errorText}`);
+            continue;
+          }
+
+          // Update database
+          await db
+            .update(telnyxPhoneNumbers)
+            .set({ connectionId: settings.credentialConnectionId, updatedAt: new Date() })
+            .where(eq(telnyxPhoneNumbers.id, phoneNumber.id));
+
+          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Credential Connection (direct routing)`);
           repairedCount++;
-        } else {
-          errors.push(`Failed to repair ${phoneNumber.phoneNumber}: ${result.error}`);
+        } catch (error) {
+          errors.push(`Error repairing ${phoneNumber.phoneNumber}: ${error instanceof Error ? error.message : 'Unknown'}`);
         }
       }
 
-      console.log(`[TelephonyProvisioning] Repair complete (Call Control): ${repairedCount} phones repaired`);
+      console.log(`[TelephonyProvisioning] Repair complete (DIRECT): ${repairedCount} phones repaired`);
       return { success: errors.length === 0, repairedCount, errors };
     }
 
