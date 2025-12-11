@@ -1,0 +1,269 @@
+Thu Dec 11 2025 10:56:08 GMT-0500 (Eastern Standard Time) | sip.Transport | Received WebSocket text message:
+
+INVITE sip:curbeb5325600gm3h@1vfiu1o1sft2.invalid;transport=ws SIP/2.0
+Record-Route: <sip:192.76.120.10:7443;transport=ws;r2=on;lr;ftag=1mpgm3SjpyFNc>
+Record-Route: <sip:10.255.0.1;r2=on;lr;ftag=1mpgm3SjpyFNc>
+Record-Route: <sip:10.13.203.184:6050;lr>
+Via: SIP/2.0/WSS 192.76.120.10:7443;branch=z9hG4bK498a.c1e5363bf945e1fbff49fd3eed832495.0
+Via: SIP/2.0/UDP 10.13.203.184:6050;rport=6050;branch=z9hG4bK498a.385b0f02fde9e744e3bed7928cf20284.0
+v:SIP/2.0/UDP 10.231.27.68:6000;received=10.231.27.68;rport=6000;branch=z9hG4bKX461QK6g5UrZB
+Max-Forwards:58
+f:"COBERTIS"<sip:13058423033@sip.telnyx.com>;tag=1mpgm3SjpyFNc
+t:<sip:curbeb5325600gm3h@10.13.203.184:6050;transport=UDP>
+i:d5c6b8ff-d024-447a-b2b9-25fa2f5a2512
+CSeq:108180492 INVITE
+m:<sip:mod_sofia@10.231.27.68:6000>
+Allow:INVITE,ACK,BYE,CANCEL,OPTIONS,MESSAGE,INFO,UPDATE,REFER,NOTIFY
+k:timer,path
+u:talk,hold,conference,refer
+Privacy:none
+c:application/sdp
+Content-Disposition:session
+l:1133
+X-Telnyx-Connection-id:2847735664496084940
+X-Telnyx-Call-Control-ID:v3:QLeGhnHET6cObESCkB3ZQig700YqpNU7M72WcLy1pS4n4kQIrjolEg
+X-Telnyx-Session-ID:e83f0678-d6a9-11f0-abdc-02420aef3f20
+X-Telnyx-Leg-ID:e842c10a-d6a9-11f0-9157-02420aef3f20
+P-Asserted-Identity:"COBERTIS"<sip:13058423033@sip.telnyx.com;verstat=No-TN-Validation>
+
+v=0
+o=Telnyx 1765451128 1765451129 IN IP4 50.114.147.74
+s=Telnyx
+c=IN IP4 50.114.147.74
+t=0 0
+a=msid-semantic: WMS MW4MbfSCb9gQI9kvE03CoBpGau2sFvqm
+m=audio 17440 RTP/SAVPF 0 8 9 102 101 103
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:9 G722/8000
+a=rtpmap:102 opus/48000/2
+a=fmtp:102 useinbandfec=1; maxaveragebitrate=30000; maxplaybackrate=48000; ptime=20; minptime=10; maxptime=40
+a=rtpmap:101 telephone-event/8000
+a=rtpmap:103 telephone-event/48000
+a=sendrecv
+a=fingerprint:sha-256 CB:85:E3:AB:6F:8D:F5:7C:72:65:23:4D:86:A3:16:A1:E4:D3:7B:44:02:14:BC:3E:2D:BB:9C:43:B4:46:36:AA
+a=setup:actpass
+a=rtcp-mux
+a=rtcp:17440 IN IP4 50.114.147.74
+a=ssrc:1231816408 cname:wLRcTMJBNUhUfsyb
+a=ssrc:1231816408 msid:MW4MbfSCb9gQI9kvE03CoBpGau2sFvqm a0
+a=ssrc:1231816408 mslabel:MW4MbfSCb9gQI9kvE03CoBpGau2sFvqm
+a=ssrc:1231816408 label:MW4MbfSCb9gQI9kvE03CoBpGau2sFvqma0
+a=ice-ufrag:Lg3jkA7bnJdt8n5B
+a=ice-pwd:HHhGcEJCc0jCwIhLnZKUjWWW
+a=candidate:9034797426 1 udp 2130706431 50.114.147.74 17440 typ host generation 0
+a=candidate:9034797426 2 udp 2130706431 50.114.147.74 17440 typ host generation 0
+a=ptime:20
+
+
+injected.js:37 Thu Dec 11 2025 10:56:08 GMT-0500 (Eastern Standard Time) | sip.Transport | Sending WebSocket message:
+
+SIP/2.0 100 Trying
+Via: SIP/2.0/WSS 192.76.120.10:7443;branch=z9hG4bK498a.c1e5363bf945e1fbff49fd3eed832495.0
+Via: SIP/2.0/UDP 10.13.203.184:6050;rport=6050;branch=z9hG4bK498a.385b0f02fde9e744e3bed7928cf20284.0
+Via: SIP/2.0/UDP 10.231.27.68:6000;received=10.231.27.68;rport=6000;branch=z9hG4bKX461QK6g5UrZB
+From: "COBERTIS"<sip:13058423033@sip.telnyx.com>;tag=1mpgm3SjpyFNc
+To: <sip:curbeb5325600gm3h@10.13.203.184:6050;transport=UDP>
+CSeq: 108180492 INVITE
+Call-ID: d5c6b8ff-d024-447a-b2b9-25fa2f5a2512
+Supported: outbound
+User-Agent: SIP.js/0.21.1
+Content-Length: 0
+
+
+
+injected.js:37 Thu Dec 11 2025 10:56:08 GMT-0500 (Eastern Standard Time) | sip.Invitation | Invitation.progress
+injected.js:37 Thu Dec 11 2025 10:56:08 GMT-0500 (Eastern Standard Time) | sip.invite-dialog | INVITE dialog d5c6b8ff-d024-447a-b2b9-25fa2f5a2512ele7t2fvc21mpgm3SjpyFNc constructed
+injected.js:37 Thu Dec 11 2025 10:56:08 GMT-0500 (Eastern Standard Time) | sip.Transport | Sending WebSocket message:
+
+SIP/2.0 180 Ringing
+Via: SIP/2.0/WSS 192.76.120.10:7443;branch=z9hG4bK498a.c1e5363bf945e1fbff49fd3eed832495.0
+Via: SIP/2.0/UDP 10.13.203.184:6050;rport=6050;branch=z9hG4bK498a.385b0f02fde9e744e3bed7928cf20284.0
+Via: SIP/2.0/UDP 10.231.27.68:6000;received=10.231.27.68;rport=6000;branch=z9hG4bKX461QK6g5UrZB
+From: "COBERTIS"<sip:13058423033@sip.telnyx.com>;tag=1mpgm3SjpyFNc
+To: <sip:curbeb5325600gm3h@10.13.203.184:6050;transport=UDP>;tag=ele7t2fvc2
+CSeq: 108180492 INVITE
+Call-ID: d5c6b8ff-d024-447a-b2b9-25fa2f5a2512
+Supported: outbound
+User-Agent: SIP.js/0.21.1
+Record-Route: <sip:192.76.120.10:7443;transport=ws;r2=on;lr;ftag=1mpgm3SjpyFNc>
+Record-Route: <sip:10.255.0.1;r2=on;lr;ftag=1mpgm3SjpyFNc>
+Record-Route: <sip:10.13.203.184:6050;lr>
+Contact: <sip:curbeb5325600gm3h@1vfiu1o1sft2.invalid;transport=ws>
+Content-Length: 0
+
+
+
+injected.js:37 [SIP.js WebRTC] Extracted caller info: {callerNumber: '+13058423033', callerName: 'COBERTIS', isOutgoing: false}
+injected.js:37 [SIP.js WebRTC] Incoming call from: +13058423033 Name: COBERTIS
+injected.js:37 [SIP.js WebRTC] Extracted caller info: {callerNumber: '+13058423033', callerName: 'COBERTIS', isOutgoing: false}
+injected.js:37 [WebPhone UI] Incoming call info: {remoteCallerNumber: '+13058423033', callerName: 'COBERTIS', direction: 'inbound', state: 'ringing', destinationNumber: undefined}
+injected.js:37 [Telnyx Caller Lookup] Looking up: +13058423033
+2injected.js:37 [WebPhone] 📱 Telnyx incoming call detected - opening phone panel
+injected.js:37 [Telnyx Caller Lookup] Looking up: +13058423033
+injected.js:37 [Telnyx Caller Lookup] Result: {found: false}
+injected.js:37 [Telnyx Caller Lookup] Result: {found: false}
+injected.js:37 [SIP.js WebRTC] Answering call, current state: Initial
+injected.js:37 [SIP.js WebRTC] Proceeding to answer call...
+injected.js:37 [SIP.js WebRTC] ICE config: {"iceTransportPolicy":"all","iceServersCount":3,"turnServersCount":2}
+injected.js:37 [SIP.js WebRTC] Zero-latency ICE config: {"iceTransportPolicy":"all","iceServersCount":3}
+injected.js:37 Thu Dec 11 2025 10:56:09 GMT-0500 (Eastern Standard Time) | sip.Invitation | Invitation.accept
+injected.js:37 Thu Dec 11 2025 10:56:09 GMT-0500 (Eastern Standard Time) | sip.Invitation | Session d5c6b8ff-d024-447a-b2b9-25fa2f5a25121mpgm3SjpyFNc transitioned to state Establishing
+injected.js:37 [SIP.js WebRTC] Session state changed: Establishing
+injected.js:37 [SIP.js WebRTC] Call establishing...
+injected.js:37 [SIP.js WebRTC] Answer state change: Establishing
+injected.js:37 [WebPhone UI] Incoming call info: {remoteCallerNumber: '+13058423033', callerName: 'COBERTIS', direction: 'inbound', state: 'establishing', destinationNumber: undefined}
+injected.js:37 [Telnyx Caller Lookup] Looking up: +13058423033
+injected.js:37 [Telnyx Caller Lookup] Result: {found: false}
+injected.js:37 Thu Dec 11 2025 10:56:15 GMT-0500 (Eastern Standard Time) | sip.Transport | Sending WebSocket message:
+
+SIP/2.0 200 OK
+Via: SIP/2.0/WSS 192.76.120.10:7443;branch=z9hG4bK498a.c1e5363bf945e1fbff49fd3eed832495.0
+Via: SIP/2.0/UDP 10.13.203.184:6050;rport=6050;branch=z9hG4bK498a.385b0f02fde9e744e3bed7928cf20284.0
+Via: SIP/2.0/UDP 10.231.27.68:6000;received=10.231.27.68;rport=6000;branch=z9hG4bKX461QK6g5UrZB
+From: "COBERTIS"<sip:13058423033@sip.telnyx.com>;tag=1mpgm3SjpyFNc
+To: <sip:curbeb5325600gm3h@10.13.203.184:6050;transport=UDP>;tag=ele7t2fvc2
+CSeq: 108180492 INVITE
+Call-ID: d5c6b8ff-d024-447a-b2b9-25fa2f5a2512
+Supported: outbound
+User-Agent: SIP.js/0.21.1
+Record-Route: <sip:192.76.120.10:7443;transport=ws;r2=on;lr;ftag=1mpgm3SjpyFNc>
+Record-Route: <sip:10.255.0.1;r2=on;lr;ftag=1mpgm3SjpyFNc>
+Record-Route: <sip:10.13.203.184:6050;lr>
+Allow: ACK,BYE,CANCEL,INFO,INVITE,MESSAGE,NOTIFY,OPTIONS,PRACK,REFER,REGISTER,SUBSCRIBE
+Contact: <sip:curbeb5325600gm3h@1vfiu1o1sft2.invalid;transport=ws>
+Content-Type: application/sdp
+Content-Length: 1321
+
+v=0
+o=- 1850845263179837515 2 IN IP4 127.0.0.1
+s=-
+t=0 0
+a=msid-semantic: WMS dfd3ea7b-2d31-42b9-ae80-0589f1c2470b
+m=audio 63682 RTP/SAVPF 0 8 9 102 101 103
+c=IN IP4 71.145.228.252
+a=rtcp:9 IN IP4 0.0.0.0
+a=candidate:3532020896 1 udp 2122194687 71.145.228.252 63682 typ host generation 0 network-id 2 network-cost 10
+a=candidate:4086123334 1 udp 2122262783 2600:1700:3d5e:c000:9c8:d4c1:eac0:fb3e 56065 typ host generation 0 network-id 1 network-cost 10
+a=candidate:741115956 1 tcp 1518214911 71.145.228.252 9 typ host tcptype active generation 0 network-id 2 network-cost 10
+a=candidate:220700626 1 tcp 1518283007 2600:1700:3d5e:c000:9c8:d4c1:eac0:fb3e 9 typ host tcptype active generation 0 network-id 1 network-cost 10
+a=ice-ufrag:QzCp
+a=ice-pwd:Xk7eXvjSmvlasCZcPKRUEacz
+a=ice-options:trickle
+a=fingerprint:sha-256 B3:FD:A6:9F:94:BF:A2:00:90:96:07:35:92:42:0A:AE:EA:10:DA:1C:C4:99:2A:A7:4F:29:06:14:37:02:6F:A0
+a=setup:active
+a=mid:0
+a=sendrecv
+a=rtcp-mux
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:9 G722/8000
+a=rtpmap:102 opus/48000/2
+a=fmtp:102 minptime=10;useinbandfec=1
+a=rtpmap:101 telephone-event/8000
+a=rtpmap:103 telephone-event/48000
+a=ssrc:1685866072 cname:X4FpTwL6g+iQxckO
+a=ssrc:1685866072 msid:dfd3ea7b-2d31-42b9-ae80-0589f1c2470b 2bcc70b6-7333-45c4-9564-de1daf548095
+
+
+injected.js:37 Thu Dec 11 2025 10:56:15 GMT-0500 (Eastern Standard Time) | sip.Invitation | Session d5c6b8ff-d024-447a-b2b9-25fa2f5a25121mpgm3SjpyFNc transitioned to state Established
+injected.js:37 [SIP.js WebRTC] Session state changed: Established
+injected.js:37 [SIP.js WebRTC] Call established
+injected.js:37 [SIP.js WebRTC] Answer state change: Established
+injected.js:37 [SIP.js WebRTC] Call established - setting up remote media
+injected.js:37 [SIP.js WebRTC] Setting up remote media...
+injected.js:37 [SIP.js WebRTC] Checking 1 receivers for audio tracks
+injected.js:37 [SIP.js WebRTC] Found existing audio track from receiver
+injected.js:37 [Telnyx Caller Lookup] Looking up: +13058423033
+injected.js:37 [SIP.js WebRTC] Audio play error: The play() request was interrupted by a new load request. https://goo.gl/LdLk22
+(anonymous) @ injected.js:37
+(anonymous) @ telnyx-webrtc.ts:418
+Promise.catch
+setupRemoteAudio @ telnyx-webrtc.ts:417
+(anonymous) @ telnyx-webrtc.ts:525
+(anonymous) @ sip__js.js?v=e90720fb:122
+emit @ sip__js.js?v=e90720fb:122
+stateTransition @ sip__js.js?v=e90720fb:3741
+(anonymous) @ sip__js.js?v=e90720fb:3998
+Promise.then
+accept @ sip__js.js?v=e90720fb:3985
+answerCall @ telnyx-webrtc.ts:934
+(anonymous) @ WebPhoneFloatingWindow.tsx:1379
+callCallback2 @ chunk-RPCDYKBN.js?v=e90720fb:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=e90720fb:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=e90720fb:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=e90720fb:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=e90720fb:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=e90720fb:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=e90720fb:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=e90720fb:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=e90720fb:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=e90720fb:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=e90720fb:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=e90720fb:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=e90720fb:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=e90720fb:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=e90720fb:5449Understand this error
+injected.js:37 [SIP.js WebRTC] Call accept() completed
+injected.js:37 [SIP.js WebRTC] Remote audio playing via receiver
+injected.js:37 Thu Dec 11 2025 10:56:15 GMT-0500 (Eastern Standard Time) | sip.Transport | Received WebSocket text message:
+
+ACK sip:curbeb5325600gm3h@1vfiu1o1sft2.invalid;transport=ws SIP/2.0
+Via: SIP/2.0/WSS 192.76.120.10:7443;branch=z9hG4bK498a.650946a8d0b82eae199ff089ef07fe2e.0
+Via: SIP/2.0/UDP 10.13.203.184:6050;rport=6050;branch=z9hG4bK498a.3b6737bdbe0f8c6337890097733fe56c.0
+v:SIP/2.0/UDP 10.231.27.68:6000;received=10.231.27.68;rport=6000;branch=z9hG4bK9gpBDrgU263Zp
+Max-Forwards:68
+f:"COBERTIS"<sip:13058423033@sip.telnyx.com>;tag=1mpgm3SjpyFNc
+t:<sip:curbeb5325600gm3h@10.13.203.184:6050;transport=UDP>;tag=ele7t2fvc2
+i:d5c6b8ff-d024-447a-b2b9-25fa2f5a2512
+CSeq:108180492 ACK
+m:<sip:mod_sofia@10.231.27.68:6000>
+l:0
+
+
+
+injected.js:37 Thu Dec 11 2025 10:56:15 GMT-0500 (Eastern Standard Time) | sip.invite-dialog | INVITE dialog d5c6b8ff-d024-447a-b2b9-25fa2f5a2512ele7t2fvc21mpgm3SjpyFNc received ACK request
+injected.js:37 Thu Dec 11 2025 10:56:15 GMT-0500 (Eastern Standard Time) | sip.Invitation | Session.onAckRequest
+injected.js:37 [Telnyx Caller Lookup] Result: {found: false}
+injected.js:37 Thu Dec 11 2025 10:56:22 GMT-0500 (Eastern Standard Time) | sip.Transport | Received WebSocket text message:
+
+BYE sip:curbeb5325600gm3h@1vfiu1o1sft2.invalid;transport=ws SIP/2.0
+Via: SIP/2.0/WSS 192.76.120.10:7443;branch=z9hG4bK598a.2f48f7077e82dc7bc91d5b33945d560e.0
+Via: SIP/2.0/UDP 10.13.203.184:6050;rport=6050;branch=z9hG4bK598a.14886ad87f14bd1f4bfec6eac24a7ef1.0
+v:SIP/2.0/UDP 10.231.27.68:6000;received=10.231.27.68;rport=6000;branch=z9hG4bKKBK3y6ry5Z2ta
+Max-Forwards:68
+f:"COBERTIS"<sip:13058423033@sip.telnyx.com>;tag=1mpgm3SjpyFNc
+t:<sip:curbeb5325600gm3h@10.13.203.184:6050;transport=UDP>;tag=ele7t2fvc2
+i:d5c6b8ff-d024-447a-b2b9-25fa2f5a2512
+CSeq:108180493 BYE
+Allow:INVITE,ACK,BYE,CANCEL,OPTIONS,MESSAGE,INFO,UPDATE,REFER,NOTIFY
+k:timer,path
+Reason:RELEASE_CAUSE;cause=1;text="User ends call"
+l:0
+
+
+
+injected.js:37 Thu Dec 11 2025 10:56:22 GMT-0500 (Eastern Standard Time) | sip.invite-dialog | INVITE dialog d5c6b8ff-d024-447a-b2b9-25fa2f5a2512ele7t2fvc21mpgm3SjpyFNc received BYE request
+injected.js:37 Thu Dec 11 2025 10:56:22 GMT-0500 (Eastern Standard Time) | sip.Invitation | Session.onByeRequest
+injected.js:37 Thu Dec 11 2025 10:56:22 GMT-0500 (Eastern Standard Time) | sip.Transport | Sending WebSocket message:
+
+SIP/2.0 200 OK
+Via: SIP/2.0/WSS 192.76.120.10:7443;branch=z9hG4bK598a.2f48f7077e82dc7bc91d5b33945d560e.0
+Via: SIP/2.0/UDP 10.13.203.184:6050;rport=6050;branch=z9hG4bK598a.14886ad87f14bd1f4bfec6eac24a7ef1.0
+Via: SIP/2.0/UDP 10.231.27.68:6000;received=10.231.27.68;rport=6000;branch=z9hG4bKKBK3y6ry5Z2ta
+From: "COBERTIS"<sip:13058423033@sip.telnyx.com>;tag=1mpgm3SjpyFNc
+To: <sip:curbeb5325600gm3h@10.13.203.184:6050;transport=UDP>;tag=ele7t2fvc2
+CSeq: 108180493 BYE
+Call-ID: d5c6b8ff-d024-447a-b2b9-25fa2f5a2512
+Supported: outbound
+User-Agent: SIP.js/0.21.1
+Content-Length: 0
+
+
+
+injected.js:37 Thu Dec 11 2025 10:56:22 GMT-0500 (Eastern Standard Time) | sip.Invitation | Session d5c6b8ff-d024-447a-b2b9-25fa2f5a25121mpgm3SjpyFNc transitioned to state Terminated
+injected.js:37 [SIP.js WebRTC] Session state changed: Terminated
+injected.js:37 [SIP.js WebRTC] Call terminated
+injected.js:37 [SIP.js WebRTC] Answer state change: Terminated
+injected.js:37 Thu Dec 11 2025 10:56:22 GMT-0500 (Eastern Standard Time) | sip.Invitation | Session d5c6b8ff-d024-447a-b2b9-25fa2f5a25121mpgm3SjpyFNc in state Terminated is being disposed
+injected.js:37 Thu Dec 11 2025 10:56:22 GMT-0500 (Eastern Standard Time) | sip.invite-dialog | INVITE dialog d5c6b8ff-d024-447a-b2b9-25fa2f5a2512ele7t2fvc21mpgm3SjpyFNc destroyed
