@@ -1,0 +1,126 @@
+SISTEMA INTEGRAL DE BILLING, WALLET Y TELEFONÍA (TELNYX)
+OBJETIVO: Construir un sistema de facturación completo ("Wallet System") integrado en el CRM. El sistema debe gestionar saldo prepago, cobrar llamadas en tiempo real basándose en tarifas específicas, gestionar suscripciones mensuales de números/features y mostrar un historial de consumo detallado al cliente.
+
+DATOS CRÍTICOS (COSTOS REALES): He analizado mi contrato con Telnyx. Mis costos base (Transporte + Call Control) son:
+
+
+Costo Inbound: $0.0049/min ($0.0032 transp + $0.0017 process).
+
+
+
+Costo Outbound: $0.0064/min ($0.0047 transp + $0.0017 process).
+
+
+
+Costo Grabación: $0.0017/min.
+
+
+Costo Mensual Número: $0.75.
+
+Costo Mensual CNAM: $0.40 (Caller ID Lookup).
+
+INSTRUCCIONES DE IMPLEMENTACIÓN PASO A PASO:
+1. BASE DE DATOS (NUEVAS TABLAS)
+Modifica el esquema (schema.ts o equivalente) para agregar:
+
+wallets:
+
+id, user_id (FK), balance (Decimal, default 0.0000), currency (default 'USD').
+
+transactions:
+
+id, wallet_id (FK), amount (Decimal, negativo para gastos, positivo para recargas), type (enum: 'call_cost', 'top_up', 'monthly_fee', 'surcharge'), description (Texto), reference_id (ID de llamada o pago), created_at.
+
+call_logs:
+
+id, user_id, telnyx_call_id (Unique), direction ('inbound'/'outbound'), from_number, to_number, duration_seconds, total_cost, recording_url, status, created_at.
+
+user_features (o columnas en users):
+
+is_recording_enabled (Boolean, default false).
+
+is_cnam_enabled (Boolean, default false).
+
+2. CONFIGURACIÓN DE PRECIOS (BACKEND)
+Crea un archivo de configuración o constante PRICING_CONFIG con estos valores de VENTA AL CLIENTE (incluyen mi margen de ganancia):
+
+TypeScript
+
+export const PRICING = {
+  usage: {
+    // Venta: $0.015 (Costo real $0.0049) -> Margen ~3x
+    inbound_minute: 0.015,
+    // Venta: $0.02 (Costo real $0.0064) -> Margen ~3x
+    outbound_minute: 0.02,
+    // Venta: $0.005 (Costo real $0.0017) -> Margen ~3x
+    recording_minute: 0.005,
+    // Venta: $0.01 (Costo estimado $0.004) -> Margen ~2.5x
+    cnam_lookup_per_call: 0.01
+  },
+  monthly: {
+    // Venta: $1.50 (Costo real $0.75) -> Margen 2x
+    number_rental: 1.50,
+    // Venta: $1.00 (Costo real $0.40) -> Margen 2.5x
+    cnam_subscription: 1.00
+  }
+};
+3. LÓGICA DE COBRO (WEBHOOKS)
+A. Webhook call.completed (Calculadora de Costos): En el endpoint que recibe los eventos de Telnyx, implementa esta lógica exacta:
+
+Busca al usuario dueño del número.
+
+Determina la tarifa base (inbound o outbound).
+
+Verifica Features:
+
+Si user.is_recording_enabled es TRUE, suma PRICING.usage.recording_minute a la tarifa por minuto.
+
+Si user.is_cnam_enabled es TRUE y es inbound, suma un cargo fijo único de PRICING.usage.cnam_lookup_per_call.
+
+Calcula Total: (duration_seconds / 60) * tarifa_final + cargos_fijos.
+
+Transacción Atómica:
+
+Resta del wallet.balance.
+
+Crea registro en transactions.
+
+Guarda/Actualiza call_logs con el costo final y la URL de grabación (si existe).
+
+B. Webhook call.initiated (Guardia de Seguridad):
+
+Antes de conectar la llamada, verifica: if (wallet.balance <= 0).
+
+Si no hay saldo, rechaza la llamada o reproduce un mensaje de "Saldo insuficiente" y cuelga.
+
+4. AUTOMATIZACIÓN MENSUAL (CRON JOB SIMULADO)
+Crea un endpoint de administración (/api/admin/process-monthly-fees) que:
+
+Itere sobre usuarios con números activos.
+
+Reste PRICING.monthly.number_rental del Wallet.
+
+Si tienen is_cnam_enabled, reste PRICING.monthly.cnam_subscription.
+
+Registre estas transacciones como type: 'monthly_fee'.
+
+5. INTERFAZ DE USUARIO (FRONTEND)
+A. Widget de Wallet:
+
+Muestra el saldo actual grande y claro en el Header/Dashboard.
+
+Botón "Recargar Saldo" (Simulado por ahora: un botón que añade $10 para pruebas).
+
+B. Página "Historial de Llamadas":
+
+Tabla con columnas: Fecha, Dirección (Icono In/Out), Origen, Destino, Duración, Costo.
+
+Columna Grabación: Si recording_url existe, muestra un reproductor de audio simple (<audio src="...">).
+
+C. Página "Configuración de Línea":
+
+Switch "Grabar Llamadas": Muestra aviso "Costo adicional: $0.005/min". Al activar, actualiza la DB.
+
+Switch "Caller ID (Nombre)": Muestra aviso "Costo: $1.00/mes + $0.01/llamada".
+
+EJECUCIÓN: Implementa primero la base de datos y la lógica de cobro en el webhook call.completed. Luego construye la UI. ¡Empieza ahora!
