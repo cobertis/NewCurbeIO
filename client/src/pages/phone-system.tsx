@@ -256,12 +256,12 @@ export default function PhoneSystem() {
     mutationFn: async (data: { enabled: boolean; direction: string }) => {
       return await apiRequest("POST", "/api/telnyx/noise-suppression", data);
     },
-    onSuccess: (response: { success: boolean; enabled: boolean; direction: string; updatedNumbers?: number }) => {
+    onSuccess: (response: { success: boolean; enabled: boolean; direction: string }) => {
       queryClient.invalidateQueries({ queryKey: ["/api/telnyx/noise-suppression"] });
       refetchNoiseSuppression();
       toast({
         title: response.enabled ? "Noise Suppression Enabled" : "Noise Suppression Disabled",
-        description: response.enabled ? `Active on ${response.updatedNumbers || 0} numbers` : "Noise suppression turned off",
+        description: response.enabled ? `Active on ${response.direction} calls` : "Noise suppression turned off",
       });
     },
     onError: (error: Error) => {
