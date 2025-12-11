@@ -89,7 +89,7 @@ import {
   createCampaignWithDetailsSchema
 } from "@shared/schema";
 import { db } from "./db";
-import { and, eq, ne, gte, desc, or, sql, inArray, count, isNotNull } from "drizzle-orm";
+import { and, eq, ne, gte, lte, desc, or, sql, inArray, count, isNotNull, isNull } from "drizzle-orm";
 import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, vipPassDevices, vipPassInstances } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -29178,6 +29178,101 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("[WebRTC Config] Update error:", error);
       res.status(500).json({ message: "Failed to update WebRTC configuration" });
+    }
+  });
+
+
+
+
+  // POST /api/telnyx/sync-recordings - Sync recordings from Telnyx to call logs
+  app.post("/api/telnyx/sync-recordings", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ error: "Admin access required" });
+      }
+
+      const apiKey = process.env.TELNYX_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "Telnyx API key not configured" });
+      }
+
+      // Fetch recent recordings from Telnyx
+      const response = await fetch('https://api.telnyx.com/v2/recordings?page[size]=50', {
+        headers: {
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+
+      const data = await response.json();
+      
+      if (!response.ok || data.errors) {
+        console.error('[Telnyx Sync] API error:', data.errors);
+        return res.status(500).json({ error: "Failed to fetch recordings", details: data.errors });
+      }
+
+      const recordings = data.data || [];
+      let synced = 0;
+      let skipped = 0;
+
+      for (const rec of recordings) {
+        const mp3Url = rec.download_urls?.mp3;
+        if (!mp3Url) {
+          skipped++;
+          continue;
+        }
+
+        // Normalize phone numbers
+        const fromNumber = (rec.from || '').replace(/[^\d+]/g, '');
+        const toNumber = (rec.to || '').replace(/[^\d+]/g, '');
+        const recordingDate = new Date(rec.created_at);
+        
+        // Search time window: 2 minutes before/after recording start
+        const searchStart = new Date(recordingDate.getTime() - 2 * 60 * 1000);
+        const searchEnd = new Date(recordingDate.getTime() + 2 * 60 * 1000);
+
+        // Find matching call log without recording
+        const matchingCalls = await db
+          .select()
+          .from(callLogs)
+          .where(
+            and(
+              eq(callLogs.companyId, user.companyId),
+              isNull(callLogs.recordingUrl),
+              gte(callLogs.startedAt, searchStart),
+              lte(callLogs.startedAt, searchEnd),
+              or(
+                and(eq(callLogs.fromNumber, fromNumber), eq(callLogs.toNumber, toNumber)),
+                and(eq(callLogs.fromNumber, toNumber), eq(callLogs.toNumber, fromNumber))
+              )
+            )
+          )
+          .limit(1);
+
+        if (matchingCalls.length > 0) {
+          await db
+            .update(callLogs)
+            .set({ recordingUrl: mp3Url })
+            .where(eq(callLogs.id, matchingCalls[0].id));
+          
+          console.log(`[Telnyx Sync] Updated call ${matchingCalls[0].id} with recording`);
+          synced++;
+        } else {
+          skipped++;
+        }
+      }
+
+      res.json({ 
+        success: true, 
+        message: `Synced ${synced} recordings, skipped ${skipped}`,
+        totalRecordings: recordings.length,
+        synced,
+        skipped
+      });
+    } catch (error: any) {
+      console.error('[Telnyx Sync] Error:', error);
+      res.status(500).json({ error: error.message });
     }
   });
 

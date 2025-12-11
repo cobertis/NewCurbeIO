@@ -637,9 +637,32 @@ export default function PhoneSystem() {
           <TabsContent value="calls" className="p-6 m-0">
             <Card className="border-slate-200 dark:border-border">
               <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <History className="h-4 w-4" />Call History
-                </CardTitle>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <History className="h-4 w-4" />Call History
+                  </CardTitle>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={async () => {
+                      try {
+                        const response = await fetch('/api/telnyx/sync-recordings', { method: 'POST', credentials: 'include' });
+                        const data = await response.json();
+                        if (data.success) {
+                          toast({ title: "Recordings synced", description: data.message });
+                          queryClient.invalidateQueries({ queryKey: ['/api/call-logs'] });
+                        } else {
+                          toast({ title: "Sync failed", description: data.error, variant: "destructive" });
+                        }
+                      } catch (e: any) {
+                        toast({ title: "Sync error", description: e.message, variant: "destructive" });
+                      }
+                    }}
+                    data-testid="button-sync-recordings"
+                  >
+                    <RefreshCw className="h-3 w-3 mr-1" />Sync Recordings
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent>
                 {isLoadingCallLogs ? (
