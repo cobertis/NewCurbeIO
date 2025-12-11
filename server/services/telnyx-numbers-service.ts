@@ -106,8 +106,18 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
       });
     }
     
-    // Always use best_effort to return results even if exact match not available
-    queryParams.append("filter[best_effort]", "true");
+    // Only use best_effort when there are NO specific search filters
+    // This ensures exact matches when user specifies area code, starts_with, etc.
+    const hasSpecificFilters = params.national_destination_code || 
+                               params.starts_with || 
+                               params.ends_with || 
+                               params.contains ||
+                               params.locality ||
+                               params.administrative_area;
+    
+    if (!hasSpecificFilters) {
+      queryParams.append("filter[best_effort]", "true");
+    }
     
     // Use page[size] and page[number] for proper pagination
     const pageSize = params.limit || 50;
