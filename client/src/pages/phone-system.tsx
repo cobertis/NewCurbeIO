@@ -311,11 +311,46 @@ export default function PhoneSystem() {
     },
   });
 
+  // Synced mutation that updates both billing features AND Telnyx call recording for all numbers
+  const syncedRecordingMutation = useMutation({
+    mutationFn: async (enabled: boolean) => {
+      // Update billing features first
+      const billingResult = await apiRequest("POST", "/api/telnyx/billing-features", { recordingEnabled: enabled });
+      
+      // Then update Telnyx call recording for each phone number
+      const numbers = numbersData?.numbers || [];
+      const recordingPromises = numbers
+        .filter(n => n.id)
+        .map(n => apiRequest("POST", `/api/telnyx/call-recording/${n.id}`, { enabled }));
+      
+      await Promise.allSettled(recordingPromises);
+      
+      return billingResult;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/billing-features"] });
+      refetchBillingFeatures();
+      // Also invalidate voice settings for all numbers
+      numbersData?.numbers?.forEach(n => {
+        if (n.id) {
+          queryClient.invalidateQueries({ queryKey: ["/api/telnyx/voice-settings", n.id] });
+        }
+      });
+      toast({
+        title: "Call Recording Updated",
+        description: "Recording settings synchronized across all numbers.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({ title: "Failed to Update", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleRecordingToggle = (enabled: boolean) => {
     if (enabled) {
       setShowRecordingConfirm(true);
     } else {
-      billingFeaturesMutation.mutate({ recordingEnabled: false });
+      syncedRecordingMutation.mutate(false);
     }
   };
 
@@ -794,7 +829,7 @@ export default function PhoneSystem() {
                     <Switch
                       checked={billingFeaturesData?.recordingEnabled || false}
                       onCheckedChange={handleRecordingToggle}
-                      disabled={billingFeaturesMutation.isPending}
+                      disabled={billingFeaturesMutation.isPending || syncedRecordingMutation.isPending}
                       data-testid="switch-call-recording"
                     />
                   </div>
@@ -944,7 +979,7 @@ export default function PhoneSystem() {
             <AlertDialogCancel data-testid="button-cancel-recording">Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                billingFeaturesMutation.mutate({ recordingEnabled: true });
+                syncedRecordingMutation.mutate(true);
                 setShowRecordingConfirm(false);
               }}
               className="bg-indigo-600 hover:bg-indigo-700"
@@ -1037,10 +1072,19 @@ function PhoneNumberCard({ number, onConfigureE911 }: PhoneNumberCardProps) {
   });
 
   const callRecordingMutation = useMutation({
-    mutationFn: async (data: { enabled: boolean; format?: string; channels?: string }) => apiRequest("POST", `/api/telnyx/call-recording/${number.id}`, data),
-    onSuccess: () => {
+    mutationFn: async (data: { enabled: boolean; format?: string; channels?: string }) => {
+      // Update Telnyx call recording for this phone number
+      const telnyxResult = await apiRequest("POST", `/api/telnyx/call-recording/${number.id}`, data);
+      
+      // Also update billing features to stay in sync
+      await apiRequest("POST", "/api/telnyx/billing-features", { recordingEnabled: data.enabled });
+      
+      return telnyxResult;
+    },
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["/api/telnyx/voice-settings", number.id] });
-      toast({ title: "Recording Settings Updated" });
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/billing-features"] });
+      toast({ title: variables.enabled ? "Call Recording Enabled" : "Call Recording Disabled" });
     },
     onError: (error: any) => toast({ variant: "destructive", title: "Update Failed", description: error.message }),
   });
