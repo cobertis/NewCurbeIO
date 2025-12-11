@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -132,10 +132,10 @@ function TelnyxPricingSection() {
     },
   });
 
-  const handleValueChange = (field: keyof TelnyxGlobalPricing, value: string | number) => {
+  const handleValueChange = useCallback((field: keyof TelnyxGlobalPricing, value: string | number) => {
     setFormValues(prev => ({ ...prev, [field]: value }));
     setHasChanges(true);
-  };
+  }, []);
 
   const handleSave = () => {
     updateMutation.mutate(formValues);
@@ -149,59 +149,49 @@ function TelnyxPricingSection() {
     );
   }
 
-  const PricingInput = ({ 
-    field, 
-    label, 
-    step = "0.0001",
-    prefix = "$"
-  }: { 
-    field: keyof TelnyxGlobalPricing; 
-    label: string;
-    step?: string;
-    prefix?: string;
-  }) => (
-    <div className="flex items-center justify-between py-2">
-      <label className="text-sm font-medium text-muted-foreground">{label}</label>
-      <div className="flex items-center gap-1">
-        <span className="text-sm text-muted-foreground">{prefix}</span>
-        <Input
-          type="number"
-          step={step}
-          min="0"
-          value={formValues[field] as string || ""}
-          onChange={(e) => handleValueChange(field, e.target.value)}
-          className="w-28 text-right"
-          data-testid={`input-pricing-${field}`}
-        />
+  const renderPricingInput = (field: keyof TelnyxGlobalPricing, label: string, step = "0.0001", prefix = "$") => {
+    const value = formValues[field];
+    const displayValue = value !== undefined && value !== null ? String(value) : "";
+    return (
+      <div key={field} className="flex items-center justify-between py-2">
+        <label className="text-sm font-medium text-muted-foreground">{label}</label>
+        <div className="flex items-center gap-1">
+          <span className="text-sm text-muted-foreground">{prefix}</span>
+          <Input
+            type="number"
+            step={step}
+            min="0"
+            value={displayValue}
+            onChange={(e) => handleValueChange(field, e.target.value)}
+            className="w-28 text-right"
+            data-testid={`input-pricing-${field}`}
+          />
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
-  const IntegerInput = ({ 
-    field, 
-    label, 
-    suffix = ""
-  }: { 
-    field: keyof TelnyxGlobalPricing; 
-    label: string;
-    suffix?: string;
-  }) => (
-    <div className="flex items-center justify-between py-2">
-      <label className="text-sm font-medium text-muted-foreground">{label}</label>
-      <div className="flex items-center gap-1">
-        <Input
-          type="number"
-          step="1"
-          min="0"
-          value={formValues[field] as number || ""}
-          onChange={(e) => handleValueChange(field, parseInt(e.target.value) || 0)}
-          className="w-28 text-right"
-          data-testid={`input-pricing-${field}`}
-        />
-        {suffix && <span className="text-sm text-muted-foreground">{suffix}</span>}
+  const renderIntegerInput = (field: keyof TelnyxGlobalPricing, label: string, suffix = "") => {
+    const value = formValues[field];
+    const displayValue = value !== undefined && value !== null ? String(value) : "";
+    return (
+      <div key={field} className="flex items-center justify-between py-2">
+        <label className="text-sm font-medium text-muted-foreground">{label}</label>
+        <div className="flex items-center gap-1">
+          <Input
+            type="number"
+            step="1"
+            min="0"
+            value={displayValue}
+            onChange={(e) => handleValueChange(field, e.target.value)}
+            className="w-28 text-right"
+            data-testid={`input-pricing-${field}`}
+          />
+          {suffix && <span className="text-sm text-muted-foreground">{suffix}</span>}
+        </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -242,10 +232,10 @@ function TelnyxPricingSection() {
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-1">
-            <PricingInput field="voiceLocalOutbound" label="Local Outbound" />
-            <PricingInput field="voiceLocalInbound" label="Local Inbound" />
-            <PricingInput field="voiceTollfreeOutbound" label="Toll-Free Outbound" />
-            <PricingInput field="voiceTollfreeInbound" label="Toll-Free Inbound" />
+            {renderPricingInput("voiceLocalOutbound", "Local Outbound")}
+            {renderPricingInput("voiceLocalInbound", "Local Inbound")}
+            {renderPricingInput("voiceTollfreeOutbound", "Toll-Free Outbound")}
+            {renderPricingInput("voiceTollfreeInbound", "Toll-Free Inbound")}
           </CardContent>
         </Card>
 
@@ -257,10 +247,10 @@ function TelnyxPricingSection() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
-            <PricingInput field="smsLongcodeOutbound" label="Longcode Outbound" />
-            <PricingInput field="smsLongcodeInbound" label="Longcode Inbound" />
-            <PricingInput field="smsTollfreeOutbound" label="Toll-Free Outbound" />
-            <PricingInput field="smsTollfreeInbound" label="Toll-Free Inbound" />
+            {renderPricingInput("smsLongcodeOutbound", "Longcode Outbound")}
+            {renderPricingInput("smsLongcodeInbound", "Longcode Inbound")}
+            {renderPricingInput("smsTollfreeOutbound", "Toll-Free Outbound")}
+            {renderPricingInput("smsTollfreeInbound", "Toll-Free Inbound")}
           </CardContent>
         </Card>
 
@@ -272,10 +262,10 @@ function TelnyxPricingSection() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
-            <PricingInput field="callControlInbound" label="Call Control Inbound" />
-            <PricingInput field="callControlOutbound" label="Call Control Outbound" />
-            <PricingInput field="recordingPerMinute" label="Recording (per minute)" />
-            <PricingInput field="cnamLookup" label="CNAM Lookup" />
+            {renderPricingInput("callControlInbound", "Call Control Inbound")}
+            {renderPricingInput("callControlOutbound", "Call Control Outbound")}
+            {renderPricingInput("recordingPerMinute", "Recording (per minute)")}
+            {renderPricingInput("cnamLookup", "CNAM Lookup")}
           </CardContent>
         </Card>
 
@@ -287,8 +277,8 @@ function TelnyxPricingSection() {
             </CardTitle>
           </CardHeader>
           <CardContent className="space-y-1">
-            <PricingInput field="didLocal" label="Local DID" step="0.01" />
-            <PricingInput field="didTollfree" label="Toll-Free DID" step="0.01" />
+            {renderPricingInput("didLocal", "Local DID", "0.01")}
+            {renderPricingInput("didTollfree", "Toll-Free DID", "0.01")}
           </CardContent>
         </Card>
 
@@ -301,8 +291,8 @@ function TelnyxPricingSection() {
           </CardHeader>
           <CardContent>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <IntegerInput field="billingIncrement" label="Billing Increment" suffix="seconds" />
-              <IntegerInput field="minBillableSeconds" label="Min Billable Seconds" suffix="seconds" />
+              {renderIntegerInput("billingIncrement", "Billing Increment", "seconds")}
+              {renderIntegerInput("minBillableSeconds", "Min Billable Seconds", "seconds")}
             </div>
           </CardContent>
         </Card>
