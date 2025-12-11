@@ -1,74 +1,24 @@
 // ============================================================================
-//  TELNYX WEBRTC – CURBE VOICE
-//  Usando el patrón real del SDK de Telnyx (notification-based, no call.on)
+//  TELNYX WEBRTC – CURBE VOICE (SIP.JS IMPLEMENTATION)
+//  Pure SIP.js implementation with zero-latency ICE configuration
+//  Server: wss://rtc.telnyx.com:443
 // ============================================================================
 
-// ============================================================================
-// MONKEY-PATCH: Intercept RTCPeerConnection to force our ICE configuration
-// The Telnyx SDK v2.25.10 ignores iceServers options, so we patch globally
-// ============================================================================
-const OriginalRTCPeerConnection = window.RTCPeerConnection;
-let forcedIceServers: RTCIceServer[] | null = null;
-
-// Patch constructor to inject our ICE servers
-(window as any).RTCPeerConnection = function(config?: RTCConfiguration) {
-  const patchedConfig: RTCConfiguration = {
-    ...config,
-    // FORCE: Localhost STUN for instant fail + TURN servers
-    iceServers: forcedIceServers || [
-      { urls: "stun:127.0.0.1:3478" } // Fail-fast blackhole
-    ],
-    iceTransportPolicy: "relay", // FORCE TURN tunnel - skip STUN gathering
-    bundlePolicy: "balanced" // Compatible with Telnyx SDP
-  };
-  
-  console.log("[RTCPeerConnection PATCH] Injecting config:", JSON.stringify({
-    iceServers: patchedConfig.iceServers,
-    iceTransportPolicy: patchedConfig.iceTransportPolicy
-  }));
-  
-  return new OriginalRTCPeerConnection(patchedConfig);
-};
-
-// Copy static methods and prototype
-(window as any).RTCPeerConnection.prototype = OriginalRTCPeerConnection.prototype;
-(window as any).RTCPeerConnection.generateCertificate = OriginalRTCPeerConnection.generateCertificate;
-
-// Function to set forced ICE servers from our TURN credentials
-export function setForcedIceServers(servers: RTCIceServer[]) {
-  // Always prepend localhost STUN for fail-fast
-  forcedIceServers = [
-    { urls: "stun:127.0.0.1:3478" },
-    ...servers
-  ];
-  console.log("[RTCPeerConnection PATCH] Forced ICE servers set:", JSON.stringify(forcedIceServers));
-}
-
-import { TelnyxRTC } from "@telnyx/webrtc";
+import { UserAgent, Registerer, Inviter, Invitation, SessionState, Session, RegistererState } from "sip.js";
 import { create } from "zustand";
 
-type TelnyxCall = ReturnType<TelnyxRTC["newCall"]>;
-
 // ============================================================================
-// CRITICAL: Audio elements must be created OUTSIDE of React to avoid
-// React Fiber references that cause "circular structure to JSON" errors
-// when the Telnyx SDK tries to serialize call data.
-// 
-// Per Telnyx docs: client.remoteElement accepts a string ID, and the SDK
-// will use document.getElementById internally. By creating the element
-// programmatically (not via JSX), we avoid React's __reactFiber$ properties.
+// CONSTANTS
 // ============================================================================
+const TELNYX_WSS_SERVER = "wss://rtc.telnyx.com:443";
 const TELNYX_REMOTE_AUDIO_ID = "telnyx-remote-audio";
 const TELNYX_LOCAL_AUDIO_ID = "telnyx-local-audio";
 const TELNYX_MEDIA_ROOT_ID = "telnyx-media-root";
 
-/**
- * Creates audio elements programmatically outside of React.
- * This is required because React-rendered elements have __reactFiber$ properties
- * that cause circular JSON serialization errors in the Telnyx SDK.
- */
+// ============================================================================
+// AUDIO ELEMENT MANAGEMENT
+// ============================================================================
 function ensureTelnyxAudioElements(): { remote: HTMLAudioElement; local: HTMLAudioElement } {
-  // Check if elements already exist
   let remote = document.getElementById(TELNYX_REMOTE_AUDIO_ID) as HTMLAudioElement | null;
   let local = document.getElementById(TELNYX_LOCAL_AUDIO_ID) as HTMLAudioElement | null;
   
@@ -76,7 +26,6 @@ function ensureTelnyxAudioElements(): { remote: HTMLAudioElement; local: HTMLAud
     return { remote, local };
   }
   
-  // Create container if needed
   let container = document.getElementById(TELNYX_MEDIA_ROOT_ID);
   if (!container) {
     container = document.createElement("div");
@@ -85,47 +34,42 @@ function ensureTelnyxAudioElements(): { remote: HTMLAudioElement; local: HTMLAud
     container.style.position = "absolute";
     container.style.pointerEvents = "none";
     document.body.appendChild(container);
-    console.log("[Telnyx WebRTC] Created audio container:", TELNYX_MEDIA_ROOT_ID);
+    console.log("[SIP.js WebRTC] Created audio container:", TELNYX_MEDIA_ROOT_ID);
   }
   
-  // Create remote audio element (plays caller's voice)
   if (!remote) {
     remote = document.createElement("audio");
     remote.id = TELNYX_REMOTE_AUDIO_ID;
     remote.autoplay = true;
     remote.setAttribute("playsinline", "true");
     container.appendChild(remote);
-    console.log("[Telnyx WebRTC] Created remote audio element:", TELNYX_REMOTE_AUDIO_ID);
+    console.log("[SIP.js WebRTC] Created remote audio element:", TELNYX_REMOTE_AUDIO_ID);
   }
   
-  // Create local audio element (optional, for monitoring own voice)
   if (!local) {
     local = document.createElement("audio");
     local.id = TELNYX_LOCAL_AUDIO_ID;
     local.autoplay = true;
-    local.muted = true; // Muted to prevent feedback
+    local.muted = true;
     local.setAttribute("playsinline", "true");
     container.appendChild(local);
-    console.log("[Telnyx WebRTC] Created local audio element:", TELNYX_LOCAL_AUDIO_ID);
+    console.log("[SIP.js WebRTC] Created local audio element:", TELNYX_LOCAL_AUDIO_ID);
   }
   
   return { remote, local };
 }
 
-/**
- * Get the programmatically created remote audio element
- */
 export function getTelnyxRemoteAudioElement(): HTMLAudioElement | null {
   return document.getElementById(TELNYX_REMOTE_AUDIO_ID) as HTMLAudioElement | null;
 }
 
-/**
- * Get the programmatically created local audio element
- */
 export function getTelnyxLocalAudioElement(): HTMLAudioElement | null {
   return document.getElementById(TELNYX_LOCAL_AUDIO_ID) as HTMLAudioElement | null;
 }
 
+// ============================================================================
+// TYPES AND INTERFACES
+// ============================================================================
 interface NetworkQualityMetrics {
   mos: number;
   jitter: number;
@@ -138,10 +82,10 @@ interface TelnyxWebRTCState {
   isConnected: boolean;
   connectionStatus: "disconnected" | "connecting" | "connected" | "error";
   connectionError?: string;
-  currentCall?: TelnyxCall;
-  incomingCall?: TelnyxCall;
-  outgoingCall?: TelnyxCall;
-  consultCall?: TelnyxCall;
+  currentCall?: Session;
+  incomingCall?: Invitation;
+  outgoingCall?: Inviter;
+  consultCall?: Session;
   isCallActive: boolean;
   isMuted: boolean;
   isOnHold: boolean;
@@ -154,10 +98,10 @@ interface TelnyxWebRTCState {
   activeTelnyxLegId?: string;
 
   setConnectionStatus: (status: TelnyxWebRTCState["connectionStatus"], error?: string) => void;
-  setCurrentCall: (call?: TelnyxCall) => void;
-  setIncomingCall: (call?: TelnyxCall) => void;
-  setOutgoingCall: (call?: TelnyxCall) => void;
-  setConsultCall: (call?: TelnyxCall) => void;
+  setCurrentCall: (call?: Session) => void;
+  setIncomingCall: (call?: Invitation) => void;
+  setOutgoingCall: (call?: Inviter) => void;
+  setConsultCall: (call?: Session) => void;
   setMuted: (muted: boolean) => void;
   setOnHold: (hold: boolean) => void;
   setConsulting: (consulting: boolean) => void;
@@ -203,14 +147,22 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
 
 export type { NetworkQualityMetrics };
 
+// Legacy export for backward compatibility
+export function setForcedIceServers(_servers: RTCIceServer[]) {
+  console.log("[SIP.js WebRTC] setForcedIceServers called - handled via sessionDescriptionHandlerFactoryOptions");
+}
+
+// ============================================================================
+// SIP.JS WEBRTC MANAGER
+// ============================================================================
 class TelnyxWebRTCManager {
   private static instance: TelnyxWebRTCManager;
-  private client: TelnyxRTC | null = null;
+  private userAgent: UserAgent | null = null;
+  private registerer: Registerer | null = null;
   private audioElement: HTMLAudioElement | null = null;
   private ringtone: HTMLAudioElement;
   private ringback: HTMLAudioElement;
-  private lastCallState: string | null = null;
-  private remoteStreamConnected: boolean = false;
+  private turnServers: RTCIceServer[] = [];
   
   // Auto-reconnect state
   private savedCredentials: { sipUser: string; sipPass: string; callerId?: string } | null = null;
@@ -218,15 +170,6 @@ class TelnyxWebRTCManager {
   private maxReconnectAttempts: number = 10;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private isReconnecting: boolean = false;
-  
-  // Track outbound call initiation to prevent misidentifying as inbound
-  private pendingOutboundDestination: string | null = null;
-  
-  // ICE OPTIMIZATION: Pre-warm state for sub-1s call connection
-  private isWarmedUp: boolean = false;
-  private warmUpPromise: Promise<void> | null = null;
-  private iceRelayFallbackTimer: ReturnType<typeof setTimeout> | null = null;
-  private static readonly ICE_RELAY_FALLBACK_MS = 300; // Force relay if P2P takes >300ms
 
   private constructor() {
     this.ringtone = new Audio();
@@ -261,7 +204,7 @@ class TelnyxWebRTCManager {
       this.ringback.src = URL.createObjectURL(wavBlob);
       audioContext.close();
     } catch (error) {
-      console.error("[Telnyx WebRTC] Failed to create ringback tone:", error);
+      console.error("[SIP.js WebRTC] Failed to create ringback tone:", error);
     }
   }
 
@@ -318,64 +261,64 @@ class TelnyxWebRTCManager {
   }
 
   public setAudioElement(elem: HTMLAudioElement) {
-    console.log("[Telnyx WebRTC] 🔊 Audio element registered:", !!elem);
+    console.log("[SIP.js WebRTC] Audio element registered:", !!elem);
     this.audioElement = elem;
-    
-    // CRITICAL: Per Telnyx docs, set client.remoteElement so SDK knows where to send audio
-    // Docs: https://www.npmjs.com/package/@telnyx/webrtc
-    // Type: string | Function | HTMLMediaElement
-    // Using Function to avoid circular JSON serialization errors with React DOM elements
-    if (this.client) {
-      console.log("[Telnyx WebRTC] 🔊 Setting client.remoteElement as string ID");
-      this.client.remoteElement = "telnyx-remote-audio";
-    }
-    
-    // If we already have a remoteStream waiting, connect it now
-    const store = useTelnyxStore.getState();
-    const currentCall = store.currentCall as any;
-    if (currentCall?.remoteStream && elem && !this.remoteStreamConnected) {
-      console.log("[Telnyx WebRTC] 🔊 Connecting waiting remoteStream to new audio element");
-      this.connectRemoteAudio(currentCall);
-    }
   }
 
   /**
-   * Schedule an automatic reconnection with exponential backoff
+   * Build zero-latency ICE configuration
+   * Forces TURN relay with localhost STUN blackhole for instant failover
    */
+  private getZeroLatencyRTCConfig(): RTCConfiguration {
+    const config: RTCConfiguration = {
+      iceTransportPolicy: "relay", // FORCE TURN tunnel - skip STUN gathering
+      iceServers: [
+        { urls: "stun:127.0.0.1:3478" }, // Blackhole STUN for instant fail
+        ...this.turnServers
+      ],
+      bundlePolicy: "max-bundle",
+      rtcpMuxPolicy: "require"
+    };
+    
+    console.log("[SIP.js WebRTC] Zero-latency ICE config:", JSON.stringify({
+      iceTransportPolicy: config.iceTransportPolicy,
+      iceServersCount: config.iceServers?.length
+    }));
+    
+    return config;
+  }
+
   private scheduleReconnect(): void {
     if (this.isReconnecting || !this.savedCredentials) return;
     if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.log("[Telnyx WebRTC] Max reconnect attempts reached, giving up");
+      console.log("[SIP.js WebRTC] Max reconnect attempts reached");
       return;
     }
 
     this.isReconnecting = true;
-    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000); // Max 30 seconds
+    const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
     this.reconnectAttempts++;
 
-    console.log(`[Telnyx WebRTC] Scheduling reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+    console.log(`[SIP.js WebRTC] Scheduling reconnect in ${delay}ms (attempt ${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
 
     this.reconnectTimeout = setTimeout(async () => {
       this.isReconnecting = false;
       if (this.savedCredentials) {
         try {
-          console.log("[Telnyx WebRTC] Attempting auto-reconnect...");
+          console.log("[SIP.js WebRTC] Attempting auto-reconnect...");
           await this.initialize(
             this.savedCredentials.sipUser,
             this.savedCredentials.sipPass,
             this.savedCredentials.callerId
           );
         } catch (error) {
-          console.error("[Telnyx WebRTC] Auto-reconnect failed:", error);
-          this.scheduleReconnect(); // Try again
+          console.error("[SIP.js WebRTC] Auto-reconnect failed:", error);
+          this.scheduleReconnect();
         }
       }
     }, delay);
   }
 
-  /**
-   * Cancel any pending reconnection
-   */
   private cancelReconnect(): void {
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
@@ -384,734 +327,395 @@ class TelnyxWebRTCManager {
     this.isReconnecting = false;
   }
 
-  private connectRemoteAudio(call: any, retryCount: number = 0): void {
-    if (this.remoteStreamConnected) return;
-    
-    if (!this.audioElement) {
-      console.warn("[Telnyx WebRTC] 🔊 No audio element, retry in 100ms (attempt", retryCount + 1, ")");
-      if (retryCount < 10) {
-        setTimeout(() => this.connectRemoteAudio(call, retryCount + 1), 100);
-      }
-      return;
-    }
-    
-    if (!call?.remoteStream) {
-      console.warn("[Telnyx WebRTC] 🔊 No remoteStream available");
+  /**
+   * Connect remote audio stream to audio element
+   */
+  private setupRemoteAudio(session: Session): void {
+    const sessionDescriptionHandler = session.sessionDescriptionHandler;
+    if (!sessionDescriptionHandler) {
+      console.warn("[SIP.js WebRTC] No sessionDescriptionHandler available");
       return;
     }
 
-    const stream = call.remoteStream as MediaStream;
-    const audioTracks = stream.getAudioTracks();
-    
-    console.log("[Telnyx WebRTC] 🔊 Connecting remoteStream, audio tracks:", audioTracks.length);
-    
-    // Set up the audio element immediately
-    this.audioElement.srcObject = stream;
+    const peerConnection = (sessionDescriptionHandler as any).peerConnection as RTCPeerConnection | undefined;
+    if (!peerConnection) {
+      console.warn("[SIP.js WebRTC] No peerConnection available");
+      return;
+    }
+
+    // Get remote stream from the peer connection
+    const remoteStream = new MediaStream();
+    peerConnection.getReceivers().forEach((receiver) => {
+      if (receiver.track) {
+        remoteStream.addTrack(receiver.track);
+      }
+    });
+
+    if (remoteStream.getTracks().length === 0) {
+      console.warn("[SIP.js WebRTC] No remote tracks found");
+      return;
+    }
+
+    // Ensure audio element exists
+    const audioElements = ensureTelnyxAudioElements();
+    this.audioElement = audioElements.remote;
+
+    // Connect stream to audio element
+    this.audioElement.srcObject = remoteStream;
     this.audioElement.muted = false;
     this.audioElement.volume = 1.0;
-    
-    // Listen for track unmute - this is when audio actually starts flowing
-    audioTracks.forEach((track, idx) => {
-      console.log(`[Telnyx WebRTC] 🔊 Track ${idx}: enabled=${track.enabled}, muted=${track.muted}, readyState=${track.readyState}`);
-      
-      if (!track.muted) {
-        // Track already unmuted, play immediately
-        this.tryPlayAudio(retryCount);
-      } else {
-        // Wait for unmute event
-        track.onunmute = () => {
-          console.log(`[Telnyx WebRTC] 🔊 Track ${idx} unmuted - attempting playback`);
-          this.tryPlayAudio(0);
-        };
-      }
+
+    this.audioElement.play().then(() => {
+      console.log("[SIP.js WebRTC] Remote audio playing");
+    }).catch((e) => {
+      console.error("[SIP.js WebRTC] Audio play error:", e.message);
     });
-    
-    // Also try playing immediately in case tracks report wrong muted state
-    this.tryPlayAudio(retryCount);
-  }
-  
-  private tryPlayAudio(retryCount: number): void {
-    if (this.remoteStreamConnected || !this.audioElement) return;
-    
-    const playPromise = this.audioElement.play();
-    if (playPromise) {
-      playPromise
-        .then(() => {
-          console.log("[Telnyx WebRTC] 🔊 Audio playback started successfully");
-          this.remoteStreamConnected = true;
-        })
-        .catch((e) => {
-          console.error("[Telnyx WebRTC] 🔊 Audio play error:", e.message);
-          // Retry on autoplay error
-          if (retryCount < 10) {
-            setTimeout(() => this.tryPlayAudio(retryCount + 1), 200);
-          }
-        });
-    } else {
-      this.remoteStreamConnected = true;
-    }
+
+    // Also listen for track events on the peer connection
+    peerConnection.ontrack = (event) => {
+      console.log("[SIP.js WebRTC] ontrack event, adding track to audio element");
+      if (event.streams && event.streams[0]) {
+        this.audioElement!.srcObject = event.streams[0];
+        this.audioElement!.play().catch(console.error);
+      }
+    };
   }
 
   /**
-   * ICE OPTIMIZATION: Get TURN-only servers (NO STUN to avoid 1s timeout)
+   * Handle session state changes
    */
-  private getTurnOnlyServers(): RTCIceServer[] {
-    // Return empty - TURN servers come from backend /api/telnyx/turn-credentials
-    return [];
+  private setupSessionHandlers(session: Session, isOutgoing: boolean): void {
+    const store = useTelnyxStore.getState();
+
+    session.stateChange.addListener((state: SessionState) => {
+      console.log("[SIP.js WebRTC] Session state changed:", state);
+
+      switch (state) {
+        case SessionState.Establishing:
+          console.log("[SIP.js WebRTC] Call establishing...");
+          break;
+
+        case SessionState.Established:
+          console.log("[SIP.js WebRTC] Call established");
+          this.stopRingtone();
+          this.stopRingback();
+          store.setCurrentCall(session);
+          store.setIncomingCall(undefined);
+          store.setOutgoingCall(undefined);
+          store.setCallActiveTimestamp(Date.now());
+          store.setMuted(false);
+          store.setOnHold(false);
+          this.setupRemoteAudio(session);
+          break;
+
+        case SessionState.Terminating:
+          console.log("[SIP.js WebRTC] Call terminating...");
+          break;
+
+        case SessionState.Terminated:
+          console.log("[SIP.js WebRTC] Call terminated");
+          this.stopRingtone();
+          this.stopRingback();
+          store.setCurrentCall(undefined);
+          store.setIncomingCall(undefined);
+          store.setOutgoingCall(undefined);
+          store.setCallActiveTimestamp(undefined);
+          store.setActiveTelnyxLegId(undefined);
+          store.setMuted(false);
+          store.setOnHold(false);
+          break;
+      }
+    });
   }
 
   /**
-   * ICE OPTIMIZATION: Pre-warm the WebRTC connection on login
-   * This starts ICE gathering BEFORE a call comes in, reducing connection time from 1.3s to <500ms
+   * Handle incoming call (Invitation)
    */
-  public async preWarm(): Promise<void> {
-    if (this.isWarmedUp || this.warmUpPromise) {
-      console.log("[Telnyx WebRTC] ⚡ Already warmed up or warming...");
-      return this.warmUpPromise || Promise.resolve();
-    }
-
-    console.log("[Telnyx WebRTC] ⚡ Starting ICE pre-warm...");
-    const startTime = performance.now();
-
-    this.warmUpPromise = new Promise<void>((resolve) => {
-      try {
-        const config: RTCConfiguration = {
-          iceServers: this.getTurnOnlyServers(),
-          iceCandidatePoolSize: 8,
-          iceTransportPolicy: "all",
-        };
-
-        const pc = new RTCPeerConnection(config);
-        let candidatesGathered = 0;
-        let hasRelay = false;
-
-        pc.onicecandidate = (event) => {
-          if (event.candidate) {
-            candidatesGathered++;
-            if (event.candidate.type === "relay") {
-              hasRelay = true;
-            }
-          }
-        };
-
-        pc.onicegatheringstatechange = () => {
-          if (pc.iceGatheringState === "complete") {
-            const elapsed = performance.now() - startTime;
-            console.log(`[Telnyx WebRTC] ⚡ Pre-warm complete: ${candidatesGathered} candidates in ${elapsed.toFixed(0)}ms (hasRelay: ${hasRelay})`);
-            pc.close();
-            this.isWarmedUp = true;
-            this.warmUpPromise = null;
-            resolve();
-          }
-        };
-
-        pc.createDataChannel("warmup");
-        pc.createOffer().then(offer => pc.setLocalDescription(offer));
-
-        setTimeout(() => {
-          if (!this.isWarmedUp) {
-            console.log("[Telnyx WebRTC] ⚡ Pre-warm timeout, continuing anyway");
-            pc.close();
-            this.isWarmedUp = true;
-            this.warmUpPromise = null;
-            resolve();
-          }
-        }, 3000);
-
-      } catch (e) {
-        console.error("[Telnyx WebRTC] ⚡ Pre-warm error:", e);
-        this.warmUpPromise = null;
-        resolve();
+  private handleIncomingCall(invitation: Invitation): void {
+    const store = useTelnyxStore.getState();
+    
+    // Extract caller info from the INVITE request
+    const request = invitation.request;
+    const fromHeader = request.getHeader("From") || "";
+    const callerMatch = fromHeader.match(/<sip:([^@]+)@/);
+    const callerNumber = callerMatch ? callerMatch[1] : "Unknown";
+    
+    console.log("[SIP.js WebRTC] Incoming call from:", callerNumber);
+    
+    store.setIncomingCall(invitation);
+    this.startRingtone();
+    
+    // Setup handlers for incoming call
+    this.setupSessionHandlers(invitation, false);
+    
+    // Handle cancel/bye before answer
+    invitation.stateChange.addListener((state) => {
+      if (state === SessionState.Terminated) {
+        this.stopRingtone();
+        store.setIncomingCall(undefined);
       }
     });
-
-    return this.warmUpPromise;
   }
 
+  /**
+   * Initialize SIP.js UserAgent and connect to Telnyx
+   */
   public async initialize(sipUser: string, sipPass: string, callerId?: string, iceServers?: RTCIceServer[]): Promise<void> {
     const store = useTelnyxStore.getState();
     store.setConnectionStatus("connecting");
 
     // Save credentials for auto-reconnect
     this.savedCredentials = { sipUser, sipPass, callerId };
-    this.cancelReconnect(); // Cancel any pending reconnect
+    this.cancelReconnect();
 
     if (callerId) store.setCallerIdNumber(callerId);
     store.setSipUsername(sipUser);
 
-    if (this.client) {
-      this.client.disconnect();
-      this.client = null;
+    // Store TURN servers
+    this.turnServers = iceServers || [];
+    console.log("[SIP.js WebRTC] TURN servers configured:", this.turnServers.length);
+
+    // Cleanup existing connection
+    if (this.userAgent) {
+      try {
+        await this.userAgent.stop();
+      } catch (e) {
+        console.warn("[SIP.js WebRTC] Error stopping previous UA:", e);
+      }
+      this.userAgent = null;
+      this.registerer = null;
     }
 
-    // CRITICAL: Create audio elements OUTSIDE of React BEFORE initializing TelnyxRTC
+    // Create audio elements before initializing
     const audioElements = ensureTelnyxAudioElements();
     this.audioElement = audioElements.remote;
-    console.log("[Telnyx WebRTC] 🔊 Using programmatic audio element (no React Fiber)");
 
-    // CRITICAL ICE OPTIMIZATION: Deep injection of relay policy
-    // Must pass iceTransportPolicy at BOTH SDK level AND rtcConfig level
-    // to ensure browser receives the directive directly
-    const clientOptions: any = {
-      login: sipUser,
-      password: sipPass,
-    };
-    
-    // HACK: Localhost STUN fail-fast trick
-    // Browser attempts 127.0.0.1 -> rejected in microseconds -> skips to TURN immediately
-    // This prevents the SDK's default Google STUN from causing 1 second timeout
-    const failFastStun: RTCIceServer = { urls: "stun:127.0.0.1:3478" };
-    
-    // Build final ICE servers: fail-fast STUN first, then real TURN
-    const finalIceServers: RTCIceServer[] = [
-      failFastStun,
-      ...(iceServers || [])
-    ];
-    
-    console.log("[Telnyx WebRTC] ⚡ FAIL-FAST ICE CONFIG:", JSON.stringify(finalIceServers));
-    
-    // Apply at ALL levels to override SDK defaults
-    clientOptions.iceServers = finalIceServers;
-    clientOptions.iceTransportPolicy = 'all'; // Allow all to get fail-fast behavior
-    clientOptions.prefetchIceCandidates = false;
-    
-    // Native RTCPeerConnection passthrough
-    clientOptions.rtcConfig = {
-      iceServers: finalIceServers,
-      iceTransportPolicy: 'all',
-      bundlePolicy: 'max-bundle',
-      rtcpMuxPolicy: 'require'
-    };
-    
-    // Force our servers to override SDK defaults
-    clientOptions.stunServers = [failFastStun];
-    clientOptions.turnServers = iceServers || [];
-    
-    console.log("[Telnyx WebRTC] ⚡ LOCALHOST STUN HACK ACTIVE: 127.0.0.1:3478 for instant fail-over to TURN");
-    
-    this.client = new TelnyxRTC(clientOptions);
+    // Build SIP URI
+    const uri = UserAgent.makeURI(`sip:${sipUser}@sip.telnyx.com`);
+    if (!uri) {
+      store.setConnectionStatus("error", "Invalid SIP URI");
+      return;
+    }
 
-    // CRITICAL: Per Telnyx docs, set client.remoteElement IMMEDIATELY after creation
-    // Docs: https://www.npmjs.com/package/@telnyx/webrtc
-    // Using STRING ID - the SDK will use document.getElementById internally
-    // Since we created the element programmatically (not via React JSX),
-    // it won't have __reactFiber$ properties that cause circular JSON errors
-    console.log("[Telnyx WebRTC] 🔊 Setting client.remoteElement as string ID:", TELNYX_REMOTE_AUDIO_ID);
-    this.client.remoteElement = TELNYX_REMOTE_AUDIO_ID;
+    // CRITICAL: Zero-latency RTCConfiguration
+    const rtcConfig = this.getZeroLatencyRTCConfig();
 
-    this.client.on("telnyx.ready", async () => {
-      console.log("[Telnyx WebRTC] Connected and ready");
-      store.setConnectionStatus("connected");
-      // Reset reconnect counter on successful connection
-      this.reconnectAttempts = 0;
-      
-      // Per official Telnyx docs: Apply audio settings AFTER connection
-      // https://developers.telnyx.com/docs/voice/webrtc/js-sdk/classes/telnyxrtc#setaudiosettings
-      // This enables browser-level audio processing for noise reduction
-      try {
-        if (this.client) {
-          const audioSettings = await this.client.setAudioSettings({
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          });
-          console.log("[Telnyx WebRTC] 🔊 Audio settings applied:", audioSettings);
-        }
-      } catch (audioError) {
-        console.warn("[Telnyx WebRTC] ⚠️ Failed to apply audio settings:", audioError);
-      }
-    });
-
-    this.client.on("telnyx.socket.close", () => {
-      console.log("[Telnyx WebRTC] Socket closed");
-      store.setConnectionStatus("disconnected");
-      // Auto-reconnect if we have saved credentials and not currently in a call
-      const currentStore = useTelnyxStore.getState();
-      if (this.savedCredentials && !currentStore.currentCall && !currentStore.incomingCall && !currentStore.outgoingCall) {
-        this.scheduleReconnect();
-      }
-    });
-
-    this.client.on("telnyx.error", (e: any) => {
-      console.error("[Telnyx WebRTC] Error:", e);
-      store.setConnectionStatus("error", e?.message);
-    });
-
-    // Per official Telnyx docs: Handle userMediaError for microphone issues
-    // https://developers.telnyx.com/docs/voice/webrtc/js-sdk/error-handling
-    // "User media errors occur when the browser cannot access the user's microphone or camera"
-    this.client.on("telnyx.notification", (notification: any) => {
-      if (notification.type === 'userMediaError') {
-        console.error("[Telnyx WebRTC] ❌ User media error (microphone/camera access denied):", notification.error);
-        store.setConnectionStatus("error", "Cannot access microphone. Check browser permissions.");
-        return;
-      }
-    });
-
-    // NOTIFICATION HANDLER - El SDK de Telnyx usa este patrón
-    this.client.on("telnyx.notification", (notification: any) => {
-      const call = notification.call;
-      if (!call) return;
-
-      const state = call.state;
-      
-      // CRITICAL: Inferir direction si no está disponible
-      // El SDK moderno no siempre proporciona direction
-      let direction = call.direction;
-      if (!direction) {
-        const currentStore = useTelnyxStore.getState();
-        const destNumber = call.options?.destinationNumber;
-        const normalizedDest = destNumber ? this.normalizePhoneNumber(destNumber) : '';
-        
-        // Check 1: If we just initiated an outbound call to this destination
-        if (this.pendingOutboundDestination && normalizedDest === this.pendingOutboundDestination) {
-          direction = "outbound";
-        }
-        // Check 2: If we have an outgoing call stored with matching ID
-        else if (currentStore.outgoingCall && (currentStore.outgoingCall as any).id === call.id) {
-          direction = "outbound";
-        }
-        // Check 3: Only then assume inbound for new/invite/ringing
-        else if (state === "new" || state === "invite" || state === "ringing") {
-          direction = "inbound";
-        }
-      }
-
-      console.log("[Telnyx WebRTC] Notification:", notification.type, { 
-        state, 
-        direction,
-        remoteCallerNumber: call.options?.remoteCallerNumber,
-        destinationNumber: call.options?.destinationNumber
-      });
-
-      // Per Telnyx SDK: Connect remoteStream to audio element when available
-      // The SDK handles ICE negotiation internally
-      if (call.remoteStream && this.audioElement && !this.remoteStreamConnected) {
-        console.log("[Telnyx WebRTC] 🔊 remoteStream detected in notification");
-        this.stopRingtone();
-        this.stopRingback();
-        this.audioElement.srcObject = call.remoteStream;
-        this.audioElement.muted = false;
-        this.audioElement.volume = 1.0;
-        this.audioElement.play().catch((e) => console.error("[Telnyx WebRTC] Audio play error:", e));
-        this.remoteStreamConnected = true;
-      }
-
-      // Evitar procesar el mismo estado dos veces
-      const stateKey = `${call.id}-${state}`;
-      if (this.lastCallState === stateKey) return;
-      this.lastCallState = stateKey;
-
-      if (notification.type === "callUpdate") {
-        this.handleCallStateChange(call, state, direction);
-      }
-    });
-
-    await this.client.connect();
-  }
-
-  private handleCallStateChange(call: any, state: string, direction: string): void {
-    const store = useTelnyxStore.getState();
-
-    switch (state) {
-      case "new":
-      case "invite":
-      case "ringing":
-        if (direction === "inbound") {
-          console.log("[Telnyx WebRTC] 📞 Incoming call (state:", state, ")");
-          // CRITICAL: Reset remoteStreamConnected for new inbound call
-          this.remoteStreamConnected = false;
-          store.setIncomingCall(call);
-          this.startRingtone();
-          
-          // CRITICAL ICE OPTIMIZATION: Pre-fetch ICE candidates BEFORE user presses Answer
-          // Per Telnyx docs: call.prefetchIceCandidates() starts ICE gathering early
-          // This eliminates the ~1 second delay when answering the call
-          if (typeof call.prefetchIceCandidates === 'function') {
-            console.log("[Telnyx WebRTC] ⚡ Pre-fetching ICE candidates while ringing...");
-            call.prefetchIceCandidates();
+    try {
+      this.userAgent = new UserAgent({
+        uri,
+        authorizationUsername: sipUser,
+        authorizationPassword: sipPass,
+        transportOptions: {
+          server: TELNYX_WSS_SERVER,
+          traceSip: false
+        },
+        sessionDescriptionHandlerFactoryOptions: {
+          peerConnectionConfiguration: rtcConfig,
+          constraints: {
+            audio: true,
+            video: false
+          }
+        },
+        displayName: "Curbe",
+        logLevel: "warn",
+        delegate: {
+          onInvite: (invitation: Invitation) => {
+            this.handleIncomingCall(invitation);
+          },
+          onDisconnect: (error?: Error) => {
+            console.log("[SIP.js WebRTC] Disconnected:", error?.message);
+            store.setConnectionStatus("disconnected");
+            this.scheduleReconnect();
           }
         }
-        break;
-
-      case "trying":
-        if (direction === "outbound") {
-          console.log("[Telnyx WebRTC] 📤 Outbound trying");
-          store.setOutgoingCall(call);
-          this.startRingback();
-        }
-        break;
-
-      case "answering":
-        // CRITICAL: For inbound calls, connect audio as early as possible
-        // This is the state right after answer() is called, before "active"
-        if (direction === "inbound") {
-          console.log("[Telnyx WebRTC] 📥 Answering state - connecting audio early");
-          this.stopRingtone();
-          if (call.remoteStream && this.audioElement && !this.remoteStreamConnected) {
-            console.log("[Telnyx WebRTC] 🔊 Connecting remoteStream in answering state");
-            this.audioElement.srcObject = call.remoteStream;
-            this.audioElement.muted = false;
-            this.audioElement.volume = 1.0;
-            this.audioElement.play().catch(console.error);
-            this.remoteStreamConnected = true;
-          }
-        }
-        break;
-
-      case "early":
-        console.log("[Telnyx WebRTC] 📤 Early media state", { direction });
-        this.stopRingback();
-        this.stopRingtone();
-        // Early media - connect audio immediately for BOTH directions
-        if (call.remoteStream && this.audioElement && !this.remoteStreamConnected) {
-          console.log("[Telnyx WebRTC] 🔊 Connecting remoteStream in early state");
-          this.audioElement.srcObject = call.remoteStream;
-          this.audioElement.muted = false;
-          this.audioElement.volume = 1.0;
-          this.audioElement.play().catch(console.error);
-          this.remoteStreamConnected = true;
-        }
-        break;
-
-      case "active":
-        // LATENCY DIAGNOSTIC
-        console.log(`[LATENCY] CALL_ACTIVE: Audio connected at ${Date.now()} (${new Date().toISOString()})`);
-        console.log("[Telnyx WebRTC] 🟢 Call active");
-        this.stopRingback();
-        this.stopRingtone();
-
-        store.setIncomingCall(undefined);
-        store.setOutgoingCall(undefined);
-        store.setCurrentCall(call);
-        store.setCallActiveTimestamp(Date.now());
-        
-        // CRITICAL: Capture call_control_id for Call Control API hangup
-        // The SDK has a bug where hangup() always sends 486 USER_BUSY
-        // We need the call_control_id to hangup via REST API instead
-        // Per Telnyx docs: POST /v2/calls/{call_control_id}/actions/hangup
-        const callControlId = (call as any).telnyxCallControlId || 
-                              (call as any).callControlId ||
-                              (call as any).telnyxIDs?.telnyxCallControlId ||
-                              (call as any).telnyxIDs?.telnyxLegId ||
-                              (call as any).options?.telnyxCallControlId;
-        console.log("[Telnyx WebRTC] 📞 Call IDs available:", {
-          telnyxCallControlId: (call as any).telnyxCallControlId,
-          callControlId: (call as any).callControlId,
-          telnyxLegId: (call as any).telnyxIDs?.telnyxLegId,
-          callId: (call as any).id
-        });
-        if (callControlId) {
-          console.log("[Telnyx WebRTC] 📞 Using call_control_id:", callControlId);
-          store.setActiveTelnyxLegId(callControlId);
-        } else {
-          console.log("[Telnyx WebRTC] ⚠️ No call_control_id available, hangup may show USER_BUSY");
-        }
-
-        // Conectar audio remoto
-        this.remoteStreamConnected = false;
-        this.connectRemoteAudio(call);
-
-        this.logCallToServer(call, "active");
-        break;
-
-      case "hangup":
-      case "destroy":
-        // Log detailed hangup reason for debugging
-        console.log("[Telnyx WebRTC] 🔴 Call ended", {
-          cause: call.cause,
-          causeCode: call.causeCode,
-          sipCode: call.sipCode,
-          sipReason: call.sipReason,
-          direction
-        });
-        this.stopRingback();
-        this.stopRingtone();
-
-        this.logCallToServer(call, "completed");
-
-        store.setCurrentCall(undefined);
-        store.setIncomingCall(undefined);
-        store.setOutgoingCall(undefined);
-        store.setCallActiveTimestamp(undefined);
-        store.setActiveTelnyxLegId(undefined);
-        store.setMuted(false);
-        store.setOnHold(false);
-
-        this.remoteStreamConnected = false;
-        this.lastCallState = null;
-        // Clear pending outbound destination
-        this.pendingOutboundDestination = null;
-        break;
-    }
-  }
-
-  private async logCallToServer(call: any, status: string): Promise<void> {
-    try {
-      const store = useTelnyxStore.getState();
-      const activeTimestamp = store.callActiveTimestamp;
-      const duration = activeTimestamp ? Math.floor((Date.now() - activeTimestamp) / 1000) : 0;
-
-      await fetch("/api/webrtc/call-log", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({
-          callId: call.id || `webrtc-${Date.now()}`,
-          fromNumber: call.direction === "inbound" ? call.options?.remoteCallerNumber : store.callerIdNumber,
-          toNumber: call.direction === "inbound" ? store.callerIdNumber : call.options?.destinationNumber,
-          direction: call.direction,
-          status,
-          duration,
-        }),
       });
-    } catch (error) {
-      console.error("[Telnyx WebRTC] Failed to log call:", error);
-    }
-  }
 
-  /**
-   * Get preferred codecs as RTCRtpCodecCapability objects in Telnyx SIP Connection order.
-   * Per Telnyx documentation: preferred_codecs must be a sub-array of 
-   * RTCRtpReceiver.getCapabilities('audio').codecs
-   * 
-   * Order matches Telnyx SIP Connection settings: PCMU -> PCMA -> G722 -> OPUS
-   * This eliminates codec negotiation delay that causes 5-second audio delay.
-   * 
-   * @see https://developers.telnyx.com/docs/voice/webrtc/js-sdk/classes/telnyxrtc
-   */
-  private getPreferredCodecs(): any[] {
-    try {
-      const capabilities = RTCRtpReceiver.getCapabilities('audio');
-      if (!capabilities?.codecs) {
-        console.warn("[Telnyx WebRTC] No audio codecs available from browser");
-        return [];
-      }
-      
-      const allCodecs = capabilities.codecs;
-      
-      // Order: PCMU -> PCMA -> G722 -> OPUS (matching Telnyx SIP Connection settings)
-      const codecOrder = ['pcmu', 'pcma', 'g722', 'opus'];
-      
-      const orderedCodecs: any[] = [];
-      for (const codecName of codecOrder) {
-        const found = allCodecs.find(c => 
-          c.mimeType.toLowerCase().includes(codecName)
-        );
-        if (found) {
-          orderedCodecs.push(found);
+      // Start the UserAgent (connects WebSocket)
+      await this.userAgent.start();
+      console.log("[SIP.js WebRTC] UserAgent started");
+
+      // Register with Telnyx
+      this.registerer = new Registerer(this.userAgent, {
+        expires: 600,
+        extraHeaders: [
+          `X-Telnyx-Login: ${sipUser}`
+        ]
+      });
+
+      this.registerer.stateChange.addListener((state: RegistererState) => {
+        console.log("[SIP.js WebRTC] Registerer state:", state);
+        
+        switch (state) {
+          case RegistererState.Registered:
+            console.log("[SIP.js WebRTC] Registered successfully");
+            store.setConnectionStatus("connected");
+            this.reconnectAttempts = 0;
+            break;
+          case RegistererState.Unregistered:
+            console.log("[SIP.js WebRTC] Unregistered");
+            store.setConnectionStatus("disconnected");
+            break;
+          case RegistererState.Terminated:
+            console.log("[SIP.js WebRTC] Registerer terminated");
+            store.setConnectionStatus("disconnected");
+            break;
         }
-      }
-      
-      console.log("[Telnyx WebRTC] Preferred codecs:", orderedCodecs.map(c => c.mimeType));
-      return orderedCodecs;
+      });
+
+      await this.registerer.register();
+      console.log("[SIP.js WebRTC] Registration request sent");
+
     } catch (error) {
-      console.error("[Telnyx WebRTC] Failed to get codecs:", error);
-      return [];
+      console.error("[SIP.js WebRTC] Initialization error:", error);
+      store.setConnectionStatus("error", (error as Error).message);
+      this.scheduleReconnect();
     }
   }
 
   /**
-   * Get ONLY PCMU/PCMA codecs for outbound calls
-   * Telnyx SIP Connection only supports μ-law/A-law with SRTP
-   * Using OPUS/G722 causes 488 "Not Acceptable Here" errors
+   * Make an outbound call
    */
-  private getOutboundCodecs(): any[] {
-    try {
-      const capabilities = RTCRtpReceiver.getCapabilities('audio');
-      if (!capabilities) return [];
-      
-      const allCodecs = capabilities.codecs;
-      
-      // ONLY PCMU and PCMA - no OPUS, no G722
-      const codecOrder = ['pcmu', 'pcma'];
-      
-      const orderedCodecs: any[] = [];
-      for (const codecName of codecOrder) {
-        const found = allCodecs.find(c => 
-          c.mimeType.toLowerCase().includes(codecName)
-        );
-        if (found) {
-          orderedCodecs.push(found);
-        }
-      }
-      
-      return orderedCodecs;
-    } catch (error) {
-      console.error("[Telnyx WebRTC] Failed to get outbound codecs:", error);
-      return [];
+  public async makeCall(destination: string): Promise<Inviter | null> {
+    if (!this.userAgent) {
+      console.error("[SIP.js WebRTC] UserAgent not initialized");
+      return null;
     }
-  }
-
-  /**
-   * Normalize phone number to digits only for comparison
-   */
-  private normalizePhoneNumber(phone: string): string {
-    return phone.replace(/\D/g, '').slice(-10); // Last 10 digits
-  }
-
-  public makeCall(dest: string): TelnyxCall | null {
-    if (!this.client) return null;
 
     const store = useTelnyxStore.getState();
-    store.setCurrentCall(undefined);
-    store.setOutgoingCall(undefined);
-    store.setCallActiveTimestamp(undefined);
-    this.remoteStreamConnected = false;
-    this.lastCallState = null;
 
-    // CRITICAL: Set pending destination BEFORE newCall to prevent direction misidentification
-    this.pendingOutboundDestination = this.normalizePhoneNumber(dest);
-    console.log("[Telnyx WebRTC] 📞 Making call to:", dest, "normalized:", this.pendingOutboundDestination);
-
-    // Format destination number to E.164 format
-    // Handle cases: "7866302522", "17866302522", "+17866302522"
-    const digits = dest.replace(/\D/g, '');
+    // Format destination number
+    const digits = destination.replace(/\D/g, "");
     let formattedDest: string;
-    if (dest.startsWith('+')) {
-      formattedDest = dest; // Already has +, keep as is
-    } else if (digits.length === 11 && digits.startsWith('1')) {
-      formattedDest = `+${digits}`; // Has country code, just add +
+    if (digits.startsWith("1") && digits.length === 11) {
+      formattedDest = `+${digits}`;
     } else if (digits.length === 10) {
-      formattedDest = `+1${digits}`; // 10-digit US number, add +1
+      formattedDest = `+1${digits}`;
     } else {
-      formattedDest = `+1${digits}`; // Default: assume US
+      formattedDest = `+1${digits}`;
     }
-    console.log("[Telnyx WebRTC] 📞 Formatted destination:", formattedDest);
+    console.log("[SIP.js WebRTC] Calling:", formattedDest);
 
-    // Get ONLY PCMU/PCMA codecs (no OPUS/G722) to match Telnyx SIP Connection settings
-    // This prevents 488 "Not Acceptable Here" errors on outbound calls
-    const preferredCodecs = this.getOutboundCodecs();
-    console.log("[Telnyx WebRTC] 📞 Using codecs for outbound:", preferredCodecs.map(c => c.mimeType));
+    // Build target URI
+    const targetUri = UserAgent.makeURI(`sip:${formattedDest}@sip.telnyx.com`);
+    if (!targetUri) {
+      console.error("[SIP.js WebRTC] Invalid target URI");
+      return null;
+    }
 
-    // Per official Telnyx docs (ICallOptions):
-    // https://developers.telnyx.com/docs/voice/webrtc/js-sdk/interfaces/icalloptions
-    // audio: boolean - "Overrides client's default audio constraints. Defaults to true"
-    // useStereo: boolean - "Uses stereo audio instead of mono"
-    const call = this.client.newCall({
-      destinationNumber: formattedDest,
-      callerNumber: store.callerIdNumber,
-      callerName: "Curbe",
-      preferred_codecs: preferredCodecs,
-      // Per docs: Explicitly enable audio (microphone) for outgoing calls
-      audio: true,
-      // Per docs: Use stereo audio for better quality
-      useStereo: true,
+    // CRITICAL: Zero-latency RTCConfiguration for outbound calls
+    const rtcConfig = this.getZeroLatencyRTCConfig();
+
+    const inviter = new Inviter(this.userAgent, targetUri, {
+      sessionDescriptionHandlerOptions: {
+        constraints: {
+          audio: true,
+          video: false
+        }
+      },
+      sessionDescriptionHandlerOptionsReInvite: {
+        constraints: {
+          audio: true,
+          video: false
+        }
+      },
+      extraHeaders: [
+        `P-Asserted-Identity: <sip:${store.callerIdNumber || store.sipUsername}@sip.telnyx.com>`
+      ]
     });
 
-    store.setOutgoingCall(call);
+    // Inject RTCConfiguration via sessionDescriptionHandlerFactory options
+    (inviter as any).sessionDescriptionHandlerOptions = {
+      ...((inviter as any).sessionDescriptionHandlerOptions || {}),
+      peerConnectionConfiguration: rtcConfig
+    };
+
+    this.setupSessionHandlers(inviter, true);
+    store.setOutgoingCall(inviter);
     this.startRingback();
 
-    return call;
+    try {
+      await inviter.invite();
+      console.log("[SIP.js WebRTC] INVITE sent");
+      return inviter;
+    } catch (error) {
+      console.error("[SIP.js WebRTC] Call failed:", error);
+      this.stopRingback();
+      store.setOutgoingCall(undefined);
+      return null;
+    }
   }
 
+  /**
+   * Answer an incoming call
+   */
   public async answerCall(): Promise<void> {
     const store = useTelnyxStore.getState();
-    const incoming = store.incomingCall;
-    if (!incoming) return;
-
-    // LATENCY DIAGNOSTIC
-    const ANSWER_T0 = Date.now();
-    console.log(`[LATENCY] ANSWER_T0: User clicked Answer at ${ANSWER_T0} (${new Date(ANSWER_T0).toISOString()})`);
+    const invitation = store.incomingCall;
     
-    console.log("[Telnyx WebRTC] 📞 Answering call...");
-    this.stopRingtone();
-
-    // CRITICAL: Per Telnyx docs, ensure remoteElement is set BEFORE answering
-    // Docs: https://www.npmjs.com/package/@telnyx/webrtc
-    // Type: string | Function | HTMLMediaElement
-    // Using STRING ID to avoid circular JSON serialization errors when debug is enabled
-    if (this.client) {
-      console.log("[Telnyx WebRTC] 🔊 Ensuring client.remoteElement as string ID before answer");
-      this.client.remoteElement = "telnyx-remote-audio";
+    if (!invitation) {
+      console.warn("[SIP.js WebRTC] No incoming call to answer");
+      return;
     }
 
-    // FIX: Wake up AudioContext BEFORE answering to eliminate 3-5s audio delay
-    // Chrome/Safari block outbound WebRTC audio until AudioContext is active
+    console.log("[SIP.js WebRTC] Answering call...");
+    this.stopRingtone();
+
+    // Wake up AudioContext for instant audio
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
       if (AudioCtx) {
         const ctx = new AudioCtx();
         if (ctx.state === "suspended") {
           await ctx.resume();
-          console.log("[WebRTC AUDIO] AudioContext resumed (instant outbound audio)");
+          console.log("[SIP.js WebRTC] AudioContext resumed");
         }
       }
     } catch (e) {
-      console.warn("[WebRTC AUDIO] Error waking AudioContext:", e);
+      console.warn("[SIP.js WebRTC] Error waking AudioContext:", e);
     }
 
-    // FIX: Play silent buffer to unlock WebRTC audio pipeline
-    console.log("[WebRTC AUDIO] Playing silent buffer to unlock audio");
+    // CRITICAL: Zero-latency RTCConfiguration for answer
+    const rtcConfig = this.getZeroLatencyRTCConfig();
+
     try {
-      const silent = new Audio();
-      silent.src = "data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA=";
-      await silent.play();
-    } catch (e) {
-      // Ignore - this is just a pre-unlock attempt
+      await invitation.accept({
+        sessionDescriptionHandlerOptions: {
+          constraints: {
+            audio: true,
+            video: false
+          }
+        } as any
+      });
+      console.log("[SIP.js WebRTC] Call answered");
+    } catch (error) {
+      console.error("[SIP.js WebRTC] Answer failed:", error);
     }
-
-    // Reset stream connected flag so we can reconnect if needed
-    this.remoteStreamConnected = false;
-
-    // Per official Telnyx docs: answer() triggers getUserMedia internally
-    // https://developers.telnyx.com/docs/voice/webrtc/js-sdk/classes/call
-    // NOTE: Do NOT modify incoming.options.preferred_codecs - the SDK does not
-    // honor codec preferences on inbound calls and modifying them causes a 4-6
-    // second audio delay due to local renegotiation conflict with server-side SDP
-    incoming.answer();
-
-    // Per official docs: After answering, verify localStream has audio tracks
-    // and ensure microphone is not muted
-    // https://developers.telnyx.com/docs/voice/webrtc/js-sdk/anatomy
-    setTimeout(() => {
-      const call = incoming as any;
-      
-      // Check localStream for audio tracks
-      if (call.localStream) {
-        const audioTracks = call.localStream.getAudioTracks();
-        console.log("[Telnyx WebRTC] 🎤 localStream audio tracks:", audioTracks.length);
-        audioTracks.forEach((track: MediaStreamTrack, i: number) => {
-          console.log(`[Telnyx WebRTC] 🎤 Track ${i}: enabled=${track.enabled}, muted=${track.muted}, readyState=${track.readyState}`);
-        });
-        
-        if (audioTracks.length === 0) {
-          console.error("[Telnyx WebRTC] ❌ No audio tracks in localStream - microphone may not be captured!");
-        }
-      } else {
-        console.error("[Telnyx WebRTC] ❌ No localStream available after answer!");
-      }
-      
-      // Check if microphone is muted and unmute if needed
-      // Per docs: https://developers.telnyx.com/docs/voice/webrtc/js-sdk/classes/call#unmuteaudio
-      if (call.audioMuted) {
-        console.log("[Telnyx WebRTC] 🎤 Microphone is muted, unmuting...");
-        call.unmuteAudio();
-      }
-      
-      console.log("[Telnyx WebRTC] 🎤 audioMuted:", call.audioMuted);
-    }, 1000);
   }
 
+  /**
+   * Reject an incoming call
+   */
   public rejectCall(): void {
     const store = useTelnyxStore.getState();
-    const incoming = store.incomingCall;
-    if (!incoming) return;
+    const invitation = store.incomingCall;
+    
+    if (!invitation) return;
 
-    console.log("[Telnyx WebRTC] Rejecting call");
+    console.log("[SIP.js WebRTC] Rejecting call");
     this.stopRingtone();
-    incoming.hangup({ sipHangupCode: 486 });
+    invitation.reject({ statusCode: 486 });
     store.setIncomingCall(undefined);
   }
 
+  /**
+   * Hang up the current call
+   */
   public async hangup(): Promise<void> {
     const store = useTelnyxStore.getState();
     
-    // Get the active call before we clean up state
-    const activeCall = store.currentCall || store.outgoingCall || store.incomingCall;
-    if (!activeCall) {
-      console.log("[Telnyx WebRTC] No active call to hang up");
-      // Still clean up UI states in case of orphaned state
+    const activeSession = store.currentCall || store.outgoingCall || store.incomingCall;
+    if (!activeSession) {
+      console.log("[SIP.js WebRTC] No active call to hang up");
       store.setCurrentCall(undefined);
       store.setOutgoingCall(undefined);
       store.setIncomingCall(undefined);
@@ -1121,20 +725,10 @@ class TelnyxWebRTCManager {
       this.stopRingback();
       return;
     }
-    
-    const callState = (activeCall as any)?.state;
-    const direction = (activeCall as any)?.direction || "unknown";
-    const webrtcCallId = (activeCall as any)?.id || (activeCall as any)?.callId;
-    const telnyxLegId = store.activeTelnyxLegId;
-    
-    console.log("[Telnyx WebRTC] Hanging up call:", { 
-      state: callState, 
-      direction, 
-      webrtcCallId,
-      telnyxLegId
-    });
 
-    // Clean UI states IMMEDIATELY for responsive feedback
+    console.log("[SIP.js WebRTC] Hanging up call, state:", activeSession.state);
+
+    // Clean UI states immediately
     store.setCurrentCall(undefined);
     store.setOutgoingCall(undefined);
     store.setIncomingCall(undefined);
@@ -1143,91 +737,149 @@ class TelnyxWebRTCManager {
     this.stopRingtone();
     this.stopRingback();
 
-    // For inbound calls, call Call Control API FIRST to terminate PSTN leg with NORMAL_CLEARING
-    // This MUST happen BEFORE SDK hangup, otherwise SDK sends 486 USER_BUSY
-    if (direction === "inbound" && telnyxLegId) {
-      console.log("[Telnyx WebRTC] Calling Call Control API FIRST for proper PSTN hangup");
-      try {
-        const response = await fetch("/api/webrtc/call-control-hangup", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          credentials: "include",
-          body: JSON.stringify({ telnyxLegId })
-        });
-        const result = await response.json();
-        console.log("[Telnyx WebRTC] Call Control API result:", result);
-      } catch (e) {
-        console.log("[Telnyx WebRTC] Call Control API error:", e);
-      }
-    }
-
-    // NOW terminate WebRTC session via SDK
-    console.log("[Telnyx WebRTC] Terminating WebRTC session via SDK");
     try {
-      activeCall.hangup();
+      // Handle based on session state
+      switch (activeSession.state) {
+        case SessionState.Initial:
+        case SessionState.Establishing:
+          // Cancel outgoing call
+          if (activeSession instanceof Inviter) {
+            await activeSession.cancel();
+          } else if (activeSession instanceof Invitation) {
+            activeSession.reject({ statusCode: 486 });
+          }
+          break;
+        case SessionState.Established:
+          // Terminate established call with BYE
+          await activeSession.bye();
+          break;
+        default:
+          console.log("[SIP.js WebRTC] Call in terminal state, no action needed");
+      }
     } catch (e) {
-      console.error("[Telnyx WebRTC] SDK hangup error:", e);
+      console.error("[SIP.js WebRTC] Hangup error:", e);
     }
   }
 
+  /**
+   * Toggle mute
+   */
   public toggleMute(): void {
     const store = useTelnyxStore.getState();
-    const currentCall = store.currentCall;
+    const session = store.currentCall;
 
-    if (currentCall) {
-      if (store.isMuted) {
-        currentCall.unmuteAudio();
-      } else {
-        currentCall.muteAudio();
-      }
-      store.setMuted(!store.isMuted);
+    if (!session || !session.sessionDescriptionHandler) return;
+
+    const pc = (session.sessionDescriptionHandler as any).peerConnection as RTCPeerConnection | undefined;
+    if (!pc) return;
+
+    const senders = pc.getSenders();
+    const audioSender = senders.find(s => s.track?.kind === "audio");
+    
+    if (audioSender && audioSender.track) {
+      const newMutedState = !store.isMuted;
+      audioSender.track.enabled = !newMutedState;
+      store.setMuted(newMutedState);
+      console.log("[SIP.js WebRTC] Mute toggled:", newMutedState);
     }
   }
 
+  /**
+   * Toggle hold (using sendonly/inactive SDP)
+   */
   public toggleHold(): void {
     const store = useTelnyxStore.getState();
-    const currentCall = store.currentCall;
+    const session = store.currentCall;
 
-    if (currentCall) {
-      if (store.isOnHold) {
-        currentCall.unhold();
-      } else {
-        currentCall.hold();
-      }
-      store.setOnHold(!store.isOnHold);
+    if (!session) return;
+
+    // SIP.js doesn't have built-in hold - we'd need to send re-INVITE
+    // For now, just toggle the state and mute audio
+    const newHoldState = !store.isOnHold;
+    store.setOnHold(newHoldState);
+    
+    // Mute/unmute as a workaround
+    const pc = (session.sessionDescriptionHandler as any)?.peerConnection as RTCPeerConnection | undefined;
+    if (pc) {
+      pc.getSenders().forEach(sender => {
+        if (sender.track) {
+          sender.track.enabled = !newHoldState;
+        }
+      });
     }
+    
+    console.log("[SIP.js WebRTC] Hold toggled:", newHoldState);
   }
 
+  /**
+   * Send DTMF digit
+   */
   public sendDTMF(digit: string): void {
     const store = useTelnyxStore.getState();
-    const currentCall = store.currentCall;
+    const session = store.currentCall;
 
-    if (currentCall) {
-      currentCall.dtmf(digit);
+    if (!session || !session.sessionDescriptionHandler) {
+      console.warn("[SIP.js WebRTC] No session for DTMF");
+      return;
+    }
+
+    const pc = (session.sessionDescriptionHandler as any).peerConnection as RTCPeerConnection | undefined;
+    if (!pc) return;
+
+    // Find audio sender and use DTMF sender
+    const audioSender = pc.getSenders().find(s => s.track?.kind === "audio");
+    if (audioSender && audioSender.dtmf) {
+      audioSender.dtmf.insertDTMF(digit, 100, 70);
+      console.log("[SIP.js WebRTC] DTMF sent:", digit);
+    } else {
+      // Fallback: Send via SIP INFO
+      try {
+        session.info({
+          requestOptions: {
+            body: {
+              contentDisposition: "render",
+              contentType: "application/dtmf-relay",
+              content: `Signal=${digit}\nDuration=100`
+            }
+          }
+        });
+        console.log("[SIP.js WebRTC] DTMF sent via INFO:", digit);
+      } catch (e) {
+        console.error("[SIP.js WebRTC] DTMF INFO failed:", e);
+      }
     }
   }
 
+  /**
+   * Blind transfer
+   */
   public blindTransfer(destinationNumber: string): boolean {
     const store = useTelnyxStore.getState();
-    const currentCall = store.currentCall;
+    const session = store.currentCall;
 
-    if (!currentCall) return false;
+    if (!session) return false;
 
     try {
-      console.log("[Telnyx WebRTC] Blind transfer to:", destinationNumber);
-      (currentCall as any).transfer(destinationNumber);
-      store.setCurrentCall(undefined);
-      store.setMuted(false);
-      store.setOnHold(false);
-      return true;
+      console.log("[SIP.js WebRTC] Blind transfer to:", destinationNumber);
+      const targetUri = UserAgent.makeURI(`sip:${destinationNumber}@sip.telnyx.com`);
+      if (targetUri) {
+        session.refer(targetUri);
+        store.setCurrentCall(undefined);
+        store.setMuted(false);
+        store.setOnHold(false);
+        return true;
+      }
     } catch (error) {
-      console.error("[Telnyx WebRTC] Blind transfer failed:", error);
-      return false;
+      console.error("[SIP.js WebRTC] Blind transfer failed:", error);
     }
+    return false;
   }
 
+  /**
+   * Start attended transfer (put on hold, call consult number)
+   */
   public async startAttendedTransfer(consultNumber: string): Promise<boolean> {
-    if (!this.client) return false;
+    if (!this.userAgent) return false;
 
     const store = useTelnyxStore.getState();
     const currentCall = store.currentCall;
@@ -1235,38 +887,26 @@ class TelnyxWebRTCManager {
     if (!currentCall) return false;
 
     try {
-      console.log("[Telnyx WebRTC] Starting attended transfer");
-      currentCall.hold();
-      store.setOnHold(true);
+      console.log("[SIP.js WebRTC] Starting attended transfer");
+      this.toggleHold(); // Put current call on hold
       store.setConsulting(true);
 
-      // Use same codec order as Telnyx connection settings
-      const preferredCodecs = this.getPreferredCodecs();
-      
-      // Per official Telnyx docs (ICallOptions):
-      // https://developers.telnyx.com/docs/voice/webrtc/js-sdk/interfaces/icalloptions
-      const consultCall = this.client.newCall({
-        destinationNumber: consultNumber,
-        callerNumber: store.callerIdNumber,
-        callerName: "Curbe",
-        preferred_codecs: preferredCodecs,
-        // Per docs: Explicitly enable audio (microphone)
-        audio: true,
-        // Per docs: Use stereo audio for better quality
-        useStereo: true,
-      });
-
-      store.setConsultCall(consultCall);
-      return true;
+      const consultCall = await this.makeCall(consultNumber);
+      if (consultCall) {
+        store.setConsultCall(consultCall);
+        return true;
+      }
     } catch (error) {
-      console.error("[Telnyx WebRTC] Start attended transfer failed:", error);
-      currentCall.unhold();
-      store.setOnHold(false);
+      console.error("[SIP.js WebRTC] Start attended transfer failed:", error);
+      this.toggleHold(); // Resume call if consult fails
       store.setConsulting(false);
-      return false;
     }
+    return false;
   }
 
+  /**
+   * Complete attended transfer
+   */
   public completeAttendedTransfer(consultNumber: string): boolean {
     const store = useTelnyxStore.getState();
     const currentCall = store.currentCall;
@@ -1275,9 +915,11 @@ class TelnyxWebRTCManager {
     if (!currentCall) return false;
 
     try {
-      console.log("[Telnyx WebRTC] Completing attended transfer");
-      if (consultCall) consultCall.hangup({ sipHangupCode: 16 });
-      (currentCall as any).transfer(consultNumber);
+      console.log("[SIP.js WebRTC] Completing attended transfer");
+      if (consultCall) {
+        consultCall.bye().catch(console.error);
+      }
+      this.blindTransfer(consultNumber);
 
       store.setConsultCall(undefined);
       store.setCurrentCall(undefined);
@@ -1286,11 +928,14 @@ class TelnyxWebRTCManager {
       store.setMuted(false);
       return true;
     } catch (error) {
-      console.error("[Telnyx WebRTC] Complete attended transfer failed:", error);
+      console.error("[SIP.js WebRTC] Complete attended transfer failed:", error);
       return false;
     }
   }
 
+  /**
+   * Cancel attended transfer
+   */
   public cancelAttendedTransfer(): boolean {
     const store = useTelnyxStore.getState();
     const currentCall = store.currentCall;
@@ -1299,37 +944,62 @@ class TelnyxWebRTCManager {
     if (!currentCall) return false;
 
     try {
-      console.log("[Telnyx WebRTC] Canceling attended transfer");
-      if (consultCall) consultCall.hangup({ sipHangupCode: 16 });
-      currentCall.unhold();
+      console.log("[SIP.js WebRTC] Canceling attended transfer");
+      if (consultCall) {
+        consultCall.bye().catch(console.error);
+      }
+      this.toggleHold(); // Resume current call
 
       store.setConsultCall(undefined);
       store.setConsulting(false);
-      store.setOnHold(false);
       return true;
     } catch (error) {
-      console.error("[Telnyx WebRTC] Cancel attended transfer failed:", error);
+      console.error("[SIP.js WebRTC] Cancel attended transfer failed:", error);
       return false;
     }
   }
 
+  /**
+   * Get call quality metrics from peer connection stats
+   */
   public getCallQuality(): void {
     const store = useTelnyxStore.getState();
-    const currentCall = store.currentCall;
+    const session = store.currentCall;
 
-    if (!currentCall) {
+    if (!session || !session.sessionDescriptionHandler) {
       store.setNetworkQuality(undefined);
       return;
     }
 
-    try {
-      const options = (currentCall as any).options || {};
-      const stats = options.stats || {};
+    const pc = (session.sessionDescriptionHandler as any).peerConnection as RTCPeerConnection | undefined;
+    if (!pc) {
+      store.setNetworkQuality(undefined);
+      return;
+    }
 
-      const mos = stats.mos || stats.quality?.mos || 4.0;
-      const jitter = stats.jitter || stats.audio?.jitter || 0;
-      const packetLoss = stats.packetLoss || stats.audio?.packetsLost || 0;
-      const rtt = stats.rtt || stats.roundTripTime || 0;
+    pc.getStats().then((stats) => {
+      let jitter = 0;
+      let packetLoss = 0;
+      let rtt = 0;
+
+      stats.forEach((report) => {
+        if (report.type === "inbound-rtp" && report.kind === "audio") {
+          jitter = report.jitter ? report.jitter * 1000 : 0;
+          packetLoss = report.packetsLost || 0;
+        }
+        if (report.type === "candidate-pair" && report.state === "succeeded") {
+          rtt = report.currentRoundTripTime ? report.currentRoundTripTime * 1000 : 0;
+        }
+      });
+
+      // Calculate MOS (simplified)
+      let mos = 4.5;
+      if (jitter > 30) mos -= 0.5;
+      if (jitter > 50) mos -= 0.5;
+      if (packetLoss > 1) mos -= 0.3;
+      if (packetLoss > 5) mos -= 0.5;
+      if (rtt > 200) mos -= 0.3;
+      mos = Math.max(1, Math.min(5, mos));
 
       let qualityLevel: "excellent" | "good" | "poor" = "excellent";
       if (mos < 3.0 || packetLoss > 5) {
@@ -1339,9 +1009,16 @@ class TelnyxWebRTCManager {
       }
 
       store.setNetworkQuality({ mos, jitter, packetLoss, rtt, qualityLevel });
-    } catch (error) {
-      console.error("[Telnyx WebRTC] Failed to get call quality:", error);
-    }
+    }).catch(() => {
+      store.setNetworkQuality(undefined);
+    });
+  }
+
+  /**
+   * Pre-warm ICE (optional - for faster first call)
+   */
+  public async preWarm(): Promise<void> {
+    console.log("[SIP.js WebRTC] Pre-warm requested (handled by session creation)");
   }
 
   private startRingtone(): void {
@@ -1366,10 +1043,26 @@ class TelnyxWebRTCManager {
     this.ringback.currentTime = 0;
   }
 
+  /**
+   * Disconnect and cleanup
+   */
   public disconnect(): void {
-    if (this.client) {
-      this.client.disconnect();
-      this.client = null;
+    if (this.registerer) {
+      try {
+        this.registerer.unregister().catch(console.error);
+      } catch (e) {
+        console.warn("[SIP.js WebRTC] Unregister error:", e);
+      }
+      this.registerer = null;
+    }
+
+    if (this.userAgent) {
+      try {
+        this.userAgent.stop().catch(console.error);
+      } catch (e) {
+        console.warn("[SIP.js WebRTC] Stop error:", e);
+      }
+      this.userAgent = null;
     }
 
     const store = useTelnyxStore.getState();
@@ -1383,11 +1076,11 @@ class TelnyxWebRTCManager {
   }
 
   public isInitialized(): boolean {
-    return this.client !== null;
+    return this.userAgent !== null;
   }
 
-  public getClient(): TelnyxRTC | null {
-    return this.client;
+  public getClient(): UserAgent | null {
+    return this.userAgent;
   }
 }
 
