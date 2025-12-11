@@ -412,14 +412,11 @@ class TelnyxWebRTCManager {
   }
 
   /**
-   * ICE OPTIMIZATION: Get STUN servers for faster ICE gathering
-   * TURN credentials are managed by the Telnyx SDK internally
+   * ICE OPTIMIZATION: Get TURN-only servers (NO STUN to avoid 1s timeout)
    */
-  private getStunServers(): RTCIceServer[] {
-    return [
-      { urls: "stun:stun.telnyx.com:3478" },
-      { urls: "stun:stun.l.google.com:19302" },
-    ];
+  private getTurnOnlyServers(): RTCIceServer[] {
+    // Return empty - TURN servers come from backend /api/telnyx/turn-credentials
+    return [];
   }
 
   /**
@@ -438,7 +435,7 @@ class TelnyxWebRTCManager {
     this.warmUpPromise = new Promise<void>((resolve) => {
       try {
         const config: RTCConfiguration = {
-          iceServers: this.getStunServers(),
+          iceServers: this.getTurnOnlyServers(),
           iceCandidatePoolSize: 8,
           iceTransportPolicy: "all",
         };
@@ -520,19 +517,32 @@ class TelnyxWebRTCManager {
     };
     
     if (iceServers && iceServers.length > 0) {
+      // Verify no STUN in the array
+      const hasStun = iceServers.some(s => {
+        const urls = Array.isArray(s.urls) ? s.urls : [s.urls];
+        return urls.some(u => u.startsWith('stun:'));
+      });
+      console.log("[Telnyx WebRTC] ⚡ ICE SERVERS RECEIVED:", JSON.stringify(iceServers));
+      console.log("[Telnyx WebRTC] ⚡ Contains STUN:", hasStun, "| Count:", iceServers.length);
+      
       // Level 1: SDK Standard options
       clientOptions.iceServers = iceServers;
       clientOptions.iceTransportPolicy = 'relay';
       clientOptions.prefetchIceCandidates = false;
       
-      // Level 2: Native RTCPeerConnection passthrough (CRITICAL)
-      // This forces the browser to obey: "No local candidates, no STUN, TURN only"
+      // Level 2: Native RTCPeerConnection passthrough
       clientOptions.rtcConfig = {
         iceServers: iceServers,
-        iceTransportPolicy: 'relay'
+        iceTransportPolicy: 'relay',
+        bundlePolicy: 'max-bundle',
+        rtcpMuxPolicy: 'require'
       };
       
-      console.log("[Telnyx WebRTC] ⚡ DEEP RELAY INJECTION: rtcConfig + iceTransportPolicy='relay'");
+      // Level 3: Force empty STUN to kill SDK defaults
+      clientOptions.turnServers = iceServers;
+      clientOptions.stunServers = []; // EXPLICIT EMPTY ARRAY
+      
+      console.log("[Telnyx WebRTC] ⚡ FULL RELAY CONFIG: stunServers=[], turnServers set, rtcConfig.iceTransportPolicy='relay'");
     } else {
       // Fallback if no TURN credentials provided
       clientOptions.prefetchIceCandidates = true;
