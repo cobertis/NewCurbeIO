@@ -1848,13 +1848,11 @@ export function WebPhoneFloatingWindow() {
             {hasPhoneCapability ? (
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <span className="text-foreground font-medium text-xs sm:text-sm">
-                  {effectiveCall 
-                    ? formatCallerNumber(effectiveCall.phoneNumber)
-                    : sipExtension 
-                      ? `Ext: ${sipExtension}` 
-                      : telnyxCallerIdNumber 
-                        ? formatCallerNumber(telnyxCallerIdNumber) 
-                        : 'WebPhone'}
+                  {sipExtension 
+                    ? `Ext: ${sipExtension}` 
+                    : telnyxCallerIdNumber 
+                      ? formatCallerNumber(telnyxCallerIdNumber) 
+                      : 'WebPhone'}
                 </span>
                 <div className={cn(
                   "h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full",
