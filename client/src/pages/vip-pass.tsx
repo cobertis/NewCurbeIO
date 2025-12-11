@@ -362,7 +362,7 @@ function FieldArraySection({
 
 export default function VipPassPage() {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("designer");
+  const [activeTab, setActiveTab] = useState("management");
   const [designConfigTab, setDesignConfigTab] = useState("basic");
   const [issueDialogOpen, setIssueDialogOpen] = useState(false);
   const [pushDialogOpen, setPushDialogOpen] = useState(false);
