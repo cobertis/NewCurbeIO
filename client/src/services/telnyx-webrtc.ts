@@ -222,6 +222,7 @@ export interface SipCallInfo {
   direction: "inbound" | "outbound";
   state: "ringing" | "establishing" | "active" | "terminated";
   destinationNumber?: string;
+  telnyxCallLegId?: string;
 }
 
 interface TelnyxWebRTCState {
@@ -341,6 +342,7 @@ class TelnyxWebRTCManager {
   private callAnswerTime: Date | null = null;
   private callLogId: string | null = null;
   private callWasAnswered: boolean = false;
+  private currentTelnyxLegId: string | null = null;
 
   private constructor() {
     // CRITICAL: Create audio element immediately in constructor
@@ -466,6 +468,7 @@ class TelnyxWebRTCManager {
     this.callAnswerTime = null;
     this.callLogId = null;
     this.callWasAnswered = false;
+    this.currentTelnyxLegId = null;
   }
   
   /**
@@ -477,6 +480,11 @@ class TelnyxWebRTCManager {
       this.callStartTime = new Date();
       this.callWasAnswered = false;
       
+      // Store the Telnyx Leg ID from call info (for inbound calls)
+      if (callInfo.telnyxCallLegId) {
+        this.currentTelnyxLegId = callInfo.telnyxCallLegId;
+      }
+      
       const store = useTelnyxStore.getState();
       const fromNumber = callInfo.direction === "outbound" 
         ? (store.callerIdNumber || "Unknown")
@@ -485,7 +493,7 @@ class TelnyxWebRTCManager {
         ? callInfo.remoteCallerNumber 
         : (store.callerIdNumber || "Unknown");
       
-      console.log(`[SIP.js CallLog] Creating call log: ${callInfo.direction} from ${fromNumber} to ${toNumber}`);
+      console.log(`[SIP.js CallLog] Creating call log: ${callInfo.direction} from ${fromNumber} to ${toNumber}, telnyxLegId: ${this.currentTelnyxLegId || "pending"}`);
       
       const response = await fetch("/api/call-logs", {
         method: "POST",
@@ -499,6 +507,7 @@ class TelnyxWebRTCManager {
           status: "ringing",
           callerName: callInfo.callerName || null,
           startedAt: this.callStartTime.toISOString(),
+          telnyxCallId: this.currentTelnyxLegId || null,
         }),
       });
       
@@ -516,6 +525,7 @@ class TelnyxWebRTCManager {
   
   /**
    * Update call log when call is answered
+   * Also updates telnyxCallId if it wasn't available at call start (e.g., outbound calls)
    */
   private async logCallAnswered(): Promise<void> {
     if (!this.callLogId) {
@@ -527,16 +537,24 @@ class TelnyxWebRTCManager {
       this.callAnswerTime = new Date();
       this.callWasAnswered = true;
       
-      console.log(`[SIP.js CallLog] Updating call log ${this.callLogId} to answered`);
+      console.log(`[SIP.js CallLog] Updating call log ${this.callLogId} to answered, telnyxLegId: ${this.currentTelnyxLegId || "not available"}`);
+      
+      // Build update payload - include telnyxCallId if we have it now but didn't at start
+      const updatePayload: Record<string, any> = {
+        status: "answered",
+        answeredAt: this.callAnswerTime.toISOString(),
+      };
+      
+      // Add telnyxCallId if available (especially important for outbound calls)
+      if (this.currentTelnyxLegId) {
+        updatePayload.telnyxCallId = this.currentTelnyxLegId;
+      }
       
       await fetch(`/api/call-logs/${this.callLogId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          status: "answered",
-          answeredAt: this.callAnswerTime.toISOString(),
-        }),
+        body: JSON.stringify(updatePayload),
       });
     } catch (error) {
       console.error("[SIP.js CallLog] Error updating call log to answered:", error);
@@ -720,6 +738,7 @@ class TelnyxWebRTCManager {
   private extractCallerInfo(session: Session, isOutgoing: boolean, destination?: string): SipCallInfo {
     let callerNumber = "Unknown";
     let callerName: string | undefined;
+    let telnyxCallLegId: string | undefined;
     
     if (session instanceof Invitation) {
       // Incoming call - check for X-Original-Caller header FIRST (set by backend transfer)
@@ -773,8 +792,36 @@ class TelnyxWebRTCManager {
           }
         } catch (e) {}
       }
+      
+      // Try to extract Telnyx Call Leg ID from SIP headers (INBOUND calls)
+      try {
+        const request = session.request;
+        // Log all available headers for debugging
+        console.log("[SIP.js WebRTC] Checking for Telnyx headers in INVITE request...");
+        
+        // Telnyx sends these headers in the INVITE
+        telnyxCallLegId = request.getHeader("X-Telnyx-Call-Control-Id") || 
+                          request.getHeader("X-Telnyx-Call-Leg-Id") ||
+                          request.getHeader("X-Call-Control-Id") ||
+                          request.getHeader("X-Telnyx-Leg-Id");
+        
+        if (telnyxCallLegId) {
+          console.log("[SIP.js WebRTC] Found Telnyx Call Leg ID:", telnyxCallLegId);
+          this.currentTelnyxLegId = telnyxCallLegId;
+        } else {
+          console.log("[SIP.js WebRTC] No Telnyx Call Leg ID found in INVITE headers");
+          // Log some header values for debugging
+          const callId = request.getHeader("Call-ID");
+          const xHeaders = request.getHeader("X-Telnyx-Connection-Id");
+          console.log("[SIP.js WebRTC] Debug - Call-ID:", callId, "X-Telnyx-Connection-Id:", xHeaders);
+        }
+      } catch (e) {
+        console.warn("[SIP.js WebRTC] Error extracting Telnyx Call Leg ID:", e);
+      }
     } else if (session instanceof Inviter) {
       callerNumber = destination || "Unknown";
+      // For outbound calls, Telnyx Call Leg ID comes in the 200 OK response
+      // It will be extracted in setupSessionHandlers when call is Established
     }
     
     // Format caller number
@@ -782,14 +829,20 @@ class TelnyxWebRTCManager {
     const formattedNumber = callerNumber.startsWith("+") ? callerNumber : 
                             (cleanNumber.length === 10 ? `+1${cleanNumber}` : callerNumber);
     
-    console.log("[SIP.js WebRTC] Extracted caller info:", { callerNumber: formattedNumber, callerName, isOutgoing });
+    console.log("[SIP.js WebRTC] Extracted caller info:", { 
+      callerNumber: formattedNumber, 
+      callerName, 
+      isOutgoing, 
+      telnyxCallLegId: telnyxCallLegId || "not found" 
+    });
     
     return {
       remoteCallerNumber: formattedNumber,
       callerName,
       direction: isOutgoing ? "outbound" : "inbound",
       state: "ringing",
-      destinationNumber: isOutgoing ? destination : undefined
+      destinationNumber: isOutgoing ? destination : undefined,
+      telnyxCallLegId
     };
   }
 
@@ -823,6 +876,60 @@ class TelnyxWebRTCManager {
           console.log("[SIP.js WebRTC] Call established");
           this.stopRingtone();
           this.stopRingback();
+          
+          // For OUTBOUND calls, try to extract Telnyx Call Leg ID from 200 OK response
+          if (isOutgoing && session instanceof Inviter) {
+            try {
+              console.log("[SIP.js WebRTC] Checking for Telnyx headers in 200 OK response (outbound call)...");
+              
+              // In SIP.js, we can try to access dialog info or the session's message
+              const dialog = (session as any).dialog;
+              if (dialog) {
+                console.log("[SIP.js WebRTC] Dialog found, checking for response headers...");
+                
+                // Try to get the response from the dialog
+                const response = dialog.initialResponse || dialog.lastResponse;
+                if (response && typeof response.getHeader === 'function') {
+                  const telnyxLegId = response.getHeader("X-Telnyx-Call-Control-Id") || 
+                                      response.getHeader("X-Telnyx-Call-Leg-Id") ||
+                                      response.getHeader("X-Call-Control-Id") ||
+                                      response.getHeader("X-Telnyx-Leg-Id");
+                  
+                  if (telnyxLegId) {
+                    console.log("[SIP.js WebRTC] Found Telnyx Call Leg ID in 200 OK:", telnyxLegId);
+                    this.currentTelnyxLegId = telnyxLegId;
+                    callInfo.telnyxCallLegId = telnyxLegId;
+                  } else {
+                    console.log("[SIP.js WebRTC] No Telnyx Call Leg ID in 200 OK response headers");
+                  }
+                }
+              }
+              
+              // Alternative: Try to check if there's a _acceptedResponse property
+              const acceptedResponse = (session as any)._acceptedResponse || (session as any).acceptedResponse;
+              if (acceptedResponse && !this.currentTelnyxLegId) {
+                console.log("[SIP.js WebRTC] Checking _acceptedResponse for Telnyx headers...");
+                const telnyxLegId = acceptedResponse.getHeader?.("X-Telnyx-Call-Control-Id") || 
+                                    acceptedResponse.getHeader?.("X-Telnyx-Call-Leg-Id");
+                if (telnyxLegId) {
+                  console.log("[SIP.js WebRTC] Found Telnyx Call Leg ID in acceptedResponse:", telnyxLegId);
+                  this.currentTelnyxLegId = telnyxLegId;
+                  callInfo.telnyxCallLegId = telnyxLegId;
+                }
+              }
+              
+              // Debug: Log what's available on the session for future reference
+              if (!this.currentTelnyxLegId) {
+                console.log("[SIP.js WebRTC] Debug - Session keys:", Object.keys(session));
+                if (dialog) {
+                  console.log("[SIP.js WebRTC] Debug - Dialog keys:", Object.keys(dialog));
+                }
+              }
+            } catch (e) {
+              console.warn("[SIP.js WebRTC] Error extracting Telnyx Call Leg ID from 200 OK:", e);
+            }
+          }
+          
           callInfo.state = "active";
           store.setCurrentCall(session);
           store.setCurrentCallInfo({ ...callInfo });
@@ -833,8 +940,14 @@ class TelnyxWebRTCManager {
           store.setCallActiveTimestamp(Date.now());
           store.setMuted(false);
           store.setOnHold(false);
+          
+          // Update store with Telnyx Leg ID if found
+          if (this.currentTelnyxLegId) {
+            store.setActiveTelnyxLegId(this.currentTelnyxLegId);
+          }
+          
           this.setupRemoteAudio(session);
-          // Log call answered
+          // Log call answered (will include telnyxCallId if available now)
           this.logCallAnswered();
           break;
 
