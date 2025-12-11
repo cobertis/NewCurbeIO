@@ -4671,12 +4671,14 @@ export const telnyxGlobalPricing = pgTable("telnyx_global_pricing", {
   callControlOutboundCost: numeric("call_control_outbound_cost", { precision: 10, scale: 4 }).notNull().default("0.0010"),
   recordingPerMinuteCost: numeric("recording_per_minute_cost", { precision: 10, scale: 4 }).notNull().default("0.0010"),
   cnamLookupCost: numeric("cnam_lookup_cost", { precision: 10, scale: 4 }).notNull().default("0.0025"),
+  e911AddressCost: numeric("e911_address_cost", { precision: 10, scale: 2 }).notNull().default("1.50"),
   
   // Add-on rates - PRICE
   callControlInbound: numeric("call_control_inbound", { precision: 10, scale: 4 }).notNull().default("0.0020"),
   callControlOutbound: numeric("call_control_outbound", { precision: 10, scale: 4 }).notNull().default("0.0020"),
   recordingPerMinute: numeric("recording_per_minute", { precision: 10, scale: 4 }).notNull().default("0.0020"),
   cnamLookup: numeric("cnam_lookup", { precision: 10, scale: 4 }).notNull().default("0.0045"),
+  e911Address: numeric("e911_address", { precision: 10, scale: 2 }).notNull().default("2.00"),
   
   // DID monthly rates - COST
   didLocalCost: numeric("did_local_cost", { precision: 10, scale: 2 }).notNull().default("0.50"),
