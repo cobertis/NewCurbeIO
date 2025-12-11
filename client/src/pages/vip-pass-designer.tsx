@@ -87,111 +87,277 @@ function PassPreview({ design }: { design: VipPassDesignFormData }) {
         <Eye className="h-5 w-5" />
         Pass Preview
       </h3>
-      <div 
-        className="w-[320px] h-[440px] rounded-2xl shadow-2xl overflow-hidden mx-auto relative"
-        style={{ 
-          backgroundColor: bgColor,
-          color: fgColor,
-        }}
-        data-testid="pass-preview"
-      >
-        <div className="absolute inset-0 bg-gradient-to-b from-white/5 to-transparent pointer-events-none" />
+      
+      {/* Outer glow container */}
+      <div className="relative mx-auto w-[340px] h-[480px] flex items-center justify-center">
+        {/* Animated holographic border glow */}
+        <div 
+          className="absolute inset-0 rounded-3xl opacity-75 blur-xl"
+          style={{
+            background: `linear-gradient(135deg, ${bgColor}90, #00f2fe50, #4facfe50, #00f2fe50, ${bgColor}90)`,
+            animation: 'pulse 3s ease-in-out infinite',
+          }}
+        />
         
-        <div className="p-5 flex justify-between items-start relative">
-          <div className="text-xl font-bold tracking-wide" data-testid="preview-logo-text">
-            {design.logoText || "VIP GOLD"}
-          </div>
+        {/* Main card */}
+        <div 
+          className="relative w-[320px] h-[460px] rounded-3xl overflow-hidden"
+          style={{ 
+            backgroundColor: bgColor,
+            color: fgColor,
+            boxShadow: `0 0 40px ${bgColor}80, 0 25px 50px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.1)`,
+          }}
+          data-testid="pass-preview"
+        >
+          {/* Holographic shimmer overlay */}
           <div 
-            className="w-12 h-12 rounded-xl flex items-center justify-center"
-            style={{ backgroundColor: `${fgColor}20` }}
-          >
-            <CreditCard className="h-6 w-6" style={{ color: fgColor }} />
-          </div>
-        </div>
-        
-        <div className="px-5 py-3">
-          {design.primaryFields?.length > 0 ? (
-            design.primaryFields.map((field, i) => (
-              <div key={i} className="mb-3" data-testid={`preview-primary-field-${i}`}>
-                <div 
-                  className="text-[10px] uppercase tracking-widest font-medium mb-1"
-                  style={{ color: lblColor }}
-                >
-                  {field.label}
-                </div>
-                <div className="text-2xl font-semibold tracking-tight">
-                  {replaceTemplateVars(field.value)}
-                </div>
-              </div>
-            ))
-          ) : (
-            <div className="mb-3">
+            className="absolute inset-0 pointer-events-none opacity-30"
+            style={{
+              background: 'linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.1) 25%, transparent 50%, rgba(255,255,255,0.15) 75%, transparent 100%)',
+              backgroundSize: '400% 400%',
+              animation: 'shimmer 8s ease-in-out infinite',
+            }}
+          />
+          
+          {/* Tech grid pattern */}
+          <div 
+            className="absolute inset-0 pointer-events-none opacity-[0.03]"
+            style={{
+              backgroundImage: `
+                linear-gradient(${fgColor}20 1px, transparent 1px),
+                linear-gradient(90deg, ${fgColor}20 1px, transparent 1px)
+              `,
+              backgroundSize: '20px 20px',
+            }}
+          />
+          
+          {/* Scan line effect */}
+          <div 
+            className="absolute inset-0 pointer-events-none opacity-[0.02]"
+            style={{
+              backgroundImage: `repeating-linear-gradient(0deg, transparent, transparent 2px, ${fgColor}10 2px, ${fgColor}10 4px)`,
+            }}
+          />
+          
+          {/* Top gradient accent */}
+          <div 
+            className="absolute top-0 left-0 right-0 h-1"
+            style={{
+              background: `linear-gradient(90deg, transparent, ${fgColor}60, transparent)`,
+            }}
+          />
+          
+          {/* Header section */}
+          <div className="relative p-6 flex justify-between items-start">
+            {/* Logo with glow */}
+            <div className="flex flex-col gap-1">
               <div 
-                className="text-[10px] uppercase tracking-widest font-medium mb-1"
-                style={{ color: lblColor }}
+                className="text-2xl font-black tracking-[0.2em] uppercase"
+                style={{ 
+                  textShadow: `0 0 20px ${fgColor}40, 0 0 40px ${fgColor}20`,
+                  letterSpacing: '0.15em',
+                }}
+                data-testid="preview-logo-text"
               >
-                Member ID
+                {design.logoText || "VIP GOLD"}
               </div>
-              <div className="text-2xl font-semibold tracking-tight">VIP-ABC123</div>
+              <div 
+                className="text-[9px] uppercase tracking-[0.3em] font-medium opacity-60"
+              >
+                Exclusive Access
+              </div>
             </div>
-          )}
-        </div>
-
-        <div className="px-5 py-2 flex gap-6">
-          {design.auxiliaryFields?.length > 0 ? (
-            design.auxiliaryFields.slice(0, 3).map((field, i) => (
-              <div key={i} data-testid={`preview-auxiliary-field-${i}`}>
-                <div 
-                  className="text-[10px] uppercase tracking-widest font-medium mb-1"
-                  style={{ color: lblColor }}
-                >
-                  {field.label}
+            
+            {/* Futuristic icon badge */}
+            <div 
+              className="relative w-14 h-14 rounded-2xl flex items-center justify-center overflow-hidden"
+              style={{ 
+                background: `linear-gradient(135deg, ${fgColor}15, ${fgColor}05)`,
+                boxShadow: `inset 0 1px 0 ${fgColor}20, 0 0 20px ${fgColor}10`,
+              }}
+            >
+              <div 
+                className="absolute inset-0 opacity-50"
+                style={{
+                  background: `radial-gradient(circle at 30% 30%, ${fgColor}20, transparent 60%)`,
+                }}
+              />
+              <CreditCard className="h-7 w-7 relative z-10" style={{ color: fgColor }} />
+            </div>
+          </div>
+          
+          {/* Decorative line with nodes */}
+          <div className="px-6 pb-4">
+            <div className="relative h-[2px] w-full" style={{ backgroundColor: `${fgColor}10` }}>
+              <div 
+                className="absolute left-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full"
+                style={{ backgroundColor: fgColor, boxShadow: `0 0 10px ${fgColor}` }}
+              />
+              <div 
+                className="absolute left-1/2 top-1/2 -translate-y-1/2 -translate-x-1/2 w-1.5 h-1.5 rounded-full"
+                style={{ backgroundColor: `${fgColor}60` }}
+              />
+              <div 
+                className="absolute right-0 top-1/2 -translate-y-1/2 w-2 h-2 rounded-full"
+                style={{ backgroundColor: fgColor, boxShadow: `0 0 10px ${fgColor}` }}
+              />
+            </div>
+          </div>
+          
+          {/* Primary fields with futuristic styling */}
+          <div className="px-6 py-2">
+            {design.primaryFields?.length > 0 ? (
+              design.primaryFields.map((field, i) => (
+                <div key={i} className="mb-4" data-testid={`preview-primary-field-${i}`}>
+                  <div 
+                    className="text-[10px] uppercase tracking-[0.25em] font-semibold mb-2 flex items-center gap-2"
+                    style={{ color: lblColor }}
+                  >
+                    <span 
+                      className="w-1 h-1 rounded-full"
+                      style={{ backgroundColor: lblColor }}
+                    />
+                    {field.label}
+                  </div>
+                  <div 
+                    className="text-3xl font-bold tracking-tight"
+                    style={{ 
+                      textShadow: `0 0 30px ${fgColor}30`,
+                      fontFamily: 'system-ui, -apple-system, sans-serif',
+                    }}
+                  >
+                    {replaceTemplateVars(field.value)}
+                  </div>
                 </div>
-                <div className="text-sm font-medium">
-                  {replaceTemplateVars(field.value)}
-                </div>
-              </div>
-            ))
-          ) : (
-            <>
-              <div>
-                <div 
-                  className="text-[10px] uppercase tracking-widest font-medium mb-1"
-                  style={{ color: lblColor }}
-                >
-                  Tier
-                </div>
-                <div className="text-sm font-medium">Gold</div>
-              </div>
-              <div>
-                <div 
-                  className="text-[10px] uppercase tracking-widest font-medium mb-1"
-                  style={{ color: lblColor }}
-                >
-                  Name
-                </div>
-                <div className="text-sm font-medium">John Doe</div>
-              </div>
-            </>
-          )}
-        </div>
-
-        <div className="absolute bottom-0 left-0 right-0 bg-white p-4 flex flex-col items-center rounded-t-xl">
-          <div 
-            className="w-28 h-28 bg-gray-50 border border-gray-200 rounded-lg flex items-center justify-center"
-            data-testid="preview-barcode"
-          >
-            {design.barcodeFormat === "PKBarcodeFormatQR" || design.barcodeFormat === "PKBarcodeFormatAztec" ? (
-              <QrCode className="h-20 w-20 text-gray-800" />
+              ))
             ) : (
-              <BarChart3 className="h-16 w-20 text-gray-800" />
+              <div className="mb-4">
+                <div 
+                  className="text-[10px] uppercase tracking-[0.25em] font-semibold mb-2 flex items-center gap-2"
+                  style={{ color: lblColor }}
+                >
+                  <span 
+                    className="w-1 h-1 rounded-full"
+                    style={{ backgroundColor: lblColor }}
+                  />
+                  Member ID
+                </div>
+                <div 
+                  className="text-3xl font-bold tracking-tight"
+                  style={{ textShadow: `0 0 30px ${fgColor}30` }}
+                >
+                  VIP-ABC123
+                </div>
+              </div>
             )}
           </div>
-          <div className="text-[10px] text-gray-500 mt-2 font-mono">
-            {replaceTemplateVars(design.barcodeMessage || "{{serialNumber}}")}
+
+          {/* Auxiliary fields in sleek containers */}
+          <div className="px-6 py-3 flex gap-4">
+            {design.auxiliaryFields?.length > 0 ? (
+              design.auxiliaryFields.slice(0, 3).map((field, i) => (
+                <div 
+                  key={i} 
+                  className="flex-1 p-3 rounded-xl"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${fgColor}08, ${fgColor}03)`,
+                    border: `1px solid ${fgColor}10`,
+                  }}
+                  data-testid={`preview-auxiliary-field-${i}`}
+                >
+                  <div 
+                    className="text-[8px] uppercase tracking-[0.2em] font-semibold mb-1"
+                    style={{ color: lblColor }}
+                  >
+                    {field.label}
+                  </div>
+                  <div className="text-sm font-semibold tracking-wide">
+                    {replaceTemplateVars(field.value)}
+                  </div>
+                </div>
+              ))
+            ) : (
+              <>
+                <div 
+                  className="flex-1 p-3 rounded-xl"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${fgColor}08, ${fgColor}03)`,
+                    border: `1px solid ${fgColor}10`,
+                  }}
+                >
+                  <div 
+                    className="text-[8px] uppercase tracking-[0.2em] font-semibold mb-1"
+                    style={{ color: lblColor }}
+                  >
+                    Tier
+                  </div>
+                  <div className="text-sm font-semibold tracking-wide">Gold</div>
+                </div>
+                <div 
+                  className="flex-1 p-3 rounded-xl"
+                  style={{ 
+                    background: `linear-gradient(135deg, ${fgColor}08, ${fgColor}03)`,
+                    border: `1px solid ${fgColor}10`,
+                  }}
+                >
+                  <div 
+                    className="text-[8px] uppercase tracking-[0.2em] font-semibold mb-1"
+                    style={{ color: lblColor }}
+                  >
+                    Name
+                  </div>
+                  <div className="text-sm font-semibold tracking-wide">John Doe</div>
+                </div>
+              </>
+            )}
+          </div>
+
+          {/* QR Code section with futuristic frame */}
+          <div 
+            className="absolute bottom-0 left-0 right-0 p-5 flex flex-col items-center"
+            style={{
+              background: `linear-gradient(to top, rgba(255,255,255,0.98), rgba(255,255,255,0.95))`,
+              borderTop: '1px solid rgba(0,0,0,0.05)',
+            }}
+          >
+            {/* Tech frame around QR */}
+            <div className="relative">
+              {/* Corner accents */}
+              <div className="absolute -top-1 -left-1 w-3 h-3 border-t-2 border-l-2 border-gray-400 rounded-tl" />
+              <div className="absolute -top-1 -right-1 w-3 h-3 border-t-2 border-r-2 border-gray-400 rounded-tr" />
+              <div className="absolute -bottom-1 -left-1 w-3 h-3 border-b-2 border-l-2 border-gray-400 rounded-bl" />
+              <div className="absolute -bottom-1 -right-1 w-3 h-3 border-b-2 border-r-2 border-gray-400 rounded-br" />
+              
+              <div 
+                className="w-24 h-24 rounded-lg flex items-center justify-center bg-white shadow-sm"
+                data-testid="preview-barcode"
+              >
+                {design.barcodeFormat === "PKBarcodeFormatQR" || design.barcodeFormat === "PKBarcodeFormatAztec" ? (
+                  <QrCode className="h-16 w-16 text-gray-800" />
+                ) : (
+                  <BarChart3 className="h-14 w-16 text-gray-800" />
+                )}
+              </div>
+            </div>
+            <div className="text-[9px] text-gray-500 mt-3 font-mono tracking-wider uppercase">
+              {replaceTemplateVars(design.barcodeMessage || "{{serialNumber}}")}
+            </div>
           </div>
         </div>
       </div>
+      
+      {/* CSS Animations */}
+      <style>{`
+        @keyframes shimmer {
+          0%, 100% { background-position: 0% 0%; }
+          50% { background-position: 100% 100%; }
+        }
+        @keyframes pulse {
+          0%, 100% { opacity: 0.5; transform: scale(0.98); }
+          50% { opacity: 0.8; transform: scale(1); }
+        }
+      `}</style>
+      
       <p className="text-xs text-muted-foreground text-center mt-4 max-w-[320px] mx-auto">
         Preview with sample data. Template variables like {"{{memberId}}"} will be replaced with actual values.
       </p>
