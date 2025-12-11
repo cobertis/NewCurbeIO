@@ -38,7 +38,8 @@ import {
   Pause,
   Square,
   AlertTriangle,
-  User
+  User,
+  Download
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
@@ -979,6 +980,178 @@ export default function PhoneSystem() {
   );
 }
 
+/* Inline Audio Player Component */
+interface AudioPlayerProps {
+  recordingUrl: string;
+  logId: string;
+}
+
+function InlineAudioPlayer({ recordingUrl, logId }: AudioPlayerProps) {
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => setCurrentTime(audio.currentTime);
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+      setIsLoading(false);
+    };
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setCurrentTime(0);
+    };
+    const handlePlay = () => setIsPlaying(true);
+    const handlePause = () => setIsPlaying(false);
+    const handleWaiting = () => setIsLoading(true);
+    const handleCanPlay = () => setIsLoading(false);
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('play', handlePlay);
+    audio.addEventListener('pause', handlePause);
+    audio.addEventListener('waiting', handleWaiting);
+    audio.addEventListener('canplay', handleCanPlay);
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('play', handlePlay);
+      audio.removeEventListener('pause', handlePause);
+      audio.removeEventListener('waiting', handleWaiting);
+      audio.removeEventListener('canplay', handleCanPlay);
+    };
+  }, []);
+
+  const togglePlayPause = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    
+    // Stop all other audio players first
+    document.querySelectorAll('audio').forEach(a => {
+      if (a !== audio) a.pause();
+    });
+    
+    if (audio.paused) {
+      setIsLoading(true);
+      audio.play().catch(() => setIsLoading(false));
+    } else {
+      audio.pause();
+    }
+  };
+
+  const handleStop = () => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    audio.pause();
+    audio.currentTime = 0;
+    setCurrentTime(0);
+    setIsPlaying(false);
+  };
+
+  const handleSeek = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    const newTime = parseFloat(e.target.value);
+    audio.currentTime = newTime;
+    setCurrentTime(newTime);
+  };
+
+  const handleDownload = async () => {
+    try {
+      const response = await fetch(recordingUrl);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `recording-${logId}.mp3`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch {
+      window.open(recordingUrl, '_blank');
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
+
+  return (
+    <div className="flex items-center gap-2 bg-indigo-50 dark:bg-indigo-950/30 rounded-lg px-3 py-2 min-w-[220px]">
+      <audio ref={audioRef} src={recordingUrl} preload="metadata" />
+      
+      <button
+        onClick={togglePlayPause}
+        disabled={isLoading}
+        className="w-8 h-8 flex items-center justify-center rounded-full bg-indigo-600 hover:bg-indigo-700 text-white transition-colors disabled:opacity-50"
+        data-testid={`button-play-pause-${logId}`}
+      >
+        {isLoading ? (
+          <Loader2 className="h-4 w-4 animate-spin" />
+        ) : isPlaying ? (
+          <Pause className="h-4 w-4" />
+        ) : (
+          <Play className="h-4 w-4 ml-0.5" />
+        )}
+      </button>
+
+      <button
+        onClick={handleStop}
+        className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 transition-colors"
+        data-testid={`button-stop-${logId}`}
+      >
+        <Square className="h-3 w-3" />
+      </button>
+
+      <div className="flex-1 flex items-center gap-2 min-w-[80px]">
+        <span className="text-xs text-slate-500 dark:text-slate-400 w-9 text-right font-mono">
+          {formatTime(currentTime)}
+        </span>
+        <div className="flex-1 relative h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+          <div 
+            className="absolute left-0 top-0 h-full bg-indigo-500 transition-all duration-100"
+            style={{ width: `${progress}%` }}
+          />
+          <input
+            type="range"
+            min="0"
+            max={duration || 100}
+            value={currentTime}
+            onChange={handleSeek}
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
+            data-testid={`slider-seek-${logId}`}
+          />
+        </div>
+        <span className="text-xs text-slate-500 dark:text-slate-400 w-9 font-mono">
+          {formatTime(duration)}
+        </span>
+      </div>
+
+      <button
+        onClick={handleDownload}
+        className="w-7 h-7 flex items-center justify-center rounded-full bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-300 transition-colors"
+        title="Download recording"
+        data-testid={`button-download-${logId}`}
+      >
+        <Download className="h-3.5 w-3.5" />
+      </button>
+    </div>
+  );
+}
+
 /* Call History with Auto-Polling Component */
 interface CallHistoryProps {
   callLogsData: { logs: any[] } | undefined;
@@ -1107,74 +1280,57 @@ function CallHistoryWithAutoPolling({ callLogsData, isLoadingCallLogs, billingFe
             <p className="text-sm mt-1">Your call history will appear here</p>
           </div>
         ) : (
-          <div className="space-y-2 max-h-[600px] overflow-y-auto">
+          <div className="space-y-3 max-h-[600px] overflow-y-auto">
             {callLogsData.logs.map((log) => {
               const isMissingRecording = callsMissingRecording.some(c => c.id === log.id);
               return (
-                <div key={log.id} className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50 hover:bg-slate-100 dark:hover:bg-muted transition-colors">
-                  <div className="flex items-center gap-4">
-                    <div className={`p-2.5 rounded-full ${log.direction === 'inbound' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
-                      {log.direction === 'inbound' ? <PhoneIncoming className="h-5 w-5 text-blue-600" /> : <PhoneOutgoing className="h-5 w-5 text-green-600" />}
+                <div key={log.id} className="p-4 rounded-lg bg-slate-50 dark:bg-muted/50 hover:bg-slate-100 dark:hover:bg-muted transition-colors">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className={`p-2.5 rounded-full ${log.direction === 'inbound' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
+                        {log.direction === 'inbound' ? <PhoneIncoming className="h-5 w-5 text-blue-600" /> : <PhoneOutgoing className="h-5 w-5 text-green-600" />}
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <p className="font-medium text-slate-800 dark:text-foreground">
+                            {formatPhoneDisplay(log.direction === 'inbound' ? log.fromNumber : log.toNumber)}
+                          </p>
+                          {log.callerName && <span className="text-sm text-slate-500">({log.callerName})</span>}
+                        </div>
+                        <div className="flex items-center gap-2 text-sm text-slate-500">
+                          <span>{format(new Date(log.startedAt), "MMM dd, yyyy 'at' h:mm a")}</span>
+                          <span className="text-slate-300">|</span>
+                          <span className={log.status === 'answered' ? 'text-green-600' : log.status === 'failed' ? 'text-red-500' : 'text-amber-600'}>
+                            {log.status}
+                          </span>
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-medium text-slate-800 dark:text-foreground">
-                          {formatPhoneDisplay(log.direction === 'inbound' ? log.fromNumber : log.toNumber)}
-                        </p>
-                        {log.callerName && <span className="text-sm text-slate-500">({log.callerName})</span>}
-                      </div>
-                      <div className="flex items-center gap-2 text-sm text-slate-500">
-                        <span>{format(new Date(log.startedAt), "MMM dd, yyyy 'at' h:mm a")}</span>
-                        <span className="text-slate-300">|</span>
-                        <span className={log.status === 'answered' ? 'text-green-600' : log.status === 'failed' ? 'text-red-500' : 'text-amber-600'}>
-                          {log.status}
-                        </span>
-                      </div>
+                    <div className="flex items-center gap-4 text-right">
+                      {log.duration > 0 && (
+                        <div className="text-center min-w-[50px]">
+                          <p className="font-medium text-slate-700 dark:text-foreground">{Math.floor(log.duration / 60)}:{(log.duration % 60).toString().padStart(2, '0')}</p>
+                          <p className="text-xs text-slate-400">duration</p>
+                        </div>
+                      )}
+                      {log.cost && parseFloat(log.cost) > 0 && (
+                        <div className="text-center min-w-[60px]">
+                          <p className="font-medium text-amber-600">${parseFloat(log.cost).toFixed(4)}</p>
+                          <p className="text-xs text-slate-400">cost</p>
+                        </div>
+                      )}
+                      {isMissingRecording && billingFeaturesData?.recordingEnabled && (
+                        <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 min-w-[100px]">
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                          <span>Processing...</span>
+                        </div>
+                      )}
                     </div>
-                  </div>
-                  <div className="flex items-center gap-4 text-right">
-                    {log.duration > 0 && (
-                      <div className="text-center min-w-[50px]">
-                        <p className="font-medium text-slate-700 dark:text-foreground">{Math.floor(log.duration / 60)}:{(log.duration % 60).toString().padStart(2, '0')}</p>
-                        <p className="text-xs text-slate-400">duration</p>
-                      </div>
-                    )}
-                    {log.cost && parseFloat(log.cost) > 0 && (
-                      <div className="text-center min-w-[60px]">
-                        <p className="font-medium text-amber-600">${parseFloat(log.cost).toFixed(4)}</p>
-                        <p className="text-xs text-slate-400">cost</p>
-                      </div>
-                    )}
-                    {log.recordingUrl ? (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 px-3 text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:border-indigo-800 dark:hover:bg-indigo-950"
-                        onClick={() => {
-                          const audio = document.getElementById(`audio-${log.id}`) as HTMLAudioElement;
-                          if (audio) {
-                            if (audio.paused) {
-                              document.querySelectorAll('audio').forEach(a => a.pause());
-                              audio.play();
-                            } else {
-                              audio.pause();
-                            }
-                          }
-                        }}
-                        data-testid={`button-play-recording-${log.id}`}
-                      >
-                        <Play className="h-3 w-3 mr-1" />
-                        Listen
-                      </Button>
-                    ) : isMissingRecording && billingFeaturesData?.recordingEnabled ? (
-                      <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 min-w-[100px]">
-                        <Loader2 className="h-3 w-3 animate-spin" />
-                        <span>Processing...</span>
-                      </div>
-                    ) : null}
                   </div>
                   {log.recordingUrl && (
-                    <audio id={`audio-${log.id}`} src={log.recordingUrl} className="hidden" preload="none" />
+                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                      <InlineAudioPlayer recordingUrl={log.recordingUrl} logId={log.id} />
+                    </div>
                   )}
                 </div>
               );
