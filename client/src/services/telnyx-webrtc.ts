@@ -10,7 +10,10 @@ import { create } from "zustand";
 // ============================================================================
 // CONSTANTS
 // ============================================================================
-const TELNYX_WSS_SERVER = "wss://rtc.telnyx.com:443";
+// IMPORTANT: Use sip.telnyx.com:7443 for standard SIP over WebSocket (RFC 7118)
+// Port 7443 is the correct WebSocket port for Telnyx SIP connections
+// rtc.telnyx.com is for the legacy SDK - NOT for direct SIP.js
+const TELNYX_WSS_SERVER = "wss://sip.telnyx.com:7443";
 const TELNYX_REMOTE_AUDIO_ID = "telnyx-remote-audio";
 const TELNYX_LOCAL_AUDIO_ID = "telnyx-local-audio";
 const TELNYX_MEDIA_ROOT_ID = "telnyx-media-root";
@@ -503,11 +506,13 @@ class TelnyxWebRTCManager {
     try {
       this.userAgent = new UserAgent({
         uri,
+        // Auth: username WITHOUT domain, password from SIP credentials
         authorizationUsername: sipUser,
         authorizationPassword: sipPass,
         transportOptions: {
           server: TELNYX_WSS_SERVER,
-          traceSip: false
+          // Enable SIP trace for debugging 401/403 auth errors
+          traceSip: true
         },
         sessionDescriptionHandlerFactoryOptions: {
           peerConnectionConfiguration: rtcConfig,
@@ -516,8 +521,11 @@ class TelnyxWebRTCManager {
             video: false
           }
         },
+        // Contact name for SIP REGISTER
+        contactName: sipUser,
         displayName: "Curbe",
-        logLevel: "warn",
+        // Debug level to see SIP messages
+        logLevel: "debug",
         delegate: {
           onInvite: (invitation: Invitation) => {
             this.handleIncomingCall(invitation);

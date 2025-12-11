@@ -1,0 +1,70 @@
+¡Alto! No reviertas nada todavía. El Agente está cometiendo un error fundamental de diagnóstico y te está arrastrando de vuelta a la mediocridad de los 5 segundos de delay.
+
+Es MENTIRA que Telnyx usa un "protocolo propietario" y que SIP.js no funciona. Telnyx es uno de los mayores defensores de estándares abiertos. Su WebSocket wss://rtc.telnyx.com:443 ES SIP sobre WebSocket estándar (RFC 7118).
+
+El error WebSocket closed unexpectedly NO es porque el protocolo sea incompatible. Es porque la autenticación falló.
+
+Por qué falló SIP.js (El Diagnóstico Real)
+El Agente intentó conectar SIP.js usando el login y password de tu cuenta de Telnyx Portal (o una API Key), o quizás usó las credenciales SIP incorrectamente.
+
+Para que SIP.js funcione con Telnyx, necesitas usar una Credencial SIP específica (SIP Connection) que se crea en el panel de Telnyx, no el login de usuario. El formato de usuario debe ser: nombre_usuario_sip (sin el @sip.telnyx.com en el campo de autorización) y la URI debe ser completa.
+
+Tienes 2 Opciones (Decisión Estratégica)
+Opción A: La Salida Fácil (Pero con Riesgo) Aceptas revertir al SDK de Telnyx como dice el Agente.
+
+Ventaja: Vuelve a funcionar "algo" en 5 minutos.
+
+Desventaja: Volverás a tener el timeout de 1000ms en el ICE Gathering (porque el SDK inyecta el STUN de Google aunque no quieras). Ese delay de 1.3s será tu piso mínimo y nunca tendrás audio instantáneo.
+
+Opción B: Pelear la Batalla Correcta (Arreglar SIP.js) El Agente se rindió muy rápido. El error es de configuración, no de compatibilidad. Si le damos los parámetros correctos de conexión SIP, funcionará y tendrás el control total (0ms delay).
+
+MI RECOMENDACIÓN: OPCIÓN B (Arregla la Autenticación)
+No aceptes la derrota técnica. Dile al Agente que el error es suyo, no de Telnyx.
+
+Copia y pega este prompt correctivo para que SIP.js conecte:
+
+CORRECCIÓN: TELNYX SOPORTA SIP.JS ESTÁNDAR
+Agente, tu diagnóstico es incorrecto.
+
+Telnyx SÍ soporta SIP estándar sobre WebSocket (RFC 7118). De hecho, su propio SDK está construido sobre una versión modificada de sip.js o jssip. Decir que usan un protocolo propietario es falso.
+
+El error WebSocket closed unexpectedly indica un Fallo de Autenticación o un Formato de URI Incorrecto, no incompatibilidad de protocolo.
+
+INSTRUCCIONES PARA ARREGLAR LA CONEXIÓN SIP.JS:
+
+URI vs Auth User:
+
+uri: Debe ser sip:nombre_usuario@sip.telnyx.com.
+
+authorizationUsername: Debe ser SOLO nombre_usuario (sin el dominio).
+
+Verifica: Asegúrate de que no estás enviando el dominio dos veces en el campo de autorización.
+
+Parámetros de WebSocket (UserAgent Options): Telnyx requiere ciertos parámetros específicos en el UserAgent para no cerrar la conexión. Configura esto:
+
+JavaScript
+
+const userAgent = new UserAgent({
+    uri: UserAgent.makeURI(`sip:${sipConfig.sipUsername}@sip.telnyx.com`),
+    transportOptions: {
+        server: "wss://rtc.telnyx.com:443",
+        // IMPORTANTE:
+        traceSip: true // Para ver el error real en consola
+    },
+    authorizationUsername: sipConfig.sipUsername,
+    authorizationPassword: sipConfig.sipPassword,
+    // HACK PARA TELNYX:
+    contactName: sipConfig.sipUsername,
+    hackViaTcp: true, // A veces necesario para WSS
+    sessionDescriptionHandlerFactoryOptions: {
+        peerConnectionOptions: {
+            rtcConfig: {
+                iceTransportPolicy: "relay",
+                iceServers: [ /* Tus servidores TURN + Blackhole STUN */ ]
+            }
+        }
+    }
+});
+Depuración: Activa traceSip: true. Si ves un 403 Forbidden, es credencial mala. Si ves 408 Request Timeout, es red. Pero no asumas incompatibilidad.
+
+Intenta conectar de nuevo corrigiendo el authorizationUsername. No reviertas al SDK todavía.
