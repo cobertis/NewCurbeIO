@@ -28944,7 +28944,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
 
 
-
   // POST /api/webrtc/call-control-hangup - Hang up call using Call Control API with telnyxLegId
   // CRITICAL: The Telnyx WebRTC SDK has a BUG where hangup() ALWAYS sends 486 USER_BUSY
   // This is hardcoded in BaseCall.ts lines 386-387: cause: 'USER_BUSY', causeCode: 17
@@ -28983,7 +28982,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Use Telnyx Call Control API to hang up with proper SIP code
       // Per docs: POST /v2/calls/{call_control_id}/actions/hangup
-      // The telnyxLegId IS the call_control_id for inbound calls
       const hangupResponse = await fetch(
         `https://api.telnyx.com/v2/calls/${telnyxLegId}/actions/hangup`,
         {
@@ -29001,21 +28999,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         let result = null;
         const text = await hangupResponse.text();
         if (text) {
-          try {
-            result = JSON.parse(text);
-          } catch {
-            // Empty or non-JSON response is OK for hangup
-          }
+          try { result = JSON.parse(text); } catch { /* empty response OK */ }
         }
-        console.log("[Call Control Hangup] Call terminated successfully:", {
-          telnyxLegId,
-          result
-        });
+        console.log("[Call Control Hangup] Call terminated successfully:", { telnyxLegId, result });
         return res.json({ success: true, message: "Call terminated via Call Control API" });
       } else {
         const errorText = await hangupResponse.text();
         console.error("[Call Control Hangup] API error:", hangupResponse.status, errorText);
-        // If call is already ended, still return success
         if (hangupResponse.status === 404) {
           return res.json({ success: true, message: "Call already ended" });
         }
@@ -29026,6 +29016,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ success: false, message: error.message || "Hangup failed" });
     }
   });
+
 
   // POST /api/webrtc/server-hangup - Hang up PSTN call from server (avoids 486 Busy)
   // CRITICAL: This endpoint uses Telnyx Call Control API to terminate the PSTN leg cleanly
@@ -29098,3 +29089,717 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             body: JSON.stringify({})
           }
         );
+        if (hangupResponse.ok) {
+          console.log("[WebRTC Server Hangup] PSTN call terminated successfully:", activeCall.callSid);
+          activeCallsMap.delete(credential.sipUsername);
+          return res.json({ success: true, message: "PSTN call terminated" });
+        } else {
+          const errorText = await hangupResponse.text();
+          console.error("[WebRTC Server Hangup] Telnyx API error:", hangupResponse.status, errorText);
+          // Keep the call in activeCallsMap for retry
+          return res.json({ success: false, message: "Telnyx API error: " + hangupResponse.status });
+        }
+      } catch (apiError: any) {
+        console.error("[WebRTC Server Hangup] API call failed:", apiError);
+        return res.json({ success: false, message: "API call failed: " + (apiError.message || "Unknown error") });
+      }
+    } catch (error: any) {
+      console.error("[WebRTC Server Hangup] Error:", error);
+      res.status(500).json({ success: false, message: error.message || "Hangup failed" });
+    }
+  });
+
+    // POST /api/webrtc/call-log - Log WebRTC call events
+  app.post("/api/webrtc/call-log", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { 
+        callId,
+        fromNumber, 
+        toNumber, 
+        direction, 
+        status, 
+        duration,
+        startedAt,
+        endedAt 
+      } = req.body;
+
+      if (!fromNumber || !toNumber || !direction || !status) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      // Check if call already exists (update) or create new
+      const existingLog = callId ? await db.query.callLogs.findFirst({
+        where: and(
+          eq(callLogs.telnyxCallId, callId),
+          eq(callLogs.companyId, user.companyId)
+        )
+      }) : null;
+
+      if (existingLog) {
+        // Update existing call log
+        await db.update(callLogs)
+          .set({
+            status,
+            duration: duration || 0,
+            endedAt: endedAt ? new Date(endedAt) : new Date(),
+          })
+          .where(eq(callLogs.id, existingLog.id));
+        
+        console.log("[WebRTC] Updated call log:", existingLog.id, "status:", status);
+        return res.json({ success: true, id: existingLog.id, updated: true });
+      }
+
+      // Try to match contact by phone number - handle null phones safely
+      const normalizedFrom = fromNumber.replace(/\D/g, '').slice(-10);
+      const normalizedTo = toNumber.replace(/\D/g, '').slice(-10);
+      
+      // Use the remote party's number for contact matching
+      const phoneToMatch = direction === 'inbound' ? normalizedFrom : normalizedTo;
+      
+      let matchedContact: any = null;
+      try {
+        matchedContact = await db.query.contacts.findFirst({
+          where: and(
+            eq(contacts.companyId, user.companyId),
+            sql`${contacts.phone} IS NOT NULL AND RIGHT(REGEXP_REPLACE(${contacts.phone}, '[^0-9]', '', 'g'), 10) = ${phoneToMatch}`
+          )
+        });
+      } catch (contactError) {
+        console.log("[WebRTC] Contact lookup failed, proceeding without contact:", contactError);
+      }
+
+      console.log("[WebRTC] Creating call log:", { 
+        fromNumber, toNumber, direction, status, 
+        matchedContactId: matchedContact?.id,
+        phoneToMatch
+      });
+
+      // Create new call log - ensure all values are properly defined
+      const insertValues: any = {
+        companyId: user.companyId,
+        userId: user.id,
+        telnyxCallId: callId || `webrtc-${Date.now()}`,
+        fromNumber: fromNumber,
+        toNumber: toNumber,
+        direction: direction,
+        status: status,
+        duration: duration || 0,
+        startedAt: startedAt ? new Date(startedAt) : new Date(),
+      };
+      
+      // Only add contactId and callerName if we have a match
+      if (matchedContact?.id) {
+        insertValues.contactId = matchedContact.id;
+        const callerName = `${matchedContact.firstName || ''} ${matchedContact.lastName || ''}`.trim();
+        if (callerName) {
+          insertValues.callerName = callerName;
+        }
+      }
+
+      const [newLog] = await db.insert(callLogs).values(insertValues).returning();
+
+      console.log("[WebRTC] Created call log:", newLog.id, "direction:", direction, "to:", toNumber);
+      res.json({ success: true, id: newLog.id, created: true });
+    } catch (error: any) {
+      console.error("[WebRTC] Call log error:", error);
+      res.status(500).json({ message: "Failed to log call" });
+    }
+  });
+
+  // GET /api/e911/addresses - Get company's E911 addresses
+  app.get("/api/e911/addresses", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { getEmergencyAddresses } = await import("./services/telnyx-e911-service");
+      const result = await getEmergencyAddresses(user.companyId);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json({ addresses: result.addresses || [] });
+    } catch (error: any) {
+      console.error("[E911] Get addresses error:", error);
+      res.status(500).json({ message: "Failed to get emergency addresses" });
+    }
+  });
+
+
+  // =====================================================
+  // CALL LOGS (Call History for WebPhone)
+  // =====================================================
+
+
+  // GET /api/caller-lookup/:phoneNumber - Lookup caller by phone number in quotes/policies/contacts
+  app.get("/api/caller-lookup/:phoneNumber", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumber } = req.params;
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ message: "Phone number is required" });
+      }
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      // Normalize phone number (keep only last 10 digits)
+      const normalizedPhone = phoneNumber.replace(/\D/g, '').slice(-10);
+      
+      if (normalizedPhone.length < 10) {
+        return res.json({ found: false });
+      }
+      
+      // Search in quotes first (most common source for client data)
+      const matchedQuote = await db.query.quotes.findFirst({
+        where: and(
+          eq(quotes.companyId, user.companyId),
+          sql`REPLACE(REPLACE(REPLACE(REPLACE(${quotes.clientPhone}, '-', ''), '(', ''), ')', ''), ' ', '') LIKE '%' || ${normalizedPhone}`
+        )
+      });
+      
+      if (matchedQuote) {
+        return res.json({
+          found: true,
+          source: 'quote',
+          clientFirstName: matchedQuote.clientFirstName,
+          clientLastName: matchedQuote.clientLastName,
+          clientPhone: matchedQuote.clientPhone
+        });
+      }
+      
+      // Search in policies
+      const matchedPolicy = await db.query.policies.findFirst({
+        where: and(
+          eq(policies.companyId, user.companyId),
+          sql`REPLACE(REPLACE(REPLACE(REPLACE(${policies.clientPhone}, '-', ''), '(', ''), ')', ''), ' ', '') LIKE '%' || ${normalizedPhone}`
+        )
+      });
+      
+      if (matchedPolicy) {
+        return res.json({
+          found: true,
+          source: 'policy',
+          clientFirstName: matchedPolicy.clientFirstName,
+          clientLastName: matchedPolicy.clientLastName,
+          clientPhone: matchedPolicy.clientPhone
+        });
+      }
+      
+      // Search in contacts table
+      const matchedContact = await db.query.contacts.findFirst({
+        where: and(
+          eq(contacts.companyId, user.companyId),
+          sql`REPLACE(REPLACE(REPLACE(REPLACE(${contacts.phone}, '-', ''), '(', ''), ')', ''), ' ', '') LIKE '%' || ${normalizedPhone}`
+        )
+      });
+      
+      if (matchedContact) {
+        return res.json({
+          found: true,
+          source: 'contact',
+          clientFirstName: matchedContact.firstName,
+          clientLastName: matchedContact.lastName,
+          clientPhone: matchedContact.phone
+        });
+      }
+      
+      // Not found
+      res.json({ found: false });
+    } catch (error: any) {
+      console.error("[Caller Lookup] Error:", error);
+      res.status(500).json({ message: "Failed to lookup caller" });
+    }
+  });
+
+  // GET /api/call-logs - Get call history for company
+  app.get("/api/call-logs", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { filter, limit = "50" } = req.query;
+      const parsedLimit = Math.min(parseInt(limit as string) || 50, 100);
+
+      const logs = await db
+        .select()
+        .from(callLogs)
+        .where(eq(callLogs.companyId, user.companyId))
+        .orderBy(desc(callLogs.startedAt))
+        .limit(parsedLimit);
+
+      res.json({ logs });
+    } catch (error: any) {
+      console.error("[Call Logs] Get error:", error);
+      res.status(500).json({ message: "Failed to get call history" });
+    }
+  });
+
+  // POST /api/call-logs - Create a call log entry
+  app.post("/api/call-logs", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { 
+        fromNumber, 
+        toNumber, 
+        direction, 
+        status, 
+        duration,
+        callerName,
+        telnyxCallId,
+        telnyxSessionId,
+        startedAt,
+        answeredAt,
+        endedAt
+      } = req.body;
+
+      if (!fromNumber || !toNumber || !direction || !status) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+
+      const [log] = await db
+        .insert(callLogs)
+        .values({
+          companyId: user.companyId,
+          userId: user.id,
+          fromNumber,
+          toNumber,
+          direction,
+          status,
+          duration: duration || 0,
+          callerName,
+          telnyxCallId,
+          telnyxSessionId,
+          startedAt: startedAt ? new Date(startedAt) : new Date(),
+          answeredAt: answeredAt ? new Date(answeredAt) : null,
+          endedAt: endedAt ? new Date(endedAt) : null,
+        })
+        .returning();
+
+      res.json({ success: true, log });
+    } catch (error: any) {
+      console.error("[Call Logs] Create error:", error);
+      res.status(500).json({ message: "Failed to create call log" });
+    }
+  });
+
+  // DELETE /api/call-logs/:id - Delete a call log entry
+  app.delete("/api/call-logs/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      await db
+        .delete(callLogs)
+        .where(and(
+          eq(callLogs.id, id),
+          eq(callLogs.companyId, user.companyId)
+        ));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Call Logs] Delete error:", error);
+      res.status(500).json({ message: "Failed to delete call log" });
+    }
+  });
+
+  // DELETE /api/call-logs - Clear all call logs for company
+  app.delete("/api/call-logs", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      await db
+        .delete(callLogs)
+        .where(eq(callLogs.companyId, user.companyId));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Call Logs] Clear all error:", error);
+      res.status(500).json({ message: "Failed to clear call history" });
+    }
+  });
+
+
+  // =====================================================
+  // VOICEMAILS
+  // =====================================================
+
+  // GET /api/voicemails - Get voicemails for company
+  app.get("/api/voicemails", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { status, limit = "50" } = req.query;
+      const parsedLimit = Math.min(parseInt(limit as string) || 50, 100);
+
+      const messages = await db
+        .select()
+        .from(voicemails)
+        .where(
+          status 
+            ? and(eq(voicemails.companyId, user.companyId), eq(voicemails.status, status as string))
+            : eq(voicemails.companyId, user.companyId)
+        )
+        .orderBy(desc(voicemails.receivedAt))
+        .limit(parsedLimit);
+
+      // Get unread count
+      const [unreadCount] = await db
+        .select({ count: count() })
+        .from(voicemails)
+        .where(and(
+          eq(voicemails.companyId, user.companyId),
+          eq(voicemails.status, "new")
+        ));
+
+      res.json({ 
+        voicemails: messages,
+        unreadCount: unreadCount?.count || 0
+      });
+    } catch (error: any) {
+      console.error("[Voicemails] Get error:", error);
+      res.status(500).json({ message: "Failed to get voicemails" });
+    }
+  });
+
+  // PATCH /api/voicemails/:id - Update voicemail (mark as read, etc.)
+  app.patch("/api/voicemails/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const updateData: any = { updatedAt: new Date() };
+      
+      if (status) {
+        updateData.status = status;
+        if (status === "read") {
+          updateData.readAt = new Date();
+        }
+      }
+
+      const [updated] = await db
+        .update(voicemails)
+        .set(updateData)
+        .where(and(
+          eq(voicemails.id, id),
+          eq(voicemails.companyId, user.companyId)
+        ))
+        .returning();
+
+      res.json({ success: true, voicemail: updated });
+    } catch (error: any) {
+      console.error("[Voicemails] Update error:", error);
+      res.status(500).json({ message: "Failed to update voicemail" });
+    }
+  });
+
+  // DELETE /api/voicemails/:id - Delete a voicemail
+  app.delete("/api/voicemails/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      await db
+        .delete(voicemails)
+        .where(and(
+          eq(voicemails.id, id),
+          eq(voicemails.companyId, user.companyId)
+        ));
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Voicemails] Delete error:", error);
+      res.status(500).json({ message: "Failed to delete voicemail" });
+    }
+  });
+
+
+  // ============================================
+  // DEPLOYMENT MANAGEMENT ENDPOINTS
+  // ============================================
+  
+  // Helper function to execute deployment
+  async function executeDeployment(jobId: number) {
+    const isProduction = process.env.NODE_ENV === "production";
+    let logs = "";
+    
+    const appendLog = async (message: string) => {
+      logs += message + "\n";
+      console.log(`[DEPLOY] ${message}`);
+      await db.update(deploymentJobs)
+        .set({ logs })
+        .where(eq(deploymentJobs.id, jobId));
+    };
+    
+    try {
+      await db.update(deploymentJobs)
+        .set({ status: "in_progress", logs: "" })
+        .where(eq(deploymentJobs.id, jobId));
+      
+      await appendLog(`Job ${jobId} started at ${new Date().toISOString()}`);
+      await appendLog(`Environment: ${isProduction ? "PRODUCTION" : "DEVELOPMENT"}`);
+      
+      if (!isProduction) {
+        await appendLog("Running in development mode - simulating deployment");
+        await appendLog("In production, this will execute: git pull, npm ci, npm run build, pm2 restart");
+        
+        await db.update(deploymentJobs)
+          .set({ 
+            status: "completed",
+            completedAt: new Date(),
+            logs: logs + "\nDeployment simulation completed (dev mode)"
+          })
+          .where(eq(deploymentJobs.id, jobId));
+        return;
+      }
+      
+      // Production deployment - execute real commands
+      const { spawn } = await import("child_process");
+      
+      const runCommand = (cmd: string, args: string[], cwd: string): Promise<string> => {
+        return new Promise((resolve, reject) => {
+          const env = { ...process.env, PATH: `${cwd}/node_modules/.bin:${process.env.PATH}` };
+          const proc = spawn(cmd, args, { cwd, shell: true, env });
+          let output = "";
+          let errorOutput = "";
+          
+          proc.stdout.on("data", (data) => {
+            output += data.toString();
+          });
+          
+          proc.stderr.on("data", (data) => {
+            errorOutput += data.toString();
+          });
+          
+          proc.on("close", (code) => {
+            if (code === 0) {
+              resolve(output + errorOutput);
+            } else {
+              reject(new Error(`Command failed with code ${code}: ${errorOutput || output}`));
+            }
+          });
+          
+          proc.on("error", (err) => {
+            reject(err);
+          });
+        });
+      };
+      
+      const appDir = "/var/www/curbe";
+      
+      // Step 1: Git pull
+      await appendLog("Step 1/4: Pulling latest code from GitHub...");
+      try {
+        const gitOutput = await runCommand("git", ["pull", "origin", "main"], appDir);
+        await appendLog(gitOutput.trim() || "Git pull completed");
+      } catch (err: any) {
+        if (err.message.includes("untracked working tree")) {
+          await appendLog("Untracked files detected, cleaning up...");
+          await runCommand("git", ["checkout", "--", "."], appDir);
+          await runCommand("git", ["clean", "-fd"], appDir);
+          const gitOutput = await runCommand("git", ["pull", "origin", "main"], appDir);
+          await appendLog(gitOutput.trim() || "Git pull completed after cleanup");
+        } else {
+          throw err;
+        }
+      }
+      
+      // Step 2: Install dependencies
+      await appendLog("Step 2/4: Installing dependencies...");
+      await runCommand("npm", ["ci"], appDir);
+      await appendLog("Dependencies installed successfully");
+      
+      // Step 3: Build
+      await appendLog("Step 3/4: Building application...");
+      await runCommand("npm", ["run", "build"], appDir);
+      await appendLog("Build completed successfully");
+      
+      // Step 4: Restart PM2
+      await appendLog("Step 4/4: Restarting application...");
+      await runCommand("pm2", ["restart", "curbe-admin", "--update-env"], appDir);
+      await appendLog("Application restarted successfully");
+      
+      await db.update(deploymentJobs)
+        .set({ 
+          status: "completed",
+          completedAt: new Date(),
+          logs: logs + "\nDeployment completed successfully!"
+        })
+        .where(eq(deploymentJobs.id, jobId));
+      
+      console.log(`[DEPLOY] Job ${jobId} completed successfully`);
+    } catch (error: any) {
+      console.error(`[DEPLOY] Job ${jobId} failed:`, error);
+      await db.update(deploymentJobs)
+        .set({ 
+          status: "failed",
+          completedAt: new Date(),
+          logs: logs + `\nError: ${error.message}`,
+          errorMessage: error.message
+        })
+        .where(eq(deploymentJobs.id, jobId));
+    }
+  }
+  
+  // POST /api/deploy/github - GitHub webhook for auto-deployment
+  app.post("/api/deploy/github", async (req: Request, res: Response) => {
+    try {
+      console.log("[DEPLOY] GitHub webhook triggered");
+      
+      const [existingJob] = await db
+        .select()
+        .from(deploymentJobs)
+        .where(eq(deploymentJobs.status, "in_progress"))
+        .limit(1);
+      
+      if (existingJob) {
+        return res.status(202).json({ 
+          message: "Deployment already in progress", 
+          jobId: existingJob.id 
+        });
+      }
+      
+      const [job] = await db
+        .insert(deploymentJobs)
+        .values({
+          triggeredBy: "github_webhook",
+          status: "pending",
+          startedAt: new Date()
+        })
+        .returning();
+      
+      executeDeployment(job.id).catch(err => {
+        console.error("[DEPLOY] Deployment failed:", err);
+      });
+      
+      res.status(202).json({ 
+        message: "Deployment started", 
+        jobId: job.id 
+      });
+    } catch (error: any) {
+      console.error("[DEPLOY] GitHub webhook error:", error);
+      res.status(500).json({ message: "Failed to trigger deployment" });
+    }
+  });
+  
+  // POST /api/admin/deploy - Super admin trigger for manual deployment
+  app.post("/api/admin/deploy", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Only super admin can trigger deployments" });
+      }
+      
+      console.log("[DEPLOY] Manual deployment triggered by:", user.email);
+      
+      const [existingJob] = await db
+        .select()
+        .from(deploymentJobs)
+        .where(eq(deploymentJobs.status, "in_progress"))
+        .limit(1);
+      
+      if (existingJob) {
+        return res.status(202).json({ 
+          message: "Deployment already in progress", 
+          jobId: existingJob.id,
+          inProgress: true
+        });
+      }
+      
+      const [job] = await db
+        .insert(deploymentJobs)
+        .values({
+          triggeredBy: user.email || "superadmin",
+          status: "pending",
+          startedAt: new Date()
+        })
+        .returning();
+      
+      executeDeployment(job.id).catch(err => {
+        console.error("[DEPLOY] Deployment failed:", err);
+      });
+      
+      res.json({ 
+        message: "Deployment started", 
+        jobId: job.id,
+        success: true
+      });
+    } catch (error: any) {
+      console.error("[DEPLOY] Admin deploy error:", error);
+      res.status(500).json({ message: "Failed to trigger deployment" });
+    }
+  });
+  
+  // GET /api/admin/deploy/status - Get deployment status
+  app.get("/api/admin/deploy/status", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Only super admin can view deployment status" });
+      }
+      
+      const jobs = await db
+        .select()
+        .from(deploymentJobs)
+        .orderBy(desc(deploymentJobs.startedAt))
+        .limit(10);
+      
+      const [latestJob] = jobs;
+      
+      res.json({ 
+        jobs,
+        currentStatus: latestJob?.status || "idle",
+        lastDeployment: latestJob || null
+      });
+    } catch (error: any) {
+      console.error("[DEPLOY] Status error:", error);
+      res.status(500).json({ message: "Failed to get deployment status" });
+    }
+  });
+
+  return httpServer;
+}
+

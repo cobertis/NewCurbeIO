@@ -623,16 +623,26 @@ class TelnyxWebRTCManager {
         store.setCurrentCall(call);
         store.setCallActiveTimestamp(Date.now());
         
-        // CRITICAL: Capture telnyxLegId for Call Control API hangup
+        // CRITICAL: Capture call_control_id for Call Control API hangup
         // The SDK has a bug where hangup() always sends 486 USER_BUSY
-        // We need the leg ID to hangup via REST API instead
-        const telnyxIDs = call.telnyxIDs || {};
-        const legId = telnyxIDs.telnyxLegId || (call as any).options?.telnyxLegId;
-        if (legId) {
-          console.log("[Telnyx WebRTC] 📞 Captured telnyxLegId:", legId);
-          store.setActiveTelnyxLegId(legId);
+        // We need the call_control_id to hangup via REST API instead
+        // Per Telnyx docs: POST /v2/calls/{call_control_id}/actions/hangup
+        const callControlId = (call as any).telnyxCallControlId || 
+                              (call as any).callControlId ||
+                              (call as any).telnyxIDs?.telnyxCallControlId ||
+                              (call as any).telnyxIDs?.telnyxLegId ||
+                              (call as any).options?.telnyxCallControlId;
+        console.log("[Telnyx WebRTC] 📞 Call IDs available:", {
+          telnyxCallControlId: (call as any).telnyxCallControlId,
+          callControlId: (call as any).callControlId,
+          telnyxLegId: (call as any).telnyxIDs?.telnyxLegId,
+          callId: (call as any).id
+        });
+        if (callControlId) {
+          console.log("[Telnyx WebRTC] 📞 Using call_control_id:", callControlId);
+          store.setActiveTelnyxLegId(callControlId);
         } else {
-          console.log("[Telnyx WebRTC] ⚠️ No telnyxLegId available, hangup may show USER_BUSY");
+          console.log("[Telnyx WebRTC] ⚠️ No call_control_id available, hangup may show USER_BUSY");
         }
 
         // Conectar audio remoto

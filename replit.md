@@ -88,3 +88,9 @@ The system uses PostgreSQL with Drizzle ORM, enforcing strict multi-tenancy. Sec
 - **Security:** Bcrypt.
 - **Utilities:** `date-fns`.
 - **Background Jobs:** `node-cron`.
+### Telnyx WebRTC SDK Hangup Bug Workaround (Dec 2024)
+- **BUG DISCOVERED**: The Telnyx WebRTC SDK has a hardcoded bug in `BaseCall.ts` lines 386-387 where `hangup()` ALWAYS sends `cause: 'USER_BUSY'` and `causeCode: 17` (SIP 486) instead of respecting the parameters passed.
+- **IMPACT**: When the agent hangs up an inbound call, the caller sees "User Busy" instead of normal call termination.
+- **WORKAROUND**: For inbound calls, the system captures `telnyxLegId` when the call becomes active, then uses the Telnyx Call Control REST API (`POST /v2/calls/{call_control_id}/actions/hangup`) instead of the SDK's `hangup()` method.
+- **ENDPOINT**: `/api/webrtc/call-control-hangup` accepts `{ telnyxLegId }` and terminates the call with proper NORMAL_CLEARING (16).
+- **SOURCE**: https://github.com/team-telnyx/webrtc/blob/main/packages/js/src/Modules/Verto/webrtc/BaseCall.ts
