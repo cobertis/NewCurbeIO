@@ -160,9 +160,17 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
     if (params.national_destination_code) {
       // Filter by area code - check if phone number contains the area code
       const areaCode = params.national_destination_code;
+      
+      // Debug: log first few numbers to see format
+      if (allNumbers.length > 0) {
+        console.log(`[Telnyx Numbers] Sample numbers received:`, allNumbers.slice(0, 3).map((n: any) => n.phone_number));
+        console.log(`[Telnyx Numbers] Looking for area code: ${areaCode}`);
+      }
+      
       exactMatches = allNumbers.filter((n: any) => {
         const phone = n.phone_number?.replace(/^\+1/, '') || '';
-        return phone.startsWith(areaCode);
+        const matches = phone.startsWith(areaCode);
+        return matches;
       });
       alternativeMatches = allNumbers.filter((n: any) => {
         const phone = n.phone_number?.replace(/^\+1/, '') || '';
