@@ -106,13 +106,9 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
       });
     }
     
-    // Use best_effort=false when filtering by area code to get exact matches only
-    // Use best_effort=true only for general searches without specific filters
-    const hasSpecificFilters = params.national_destination_code || 
-                               params.starts_with || 
-                               params.ends_with || 
-                               params.contains;
-    queryParams.append("filter[best_effort]", hasSpecificFilters ? "false" : "true");
+    // Always use best_effort=true to get results
+    // We'll filter exact matches server-side when area code is specified
+    queryParams.append("filter[best_effort]", "true");
     
     // Use page[size] and page[number] for proper pagination
     const pageSize = params.limit || 50;
@@ -156,14 +152,27 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
     const result = await response.json();
     
     const meta = result.meta || {};
-    const numbers = result.data || [];
+    const allNumbers = result.data || [];
     
-    console.log(`[Telnyx Numbers] Found ${numbers.length} numbers on page ${meta.page_number || pageNumber}`);
+    // Filter exact matches when area code is specified
+    let filteredNumbers = allNumbers;
+    if (params.national_destination_code) {
+      const areaCode = params.national_destination_code;
+      filteredNumbers = allNumbers.filter((n: any) => {
+        // Phone is in E.164 format: +1XXXXXXXXXX
+        // Area code is positions 2-4 (after +1)
+        const phone = n.phone_number || '';
+        return phone.startsWith(`+1${areaCode}`);
+      });
+      console.log(`[Telnyx Numbers] Filtered ${allNumbers.length} -> ${filteredNumbers.length} exact matches for area code ${areaCode}`);
+    } else {
+      console.log(`[Telnyx Numbers] Found ${allNumbers.length} numbers on page ${meta.page_number || pageNumber}`);
+    }
 
     return {
       success: true,
-      numbers: numbers,
-      totalCount: meta.total_results,
+      numbers: filteredNumbers,
+      totalCount: filteredNumbers.length,
       currentPage: meta.page_number || pageNumber,
       totalPages: meta.total_pages || 1,
       pageSize: meta.page_size || pageSize,
