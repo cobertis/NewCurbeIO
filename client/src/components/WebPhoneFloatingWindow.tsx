@@ -1218,8 +1218,9 @@ export function WebPhoneFloatingWindow() {
   // Filter out default SDK caller names that aren't useful
   const isValidCallerName = (name: string | undefined | null): boolean => {
     if (!name) return false;
-    const invalidNames = ['Outbound Call', 'Unknown Caller', 'Unknown', 'Curbe', ''];
-    return !invalidNames.includes(name.trim());
+    // Case-insensitive comparison for invalid names
+    const invalidNames = ['outbound call', 'unknown caller', 'unknown', ''];
+    return !invalidNames.includes(name.trim().toLowerCase());
   };
   
   const effectiveCall = useMemo(() => {
