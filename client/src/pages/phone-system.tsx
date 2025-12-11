@@ -635,113 +635,11 @@ export default function PhoneSystem() {
 
           {/* Call History Tab */}
           <TabsContent value="calls" className="p-6 m-0">
-            <Card className="border-slate-200 dark:border-border">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <History className="h-4 w-4" />Call History
-                  </CardTitle>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={async () => {
-                      try {
-                        const response = await fetch('/api/telnyx/sync-recordings', { method: 'POST', credentials: 'include' });
-                        const data = await response.json();
-                        if (data.success) {
-                          toast({ title: "Recordings synced", description: data.message });
-                          queryClient.invalidateQueries({ queryKey: ['/api/call-logs'] });
-                        } else {
-                          toast({ title: "Sync failed", description: data.error, variant: "destructive" });
-                        }
-                      } catch (e: any) {
-                        toast({ title: "Sync error", description: e.message, variant: "destructive" });
-                      }
-                    }}
-                    data-testid="button-sync-recordings"
-                  >
-                    <RefreshCw className="h-3 w-3 mr-1" />Sync Recordings
-                  </Button>
-                </div>
-              </CardHeader>
-              <CardContent>
-                {isLoadingCallLogs ? (
-                  <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
-                ) : !callLogsData?.logs?.length ? (
-                  <div className="text-center py-12 text-slate-400">
-                    <Phone className="h-10 w-10 mx-auto mb-3 opacity-50" />
-                    <p className="font-medium">No calls yet</p>
-                    <p className="text-sm mt-1">Your call history will appear here</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2 max-h-[600px] overflow-y-auto">
-                    {callLogsData.logs.map((log) => (
-                      <div key={log.id} className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50 hover:bg-slate-100 dark:hover:bg-muted transition-colors">
-                        <div className="flex items-center gap-4">
-                          <div className={`p-2.5 rounded-full ${log.direction === 'inbound' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
-                            {log.direction === 'inbound' ? <PhoneIncoming className="h-5 w-5 text-blue-600" /> : <PhoneOutgoing className="h-5 w-5 text-green-600" />}
-                          </div>
-                          <div>
-                            <div className="flex items-center gap-2">
-                              <p className="font-medium text-slate-800 dark:text-foreground">
-                                {formatPhoneDisplay(log.direction === 'inbound' ? log.fromNumber : log.toNumber)}
-                              </p>
-                              {log.callerName && <span className="text-sm text-slate-500">({log.callerName})</span>}
-                            </div>
-                            <div className="flex items-center gap-2 text-sm text-slate-500">
-                              <span>{format(new Date(log.startedAt), "MMM dd, yyyy 'at' h:mm a")}</span>
-                              <span className="text-slate-300">|</span>
-                              <span className={log.status === 'answered' ? 'text-green-600' : log.status === 'failed' ? 'text-red-500' : 'text-amber-600'}>
-                                {log.status}
-                              </span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4 text-right">
-                          {log.duration > 0 && (
-                            <div className="text-center min-w-[50px]">
-                              <p className="font-medium text-slate-700 dark:text-foreground">{Math.floor(log.duration / 60)}:{(log.duration % 60).toString().padStart(2, '0')}</p>
-                              <p className="text-xs text-slate-400">duration</p>
-                            </div>
-                          )}
-                          {log.cost && parseFloat(log.cost) > 0 && (
-                            <div className="text-center min-w-[60px]">
-                              <p className="font-medium text-amber-600">${parseFloat(log.cost).toFixed(4)}</p>
-                              <p className="text-xs text-slate-400">cost</p>
-                            </div>
-                          )}
-                          {log.recordingUrl && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              className="h-8 px-3 text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:border-indigo-800 dark:hover:bg-indigo-950"
-                              onClick={() => {
-                                const audio = document.getElementById(`audio-${log.id}`) as HTMLAudioElement;
-                                if (audio) {
-                                  if (audio.paused) {
-                                    document.querySelectorAll('audio').forEach(a => a.pause());
-                                    audio.play();
-                                  } else {
-                                    audio.pause();
-                                  }
-                                }
-                              }}
-                              data-testid={`button-play-recording-${log.id}`}
-                            >
-                              <Play className="h-3 w-3 mr-1" />
-                              Listen
-                            </Button>
-                          )}
-                        </div>
-                        {log.recordingUrl && (
-                          <audio id={`audio-${log.id}`} src={log.recordingUrl} className="hidden" preload="none" />
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            <CallHistoryWithAutoPolling 
+              callLogsData={callLogsData}
+              isLoadingCallLogs={isLoadingCallLogs}
+              billingFeaturesData={billingFeaturesData}
+            />
           </TabsContent>
 
           {/* Settings Tab */}
@@ -1055,6 +953,179 @@ export default function PhoneSystem() {
         </AlertDialogContent>
       </AlertDialog>
     </div>
+  );
+}
+
+/* Call History with Auto-Polling Component */
+interface CallHistoryProps {
+  callLogsData: { logs: any[] } | undefined;
+  isLoadingCallLogs: boolean;
+  billingFeaturesData: { recordingEnabled?: boolean } | undefined;
+}
+
+function CallHistoryWithAutoPolling({ callLogsData, isLoadingCallLogs, billingFeaturesData }: CallHistoryProps) {
+  const [isPolling, setIsPolling] = useState(false);
+  const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const pollingStartTimeRef = useRef<number | null>(null);
+  
+  const hasRecentCallsWithoutRecording = useCallback(() => {
+    if (!callLogsData?.logs?.length || !billingFeaturesData?.recordingEnabled) return false;
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+    return callLogsData.logs.some(log => {
+      const logTime = new Date(log.startedAt).getTime();
+      return logTime > fiveMinutesAgo && 
+             log.status === 'answered' && 
+             log.duration > 0 &&
+             !log.recordingUrl;
+    });
+  }, [callLogsData, billingFeaturesData]);
+  
+  const startPolling = useCallback(() => {
+    if (pollingIntervalRef.current) return;
+    console.log("[CallHistory] Starting auto-poll for recordings...");
+    setIsPolling(true);
+    pollingStartTimeRef.current = Date.now();
+    pollingIntervalRef.current = setInterval(() => {
+      const elapsed = Date.now() - (pollingStartTimeRef.current || 0);
+      if (elapsed > 2 * 60 * 1000) {
+        console.log("[CallHistory] Stopping poll: 2 minute timeout");
+        stopPolling();
+        return;
+      }
+      console.log("[CallHistory] Polling for recordings...");
+      queryClient.invalidateQueries({ queryKey: ['/api/call-logs'] });
+    }, 5000);
+  }, []);
+  
+  const stopPolling = useCallback(() => {
+    if (pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+    pollingStartTimeRef.current = null;
+    setIsPolling(false);
+    console.log("[CallHistory] Auto-poll stopped");
+  }, []);
+  
+  useEffect(() => {
+    if (hasRecentCallsWithoutRecording()) {
+      startPolling();
+    } else if (isPolling) {
+      stopPolling();
+    }
+    return () => stopPolling();
+  }, [callLogsData, hasRecentCallsWithoutRecording, startPolling, stopPolling, isPolling]);
+  
+  const callsMissingRecording = callLogsData?.logs?.filter(log => {
+    const fiveMinutesAgo = Date.now() - 5 * 60 * 1000;
+    const logTime = new Date(log.startedAt).getTime();
+    return logTime > fiveMinutesAgo && 
+           log.status === 'answered' && 
+           log.duration > 0 &&
+           !log.recordingUrl;
+  }) || [];
+  
+  return (
+    <Card className="border-slate-200 dark:border-border">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-base flex items-center gap-2">
+            <History className="h-4 w-4" />Call History
+          </CardTitle>
+          {isPolling && callsMissingRecording.length > 0 && (
+            <div className="flex items-center gap-2 text-sm text-amber-600 dark:text-amber-400">
+              <Loader2 className="h-3 w-3 animate-spin" />
+              <span>Processing audio...</span>
+            </div>
+          )}
+        </div>
+      </CardHeader>
+      <CardContent>
+        {isLoadingCallLogs ? (
+          <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
+        ) : !callLogsData?.logs?.length ? (
+          <div className="text-center py-12 text-slate-400">
+            <Phone className="h-10 w-10 mx-auto mb-3 opacity-50" />
+            <p className="font-medium">No calls yet</p>
+            <p className="text-sm mt-1">Your call history will appear here</p>
+          </div>
+        ) : (
+          <div className="space-y-2 max-h-[600px] overflow-y-auto">
+            {callLogsData.logs.map((log) => {
+              const isMissingRecording = callsMissingRecording.some(c => c.id === log.id);
+              return (
+                <div key={log.id} className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50 hover:bg-slate-100 dark:hover:bg-muted transition-colors">
+                  <div className="flex items-center gap-4">
+                    <div className={`p-2.5 rounded-full ${log.direction === 'inbound' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
+                      {log.direction === 'inbound' ? <PhoneIncoming className="h-5 w-5 text-blue-600" /> : <PhoneOutgoing className="h-5 w-5 text-green-600" />}
+                    </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-slate-800 dark:text-foreground">
+                          {formatPhoneDisplay(log.direction === 'inbound' ? log.fromNumber : log.toNumber)}
+                        </p>
+                        {log.callerName && <span className="text-sm text-slate-500">({log.callerName})</span>}
+                      </div>
+                      <div className="flex items-center gap-2 text-sm text-slate-500">
+                        <span>{format(new Date(log.startedAt), "MMM dd, yyyy 'at' h:mm a")}</span>
+                        <span className="text-slate-300">|</span>
+                        <span className={log.status === 'answered' ? 'text-green-600' : log.status === 'failed' ? 'text-red-500' : 'text-amber-600'}>
+                          {log.status}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-4 text-right">
+                    {log.duration > 0 && (
+                      <div className="text-center min-w-[50px]">
+                        <p className="font-medium text-slate-700 dark:text-foreground">{Math.floor(log.duration / 60)}:{(log.duration % 60).toString().padStart(2, '0')}</p>
+                        <p className="text-xs text-slate-400">duration</p>
+                      </div>
+                    )}
+                    {log.cost && parseFloat(log.cost) > 0 && (
+                      <div className="text-center min-w-[60px]">
+                        <p className="font-medium text-amber-600">${parseFloat(log.cost).toFixed(4)}</p>
+                        <p className="text-xs text-slate-400">cost</p>
+                      </div>
+                    )}
+                    {log.recordingUrl ? (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-8 px-3 text-indigo-600 border-indigo-200 hover:bg-indigo-50 dark:border-indigo-800 dark:hover:bg-indigo-950"
+                        onClick={() => {
+                          const audio = document.getElementById(`audio-${log.id}`) as HTMLAudioElement;
+                          if (audio) {
+                            if (audio.paused) {
+                              document.querySelectorAll('audio').forEach(a => a.pause());
+                              audio.play();
+                            } else {
+                              audio.pause();
+                            }
+                          }
+                        }}
+                        data-testid={`button-play-recording-${log.id}`}
+                      >
+                        <Play className="h-3 w-3 mr-1" />
+                        Listen
+                      </Button>
+                    ) : isMissingRecording && billingFeaturesData?.recordingEnabled ? (
+                      <div className="flex items-center gap-1.5 text-xs text-amber-600 dark:text-amber-400 min-w-[100px]">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        <span>Processing...</span>
+                      </div>
+                    ) : null}
+                  </div>
+                  {log.recordingUrl && (
+                    <audio id={`audio-${log.id}`} src={log.recordingUrl} className="hidden" preload="none" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
 
