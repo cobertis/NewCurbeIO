@@ -110,6 +110,7 @@ interface TelnyxWebRTCState {
   networkQuality?: NetworkQualityMetrics;
   callDuration: number;
   callActiveTimestamp?: number;
+  activeTelnyxLegId?: string;
 
   setConnectionStatus: (status: TelnyxWebRTCState["connectionStatus"], error?: string) => void;
   setCurrentCall: (call?: TelnyxCall) => void;
@@ -124,6 +125,7 @@ interface TelnyxWebRTCState {
   setNetworkQuality: (metrics?: NetworkQualityMetrics) => void;
   setCallDuration: (duration: number) => void;
   setCallActiveTimestamp: (timestamp?: number) => void;
+  setActiveTelnyxLegId: (legId?: string) => void;
 }
 
 export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
@@ -135,6 +137,7 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   isConsulting: false,
   callDuration: 0,
   callActiveTimestamp: undefined,
+  activeTelnyxLegId: undefined,
 
   setConnectionStatus: (status, error) =>
     set({
@@ -154,6 +157,7 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   setNetworkQuality: (metrics) => set({ networkQuality: metrics }),
   setCallDuration: (duration) => set({ callDuration: duration }),
   setCallActiveTimestamp: (timestamp) => set({ callActiveTimestamp: timestamp }),
+  setActiveTelnyxLegId: (legId) => set({ activeTelnyxLegId: legId }),
 }));
 
 export type { NetworkQualityMetrics };
@@ -618,6 +622,18 @@ class TelnyxWebRTCManager {
         store.setOutgoingCall(undefined);
         store.setCurrentCall(call);
         store.setCallActiveTimestamp(Date.now());
+        
+        // CRITICAL: Capture telnyxLegId for Call Control API hangup
+        // The SDK has a bug where hangup() always sends 486 USER_BUSY
+        // We need the leg ID to hangup via REST API instead
+        const telnyxIDs = call.telnyxIDs || {};
+        const legId = telnyxIDs.telnyxLegId || (call as any).options?.telnyxLegId;
+        if (legId) {
+          console.log("[Telnyx WebRTC] 📞 Captured telnyxLegId:", legId);
+          store.setActiveTelnyxLegId(legId);
+        } else {
+          console.log("[Telnyx WebRTC] ⚠️ No telnyxLegId available, hangup may show USER_BUSY");
+        }
 
         // Conectar audio remoto
         this.remoteStreamConnected = false;
@@ -645,6 +661,7 @@ class TelnyxWebRTCManager {
         store.setIncomingCall(undefined);
         store.setOutgoingCall(undefined);
         store.setCallActiveTimestamp(undefined);
+        store.setActiveTelnyxLegId(undefined);
         store.setMuted(false);
         store.setOnHold(false);
 
@@ -898,30 +915,49 @@ class TelnyxWebRTCManager {
     const callState = (activeCall as any)?.state;
     const direction = (activeCall as any)?.direction || "unknown";
     const webrtcCallId = (activeCall as any)?.id || (activeCall as any)?.callId;
+    const telnyxLegId = store.activeTelnyxLegId;
     
     console.log("[Telnyx WebRTC] Hanging up call:", { 
       state: callState, 
       direction, 
-      webrtcCallId 
+      webrtcCallId,
+      telnyxLegId
     });
 
-    // CRITICAL: For inbound calls, we MUST use sipHangupCode: 16 (NORMAL_CLEARING)
-    // Otherwise the SDK defaults to 486 (User Busy) for inbound call hangups
-    // This is per Telnyx WebRTC documentation for proper call termination
-    const hangupCode = direction === "inbound" ? 16 : undefined;
+    // CRITICAL: The Telnyx WebRTC SDK has a BUG where hangup() ALWAYS sends 486 USER_BUSY
+    // This is hardcoded in BaseCall.ts: cause: 'USER_BUSY', causeCode: 17
+    // The only way to properly hangup with NORMAL_CLEARING (16) is via Call Control API
     
-    console.log("[Telnyx WebRTC] Hanging up with code:", hangupCode || "default");
-    
-    try {
-      if (hangupCode) {
-        // For inbound calls: explicitly send NORMAL_CLEARING (16) to avoid 486 Busy
-        activeCall.hangup({ sipHangupCode: hangupCode });
-      } else {
-        // For outbound calls: default hangup is fine
+    if (direction === "inbound" && telnyxLegId) {
+      // For inbound calls with leg ID: Use Call Control API to hangup properly
+      console.log("[Telnyx WebRTC] Using Call Control API hangup for inbound call");
+      try {
+        const response = await fetch("/api/webrtc/call-control-hangup", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ telnyxLegId })
+        });
+        const result = await response.json();
+        console.log("[Telnyx WebRTC] Call Control hangup result:", result);
+        
+        if (!result.success) {
+          console.error("[Telnyx WebRTC] Call Control hangup failed, falling back to SDK");
+          activeCall.hangup();
+        }
+      } catch (e) {
+        console.error("[Telnyx WebRTC] Call Control hangup error:", e);
+        // Fallback to SDK hangup
         activeCall.hangup();
       }
-    } catch (e) {
-      console.error("[Telnyx WebRTC] SDK hangup error:", e);
+    } else {
+      // For outbound calls or no leg ID: use SDK hangup
+      console.log("[Telnyx WebRTC] Using SDK hangup");
+      try {
+        activeCall.hangup();
+      } catch (e) {
+        console.error("[Telnyx WebRTC] SDK hangup error:", e);
+      }
     }
 
     // Clean UI states AFTER hangup
@@ -929,6 +965,7 @@ class TelnyxWebRTCManager {
     store.setOutgoingCall(undefined);
     store.setIncomingCall(undefined);
     store.setCallActiveTimestamp(undefined);
+    store.setActiveTelnyxLegId(undefined);
 
     this.stopRingtone();
     this.stopRingback();
