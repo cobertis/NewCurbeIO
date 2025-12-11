@@ -436,17 +436,29 @@ class TelnyxWebRTCManager {
     let callerName: string | undefined;
     
     if (session instanceof Invitation) {
-      // Incoming call - extract from From header or remoteIdentity
+      // Incoming call - check for X-Original-Caller header FIRST (set by backend transfer)
       try {
-        // Try remoteIdentity first (SIP.js standard)
-        const remoteUri = session.remoteIdentity?.uri;
-        if (remoteUri) {
-          callerNumber = remoteUri.user || "Unknown";
+        const request = session.request;
+        const originalCaller = request.getHeader("X-Original-Caller");
+        if (originalCaller) {
+          callerNumber = originalCaller;
+          console.log("[SIP.js WebRTC] Found X-Original-Caller header:", originalCaller);
         }
-        // Also try to get display name
-        callerName = session.remoteIdentity?.displayName || undefined;
       } catch (e) {
-        console.warn("[SIP.js WebRTC] Error extracting remoteIdentity:", e);
+        console.warn("[SIP.js WebRTC] Error reading X-Original-Caller:", e);
+      }
+      
+      // Fallback to remoteIdentity if no custom header
+      if (callerNumber === "Unknown") {
+        try {
+          const remoteUri = session.remoteIdentity?.uri;
+          if (remoteUri) {
+            callerNumber = remoteUri.user || "Unknown";
+          }
+          callerName = session.remoteIdentity?.displayName || undefined;
+        } catch (e) {
+          console.warn("[SIP.js WebRTC] Error extracting remoteIdentity:", e);
+        }
       }
       
       // Fallback: parse From header
@@ -454,22 +466,32 @@ class TelnyxWebRTCManager {
         try {
           const request = session.request;
           const fromHeader = request.getHeader("From") || "";
-          // Parse display name: "Name" <sip:number@domain>
           const nameMatch = fromHeader.match(/^"([^"]+)"/);
           if (nameMatch) callerName = nameMatch[1];
-          // Parse number
           const numberMatch = fromHeader.match(/<sip:([^@]+)@/);
           if (numberMatch) callerNumber = numberMatch[1];
         } catch (e) {
           console.warn("[SIP.js WebRTC] Error parsing From header:", e);
         }
       }
+      
+      // Also try to get caller name from P-Asserted-Identity or From header
+      if (!callerName) {
+        try {
+          const request = session.request;
+          const pAsserted = request.getHeader("P-Asserted-Identity") || "";
+          const fromHeader = request.getHeader("From") || "";
+          const nameMatch = (pAsserted || fromHeader).match(/^"([^"]+)"/);
+          if (nameMatch && nameMatch[1] !== callerNumber) {
+            callerName = nameMatch[1];
+          }
+        } catch (e) {}
+      }
     } else if (session instanceof Inviter) {
-      // Outgoing call
       callerNumber = destination || "Unknown";
     }
     
-    // Clean up caller number (remove + prefix for display if needed)
+    // Format caller number
     const cleanNumber = callerNumber.replace(/^\+?1?/, "");
     const formattedNumber = callerNumber.startsWith("+") ? callerNumber : 
                             (cleanNumber.length === 10 ? `+1${cleanNumber}` : callerNumber);
