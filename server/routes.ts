@@ -28813,11 +28813,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             callControlOutboundCost: "0.0010",
             recordingPerMinuteCost: "0.0010",
             cnamLookupCost: "0.0025",
+            e911AddressCost: "1.50",
+            portOutFeeCost: "6.00",
             // Add-ons Price
             callControlInbound: "0.0020",
             callControlOutbound: "0.0020",
             recordingPerMinute: "0.0020",
             cnamLookup: "0.0045",
+            e911Address: "2.00",
+            portOutFee: "10.00",
             // DIDs Cost
             didLocalCost: "0.50",
             didTollfreeCost: "0.75",
@@ -28860,11 +28864,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           callControlOutboundCost: pricing.callControlOutboundCost,
           recordingPerMinuteCost: pricing.recordingPerMinuteCost,
           cnamLookupCost: pricing.cnamLookupCost,
+          e911AddressCost: pricing.e911AddressCost,
+          portOutFeeCost: pricing.portOutFeeCost,
           // Add-ons Price
           callControlInbound: pricing.callControlInbound,
           callControlOutbound: pricing.callControlOutbound,
           recordingPerMinute: pricing.recordingPerMinute,
           cnamLookup: pricing.cnamLookup,
+          e911Address: pricing.e911Address,
+          portOutFee: pricing.portOutFee,
           // DIDs Cost
           didLocalCost: pricing.didLocalCost,
           didTollfreeCost: pricing.didTollfreeCost,
@@ -28925,11 +28933,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         callControlOutboundCost: data.callControlOutboundCost?.toString() || existing?.callControlOutboundCost || "0.0010",
         recordingPerMinuteCost: data.recordingPerMinuteCost?.toString() || existing?.recordingPerMinuteCost || "0.0010",
         cnamLookupCost: data.cnamLookupCost?.toString() || existing?.cnamLookupCost || "0.0025",
+        e911AddressCost: data.e911AddressCost?.toString() || existing?.e911AddressCost || "1.50",
+        portOutFeeCost: data.portOutFeeCost?.toString() || existing?.portOutFeeCost || "6.00",
         // Add-ons Price
         callControlInbound: data.callControlInbound?.toString() || existing?.callControlInbound || "0.0020",
         callControlOutbound: data.callControlOutbound?.toString() || existing?.callControlOutbound || "0.0020",
         recordingPerMinute: data.recordingPerMinute?.toString() || existing?.recordingPerMinute || "0.0020",
         cnamLookup: data.cnamLookup?.toString() || existing?.cnamLookup || "0.0045",
+        e911Address: data.e911Address?.toString() || existing?.e911Address || "2.00",
+        portOutFee: data.portOutFee?.toString() || existing?.portOutFee || "10.00",
         // DIDs Cost
         didLocalCost: data.didLocalCost?.toString() || existing?.didLocalCost || "0.50",
         didTollfreeCost: data.didTollfreeCost?.toString() || existing?.didTollfreeCost || "0.75",
