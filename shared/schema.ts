@@ -4828,6 +4828,10 @@ export const telephonySettings = pgTable("telephony_settings", {
   noiseSuppressionEnabled: boolean("noise_suppression_enabled").notNull().default(false),
   noiseSuppressionDirection: text("noise_suppression_direction").default("outbound").$type<"inbound" | "outbound" | "both">(),
   
+  // Billable Features
+  recordingEnabled: boolean("recording_enabled").notNull().default(false), // $0.005/min extra
+  cnamEnabled: boolean("cnam_enabled").notNull().default(false), // $1.00/month + $0.01/call
+  
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
