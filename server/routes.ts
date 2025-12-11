@@ -28899,6 +28899,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         await db.insert(telnyxGlobalPricing).values(pricingData);
       }
 
+      // Invalidate pricing cache
+      const { invalidatePricingCache } = await import('./services/pricing-config');
+      invalidatePricingCache();
       console.log("[Global Pricing] Updated by user:", user.id);
       res.json({ success: true, message: "Pricing configuration updated successfully" });
     } catch (error: any) {
