@@ -2,6 +2,7 @@ import { WebSocketServer, WebSocket } from 'ws';
 import { Server } from 'http';
 import type { IncomingMessage } from 'http';
 import signature from 'cookie-signature';
+import { extensionCallService } from './services/extension-call-service';
 
 // Session data structure
 interface SessionData {
