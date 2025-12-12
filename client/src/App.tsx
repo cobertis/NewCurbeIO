@@ -240,14 +240,15 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     ? "Super Admin" 
     : user?.role === "admin" 
       ? "Admin"
-      : user?.role === "member"
-        ? "Member"
-        : "User";
+      : "Agent";
   
+  // For agents: "Agent - Company Name", for admins: "Admin • Company Name", for superadmins: just "Super Admin"
   const userSubtitle = user?.role === "superadmin" 
     ? roleText 
     : companyData?.company?.name 
-      ? `${roleText} • ${companyData.company.name}`
+      ? user?.role === "agent" 
+        ? `Agent - ${companyData.company.name}`
+        : `${roleText} • ${companyData.company.name}`
       : roleText;
   
   const notifications = notificationsData?.notifications || [];
@@ -693,14 +694,16 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                       <SettingsIcon className="mr-3 h-5 w-5 text-muted-foreground" />
                       <span className="text-sm font-medium">Settings</span>
                     </DropdownMenuItem>
-                    <DropdownMenuItem 
-                      onClick={() => setLocation("/billing")} 
-                      data-testid="menu-item-billing"
-                      className="py-2.5 px-3 cursor-pointer rounded-md"
-                    >
-                      <CreditCard className="mr-3 h-5 w-5 text-muted-foreground" />
-                      <span className="text-sm font-medium">Billing</span>
-                    </DropdownMenuItem>
+                    {user?.role !== "agent" && (
+                      <DropdownMenuItem 
+                        onClick={() => setLocation("/billing")} 
+                        data-testid="menu-item-billing"
+                        className="py-2.5 px-3 cursor-pointer rounded-md"
+                      >
+                        <CreditCard className="mr-3 h-5 w-5 text-muted-foreground" />
+                        <span className="text-sm font-medium">Billing</span>
+                      </DropdownMenuItem>
+                    )}
                     <DropdownMenuItem 
                       onClick={() => setTimezoneDialogOpen(true)} 
                       data-testid="menu-item-timezone"
