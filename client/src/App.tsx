@@ -173,6 +173,17 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   });
   const hasPhoneSystemAccess = phoneSystemAccessData?.hasAccess || false;
 
+  // Query for user phone status - check if user can make calls
+  const { data: userPhoneStatusData } = useQuery<{ hasAssignedNumber: boolean; canMakeCalls: boolean; reason: string; message?: string; phoneNumber?: string }>({
+    queryKey: ['/api/telnyx/user-phone-status'],
+    enabled: !!user,
+  });
+  const canMakeCalls = userPhoneStatusData?.canMakeCalls || false;
+  const noPhoneMessage = userPhoneStatusData?.message || 'Contact your account manager to get a phone number assigned.';
+
+  // Effective connection status that considers if user can make calls
+  const effectiveConnectionStatus = canMakeCalls ? connectionStatus : 'disconnected';
+
   // Listen for WhatsApp unread count updates via WebSocket
   useEffect(() => {
     if (!user) return;
@@ -566,15 +577,26 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               <Tooltip>
                 <TooltipTrigger asChild>
                   <button
-                    onClick={toggleDialpad}
+                    onClick={() => {
+                      if (!canMakeCalls) {
+                        toast({
+                          title: "Phone Not Available",
+                          description: noPhoneMessage,
+                          variant: "destructive",
+                          duration: 5000,
+                        });
+                        return;
+                      }
+                      toggleDialpad();
+                    }}
                     data-testid="button-phone"
                     className={cn(
                       "w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 relative",
                       effectiveCall 
                         ? "bg-green-500 hover:bg-green-600 text-white ring-2 ring-green-300 ring-offset-1" 
-                        : connectionStatus === 'connected'
+                        : effectiveConnectionStatus === 'connected'
                           ? "bg-green-500 hover:bg-green-600 text-white"
-                          : connectionStatus === 'connecting'
+                          : effectiveConnectionStatus === 'connecting'
                             ? "bg-yellow-500 hover:bg-yellow-600 text-white"
                             : "bg-gray-400 hover:bg-gray-500 text-white"
                     )}
@@ -583,16 +605,17 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                     {/* Connection status indicator */}
                     <span className={cn(
                       "absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white",
-                      connectionStatus === 'connected' ? "bg-green-500" : 
-                      connectionStatus === 'connecting' ? "bg-yellow-400 animate-pulse" : 
+                      effectiveConnectionStatus === 'connected' ? "bg-green-500" : 
+                      effectiveConnectionStatus === 'connecting' ? "bg-yellow-400 animate-pulse" : 
                       "bg-red-400"
                     )} />
                   </button>
                 </TooltipTrigger>
                 <TooltipContent>
-                  {effectiveCall ? "In Call" : 
-                   connectionStatus === 'connected' ? "Phone Ready" : 
-                   connectionStatus === 'connecting' ? "Connecting..." : 
+                  {!canMakeCalls ? "No Phone Assigned" :
+                   effectiveCall ? "In Call" : 
+                   effectiveConnectionStatus === 'connected' ? "Phone Ready" : 
+                   effectiveConnectionStatus === 'connecting' ? "Connecting..." : 
                    "Phone Offline"}
                 </TooltipContent>
               </Tooltip>
