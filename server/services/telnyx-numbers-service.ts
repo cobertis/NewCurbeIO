@@ -1374,12 +1374,12 @@ export async function updateNumberVoiceSettings(
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Get the phone number from DB
+    // Get the phone number from DB - lookup by telnyxPhoneNumberId (Telnyx ID)
     const [phoneNumber] = await db
       .select()
       .from(telnyxPhoneNumbers)
       .where(and(
-        eq(telnyxPhoneNumbers.id, phoneNumberId),
+        eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId),
         eq(telnyxPhoneNumbers.companyId, companyId)
       ));
     
@@ -1409,11 +1409,11 @@ export async function updateNumberVoiceSettings(
       updateData.voicemailPin = settings.voicemailPin;
     }
     
-    // Update local DB
+    // Update local DB - use local database ID from the fetched record
     await db
       .update(telnyxPhoneNumbers)
       .set(updateData)
-      .where(eq(telnyxPhoneNumbers.id, phoneNumberId));
+      .where(eq(telnyxPhoneNumbers.id, phoneNumber.id));
     
     // If recording or CNAM changed, sync to Telnyx API
     if (typeof settings.recordingEnabled === 'boolean' || typeof settings.cnamLookupEnabled === 'boolean') {
@@ -1484,7 +1484,7 @@ export async function updateNumberVoiceSettings(
         const [updatedNumber] = await db
           .select()
           .from(telnyxPhoneNumbers)
-          .where(eq(telnyxPhoneNumbers.id, phoneNumberId));
+          .where(eq(telnyxPhoneNumbers.id, phoneNumber.id));
         
         if (updatedNumber?.voicemailEnabled && updatedNumber?.voicemailPin) {
           // Enable voicemail with PIN via Telnyx API

@@ -107,6 +107,7 @@ interface NumberInfo {
   noiseSuppressionEnabled?: boolean;
   noiseSuppressionDirection?: string;
   voicemailEnabled?: boolean;
+  voicemailPin?: string;
 }
 
 function formatPhoneDisplay(phone: string | undefined | null): string {
@@ -506,6 +507,7 @@ export default function PhoneSystem() {
         noiseSuppressionEnabled?: boolean;
         noiseSuppressionDirection?: string;
         voicemailEnabled?: boolean;
+        voicemailPin?: string;
       } 
     }) => {
       return apiRequest("POST", `/api/telnyx/number-voice-settings/${phoneNumberId}`, settings);
