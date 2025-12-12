@@ -418,6 +418,7 @@ export const subscriptions = pgTable("subscriptions", {
 export const invoices = pgTable("invoices", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "cascade" }), // User who owns this invoice (for user-scoped billing)
   subscriptionId: varchar("subscription_id").references(() => subscriptions.id, { onDelete: "set null" }),
   
   // Invoice details
@@ -475,6 +476,7 @@ export const invoiceItems = pgTable("invoice_items", {
 export const payments = pgTable("payments", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "cascade" }), // User who made this payment
   invoiceId: varchar("invoice_id").references(() => invoices.id, { onDelete: "set null" }),
   
   // Payment details
@@ -498,12 +500,55 @@ export const payments = pgTable("payments", {
 });
 
 // =====================================================
+// USER PAYMENT METHODS (User-scoped Stripe payment methods)
+// =====================================================
+
+export const userPaymentMethods = pgTable("user_payment_methods", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  ownerUserId: varchar("owner_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  // Stripe integration
+  stripePaymentMethodId: text("stripe_payment_method_id").notNull(),
+  stripeCustomerId: text("stripe_customer_id"), // User's Stripe customer ID
+  
+  // Card details (for display only, from Stripe)
+  type: text("type").notNull().default("card"), // card, bank_account, etc.
+  brand: text("brand"), // visa, mastercard, amex, etc.
+  last4: text("last_4"), // Last 4 digits
+  expMonth: integer("exp_month"),
+  expYear: integer("exp_year"),
+  
+  // Status
+  isDefault: boolean("is_default").notNull().default(false),
+  status: text("status").notNull().default("active").$type<"active" | "expired" | "removed">(),
+  
+  // Timestamps
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("user_payment_methods_company_id_idx").on(table.companyId),
+  ownerUserIdIdx: index("user_payment_methods_owner_user_id_idx").on(table.ownerUserId),
+  stripePaymentMethodIdx: index("user_payment_methods_stripe_pm_idx").on(table.stripePaymentMethodId),
+}));
+
+export const insertUserPaymentMethodSchema = createInsertSchema(userPaymentMethods).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type UserPaymentMethod = typeof userPaymentMethods.$inferSelect;
+export type InsertUserPaymentMethod = z.infer<typeof insertUserPaymentMethodSchema>;
+
+// =====================================================
 // BILLING ADDRESSES
 // =====================================================
 
 export const billingAddresses = pgTable("billing_addresses", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }).unique(),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "cascade" }), // User who owns this billing address
   
   // Billing contact information
   fullName: text("full_name").notNull(),
@@ -518,7 +563,10 @@ export const billingAddresses = pgTable("billing_addresses", {
   // Timestamps
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
-});
+}, (table) => ({
+  companyIdIdx: index("billing_addresses_company_id_idx").on(table.companyId),
+  ownerUserIdIdx: index("billing_addresses_owner_user_id_idx").on(table.ownerUserId),
+}));
 
 export const insertBillingAddressSchema = createInsertSchema(billingAddresses).omit({
   id: true,
