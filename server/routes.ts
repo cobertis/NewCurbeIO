@@ -27980,22 +27980,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         ),
       });
       
-      // Superadmins and Admins can use any company number (they see all numbers)
-      if (!assignedNumber && (currentUser.role === 'superadmin' || currentUser.role === 'admin')) {
-        const anyCompanyNumber = await db.query.telnyxPhoneNumbers.findFirst({
-          where: and(
-            eq(telnyxPhoneNumbers.companyId, currentUser.companyId),
-            eq(telnyxPhoneNumbers.status, 'active')
-          ),
+      // Only the Phone System owner (activating admin) can use any company number
+      if (!assignedNumber) {
+        // Check if user is the phone system owner
+        const settings = await db.query.telephonySettings.findFirst({
+          where: eq(telephonySettings.companyId, currentUser.companyId),
         });
         
-        if (anyCompanyNumber) {
-          return res.json({ 
-            hasAssignedNumber: true, 
-            canMakeCalls: true,
-            phoneNumber: anyCompanyNumber.phoneNumber,
-            reason: 'admin_access' 
+        const isPhoneSystemOwner = settings?.ownerUserId === currentUser.id;
+        const isSuperadmin = currentUser.role === 'superadmin';
+        
+        if (isPhoneSystemOwner || isSuperadmin) {
+          const anyCompanyNumber = await db.query.telnyxPhoneNumbers.findFirst({
+            where: and(
+              eq(telnyxPhoneNumbers.companyId, currentUser.companyId),
+              eq(telnyxPhoneNumbers.status, 'active')
+            ),
           });
+          
+          if (anyCompanyNumber) {
+            return res.json({ 
+              hasAssignedNumber: true, 
+              canMakeCalls: true,
+              phoneNumber: anyCompanyNumber.phoneNumber,
+              reason: isPhoneSystemOwner ? 'phone_system_owner' : 'superadmin_access' 
+            });
+          }
         }
       }
       
