@@ -1092,8 +1092,8 @@ export default function PhoneSystem() {
                             <span className="font-medium text-slate-900 dark:text-white">${pricingData.voice.recording.toFixed(4)}/min</span>
                           </div>
                           <div className="flex justify-between py-1.5">
-                            <span className="text-slate-600 dark:text-slate-400">CNAM Lookup</span>
-                            <span className="font-medium text-slate-900 dark:text-white">${pricingData.voice.cnamLookup.toFixed(4)}/call</span>
+                            <span className="text-slate-600 dark:text-slate-400">CNAM (per number)</span>
+                            <span className="font-medium text-slate-900 dark:text-white">${pricingData.voice.cnamLookup.toFixed(2)}/month</span>
                           </div>
                         </div>
                       </div>
@@ -1211,7 +1211,7 @@ export default function PhoneSystem() {
                   <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
                     <User className="h-4 w-4 text-blue-600" />
                   </div>
-                  <p className="text-xs text-slate-500">$1/mo + $0.01/call - Show caller names on incoming calls</p>
+                  <p className="text-xs text-slate-500">$0.50/mo per number - Show caller names on incoming calls</p>
                 </div>
               </div>
 
@@ -1356,14 +1356,11 @@ export default function PhoneSystem() {
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3">
               <p>
-                CNAM is a paid feature with the following costs:
+                CNAM is a paid feature with the following cost:
               </p>
-              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 space-y-2 text-sm">
+              <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm">
                 <p className="text-amber-800 dark:text-amber-200">
-                  <strong>Monthly fee:</strong> $1.00/month
-                </p>
-                <p className="text-amber-800 dark:text-amber-200">
-                  <strong>Per-call fee:</strong> $0.01 per inbound call
+                  <strong>Monthly fee:</strong> $0.50/month per number
                 </p>
               </div>
               <p className="text-sm">
