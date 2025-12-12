@@ -84,6 +84,14 @@ interface StatusResponse {
 }
 
 interface NumberInfo {
+  ownerUserId?: string | null;
+  ownerUser?: {
+    id: string;
+    firstName?: string | null;
+    lastName?: string | null;
+    email?: string;
+    avatar?: string | null;
+  } | null;
   phoneNumber: string;
   connectionName?: string;
   status: string;
@@ -95,6 +103,11 @@ interface NumberInfo {
   telnyxPhoneNumberId?: string;
   callerIdName?: string;
   cnamEnabled?: boolean;
+  recordingEnabled?: boolean;
+  cnamLookupEnabled?: boolean;
+  noiseSuppressionEnabled?: boolean;
+  noiseSuppressionDirection?: string;
+  voicemailEnabled?: boolean;
 }
 
 function formatPhoneDisplay(phone: string | undefined | null): string {
@@ -150,6 +163,7 @@ export default function PhoneSystem() {
   const [selectedNumber, setSelectedNumber] = useState<NumberInfo | null>(null);
   const [editingCnam, setEditingCnam] = useState(false);
   const [cnamInput, setCnamInput] = useState("");
+  const [isAddFundsAnimating, setIsAddFundsAnimating] = useState(false);
 
   const { data: statusData, isLoading: isLoadingStatus, refetch } = useQuery<StatusResponse>({
     queryKey: ["/api/telnyx/managed-accounts/status"],
@@ -285,6 +299,22 @@ export default function PhoneSystem() {
     queryKey: ["/api/telnyx/billing-features"],
     enabled: statusData?.configured === true || statusData?.hasAccount === true,
   });
+
+  // Query for company agents (for the user assignment dropdown)
+  const { data: agentsData } = useQuery<{
+    agents: Array<{
+      id: string;
+      firstName?: string | null;
+      lastName?: string | null;
+      email: string;
+      avatar?: string | null;
+      role: string;
+    }>;
+  }>({
+    queryKey: ["/api/company/agents"],
+    enabled: statusData?.configured === true || statusData?.hasAccount === true,
+  });
+
 
   const { data: pricingData, isLoading: isLoadingPricing } = useQuery<{
     voice: {
@@ -451,6 +481,44 @@ export default function PhoneSystem() {
     },
     onError: (error: any) => {
       toast({ variant: "destructive", title: "Update Failed", description: error.message || "Failed to update CNAM" });
+    },
+  });
+
+
+  const assignNumberMutation = useMutation({
+    mutationFn: async ({ phoneNumberId, userId }: { phoneNumberId: string; userId: string | null }) => {
+      return apiRequest("POST", `/api/telnyx/assign-number/${phoneNumberId}`, { userId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/my-numbers"] });
+      refetchNumbers();
+      toast({ title: "Number Assigned", description: "Phone number assignment updated successfully." });
+    },
+    onError: (error: any) => {
+      toast({ variant: "destructive", title: "Assignment Failed", description: error.message || "Failed to assign phone number" });
+    },
+  });
+
+  const numberVoiceSettingsMutation = useMutation({
+    mutationFn: async ({ phoneNumberId, settings }: { 
+      phoneNumberId: string; 
+      settings: { 
+        recordingEnabled?: boolean; 
+        cnamLookupEnabled?: boolean; 
+        noiseSuppressionEnabled?: boolean;
+        noiseSuppressionDirection?: string;
+        voicemailEnabled?: boolean;
+      } 
+    }) => {
+      return apiRequest("POST", `/api/telnyx/number-voice-settings/${phoneNumberId}`, settings);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/my-numbers"] });
+      refetchNumbers();
+      toast({ title: "Voice Settings Updated", description: "Number voice settings saved successfully." });
+    },
+    onError: (error: any) => {
+      toast({ variant: "destructive", title: "Update Failed", description: error.message || "Failed to update voice settings" });
     },
   });
 
@@ -716,8 +784,21 @@ export default function PhoneSystem() {
 
           {/* Right: Add Funds + Balance */}
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" onClick={() => setShowAddFunds(true)} data-testid="button-add-funds-quick">
-              <Plus className="h-3 w-3 mr-1" />Add Funds
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => {
+                setIsAddFundsAnimating(true);
+                setTimeout(() => setIsAddFundsAnimating(false), 600);
+                setShowAddFunds(true);
+              }} 
+              data-testid="button-add-funds-quick"
+            >
+              <div className="relative mr-1.5">
+                <DollarSign className="h-3.5 w-3.5 text-green-600" />
+                <RefreshCw className={`h-2.5 w-2.5 absolute -top-0.5 -right-1 text-indigo-500 ${isAddFundsAnimating ? 'animate-spin' : ''}`} />
+              </div>
+              Add Funds
             </Button>
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${walletBalance > 10 ? 'bg-green-500' : walletBalance > 0 ? 'bg-amber-500' : 'bg-red-500'}`} />
@@ -751,9 +832,6 @@ export default function PhoneSystem() {
               </TabsTrigger>
               <TabsTrigger value="pricing" className="data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 rounded-none px-4 py-3 text-sm font-medium bg-transparent">
                 Pricing
-              </TabsTrigger>
-              <TabsTrigger value="settings" className="data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 rounded-none px-4 py-3 text-sm font-medium bg-transparent">
-                Settings
               </TabsTrigger>
             </TabsList>
           </div>
@@ -1094,34 +1172,134 @@ export default function PhoneSystem() {
                         </div>
                       </div>
 
-                      {/* Voice Settings - Interactive */}
+
+                      {/* Assigned User Section */}
+                      <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedNumber.ownerUserId ? 'bg-green-50 dark:bg-green-900/20' : 'bg-slate-50 dark:bg-slate-800'}`}>
+                              <User className={`h-5 w-5 ${selectedNumber.ownerUserId ? 'text-green-600' : 'text-slate-400'}`} />
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm text-slate-700 dark:text-foreground">Assigned User</p>
+                              <p className="text-xs text-slate-500">
+                                {selectedNumber.ownerUser 
+                                  ? `${selectedNumber.ownerUser.firstName || ''} ${selectedNumber.ownerUser.lastName || ''}`.trim() || selectedNumber.ownerUser.email
+                                  : 'Not assigned - Number is available to all company admins'}
+                              </p>
+                            </div>
+                          </div>
+                          <Select
+                            value={selectedNumber.ownerUserId || "unassigned"}
+                            onValueChange={(value) => {
+                              const userId = value === "unassigned" ? null : value;
+                              if (selectedNumber.telnyxPhoneNumberId) {
+                                assignNumberMutation.mutate({
+                                  phoneNumberId: selectedNumber.telnyxPhoneNumberId,
+                                  userId,
+                                });
+                              }
+                            }}
+                            disabled={assignNumberMutation.isPending}
+                          >
+                            <SelectTrigger className="w-[180px]" data-testid="select-assigned-user">
+                              <SelectValue placeholder="Select user" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="unassigned">Unassigned</SelectItem>
+                              {agentsData?.agents?.map((agent) => (
+                                <SelectItem key={agent.id} value={agent.id}>
+                                  {agent.firstName && agent.lastName 
+                                    ? `${agent.firstName} ${agent.lastName}` 
+                                    : agent.email}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      {/* Voice Settings - Per Number */}
                       <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                         <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                           <p className="font-medium text-sm text-slate-700 dark:text-foreground">Voice Settings</p>
+                          <p className="text-xs text-slate-500">Configuration for this number only</p>
                         </div>
                         <div className="p-4 space-y-4">
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm font-medium text-slate-700 dark:text-foreground">Call Recording</p>
-                              <p className="text-xs text-slate-500">$0.005/min - Record all calls</p>
+                              <p className="text-xs text-slate-500">$0.005/min - Record calls on this number</p>
                             </div>
                             <Switch
-                              checked={billingFeaturesData?.recordingEnabled || false}
-                              onCheckedChange={handleRecordingToggle}
-                              disabled={syncedRecordingMutation.isPending}
+                              checked={selectedNumber.recordingEnabled || false}
+                              onCheckedChange={(checked) => {
+                                if (selectedNumber.telnyxPhoneNumberId) {
+                                  numberVoiceSettingsMutation.mutate({
+                                    phoneNumberId: selectedNumber.telnyxPhoneNumberId,
+                                    settings: { recordingEnabled: checked }
+                                  });
+                                }
+                              }}
+                              disabled={numberVoiceSettingsMutation.isPending}
                               data-testid="switch-recording-number"
                             />
                           </div>
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm font-medium text-slate-700 dark:text-foreground">CNAM Lookup</p>
-                              <p className="text-xs text-slate-500">$0.40/mo - Show caller names</p>
+                              <p className="text-xs text-slate-500">$0.40/mo - Show caller names on incoming</p>
                             </div>
                             <Switch
-                              checked={billingFeaturesData?.cnamEnabled || false}
-                              onCheckedChange={handleCnamToggle}
-                              disabled={billingFeaturesMutation.isPending}
+                              checked={selectedNumber.cnamLookupEnabled || false}
+                              onCheckedChange={(checked) => {
+                                if (selectedNumber.telnyxPhoneNumberId) {
+                                  numberVoiceSettingsMutation.mutate({
+                                    phoneNumberId: selectedNumber.telnyxPhoneNumberId,
+                                    settings: { cnamLookupEnabled: checked }
+                                  });
+                                }
+                              }}
+                              disabled={numberVoiceSettingsMutation.isPending}
                               data-testid="switch-cnam-number"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-slate-700 dark:text-foreground">Noise Suppression</p>
+                              <p className="text-xs text-slate-500">Reduce background noise during calls</p>
+                            </div>
+                            <Switch
+                              checked={selectedNumber.noiseSuppressionEnabled || false}
+                              onCheckedChange={(checked) => {
+                                if (selectedNumber.telnyxPhoneNumberId) {
+                                  numberVoiceSettingsMutation.mutate({
+                                    phoneNumberId: selectedNumber.telnyxPhoneNumberId,
+                                    settings: { noiseSuppressionEnabled: checked }
+                                  });
+                                }
+                              }}
+                              disabled={numberVoiceSettingsMutation.isPending}
+                              data-testid="switch-noise-suppression-number"
+                            />
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-slate-700 dark:text-foreground">Voicemail</p>
+                              <p className="text-xs text-slate-500">Enable voicemail for this number</p>
+                            </div>
+                            <Switch
+                              checked={selectedNumber.voicemailEnabled || false}
+                              onCheckedChange={(checked) => {
+                                if (selectedNumber.telnyxPhoneNumberId) {
+                                  numberVoiceSettingsMutation.mutate({
+                                    phoneNumberId: selectedNumber.telnyxPhoneNumberId,
+                                    settings: { voicemailEnabled: checked }
+                                  });
+                                }
+                              }}
+                              disabled={numberVoiceSettingsMutation.isPending}
+                              data-testid="switch-voicemail-number"
                             />
                           </div>
                         </div>
@@ -1391,85 +1569,6 @@ export default function PhoneSystem() {
             </div>
           </TabsContent>
 
-          {/* Settings Tab - System Configuration Only */}
-          <TabsContent value="settings" className="flex-1 m-0 overflow-auto">
-            <div className="p-6 max-w-2xl">
-              <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">System Configuration</h2>
-
-              {/* Call Recording */}
-              <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-4">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="font-medium text-sm text-slate-700 dark:text-foreground">Call Recording</p>
-                  <Switch
-                    checked={billingFeaturesData?.recordingEnabled || false}
-                    onCheckedChange={handleRecordingToggle}
-                    disabled={billingFeaturesMutation.isPending || syncedRecordingMutation.isPending}
-                    data-testid="switch-call-recording"
-                  />
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
-                    <Mic className="h-4 w-4 text-red-600" />
-                  </div>
-                  <p className="text-xs text-slate-500">$0.005/min - Record all calls automatically</p>
-                </div>
-              </div>
-
-              {/* CNAM */}
-              <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-4">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="font-medium text-sm text-slate-700 dark:text-foreground">CNAM (Caller ID Name)</p>
-                  <Switch
-                    checked={billingFeaturesData?.cnamEnabled || false}
-                    onCheckedChange={handleCnamToggle}
-                    disabled={billingFeaturesMutation.isPending}
-                    data-testid="switch-cnam"
-                  />
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-                    <User className="h-4 w-4 text-blue-600" />
-                  </div>
-                  <p className="text-xs text-slate-500">$0.50/mo per number - Show caller names on incoming calls</p>
-                </div>
-              </div>
-
-              {/* Noise Suppression */}
-              <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                <div className="flex items-center justify-between mb-3">
-                  <p className="font-medium text-sm text-slate-700 dark:text-foreground">Noise Suppression</p>
-                  <Switch
-                    checked={noiseSuppressionData?.enabled || false}
-                    onCheckedChange={(checked) => noiseSuppressionMutation.mutate({ enabled: checked, direction: noiseSuppressionData?.direction || 'outbound' })}
-                    disabled={noiseSuppressionMutation.isPending}
-                    data-testid="switch-noise-suppression"
-                  />
-                </div>
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
-                    <Volume2 className="h-4 w-4 text-indigo-600" />
-                  </div>
-                  <p className="text-xs text-slate-500">Reduce background noise during calls</p>
-                </div>
-                {noiseSuppressionData?.enabled && (
-                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-                    <Label className="text-sm text-slate-600 dark:text-slate-400">Direction</Label>
-                    <Select
-                      value={noiseSuppressionData?.direction || 'outbound'}
-                      onValueChange={(value: 'inbound' | 'outbound' | 'both') => noiseSuppressionMutation.mutate({ enabled: true, direction: value })}
-                    >
-                      <SelectTrigger className="w-[140px] h-8"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="outbound">Outbound</SelectItem>
-                        <SelectItem value="inbound">Inbound</SelectItem>
-                        <SelectItem value="both">Both</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
-              </div>
-            </div>
-          </TabsContent>
         </Tabs>
       </div>
 

@@ -28492,6 +28492,77 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/telnyx/assign-number/:phoneNumberId - Assign a phone number to a specific user
+  app.post("/api/telnyx/assign-number/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      // Only admins can assign phone numbers to users
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can assign phone numbers" });
+      }
+
+      const { phoneNumberId } = req.params;
+      const { userId } = req.body;
+
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      // Find the phone number
+      const [phoneNumber] = await db
+        .select()
+        .from(telnyxPhoneNumbers)
+        .where(and(
+          eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId),
+          eq(telnyxPhoneNumbers.companyId, user.companyId)
+        ));
+
+      if (!phoneNumber) {
+        return res.status(404).json({ message: "Phone number not found" });
+      }
+
+      // If userId is provided, verify the user exists and belongs to the same company
+      if (userId) {
+        const [targetUser] = await db
+          .select()
+          .from(users)
+          .where(and(
+            eq(users.id, userId),
+            eq(users.companyId, user.companyId)
+          ));
+
+        if (!targetUser) {
+          return res.status(404).json({ message: "Target user not found or not in the same company" });
+        }
+      }
+
+      // Update the phone number's ownerUserId
+      await db
+        .update(telnyxPhoneNumbers)
+        .set({ 
+          ownerUserId: userId || null,
+          updatedAt: new Date()
+        })
+        .where(eq(telnyxPhoneNumbers.id, phoneNumber.id));
+
+      console.log(`[Telnyx Assign] Phone ${phoneNumber.phoneNumber} assigned to user ${userId || "unassigned"} by admin ${user.id}`);
+
+      res.json({
+        success: true,
+        phoneNumberId,
+        assignedToUserId: userId || null,
+      });
+    } catch (error: any) {
+      console.error("[Telnyx Assign] Error:", error);
+      res.status(500).json({ message: "Failed to assign phone number" });
+    }
+  });
+
+
 
   // GET /api/telnyx/voice-settings/:phoneNumberId - Get all voice settings (CNAM, Recording, Spam, etc.)
   app.get("/api/telnyx/voice-settings/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
@@ -28774,6 +28845,44 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("[Telnyx Voicemail] Update error:", error);
       res.status(500).json({ message: "Failed to update voicemail settings" });
+    }
+  });
+
+  // POST /api/telnyx/number-voice-settings/:phoneNumberId - Update per-number voice settings
+  app.post("/api/telnyx/number-voice-settings/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
+      }
+      const { phoneNumberId } = req.params;
+      const { recordingEnabled, cnamLookupEnabled, noiseSuppressionEnabled, noiseSuppressionDirection, voicemailEnabled } = req.body;
+
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { updateNumberVoiceSettings } = await import("./services/telnyx-numbers-service");
+      const result = await updateNumberVoiceSettings(phoneNumberId, user.companyId, {
+        recordingEnabled,
+        cnamLookupEnabled,
+        noiseSuppressionEnabled,
+        noiseSuppressionDirection,
+        voicemailEnabled,
+      });
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Number Voice Settings] Update error:", error);
+      res.status(500).json({ message: "Failed to update voice settings" });
     }
   });
 

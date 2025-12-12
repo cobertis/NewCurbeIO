@@ -4880,6 +4880,13 @@ export const telnyxPhoneNumbers = pgTable("telnyx_phone_numbers", {
   callForwardingDestination: text("call_forwarding_destination"), // E.164 format destination
   callForwardingKeepCallerId: boolean("call_forwarding_keep_caller_id").notNull().default(true),
   
+  // Per-Number Voice Settings
+  recordingEnabled: boolean("recording_enabled").notNull().default(false), // Call recording for this number
+  cnamLookupEnabled: boolean("cnam_lookup_enabled").notNull().default(false), // CNAM lookup for incoming calls
+  noiseSuppressionEnabled: boolean("noise_suppression_enabled").notNull().default(false), // Noise suppression
+  noiseSuppressionDirection: text("noise_suppression_direction").default("outbound").$type<"inbound" | "outbound" | "both">(),
+  voicemailEnabled: boolean("voicemail_enabled").notNull().default(false), // Voicemail for this number
+  
   // Billing Fields - For monthly recurring charges
   numberType: text("number_type").default("local").$type<"local" | "toll_free">(), // Type of number for pricing
   retailMonthlyRate: numeric("retail_monthly_rate", { precision: 10, scale: 4 }), // Client-facing monthly rate

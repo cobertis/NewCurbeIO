@@ -11678,13 +11678,14 @@ export class DbStorage implements IStorage {
   async canCompanyAddUsers(companyId: string, countToAdd: number = 1): Promise<{ allowed: boolean; currentCount: number; limit: number | null; message?: string }> {
     const limit = await this.getPlanLimitForCompany(companyId);
     
-    if (limit === null) {
-      return { allowed: true, currentCount: 0, limit: null };
-    }
-    
+    // Always calculate the actual user count
     const activeUserCount = await this.getActiveUserCountByCompany(companyId);
     const pendingInvitationCount = await this.getPendingInvitationCountByCompany(companyId);
     const currentCount = activeUserCount + pendingInvitationCount;
+    
+    if (limit === null) {
+      return { allowed: true, currentCount, limit: null };
+    }
     
     if (currentCount + countToAdd > limit) {
       return {

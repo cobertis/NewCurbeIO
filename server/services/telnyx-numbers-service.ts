@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { wallets, companies, telnyxPhoneNumbers, telephonySettings } from "@shared/schema";
+import { wallets, companies, telnyxPhoneNumbers, telephonySettings, users } from "@shared/schema";
 import { eq, and, or } from "drizzle-orm";
 import { SecretsService } from "./secrets-service";
 import { assignPhoneNumberToCredentialConnection } from "./telnyx-e911-service";
@@ -1197,17 +1197,67 @@ export async function getUserPhoneNumbers(companyId: string, userId?: string): P
   error?: string;
 }> {
   try {
-    // Get phone numbers from local DB
+    // Get phone numbers from local DB with owner user info via left join
     // When userId is provided, filter by ownerUserId (for admins seeing their own)
     // When userId is undefined, get all company numbers (for superadmins)
     const whereConditions = userId
       ? and(eq(telnyxPhoneNumbers.companyId, companyId), eq(telnyxPhoneNumbers.ownerUserId, userId))
       : eq(telnyxPhoneNumbers.companyId, companyId);
     
-    const numbers = await db
-      .select()
+    const results = await db
+      .select({
+        id: telnyxPhoneNumbers.id,
+        companyId: telnyxPhoneNumbers.companyId,
+        ownerUserId: telnyxPhoneNumbers.ownerUserId,
+        phoneNumber: telnyxPhoneNumbers.phoneNumber,
+        telnyxPhoneNumberId: telnyxPhoneNumbers.telnyxPhoneNumberId,
+        displayName: telnyxPhoneNumbers.displayName,
+        status: telnyxPhoneNumbers.status,
+        capabilities: telnyxPhoneNumbers.capabilities,
+        monthlyFee: telnyxPhoneNumbers.monthlyFee,
+        e911Enabled: telnyxPhoneNumbers.e911Enabled,
+        e911AddressId: telnyxPhoneNumbers.e911AddressId,
+        e911MonthlyFee: telnyxPhoneNumbers.e911MonthlyFee,
+        messagingProfileId: telnyxPhoneNumbers.messagingProfileId,
+        outboundVoiceProfileId: telnyxPhoneNumbers.outboundVoiceProfileId,
+        connectionId: telnyxPhoneNumbers.connectionId,
+        callerIdName: telnyxPhoneNumbers.callerIdName,
+        callForwardingEnabled: telnyxPhoneNumbers.callForwardingEnabled,
+        callForwardingDestination: telnyxPhoneNumbers.callForwardingDestination,
+        callForwardingKeepCallerId: telnyxPhoneNumbers.callForwardingKeepCallerId,
+        recordingEnabled: telnyxPhoneNumbers.recordingEnabled,
+        cnamLookupEnabled: telnyxPhoneNumbers.cnamLookupEnabled,
+        noiseSuppressionEnabled: telnyxPhoneNumbers.noiseSuppressionEnabled,
+        noiseSuppressionDirection: telnyxPhoneNumbers.noiseSuppressionDirection,
+        voicemailEnabled: telnyxPhoneNumbers.voicemailEnabled,
+        numberType: telnyxPhoneNumbers.numberType,
+        retailMonthlyRate: telnyxPhoneNumbers.retailMonthlyRate,
+        telnyxMonthlyCost: telnyxPhoneNumbers.telnyxMonthlyCost,
+        lastBilledAt: telnyxPhoneNumbers.lastBilledAt,
+        nextBillingAt: telnyxPhoneNumbers.nextBillingAt,
+        purchasedAt: telnyxPhoneNumbers.purchasedAt,
+        createdAt: telnyxPhoneNumbers.createdAt,
+        updatedAt: telnyxPhoneNumbers.updatedAt,
+        ownerFirstName: users.firstName,
+        ownerLastName: users.lastName,
+        ownerEmail: users.email,
+        ownerAvatar: users.avatar,
+      })
       .from(telnyxPhoneNumbers)
+      .leftJoin(users, eq(telnyxPhoneNumbers.ownerUserId, users.id))
       .where(whereConditions);
+
+    // Transform results to include ownerUser object
+    const numbers = results.map(r => ({
+      ...r,
+      ownerUser: r.ownerUserId ? {
+        id: r.ownerUserId,
+        firstName: r.ownerFirstName,
+        lastName: r.ownerLastName,
+        email: r.ownerEmail,
+        avatar: r.ownerAvatar,
+      } : null,
+    }));
 
     return {
       success: true,
@@ -1307,5 +1357,113 @@ export async function syncBillingFeaturesToTelnyx(
   } catch (error) {
     console.error("[Billing Features Sync] Error:", error);
     return { success: false, syncedCount: 0, errors: [error instanceof Error ? error.message : 'Unknown error'] };
+  }
+}
+
+// Update per-number voice settings (recordingEnabled, cnamLookupEnabled, noiseSuppressionEnabled, voicemailEnabled)
+export async function updateNumberVoiceSettings(
+  phoneNumberId: string,
+  companyId: string,
+  settings: {
+    recordingEnabled?: boolean;
+    cnamLookupEnabled?: boolean;
+    noiseSuppressionEnabled?: boolean;
+    noiseSuppressionDirection?: "inbound" | "outbound" | "both";
+    voicemailEnabled?: boolean;
+  }
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    // Get the phone number from DB
+    const [phoneNumber] = await db
+      .select()
+      .from(telnyxPhoneNumbers)
+      .where(and(
+        eq(telnyxPhoneNumbers.id, phoneNumberId),
+        eq(telnyxPhoneNumbers.companyId, companyId)
+      ));
+    
+    if (!phoneNumber) {
+      return { success: false, error: "Phone number not found" };
+    }
+    
+    // Build update object
+    const updateData: Record<string, any> = { updatedAt: new Date() };
+    
+    if (typeof settings.recordingEnabled === 'boolean') {
+      updateData.recordingEnabled = settings.recordingEnabled;
+    }
+    if (typeof settings.cnamLookupEnabled === 'boolean') {
+      updateData.cnamLookupEnabled = settings.cnamLookupEnabled;
+    }
+    if (typeof settings.noiseSuppressionEnabled === 'boolean') {
+      updateData.noiseSuppressionEnabled = settings.noiseSuppressionEnabled;
+    }
+    if (settings.noiseSuppressionDirection) {
+      updateData.noiseSuppressionDirection = settings.noiseSuppressionDirection;
+    }
+    if (typeof settings.voicemailEnabled === 'boolean') {
+      updateData.voicemailEnabled = settings.voicemailEnabled;
+    }
+    
+    // Update local DB
+    await db
+      .update(telnyxPhoneNumbers)
+      .set(updateData)
+      .where(eq(telnyxPhoneNumbers.id, phoneNumberId));
+    
+    // If recording or CNAM changed, sync to Telnyx API
+    if (typeof settings.recordingEnabled === 'boolean' || typeof settings.cnamLookupEnabled === 'boolean') {
+      const apiKey = await getTelnyxMasterApiKey();
+      
+      const [wallet] = await db
+        .select()
+        .from(wallets)
+        .where(eq(wallets.companyId, companyId));
+      
+      if (wallet?.telnyxAccountId) {
+        const headers: Record<string, string> = {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "x-managed-account-id": wallet.telnyxAccountId,
+        };
+        
+        const payload: Record<string, any> = {};
+        
+        if (typeof settings.recordingEnabled === 'boolean') {
+          payload.call_recording = {
+            inbound_call_recording_enabled: settings.recordingEnabled,
+            inbound_call_recording_format: "mp3",
+            inbound_call_recording_channels: "single",
+          };
+        }
+        
+        if (typeof settings.cnamLookupEnabled === 'boolean') {
+          payload.cnam_listing = {
+            cnam_listing_enabled: settings.cnamLookupEnabled,
+          };
+        }
+        
+        if (Object.keys(payload).length > 0) {
+          const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumber.telnyxPhoneNumberId}/voice`, {
+            method: "PATCH",
+            headers,
+            body: JSON.stringify(payload),
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`[Voice Settings] Telnyx sync failed for ${phoneNumber.phoneNumber}: ${response.status} - ${errorText}`);
+          } else {
+            console.log(`[Voice Settings] Synced ${phoneNumber.phoneNumber} to Telnyx`);
+          }
+        }
+      }
+    }
+    
+    console.log(`[Voice Settings] Updated ${phoneNumber.phoneNumber}: ${JSON.stringify(settings)}`);
+    return { success: true };
+  } catch (error) {
+    console.error("[Voice Settings] Update error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update voice settings" };
   }
 }
