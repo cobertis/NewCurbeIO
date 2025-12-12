@@ -1134,7 +1134,7 @@ export default function PhoneSystem() {
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm font-medium text-slate-700 dark:text-foreground">Call Recording</p>
-                              <p className="text-xs text-slate-500">$0.005/min - Record calls on this number</p>
+                              <p className="text-xs text-slate-500">Record calls on this number</p>
                             </div>
                             <Switch
                               checked={selectedNumber.recordingEnabled || false}
@@ -1153,7 +1153,7 @@ export default function PhoneSystem() {
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="text-sm font-medium text-slate-700 dark:text-foreground">CNAM Lookup</p>
-                              <p className="text-xs text-slate-500">$0.40/mo - Show caller names on incoming</p>
+                              <p className="text-xs text-slate-500">Show caller names on incoming</p>
                             </div>
                             <Switch
                               checked={selectedNumber.cnamLookupEnabled || false}
