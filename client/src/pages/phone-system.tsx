@@ -467,21 +467,21 @@ export default function PhoneSystem() {
   }
 
   return (
-    <div className="flex flex-col h-full">
-      {/* Header */}
-      <div className="border-b border-slate-200 dark:border-border bg-white dark:bg-card px-6 py-4">
+    <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950">
+      {/* Header - Clean, organized */}
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4">
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-xl font-semibold text-slate-900 dark:text-foreground" data-testid="text-page-title">Phone System</h1>
-            <p className="text-sm text-slate-500 dark:text-muted-foreground">Manage your business phone lines</p>
+            <p className="text-sm text-slate-500">Manage your business phone lines</p>
           </div>
           <div className="flex items-center gap-3">
-            <Button variant="outline" size="sm" onClick={() => setShowBuyNumber(true)} data-testid="button-buy-number">
-              <Plus className="h-4 w-4 mr-1" />
+            <Button variant="outline" onClick={() => setShowBuyNumber(true)} data-testid="button-buy-number">
+              <Plus className="h-4 w-4 mr-2" />
               Buy Number
             </Button>
             <div 
-              className="flex items-center gap-3 px-4 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
+              className="flex items-center gap-3 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
               onClick={() => setShowAddFunds(true)}
               data-testid="button-add-funds"
             >
@@ -499,101 +499,92 @@ export default function PhoneSystem() {
       {/* Main Content with Tabs */}
       <div className="flex-1 overflow-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
-          <div className="border-b border-slate-200 dark:border-border bg-white dark:bg-card px-6">
-            <TabsList className="bg-transparent h-12 p-0 gap-1">
-              <TabsTrigger value="overview" className="data-[state=active]:bg-slate-100 dark:data-[state=active]:bg-slate-800 rounded-lg px-4">
+          {/* Tab Navigation - Clean pills */}
+          <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3">
+            <TabsList className="bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
+              <TabsTrigger value="overview" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm rounded-md px-4 py-2 text-sm font-medium">
                 <TrendingUp className="h-4 w-4 mr-2" />Overview
               </TabsTrigger>
-              <TabsTrigger value="numbers" className="data-[state=active]:bg-slate-100 dark:data-[state=active]:bg-slate-800 rounded-lg px-4">
+              <TabsTrigger value="numbers" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm rounded-md px-4 py-2 text-sm font-medium">
                 <Phone className="h-4 w-4 mr-2" />Numbers
               </TabsTrigger>
-              <TabsTrigger value="calls" className="data-[state=active]:bg-slate-100 dark:data-[state=active]:bg-slate-800 rounded-lg px-4">
+              <TabsTrigger value="calls" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm rounded-md px-4 py-2 text-sm font-medium">
                 <History className="h-4 w-4 mr-2" />Call History
               </TabsTrigger>
-              <TabsTrigger value="settings" className="data-[state=active]:bg-slate-100 dark:data-[state=active]:bg-slate-800 rounded-lg px-4">
+              <TabsTrigger value="settings" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm rounded-md px-4 py-2 text-sm font-medium">
                 <Settings2 className="h-4 w-4 mr-2" />Settings
               </TabsTrigger>
             </TabsList>
           </div>
 
-          {/* Overview Tab */}
+          {/* Overview Tab - Clean organization */}
           <TabsContent value="overview" className="p-6 m-0">
-            <div className="grid gap-6">
-              {/* Quick Stats */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <Card className="border-slate-200 dark:border-border">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                        <Phone className="h-5 w-5 text-indigo-600" />
-                      </div>
-                      <div>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-foreground">{numbersCount}</p>
-                        <p className="text-xs text-slate-500">Phone Numbers</p>
-                      </div>
+            <div className="space-y-6">
+              {/* Stats Row - Simple grid */}
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
+                      <Phone className="h-5 w-5 text-indigo-600" />
                     </div>
-                  </CardContent>
-                </Card>
-                <Card className="border-slate-200 dark:border-border">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                        <DollarSign className="h-5 w-5 text-green-600" />
-                      </div>
-                      <div>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-foreground">{formatCurrency(walletBalance)}</p>
-                        <p className="text-xs text-slate-500">Wallet Balance</p>
-                      </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-foreground">{numbersCount}</p>
+                      <p className="text-xs text-slate-500">Phone Numbers</p>
                     </div>
-                  </CardContent>
-                </Card>
-                <Card className="border-slate-200 dark:border-border">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                        <PhoneCall className="h-5 w-5 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="text-2xl font-bold text-slate-900 dark:text-foreground">{callLogsData?.logs?.length || 0}</p>
-                        <p className="text-xs text-slate-500">Total Calls</p>
-                      </div>
+                  </div>
+                </div>
+                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
+                      <DollarSign className="h-5 w-5 text-green-600" />
                     </div>
-                  </CardContent>
-                </Card>
-                <Card className={`border-slate-200 dark:border-border ${hasE911Issues ? 'border-amber-300 dark:border-amber-700' : ''}`}>
-                  <CardContent className="p-4">
-                    <div 
-                      className="flex items-center gap-3 cursor-pointer"
-                      onClick={() => {
-                        if (numbersData?.numbers?.[0]) {
-                          setSelectedNumberForE911({ phoneNumber: numbersData.numbers[0].phone_number, phoneNumberId: numbersData.numbers[0].id || "" });
-                          setShowE911Dialog(true);
-                        }
-                      }}
-                    >
-                      <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${hasE911Issues ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-emerald-100 dark:bg-emerald-900/30'}`}>
-                        <MapPin className={`h-5 w-5 ${hasE911Issues ? 'text-amber-600' : 'text-emerald-600'}`} />
-                      </div>
-                      <div>
-                        <p className="text-sm font-semibold text-slate-900 dark:text-foreground">E911 Status</p>
-                        <p className={`text-xs ${hasE911Issues ? 'text-amber-600' : 'text-emerald-600'}`}>
-                          {hasE911Issues ? 'Action Required' : 'Configured'}
-                        </p>
-                      </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-foreground">{formatCurrency(walletBalance)}</p>
+                      <p className="text-xs text-slate-500">Wallet Balance</p>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
+                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                      <PhoneCall className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-foreground">{callLogsData?.logs?.length || 0}</p>
+                      <p className="text-xs text-slate-500">Total Calls</p>
+                    </div>
+                  </div>
+                </div>
+                <div 
+                  className={`bg-white dark:bg-slate-900 rounded-lg border p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${hasE911Issues ? 'border-amber-300 dark:border-amber-700' : 'border-slate-200 dark:border-slate-800'}`}
+                  onClick={() => {
+                    if (numbersData?.numbers?.[0]) {
+                      setSelectedNumberForE911({ phoneNumber: numbersData.numbers[0].phone_number, phoneNumberId: numbersData.numbers[0].id || "" });
+                      setShowE911Dialog(true);
+                    }
+                  }}
+                >
+                  <div className="flex items-center gap-3">
+                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${hasE911Issues ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-emerald-50 dark:bg-emerald-900/20'}`}>
+                      <MapPin className={`h-5 w-5 ${hasE911Issues ? 'text-amber-600' : 'text-emerald-600'}`} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-slate-900 dark:text-foreground">E911 Status</p>
+                      <p className={`text-xs ${hasE911Issues ? 'text-amber-600' : 'text-emerald-600'}`}>
+                        {hasE911Issues ? 'Action Required' : 'Configured'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Recent Activity */}
-              <Card className="border-slate-200 dark:border-border">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">Recent Calls</CardTitle>
-                    <Button variant="ghost" size="sm" onClick={() => setActiveTab("calls")}>View All</Button>
-                  </div>
-                </CardHeader>
-                <CardContent>
+              {/* Recent Calls - Clean table */}
+              <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
+                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+                  <h3 className="font-semibold text-slate-900 dark:text-foreground">Recent Calls</h3>
+                  <Button variant="ghost" size="sm" onClick={() => setActiveTab("calls")}>View All</Button>
+                </div>
+                <div>
                   {isLoadingCallLogs ? (
                     <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
                   ) : !callLogsData?.logs?.length ? (
@@ -602,22 +593,22 @@ export default function PhoneSystem() {
                       <p className="text-sm">No calls yet</p>
                     </div>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
                       {callLogsData.logs.slice(0, 5).map((log) => (
-                        <div key={log.id} className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
+                        <div key={log.id} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50">
                           <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-full ${log.direction === 'inbound' ? 'bg-blue-100 dark:bg-blue-900/30' : 'bg-green-100 dark:bg-green-900/30'}`}>
+                            <div className={`p-2 rounded-full ${log.direction === 'inbound' ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}>
                               {log.direction === 'inbound' ? <PhoneIncoming className="h-4 w-4 text-blue-600" /> : <PhoneOutgoing className="h-4 w-4 text-green-600" />}
                             </div>
                             <div>
-                              <p className="text-sm font-medium text-slate-700 dark:text-foreground">
+                              <p className="text-sm font-medium text-slate-900 dark:text-foreground">
                                 {formatPhoneDisplay(log.direction === 'inbound' ? log.fromNumber : log.toNumber)}
                               </p>
-                              <p className="text-xs text-slate-400">{format(new Date(log.startedAt), "MMM dd, h:mm a")}</p>
+                              <p className="text-xs text-slate-500">{format(new Date(log.startedAt), "MMM dd, h:mm a")}</p>
                             </div>
                           </div>
-                          <div className="text-right">
-                            {log.duration > 0 && <p className="text-sm text-slate-600 dark:text-slate-300">{Math.floor(log.duration / 60)}:{(log.duration % 60).toString().padStart(2, '0')}</p>}
+                          <div className="flex items-center gap-3">
+                            {log.duration > 0 && <span className="text-sm text-slate-600 dark:text-slate-400">{Math.floor(log.duration / 60)}:{(log.duration % 60).toString().padStart(2, '0')}</span>}
                             <Badge variant="outline" className={`text-xs ${log.status === 'answered' ? 'text-green-600 border-green-200' : 'text-slate-500'}`}>
                               {log.status}
                             </Badge>
@@ -626,27 +617,25 @@ export default function PhoneSystem() {
                       ))}
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
           </TabsContent>
 
-          {/* Numbers Tab */}
+          {/* Numbers Tab - Clean organization */}
           <TabsContent value="numbers" className="p-6 m-0">
             <div className="space-y-4">
               {isLoadingNumbers ? (
                 <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-slate-400" /></div>
               ) : !numbersData?.numbers?.length ? (
-                <Card className="border-dashed border-2 border-slate-300 dark:border-slate-600">
-                  <CardContent className="py-12 text-center">
-                    <Phone className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-                    <h3 className="text-lg font-medium text-slate-700 dark:text-foreground mb-2">No Phone Numbers</h3>
-                    <p className="text-sm text-slate-500 mb-4">Purchase a phone number to start making and receiving calls.</p>
-                    <Button onClick={() => setShowBuyNumber(true)} data-testid="button-add-first-number">
-                      <Plus className="h-4 w-4 mr-2" />Get a Number
-                    </Button>
-                  </CardContent>
-                </Card>
+                <div className="bg-white dark:bg-slate-900 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700 p-12 text-center">
+                  <Phone className="h-12 w-12 mx-auto mb-4 text-slate-300" />
+                  <h3 className="text-lg font-medium text-slate-900 dark:text-foreground mb-2">No Phone Numbers</h3>
+                  <p className="text-sm text-slate-500 mb-4">Purchase a phone number to start making and receiving calls.</p>
+                  <Button onClick={() => setShowBuyNumber(true)} data-testid="button-add-first-number">
+                    <Plus className="h-4 w-4 mr-2" />Get a Number
+                  </Button>
+                </div>
               ) : (
                 numbersData.numbers.map((number, idx) => (
                   <PhoneNumberCard 
