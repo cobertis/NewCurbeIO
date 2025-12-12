@@ -49,7 +49,8 @@ import {
   Hash
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { format } from "date-fns";
+import { format, subDays, startOfDay, isSameDay } from "date-fns";
+import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip as RechartsTooltip, ResponsiveContainer, PieChart as RechartsPieChart, Pie, Cell, Legend } from "recharts";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { BuyNumbersDialog } from "@/components/WebPhoneFloatingWindow";
 import { E911ConfigDialog } from "@/components/E911ConfigDialog";
@@ -583,137 +584,228 @@ export default function PhoneSystem() {
             </TabsList>
           </div>
 
-          {/* Overview Tab - Two Column Layout */}
+          {/* Overview Tab - Analytics Dashboard */}
           <TabsContent value="overview" className="flex-1 m-0 overflow-auto">
-            <div className="grid lg:grid-cols-3 gap-0 h-full">
-              {/* Left Column: Summary & Quick Stats */}
-              <div className="lg:col-span-1 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 p-6">
-                <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">Account Summary</h2>
-                
-                {/* Wallet Section */}
-                <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="text-sm text-slate-600 dark:text-slate-400">Wallet Balance</span>
-                    <Button variant="ghost" size="sm" onClick={() => setShowAddFunds(true)} className="h-7 text-xs">Add Funds</Button>
-                  </div>
-                  <p className="text-3xl font-bold text-slate-900 dark:text-white">{formatCurrency(walletBalance)}</p>
-                  {autoRechargeEnabled && <p className="text-xs text-slate-500 mt-1">Auto-recharge enabled at ${autoRechargeThreshold}</p>}
-                </div>
-
-                {/* Numbers Section */}
-                <div className="mb-6">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Phone Numbers</span>
-                    <span className="text-lg font-bold text-slate-900 dark:text-white">{numbersCount}</span>
-                  </div>
-                  {numbersData?.numbers?.slice(0, 3).map((num, idx) => (
-                    <div key={idx} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
-                      <span className="text-sm text-slate-700 dark:text-slate-300">{formatPhoneDisplay(num.phone_number)}</span>
-                      <Badge variant="outline" className={`text-xs ${num.status === 'active' ? 'text-green-600 border-green-300' : 'text-slate-500'}`}>
-                        {num.status === 'active' ? 'Active' : num.status}
-                      </Badge>
+            <div className="p-6 space-y-6">
+              {/* KPI Cards Row */}
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                {/* Total Calls */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                      <Phone className="h-5 w-5 text-indigo-600" />
                     </div>
-                  ))}
-                  {numbersCount > 3 && (
-                    <Button variant="ghost" size="sm" onClick={() => setActiveTab("numbers")} className="p-0 h-auto text-xs text-indigo-600 hover:text-indigo-700">
-                      View all {numbersCount} numbers
-                    </Button>
-                  )}
-                </div>
-
-                {/* Alerts Section */}
-                {(hasE911Issues || walletBalance < 10) && (
-                  <div className="space-y-2">
-                    <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">Alerts</h3>
-                    {hasE911Issues && (
-                      <div 
-                        className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg cursor-pointer"
-                        onClick={() => {
-                          if (numbersData?.numbers?.[0]) {
-                            setSelectedNumberForE911({ phoneNumber: numbersData.numbers[0].phone_number, phoneNumberId: numbersData.numbers[0].id || "" });
-                            setShowE911Dialog(true);
-                          }
-                        }}
-                      >
-                        <AlertTriangle className="h-4 w-4 text-amber-600" />
-                        <span className="text-sm text-amber-700 dark:text-amber-400">E911 configuration needed</span>
-                      </div>
-                    )}
-                    {walletBalance < 10 && (
-                      <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg cursor-pointer" onClick={() => setShowAddFunds(true)}>
-                        <Wallet className="h-4 w-4 text-amber-600" />
-                        <span className="text-sm text-amber-700 dark:text-amber-400">Low balance - Add funds</span>
-                      </div>
-                    )}
+                    <div>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="stat-total-calls">{callLogsData?.logs?.length || 0}</p>
+                      <p className="text-xs text-slate-500">Total Calls</p>
+                    </div>
                   </div>
-                )}
+                </div>
+                {/* Answer Rate */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
+                      <CheckCircle2 className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="stat-answer-rate">
+                        {callLogsData?.logs?.length ? Math.round((callLogsData.logs.filter(l => l.status === 'answered').length / callLogsData.logs.length) * 100) : 0}%
+                      </p>
+                      <p className="text-xs text-slate-500">Answer Rate</p>
+                    </div>
+                  </div>
+                </div>
+                {/* Total Minutes */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <Clock className="h-5 w-5 text-blue-600" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="stat-total-minutes">
+                        {callLogsData?.logs?.reduce((acc, l) => acc + (l.duration || 0), 0) ? Math.round(callLogsData.logs.reduce((acc, l) => acc + (l.duration || 0), 0) / 60) : 0}
+                      </p>
+                      <p className="text-xs text-slate-500">Total Minutes</p>
+                    </div>
+                  </div>
+                </div>
+                {/* Total Spend */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-amber-100 dark:bg-amber-900/30 rounded-lg">
+                      <DollarSign className="h-5 w-5 text-amber-600" />
+                    </div>
+                    <div>
+                      <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="stat-total-spend">
+                        ${callLogsData?.logs?.reduce((acc, l) => acc + parseFloat(l.cost || '0'), 0).toFixed(2) || '0.00'}
+                      </p>
+                      <p className="text-xs text-slate-500">Total Spend</p>
+                    </div>
+                  </div>
+                </div>
               </div>
 
-              {/* Right Column: Activity & Calls */}
-              <div className="lg:col-span-2 p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Recent Activity</h2>
-                  <Button variant="ghost" size="sm" onClick={() => setActiveTab("calls")}>View All Calls</Button>
+              {/* Charts Row */}
+              <div className="grid lg:grid-cols-3 gap-6">
+                {/* Call Volume Chart - Last 7 Days */}
+                <div className="lg:col-span-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-5">
+                  <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Call Volume (Last 7 Days)</h3>
+                  <div className="h-64">
+                    {callLogsData?.logs?.length ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RechartsBarChart data={(() => {
+                          const last7Days = Array.from({ length: 7 }, (_, i) => {
+                            const date = subDays(new Date(), 6 - i);
+                            const dayLogs = callLogsData.logs.filter(l => isSameDay(new Date(l.startedAt), date));
+                            return {
+                              day: format(date, 'EEE'),
+                              inbound: dayLogs.filter(l => l.direction === 'inbound').length,
+                              outbound: dayLogs.filter(l => l.direction === 'outbound').length,
+                            };
+                          });
+                          return last7Days;
+                        })()}>
+                          <CartesianGrid strokeDasharray="3 3" stroke="#e2e8f0" />
+                          <XAxis dataKey="day" tick={{ fontSize: 12 }} stroke="#94a3b8" />
+                          <YAxis tick={{ fontSize: 12 }} stroke="#94a3b8" allowDecimals={false} />
+                          <RechartsTooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} />
+                          <Legend />
+                          <Bar dataKey="inbound" name="Inbound" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                          <Bar dataKey="outbound" name="Outbound" fill="#22c55e" radius={[4, 4, 0, 0]} />
+                        </RechartsBarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-slate-400">
+                        <div className="text-center">
+                          <TrendingUp className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                          <p className="text-sm">No call data available</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
 
-                {/* Call Stats Row */}
-                <div className="grid grid-cols-3 gap-4 mb-6">
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 text-center">
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{callLogsData?.logs?.length || 0}</p>
-                    <p className="text-xs text-slate-500">Total Calls</p>
-                  </div>
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 text-center">
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{callLogsData?.logs?.filter(l => l.direction === 'inbound').length || 0}</p>
-                    <p className="text-xs text-slate-500">Inbound</p>
-                  </div>
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 text-center">
-                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{callLogsData?.logs?.filter(l => l.direction === 'outbound').length || 0}</p>
-                    <p className="text-xs text-slate-500">Outbound</p>
+                {/* Call Distribution Pie */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-5">
+                  <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Call Status</h3>
+                  <div className="h-64">
+                    {callLogsData?.logs?.length ? (
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RechartsPieChart>
+                          <Pie
+                            data={[
+                              { name: 'Answered', value: callLogsData.logs.filter(l => l.status === 'answered').length, color: '#22c55e' },
+                              { name: 'Missed', value: callLogsData.logs.filter(l => l.status === 'missed' || l.status === 'no-answer').length, color: '#ef4444' },
+                              { name: 'Busy', value: callLogsData.logs.filter(l => l.status === 'busy').length, color: '#f59e0b' },
+                              { name: 'Other', value: callLogsData.logs.filter(l => !['answered', 'missed', 'no-answer', 'busy'].includes(l.status)).length, color: '#94a3b8' },
+                            ].filter(d => d.value > 0)}
+                            cx="50%"
+                            cy="50%"
+                            innerRadius={50}
+                            outerRadius={80}
+                            paddingAngle={2}
+                            dataKey="value"
+                            label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                            labelLine={false}
+                          >
+                            {[
+                              { name: 'Answered', value: callLogsData.logs.filter(l => l.status === 'answered').length, color: '#22c55e' },
+                              { name: 'Missed', value: callLogsData.logs.filter(l => l.status === 'missed' || l.status === 'no-answer').length, color: '#ef4444' },
+                              { name: 'Busy', value: callLogsData.logs.filter(l => l.status === 'busy').length, color: '#f59e0b' },
+                              { name: 'Other', value: callLogsData.logs.filter(l => !['answered', 'missed', 'no-answer', 'busy'].includes(l.status)).length, color: '#94a3b8' },
+                            ].filter(d => d.value > 0).map((entry, index) => (
+                              <Cell key={`cell-${index}`} fill={entry.color} />
+                            ))}
+                          </Pie>
+                          <RechartsTooltip contentStyle={{ backgroundColor: '#1e293b', border: 'none', borderRadius: '8px', color: '#fff' }} />
+                        </RechartsPieChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-full text-slate-400">
+                        <div className="text-center">
+                          <CheckCircle2 className="h-12 w-12 mx-auto mb-2 opacity-30" />
+                          <p className="text-sm">No call data available</p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
+              </div>
 
-                {/* Recent Calls Table */}
-                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
-                  {isLoadingCallLogs ? (
-                    <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
-                  ) : !callLogsData?.logs?.length ? (
-                    <div className="text-center py-8 text-slate-400">
-                      <Phone className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                      <p className="text-sm">No calls yet</p>
+              {/* Bottom Row: Direction Stats + Quick Stats */}
+              <div className="grid lg:grid-cols-2 gap-6">
+                {/* Inbound vs Outbound */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-5">
+                  <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Call Direction</h3>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
+                      <PhoneIncoming className="h-8 w-8 mx-auto mb-2 text-blue-600" />
+                      <p className="text-3xl font-bold text-slate-900 dark:text-white" data-testid="stat-inbound">
+                        {callLogsData?.logs?.filter(l => l.direction === 'inbound').length || 0}
+                      </p>
+                      <p className="text-sm text-slate-500">Inbound Calls</p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        {callLogsData?.logs?.filter(l => l.direction === 'inbound').reduce((acc, l) => acc + (l.duration || 0), 0) 
+                          ? `${Math.round(callLogsData.logs.filter(l => l.direction === 'inbound').reduce((acc, l) => acc + (l.duration || 0), 0) / 60)} min` 
+                          : '0 min'}
+                      </p>
                     </div>
-                  ) : (
-                    <table className="w-full text-sm">
-                      <thead className="bg-slate-50 dark:bg-slate-800">
-                        <tr>
-                          <th className="text-left px-4 py-2 font-medium text-slate-600 dark:text-slate-400">Phone</th>
-                          <th className="text-left px-4 py-2 font-medium text-slate-600 dark:text-slate-400">Date</th>
-                          <th className="text-left px-4 py-2 font-medium text-slate-600 dark:text-slate-400">Status</th>
-                          <th className="text-right px-4 py-2 font-medium text-slate-600 dark:text-slate-400">Duration</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                        {callLogsData.logs.slice(0, 8).map((log) => (
-                          <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                            <td className="px-4 py-3">
-                              <div className="flex items-center gap-2">
-                                {log.direction === 'inbound' ? <PhoneIncoming className="h-4 w-4 text-blue-500" /> : <PhoneOutgoing className="h-4 w-4 text-green-500" />}
-                                <span className="font-medium text-slate-900 dark:text-white">{formatPhoneDisplay(log.direction === 'inbound' ? log.fromNumber : log.toNumber)}</span>
-                              </div>
-                            </td>
-                            <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{format(new Date(log.startedAt), "MMM dd, h:mm a")}</td>
-                            <td className="px-4 py-3">
-                              <Badge variant="outline" className={`text-xs ${log.status === 'answered' ? 'text-green-600 border-green-300' : 'text-slate-500'}`}>
-                                {log.status}
-                              </Badge>
-                            </td>
-                            <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-400">
-                              {log.duration > 0 ? `${Math.floor(log.duration / 60)}:${(log.duration % 60).toString().padStart(2, '0')}` : '-'}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  )}
+                    <div className="text-center p-4 bg-green-50 dark:bg-green-900/20 rounded-lg">
+                      <PhoneOutgoing className="h-8 w-8 mx-auto mb-2 text-green-600" />
+                      <p className="text-3xl font-bold text-slate-900 dark:text-white" data-testid="stat-outbound">
+                        {callLogsData?.logs?.filter(l => l.direction === 'outbound').length || 0}
+                      </p>
+                      <p className="text-sm text-slate-500">Outbound Calls</p>
+                      <p className="text-xs text-slate-400 mt-1">
+                        {callLogsData?.logs?.filter(l => l.direction === 'outbound').reduce((acc, l) => acc + (l.duration || 0), 0) 
+                          ? `${Math.round(callLogsData.logs.filter(l => l.direction === 'outbound').reduce((acc, l) => acc + (l.duration || 0), 0) / 60)} min` 
+                          : '0 min'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Avg Call Duration + Recordings */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-5">
+                  <h3 className="font-semibold text-slate-900 dark:text-white mb-4">Performance Metrics</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Clock className="h-5 w-5 text-slate-500" />
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Avg Call Duration</span>
+                      </div>
+                      <span className="font-semibold text-slate-900 dark:text-white" data-testid="stat-avg-duration">
+                        {(() => {
+                          const answeredCalls = callLogsData?.logs?.filter(l => l.status === 'answered' && l.duration > 0) || [];
+                          if (!answeredCalls.length) return '0:00';
+                          const avgSec = Math.round(answeredCalls.reduce((acc, l) => acc + l.duration, 0) / answeredCalls.length);
+                          return `${Math.floor(avgSec / 60)}:${(avgSec % 60).toString().padStart(2, '0')}`;
+                        })()}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <Mic className="h-5 w-5 text-slate-500" />
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Calls with Recordings</span>
+                      </div>
+                      <span className="font-semibold text-slate-900 dark:text-white" data-testid="stat-recordings">
+                        {callLogsData?.logs?.filter(l => l.recordingUrl).length || 0}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                      <div className="flex items-center gap-3">
+                        <TrendingUp className="h-5 w-5 text-slate-500" />
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Longest Call</span>
+                      </div>
+                      <span className="font-semibold text-slate-900 dark:text-white" data-testid="stat-longest">
+                        {(() => {
+                          const maxDuration = Math.max(...(callLogsData?.logs?.map(l => l.duration || 0) || [0]));
+                          if (!maxDuration) return '0:00';
+                          return `${Math.floor(maxDuration / 60)}:${(maxDuration % 60).toString().padStart(2, '0')}`;
+                        })()}
+                      </span>
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
