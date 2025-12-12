@@ -445,11 +445,25 @@ export default function Settings() {
     retry: false,
   });
 
-  // Fetch subscription data to show plan information
+  // Fetch subscription data to show plan information (admin only)
   const { data: subscriptionData } = useQuery<{ subscription: any }>({
     queryKey: ['/api/billing/subscription'],
+    enabled: !!user?.companyId && (user?.role === "admin" || user?.role === "superadmin"),
+  });
+
+  // Fetch user limits which includes plan name (available to all users including agents)
+  const { data: userLimitsData } = useQuery<{ 
+    maxUsers: number | null;
+    currentUsers: number;
+    canAddUsers: boolean;
+    planName: string | null;
+  }>({
+    queryKey: ["/api/users/limits"],
     enabled: !!user?.companyId,
   });
+
+  // Get plan name from either subscription (admin) or limits (agents)
+  const planName = subscriptionData?.subscription?.plan?.name || userLimitsData?.planName || null;
   const isSuperAdmin = user?.role === "superadmin";
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
   
@@ -1395,7 +1409,7 @@ export default function Settings() {
                       <div className="p-3 rounded-md bg-muted/50 text-center">
                         <p className="text-xs text-muted-foreground">Plan</p>
                         <p className="text-sm font-semibold" data-testid="text-subscription-plan">
-                          {subscriptionData?.subscription?.plan?.name || "No Plan"}
+                          {planName || "No Plan"}
                         </p>
                       </div>
                     </div>
