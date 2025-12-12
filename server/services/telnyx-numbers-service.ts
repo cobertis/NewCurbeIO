@@ -1512,7 +1512,15 @@ export async function updateNumberVoiceSettings(
           
           if (!response.ok) {
             const errorText = await response.text();
-            console.error(`[Voicemail] Telnyx sync failed for ${phoneNumber.phoneNumber}: ${response.status} - ${errorText}`);
+            // 404 means voicemail is not available for this number type or connection
+            // This typically happens when:
+            // 1. Number is routed through Call Control App (voicemail only works with direct SIP Connections)
+            // 2. Voicemail needs to be enabled first in Telnyx portal
+            if (response.status === 404) {
+              console.log(`[Voicemail] Telnyx voicemail API not available for ${phoneNumber.phoneNumber} - settings saved locally only. Number may need to be configured in Telnyx portal first.`);
+            } else {
+              console.error(`[Voicemail] Telnyx sync failed for ${phoneNumber.phoneNumber}: ${response.status} - ${errorText}`);
+            }
           } else {
             console.log(`[Voicemail] Enabled for ${phoneNumber.phoneNumber} with PIN`);
           }
@@ -1528,12 +1536,12 @@ export async function updateNumberVoiceSettings(
             body: JSON.stringify(voicemailPayload),
           });
           
-          // 404 when disabling means voicemail was never created, which is fine
+          // 404 when disabling means voicemail was never created or not available, which is fine
           if (!response.ok && response.status !== 404) {
             const errorText = await response.text();
             console.error(`[Voicemail] Disable failed for ${phoneNumber.phoneNumber}: ${response.status} - ${errorText}`);
           } else {
-            console.log(`[Voicemail] Disabled for ${phoneNumber.phoneNumber}`);
+            console.log(`[Voicemail] Disabled/Not configured for ${phoneNumber.phoneNumber} - settings saved locally`);
           }
         }
       }
