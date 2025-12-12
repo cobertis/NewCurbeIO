@@ -32,8 +32,10 @@ export function ProtectedRoute({ children, fallbackPath = "/login" }: ProtectedR
           const data = await response.json();
           setIsAuthenticated(true);
           
-          // Check if user needs to select a plan (non-superadmin without active subscription)
-          if (data.user && data.user.role !== "superadmin" && location !== "/select-plan") {
+          // Check if user needs to select a plan
+          // Only ADMINS need to have a subscription - agents are covered by admin's plan
+          // Superadmins bypass this check entirely
+          if (data.user && data.user.role === "admin" && location !== "/select-plan") {
             // Check if user's company has an active subscription
             try {
               const subscriptionResponse = await fetch("/api/billing/subscription", {

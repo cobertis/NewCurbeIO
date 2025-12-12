@@ -249,8 +249,8 @@ export function AppSidebar() {
 
         <SidebarFooter className="p-2 pb-6">
           <SidebarMenu className="space-y-2 flex flex-col items-center">
-            {/* Wallet Balance Widget */}
-            {userData?.user && (
+            {/* Wallet Balance Widget - Only show to admins and superadmins, not agents */}
+            {userData?.user && userData.user.role !== "agent" && (
               <WalletBalanceWidget setLocation={setLocation} />
             )}
 
