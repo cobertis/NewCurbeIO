@@ -740,8 +740,8 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
         </div>
 
         {/* Filters Section */}
-        <div className="px-6 py-4 border-b border-border bg-muted/20">
-          <div className="grid gap-4" style={{ gridTemplateColumns: '100px 120px 100px 120px 1fr 100px' }}>
+        <div className="px-6 py-4 border-b border-border bg-muted/30">
+          <div className="grid grid-cols-6 gap-4">
             <div className="flex flex-col gap-1.5">
               <label className="text-xs font-medium text-muted-foreground">Country</label>
               <Select value={countryCode} onValueChange={setCountryCode}>
