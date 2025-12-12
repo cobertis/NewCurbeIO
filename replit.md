@@ -89,3 +89,15 @@ A multi-tenant system for creating, issuing, and managing Apple Wallet VIP Passe
 - Uses STUN servers (stun.telnyx.com, stun.l.google.com) for candidate gathering
 - SDK manages TURN credentials internally (no hardcoded credentials)
 - Pre-warm timeout: 3 seconds (continues if exceeded)
+
+### Real-Time Phone Number Assignment (Dec 2024)
+**GOAL:** Auto-connect assignee's WebRTC phone when admin assigns a number
+
+**IMPLEMENTATION:**
+1. `broadcastTelnyxNumberAssigned(userId, phoneNumber, telnyxPhoneNumberId)` - WebSocket broadcast to specific user only
+2. Server endpoint `POST /api/telnyx/assign-number/:phoneNumberId` calls broadcast after DB update
+3. Frontend App.tsx listens for `telnyx_number_assigned` event and invalidates queries
+4. WebPhoneFloatingWindow auto-initializes WebRTC when `hasTelnyxNumber` changes to true
+
+**FLOW:**
+Admin assigns number → DB update → WebSocket broadcast to assignee → Query invalidation → WebRTC auto-init → Toast notification
