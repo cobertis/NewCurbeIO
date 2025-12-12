@@ -1581,10 +1581,10 @@ export function WebPhoneFloatingWindow() {
   
   // Auto-connect to extension WebSocket when user has an extension
   useEffect(() => {
-    if (sipExtension || hasTelnyxNumber) {
+    if (sipExtension || hasTelnyxNumber || extMyExtension) {
       extConnect();
     }
-  }, [sipExtension, hasTelnyxNumber, extConnect]);
+  }, [sipExtension, hasTelnyxNumber, extMyExtension, extConnect]);
   
   // Timer for extension calls
   const [extCallDuration, setExtCallDuration] = useState(0);
@@ -1607,8 +1607,8 @@ export function WebPhoneFloatingWindow() {
     };
   }, [currentExtCall?.state, currentExtCall?.answerTime]);
   
-  // Check if phone is available (either SIP extension or Telnyx number)
-  const hasPhoneCapability = !!sipExtension || hasTelnyxNumber;
+  // Check if phone is available (either SIP extension, Telnyx number, or PBX extension)
+  const hasPhoneCapability = !!sipExtension || hasTelnyxNumber || !!extMyExtension;
   
   // Unified call state - detect Telnyx calls directly from store state
   // CRITICAL: This must NOT depend on hasTelnyxNumber query since that can be slow/stale
@@ -3091,10 +3091,22 @@ export function WebPhoneFloatingWindow() {
                         <div></div>
                         <button
                           onClick={handleCall}
-                          disabled={!dialNumber || (hasTelnyxNumber ? telnyxConnectionStatus !== 'connected' : connectionStatus !== 'connected')}
+                          disabled={!dialNumber || (() => {
+                            // For extension-only users, just need WebSocket connection
+                            // handleCall will verify if target extension is available
+                            if (extMyExtension && !hasTelnyxNumber) {
+                              return extConnectionStatus !== 'connected';
+                            }
+                            return hasTelnyxNumber ? telnyxConnectionStatus !== 'connected' : connectionStatus !== 'connected';
+                          })()}
                           className={cn(
                             "w-14 h-14 sm:w-20 sm:h-20 mx-auto rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95",
-                            dialNumber && (hasTelnyxNumber ? telnyxConnectionStatus === 'connected' : connectionStatus === 'connected')
+                            dialNumber && (() => {
+                              if (extMyExtension && !hasTelnyxNumber) {
+                                return extConnectionStatus === 'connected';
+                              }
+                              return hasTelnyxNumber ? telnyxConnectionStatus === 'connected' : connectionStatus === 'connected';
+                            })()
                               ? "bg-green-500 hover:bg-green-600" 
                               : "bg-green-500/40 cursor-not-allowed"
                           )}
