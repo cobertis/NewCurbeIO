@@ -27975,6 +27975,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(500).json({ message: result.error });
       }
 
+      // Bill the wallet immediately for the first month and save to local DB
+      const { purchaseAndBillPhoneNumber } = await import("./services/telephony-billing-service");
+      const billingResult = await purchaseAndBillPhoneNumber(phoneNumber, user.companyId, {
+        orderId: result.orderId || "",
+        phoneNumberId: result.phoneNumberId || "",
+      });
+
+      if (!billingResult.success) {
+        console.error(`[Billing] Failed to bill for number purchase: ${billingResult.error}`);
+        // Don't fail the purchase, but log the error - number is already purchased from Telnyx
+        // The monthly billing job will pick it up later if local record is missing
+      } else {
+        console.log(`[Billing] Successfully charged $${billingResult.amountCharged?.toFixed(2)} for ${phoneNumber}`);
+      }
+
 
       // Auto-enable CNAM listing with company name (truncated to 15 chars)
       if (result.phoneNumberId) {
