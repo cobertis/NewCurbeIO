@@ -101,3 +101,27 @@ A multi-tenant system for creating, issuing, and managing Apple Wallet VIP Passe
 
 **FLOW:**
 Admin assigns number → DB update → WebSocket broadcast to assignee → Query invalidation → WebRTC auto-init → Toast notification
+
+### Extension-to-Extension Calling (Dec 2024)
+**GOAL:** Enable internal calls between PBX extensions without SIP costs
+
+**ARCHITECTURE:**
+- Pure WebRTC peer-to-peer calling over WebSocket signaling
+- WebSocket path: `/ws/pbx` for PBX call signaling
+- Backend service: `server/services/extension-call-service.ts`
+- Frontend component: `client/src/components/extension-phone.tsx`
+- Integrated into PBX Settings under "Calling" tab
+
+**SIGNALING FLOW:**
+1. Extension registers via WebSocket with session authentication
+2. Server sends online extensions list (company-scoped)
+3. Caller creates offer → sends to callee via WebSocket
+4. Callee answers with SDP answer → relayed back
+5. ICE candidates exchanged bidirectionally
+6. Media flows peer-to-peer (no server relay)
+
+**KEY IMPLEMENTATION DETAILS:**
+- Uses callIdRef to track call ID in ICE candidate handler (avoids stale closure)
+- STUN servers: stun.l.google.com, stun.telnyx.com
+- Company-scoped isolation ensures extensions only see their organization
+- Busy status tracking prevents concurrent calls
