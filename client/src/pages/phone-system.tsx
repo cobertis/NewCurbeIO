@@ -12,6 +12,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Switch } from "@/components/ui/switch";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { 
   Phone, 
   PhoneIncoming,
@@ -540,41 +541,71 @@ export default function PhoneSystem() {
           {/* Center: Feature Toggles */}
           <div className="flex items-center gap-4 border-l border-r border-slate-200 dark:border-slate-700 px-6">
             {/* Recording Toggle */}
-            <div className="flex items-center gap-2">
-              <Mic className={`h-4 w-4 ${billingFeaturesData?.recordingEnabled ? 'text-red-500' : 'text-slate-400'}`} />
-              <span className="text-xs text-slate-600 dark:text-slate-400">Recording</span>
-              <Switch
-                checked={billingFeaturesData?.recordingEnabled || false}
-                onCheckedChange={handleRecordingToggle}
-                disabled={billingFeaturesMutation.isPending || syncedRecordingMutation.isPending}
-                className="scale-75"
-                data-testid="switch-recording-quick"
-              />
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2 cursor-help">
+                    <Mic className={`h-4 w-4 ${billingFeaturesData?.recordingEnabled ? 'text-red-500' : 'text-slate-400'}`} />
+                    <span className="text-xs text-slate-600 dark:text-slate-400">Recording</span>
+                    <Switch
+                      checked={billingFeaturesData?.recordingEnabled || false}
+                      onCheckedChange={handleRecordingToggle}
+                      disabled={billingFeaturesMutation.isPending || syncedRecordingMutation.isPending}
+                      className="scale-75"
+                      data-testid="switch-recording-quick"
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <p className="font-medium">Call Recording</p>
+                  <p className="text-xs text-slate-400 mt-1">Automatically records all your calls. Recordings are stored securely and can be played back in the Calls tab. Cost: $0.005/min</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             {/* CNAM Toggle */}
-            <div className="flex items-center gap-2">
-              <User className={`h-4 w-4 ${billingFeaturesData?.cnamEnabled ? 'text-blue-500' : 'text-slate-400'}`} />
-              <span className="text-xs text-slate-600 dark:text-slate-400">CNAM</span>
-              <Switch
-                checked={billingFeaturesData?.cnamEnabled || false}
-                onCheckedChange={handleCnamToggle}
-                disabled={billingFeaturesMutation.isPending}
-                className="scale-75"
-                data-testid="switch-cnam-quick"
-              />
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2 cursor-help">
+                    <User className={`h-4 w-4 ${billingFeaturesData?.cnamEnabled ? 'text-blue-500' : 'text-slate-400'}`} />
+                    <span className="text-xs text-slate-600 dark:text-slate-400">CNAM</span>
+                    <Switch
+                      checked={billingFeaturesData?.cnamEnabled || false}
+                      onCheckedChange={handleCnamToggle}
+                      disabled={billingFeaturesMutation.isPending}
+                      className="scale-75"
+                      data-testid="switch-cnam-quick"
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <p className="font-medium">Caller ID Name (CNAM)</p>
+                  <p className="text-xs text-slate-400 mt-1">Shows the name of who is calling you on incoming calls, instead of just the phone number. Cost: $0.50/month per number</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
             {/* Noise Suppression Toggle */}
-            <div className="flex items-center gap-2">
-              <Volume2 className={`h-4 w-4 ${noiseSuppressionData?.enabled ? 'text-indigo-500' : 'text-slate-400'}`} />
-              <span className="text-xs text-slate-600 dark:text-slate-400">Noise</span>
-              <Switch
-                checked={noiseSuppressionData?.enabled || false}
-                onCheckedChange={(checked) => noiseSuppressionMutation.mutate({ enabled: checked, direction: noiseSuppressionData?.direction || 'outbound' })}
-                disabled={noiseSuppressionMutation.isPending}
-                className="scale-75"
-                data-testid="switch-noise-quick"
-              />
-            </div>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div className="flex items-center gap-2 cursor-help">
+                    <Volume2 className={`h-4 w-4 ${noiseSuppressionData?.enabled ? 'text-indigo-500' : 'text-slate-400'}`} />
+                    <span className="text-xs text-slate-600 dark:text-slate-400">Noise</span>
+                    <Switch
+                      checked={noiseSuppressionData?.enabled || false}
+                      onCheckedChange={(checked) => noiseSuppressionMutation.mutate({ enabled: checked, direction: noiseSuppressionData?.direction || 'outbound' })}
+                      disabled={noiseSuppressionMutation.isPending}
+                      className="scale-75"
+                      data-testid="switch-noise-quick"
+                    />
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  <p className="font-medium">Noise Suppression</p>
+                  <p className="text-xs text-slate-400 mt-1">Reduces background noise during calls for clearer conversations. Works on outbound, inbound, or both directions. No additional cost.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
           {/* Right: Quick Actions */}
