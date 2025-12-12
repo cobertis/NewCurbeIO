@@ -203,13 +203,17 @@ export default function PhoneSystem() {
     }
   }, [walletData]);
 
-  // Auto-select first number when data loads or if current selection becomes invalid
+  // Auto-select first number when data loads, and sync selectedNumber with fresh data
   useEffect(() => {
     if (numbersData?.numbers?.length) {
-      // If no number selected, or selected number no longer exists in list, select first
       const currentId = selectedNumber?.phoneNumber;
-      const stillExists = currentId && numbersData.numbers.some(n => n.phoneNumber === currentId);
-      if (!selectedNumber || !stillExists) {
+      const updatedNumber = currentId ? numbersData.numbers.find(n => n.phoneNumber === currentId) : null;
+      
+      if (updatedNumber) {
+        // Sync selectedNumber with fresh data from server
+        setSelectedNumber(updatedNumber);
+      } else if (!selectedNumber) {
+        // No number selected, select first
         setSelectedNumber(numbersData.numbers[0]);
       }
     } else {
