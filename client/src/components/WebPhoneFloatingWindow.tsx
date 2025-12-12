@@ -464,11 +464,24 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
       }
     },
     onError: (error: any) => {
-      toast({ 
-        title: "Error", 
-        description: error.message || "Failed to purchase number",
-        variant: "destructive" 
-      });
+      // Check if it's an insufficient funds error
+      if (error.message?.includes("Insufficient") || error.insufficientFunds) {
+        toast({ 
+          title: "Insufficient Wallet Balance", 
+          description: "You need to add funds to your wallet before purchasing a number. Redirecting to billing...",
+          variant: "destructive" 
+        });
+        // Redirect to billing page after short delay
+        setTimeout(() => {
+          window.location.href = "/billing";
+        }, 2000);
+      } else {
+        toast({ 
+          title: "Error", 
+          description: error.message || "Failed to purchase number",
+          variant: "destructive" 
+        });
+      }
     },
   });
   

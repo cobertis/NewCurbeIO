@@ -27968,6 +27968,33 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated with user" });
       }
 
+      // Check wallet balance BEFORE purchasing from Telnyx
+      const { getOrCreateWallet } = await import("./services/wallet-service");
+      const { loadGlobalPricing } = await import("./services/pricing-config");
+      
+      const wallet = await getOrCreateWallet(user.companyId);
+      const pricing = await loadGlobalPricing();
+      
+      // Determine number type and required balance
+      const isTollFree = phoneNumber.startsWith("+1800") || 
+                         phoneNumber.startsWith("+1888") ||
+                         phoneNumber.startsWith("+1877") ||
+                         phoneNumber.startsWith("+1866") ||
+                         phoneNumber.startsWith("+1855") ||
+                         phoneNumber.startsWith("+1844") ||
+                         phoneNumber.startsWith("+1833");
+      const requiredBalance = isTollFree ? pricing.monthly.tollfree_did : pricing.monthly.local_did;
+      const currentBalance = parseFloat(wallet.balance);
+      
+      if (currentBalance < requiredBalance) {
+        return res.status(402).json({ 
+          message: `Insufficient wallet balance. Need $${requiredBalance.toFixed(2)}, have $${currentBalance.toFixed(2)}`,
+          insufficientFunds: true,
+          requiredAmount: requiredBalance,
+          currentBalance: currentBalance
+        });
+      }
+
       const { purchasePhoneNumber, updateCnamListing, truncateForCnam } = await import("./services/telnyx-numbers-service");
       const result = await purchasePhoneNumber(phoneNumber, user.companyId);
 
