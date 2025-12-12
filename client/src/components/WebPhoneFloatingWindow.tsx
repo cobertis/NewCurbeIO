@@ -739,67 +739,32 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
           </div>
         </div>
 
-        {/* Filters Section */}
-        <div className="px-6 py-4 border-b border-border bg-muted/30 space-y-4">
-          {/* Row 1: Country, Features, Type */}
-          <div className="grid grid-cols-12 gap-3">
-            <div className="col-span-3">
+        {/* Filters Section - Single Line */}
+        <div className="px-4 py-3 border-b border-border bg-muted/30">
+          <div className="flex items-end gap-2">
+            <div className="w-[90px]">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Country</label>
               <Select value={countryCode} onValueChange={setCountryCode}>
-                <SelectTrigger className="w-full" data-testid="select-country">
+                <SelectTrigger className="w-full h-9" data-testid="select-country">
                   <SelectValue placeholder="Country" />
                 </SelectTrigger>
-                <SelectContent className="max-h-[300px]">
-                  <SelectItem value="US">United States +1</SelectItem>
-                  <SelectItem value="CA">Canada +1</SelectItem>
-                  <SelectItem value="GB">United Kingdom +44</SelectItem>
-                  <SelectItem value="MX">Mexico +52</SelectItem>
-                  <SelectItem value="AU">Australia +61</SelectItem>
-                  <SelectItem value="DE">Germany +49</SelectItem>
-                  <SelectItem value="FR">France +33</SelectItem>
-                  <SelectItem value="ES">Spain +34</SelectItem>
-                  <SelectItem value="IT">Italy +39</SelectItem>
-                  <SelectItem value="NL">Netherlands +31</SelectItem>
-                  <SelectItem value="BE">Belgium +32</SelectItem>
-                  <SelectItem value="AT">Austria +43</SelectItem>
-                  <SelectItem value="CH">Switzerland +41</SelectItem>
-                  <SelectItem value="SE">Sweden +46</SelectItem>
-                  <SelectItem value="NO">Norway +47</SelectItem>
-                  <SelectItem value="DK">Denmark +45</SelectItem>
-                  <SelectItem value="FI">Finland +358</SelectItem>
-                  <SelectItem value="IE">Ireland +353</SelectItem>
-                  <SelectItem value="PT">Portugal +351</SelectItem>
-                  <SelectItem value="PL">Poland +48</SelectItem>
-                  <SelectItem value="CZ">Czech Republic +420</SelectItem>
-                  <SelectItem value="BR">Brazil +55</SelectItem>
-                  <SelectItem value="AR">Argentina +54</SelectItem>
-                  <SelectItem value="CL">Chile +56</SelectItem>
-                  <SelectItem value="CO">Colombia +57</SelectItem>
-                  <SelectItem value="PE">Peru +51</SelectItem>
-                  <SelectItem value="JP">Japan +81</SelectItem>
-                  <SelectItem value="KR">South Korea +82</SelectItem>
-                  <SelectItem value="SG">Singapore +65</SelectItem>
-                  <SelectItem value="HK">Hong Kong +852</SelectItem>
-                  <SelectItem value="IN">India +91</SelectItem>
-                  <SelectItem value="PH">Philippines +63</SelectItem>
-                  <SelectItem value="NZ">New Zealand +64</SelectItem>
-                  <SelectItem value="ZA">South Africa +27</SelectItem>
-                  <SelectItem value="IL">Israel +972</SelectItem>
-                  <SelectItem value="AE">UAE +971</SelectItem>
+                <SelectContent>
+                  <SelectItem value="US">US +1</SelectItem>
+                  <SelectItem value="CA">CA +1</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="col-span-3">
+            <div className="w-[100px]">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Features</label>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full justify-between" data-testid="select-features">
-                    {selectedFeatures.length === 0 ? "Any feature" : `${selectedFeatures.length} selected`}
-                    <ChevronDown className="h-4 w-4 ml-2" />
+                  <Button variant="outline" className="w-full h-9 justify-between text-xs px-2" data-testid="select-features">
+                    {selectedFeatures.length === 0 ? "Any" : `${selectedFeatures.length} sel`}
+                    <ChevronDown className="h-3 w-3 ml-1" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-48">
+                <DropdownMenuContent className="w-40">
                   {availableFeatures.map((feature) => (
                     <DropdownMenuItem
                       key={feature.value}
@@ -822,24 +787,24 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
               </DropdownMenu>
             </div>
 
-            <div className="col-span-2">
+            <div className="w-[90px]">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
               <Select value={numberType} onValueChange={setNumberType}>
-                <SelectTrigger className="w-full" data-testid="select-type">
-                  <SelectValue placeholder="All types" />
+                <SelectTrigger className="w-full h-9" data-testid="select-type">
+                  <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All types</SelectItem>
+                  <SelectItem value="all">All</SelectItem>
                   <SelectItem value="local">Local</SelectItem>
                   <SelectItem value="toll_free">Toll-free</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="col-span-2">
+            <div className="w-[100px]">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Search By</label>
               <Select value={searchBy} onValueChange={setSearchBy}>
-                <SelectTrigger className="w-full" data-testid="select-search-by">
+                <SelectTrigger className="w-full h-9" data-testid="select-search-by">
                   <SelectValue placeholder="Area code" />
                 </SelectTrigger>
                 <SelectContent>
@@ -847,44 +812,33 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
                   <SelectItem value="starts_with">Starts with</SelectItem>
                   <SelectItem value="ends_with">Ends with</SelectItem>
                   <SelectItem value="contains">Contains</SelectItem>
-                  <SelectItem value="city">City/Region</SelectItem>
-                  <SelectItem value="state">State/Province</SelectItem>
+                  <SelectItem value="city">City</SelectItem>
+                  <SelectItem value="state">State</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="col-span-2">
+            <div className="flex-1 min-w-[80px]">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                {searchBy === "area_code" ? "Area Code" : 
-                 searchBy === "city" ? "City" : 
-                 searchBy === "state" ? "State" : "Value"}
+                {searchBy === "area_code" ? "Code" : searchBy === "city" ? "City" : searchBy === "state" ? "State" : "Value"}
               </label>
               <Input
-                placeholder={searchBy === "area_code" ? "e.g. 305" : 
-                            searchBy === "city" ? "e.g. Miami" :
-                            searchBy === "state" ? "e.g. FL" : "Enter value"}
+                placeholder={searchBy === "area_code" ? "305" : searchBy === "city" ? "Miami" : searchBy === "state" ? "FL" : "Value"}
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
-                className="w-full"
+                className="w-full h-9"
                 data-testid="input-search-value"
               />
             </div>
-          </div>
 
-          {/* Row 2: Search Button */}
-          <div className="flex justify-end">
             <Button
               onClick={handleSearch}
               disabled={isLoading}
-              className="gap-2 bg-primary"
+              className="gap-1.5 h-9 px-3"
               data-testid="button-search-numbers"
             >
-              {isLoading ? (
-                <Loader2 className="h-4 w-4 animate-spin" />
-              ) : (
-                <Search className="h-4 w-4" />
-              )}
-              Search Numbers
+              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              Search
             </Button>
           </div>
         </div>
