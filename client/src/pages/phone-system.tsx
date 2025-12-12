@@ -163,6 +163,7 @@ export default function PhoneSystem() {
   const [selectedNumber, setSelectedNumber] = useState<NumberInfo | null>(null);
   const [editingCnam, setEditingCnam] = useState(false);
   const [cnamInput, setCnamInput] = useState("");
+  const [voicemailPinInput, setVoicemailPinInput] = useState("");
 
   const { data: statusData, isLoading: isLoadingStatus, refetch } = useQuery<StatusResponse>({
     queryKey: ["/api/telnyx/managed-accounts/status"],
@@ -215,6 +216,11 @@ export default function PhoneSystem() {
       setSelectedNumber(null);
     }
   }, [numbersData]);
+
+  // Sync voicemail PIN input when selected number changes
+  useEffect(() => {
+    setVoicemailPinInput(selectedNumber?.voicemailPin || "");
+  }, [selectedNumber?.phoneNumber, selectedNumber?.voicemailPin]);
 
   const handleAutoRechargeToggle = (enabled: boolean) => {
     setAutoRechargeEnabled(enabled);
@@ -1262,9 +1268,10 @@ export default function PhoneSystem() {
                                   pattern="[0-9]*"
                                   maxLength={4}
                                   placeholder="0000"
-                                  value={selectedNumber.voicemailPin || ""}
+                                  value={voicemailPinInput}
                                   onChange={(e) => {
                                     const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                    setVoicemailPinInput(value);
                                     if (selectedNumber.telnyxPhoneNumberId && value.length === 4) {
                                       numberVoiceSettingsMutation.mutate({
                                         phoneNumberId: selectedNumber.telnyxPhoneNumberId,
