@@ -739,14 +739,14 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
           </div>
         </div>
 
-        {/* Filters Section - Single Line */}
-        <div className="px-4 py-3 border-b border-border bg-muted/30">
-          <div className="flex items-end gap-2">
-            <div className="w-[90px]">
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Country</label>
+        {/* Filters Section */}
+        <div className="px-6 py-3 border-b border-border bg-muted/30">
+          <div className="flex items-end gap-3">
+            <div className="w-20 flex-shrink-0">
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Country</label>
               <Select value={countryCode} onValueChange={setCountryCode}>
-                <SelectTrigger className="w-full h-9" data-testid="select-country">
-                  <SelectValue placeholder="Country" />
+                <SelectTrigger className="w-full" data-testid="select-country">
+                  <SelectValue placeholder="US" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="US">US +1</SelectItem>
@@ -755,16 +755,16 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
               </Select>
             </div>
 
-            <div className="w-[100px]">
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Features</label>
+            <div className="w-28 flex-shrink-0">
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Features</label>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full h-9 justify-between text-xs px-2" data-testid="select-features">
+                  <Button variant="outline" className="w-full justify-between" data-testid="select-features">
                     {selectedFeatures.length === 0 ? "Any" : `${selectedFeatures.length} sel`}
-                    <ChevronDown className="h-3 w-3 ml-1" />
+                    <ChevronDown className="h-4 w-4 ml-1" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-40">
+                <DropdownMenuContent className="w-44">
                   {availableFeatures.map((feature) => (
                     <DropdownMenuItem
                       key={feature.value}
@@ -787,10 +787,10 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
               </DropdownMenu>
             </div>
 
-            <div className="w-[90px]">
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
+            <div className="w-24 flex-shrink-0">
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Type</label>
               <Select value={numberType} onValueChange={setNumberType}>
-                <SelectTrigger className="w-full h-9" data-testid="select-type">
+                <SelectTrigger className="w-full" data-testid="select-type">
                   <SelectValue placeholder="All" />
                 </SelectTrigger>
                 <SelectContent>
@@ -801,10 +801,10 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
               </Select>
             </div>
 
-            <div className="w-[100px]">
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">Search By</label>
+            <div className="w-28 flex-shrink-0">
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">Search By</label>
               <Select value={searchBy} onValueChange={setSearchBy}>
-                <SelectTrigger className="w-full h-9" data-testid="select-search-by">
+                <SelectTrigger className="w-full" data-testid="select-search-by">
                   <SelectValue placeholder="Area code" />
                 </SelectTrigger>
                 <SelectContent>
@@ -818,23 +818,25 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
               </Select>
             </div>
 
-            <div className="flex-1 min-w-[80px]">
-              <label className="text-xs font-medium text-muted-foreground mb-1 block">
+            <div className="w-24 flex-shrink-0">
+              <label className="text-xs font-medium text-muted-foreground mb-1.5 block">
                 {searchBy === "area_code" ? "Code" : searchBy === "city" ? "City" : searchBy === "state" ? "State" : "Value"}
               </label>
               <Input
                 placeholder={searchBy === "area_code" ? "305" : searchBy === "city" ? "Miami" : searchBy === "state" ? "FL" : "Value"}
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
-                className="w-full h-9"
+                className="w-full"
                 data-testid="input-search-value"
               />
             </div>
 
+            <div className="flex-1" />
+
             <Button
               onClick={handleSearch}
               disabled={isLoading}
-              className="gap-1.5 h-9 px-3"
+              className="gap-2 flex-shrink-0"
               data-testid="button-search-numbers"
             >
               {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
