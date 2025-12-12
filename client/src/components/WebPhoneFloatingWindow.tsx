@@ -2351,9 +2351,6 @@ export function WebPhoneFloatingWindow() {
                         ? "bg-yellow-500 animate-pulse" 
                         : "bg-red-500"
                 )} />
-                {extConnectionStatus === 'connected' && (
-                  <span className="text-[10px] text-green-600 dark:text-green-400">en linea</span>
-                )}
               </div>
             ) : (
               <span className="text-foreground font-semibold text-xs sm:text-sm">WebPhone</span>
