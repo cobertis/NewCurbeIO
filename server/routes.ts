@@ -7328,8 +7328,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
 
       }
-      // Get invoices from database
-      const allInvoices = await storage.getInvoicesByCompany(companyId);
+      // Get invoices from database - user-scoped for admins
+      const userId = currentUser.role === 'admin' ? currentUser.id : undefined;
+      const allInvoices = await storage.getInvoicesByCompany(companyId, userId);
       // Filter out $0.00 invoices (trial invoices) from billing history
       const filteredInvoices = allInvoices.filter(invoice => invoice.total > 0);
       // Sort by date descending (most recent first)
@@ -7402,7 +7403,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(403).json({ message: "Unauthorized access to company payments" });
     }
     try {
-      const payments = await storage.getPaymentsByCompany(companyId);
+      // User-scoped: admins see only their own payments
+      const userId = currentUser.role === 'admin' ? currentUser.id : undefined;
+      const payments = await storage.getPaymentsByCompany(companyId, userId);
       res.json({ payments });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -8262,7 +8265,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(403).json({ message: "Unauthorized access to company billing address" });
     }
     try {
-      const billingAddress = await storage.getBillingAddress(companyId);
+      // User-scoped: admins see only their own billing address, superadmins can see all
+      const userId = currentUser.role === 'admin' ? currentUser.id : undefined;
+      const billingAddress = await storage.getBillingAddress(companyId, userId);
       res.json({ billingAddress });
     } catch (error: any) {
       console.error('[BILLING] Error fetching billing address:', error);
@@ -8286,11 +8291,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(400).json({ message: "Missing required billing address fields" });
     }
     try {
-      // Check if billing address already exists
-      const existingAddress = await storage.getBillingAddress(companyId);
+      // User-scoped: each admin has their own billing address
+      const userId = currentUser.id;
+      const existingAddress = await storage.getBillingAddress(companyId, userId);
       let billingAddress;
       if (existingAddress) {
-        // Update existing address
+        // Update existing address for this user
         billingAddress = await storage.updateBillingAddress(companyId, {
           fullName,
           addressLine1,
@@ -8298,11 +8304,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           city,
           state,
           postalCode,
-        });
+        }, userId);
       } else {
-        // Create new address
+        // Create new address for this user
         billingAddress = await storage.createBillingAddress({
           companyId,
+          ownerUserId: userId,
           fullName,
           addressLine1,
           addressLine2: addressLine2 || null,

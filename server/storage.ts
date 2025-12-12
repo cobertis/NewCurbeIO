@@ -21,6 +21,8 @@ import {
   type InsertPayment,
   type BillingAddress,
   type InsertBillingAddress,
+  type UserPaymentMethod,
+  type InsertUserPaymentMethod,
   type ActivityLog,
   type InsertActivityLog,
   type Invitation,
@@ -218,6 +220,7 @@ import {
   invoiceItems,
   payments,
   billingAddresses,
+  userPaymentMethods,
   activityLogs, 
   invitations, 
   apiKeys, 
@@ -369,7 +372,7 @@ export interface IStorage {
   getInvoice(id: string): Promise<Invoice | undefined>;
   getInvoiceByNumber(invoiceNumber: string): Promise<Invoice | undefined>;
   getAllInvoices(): Promise<Invoice[]>;
-  getInvoicesByCompany(companyId: string): Promise<Invoice[]>;
+  getInvoicesByCompany(companyId: string, userId?: string): Promise<Invoice[]>;
   getInvoiceByStripeId(stripeInvoiceId: string): Promise<Invoice | undefined>;
   createInvoice(invoice: InsertInvoice): Promise<Invoice>;
   updateInvoice(id: string, data: Partial<InsertInvoice>): Promise<Invoice | undefined>;
@@ -380,16 +383,24 @@ export interface IStorage {
   
   // Payments
   getPayment(id: string): Promise<Payment | undefined>;
-  getPaymentsByCompany(companyId: string): Promise<Payment[]>;
+  getPaymentsByCompany(companyId: string, userId?: string): Promise<Payment[]>;
   getPaymentsByInvoice(invoiceId: string): Promise<Payment[]>;
   createPayment(payment: InsertPayment): Promise<Payment>;
   updatePayment(id: string, data: Partial<InsertPayment>): Promise<Payment | undefined>;
   
-  // Billing Addresses
-  getBillingAddress(companyId: string): Promise<BillingAddress | undefined>;
+  // Billing Addresses (User-scoped)
+  getBillingAddress(companyId: string, userId?: string): Promise<BillingAddress | undefined>;
   createBillingAddress(address: InsertBillingAddress): Promise<BillingAddress>;
-  updateBillingAddress(companyId: string, data: Partial<InsertBillingAddress>): Promise<BillingAddress | undefined>;
+  updateBillingAddress(companyId: string, data: Partial<InsertBillingAddress>, userId?: string): Promise<BillingAddress | undefined>;
   
+  // User Payment Methods (User-scoped)
+  getUserPaymentMethods(companyId: string, userId: string): Promise<UserPaymentMethod[]>;
+  getUserPaymentMethod(id: string): Promise<UserPaymentMethod | undefined>;
+  createUserPaymentMethod(paymentMethod: InsertUserPaymentMethod): Promise<UserPaymentMethod>;
+  updateUserPaymentMethod(id: string, data: Partial<InsertUserPaymentMethod>): Promise<UserPaymentMethod | undefined>;
+  deleteUserPaymentMethod(id: string): Promise<boolean>;
+  setDefaultUserPaymentMethod(userId: string, paymentMethodId: string): Promise<void>;
+
   // Activity Logs
   createActivityLog(log: InsertActivityLog): Promise<ActivityLog>;
   getActivityLogsByCompany(companyId: string, limit?: number): Promise<ActivityLog[]>;
@@ -1622,8 +1633,13 @@ export class DbStorage implements IStorage {
     return db.select().from(invoices).orderBy(desc(invoices.createdAt));
   }
 
-  async getInvoicesByCompany(companyId: string): Promise<Invoice[]> {
-    return db.select().from(invoices).where(eq(invoices.companyId, companyId)).orderBy(desc(invoices.createdAt));
+  async getInvoicesByCompany(companyId: string, userId?: string): Promise<Invoice[]> {
+    // If userId provided, filter by owner for user-scoped billing
+    const conditions = [eq(invoices.companyId, companyId)];
+    if (userId) {
+      conditions.push(eq(invoices.ownerUserId, userId));
+    }
+    return db.select().from(invoices).where(and(...conditions)).orderBy(desc(invoices.createdAt));
   }
 
   async getInvoiceByStripeId(stripeInvoiceId: string): Promise<Invoice | undefined> {
@@ -1659,8 +1675,13 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async getPaymentsByCompany(companyId: string): Promise<Payment[]> {
-    return db.select().from(payments).where(eq(payments.companyId, companyId)).orderBy(desc(payments.createdAt));
+  async getPaymentsByCompany(companyId: string, userId?: string): Promise<Payment[]> {
+    // If userId provided, filter by owner for user-scoped billing
+    const conditions = [eq(payments.companyId, companyId)];
+    if (userId) {
+      conditions.push(eq(payments.ownerUserId, userId));
+    }
+    return db.select().from(payments).where(and(...conditions)).orderBy(desc(payments.createdAt));
   }
 
   async getPaymentsByInvoice(invoiceId: string): Promise<Payment[]> {
@@ -1677,10 +1698,15 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  // ==================== BILLING ADDRESSES ====================
+  // ==================== BILLING ADDRESSES (User-scoped) ====================
   
-  async getBillingAddress(companyId: string): Promise<BillingAddress | undefined> {
-    const result = await db.select().from(billingAddresses).where(eq(billingAddresses.companyId, companyId));
+  async getBillingAddress(companyId: string, userId?: string): Promise<BillingAddress | undefined> {
+    // If userId provided, filter by owner; otherwise get first for company (legacy behavior)
+    const conditions = [eq(billingAddresses.companyId, companyId)];
+    if (userId) {
+      conditions.push(eq(billingAddresses.ownerUserId, userId));
+    }
+    const result = await db.select().from(billingAddresses).where(and(...conditions));
     return result[0];
   }
 
@@ -1689,12 +1715,67 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
-  async updateBillingAddress(companyId: string, data: Partial<InsertBillingAddress>): Promise<BillingAddress | undefined> {
+  async updateBillingAddress(companyId: string, data: Partial<InsertBillingAddress>, userId?: string): Promise<BillingAddress | undefined> {
+    // If userId provided, only update owner's billing address
+    const conditions = [eq(billingAddresses.companyId, companyId)];
+    if (userId) {
+      conditions.push(eq(billingAddresses.ownerUserId, userId));
+    }
     const result = await db.update(billingAddresses)
       .set({ ...data, updatedAt: new Date() })
-      .where(eq(billingAddresses.companyId, companyId))
+      .where(and(...conditions))
       .returning();
     return result[0];
+  }
+
+  // ==================== USER PAYMENT METHODS (User-scoped) ====================
+  
+  async getUserPaymentMethods(companyId: string, userId: string): Promise<UserPaymentMethod[]> {
+    return db.select().from(userPaymentMethods)
+      .where(and(
+        eq(userPaymentMethods.companyId, companyId),
+        eq(userPaymentMethods.ownerUserId, userId),
+        eq(userPaymentMethods.status, 'active')
+      ))
+      .orderBy(desc(userPaymentMethods.isDefault), desc(userPaymentMethods.createdAt));
+  }
+
+  async getUserPaymentMethod(id: string): Promise<UserPaymentMethod | undefined> {
+    const result = await db.select().from(userPaymentMethods).where(eq(userPaymentMethods.id, id));
+    return result[0];
+  }
+
+  async createUserPaymentMethod(insertPaymentMethod: InsertUserPaymentMethod): Promise<UserPaymentMethod> {
+    const result = await db.insert(userPaymentMethods).values(insertPaymentMethod).returning();
+    return result[0];
+  }
+
+  async updateUserPaymentMethod(id: string, data: Partial<InsertUserPaymentMethod>): Promise<UserPaymentMethod | undefined> {
+    const result = await db.update(userPaymentMethods)
+      .set({ ...data, updatedAt: new Date() })
+      .where(eq(userPaymentMethods.id, id))
+      .returning();
+    return result[0];
+  }
+
+  async deleteUserPaymentMethod(id: string): Promise<boolean> {
+    // Soft delete - just mark as removed
+    const result = await db.update(userPaymentMethods)
+      .set({ status: 'removed', updatedAt: new Date() })
+      .where(eq(userPaymentMethods.id, id))
+      .returning();
+    return result.length > 0;
+  }
+
+  async setDefaultUserPaymentMethod(userId: string, paymentMethodId: string): Promise<void> {
+    // First, unset all default flags for this user
+    await db.update(userPaymentMethods)
+      .set({ isDefault: false, updatedAt: new Date() })
+      .where(eq(userPaymentMethods.ownerUserId, userId));
+    // Then set the specified one as default
+    await db.update(userPaymentMethods)
+      .set({ isDefault: true, updatedAt: new Date() })
+      .where(eq(userPaymentMethods.id, paymentMethodId));
   }
 
   // ==================== ACTIVITY LOGS ====================
