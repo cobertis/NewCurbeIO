@@ -393,6 +393,22 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       queryKeys.forEach(key => {
         queryClient.invalidateQueries({ queryKey: [key] });
       });
+    } else if (message.type === 'telnyx_number_assigned') {
+      // A phone number was assigned to this user - refresh queries and auto-init WebRTC
+      console.log('[WEBSOCKET] Telnyx number assigned:', message.phoneNumber);
+      
+      // Invalidate session and phone number queries to fetch new assignment
+      queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/my-numbers"] });
+      
+      // Show notification to user
+      toast({
+        title: "Phone Number Assigned",
+        description: `You have been assigned ${message.phoneNumber}. Your phone is now ready to use.`,
+      });
+      
+      // Play notification sound
+      playNotificationSound();
     }
   }, [playNotificationSound, user]);
 
