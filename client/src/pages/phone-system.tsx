@@ -1067,23 +1067,25 @@ export default function PhoneSystem() {
                         </div>
                       </div>
 
-                      {/* E911 Section */}
-                      <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
+                      {/* E911 + Assigned User Row */}
+                      <div className="grid grid-cols-2 gap-4">
+                        {/* E911 Section */}
+                        <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                          <div className="flex items-center gap-3 mb-3">
                             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedNumber.e911AddressId || selectedNumber.e911Enabled ? 'bg-green-50 dark:bg-green-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
                               <MapPin className={`h-5 w-5 ${selectedNumber.e911AddressId || selectedNumber.e911Enabled ? 'text-green-600' : 'text-amber-600'}`} />
                             </div>
                             <div>
                               <p className="font-medium text-sm text-slate-700 dark:text-foreground">E911 Emergency Services</p>
                               <p className="text-xs text-slate-500">
-                                {selectedNumber.e911AddressId || selectedNumber.e911Enabled ? 'Configured' : 'Not configured - Required for emergency calls'}
+                                {selectedNumber.e911AddressId || selectedNumber.e911Enabled ? 'Configured' : 'Not configured'}
                               </p>
                             </div>
                           </div>
                           <Button
                             variant={selectedNumber.e911AddressId || selectedNumber.e911Enabled ? "outline" : "default"}
                             size="sm"
+                            className="w-full"
                             onClick={() => {
                               setSelectedNumberForE911({ phoneNumber: selectedNumber.phoneNumber, phoneNumberId: selectedNumber.telnyxPhoneNumberId || selectedNumber.id || "" });
                               setShowE911Dialog(true);
@@ -1093,13 +1095,10 @@ export default function PhoneSystem() {
                             {selectedNumber.e911AddressId || selectedNumber.e911Enabled ? 'Update' : 'Configure'}
                           </Button>
                         </div>
-                      </div>
 
-
-                      {/* Assigned User Section */}
-                      <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center gap-3">
+                        {/* Assigned User Section */}
+                        <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                          <div className="flex items-center gap-3 mb-3">
                             <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedNumber.ownerUserId ? 'bg-green-50 dark:bg-green-900/20' : 'bg-slate-50 dark:bg-slate-800'}`}>
                               <User className={`h-5 w-5 ${selectedNumber.ownerUserId ? 'text-green-600' : 'text-slate-400'}`} />
                             </div>
@@ -1108,7 +1107,7 @@ export default function PhoneSystem() {
                               <p className="text-xs text-slate-500">
                                 {selectedNumber.ownerUser 
                                   ? `${selectedNumber.ownerUser.firstName || ''} ${selectedNumber.ownerUser.lastName || ''}`.trim() || selectedNumber.ownerUser.email
-                                  : 'Not assigned - Number is available to all company admins'}
+                                  : 'Not assigned'}
                               </p>
                             </div>
                           </div>
@@ -1125,7 +1124,7 @@ export default function PhoneSystem() {
                             }}
                             disabled={assignNumberMutation.isPending}
                           >
-                            <SelectTrigger className="w-[180px]" data-testid="select-assigned-user">
+                            <SelectTrigger className="w-full" data-testid="select-assigned-user">
                               <SelectValue placeholder="Select user" />
                             </SelectTrigger>
                             <SelectContent>
