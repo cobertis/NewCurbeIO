@@ -545,7 +545,7 @@ export default function PhoneSystem() {
                       if (hasE911Issues) {
                         const numbersWithoutE911 = numbersData?.numbers?.filter(n => !n.e911Enabled) || [];
                         if (numbersWithoutE911.length === 1) {
-                          setSelectedNumberForE911({ phoneNumber: numbersWithoutE911[0].phoneNumber, phoneNumberId: numbersWithoutE911[0].id || "" });
+                          setSelectedNumberForE911({ phoneNumber: numbersWithoutE911[0].phoneNumber, phoneNumberId: numbersWithoutE911[0].telnyxPhoneNumberId || numbersWithoutE911[0].id || "" });
                           setShowE911Dialog(true);
                         } else if (numbersWithoutE911.length > 1) {
                           setActiveTab("numbers");
@@ -1032,7 +1032,7 @@ export default function PhoneSystem() {
                             variant={selectedNumber.e911AddressId || selectedNumber.e911Enabled ? "outline" : "default"}
                             size="sm"
                             onClick={() => {
-                              setSelectedNumberForE911({ phoneNumber: selectedNumber.phoneNumber, phoneNumberId: selectedNumber.id || "" });
+                              setSelectedNumberForE911({ phoneNumber: selectedNumber.phoneNumber, phoneNumberId: selectedNumber.telnyxPhoneNumberId || selectedNumber.id || "" });
                               setShowE911Dialog(true);
                             }}
                             data-testid="button-configure-e911"
