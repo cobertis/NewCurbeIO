@@ -851,7 +851,7 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
             <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
               <Search className="h-12 w-12 text-muted-foreground mb-4" />
               <p className="text-muted-foreground">
-                Click "Refresh Results" to search for available numbers
+                Use the filters above and click "Search" to find available numbers
               </p>
             </div>
           ) : isLoading ? (
