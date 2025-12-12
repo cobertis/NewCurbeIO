@@ -1803,6 +1803,18 @@ function CompactAudioPlayer({ recordingUrl, logId }: AudioPlayerProps) {
   );
 }
 
+/* Helper to format call status with proper capitalization and direction logic */
+function formatCallStatus(status: string, direction: string): string {
+  if (status === 'answered') return 'Answered';
+  if (status === 'failed') return 'Failed';
+  // For missed/no-answer: outbound = "No Answer", inbound = "Missed"
+  if (status === 'missed' || status === 'no-answer') {
+    return direction === 'outbound' ? 'No Answer' : 'Missed';
+  }
+  // Capitalize first letter for any other status
+  return status.charAt(0).toUpperCase() + status.slice(1);
+}
+
 /* Call History with Auto-Polling Component */
 interface CallHistoryProps {
   callLogsData: { logs: any[] } | undefined;
@@ -1996,7 +2008,7 @@ function CallHistoryWithAutoPolling({ callLogsData, isLoadingCallLogs, billingFe
                         <span className={`inline-flex px-1.5 py-0.5 rounded text-[10px] font-medium ${
                           log.status === 'answered' ? 'bg-green-100 text-green-700' : 
                           log.status === 'failed' ? 'bg-red-100 text-red-700' : 'bg-amber-100 text-amber-700'
-                        }`}>{log.status}</span>
+                        }`}>{formatCallStatus(log.status, log.direction)}</span>
                       </td>
                       <td className="px-3 py-1.5">
                         {log.recordingUrl ? (
