@@ -1360,7 +1360,7 @@ export async function syncBillingFeaturesToTelnyx(
   }
 }
 
-// Update per-number voice settings (recordingEnabled, cnamLookupEnabled, noiseSuppressionEnabled, voicemailEnabled)
+// Update per-number voice settings (recordingEnabled, cnamLookupEnabled, noiseSuppressionEnabled, voicemailEnabled, voicemailPin)
 export async function updateNumberVoiceSettings(
   phoneNumberId: string,
   companyId: string,
@@ -1370,6 +1370,7 @@ export async function updateNumberVoiceSettings(
     noiseSuppressionEnabled?: boolean;
     noiseSuppressionDirection?: "inbound" | "outbound" | "both";
     voicemailEnabled?: boolean;
+    voicemailPin?: string;
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -1403,6 +1404,9 @@ export async function updateNumberVoiceSettings(
     }
     if (typeof settings.voicemailEnabled === 'boolean') {
       updateData.voicemailEnabled = settings.voicemailEnabled;
+    }
+    if (settings.voicemailPin) {
+      updateData.voicemailPin = settings.voicemailPin;
     }
     
     // Update local DB

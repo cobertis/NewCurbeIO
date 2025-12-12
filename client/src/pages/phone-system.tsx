@@ -1186,43 +1186,109 @@ export default function PhoneSystem() {
                               data-testid="switch-cnam-number"
                             />
                           </div>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-medium text-slate-700 dark:text-foreground">Noise Suppression</p>
-                              <p className="text-xs text-slate-500">Reduce background noise during calls</p>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-slate-700 dark:text-foreground">Noise Suppression</p>
+                                <p className="text-xs text-slate-500">Reduce background noise ($0.002/min per direction)</p>
+                              </div>
+                              <Switch
+                                checked={selectedNumber.noiseSuppressionEnabled || false}
+                                onCheckedChange={(checked) => {
+                                  if (selectedNumber.telnyxPhoneNumberId) {
+                                    numberVoiceSettingsMutation.mutate({
+                                      phoneNumberId: selectedNumber.telnyxPhoneNumberId,
+                                      settings: { noiseSuppressionEnabled: checked }
+                                    });
+                                  }
+                                }}
+                                disabled={numberVoiceSettingsMutation.isPending}
+                                data-testid="switch-noise-suppression-number"
+                              />
                             </div>
-                            <Switch
-                              checked={selectedNumber.noiseSuppressionEnabled || false}
-                              onCheckedChange={(checked) => {
-                                if (selectedNumber.telnyxPhoneNumberId) {
-                                  numberVoiceSettingsMutation.mutate({
-                                    phoneNumberId: selectedNumber.telnyxPhoneNumberId,
-                                    settings: { noiseSuppressionEnabled: checked }
-                                  });
-                                }
-                              }}
-                              disabled={numberVoiceSettingsMutation.isPending}
-                              data-testid="switch-noise-suppression-number"
-                            />
+                            {selectedNumber.noiseSuppressionEnabled && (
+                              <div className="pl-4 border-l-2 border-slate-200 dark:border-slate-700">
+                                <Label className="text-xs text-slate-500 mb-1 block">Direction</Label>
+                                <Select
+                                  value={selectedNumber.noiseSuppressionDirection || "outbound"}
+                                  onValueChange={(value: "inbound" | "outbound" | "both") => {
+                                    if (selectedNumber.telnyxPhoneNumberId) {
+                                      numberVoiceSettingsMutation.mutate({
+                                        phoneNumberId: selectedNumber.telnyxPhoneNumberId,
+                                        settings: { noiseSuppressionDirection: value }
+                                      });
+                                    }
+                                  }}
+                                  disabled={numberVoiceSettingsMutation.isPending}
+                                >
+                                  <SelectTrigger className="h-8 text-xs" data-testid="select-noise-direction">
+                                    <SelectValue />
+                                  </SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="inbound">Inbound Only</SelectItem>
+                                    <SelectItem value="outbound">Outbound Only</SelectItem>
+                                    <SelectItem value="both">Both Directions</SelectItem>
+                                  </SelectContent>
+                                </Select>
+                                <p className="text-xs text-slate-400 mt-1">
+                                  {selectedNumber.noiseSuppressionDirection === "both" ? "Charged for both legs" : "Single leg charge"}
+                                </p>
+                              </div>
+                            )}
                           </div>
-                          <div className="flex items-center justify-between">
-                            <div>
-                              <p className="text-sm font-medium text-slate-700 dark:text-foreground">Voicemail</p>
-                              <p className="text-xs text-slate-500">Enable voicemail for this number</p>
+                          <div className="space-y-2">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="text-sm font-medium text-slate-700 dark:text-foreground">Voicemail</p>
+                                <p className="text-xs text-slate-500">Enable voicemail (dial *98 to check)</p>
+                              </div>
+                              <Switch
+                                checked={selectedNumber.voicemailEnabled || false}
+                                onCheckedChange={(checked) => {
+                                  if (selectedNumber.telnyxPhoneNumberId) {
+                                    if (checked && !selectedNumber.voicemailPin) {
+                                      toast({ title: "PIN Required", description: "Please set a 4-digit PIN below to enable voicemail." });
+                                      return;
+                                    }
+                                    numberVoiceSettingsMutation.mutate({
+                                      phoneNumberId: selectedNumber.telnyxPhoneNumberId,
+                                      settings: { voicemailEnabled: checked }
+                                    });
+                                  }
+                                }}
+                                disabled={numberVoiceSettingsMutation.isPending}
+                                data-testid="switch-voicemail-number"
+                              />
                             </div>
-                            <Switch
-                              checked={selectedNumber.voicemailEnabled || false}
-                              onCheckedChange={(checked) => {
-                                if (selectedNumber.telnyxPhoneNumberId) {
-                                  numberVoiceSettingsMutation.mutate({
-                                    phoneNumberId: selectedNumber.telnyxPhoneNumberId,
-                                    settings: { voicemailEnabled: checked }
-                                  });
-                                }
-                              }}
-                              disabled={numberVoiceSettingsMutation.isPending}
-                              data-testid="switch-voicemail-number"
-                            />
+                            <div className="pl-4 border-l-2 border-slate-200 dark:border-slate-700">
+                              <Label className="text-xs text-slate-500 mb-1 block">PIN (4 digits)</Label>
+                              <div className="flex gap-2">
+                                <Input
+                                  type="text"
+                                  inputMode="numeric"
+                                  pattern="[0-9]*"
+                                  maxLength={4}
+                                  placeholder="0000"
+                                  value={selectedNumber.voicemailPin || ""}
+                                  onChange={(e) => {
+                                    const value = e.target.value.replace(/\D/g, '').slice(0, 4);
+                                    if (selectedNumber.telnyxPhoneNumberId && value.length === 4) {
+                                      numberVoiceSettingsMutation.mutate({
+                                        phoneNumberId: selectedNumber.telnyxPhoneNumberId,
+                                        settings: { voicemailPin: value }
+                                      });
+                                    }
+                                  }}
+                                  className="h-8 w-20 text-center font-mono text-xs"
+                                  disabled={numberVoiceSettingsMutation.isPending}
+                                  data-testid="input-voicemail-pin"
+                                />
+                                {selectedNumber.voicemailPin && selectedNumber.voicemailPin.length === 4 && (
+                                  <span className="text-xs text-green-600 flex items-center">PIN set</span>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-400 mt-1">Required to access voicemail messages</p>
+                            </div>
                           </div>
                         </div>
                       </div>

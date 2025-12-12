@@ -4886,6 +4886,7 @@ export const telnyxPhoneNumbers = pgTable("telnyx_phone_numbers", {
   noiseSuppressionEnabled: boolean("noise_suppression_enabled").notNull().default(false), // Noise suppression
   noiseSuppressionDirection: text("noise_suppression_direction").default("outbound").$type<"inbound" | "outbound" | "both">(),
   voicemailEnabled: boolean("voicemail_enabled").notNull().default(false), // Voicemail for this number
+  voicemailPin: text("voicemail_pin"), // 4-digit PIN for voicemail access (dial *98)
   
   // Billing Fields - For monthly recurring charges
   numberType: text("number_type").default("local").$type<"local" | "toll_free">(), // Type of number for pricing
