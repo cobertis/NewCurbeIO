@@ -2337,23 +2337,31 @@ export function WebPhoneFloatingWindow() {
         >
           <div className="flex flex-col">
             {hasPhoneCapability ? (
-              <div className="flex items-center gap-1.5 sm:gap-2">
-                <span className="text-foreground font-medium text-xs sm:text-sm">
-                  {sipExtension 
-                    ? `Ext: ${sipExtension}` 
-                    : telnyxCallerIdNumber 
-                      ? formatCallerNumber(telnyxCallerIdNumber) 
-                      : 'WebPhone'}
-                </span>
-                <div className={cn(
-                  "h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full",
-                  effectiveCall
-                    ? (effectiveCall.status === 'answered' ? "bg-green-500 animate-pulse" : "bg-yellow-500 animate-pulse")
-                    : hasTelnyxNumber 
-                      ? (telnyxConnectionStatus === 'connected' ? "bg-green-500" : telnyxConnectionStatus === 'connecting' ? "bg-yellow-500 animate-pulse" : "bg-red-500")
-                      : (connectionStatus === 'connected' ? "bg-green-500" : "bg-red-500")
-                )} />
-              </div>
+              <>
+                <div className="flex items-center gap-1.5 sm:gap-2">
+                  <span className="text-foreground font-medium text-xs sm:text-sm">
+                    {sipExtension 
+                      ? `Ext: ${sipExtension}` 
+                      : telnyxCallerIdNumber 
+                        ? formatCallerNumber(telnyxCallerIdNumber) 
+                        : 'WebPhone'}
+                  </span>
+                  <div className={cn(
+                    "h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full",
+                    effectiveCall
+                      ? (effectiveCall.status === 'answered' ? "bg-green-500 animate-pulse" : "bg-yellow-500 animate-pulse")
+                      : hasTelnyxNumber 
+                        ? (telnyxConnectionStatus === 'connected' ? "bg-green-500" : telnyxConnectionStatus === 'connecting' ? "bg-yellow-500 animate-pulse" : "bg-red-500")
+                        : (connectionStatus === 'connected' ? "bg-green-500" : "bg-red-500")
+                  )} />
+                </div>
+                {extMyExtension && extConnectionStatus === 'connected' && (
+                  <div className="flex items-center gap-1 mt-0.5" data-testid="extension-status-indicator">
+                    <div className="h-1.5 w-1.5 rounded-full bg-green-500" />
+                    <span className="text-[10px] text-green-600 dark:text-green-400">Ext. {extMyExtension} en linea</span>
+                  </div>
+                )}
+              </>
             ) : (
               <span className="text-foreground font-semibold text-xs sm:text-sm">WebPhone</span>
             )}
