@@ -1203,8 +1203,8 @@ export default function PhoneSystem() {
                         <div className="p-4 space-y-4">
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="text-sm font-medium text-slate-700 dark:text-foreground">Call Recording</p>
-                              <p className="text-xs text-slate-500">Record calls on this number</p>
+                              <p className="text-sm font-medium text-slate-700 dark:text-foreground">Inbound Call Recording</p>
+                              <p className="text-xs text-slate-500">Record all incoming calls to this number</p>
                             </div>
                             <Switch
                               checked={selectedNumber.recordingEnabled || false}
