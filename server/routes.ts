@@ -117,6 +117,7 @@ import { evolutionApi } from "./services/evolution-api";
 import { getManagedAccountConfig, buildHeaders } from "./services/telnyx-e911-service";
 import { vipPassService } from "./services/vip-pass-service";
 import { vipPassApnsService } from "./services/vip-pass-apns-service";
+import { pbxService } from "./services/pbx-service";
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -32190,6 +32191,296 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     return res.status(200).send();
   });
 
+
+
+  // ============================================================
+  // PBX (Phone System) API Routes
+  // ============================================================
+
+  // GET /api/pbx/settings - Get PBX settings for company
+  app.get("/api/pbx/settings", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const settings = await pbxService.getPbxSettings(user.companyId);
+      return res.json(settings);
+    } catch (error: any) {
+      console.error("[PBX] Error getting settings:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/settings - Create or update PBX settings
+  app.post("/api/pbx/settings", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const settings = await pbxService.createOrUpdatePbxSettings(user.companyId, req.body);
+      return res.json(settings);
+    } catch (error: any) {
+      console.error("[PBX] Error updating settings:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/queues - Get all queues
+  app.get("/api/pbx/queues", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const queues = await pbxService.getQueues(user.companyId);
+      return res.json(queues);
+    } catch (error: any) {
+      console.error("[PBX] Error getting queues:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/queues - Create queue
+  app.post("/api/pbx/queues", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const queue = await pbxService.createQueue(user.companyId, req.body);
+      return res.json(queue);
+    } catch (error: any) {
+      console.error("[PBX] Error creating queue:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/pbx/queues/:queueId - Update queue
+  app.patch("/api/pbx/queues/:queueId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const queue = await pbxService.updateQueue(user.companyId, req.params.queueId, req.body);
+      return res.json(queue);
+    } catch (error: any) {
+      console.error("[PBX] Error updating queue:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/queues/:queueId - Delete queue
+  app.delete("/api/pbx/queues/:queueId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.deleteQueue(user.companyId, req.params.queueId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting queue:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/queues/:queueId/members - Get queue members
+  app.get("/api/pbx/queues/:queueId/members", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const members = await pbxService.getQueueMembers(user.companyId, req.params.queueId);
+      return res.json(members);
+    } catch (error: any) {
+      console.error("[PBX] Error getting queue members:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/queues/:queueId/members - Add queue member
+  app.post("/api/pbx/queues/:queueId/members", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { userId, priority } = req.body;
+      const member = await pbxService.addQueueMember(user.companyId, req.params.queueId, userId, priority);
+      return res.json(member);
+    } catch (error: any) {
+      console.error("[PBX] Error adding queue member:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/queues/:queueId/members/:userId - Remove queue member
+  app.delete("/api/pbx/queues/:queueId/members/:userId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.removeQueueMember(user.companyId, req.params.queueId, req.params.userId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error removing queue member:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/extensions - Get all extensions
+  app.get("/api/pbx/extensions", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const extensions = await pbxService.getExtensions(user.companyId);
+      return res.json(extensions);
+    } catch (error: any) {
+      console.error("[PBX] Error getting extensions:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/extensions - Create extension
+  app.post("/api/pbx/extensions", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const extension = await pbxService.createExtension(user.companyId, req.body);
+      return res.json(extension);
+    } catch (error: any) {
+      console.error("[PBX] Error creating extension:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/pbx/extensions/:extensionId - Update extension
+  app.patch("/api/pbx/extensions/:extensionId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const extension = await pbxService.updateExtension(user.companyId, req.params.extensionId, req.body);
+      return res.json(extension);
+    } catch (error: any) {
+      console.error("[PBX] Error updating extension:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/extensions/:extensionId - Delete extension
+  app.delete("/api/pbx/extensions/:extensionId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.deleteExtension(user.companyId, req.params.extensionId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting extension:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/menu-options/:settingsId - Get menu options
+  app.get("/api/pbx/menu-options/:settingsId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const options = await pbxService.getMenuOptions(user.companyId, req.params.settingsId);
+      return res.json(options);
+    } catch (error: any) {
+      console.error("[PBX] Error getting menu options:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/menu-options - Create menu option
+  app.post("/api/pbx/menu-options", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const option = await pbxService.createMenuOption(user.companyId, req.body);
+      return res.json(option);
+    } catch (error: any) {
+      console.error("[PBX] Error creating menu option:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/pbx/menu-options/:optionId - Update menu option
+  app.patch("/api/pbx/menu-options/:optionId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const option = await pbxService.updateMenuOption(user.companyId, req.params.optionId, req.body);
+      return res.json(option);
+    } catch (error: any) {
+      console.error("[PBX] Error updating menu option:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/menu-options/:optionId - Delete menu option
+  app.delete("/api/pbx/menu-options/:optionId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.deleteMenuOption(user.companyId, req.params.optionId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting menu option:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/audio-files - Get audio files
+  app.get("/api/pbx/audio-files", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const audioType = req.query.type as string | undefined;
+      const files = await pbxService.getAudioFiles(user.companyId, audioType);
+      return res.json(files);
+    } catch (error: any) {
+      console.error("[PBX] Error getting audio files:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/audio-files - Create audio file record
+  app.post("/api/pbx/audio-files", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const file = await pbxService.createAudioFile(user.companyId, req.body);
+      return res.json(file);
+    } catch (error: any) {
+      console.error("[PBX] Error creating audio file:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/audio-files/:fileId - Delete audio file
+  app.delete("/api/pbx/audio-files/:fileId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.deleteAudioFile(user.companyId, req.params.fileId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting audio file:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/agent-status - Get current agent status
+  app.get("/api/pbx/agent-status", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const status = await pbxService.getAgentStatus(user.companyId, user.id);
+      return res.json(status);
+    } catch (error: any) {
+      console.error("[PBX] Error getting agent status:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/agent-status - Update agent status
+  app.post("/api/pbx/agent-status", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { status, callId } = req.body;
+      const result = await pbxService.updateAgentStatus(user.companyId, user.id, status, callId);
+      return res.json(result);
+    } catch (error: any) {
+      console.error("[PBX] Error updating agent status:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+
+  // ============================================================
+  // Telnyx Call Control Webhook (PBX/IVR)
+  // ============================================================
+  app.post("/api/webhooks/telnyx/call-control", async (req: Request, res: Response) => {
+    try {
+      console.log(`[CallControl Webhook] Received event:`, JSON.stringify(req.body, null, 2));
+      
+      const { callControlWebhookService } = await import("./services/call-control-webhook-service");
+      await callControlWebhookService.handleWebhook(req.body);
+      
+      return res.status(200).json({ success: true });
+    } catch (error: any) {
+      console.error("[CallControl Webhook] Error:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
 
   return httpServer;
 }

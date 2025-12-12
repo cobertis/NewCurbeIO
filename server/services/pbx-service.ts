@@ -34,12 +34,13 @@ export class PbxService {
     companyId: string,
     data: Record<string, any>
   ): Promise<PbxSettings> {
+    const { companyId: _, id: __, ...safeData } = data;
     const existing = await this.getPbxSettings(companyId);
 
     if (existing) {
       const [updated] = await db
         .update(pbxSettings)
-        .set({ ...data, updatedAt: new Date() })
+        .set({ ...safeData, updatedAt: new Date() })
         .where(eq(pbxSettings.id, existing.id))
         .returning();
       return updated;
@@ -47,7 +48,7 @@ export class PbxService {
 
     const [created] = await db
       .insert(pbxSettings)
-      .values({ companyId, ...data } as any)
+      .values({ ...safeData, companyId } as any)
       .returning();
     return created;
   }
@@ -69,9 +70,10 @@ export class PbxService {
   }
 
   async createQueue(companyId: string, data: Record<string, any>): Promise<PbxQueue> {
+    const { companyId: _, id: __, ...safeData } = data;
     const [queue] = await db
       .insert(pbxQueues)
-      .values({ companyId, ...data } as any)
+      .values({ ...safeData, companyId } as any)
       .returning();
     return queue;
   }
@@ -81,9 +83,10 @@ export class PbxService {
     queueId: string,
     data: Record<string, any>
   ): Promise<PbxQueue | null> {
+    const { companyId: _, id: __, ...safeData } = data;
     const [updated] = await db
       .update(pbxQueues)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...safeData, updatedAt: new Date() })
       .where(and(eq(pbxQueues.companyId, companyId), eq(pbxQueues.id, queueId)))
       .returning();
     return updated || null;
@@ -183,9 +186,10 @@ export class PbxService {
   }
 
   async createExtension(companyId: string, data: Record<string, any>): Promise<PbxExtension> {
+    const { companyId: _, id: __, ...safeData } = data;
     const [extension] = await db
       .insert(pbxExtensions)
-      .values({ companyId, ...data } as any)
+      .values({ ...safeData, companyId } as any)
       .returning();
     return extension;
   }
@@ -195,9 +199,10 @@ export class PbxService {
     extensionId: string,
     data: Record<string, any>
   ): Promise<PbxExtension | null> {
+    const { companyId: _, id: __, ...safeData } = data;
     const [updated] = await db
       .update(pbxExtensions)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...safeData, updatedAt: new Date() })
       .where(and(eq(pbxExtensions.companyId, companyId), eq(pbxExtensions.id, extensionId)))
       .returning();
     return updated || null;
@@ -221,9 +226,10 @@ export class PbxService {
   }
 
   async createMenuOption(companyId: string, data: Record<string, any>): Promise<PbxMenuOption> {
+    const { companyId: _, id: __, ...safeData } = data;
     const [option] = await db
       .insert(pbxMenuOptions)
-      .values({ companyId, ...data } as any)
+      .values({ ...safeData, companyId } as any)
       .returning();
     return option;
   }
@@ -233,9 +239,10 @@ export class PbxService {
     optionId: string,
     data: Record<string, any>
   ): Promise<PbxMenuOption | null> {
+    const { companyId: _, id: __, ...safeData } = data;
     const [updated] = await db
       .update(pbxMenuOptions)
-      .set({ ...data, updatedAt: new Date() })
+      .set({ ...safeData, updatedAt: new Date() })
       .where(and(eq(pbxMenuOptions.companyId, companyId), eq(pbxMenuOptions.id, optionId)))
       .returning();
     return updated || null;
