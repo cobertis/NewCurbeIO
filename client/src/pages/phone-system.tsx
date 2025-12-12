@@ -971,281 +971,255 @@ export default function PhoneSystem() {
             />
           </TabsContent>
 
-          {/* Pricing Tab - All telephony rates in one place */}
+          {/* Pricing Tab - Billing & Wallet + Telephony Rates */}
           <TabsContent value="pricing" className="flex-1 m-0 overflow-auto">
-            <div className="p-6 max-w-4xl">
-              <div className="mb-6">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Telephony Pricing</h2>
-                <p className="text-sm text-slate-500">Current rates for voice calls, SMS messages, and phone numbers</p>
+            <div className="p-6">
+              <div className="grid lg:grid-cols-3 gap-6">
+                {/* Left Column: Wallet & Billing */}
+                <div className="lg:col-span-1 space-y-4">
+                  <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Wallet & Billing</h2>
+                  
+                  {/* Balance Card */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <span className="text-sm text-slate-600 dark:text-slate-400">Current Balance</span>
+                      <Button variant="ghost" size="sm" onClick={() => setShowAddFunds(true)} className="h-7 text-xs" data-testid="button-add-funds">
+                        <Plus className="h-3 w-3 mr-1" />Add Funds
+                      </Button>
+                    </div>
+                    <p className="text-3xl font-bold text-slate-900 dark:text-white">{formatCurrency(walletBalance)}</p>
+                  </div>
+
+                  {/* Auto-Recharge */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                    <div className="flex items-center justify-between mb-2">
+                      <div>
+                        <p className="font-medium text-sm text-slate-700 dark:text-foreground">Auto-Recharge</p>
+                        <p className="text-xs text-slate-500">Automatically add funds when balance is low</p>
+                      </div>
+                      <Switch checked={autoRechargeEnabled} onCheckedChange={handleAutoRechargeToggle} data-testid="switch-auto-recharge" />
+                    </div>
+                    {autoRechargeEnabled && (
+                      <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                        <div>
+                          <Label className="text-xs text-slate-500">When below</Label>
+                          <div className="relative mt-1">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                            <Input type="number" min="5" max="100" value={autoRechargeThreshold} onChange={(e) => setAutoRechargeThreshold(e.target.value)} className="pl-7 h-9" data-testid="input-auto-recharge-threshold" />
+                          </div>
+                        </div>
+                        <div>
+                          <Label className="text-xs text-slate-500">Add amount</Label>
+                          <div className="relative mt-1">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
+                            <Input type="number" min="10" max="500" value={autoRechargeAmount} onChange={(e) => setAutoRechargeAmount(e.target.value)} className="pl-7 h-9" data-testid="input-auto-recharge-amount" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Right Column: Pricing Cards */}
+                <div className="lg:col-span-2">
+                  <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">Telephony Rates</h2>
+                  
+                  {isLoadingPricing ? (
+                    <div className="flex items-center justify-center py-12">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                    </div>
+                  ) : pricingData ? (
+                    <div className="grid md:grid-cols-2 gap-4">
+                      {/* Voice Calls */}
+                      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Phone className="h-4 w-4 text-indigo-600" />
+                          <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Voice Calls</h3>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                            <span className="text-slate-600 dark:text-slate-400">Local Outbound</span>
+                            <span className="font-medium text-slate-900 dark:text-white">${pricingData.voice.local.outbound.toFixed(4)}/min</span>
+                          </div>
+                          <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                            <span className="text-slate-600 dark:text-slate-400">Local Inbound</span>
+                            <span className="font-medium text-slate-900 dark:text-white">${pricingData.voice.local.inbound.toFixed(4)}/min</span>
+                          </div>
+                          <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                            <span className="text-slate-600 dark:text-slate-400">Toll-Free Outbound</span>
+                            <span className="font-medium text-slate-900 dark:text-white">${pricingData.voice.tollfree.outbound.toFixed(4)}/min</span>
+                          </div>
+                          <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                            <span className="text-slate-600 dark:text-slate-400">Toll-Free Inbound</span>
+                            <span className="font-medium text-slate-900 dark:text-white">${pricingData.voice.tollfree.inbound.toFixed(4)}/min</span>
+                          </div>
+                          <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                            <span className="text-slate-600 dark:text-slate-400">Call Recording</span>
+                            <span className="font-medium text-slate-900 dark:text-white">${pricingData.voice.recording.toFixed(4)}/min</span>
+                          </div>
+                          <div className="flex justify-between py-1.5">
+                            <span className="text-slate-600 dark:text-slate-400">CNAM Lookup</span>
+                            <span className="font-medium text-slate-900 dark:text-white">${pricingData.voice.cnamLookup.toFixed(4)}/call</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* SMS Messages */}
+                      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <MessageSquare className="h-4 w-4 text-indigo-600" />
+                          <h3 className="font-semibold text-sm text-slate-900 dark:text-white">SMS Messages</h3>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                            <span className="text-slate-600 dark:text-slate-400">Local Outbound</span>
+                            <span className="font-medium text-slate-900 dark:text-white">${pricingData.sms.local.outbound.toFixed(4)}/msg</span>
+                          </div>
+                          <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                            <span className="text-slate-600 dark:text-slate-400">Local Inbound</span>
+                            <span className="font-medium text-slate-900 dark:text-white">${pricingData.sms.local.inbound.toFixed(4)}/msg</span>
+                          </div>
+                          <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                            <span className="text-slate-600 dark:text-slate-400">Toll-Free Outbound</span>
+                            <span className="font-medium text-slate-900 dark:text-white">${pricingData.sms.tollfree.outbound.toFixed(4)}/msg</span>
+                          </div>
+                          <div className="flex justify-between py-1.5">
+                            <span className="text-slate-600 dark:text-slate-400">Toll-Free Inbound</span>
+                            <span className="font-medium text-slate-900 dark:text-white">${pricingData.sms.tollfree.inbound.toFixed(4)}/msg</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-3">Note: Carrier fees (~$0.003) may apply</p>
+                      </div>
+
+                      {/* Monthly Numbers */}
+                      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Hash className="h-4 w-4 text-indigo-600" />
+                          <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Phone Numbers</h3>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                            <span className="text-slate-600 dark:text-slate-400">Local Number</span>
+                            <span className="font-medium text-slate-900 dark:text-white">${pricingData.monthly.localNumber.toFixed(2)}/month</span>
+                          </div>
+                          <div className="flex justify-between py-1.5">
+                            <span className="text-slate-600 dark:text-slate-400">Toll-Free Number</span>
+                            <span className="font-medium text-slate-900 dark:text-white">${pricingData.monthly.tollfreeNumber.toFixed(2)}/month</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Billing Rules */}
+                      <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                        <div className="flex items-center gap-2 mb-3">
+                          <Clock className="h-4 w-4 text-indigo-600" />
+                          <h3 className="font-semibold text-sm text-slate-900 dark:text-white">Billing Rules</h3>
+                        </div>
+                        <div className="space-y-2 text-sm">
+                          <div className="flex justify-between py-1.5 border-b border-slate-100 dark:border-slate-800">
+                            <span className="text-slate-600 dark:text-slate-400">Minimum Billable</span>
+                            <span className="font-medium text-slate-900 dark:text-white">{pricingData.billing.minimumSeconds} seconds</span>
+                          </div>
+                          <div className="flex justify-between py-1.5">
+                            <span className="text-slate-600 dark:text-slate-400">Billing Increment</span>
+                            <span className="font-medium text-slate-900 dark:text-white">{pricingData.billing.incrementSeconds} seconds</span>
+                          </div>
+                        </div>
+                        <p className="text-xs text-slate-500 mt-3">Calls billed in {pricingData.billing.incrementSeconds}s increments, {pricingData.billing.minimumSeconds}s minimum</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="text-center py-12">
+                      <p className="text-slate-500">Unable to load pricing information</p>
+                    </div>
+                  )}
+                </div>
               </div>
-
-              {isLoadingPricing ? (
-                <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-                </div>
-              ) : pricingData ? (
-                <div className="grid md:grid-cols-2 gap-6">
-                  {/* Voice Calls */}
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-5">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Phone className="h-5 w-5 text-indigo-600" />
-                      <h3 className="font-semibold text-slate-900 dark:text-white">Voice Calls</h3>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                        <span className="text-sm text-slate-600 dark:text-slate-400">Local Outbound</span>
-                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-local-outbound">${pricingData.voice.local.outbound.toFixed(4)}/min</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                        <span className="text-sm text-slate-600 dark:text-slate-400">Local Inbound</span>
-                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-local-inbound">${pricingData.voice.local.inbound.toFixed(4)}/min</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                        <span className="text-sm text-slate-600 dark:text-slate-400">Toll-Free Outbound</span>
-                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-tollfree-outbound">${pricingData.voice.tollfree.outbound.toFixed(4)}/min</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                        <span className="text-sm text-slate-600 dark:text-slate-400">Toll-Free Inbound</span>
-                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-tollfree-inbound">${pricingData.voice.tollfree.inbound.toFixed(4)}/min</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                        <span className="text-sm text-slate-600 dark:text-slate-400">Call Recording</span>
-                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-recording">${pricingData.voice.recording.toFixed(4)}/min</span>
-                      </div>
-                      <div className="flex justify-between py-2">
-                        <span className="text-sm text-slate-600 dark:text-slate-400">CNAM Lookup</span>
-                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-cnam">${pricingData.voice.cnamLookup.toFixed(4)}/call</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* SMS Messages */}
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-5">
-                    <div className="flex items-center gap-2 mb-4">
-                      <MessageSquare className="h-5 w-5 text-indigo-600" />
-                      <h3 className="font-semibold text-slate-900 dark:text-white">SMS Messages</h3>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                        <span className="text-sm text-slate-600 dark:text-slate-400">Local Outbound</span>
-                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-sms-local-outbound">${pricingData.sms.local.outbound.toFixed(4)}/msg</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                        <span className="text-sm text-slate-600 dark:text-slate-400">Local Inbound</span>
-                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-sms-local-inbound">${pricingData.sms.local.inbound.toFixed(4)}/msg</span>
-                      </div>
-                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                        <span className="text-sm text-slate-600 dark:text-slate-400">Toll-Free Outbound</span>
-                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-sms-tollfree-outbound">${pricingData.sms.tollfree.outbound.toFixed(4)}/msg</span>
-                      </div>
-                      <div className="flex justify-between py-2">
-                        <span className="text-sm text-slate-600 dark:text-slate-400">Toll-Free Inbound</span>
-                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-sms-tollfree-inbound">${pricingData.sms.tollfree.inbound.toFixed(4)}/msg</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-4">Note: Carrier fees (~$0.003) may apply to SMS messages</p>
-                  </div>
-
-                  {/* Monthly Numbers */}
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-5">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Hash className="h-5 w-5 text-indigo-600" />
-                      <h3 className="font-semibold text-slate-900 dark:text-white">Phone Numbers</h3>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                        <span className="text-sm text-slate-600 dark:text-slate-400">Local Number</span>
-                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-did-local">${pricingData.monthly.localNumber.toFixed(2)}/month</span>
-                      </div>
-                      <div className="flex justify-between py-2">
-                        <span className="text-sm text-slate-600 dark:text-slate-400">Toll-Free Number</span>
-                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-did-tollfree">${pricingData.monthly.tollfreeNumber.toFixed(2)}/month</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Billing Rules */}
-                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-5">
-                    <div className="flex items-center gap-2 mb-4">
-                      <Clock className="h-5 w-5 text-indigo-600" />
-                      <h3 className="font-semibold text-slate-900 dark:text-white">Billing Rules</h3>
-                    </div>
-                    <div className="space-y-3">
-                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
-                        <span className="text-sm text-slate-600 dark:text-slate-400">Minimum Billable</span>
-                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="billing-minimum">{pricingData.billing.minimumSeconds} seconds</span>
-                      </div>
-                      <div className="flex justify-between py-2">
-                        <span className="text-sm text-slate-600 dark:text-slate-400">Billing Increment</span>
-                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="billing-increment">{pricingData.billing.incrementSeconds} seconds</span>
-                      </div>
-                    </div>
-                    <p className="text-xs text-slate-500 mt-4">Calls are billed in {pricingData.billing.incrementSeconds}-second increments with a {pricingData.billing.minimumSeconds}-second minimum</p>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-center py-12">
-                  <p className="text-slate-500">Unable to load pricing information</p>
-                </div>
-              )}
             </div>
           </TabsContent>
 
-          {/* Settings Tab - Two Column Layout with Grouped Sections */}
+          {/* Settings Tab - System Configuration Only */}
           <TabsContent value="settings" className="flex-1 m-0 overflow-auto">
-            <div className="grid lg:grid-cols-2 gap-0 h-full">
-              {/* Left Column: Billing & Wallet */}
-              <div className="bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 p-6">
-                <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">Billing & Wallet</h2>
-                
-                {/* Balance Card */}
-                <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 mb-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <span className="text-sm text-slate-600 dark:text-slate-400">Current Balance</span>
-                    <Button variant="ghost" size="sm" onClick={() => setShowAddFunds(true)} className="h-7 text-xs" data-testid="button-add-funds">
-                      <Plus className="h-3 w-3 mr-1" />Add Funds
-                    </Button>
-                  </div>
-                  <p className="text-3xl font-bold text-slate-900 dark:text-white">{formatCurrency(walletBalance)}</p>
-                </div>
+            <div className="p-6 max-w-2xl">
+              <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">System Configuration</h2>
 
-                {/* Auto-Recharge */}
-                <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-4">
-                  <div className="flex items-center justify-between mb-2">
+              {/* Call Recording */}
+              <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+                      <Mic className="h-4 w-4 text-red-600" />
+                    </div>
                     <div>
-                      <p className="font-medium text-sm text-slate-700 dark:text-foreground">Auto-Recharge</p>
-                      <p className="text-xs text-slate-500">Automatically add funds when balance is low</p>
-                    </div>
-                    <Switch checked={autoRechargeEnabled} onCheckedChange={handleAutoRechargeToggle} data-testid="switch-auto-recharge" />
-                  </div>
-                  {autoRechargeEnabled && (
-                    <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-                      <div>
-                        <Label className="text-xs text-slate-500">When below</Label>
-                        <div className="relative mt-1">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
-                          <Input type="number" min="5" max="100" value={autoRechargeThreshold} onChange={(e) => setAutoRechargeThreshold(e.target.value)} className="pl-7 h-9" data-testid="input-auto-recharge-threshold" />
-                        </div>
-                      </div>
-                      <div>
-                        <Label className="text-xs text-slate-500">Add amount</Label>
-                        <div className="relative mt-1">
-                          <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
-                          <Input type="number" min="10" max="500" value={autoRechargeAmount} onChange={(e) => setAutoRechargeAmount(e.target.value)} className="pl-7 h-9" data-testid="input-auto-recharge-amount" />
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Call Rates */}
-                <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
-                  <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
-                    <p className="font-medium text-sm text-slate-700 dark:text-foreground">Call Rates</p>
-                  </div>
-                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                    <div className="flex justify-between px-4 py-2.5 text-sm">
-                      <span className="text-slate-600 dark:text-slate-400">USA / Canada</span>
-                      <span className="font-medium text-slate-900 dark:text-white">$0.02/min</span>
-                    </div>
-                    <div className="flex justify-between px-4 py-2.5 text-sm">
-                      <span className="text-slate-600 dark:text-slate-400">Mexico (Landline)</span>
-                      <span className="font-medium text-slate-900 dark:text-white">$0.035/min</span>
-                    </div>
-                    <div className="flex justify-between px-4 py-2.5 text-sm">
-                      <span className="text-slate-600 dark:text-slate-400">Mexico (Mobile)</span>
-                      <span className="font-medium text-slate-900 dark:text-white">$0.045/min</span>
-                    </div>
-                    <div className="flex justify-between px-4 py-2.5 text-sm">
-                      <span className="text-slate-600 dark:text-slate-400">Toll-Free</span>
-                      <span className="font-medium text-green-600">Free</span>
+                      <p className="font-medium text-sm text-slate-700 dark:text-foreground">Call Recording</p>
+                      <p className="text-xs text-slate-500">$0.005/min - Record all calls</p>
                     </div>
                   </div>
+                  <Switch
+                    checked={billingFeaturesData?.recordingEnabled || false}
+                    onCheckedChange={handleRecordingToggle}
+                    disabled={billingFeaturesMutation.isPending || syncedRecordingMutation.isPending}
+                    data-testid="switch-call-recording"
+                  />
                 </div>
               </div>
 
-              {/* Right Column: System Configuration */}
-              <div className="p-6">
-                <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">System Configuration</h2>
-
-                {/* Call Recording */}
-                <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
-                        <Mic className="h-4 w-4 text-red-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm text-slate-700 dark:text-foreground">Call Recording</p>
-                        <p className="text-xs text-slate-500">$0.005/min - Record all calls</p>
-                      </div>
+              {/* CNAM */}
+              <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                      <User className="h-4 w-4 text-blue-600" />
                     </div>
-                    <Switch
-                      checked={billingFeaturesData?.recordingEnabled || false}
-                      onCheckedChange={handleRecordingToggle}
-                      disabled={billingFeaturesMutation.isPending || syncedRecordingMutation.isPending}
-                      data-testid="switch-call-recording"
-                    />
+                    <div>
+                      <p className="font-medium text-sm text-slate-700 dark:text-foreground">CNAM (Caller ID Name)</p>
+                      <p className="text-xs text-slate-500">$1/mo + $0.01/call - Show caller names</p>
+                    </div>
                   </div>
+                  <Switch
+                    checked={billingFeaturesData?.cnamEnabled || false}
+                    onCheckedChange={handleCnamToggle}
+                    disabled={billingFeaturesMutation.isPending}
+                    data-testid="switch-cnam"
+                  />
                 </div>
+              </div>
 
-                {/* CNAM */}
-                <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-                        <User className="h-4 w-4 text-blue-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm text-slate-700 dark:text-foreground">CNAM (Caller ID Name)</p>
-                        <p className="text-xs text-slate-500">$1/mo + $0.01/call - Show caller names</p>
-                      </div>
+              {/* Noise Suppression */}
+              <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
+                      <Volume2 className="h-4 w-4 text-indigo-600" />
                     </div>
-                    <Switch
-                      checked={billingFeaturesData?.cnamEnabled || false}
-                      onCheckedChange={handleCnamToggle}
-                      disabled={billingFeaturesMutation.isPending}
-                      data-testid="switch-cnam"
-                    />
+                    <div>
+                      <p className="font-medium text-sm text-slate-700 dark:text-foreground">Noise Suppression</p>
+                      <p className="text-xs text-slate-500">Reduce background noise</p>
+                    </div>
                   </div>
+                  <Switch
+                    checked={noiseSuppressionData?.enabled || false}
+                    onCheckedChange={(checked) => noiseSuppressionMutation.mutate({ enabled: checked, direction: noiseSuppressionData?.direction || 'outbound' })}
+                    disabled={noiseSuppressionMutation.isPending}
+                    data-testid="switch-noise-suppression"
+                  />
                 </div>
-
-                {/* Noise Suppression */}
-                <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
-                        <Volume2 className="h-4 w-4 text-indigo-600" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm text-slate-700 dark:text-foreground">Noise Suppression</p>
-                        <p className="text-xs text-slate-500">Reduce background noise</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={noiseSuppressionData?.enabled || false}
-                      onCheckedChange={(checked) => noiseSuppressionMutation.mutate({ enabled: checked, direction: noiseSuppressionData?.direction || 'outbound' })}
-                      disabled={noiseSuppressionMutation.isPending}
-                      data-testid="switch-noise-suppression"
-                    />
+                {noiseSuppressionData?.enabled && (
+                  <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                    <Label className="text-sm text-slate-600 dark:text-slate-400">Direction</Label>
+                    <Select
+                      value={noiseSuppressionData?.direction || 'outbound'}
+                      onValueChange={(value: 'inbound' | 'outbound' | 'both') => noiseSuppressionMutation.mutate({ enabled: true, direction: value })}
+                    >
+                      <SelectTrigger className="w-[140px] h-8"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="outbound">Outbound</SelectItem>
+                        <SelectItem value="inbound">Inbound</SelectItem>
+                        <SelectItem value="both">Both</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
-                  {noiseSuppressionData?.enabled && (
-                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
-                      <Label className="text-sm text-slate-600 dark:text-slate-400">Direction</Label>
-                      <Select
-                        value={noiseSuppressionData?.direction || 'outbound'}
-                        onValueChange={(value: 'inbound' | 'outbound' | 'both') => noiseSuppressionMutation.mutate({ enabled: true, direction: value })}
-                      >
-                        <SelectTrigger className="w-[140px] h-8"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="outbound">Outbound</SelectItem>
-                          <SelectItem value="inbound">Inbound</SelectItem>
-                          <SelectItem value="both">Both</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-                </div>
+                )}
               </div>
             </div>
           </TabsContent>
