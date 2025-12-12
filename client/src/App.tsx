@@ -40,6 +40,7 @@ import { formatDistanceToNow } from "date-fns";
 import { WebPhoneFloatingWindow } from '@/components/WebPhoneFloatingWindow';
 import { webPhone, useWebPhoneStore } from "@/services/webphone";
 import { useTelnyxStore, telnyxWebRTC } from "@/services/telnyx-webrtc";
+import { useExtensionCall } from "@/hooks/useExtensionCall";
 import type { User } from "@shared/schema";
 import defaultLogo from "@assets/logo no fondo_1760457183587.png";
 import Login from "@/pages/login";
@@ -123,14 +124,19 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const telnyxConnectionStatus = useTelnyxStore(state => state.connectionStatus);
   const telnyxCurrentCall = useTelnyxStore(state => state.currentCall);
   
+  // Extension calling state
+  const { connectionStatus: extConnectionStatus, myExtension: extMyExtension } = useExtensionCall();
+  
   // Query for Telnyx phone numbers
   const { data: telnyxNumbersData } = useQuery<{ numbers: any[] }>({
     queryKey: ['/api/telnyx/my-numbers'],
   });
   const hasTelnyxNumber = (telnyxNumbersData?.numbers?.length || 0) > 0;
   
-  // Effective connection status - use Telnyx if available, otherwise SIP
-  const connectionStatus = hasTelnyxNumber ? telnyxConnectionStatus : sipConnectionStatus;
+  // Effective connection status - use extension, Telnyx, or SIP (whichever is connected)
+  const connectionStatus = extConnectionStatus === 'connected' ? 'connected'
+    : hasTelnyxNumber ? telnyxConnectionStatus 
+    : sipConnectionStatus;
   const effectiveCall = telnyxCurrentCall || currentCall;
 
   // Session query - highest priority, needed for WebPhone
@@ -191,11 +197,14 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     queryKey: ['/api/telnyx/user-phone-status'],
     enabled: !!user,
   });
-  const canMakeCalls = userPhoneStatusData?.canMakeCalls || false;
+  // User can make calls if they have a Telnyx number OR have an extension assigned
+  const canMakeCalls = userPhoneStatusData?.canMakeCalls || !!extMyExtension;
   const noPhoneMessage = userPhoneStatusData?.message || 'Contact your account manager to get a phone number assigned.';
 
-  // Effective connection status that considers if user can make calls
-  const effectiveConnectionStatus = canMakeCalls ? connectionStatus : 'disconnected';
+  // Effective connection status that considers if user can make calls (including extension users)
+  const effectiveConnectionStatus = canMakeCalls 
+    ? (extConnectionStatus === 'connected' ? 'connected' : connectionStatus)
+    : 'disconnected';
 
   // Listen for WhatsApp unread count updates via WebSocket
   useEffect(() => {
@@ -1036,8 +1045,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* WebPhone Floating Window - Only visible to admins who manage phone system */}
-      {(user?.role === 'admin' || user?.role === 'superadmin') && <WebPhoneFloatingWindow />}
+      {/* WebPhone Floating Window - Visible to admins, superadmins, or users with extensions */}
+      {(user?.role === 'admin' || user?.role === 'superadmin' || !!extMyExtension) && <WebPhoneFloatingWindow />}
 
       {/* Timezone Dialog */}
       <Dialog open={timezoneDialogOpen} onOpenChange={setTimezoneDialogOpen}>
