@@ -530,13 +530,48 @@ export default function PhoneSystem() {
               <Phone className="h-4 w-4 text-slate-400" />
               <span className="text-sm text-slate-600 dark:text-slate-400">{numbersCount} Number{numbersCount !== 1 ? 's' : ''}</span>
             </div>
-            {/* E911 Status */}
-            <div className="flex items-center gap-2">
-              <MapPin className={`h-4 w-4 ${hasE911Issues ? 'text-amber-500' : 'text-green-500'}`} />
-              <span className={`text-sm ${hasE911Issues ? 'text-amber-600' : 'text-green-600'}`}>
-                E911: {hasE911Issues ? 'Needs Setup' : 'Ready'}
-              </span>
-            </div>
+            {/* E911 Status - Clickable when needs setup */}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <div 
+                    className={`flex items-center gap-2 ${hasE911Issues ? 'cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/20 px-2 py-1 -mx-2 -my-1 rounded-md transition-colors' : ''}`}
+                    onClick={() => {
+                      if (hasE911Issues) {
+                        const numbersWithoutE911 = numbersData?.numbers?.filter(n => !n.emergency_enabled) || [];
+                        if (numbersWithoutE911.length === 1) {
+                          setSelectedNumberForE911({ phoneNumber: numbersWithoutE911[0].phone_number, phoneNumberId: numbersWithoutE911[0].id || "" });
+                          setShowE911Dialog(true);
+                        } else if (numbersWithoutE911.length > 1) {
+                          setActiveTab("numbers");
+                        }
+                      }
+                    }}
+                    data-testid="status-e911"
+                  >
+                    <MapPin className={`h-4 w-4 ${hasE911Issues ? 'text-amber-500' : 'text-green-500'}`} />
+                    <span className={`text-sm ${hasE911Issues ? 'text-amber-600 font-medium' : 'text-green-600'}`}>
+                      E911: {hasE911Issues ? 'Needs Setup' : 'Ready'}
+                    </span>
+                    {hasE911Issues && <AlertTriangle className="h-3 w-3 text-red-500" />}
+                  </div>
+                </TooltipTrigger>
+                <TooltipContent side="bottom" className="max-w-xs">
+                  {hasE911Issues ? (
+                    <>
+                      <p className="font-medium text-red-600">E911 Configuration Required</p>
+                      <p className="text-xs text-slate-400 mt-1">FCC regulations require E911 for all VoIP numbers. Failure to configure can result in <span className="font-bold text-red-500">$100 fine per emergency call</span>.</p>
+                      <p className="text-xs text-blue-500 mt-2">Click to configure now</p>
+                    </>
+                  ) : (
+                    <>
+                      <p className="font-medium">E911 Emergency Services</p>
+                      <p className="text-xs text-slate-400 mt-1">All your phone numbers have E911 configured for emergency services.</p>
+                    </>
+                  )}
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
 
           {/* Center: Feature Toggles */}
