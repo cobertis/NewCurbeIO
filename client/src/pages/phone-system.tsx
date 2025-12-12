@@ -139,6 +139,8 @@ export default function PhoneSystem() {
   const [showRecordingConfirm, setShowRecordingConfirm] = useState(false);
   const [showCnamConfirm, setShowCnamConfirm] = useState(false);
   const [selectedNumber, setSelectedNumber] = useState<NumberInfo | null>(null);
+  const [editingCnam, setEditingCnam] = useState(false);
+  const [cnamInput, setCnamInput] = useState("");
 
   const { data: statusData, isLoading: isLoadingStatus, refetch } = useQuery<StatusResponse>({
     queryKey: ["/api/telnyx/managed-accounts/status"],
@@ -421,6 +423,25 @@ export default function PhoneSystem() {
     },
     onError: (error: Error) => {
       toast({ title: "Failed to Update", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateCnamMutation = useMutation({
+    mutationFn: async ({ phoneNumberId, cnamName }: { phoneNumberId: string; cnamName: string }) => {
+      return apiRequest("POST", `/api/telnyx/cnam/${phoneNumberId}`, { 
+        enabled: true, 
+        cnamName 
+      });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/my-numbers"] });
+      refetchNumbers();
+      toast({ title: "CNAM Updated", description: "Caller ID name updated. Changes may take 12-72 hours to propagate." });
+      setEditingCnam(false);
+      setCnamInput("");
+    },
+    onError: (error: any) => {
+      toast({ variant: "destructive", title: "Update Failed", description: error.message || "Failed to update CNAM" });
     },
   });
 
@@ -1080,15 +1101,74 @@ export default function PhoneSystem() {
                         <div className="flex items-center justify-between mb-3">
                           <div>
                             <p className="text-sm font-medium text-slate-700 dark:text-foreground">Outbound Caller ID Name</p>
-                            <p className="text-xs text-slate-500">Display your business name when making calls</p>
+                            <p className="text-xs text-slate-500">Display your business name when making calls (max 15 characters)</p>
                           </div>
+                          {!editingCnam && (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => {
+                                setCnamInput(selectedNumber.callerIdName || "");
+                                setEditingCnam(true);
+                              }}
+                              data-testid="button-edit-cnam"
+                            >
+                              {selectedNumber.callerIdName ? 'Update' : 'Configure'}
+                            </Button>
+                          )}
                         </div>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                          Current: <span className="font-medium text-slate-900 dark:text-white">{selectedNumber.callerIdName || 'Not configured'}</span>
-                        </p>
-                        <p className="text-xs text-slate-500">
-                          To change your outbound caller ID name, contact support. Changes take 12-72 hours to propagate to all carriers.
-                        </p>
+                        {editingCnam ? (
+                          <div className="space-y-3">
+                            <div>
+                              <Input
+                                placeholder="Business Name (max 15 chars)"
+                                value={cnamInput}
+                                onChange={(e) => setCnamInput(e.target.value.slice(0, 15))}
+                                maxLength={15}
+                                className="uppercase"
+                                data-testid="input-cnam-name"
+                              />
+                              <p className="text-xs text-slate-400 mt-1">{cnamInput.length}/15 characters</p>
+                            </div>
+                            <div className="flex gap-2">
+                              <Button
+                                size="sm"
+                                onClick={() => {
+                                  if (selectedNumber.telnyxPhoneNumberId && cnamInput.trim()) {
+                                    updateCnamMutation.mutate({
+                                      phoneNumberId: selectedNumber.telnyxPhoneNumberId,
+                                      cnamName: cnamInput.trim()
+                                    });
+                                  }
+                                }}
+                                disabled={!cnamInput.trim() || updateCnamMutation.isPending}
+                                data-testid="button-save-cnam"
+                              >
+                                {updateCnamMutation.isPending ? "Saving..." : "Save"}
+                              </Button>
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                onClick={() => {
+                                  setEditingCnam(false);
+                                  setCnamInput("");
+                                }}
+                                data-testid="button-cancel-cnam"
+                              >
+                                Cancel
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                              Current: <span className="font-medium text-slate-900 dark:text-white">{selectedNumber.callerIdName || 'Not configured'}</span>
+                            </p>
+                            <p className="text-xs text-slate-500">
+                              Changes take 12-72 hours to propagate to all carriers.
+                            </p>
+                          </>
+                        )}
                       </div>
                     </div>
                   ) : (
