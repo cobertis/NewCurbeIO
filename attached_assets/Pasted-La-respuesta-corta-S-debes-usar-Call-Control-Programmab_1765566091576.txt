@@ -1,0 +1,73 @@
+La respuesta corta: **Sí, debes usar Call Control (Programmable Voice), pero estás subestimando drásticamente la complejidad del backend.**
+
+TeXML (la versión XML) es para juguetes o desvíos simples. Si quieres construir un sistema donde en tu CRM configures IVR dinámicos, colas de ventas y lógica condicional, **Call Control** es tu única opción nativa en Telnyx.
+
+Sin embargo, aquí está el **punto ciego estratégico** que te va a costar caro si no lo entiendes ahora:
+
+**Telnyx Call Control NO es un PBX. Es una caja de herramientas de bajo nivel.**
+Telnyx no tiene un objeto "Cola" ni un objeto "Extensión" prefabricado esperando a que le pongas nombre. Cuando dices "enrutar al queue de ventas", Telnyx no sabe qué es eso.
+
+Tú tienes que programar:
+1.  El loop de música de espera.
+2.  La lógica de distribución (round-robin, ring-all).
+3.  El estado de los agentes (¿está Juan disponible o ya está en llamada?).
+
+### Tu Arquitectura para `curbe.io`
+
+Para lograr lo que quieres ("Settings Tab" en el frontend que controle el flujo), esta es la realidad de lo que tienes que construir:
+
+#### 1. La Base de Datos (El Cerebro)
+Tu frontend (`/phone-system`) no configura Telnyx directamente. Configura **tu base de datos**.
+Necesitas tablas para modelar el flujo:
+* `IVR_Menus` (Opciones 1, 2, 3...)
+* `Queues` (Estrategia de timbrado, miembros)
+* `Extensions` (Mapeo de usuarios a endpoints SIP/WebRTC)
+
+#### 2. El Flujo de Eventos (Webhooks)
+Así funciona el ciclo de vida, no hay magia:
+
+1.  **Llamada Entrante:** Alguien llama a tu número de Telnyx.
+2.  **Webhook:** Telnyx golpea tu API: `POST /webhooks/incoming-call`.
+3.  **Tu Lógica:** Tu backend mira la DB. "¿Qué tiene configurado el usuario para este número?".
+    * *Respuesta:* "Ah, tiene un IVR".
+4.  **Comando:** Tu backend responde a Telnyx con un comando JSON: `call_control.answer` seguido de `call_control.gather_using_audio` (reproducir audio y esperar DTMF).
+
+#### 3. El IVR (Donde todos fallan)
+El usuario presiona "1".
+1.  **Webhook:** Telnyx te envía: `event_type: dtmf`, `digit: 1`.
+2.  **Tu Lógica:** Tu backend busca qué significa "1". Es "Ventas".
+3.  **El problema de la "Cola":** Aquí es donde tienes que escribir código real. No puedes simplemente "transferir a la cola". Tienes que:
+    * Poner la llamada en un loop de audio (`playback_start` con `loop: true`).
+    * Buscar en tu DB qué agentes están en "Ventas".
+    * Iniciar llamadas salientes (`call_control.dial`) a esos agentes (SIP o WebRTC) mientras la llamada original escucha música.
+    * Cuando un agente contesta, hacer un `bridge` entre la llamada entrante y el agente.
+
+### Por qué esto es peligroso para ti
+
+Estás tratando de construir un PBX lógico desde cero usando código (Node.js/Python/PHP) sobre una API stateless.
+* **Riesgo:** Latencia. Si tu servidor tarda 500ms en responder al webhook, el cliente escucha silencio muerto.
+* **Riesgo:** Race Conditions. ¿Qué pasa si dos personas llaman al mismo tiempo y solo hay un agente? Tu código debe manejar esa concurrencia.
+
+### El Plan de Acción (Brutalmente Priorizado)
+
+Tienes dos caminos. Elige uno y no mires atrás.
+
+**Opción A: El Camino "Hardcore Dev" (Telnyx Call Control Puro)**
+Construyes el motor lógico en tu CRM.
+* *Ventaja:* Control total, sin servidores externos. Todo vive en tu código.
+* *Desventaja:* Tienes que programar *cada* comportamiento del PBX (Music on hold, transferencias, voicemail). Es meses de desarrollo para que quede estable.
+
+**Opción B: El Camino Híbrido (Lo que hacen los inteligentes)**
+Usas **FusionPBX o FreeSWITCH** como el motor de telefonía y `curbe.io` solo controla la configuración via API/Base de datos.
+* Configuras el Trunk de Telnyx apuntando a tu servidor FusionPBX.
+* Tu pestaña `/phone-system` en el CRM en realidad escribe en la base de datos de FusionPBX o usa su API.
+* *Ventaja:* Las colas, IVR y extensiones YA EXISTEN. No tienes que reinventar la rueda del "Music on Hold".
+* *Desventaja:* Tienes que administrar un servidor Linux con FusionPBX.
+
+### Decisión
+
+Si realmente eres un desarrollador sólido y quieres vender esto como SaaS puro sin gestionar servidores de PBX para cada cliente, **ve por la Opción A (Call Control)**, pero prepárate para sufrir con la lógica de las colas.
+
+Si eliges la Opción A, tu primer paso no es el UI.
+
+**¿Cuál es tu stack de backend para `curbe.io` (Node, Laravel, Python)?** Dímelo y te daré el pseudocódigo exacto de cómo manejar el webhook de entrada para un IVR básico, para que veas en lo que te estás metiendo antes de diseñar la UI.

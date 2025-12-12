@@ -1,0 +1,45 @@
+# PROYECTO: [Nombre del Proyecto, ej. WebRTC Softphone Extension / CRM Core]
+# ESTADO: ALPHA - IMPLEMENTACIÓN ESTRICTA
+
+## 1. MISIÓN TÉCNICA
+El objetivo es crear una aplicación [Tipo: Extensión Chrome / React App] robusta, modular y escalable. No quiero soluciones rápidas ("hacks"). Quiero código limpio, tipado y documentado.
+
+## 2. STACK TECNOLÓGICO (NO NEGOCIABLE)
+- **Frontend:** React + Vite (Velocidad y modularidad).
+- **Lenguaje:** TypeScript (Strict mode). No quiero `any`. Si usas `any`, fallas.
+- **Estilos:** TailwindCSS (Utility-first, sin archivos CSS gigantes).
+- **State Management:** Zustand (Ligero y directo, evitar Redux boilerplate).
+- **VoIP/WebRTC (Si aplica):** SIP.js o JsSIP.
+- **Iconos:** Lucide-React.
+
+## 3. REGLAS DE ORO DE ARQUITECTURA
+1.  **Separación de Conceptos:**
+    - La lógica de negocio (ej. conectar llamada, calcular leads) NO puede estar dentro de los componentes UI.
+    - Usa Custom Hooks (ej. `useSipUserAgent`, `useCrmData`) para la lógica.
+2.  **Manejo de Errores:**
+    - Nunca dejes un `catch` vacío.
+    - Todo error de red o API debe tener feedback visual para el usuario (Toast/Alert).
+3.  **Seguridad:**
+    - NUNCA hardcodes credenciales, API Keys o contraseñas en el código cliente. Usa variables de entorno (`.env`).
+
+## 4. DETALLES DE IMPLEMENTACIÓN (CRÍTICOS)
+
+### A. Si es el Softphone / VoIP:
+- **Persistencia:** La conexión SIP debe sobrevivir si cierro el popup (usar Service Workers o Background Scripts si es extensión).
+- **Codecs:** Priorizar Opus y PCMU/A.
+- **Network Resilience:** Debe intentar reconectar automáticamente si cae el WebSocket.
+- **Audio:** Manejar explícitamente los permisos de micrófono (`navigator.mediaDevices`).
+
+### B. Si es el CRM / Dashboard:
+- **Componentes:** Crear componentes reutilizables (`Button`, `Input`, `Card`) antes de construir vistas complejas.
+- **Data Fetching:** Usar React Query (TanStack Query) para caché y estado de carga. No usar `useEffect` puro para fetch de datos.
+
+## 5. UI/UX
+- Diseño minimalista, oscuro (Dark Mode por defecto).
+- Feedback inmediato al click (estados `loading`, `disabled`).
+- La interfaz debe parecer profesional, no un proyecto escolar.
+
+## 6. INSTRUCCIONES PARA EL AGENTE
+- Piensa paso a paso.
+- Antes de modificar un archivo existente, lee su contenido completo.
+- Si una librería da problemas en el entorno de Replit (especialmente con WebSockets o Audio), busca alternativas estándar o pide clarificación, no inventes código falso.

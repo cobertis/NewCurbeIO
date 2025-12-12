@@ -5533,3 +5533,323 @@ export type InsertVipPassDevice = z.infer<typeof insertVipPassDeviceSchema>;
 
 export type VipPassNotification = typeof vipPassNotifications.$inferSelect;
 export type InsertVipPassNotification = z.infer<typeof insertVipPassNotificationSchema>;
+
+// =============================================================================
+// PBX SYSTEM - Voice API Call Control Based
+// =============================================================================
+
+// PBX Ring Strategy Types
+export type PbxRingStrategy = "ring_all" | "round_robin" | "least_recent" | "random";
+export type PbxQueueStatus = "active" | "inactive";
+export type PbxAgentStatusType = "available" | "busy" | "away" | "offline";
+
+// PBX Settings - Main configuration for company's PBX
+export const pbxSettings = pgTable("pbx_settings", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Primary inbound number for PBX
+  primaryPhoneNumberId: text("primary_phone_number_id").references(() => telnyxPhoneNumbers.id, { onDelete: "set null" }),
+  
+  // IVR Configuration
+  ivrEnabled: boolean("ivr_enabled").notNull().default(false),
+  greetingAudioUrl: text("greeting_audio_url"),
+  greetingText: text("greeting_text"),
+  useTextToSpeech: boolean("use_text_to_speech").notNull().default(true),
+  
+  // Hold Music
+  holdMusicUrl: text("hold_music_url"),
+  
+  // Timeout Settings (seconds)
+  ivrTimeout: integer("ivr_timeout").notNull().default(10),
+  queueTimeout: integer("queue_timeout").notNull().default(300),
+  ringTimeout: integer("ring_timeout").notNull().default(30),
+  
+  // Voicemail when no answer
+  voicemailEnabled: boolean("voicemail_enabled").notNull().default(true),
+  voicemailGreetingUrl: text("voicemail_greeting_url"),
+  voicemailEmail: text("voicemail_email"),
+  
+  // Business Hours
+  businessHoursEnabled: boolean("business_hours_enabled").notNull().default(false),
+  businessHoursStart: text("business_hours_start").default("09:00"),
+  businessHoursEnd: text("business_hours_end").default("17:00"),
+  businessHoursTimezone: text("business_hours_timezone").default("America/New_York"),
+  afterHoursAction: text("after_hours_action").default("voicemail").$type<"voicemail" | "message" | "forward">(),
+  afterHoursForwardNumber: text("after_hours_forward_number"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// PBX IVR Menu Options - Press 1 for Sales, Press 2 for Support, etc.
+export const pbxMenuOptions = pgTable("pbx_menu_options", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  pbxSettingsId: text("pbx_settings_id").notNull().references(() => pbxSettings.id, { onDelete: "cascade" }),
+  
+  // DTMF digit (1-9, 0, *, #)
+  digit: text("digit").notNull(),
+  label: text("label").notNull(),
+  
+  // Action to take
+  actionType: text("action_type").notNull().$type<"queue" | "extension" | "external" | "voicemail" | "submenu" | "hangup">(),
+  
+  // Target based on action type
+  targetQueueId: text("target_queue_id").references(() => pbxQueues.id, { onDelete: "set null" }),
+  targetExtensionId: text("target_extension_id").references(() => pbxExtensions.id, { onDelete: "set null" }),
+  targetExternalNumber: text("target_external_number"),
+  targetSubmenuId: text("target_submenu_id"),
+  
+  // Audio announcement before action
+  announcementText: text("announcement_text"),
+  announcementAudioUrl: text("announcement_audio_url"),
+  
+  // Order for display
+  displayOrder: integer("display_order").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// PBX Queues - Call queues (Sales, Support, etc.)
+export const pbxQueues = pgTable("pbx_queues", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  name: text("name").notNull(),
+  description: text("description"),
+  
+  // Ring Strategy
+  ringStrategy: text("ring_strategy").notNull().default("ring_all").$type<PbxRingStrategy>(),
+  
+  // Timing
+  ringTimeout: integer("ring_timeout").notNull().default(20),
+  wrapUpTime: integer("wrap_up_time").notNull().default(5),
+  maxWaitTime: integer("max_wait_time").notNull().default(300),
+  
+  // Audio
+  holdMusicUrl: text("hold_music_url"),
+  queueAnnouncementUrl: text("queue_announcement_url"),
+  announcementFrequency: integer("announcement_frequency").default(60),
+  
+  // Overflow handling
+  maxCallers: integer("max_callers").default(10),
+  overflowAction: text("overflow_action").default("voicemail").$type<"voicemail" | "forward" | "hangup">(),
+  overflowNumber: text("overflow_number"),
+  
+  // Status
+  status: text("status").notNull().default("active").$type<PbxQueueStatus>(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// PBX Queue Members - Agents assigned to queues
+export const pbxQueueMembers = pgTable("pbx_queue_members", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  queueId: text("queue_id").notNull().references(() => pbxQueues.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  // Member priority (lower = higher priority for round_robin)
+  priority: integer("priority").notNull().default(1),
+  
+  // Status
+  isActive: boolean("is_active").notNull().default(true),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  queueUserUnique: uniqueIndex("pbx_queue_members_queue_user_unique").on(table.queueId, table.userId),
+}));
+
+// PBX Extensions - Direct dial extensions for users
+export const pbxExtensions = pgTable("pbx_extensions", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  // Extension number (e.g., 101, 102)
+  extension: text("extension").notNull(),
+  
+  // Display name for caller ID
+  displayName: text("display_name"),
+  
+  // Ring timeout before going to personal voicemail
+  ringTimeout: integer("ring_timeout").notNull().default(20),
+  
+  // Personal voicemail
+  voicemailEnabled: boolean("voicemail_enabled").notNull().default(true),
+  voicemailGreetingUrl: text("voicemail_greeting_url"),
+  voicemailEmail: text("voicemail_email"),
+  
+  // Forward if busy/no answer
+  forwardOnBusy: boolean("forward_on_busy").notNull().default(false),
+  forwardOnNoAnswer: boolean("forward_on_no_answer").notNull().default(false),
+  forwardNumber: text("forward_number"),
+  
+  // Do Not Disturb
+  dndEnabled: boolean("dnd_enabled").notNull().default(false),
+  
+  isActive: boolean("is_active").notNull().default(true),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  companyExtensionUnique: uniqueIndex("pbx_extensions_company_extension_unique").on(table.companyId, table.extension),
+}));
+
+// PBX Agent Status - Real-time status tracking for queue routing
+export const pbxAgentStatus = pgTable("pbx_agent_status", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  userId: text("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  // Current status
+  status: text("status").notNull().default("offline").$type<PbxAgentStatusType>(),
+  
+  // Current call info
+  currentCallId: text("current_call_id"),
+  inCallSince: timestamp("in_call_since"),
+  
+  // Stats for routing decisions
+  lastCallEndedAt: timestamp("last_call_ended_at"),
+  callsHandledToday: integer("calls_handled_today").notNull().default(0),
+  
+  // WebRTC registration status
+  sipRegistered: boolean("sip_registered").notNull().default(false),
+  lastRegisteredAt: timestamp("last_registered_at"),
+  
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  companyUserUnique: uniqueIndex("pbx_agent_status_company_user_unique").on(table.companyId, table.userId),
+}));
+
+// PBX Active Calls - Track calls in queues for routing
+export const pbxActiveCalls = pgTable("pbx_active_calls", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Telnyx identifiers
+  callControlId: text("call_control_id").notNull(),
+  callSessionId: text("call_session_id"),
+  callLegId: text("call_leg_id"),
+  
+  // Call info
+  fromNumber: text("from_number").notNull(),
+  toNumber: text("to_number").notNull(),
+  
+  // Current state
+  state: text("state").notNull().$type<"ivr" | "queue" | "ringing" | "connected" | "hold" | "transferring">(),
+  
+  // Queue info (if in queue)
+  queueId: text("queue_id").references(() => pbxQueues.id, { onDelete: "set null" }),
+  queueEnteredAt: timestamp("queue_entered_at"),
+  queuePosition: integer("queue_position"),
+  
+  // Connected agent (if connected)
+  connectedAgentId: text("connected_agent_id").references(() => users.id, { onDelete: "set null" }),
+  agentCallControlId: text("agent_call_control_id"),
+  
+  // Timing
+  startedAt: timestamp("started_at").defaultNow().notNull(),
+  answeredAt: timestamp("answered_at"),
+  
+  // Metadata
+  metadata: jsonb("metadata"),
+});
+
+// PBX Audio Files - Uploaded audio files for IVR/Hold Music
+export const pbxAudioFiles = pgTable("pbx_audio_files", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  name: text("name").notNull(),
+  description: text("description"),
+  
+  // File info
+  fileUrl: text("file_url").notNull(),
+  fileName: text("file_name").notNull(),
+  fileSize: integer("file_size"),
+  duration: integer("duration"),
+  mimeType: text("mime_type"),
+  
+  // Type
+  audioType: text("audio_type").notNull().$type<"greeting" | "hold_music" | "announcement" | "voicemail_greeting">(),
+  
+  // If generated via TTS
+  ttsGenerated: boolean("tts_generated").notNull().default(false),
+  ttsText: text("tts_text"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// Insert Schemas for PBX
+export const insertPbxSettingsSchema = createInsertSchema(pbxSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPbxMenuOptionSchema = createInsertSchema(pbxMenuOptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPbxQueueSchema = createInsertSchema(pbxQueues).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPbxQueueMemberSchema = createInsertSchema(pbxQueueMembers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPbxExtensionSchema = createInsertSchema(pbxExtensions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPbxAgentStatusSchema = createInsertSchema(pbxAgentStatus).omit({
+  id: true,
+  updatedAt: true,
+});
+
+export const insertPbxActiveCallSchema = createInsertSchema(pbxActiveCalls).omit({
+  id: true,
+});
+
+export const insertPbxAudioFileSchema = createInsertSchema(pbxAudioFiles).omit({
+  id: true,
+  createdAt: true,
+});
+
+// Types for PBX
+export type PbxSettings = typeof pbxSettings.$inferSelect;
+export type InsertPbxSettings = z.infer<typeof insertPbxSettingsSchema>;
+
+export type PbxMenuOption = typeof pbxMenuOptions.$inferSelect;
+export type InsertPbxMenuOption = z.infer<typeof insertPbxMenuOptionSchema>;
+
+export type PbxQueue = typeof pbxQueues.$inferSelect;
+export type InsertPbxQueue = z.infer<typeof insertPbxQueueSchema>;
+
+export type PbxQueueMember = typeof pbxQueueMembers.$inferSelect;
+export type InsertPbxQueueMember = z.infer<typeof insertPbxQueueMemberSchema>;
+
+export type PbxExtension = typeof pbxExtensions.$inferSelect;
+export type InsertPbxExtension = z.infer<typeof insertPbxExtensionSchema>;
+
+export type PbxAgentStatus = typeof pbxAgentStatus.$inferSelect;
+export type InsertPbxAgentStatus = z.infer<typeof insertPbxAgentStatusSchema>;
+
+export type PbxActiveCall = typeof pbxActiveCalls.$inferSelect;
+export type InsertPbxActiveCall = z.infer<typeof insertPbxActiveCallSchema>;
+
+export type PbxAudioFile = typeof pbxAudioFiles.$inferSelect;
+export type InsertPbxAudioFile = z.infer<typeof insertPbxAudioFileSchema>;
