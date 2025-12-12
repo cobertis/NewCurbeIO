@@ -93,7 +93,8 @@ interface NumberInfo {
   emergency_enabled?: boolean;
 }
 
-function formatPhoneDisplay(phone: string): string {
+function formatPhoneDisplay(phone: string | undefined | null): string {
+  if (!phone) return "";
   const digits = phone.replace(/\D/g, '');
   if (digits.length === 11 && digits.startsWith('1')) {
     return `(${digits.slice(1, 4)}) ${digits.slice(4, 7)}-${digits.slice(7)}`;
