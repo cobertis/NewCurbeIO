@@ -68,11 +68,11 @@ class ExtensionCallService {
       this.connectedClients.delete(extensionId);
       console.log(`[ExtensionCall] Extension ${client.extension} unregistered`);
 
-      for (const [callId, call] of this.activeCalls) {
+      Array.from(this.activeCalls.entries()).forEach(([callId, call]) => {
         if (call.callerExtensionId === extensionId || call.calleeExtensionId === extensionId) {
           this.endCall(callId, "disconnect");
         }
-      }
+      });
     }
   }
 
@@ -89,7 +89,7 @@ class ExtensionCallService {
       status: "available" | "busy";
     }> = [];
 
-    for (const [extensionId, client] of this.connectedClients) {
+    Array.from(this.connectedClients.entries()).forEach(([extensionId, client]) => {
       if (client.companyId === companyId) {
         const isBusy = Array.from(this.activeCalls.values()).some(
           (call) =>
@@ -104,7 +104,7 @@ class ExtensionCallService {
           status: isBusy ? "busy" : "available",
         });
       }
-    }
+    });
 
     return online;
   }

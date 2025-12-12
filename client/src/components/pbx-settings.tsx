@@ -26,8 +26,10 @@ import {
   Voicemail,
   Clock,
   Music,
-  Mic
+  Mic,
+  PhoneCall
 } from "lucide-react";
+import { ExtensionPhone } from "@/components/extension-phone";
 
 interface PbxSettings {
   id: string;
@@ -238,6 +240,10 @@ export function PbxSettings() {
           <TabsTrigger value="extensions" data-testid="tab-pbx-extensions">
             <Users className="w-4 h-4 mr-2" />
             Extensions
+          </TabsTrigger>
+          <TabsTrigger value="calling" data-testid="tab-pbx-calling">
+            <PhoneCall className="w-4 h-4 mr-2" />
+            Calling
           </TabsTrigger>
         </TabsList>
 
@@ -656,6 +662,10 @@ export function PbxSettings() {
               )}
             </CardContent>
           </Card>
+        </TabsContent>
+
+        <TabsContent value="calling" className="space-y-6 mt-6">
+          <ExtensionPhone />
         </TabsContent>
       </Tabs>
 

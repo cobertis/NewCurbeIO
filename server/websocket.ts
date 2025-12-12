@@ -81,7 +81,7 @@ export function setupWebSocket(server: Server, pgSessionStore?: any) {
     const pathname = request.url || '';
     
     // Only handle our specific WebSocket paths
-    if (!pathname.startsWith('/ws/sip') && !pathname.startsWith('/ws/chat')) {
+    if (!pathname.startsWith('/ws/sip') && !pathname.startsWith('/ws/chat') && !pathname.startsWith('/ws/pbx')) {
       // Let other handlers (Vite HMR, etc.) handle this upgrade
       // Don't touch it - just return and let Express/Vite handle it
       return;
@@ -115,6 +115,8 @@ export function setupWebSocket(server: Server, pgSessionStore?: any) {
             handleSipConnection(ws as AuthenticatedWebSocket, request);
           } else if (pathname.startsWith('/ws/chat')) {
             handleChatConnection(ws as AuthenticatedWebSocket, request);
+          } else if (pathname.startsWith('/ws/pbx')) {
+            handlePbxConnection(ws as AuthenticatedWebSocket, request);
           }
         });
       }
@@ -303,6 +305,94 @@ function handleChatConnection(ws: AuthenticatedWebSocket, req: IncomingMessage) 
 
   ws.on('close', () => {
     console.log('[WebSocket] Client disconnected');
+  });
+}
+
+// PBX Extension-to-Extension Call Handler
+async function handlePbxConnection(ws: AuthenticatedWebSocket, req: IncomingMessage) {
+  const sessionId = getSessionIdFromRequest(req);
+  
+  if (!sessionId || !sessionStore) {
+    ws.close(1008, 'Unauthorized');
+    return;
+  }
+  
+  sessionStore.get(sessionId, async (err: any, session: SessionData) => {
+    if (err || !session || !session.user?.id) {
+      ws.close(1008, 'Unauthorized');
+      return;
+    }
+    
+    const userId = session.user.id;
+    const companyId = session.user.companyId;
+    
+    if (!companyId) {
+      ws.close(1008, 'No company');
+      return;
+    }
+    
+    const client = await extensionCallService.registerExtension(ws, userId, companyId);
+    
+    if (!client) {
+      ws.send(JSON.stringify({ type: 'error', message: 'No extension assigned' }));
+      ws.close(1008, 'No extension');
+      return;
+    }
+    
+    ws.send(JSON.stringify({ 
+      type: 'registered', 
+      extensionId: client.extensionId,
+      extension: client.extension,
+      displayName: client.displayName
+    }));
+    
+    // Send online extensions list
+    const online = await extensionCallService.getOnlineExtensions(companyId);
+    ws.send(JSON.stringify({ type: 'online_extensions', extensions: online }));
+    
+    ws.on('message', async (data) => {
+      try {
+        const msg = JSON.parse(data.toString());
+        
+        switch (msg.type) {
+          case 'call':
+            const result = await extensionCallService.initiateCall(
+              client.extensionId,
+              msg.toExtension,
+              msg.sdpOffer
+            );
+            ws.send(JSON.stringify({ type: 'call_result', ...result }));
+            break;
+            
+          case 'answer':
+            await extensionCallService.answerCall(msg.callId, client.extensionId, msg.sdpAnswer);
+            break;
+            
+          case 'reject':
+            await extensionCallService.rejectCall(msg.callId, client.extensionId);
+            break;
+            
+          case 'ice_candidate':
+            extensionCallService.relayIceCandidate(msg.callId, client.extensionId, msg.candidate);
+            break;
+            
+          case 'hangup':
+            extensionCallService.endCall(msg.callId, 'hangup');
+            break;
+            
+          case 'get_online':
+            const extensions = await extensionCallService.getOnlineExtensions(companyId);
+            ws.send(JSON.stringify({ type: 'online_extensions', extensions }));
+            break;
+        }
+      } catch (e) {
+        console.error('[PBX WebSocket] Message error:', e);
+      }
+    });
+    
+    ws.on('close', () => {
+      extensionCallService.unregisterExtension(client.extensionId);
+    });
   });
 }
 
