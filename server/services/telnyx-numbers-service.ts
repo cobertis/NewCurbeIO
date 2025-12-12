@@ -1464,6 +1464,69 @@ export async function updateNumberVoiceSettings(
       }
     }
     
+    // If voicemail settings changed, sync to Telnyx API
+    if (typeof settings.voicemailEnabled === 'boolean' || settings.voicemailPin) {
+      const apiKey = await getTelnyxMasterApiKey();
+      
+      const [wallet] = await db
+        .select()
+        .from(wallets)
+        .where(eq(wallets.companyId, companyId));
+      
+      if (wallet?.telnyxAccountId) {
+        const headers: Record<string, string> = {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+          "x-managed-account-id": wallet.telnyxAccountId,
+        };
+        
+        // Get current voicemail settings from local DB (just updated)
+        const [updatedNumber] = await db
+          .select()
+          .from(telnyxPhoneNumbers)
+          .where(eq(telnyxPhoneNumbers.id, phoneNumberId));
+        
+        if (updatedNumber?.voicemailEnabled && updatedNumber?.voicemailPin) {
+          // Enable voicemail with PIN via Telnyx API
+          const voicemailPayload = {
+            pin: parseInt(updatedNumber.voicemailPin, 10),
+            enabled: true,
+          };
+          
+          const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumber.telnyxPhoneNumberId}/voicemail`, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify(voicemailPayload),
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`[Voicemail] Telnyx sync failed for ${phoneNumber.phoneNumber}: ${response.status} - ${errorText}`);
+          } else {
+            console.log(`[Voicemail] Enabled for ${phoneNumber.phoneNumber} with PIN`);
+          }
+        } else if (!updatedNumber?.voicemailEnabled) {
+          // Disable voicemail
+          const voicemailPayload = {
+            enabled: false,
+          };
+          
+          const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumber.telnyxPhoneNumberId}/voicemail`, {
+            method: "PUT",
+            headers,
+            body: JSON.stringify(voicemailPayload),
+          });
+          
+          if (!response.ok) {
+            const errorText = await response.text();
+            console.error(`[Voicemail] Disable failed for ${phoneNumber.phoneNumber}: ${response.status} - ${errorText}`);
+          } else {
+            console.log(`[Voicemail] Disabled for ${phoneNumber.phoneNumber}`);
+          }
+        }
+      }
+    }
+    
     console.log(`[Voice Settings] Updated ${phoneNumber.phoneNumber}: ${JSON.stringify(settings)}`);
     return { success: true };
   } catch (error) {

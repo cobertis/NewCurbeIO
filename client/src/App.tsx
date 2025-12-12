@@ -409,6 +409,20 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       
       // Play notification sound
       playNotificationSound();
+    } else if (message.type === 'telnyx_number_unassigned') {
+      // Phone number was unassigned from this user - disconnect WebRTC
+      console.log('[WEBSOCKET] Telnyx number unassigned:', message.phoneNumber);
+      
+      // Invalidate queries to reflect the change
+      queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/my-numbers"] });
+      
+      // Show notification to user
+      toast({
+        title: "Phone Number Unassigned",
+        description: `The phone number ${message.phoneNumber} has been reassigned. Your phone will disconnect.`,
+        variant: "destructive",
+      });
     }
   }, [playNotificationSound, user]);
 

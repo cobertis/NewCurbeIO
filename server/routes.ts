@@ -26128,6 +26128,186 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+  // POST /webhooks/telnyx/voicemail - Handle voicemail completed events
+  app.post("/webhooks/telnyx/voicemail", async (req: Request, res: Response) => {
+    try {
+      const eventType = req.body?.data?.event_type;
+      console.log("[Telnyx Voicemail] Received webhook:", eventType);
+      
+      if (eventType === 'calls.voicemail.completed') {
+        const payload = req.body.data.payload;
+        const fromNumber = payload.from;
+        const toNumber = payload.to;
+        const recordingUrl = payload.recording_url;
+        const callSessionId = payload.call_session_id;
+        const connectionId = payload.connection_id;
+        const occurredAt = req.body.data.occurred_at;
+        
+        console.log("[Telnyx Voicemail] New voicemail from", fromNumber, "to", toNumber);
+        
+        // Find the phone number and its owner
+        const [phoneNumber] = await db
+          .select()
+          .from(telnyxPhoneNumbers)
+          .where(eq(telnyxPhoneNumbers.phoneNumber, toNumber));
+        
+        if (phoneNumber) {
+          // Try to match caller with a contact
+          let contactId: string | null = null;
+          let callerName: string | null = null;
+          
+          const [contact] = await db
+            .select()
+            .from(contacts)
+            .where(and(
+              eq(contacts.companyId, phoneNumber.companyId),
+              or(
+                eq(contacts.phone, fromNumber),
+                eq(contacts.mobilePhone, fromNumber)
+              )
+            ))
+            .limit(1);
+          
+          if (contact) {
+            contactId = contact.id;
+            callerName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || null;
+          }
+          
+          // Store voicemail in database
+          await db.insert(voicemails).values({
+            companyId: phoneNumber.companyId,
+            userId: phoneNumber.ownerUserId,
+            telnyxCallSessionId: callSessionId,
+            telnyxConnectionId: connectionId,
+            fromNumber,
+            toNumber,
+            callerName,
+            contactId,
+            recordingUrl,
+            status: 'new',
+            receivedAt: new Date(occurredAt),
+          });
+          
+          console.log("[Telnyx Voicemail] Stored voicemail for company", phoneNumber.companyId);
+          
+          // Notify user via WebSocket if they have one assigned
+          if (phoneNumber.ownerUserId) {
+            const { broadcastNewVoicemailToUser } = await import('./websocket');
+            broadcastNewVoicemailToUser(phoneNumber.ownerUserId, fromNumber, callerName);
+          }
+        } else {
+          console.warn("[Telnyx Voicemail] No phone number found for", toNumber);
+        }
+      }
+      
+      res.status(200).json({ received: true });
+    } catch (error: any) {
+      console.error("[Telnyx Voicemail] Error:", error);
+      res.status(500).json({ error: "Voicemail processing failed" });
+    }
+  });
+
+  // ==================== VOICEMAIL API ====================
+  
+  // GET /api/voicemails - List voicemails for current user
+  app.get("/api/voicemails", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      // Get voicemails for this user (or all for admin)
+      const whereConditions = [eq(voicemails.companyId, user.companyId)];
+      
+      // If not admin, only show voicemails for numbers assigned to this user
+      if (user.role === 'agent') {
+        whereConditions.push(eq(voicemails.userId, user.id));
+      }
+      
+      const userVoicemails = await db
+        .select({
+          id: voicemails.id,
+          fromNumber: voicemails.fromNumber,
+          toNumber: voicemails.toNumber,
+          callerName: voicemails.callerName,
+          recordingUrl: voicemails.recordingUrl,
+          duration: voicemails.duration,
+          status: voicemails.status,
+          receivedAt: voicemails.receivedAt,
+          readAt: voicemails.readAt,
+          contactId: voicemails.contactId,
+        })
+        .from(voicemails)
+        .where(and(...whereConditions))
+        .orderBy(desc(voicemails.receivedAt))
+        .limit(50);
+      
+      res.json({ voicemails: userVoicemails });
+    } catch (error: any) {
+      console.error("[Voicemails] List error:", error);
+      res.status(500).json({ message: "Failed to fetch voicemails" });
+    }
+  });
+  
+  // PATCH /api/voicemails/:id/read - Mark voicemail as read
+  app.patch("/api/voicemails/:id/read", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      await db
+        .update(voicemails)
+        .set({ 
+          status: 'read',
+          readAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(voicemails.id, id),
+          eq(voicemails.companyId, user.companyId)
+        ));
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Voicemails] Mark read error:", error);
+      res.status(500).json({ message: "Failed to mark voicemail as read" });
+    }
+  });
+  
+  // DELETE /api/voicemails/:id - Delete voicemail
+  app.delete("/api/voicemails/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      await db
+        .update(voicemails)
+        .set({ 
+          status: 'deleted',
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(voicemails.id, id),
+          eq(voicemails.companyId, user.companyId)
+        ));
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Voicemails] Delete error:", error);
+      res.status(500).json({ message: "Failed to delete voicemail" });
+    }
+  });
   // ==================== WALLET API ====================
   
   // GET /api/wallet - Get company wallet
@@ -28540,6 +28720,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
 
+      // Capture previous owner before update for unassignment notification
+      const previousOwnerId = phoneNumber.ownerUserId;
+
       // Update the phone number's ownerUserId
       await db
         .update(telnyxPhoneNumbers)
@@ -28550,6 +28733,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .where(eq(telnyxPhoneNumbers.id, phoneNumber.id));
 
       console.log(`[Telnyx Assign] Phone ${phoneNumber.phoneNumber} assigned to user ${userId || "unassigned"} by admin ${user.id}`);
+
+      // Notify previous owner to disconnect their WebRTC
+      if (previousOwnerId && previousOwnerId !== userId) {
+        const { broadcastTelnyxNumberUnassigned } = await import("./websocket");
+        broadcastTelnyxNumberUnassigned(previousOwnerId, phoneNumber.phoneNumber);
+      }
 
       // Broadcast real-time notification to the assigned user so their WebRTC auto-connects
       if (userId) {

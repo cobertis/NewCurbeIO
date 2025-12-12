@@ -476,6 +476,65 @@ export function broadcastTelnyxNumberAssigned(userId: string, phoneNumber: strin
   console.log(`[WebSocket] Broadcasting telnyx_number_assigned to user ${userId} (${sentCount} active sessions)`);
 }
 
+// Broadcast Telnyx phone number unassignment to the previous user so they disconnect WebRTC
+export function broadcastTelnyxNumberUnassigned(userId: string, phoneNumber: string) {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const message = JSON.stringify({
+    type: 'telnyx_number_unassigned',
+    phoneNumber,
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    if (authClient.userId === userId) {
+      client.send(message);
+      sentCount++;
+    }
+  });
+
+  console.log(`[WebSocket] Broadcasting telnyx_number_unassigned to user ${userId} (${sentCount} active sessions)`);
+}
+
+// Broadcast new voicemail notification to a specific user
+export function broadcastNewVoicemailToUser(userId: string, fromNumber: string, callerName: string | null) {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const message = JSON.stringify({
+    type: 'new_voicemail',
+    fromNumber,
+    callerName,
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    if (authClient.userId === userId) {
+      client.send(message);
+      sentCount++;
+    }
+  });
+
+  console.log(`[WebSocket] Broadcasting new_voicemail to user ${userId} (${sentCount} active sessions)`);
+}
+
 // Broadcast subscription update to tenant-scoped clients only
 export function broadcastSubscriptionUpdate(companyId: string) {
   if (!wss) {
