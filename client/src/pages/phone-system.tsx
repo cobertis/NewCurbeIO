@@ -24,7 +24,6 @@ import {
   MessageSquare,
   Shield,
   Wallet,
-  RefreshCw,
   Plus,
   Clock,
   Copy,
@@ -163,7 +162,6 @@ export default function PhoneSystem() {
   const [selectedNumber, setSelectedNumber] = useState<NumberInfo | null>(null);
   const [editingCnam, setEditingCnam] = useState(false);
   const [cnamInput, setCnamInput] = useState("");
-  const [isAddFundsAnimating, setIsAddFundsAnimating] = useState(false);
 
   const { data: statusData, isLoading: isLoadingStatus, refetch } = useQuery<StatusResponse>({
     queryKey: ["/api/telnyx/managed-accounts/status"],
@@ -787,17 +785,10 @@ export default function PhoneSystem() {
             <Button 
               variant="outline" 
               size="sm" 
-              onClick={() => {
-                setIsAddFundsAnimating(true);
-                setTimeout(() => setIsAddFundsAnimating(false), 600);
-                setShowAddFunds(true);
-              }} 
+              onClick={() => setShowAddFunds(true)} 
               data-testid="button-add-funds-quick"
             >
-              <div className="relative mr-1.5">
-                <DollarSign className="h-3.5 w-3.5 text-green-600" />
-                <RefreshCw className={`h-2.5 w-2.5 absolute -top-0.5 -right-1 text-indigo-500 ${isAddFundsAnimating ? 'animate-spin' : ''}`} />
-              </div>
+              <Plus className="h-3 w-3 mr-1" />
               Add Funds
             </Button>
             <div className="flex items-center gap-2">
