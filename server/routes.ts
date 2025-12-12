@@ -28181,9 +28181,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.json({ numbers: result.numbers, totalCount: result.totalCount, currentPage: result.currentPage, totalPages: result.totalPages, pageSize: result.pageSize });
       }
       
-      // Regular users only see their own numbers (user-scoped)
-      // Superadmins see all company numbers, regular users only see their own
-      const userId = user.role === 'superadmin' ? undefined : user.id;
+      // Agents only see their own numbers, admins see all company numbers
+      // This ensures all admins in a company can manage all phone numbers
+      const userId = (user.role === 'superadmin' || user.role === 'admin') ? undefined : user.id;
       const { getUserPhoneNumbers } = await import("./services/telnyx-numbers-service");
       const result = await getUserPhoneNumbers(user.companyId, userId);
 
@@ -29261,7 +29261,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
       // Superadmins can see all company telephony resources, admins only see their own
-      const userId = user.role === 'superadmin' ? undefined : user.id;
+      const userId = (user.role === 'superadmin' || user.role === 'admin') ? undefined : user.id;
       const status = await telephonyProvisioningService.getProvisioningStatus(user.companyId, userId);
 
       if (!status) {
@@ -29498,7 +29498,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
       // Superadmins can see all company telephony resources, admins only see their own
-      const userId = user.role === 'superadmin' ? undefined : user.id;
+      const userId = (user.role === 'superadmin' || user.role === 'admin') ? undefined : user.id;
       const credentials = await telephonyProvisioningService.getSipCredentials(user.companyId, userId);
 
       if (!credentials) {
