@@ -4,6 +4,7 @@ import { EmergencyAddressForm } from '@/components/EmergencyAddressForm';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
 import { telnyxWebRTC, useTelnyxStore } from '@/services/telnyx-webrtc';
+import { useExtensionCall } from '@/hooks/useExtensionCall';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -398,13 +399,23 @@ interface Contact {
   phoneNumber: string;
 }
 
+interface OnlineExtensionForContacts {
+  extensionId: string;
+  extension: string;
+  displayName: string;
+  status: "available" | "busy";
+}
+
 interface ContactsViewProps {
   setDialNumber: (number: string) => void;
   setViewMode: (mode: ViewMode) => void;
+  onlineExtensions?: OnlineExtensionForContacts[];
+  onCallExtension?: (extension: string, displayName: string) => void;
 }
 
-function ContactsView({ setDialNumber, setViewMode }: ContactsViewProps) {
+function ContactsView({ setDialNumber, setViewMode, onlineExtensions = [], onCallExtension }: ContactsViewProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const [activeTab, setActiveTab] = useState<'contacts' | 'extensions'>('contacts');
   
   // Fetch unified contacts (only those with phone numbers)
   const { data: contactsData } = useQuery<{ contacts: any[] }>({
@@ -436,9 +447,26 @@ function ContactsView({ setDialNumber, setViewMode }: ContactsViewProps) {
     );
   }, [allContacts, searchQuery]);
   
+  // Filter extensions based on search
+  const filteredExtensions = useMemo(() => {
+    if (!searchQuery) return onlineExtensions;
+    
+    const query = searchQuery.toLowerCase();
+    return onlineExtensions.filter(ext => 
+      ext.displayName.toLowerCase().includes(query) ||
+      ext.extension.includes(query)
+    );
+  }, [onlineExtensions, searchQuery]);
+  
   const handleCallContact = (phoneNumber: string) => {
     setDialNumber(phoneNumber);
     setViewMode('keypad');
+  };
+  
+  const handleCallExtension = (ext: OnlineExtensionForContacts) => {
+    if (onCallExtension && ext.status === 'available') {
+      onCallExtension(ext.extension, ext.displayName);
+    }
   };
   
   return (
@@ -457,60 +485,156 @@ function ContactsView({ setDialNumber, setViewMode }: ContactsViewProps) {
             data-testid="input-search-contacts"
           />
         </div>
+        {/* Tab switcher for contacts vs extensions */}
+        {onlineExtensions.length > 0 && (
+          <div className="flex gap-1 bg-muted rounded-lg p-0.5">
+            <button
+              onClick={() => setActiveTab('contacts')}
+              className={cn(
+                "flex-1 text-xs py-1.5 rounded-md transition-colors",
+                activeTab === 'contacts' ? "bg-background shadow-sm font-medium" : "text-muted-foreground"
+              )}
+              data-testid="tab-contacts"
+            >
+              Contacts
+            </button>
+            <button
+              onClick={() => setActiveTab('extensions')}
+              className={cn(
+                "flex-1 text-xs py-1.5 rounded-md transition-colors flex items-center justify-center gap-1",
+                activeTab === 'extensions' ? "bg-background shadow-sm font-medium" : "text-muted-foreground"
+              )}
+              data-testid="tab-extensions"
+            >
+              <Users className="h-3 w-3" />
+              Extensions ({onlineExtensions.length})
+            </button>
+          </div>
+        )}
       </div>
       
-      {/* Contacts list */}
+      {/* Content based on active tab */}
       <div className="flex-1 overflow-y-auto">
-        {filteredContacts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center h-full text-center px-4 sm:px-6">
-            <User className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-2 sm:mb-3" />
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              {searchQuery ? 'No contacts found' : 'No contacts'}
-            </p>
-          </div>
-        ) : (
-          <div className="divide-y divide-border">
-            {filteredContacts.map((contact) => {
-              const initials = contact.name
-                .split(' ')
-                .map(n => n[0])
-                .join('')
-                .substring(0, 2)
-                .toUpperCase();
-              
-              return (
-                <div
-                  key={contact.id}
-                  className="flex items-center gap-2 px-2 sm:px-4 py-1.5 sm:py-2 hover:bg-muted/30 transition-colors"
-                  data-testid={`contact-${contact.id}`}
-                >
-                  {/* Avatar */}
-                  <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                    <span className="text-xs sm:text-sm font-medium text-muted-foreground">{initials}</span>
-                  </div>
-                  
-                  {/* Contact Info */}
-                  <div className="flex-1 min-w-0">
-                    <div className="text-sm sm:text-base font-normal truncate text-foreground mb-0.5">
-                      {contact.name}
-                    </div>
-                    <div className="text-[10px] sm:text-xs text-muted-foreground">
-                      {formatCallerNumber(contact.phoneNumber)}
-                    </div>
-                  </div>
-                  
-                  {/* Call button */}
-                  <button
-                    onClick={() => handleCallContact(contact.phoneNumber)}
-                    className="text-blue-500 hover:opacity-80 transition-opacity"
-                    data-testid={`button-call-contact-${contact.id}`}
+        {activeTab === 'contacts' ? (
+          /* Contacts list */
+          filteredContacts.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center px-4 sm:px-6">
+              <User className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-2 sm:mb-3" />
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                {searchQuery ? 'No contacts found' : 'No contacts'}
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {filteredContacts.map((contact) => {
+                const initials = contact.name
+                  .split(' ')
+                  .map(n => n[0])
+                  .join('')
+                  .substring(0, 2)
+                  .toUpperCase();
+                
+                return (
+                  <div
+                    key={contact.id}
+                    className="flex items-center gap-2 px-2 sm:px-4 py-1.5 sm:py-2 hover:bg-muted/30 transition-colors"
+                    data-testid={`contact-${contact.id}`}
                   >
-                    <Phone className="h-4 w-4 sm:h-5 sm:w-5" />
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                    {/* Avatar */}
+                    <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs sm:text-sm font-medium text-muted-foreground">{initials}</span>
+                    </div>
+                    
+                    {/* Contact Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm sm:text-base font-normal truncate text-foreground mb-0.5">
+                        {contact.name}
+                      </div>
+                      <div className="text-[10px] sm:text-xs text-muted-foreground">
+                        {formatCallerNumber(contact.phoneNumber)}
+                      </div>
+                    </div>
+                    
+                    {/* Call button */}
+                    <button
+                      onClick={() => handleCallContact(contact.phoneNumber)}
+                      className="text-blue-500 hover:opacity-80 transition-opacity"
+                      data-testid={`button-call-contact-${contact.id}`}
+                    >
+                      <Phone className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )
+        ) : (
+          /* Extensions list */
+          filteredExtensions.length === 0 ? (
+            <div className="flex flex-col items-center justify-center h-full text-center px-4 sm:px-6">
+              <Users className="h-10 w-10 sm:h-12 sm:w-12 text-muted-foreground mb-2 sm:mb-3" />
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                {searchQuery ? 'No extensions found' : 'No extensions online'}
+              </p>
+            </div>
+          ) : (
+            <div className="divide-y divide-border">
+              {filteredExtensions.map((ext) => {
+                const initials = ext.displayName
+                  .split(' ')
+                  .map(n => n[0])
+                  .join('')
+                  .substring(0, 2)
+                  .toUpperCase();
+                
+                return (
+                  <div
+                    key={ext.extensionId}
+                    className="flex items-center gap-2 px-2 sm:px-4 py-1.5 sm:py-2 hover:bg-muted/30 transition-colors"
+                    data-testid={`extension-${ext.extension}`}
+                  >
+                    {/* Avatar with status indicator */}
+                    <div className="relative w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                      <span className="text-xs sm:text-sm font-medium text-muted-foreground">{initials}</span>
+                      <div className={cn(
+                        "absolute -bottom-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-background",
+                        ext.status === 'available' ? "bg-green-500" : "bg-yellow-500"
+                      )} />
+                    </div>
+                    
+                    {/* Extension Info */}
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm sm:text-base font-normal truncate text-foreground mb-0.5">
+                        {ext.displayName}
+                      </div>
+                      <div className="text-[10px] sm:text-xs text-muted-foreground flex items-center gap-1">
+                        <span>Ext. {ext.extension}</span>
+                        <span className={cn(
+                          "px-1.5 py-0.5 rounded text-[9px] uppercase font-medium",
+                          ext.status === 'available' ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400" : "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                        )}>
+                          {ext.status}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Call button */}
+                    <button
+                      onClick={() => handleCallExtension(ext)}
+                      disabled={ext.status === 'busy'}
+                      className={cn(
+                        "transition-opacity",
+                        ext.status === 'available' ? "text-blue-500 hover:opacity-80" : "text-muted-foreground opacity-50 cursor-not-allowed"
+                      )}
+                      data-testid={`button-call-ext-${ext.extension}`}
+                    >
+                      <Phone className="h-4 w-4 sm:h-5 sm:w-5" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )
         )}
       </div>
     </div>
@@ -1438,6 +1562,51 @@ export function WebPhoneFloatingWindow() {
   const [telnyxCallDuration, setTelnyxCallDuration] = useState(0);
   const telnyxTimerRef = useRef<NodeJS.Timeout>();
   
+  // Extension-to-Extension calling (internal WebRTC)
+  const {
+    connectionStatus: extConnectionStatus,
+    myExtension: extMyExtension,
+    onlineExtensions: extOnlineExtensions,
+    currentExtCall,
+    incomingExtCall,
+    isMuted: extIsMuted,
+    connect: extConnect,
+    startCall: extStartCall,
+    answerCall: extAnswerCall,
+    rejectCall: extRejectCall,
+    endCall: extEndCall,
+    toggleMute: extToggleMute,
+    refreshOnlineExtensions: extRefreshOnlineExtensions,
+  } = useExtensionCall();
+  
+  // Auto-connect to extension WebSocket when user has an extension
+  useEffect(() => {
+    if (sipExtension || hasTelnyxNumber) {
+      extConnect();
+    }
+  }, [sipExtension, hasTelnyxNumber, extConnect]);
+  
+  // Timer for extension calls
+  const [extCallDuration, setExtCallDuration] = useState(0);
+  const extTimerRef = useRef<NodeJS.Timeout>();
+  
+  useEffect(() => {
+    if (currentExtCall?.state === 'connected' && currentExtCall.answerTime) {
+      const startTime = currentExtCall.answerTime.getTime();
+      extTimerRef.current = setInterval(() => {
+        setExtCallDuration(Math.floor((Date.now() - startTime) / 1000));
+      }, 1000);
+    } else {
+      if (extTimerRef.current) {
+        clearInterval(extTimerRef.current);
+        setExtCallDuration(0);
+      }
+    }
+    return () => {
+      if (extTimerRef.current) clearInterval(extTimerRef.current);
+    };
+  }, [currentExtCall?.state, currentExtCall?.answerTime]);
+  
   // Check if phone is available (either SIP extension or Telnyx number)
   const hasPhoneCapability = !!sipExtension || hasTelnyxNumber;
   
@@ -1445,6 +1614,7 @@ export function WebPhoneFloatingWindow() {
   // CRITICAL: This must NOT depend on hasTelnyxNumber query since that can be slow/stale
   // If there's a Telnyx call in the store (current, incoming, or outgoing), it's a Telnyx call
   const isTelnyxCall = !!(telnyxCurrentCall || telnyxIncomingCall || telnyxOutgoingCall);
+  const isExtensionCall = !!(currentExtCall || incomingExtCall);
   
   // Build effective call object for UI rendering
   // Filter out default SDK caller names that aren't useful
@@ -1456,7 +1626,30 @@ export function WebPhoneFloatingWindow() {
   };
   
   const effectiveCall = useMemo(() => {
-    // Priority: currentCall (active/answered) > outgoingCall (dialing) > incomingCall (ringing inbound)
+    // Priority: Extension calls > Telnyx calls > SIP calls
+    // Extension-to-extension calls (internal WebRTC)
+    if (currentExtCall) {
+      return {
+        phoneNumber: `Ext. ${currentExtCall.remoteExtension}`,
+        displayName: currentExtCall.remoteDisplayName,
+        status: currentExtCall.state === 'connected' ? 'answered' : 'ringing',
+        direction: 'outbound' as const,
+        isTelnyx: false,
+        isExtension: true,
+      };
+    }
+    if (incomingExtCall) {
+      return {
+        phoneNumber: `Ext. ${incomingExtCall.callerExtension}`,
+        displayName: incomingExtCall.callerDisplayName,
+        status: 'ringing',
+        direction: 'inbound' as const,
+        isTelnyx: false,
+        isExtension: true,
+      };
+    }
+    
+    // Telnyx PSTN calls
     // Use SipCallInfo from store for reliable caller info extraction
     // IMPORTANT: Only show caller name if callerIdNameEnabled is true (Caller ID Lookup setting)
     if (telnyxCurrentCall && telnyxCurrentCallInfo) {
@@ -1525,13 +1718,13 @@ export function WebPhoneFloatingWindow() {
       };
     }
     if (currentCall) {
-      return { ...currentCall, isTelnyx: false };
+      return { ...currentCall, isTelnyx: false, isExtension: false };
     }
     return null;
-  }, [telnyxCurrentCall, telnyxOutgoingCall, telnyxIncomingCall, telnyxCurrentCallInfo, telnyxOutgoingCallInfo, telnyxIncomingCallInfo, currentCall, telnyxCallerName, callerIdNameEnabled]);
+  }, [currentExtCall, incomingExtCall, telnyxCurrentCall, telnyxOutgoingCall, telnyxIncomingCall, telnyxCurrentCallInfo, telnyxOutgoingCallInfo, telnyxIncomingCallInfo, currentCall, telnyxCallerName, callerIdNameEnabled]);
   
   // Effective mute/hold state
-  const effectiveMuted = isTelnyxCall ? telnyxIsMuted : isMuted;
+  const effectiveMuted = isExtensionCall ? extIsMuted : (isTelnyxCall ? telnyxIsMuted : isMuted);
   const effectiveOnHold = isTelnyxCall ? telnyxIsOnHold : isOnHold;
   
   // Timer for Telnyx calls - only starts when call becomes active (not during ringing)
@@ -1618,12 +1811,14 @@ export function WebPhoneFloatingWindow() {
   
   // Unified call handlers
   const handleMuteToggle = useCallback(() => {
-    if (isTelnyxCall) {
+    if (isExtensionCall) {
+      extToggleMute();
+    } else if (isTelnyxCall) {
       telnyxWebRTC.toggleMute();
     } else {
       isMuted ? webPhone.unmuteCall() : webPhone.muteCall();
     }
-  }, [isTelnyxCall, isMuted]);
+  }, [isExtensionCall, isTelnyxCall, isMuted, extToggleMute]);
   
   const handleHoldToggle = useCallback(() => {
     if (isTelnyxCall) {
@@ -1634,28 +1829,34 @@ export function WebPhoneFloatingWindow() {
   }, [isTelnyxCall, isOnHold]);
   
   const handleHangup = useCallback(() => {
-    if (isTelnyxCall) {
+    if (isExtensionCall) {
+      extEndCall();
+    } else if (isTelnyxCall) {
       telnyxWebRTC.hangup();
     } else {
       webPhone.hangupCall();
     }
-  }, [isTelnyxCall]);
+  }, [isExtensionCall, isTelnyxCall, extEndCall]);
   
   const handleAnswerCall = useCallback(() => {
-    if (telnyxIncomingCall) {
+    if (incomingExtCall) {
+      extAnswerCall();
+    } else if (telnyxIncomingCall) {
       telnyxWebRTC.answerCall();
     } else {
       webPhone.answerCall();
     }
-  }, [telnyxIncomingCall]);
+  }, [incomingExtCall, telnyxIncomingCall, extAnswerCall]);
   
   const handleRejectCall = useCallback(() => {
-    if (telnyxIncomingCall) {
+    if (incomingExtCall) {
+      extRejectCall();
+    } else if (telnyxIncomingCall) {
       telnyxWebRTC.rejectCall();
     } else {
       webPhone.rejectCall();
     }
-  }, [telnyxIncomingCall]);
+  }, [incomingExtCall, telnyxIncomingCall, extRejectCall]);
   
   const handleSendDTMF = useCallback((digit: string) => {
     if (isTelnyxCall) {
@@ -1666,7 +1867,7 @@ export function WebPhoneFloatingWindow() {
   }, [isTelnyxCall]);
   
   // Get effective call duration
-  const effectiveCallDuration = isTelnyxCall ? telnyxCallDuration : callDuration;
+  const effectiveCallDuration = isExtensionCall ? extCallDuration : (isTelnyxCall ? telnyxCallDuration : callDuration);
 
   // Initialize Telnyx WebRTC when phone number is available
   const telnyxInitRef = useRef(false);
@@ -1928,6 +2129,17 @@ export function WebPhoneFloatingWindow() {
     if (!dialNumber) return;
     try {
       const digits = dialNumber.replace(/\D/g, '');
+      
+      // Check if this is an internal extension call
+      // Only treat as extension if the number exists in online extensions list
+      // This prevents accidentally calling 911, 411, etc. as extensions
+      const targetExt = extOnlineExtensions.find(e => e.extension === digits);
+      if (targetExt && targetExt.status === 'available') {
+        console.log('[WebPhone] Making extension-to-extension call to:', digits, targetExt.displayName);
+        await extStartCall(digits, targetExt.displayName);
+        setDialNumber('');
+        return;
+      }
       
       // Use Telnyx WebRTC if available, otherwise fallback to SIP.js
       if (hasTelnyxNumber) {
@@ -2908,7 +3120,12 @@ export function WebPhoneFloatingWindow() {
                   )}
                   
                   {viewMode === 'contacts' && (
-                    <ContactsView setDialNumber={setDialNumber} setViewMode={setViewMode} />
+                    <ContactsView 
+                      setDialNumber={setDialNumber} 
+                      setViewMode={setViewMode}
+                      onlineExtensions={extOnlineExtensions}
+                      onCallExtension={extStartCall}
+                    />
                   )}
                   
                   {viewMode === 'voicemail' && (
