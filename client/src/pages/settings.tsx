@@ -2799,7 +2799,7 @@ function TeamMembersTable() {
 
   // User creation form schema - matches superadmin form exactly
   const userFormSchema = insertUserSchema.omit({ password: true }).extend({
-    role: z.enum(["admin", "member", "viewer"]),
+    role: z.enum(["admin", "agent"]),
     firstName: z.string().optional(),
     lastName: z.string().optional(),
     phone: z.string().optional().or(z.literal("")),
@@ -2818,7 +2818,7 @@ function TeamMembersTable() {
       phone: "",
       dateOfBirth: "",
       preferredLanguage: "en",
-      role: "member",
+      role: "agent",
     },
   });
 
@@ -3010,8 +3010,7 @@ function TeamMembersTable() {
           <SelectContent>
             <SelectItem value="all">All Roles</SelectItem>
             <SelectItem value="admin">Admin</SelectItem>
-            <SelectItem value="member">Member</SelectItem>
-            <SelectItem value="viewer">Viewer</SelectItem>
+            <SelectItem value="agent">Agent</SelectItem>
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
@@ -3283,8 +3282,7 @@ function TeamMembersTable() {
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="member">Member</SelectItem>
-                        <SelectItem value="viewer">Viewer</SelectItem>
+                        <SelectItem value="agent">Agent</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -3338,7 +3336,7 @@ function UserDetailsDialog({ user, open, onOpenChange }: UserDetailsDialogProps)
         lastName: user.lastName || "",
         email: user.email || "",
         phone: user.phone || "",
-        role: user.role || "member",
+        role: user.role || "agent",
         timezone: user.timezone || "",
         agentInternalCode: user.agentInternalCode || "",
         instructionLevel: user.instructionLevel || "",
@@ -3401,7 +3399,7 @@ function UserDetailsDialog({ user, open, onOpenChange }: UserDetailsDialogProps)
         lastName: user.lastName || "",
         email: user.email || "",
         phone: user.phone || "",
-        role: user.role || "member",
+        role: user.role || "agent",
         timezone: user.timezone || "",
         agentInternalCode: user.agentInternalCode || "",
         instructionLevel: user.instructionLevel || "",
@@ -3549,7 +3547,7 @@ function UserDetailsDialog({ user, open, onOpenChange }: UserDetailsDialogProps)
               <div>
                 <Label htmlFor="role">Role</Label>
                 <Select
-                  value={formData.role || "member"}
+                  value={formData.role || "agent"}
                   onValueChange={(value) => setFormData({ ...formData, role: value })}
                   disabled={!isEditing}
                 >
@@ -3559,8 +3557,7 @@ function UserDetailsDialog({ user, open, onOpenChange }: UserDetailsDialogProps)
                   <SelectContent>
                     <SelectItem value="superadmin">Super Admin</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="member">Member</SelectItem>
-                    <SelectItem value="viewer">Viewer</SelectItem>
+                    <SelectItem value="agent">Agent</SelectItem>
                   </SelectContent>
                 </Select>
               </div>

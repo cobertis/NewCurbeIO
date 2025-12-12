@@ -178,7 +178,7 @@ export const users = pgTable("users", {
   referredBy: text("referred_by"), // Referred by
   
   // Role within the company
-  role: text("role").notNull().default("member"), // superadmin, admin, member, viewer
+  role: text("role").notNull().default("agent"), // superadmin, admin, agent
   
   // Multi-tenant reference
   companyId: varchar("company_id").references(() => companies.id, { onDelete: "cascade" }),
@@ -623,7 +623,7 @@ export const invitations = pgTable("invitations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
   email: text("email").notNull(),
-  role: text("role").notNull().default("member"),
+  role: text("role").notNull().default("agent"),
   token: text("token").notNull().unique(),
   invitedBy: varchar("invited_by").references(() => users.id, { onDelete: "set null" }),
   expiresAt: timestamp("expires_at").notNull(),
@@ -841,7 +841,7 @@ export const insertUserSchema = createInsertSchema(users).omit({
   emailVerifiedAt: true,
 }).extend({
   password: z.string().min(6).optional(), // Optional - set during activation
-  role: z.enum(["superadmin", "admin", "member", "viewer"]),
+  role: z.enum(["superadmin", "admin", "agent"]),
   companyId: z.string().optional(),
   viewAllCompanyData: z.boolean().optional().default(false), // Default to false - users see only their own data
   phone: z.string().regex(phoneRegex, "Phone must be in E.164 format (e.g., +14155552671)").optional().or(z.literal("")),
@@ -867,7 +867,7 @@ export const updateUserSchema = z.object({
   preferredLanguage: z.string().optional(),
   timezone: z.string().optional(),
   address: z.string().optional(),
-  role: z.enum(["superadmin", "admin", "member", "viewer"]).optional(),
+  role: z.enum(["superadmin", "admin", "agent"]).optional(),
   companyId: z.string().optional(),
   viewAllCompanyData: z.boolean().optional(), // Allow updating data visibility
   isActive: z.boolean().optional(),

@@ -23,7 +23,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 
 const userFormSchema = insertUserSchema.omit({ password: true }).extend({
-  role: z.enum(["superadmin", "admin", "member", "viewer"]),
+  role: z.enum(["superadmin", "admin", "agent"]),
   firstName: z.string().optional(),
   lastName: z.string().optional(),
   phone: z.string().optional().or(z.literal("")),
@@ -46,7 +46,7 @@ const editUserFormSchema = z.object({
   phone: z.string().optional().or(z.literal("")),
   dateOfBirth: z.string().optional().or(z.literal("")),
   preferredLanguage: z.string().optional(),
-  role: z.enum(["superadmin", "admin", "member", "viewer"]).optional(),
+  role: z.enum(["superadmin", "admin", "agent"]).optional(),
   companyId: z.string().optional(),
   isActive: z.boolean().optional(),
   viewAllCompanyData: z.boolean().optional(),
@@ -289,7 +289,7 @@ export default function Users() {
       phone: "",
       dateOfBirth: "",
       preferredLanguage: "en",
-      role: "member",
+      role: "agent",
       companyId: "",
     },
   });
@@ -303,7 +303,7 @@ export default function Users() {
       phone: "",
       dateOfBirth: "",
       preferredLanguage: "en",
-      role: "member",
+      role: "agent",
       companyId: "",
     },
   });
@@ -338,7 +338,7 @@ export default function Users() {
       viewAllCompanyData: user.viewAllCompanyData || false,
       dateOfBirth: user.dateOfBirth ? new Date(user.dateOfBirth).toISOString().split('T')[0] : "",
       preferredLanguage: user.preferredLanguage || "en",
-      role: user.role as "superadmin" | "admin" | "member" | "viewer" | undefined,
+      role: user.role as "superadmin" | "admin" | "agent" | undefined,
       companyId: user.companyId || "__none__",
     });
     setEditOpen(true);
@@ -425,7 +425,7 @@ export default function Users() {
                           }>
                             {profileUser.role === "superadmin" ? "Super Admin" :
                              profileUser.role === "admin" ? "Admin" :
-                             profileUser.role === "member" ? "Member" : "Viewer"}
+                             "Agent"}
                           </Badge>
                         </div>
                         <div>
@@ -575,7 +575,7 @@ export default function Users() {
       }
     };
 
-    const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.member;
+    const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.agent;
     return config;
   };
 
@@ -747,8 +747,7 @@ export default function Users() {
                         <SelectContent>
                           <SelectItem value="superadmin">Super Admin</SelectItem>
                           <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="member">Member</SelectItem>
-                          <SelectItem value="viewer">Viewer</SelectItem>
+                          <SelectItem value="agent">Agent</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -1026,8 +1025,7 @@ export default function Users() {
                         <SelectContent>
                           <SelectItem value="superadmin">Super Admin</SelectItem>
                           <SelectItem value="admin">Admin</SelectItem>
-                          <SelectItem value="member">Member</SelectItem>
-                          <SelectItem value="viewer">Viewer</SelectItem>
+                          <SelectItem value="agent">Agent</SelectItem>
                         </SelectContent>
                       </Select>
                       <FormMessage />
@@ -1204,9 +1202,8 @@ export default function Users() {
                       </FormControl>
                       <SelectContent>
                         <SelectItem value="superadmin">Super Admin</SelectItem>
-                        <SelectItem value="admin">Admin</SelectItem>
-                        <SelectItem value="member">Member</SelectItem>
-                        <SelectItem value="viewer">Viewer</SelectItem>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="agent">Agent</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
