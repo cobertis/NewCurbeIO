@@ -119,20 +119,30 @@ async function getWalletByTelnyxAccountId(telnyxAccountId: string) {
   return wallet || null;
 }
 
+function normalizeDirection(direction: string): "inbound" | "outbound" {
+  if (direction === "incoming" || direction === "inbound") {
+    return "inbound";
+  }
+  return "outbound";
+}
+
 export async function handleCallInitiated(event: TelnyxWebhookEvent): Promise<{ success: boolean; error?: string }> {
   const payload = event.data.payload;
   const connectionId = payload.connection_id;
   const from = payload.from || "";
   const to = payload.to || "";
-  const direction = payload.direction || "outbound";
+  const rawDirection = payload.direction || "outbound";
+  const direction = normalizeDirection(rawDirection);
   const callControlId = payload.call_control_id;
+  const callSessionId = payload.call_session_id;
+  const callLegId = payload.call_leg_id;
 
   if (!connectionId) {
     console.error("[Telnyx Webhook] call.initiated missing connection_id");
     return { success: false, error: "Missing connection_id" };
   }
 
-  console.log(`[Telnyx Webhook] call.initiated - from: ${from}, to: ${to}, direction: ${direction}`);
+  console.log(`[Telnyx Webhook] call.initiated - from: ${from}, to: ${to}, direction: ${rawDirection} -> ${direction}, callControlId: ${callControlId}, callSessionId: ${callSessionId}, callLegId: ${callLegId}`);
 
   const result = await getCompanyByConnectionId(connectionId);
   if (!result) {
@@ -144,15 +154,16 @@ export async function handleCallInitiated(event: TelnyxWebhookEvent): Promise<{ 
     const [newLog] = await db.insert(callLogs).values({
       companyId: result.companyId,
       telnyxCallId: callControlId || event.data.id,
+      telnyxSessionId: callSessionId || null,
       fromNumber: from,
       toNumber: to,
-      direction: direction as "inbound" | "outbound",
+      direction: direction,
       status: "ringing",
       duration: 0,
       startedAt: new Date(),
     }).returning();
 
-    console.log(`[Telnyx Webhook] Created call log: ${newLog.id} for call ${callControlId}`);
+    console.log(`[Telnyx Webhook] Created call log: ${newLog.id} for call ${callControlId}, session: ${callSessionId}, legId: ${callLegId}`);
     return { success: true };
   } catch (error: any) {
     console.error("[Telnyx Webhook] Failed to create call log:", error);
@@ -229,12 +240,15 @@ export async function handleCallHangup(event: TelnyxWebhookEvent): Promise<{ suc
   const durationSeconds = payload.duration_secs || 0;
   const connectionId = payload.connection_id;
   const callControlId = payload.call_control_id;
+  const callSessionId = payload.call_session_id;
+  const callLegId = payload.call_leg_id;
   const hangupCause = payload.hangup_cause || "normal";
   const from = payload.from || "";
   const to = payload.to || "";
-  const direction = payload.direction || "outbound";
+  const rawDirection = payload.direction || "outbound";
+  const direction = normalizeDirection(rawDirection);
 
-  console.log(`[Telnyx Webhook] call.hangup - duration: ${durationSeconds}s, connection: ${connectionId}, cause: ${hangupCause}`);
+  console.log(`[Telnyx Webhook] call.hangup - duration: ${durationSeconds}s, connection: ${connectionId}, cause: ${hangupCause}, direction: ${rawDirection} -> ${direction}, callControlId: ${callControlId}, sessionId: ${callSessionId}, legId: ${callLegId}`);
 
   if (!connectionId) {
     console.error("[Telnyx Webhook] call.hangup missing connection_id");
@@ -261,9 +275,38 @@ export async function handleCallHangup(event: TelnyxWebhookEvent): Promise<{ suc
   const telnyxCallIdToUse = callControlId || event.data.id;
   
   try {
-    const [existingLog] = await db.select()
-      .from(callLogs)
-      .where(eq(callLogs.telnyxCallId, telnyxCallIdToUse));
+    // Try to find existing log by multiple identifiers
+    let existingLog = null;
+    
+    // First try by call_control_id
+    if (callControlId) {
+      const [logByControlId] = await db.select()
+        .from(callLogs)
+        .where(eq(callLogs.telnyxCallId, callControlId));
+      existingLog = logByControlId;
+    }
+    
+    // If not found, try by session_id
+    if (!existingLog && callSessionId) {
+      const [logBySessionId] = await db.select()
+        .from(callLogs)
+        .where(eq(callLogs.telnyxSessionId, callSessionId));
+      existingLog = logBySessionId;
+      if (existingLog) {
+        console.log(`[Telnyx Webhook] Found call log by session_id: ${callSessionId}`);
+      }
+    }
+    
+    // If still not found, try by event.data.id
+    if (!existingLog && event.data.id) {
+      const [logByEventId] = await db.select()
+        .from(callLogs)
+        .where(eq(callLogs.telnyxCallId, event.data.id));
+      existingLog = logByEventId;
+      if (existingLog) {
+        console.log(`[Telnyx Webhook] Found call log by event.data.id: ${event.data.id}`);
+      }
+    }
 
     let updatedLogId = existingLog?.id;
 
@@ -281,9 +324,10 @@ export async function handleCallHangup(event: TelnyxWebhookEvent): Promise<{ suc
       const [newLog] = await db.insert(callLogs).values({
         companyId: result.companyId,
         telnyxCallId: telnyxCallIdToUse,
+        telnyxSessionId: callSessionId || null,
         fromNumber: from,
         toNumber: to,
-        direction: direction as "inbound" | "outbound",
+        direction: direction,
         status: finalStatus,
         duration: durationSeconds,
         hangupCause: hangupCause,
@@ -301,7 +345,7 @@ export async function handleCallHangup(event: TelnyxWebhookEvent): Promise<{ suc
         id: updatedLogId!,
         fromNumber: from,
         toNumber: to,
-        direction: direction as "inbound" | "outbound",
+        direction: direction,
         duration: 0,
         cost: "0.0000",
         status: finalStatus
@@ -314,7 +358,7 @@ export async function handleCallHangup(event: TelnyxWebhookEvent): Promise<{ suc
       telnyxCallId: telnyxCallIdToUse,
       fromNumber: from,
       toNumber: to,
-      direction: direction as "inbound" | "outbound",
+      direction: direction,
       durationSeconds,
       status: finalStatus,
       startedAt: new Date(Date.now() - durationSeconds * 1000),
@@ -331,7 +375,7 @@ export async function handleCallHangup(event: TelnyxWebhookEvent): Promise<{ suc
           id: chargeResult.callLogId || updatedLogId!,
           fromNumber: from,
           toNumber: to,
-          direction: direction as "inbound" | "outbound",
+          direction: direction,
           duration: durationSeconds,
           cost: "0.0000",
           status: "failed"
@@ -344,7 +388,7 @@ export async function handleCallHangup(event: TelnyxWebhookEvent): Promise<{ suc
         id: updatedLogId!,
         fromNumber: from,
         toNumber: to,
-        direction: direction as "inbound" | "outbound",
+        direction: direction,
         duration: durationSeconds,
         cost: "0.0000",
         status: finalStatus
@@ -359,14 +403,14 @@ export async function handleCallHangup(event: TelnyxWebhookEvent): Promise<{ suc
       newBalance: chargeResult.newBalance!,
       lastCharge: chargeResult.amountCharged!,
       chargeType: "CALL_COST",
-      description: `Call to ${to} (${durationSeconds}s)`
+      description: `${direction === "inbound" ? "Call from" : "Call to"} ${direction === "inbound" ? from : to} (${durationSeconds}s)`
     });
 
     broadcastNewCallLog(result.companyId, {
       id: chargeResult.callLogId || updatedLogId!,
       fromNumber: from,
       toNumber: to,
-      direction: direction as "inbound" | "outbound",
+      direction: direction,
       duration: durationSeconds,
       cost: chargeResult.amountCharged!,
       status: finalStatus

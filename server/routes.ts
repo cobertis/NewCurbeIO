@@ -28830,6 +28830,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         success: true,
         recordingEnabled: updatedSettings?.recordingEnabled || false,
         cnamEnabled: updatedSettings?.cnamEnabled || false,
+        syncedCount: syncResult.syncedCount,
+        syncErrors: syncResult.errors.length > 0 ? syncResult.errors : undefined,
+        syncWarning: syncResult.errors.length > 0 ? `Some phone numbers could not be updated: ${syncResult.errors.join(", ")}` : undefined,
       });
     } catch (error: any) {
       console.error("[Billing Features] Update error:", error);
