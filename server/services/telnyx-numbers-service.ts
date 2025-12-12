@@ -1442,9 +1442,9 @@ export async function updateNumberVoiceSettings(
         }
         
         if (typeof settings.cnamLookupEnabled === 'boolean') {
-          payload.cnam_listing = {
-            cnam_listing_enabled: settings.cnamLookupEnabled,
-          };
+          // caller_id_name_enabled is for INBOUND CNAM lookup (seeing who's calling you)
+          // cnam_listing_enabled is for OUTBOUND (your name when you call others)
+          payload.caller_id_name_enabled = settings.cnamLookupEnabled;
         }
         
         if (Object.keys(payload).length > 0) {
@@ -1608,11 +1608,13 @@ export async function syncVoiceSettingsFromTelnyx(
     const data = result.data;
     
     // Extract settings from Telnyx response
+    // caller_id_name_enabled is for INBOUND CNAM lookup (seeing who's calling you)
+    // cnam_listing is for OUTBOUND (your name when you call others)
     const recordingEnabled = data?.call_recording?.inbound_call_recording_enabled || false;
-    const cnamLookupEnabled = data?.cnam_listing?.cnam_listing_enabled || false;
+    const cnamLookupEnabled = data?.caller_id_name_enabled || false;
     const callerIdName = data?.cnam_listing?.cnam_listing_details || null;
     
-    console.log(`[Sync Voice Settings] Telnyx state for ${phoneNumber.phoneNumber}: recording=${recordingEnabled}, cnamLookup=${cnamLookupEnabled}, callerIdName="${callerIdName}"`);
+    console.log(`[Sync Voice Settings] Telnyx state for ${phoneNumber.phoneNumber}: recording=${recordingEnabled}, cnamLookup(inbound)=${cnamLookupEnabled}, callerIdName(outbound)="${callerIdName}"`);
     
     // Update our local database with the Telnyx state
     await db
