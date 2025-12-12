@@ -520,6 +520,24 @@ export default function PhoneSystem() {
     },
   });
 
+  // Sync voice settings from Telnyx when a number is selected
+  const syncVoiceSettingsMutation = useMutation({
+    mutationFn: async (phoneNumberId: string) => {
+      return apiRequest("POST", `/api/telnyx/sync-voice-settings/${phoneNumberId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/my-numbers"] });
+      refetchNumbers();
+    },
+  });
+
+  // Auto-sync voice settings when selected number changes
+  useEffect(() => {
+    if (selectedNumber?.telnyxPhoneNumberId) {
+      syncVoiceSettingsMutation.mutate(selectedNumber.telnyxPhoneNumberId);
+    }
+  }, [selectedNumber?.telnyxPhoneNumberId]);
+
   const handleRecordingToggle = (enabled: boolean) => {
     if (enabled) {
       setShowRecordingConfirm(true);

@@ -1467,3 +1467,97 @@ export async function updateNumberVoiceSettings(
     return { success: false, error: error instanceof Error ? error.message : "Failed to update voice settings" };
   }
 }
+
+/**
+ * Sync voice settings from Telnyx to local database for a specific phone number
+ * This fetches the actual configuration from Telnyx and updates our local record
+ */
+export async function syncVoiceSettingsFromTelnyx(
+  phoneNumberId: string,
+  companyId: string
+): Promise<{
+  success: boolean;
+  error?: string;
+  settings?: {
+    recordingEnabled: boolean;
+    cnamLookupEnabled: boolean;
+    callerIdName: string | null;
+  };
+}> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    
+    // Get the phone number from our database
+    const [phoneNumber] = await db
+      .select()
+      .from(telnyxPhoneNumbers)
+      .where(eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId));
+    
+    if (!phoneNumber) {
+      return { success: false, error: "Phone number not found in database" };
+    }
+    
+    // Get the company's Telnyx account ID
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.companyId, companyId));
+    
+    if (!wallet?.telnyxAccountId) {
+      return { success: false, error: "Company Telnyx account not found" };
+    }
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Accept": "application/json",
+      "x-managed-account-id": wallet.telnyxAccountId,
+    };
+    
+    // Get voice settings from Telnyx
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
+      method: "GET",
+      headers,
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Sync Voice Settings] Telnyx API error: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to get Telnyx settings: ${response.status}` };
+    }
+    
+    const result = await response.json();
+    const data = result.data;
+    
+    // Extract settings from Telnyx response
+    const recordingEnabled = data?.call_recording?.inbound_call_recording_enabled || false;
+    const cnamLookupEnabled = data?.cnam_listing?.cnam_listing_enabled || false;
+    const callerIdName = data?.cnam_listing?.cnam_listing_details || null;
+    
+    console.log(`[Sync Voice Settings] Telnyx state for ${phoneNumber.phoneNumber}: recording=${recordingEnabled}, cnamLookup=${cnamLookupEnabled}, callerIdName="${callerIdName}"`);
+    
+    // Update our local database with the Telnyx state
+    await db
+      .update(telnyxPhoneNumbers)
+      .set({
+        recordingEnabled,
+        cnamLookupEnabled,
+        callerIdName,
+        updatedAt: new Date(),
+      })
+      .where(eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId));
+    
+    console.log(`[Sync Voice Settings] Synced ${phoneNumber.phoneNumber} from Telnyx to local DB`);
+    
+    return {
+      success: true,
+      settings: {
+        recordingEnabled,
+        cnamLookupEnabled,
+        callerIdName,
+      },
+    };
+  } catch (error) {
+    console.error("[Sync Voice Settings] Error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to sync voice settings" };
+  }
+}

@@ -28592,6 +28592,34 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+  // POST /api/telnyx/sync-voice-settings/:phoneNumberId - Sync voice settings from Telnyx to local DB
+  app.post("/api/telnyx/sync-voice-settings/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumberId } = req.params;
+
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { syncVoiceSettingsFromTelnyx } = await import("./services/telnyx-numbers-service");
+      const result = await syncVoiceSettingsFromTelnyx(phoneNumberId, user.companyId);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Telnyx Sync Voice Settings] Error:", error);
+      res.status(500).json({ message: "Failed to sync voice settings" });
+    }
+  });
   // POST /api/telnyx/call-recording/:phoneNumberId - Update call recording settings
   app.post("/api/telnyx/call-recording/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
