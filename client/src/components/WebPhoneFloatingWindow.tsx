@@ -3239,20 +3239,20 @@ export function WebPhoneFloatingWindow() {
                         <button
                           onClick={handleCall}
                           disabled={!dialNumber || (() => {
-                            // For extension-only users, just need WebSocket connection
-                            // handleCall will verify if target extension is available
-                            if (extMyExtension && !hasTelnyxNumber) {
-                              return extConnectionStatus !== 'connected';
-                            }
-                            return hasTelnyxNumber ? telnyxConnectionStatus !== 'connected' : connectionStatus !== 'connected';
+                            // Check if we can make calls - either via extension WebSocket or Telnyx/SIP
+                            const canCallViaExtension = extMyExtension && extConnectionStatus === 'connected';
+                            const canCallViaTelnyx = hasTelnyxNumber && telnyxConnectionStatus === 'connected';
+                            const canCallViaSip = connectionStatus === 'connected';
+                            // Allow calling if ANY connection is available
+                            return !(canCallViaExtension || canCallViaTelnyx || canCallViaSip);
                           })()}
                           className={cn(
                             "w-14 h-14 sm:w-20 sm:h-20 mx-auto rounded-full flex items-center justify-center shadow-lg transition-all active:scale-95",
                             dialNumber && (() => {
-                              if (extMyExtension && !hasTelnyxNumber) {
-                                return extConnectionStatus === 'connected';
-                              }
-                              return hasTelnyxNumber ? telnyxConnectionStatus === 'connected' : connectionStatus === 'connected';
+                              const canCallViaExtension = extMyExtension && extConnectionStatus === 'connected';
+                              const canCallViaTelnyx = hasTelnyxNumber && telnyxConnectionStatus === 'connected';
+                              const canCallViaSip = connectionStatus === 'connected';
+                              return canCallViaExtension || canCallViaTelnyx || canCallViaSip;
                             })()
                               ? "bg-green-500 hover:bg-green-600" 
                               : "bg-green-500/40 cursor-not-allowed"
