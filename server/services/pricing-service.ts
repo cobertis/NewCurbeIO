@@ -153,7 +153,12 @@ export async function chargeCallToWallet(
     const recordingEnabled = settings?.recordingEnabled ?? false;
     const cnamEnabled = settings?.cnamEnabled ?? false;
     
-    const rate = await findRateByPrefix(callData.toNumber, companyId);
+    // For inbound calls, use fromNumber (where the call originated)
+    // For outbound calls, use toNumber (the destination being called)
+    const rateNumber = callData.direction === "inbound" ? callData.fromNumber : callData.toNumber;
+    console.log(`[PricingService] Rate lookup for ${callData.direction} call using number: ${rateNumber}`);
+    
+    const rate = await findRateByPrefix(rateNumber, companyId);
     const costResult = calculateCallCost(callData.durationSeconds, rate);
     
     // Calculate additional feature costs
