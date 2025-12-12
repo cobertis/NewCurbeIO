@@ -5123,6 +5123,73 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to fetch user" });
     }
   });
+
+  // Update user by ID (admins can update users in their company)
+  app.patch("/api/users/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user!;
+      const targetUserId = req.params.id;
+      
+      // Only admins and superadmins can update other users
+      if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+        return res.status(403).json({ message: "Only administrators can update users" });
+      }
+      
+      // Get the target user
+      const targetUser = await storage.getUser(targetUserId);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Admins can only update users in their company
+      if (currentUser.role === "admin" && targetUser.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Cannot update users from other companies" });
+      }
+      
+      // Build allowed fields for update
+      const allowedFields: any = {};
+      if (req.body.firstName !== undefined) allowedFields.firstName = req.body.firstName;
+      if (req.body.lastName !== undefined) allowedFields.lastName = req.body.lastName;
+      if (req.body.phone !== undefined) allowedFields.phone = req.body.phone?.trim() || "";
+      if (req.body.role !== undefined) {
+        // Validate role is one of the allowed values
+        const validRoles = ["superadmin", "admin", "agent"];
+        if (!validRoles.includes(req.body.role)) {
+          return res.status(400).json({ message: "Invalid role" });
+        }
+        // Only superadmins can assign superadmin role
+        if (req.body.role === "superadmin" && currentUser.role !== "superadmin") {
+          return res.status(403).json({ message: "Only superadmins can assign superadmin role" });
+        }
+        allowedFields.role = req.body.role;
+      }
+      if (req.body.timezone !== undefined) allowedFields.timezone = req.body.timezone;
+      if (req.body.agentInternalCode !== undefined) allowedFields.agentInternalCode = req.body.agentInternalCode?.trim() || "";
+      if (req.body.instructionLevel !== undefined) allowedFields.instructionLevel = req.body.instructionLevel;
+      if (req.body.nationalProducerNumber !== undefined) allowedFields.nationalProducerNumber = req.body.nationalProducerNumber?.trim() || "";
+      if (req.body.federallyFacilitatedMarketplace !== undefined) allowedFields.federallyFacilitatedMarketplace = req.body.federallyFacilitatedMarketplace;
+      if (req.body.referredBy !== undefined) allowedFields.referredBy = req.body.referredBy?.trim() || "";
+      if (req.body.viewAllCompanyData !== undefined) allowedFields.viewAllCompanyData = req.body.viewAllCompanyData;
+      
+      // Check if there's anything to update
+      if (Object.keys(allowedFields).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+      
+      const updatedUser = await storage.updateUser(targetUserId, allowedFields);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const { password, ...sanitizedUser } = updatedUser;
+      console.log(`[User Update] Admin ${currentUser.email} updated user ${targetUser.email}:`, Object.keys(allowedFields));
+      res.json({ user: sanitizedUser });
+    } catch (error: any) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: error.message || "Failed to update user" });
+    }
+  });
+
   // Get company agents for dropdowns (policies, quotes, etc.)
   app.get("/api/company/agents", requireActiveCompany, async (req: Request, res: Response) => {
     try {
