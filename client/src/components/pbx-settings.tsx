@@ -38,6 +38,7 @@ interface PbxSettings {
   companyId: string;
   primaryPhoneNumberId: string | null;
   ivrEnabled: boolean;
+  ivrExtension: string | null;
   greetingAudioUrl: string | null;
   greetingText: string | null;
   useTextToSpeech: boolean;
@@ -449,6 +450,20 @@ export function PbxSettings() {
                   )}
                 </div>
               )}
+
+              <div className="space-y-2">
+                <Label>IVR Extension Number</Label>
+                <Input
+                  type="number"
+                  placeholder="100"
+                  value={settings?.ivrExtension || "100"}
+                  onChange={(e) => handleSettingChange("ivrExtension", e.target.value)}
+                  data-testid="input-ivr-extension"
+                />
+                <p className="text-xs text-muted-foreground">
+                  User extensions will start from {parseInt(settings?.ivrExtension || "100") + 1}
+                </p>
+              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
