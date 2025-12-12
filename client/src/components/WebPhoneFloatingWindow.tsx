@@ -318,19 +318,6 @@ interface PurchasedNumberInfo {
   isProvisioning: boolean;
 }
 
-// Format phone number for display: +1XXXXXXXXXX -> (XXX) XXX-XXXX
-function formatUSPhoneNumber(phone: string): string {
-  if (!phone) return "";
-  const digits = phone.replace(/\D/g, '');
-  if (digits.length === 11 && digits.startsWith("1")) {
-    return `(${digits.substring(1, 4)}) ${digits.substring(4, 7)}-${digits.substring(7)}`;
-  }
-  if (digits.length === 10) {
-    return `(${digits.substring(0, 3)}) ${digits.substring(3, 6)}-${digits.substring(6)}`;
-  }
-  return phone;
-}
-
 export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyNumbersDialogProps) {
   const { toast } = useToast();
   const [countryCode, setCountryCode] = useState("US");
@@ -351,21 +338,6 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
     { value: "voice", label: "Voice" },
     { value: "fax", label: "Fax" },
   ];
-
-  // Fetch pricing configuration to show configured prices
-  const { data: pricingData } = useQuery<{ pricing: { didLocal: string; didTollfree: string } }>({
-    queryKey: ['/api/telnyx/global-pricing'],
-    enabled: open,
-  });
-  
-  // Get price based on number type
-  const getConfiguredPrice = (numberType: string | undefined): string => {
-    if (!pricingData?.pricing) return "1.00";
-    if (numberType === "toll_free") {
-      return pricingData.pricing.didTollfree || "1.50";
-    }
-    return pricingData.pricing.didLocal || "1.00";
-  };
 
   const { data: numbersData, isLoading, refetch } = useQuery<{ 
     numbers: AvailablePhoneNumber[]; 
@@ -735,29 +707,64 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
           </div>
         </div>
 
-        {/* Filters Section - All in one row */}
-        <div className="px-4 py-3 border-b border-border bg-muted/30">
-          <div className="flex items-end gap-2">
-            <div className="w-28">
+        {/* Filters Section */}
+        <div className="px-6 py-4 border-b border-border bg-muted/30 space-y-4">
+          {/* Row 1: Country, Features, Type */}
+          <div className="grid grid-cols-12 gap-3">
+            <div className="col-span-3">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Country</label>
               <Select value={countryCode} onValueChange={setCountryCode}>
-                <SelectTrigger className="h-9" data-testid="select-country">
+                <SelectTrigger className="w-full" data-testid="select-country">
                   <SelectValue placeholder="Country" />
                 </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="US">US +1</SelectItem>
-                  <SelectItem value="CA">CA +1</SelectItem>
+                <SelectContent className="max-h-[300px]">
+                  <SelectItem value="US">United States +1</SelectItem>
+                  <SelectItem value="CA">Canada +1</SelectItem>
+                  <SelectItem value="GB">United Kingdom +44</SelectItem>
+                  <SelectItem value="MX">Mexico +52</SelectItem>
+                  <SelectItem value="AU">Australia +61</SelectItem>
+                  <SelectItem value="DE">Germany +49</SelectItem>
+                  <SelectItem value="FR">France +33</SelectItem>
+                  <SelectItem value="ES">Spain +34</SelectItem>
+                  <SelectItem value="IT">Italy +39</SelectItem>
+                  <SelectItem value="NL">Netherlands +31</SelectItem>
+                  <SelectItem value="BE">Belgium +32</SelectItem>
+                  <SelectItem value="AT">Austria +43</SelectItem>
+                  <SelectItem value="CH">Switzerland +41</SelectItem>
+                  <SelectItem value="SE">Sweden +46</SelectItem>
+                  <SelectItem value="NO">Norway +47</SelectItem>
+                  <SelectItem value="DK">Denmark +45</SelectItem>
+                  <SelectItem value="FI">Finland +358</SelectItem>
+                  <SelectItem value="IE">Ireland +353</SelectItem>
+                  <SelectItem value="PT">Portugal +351</SelectItem>
+                  <SelectItem value="PL">Poland +48</SelectItem>
+                  <SelectItem value="CZ">Czech Republic +420</SelectItem>
+                  <SelectItem value="BR">Brazil +55</SelectItem>
+                  <SelectItem value="AR">Argentina +54</SelectItem>
+                  <SelectItem value="CL">Chile +56</SelectItem>
+                  <SelectItem value="CO">Colombia +57</SelectItem>
+                  <SelectItem value="PE">Peru +51</SelectItem>
+                  <SelectItem value="JP">Japan +81</SelectItem>
+                  <SelectItem value="KR">South Korea +82</SelectItem>
+                  <SelectItem value="SG">Singapore +65</SelectItem>
+                  <SelectItem value="HK">Hong Kong +852</SelectItem>
+                  <SelectItem value="IN">India +91</SelectItem>
+                  <SelectItem value="PH">Philippines +63</SelectItem>
+                  <SelectItem value="NZ">New Zealand +64</SelectItem>
+                  <SelectItem value="ZA">South Africa +27</SelectItem>
+                  <SelectItem value="IL">Israel +972</SelectItem>
+                  <SelectItem value="AE">UAE +971</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="w-28">
+            <div className="col-span-3">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Features</label>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" className="w-full h-9 justify-between text-sm" data-testid="select-features">
-                    {selectedFeatures.length === 0 ? "Any" : `${selectedFeatures.length}`}
-                    <ChevronDown className="h-3 w-3 ml-1" />
+                  <Button variant="outline" className="w-full justify-between" data-testid="select-features">
+                    {selectedFeatures.length === 0 ? "Any feature" : `${selectedFeatures.length} selected`}
+                    <ChevronDown className="h-4 w-4 ml-2" />
                   </Button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent className="w-48">
@@ -783,57 +790,69 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
               </DropdownMenu>
             </div>
 
-            <div className="w-24">
+            <div className="col-span-2">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Type</label>
               <Select value={numberType} onValueChange={setNumberType}>
-                <SelectTrigger className="h-9" data-testid="select-type">
-                  <SelectValue placeholder="All" />
+                <SelectTrigger className="w-full" data-testid="select-type">
+                  <SelectValue placeholder="All types" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">All</SelectItem>
+                  <SelectItem value="all">All types</SelectItem>
                   <SelectItem value="local">Local</SelectItem>
                   <SelectItem value="toll_free">Toll-free</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="w-24">
+            <div className="col-span-2">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">Search By</label>
               <Select value={searchBy} onValueChange={setSearchBy}>
-                <SelectTrigger className="h-9" data-testid="select-search-by">
-                  <SelectValue placeholder="Area" />
+                <SelectTrigger className="w-full" data-testid="select-search-by">
+                  <SelectValue placeholder="Area code" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="area_code">Area code</SelectItem>
                   <SelectItem value="starts_with">Starts with</SelectItem>
                   <SelectItem value="ends_with">Ends with</SelectItem>
                   <SelectItem value="contains">Contains</SelectItem>
-                  <SelectItem value="city">City</SelectItem>
-                  <SelectItem value="state">State</SelectItem>
+                  <SelectItem value="city">City/Region</SelectItem>
+                  <SelectItem value="state">State/Province</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
-            <div className="flex-1">
+            <div className="col-span-2">
               <label className="text-xs font-medium text-muted-foreground mb-1 block">
-                {searchBy === "area_code" ? "Code" : searchBy === "city" ? "City" : searchBy === "state" ? "State" : "Value"}
+                {searchBy === "area_code" ? "Area Code" : 
+                 searchBy === "city" ? "City" : 
+                 searchBy === "state" ? "State" : "Value"}
               </label>
               <Input
-                placeholder={searchBy === "area_code" ? "305" : searchBy === "city" ? "Miami" : searchBy === "state" ? "FL" : "Value"}
+                placeholder={searchBy === "area_code" ? "e.g. 305" : 
+                            searchBy === "city" ? "e.g. Miami" :
+                            searchBy === "state" ? "e.g. FL" : "Enter value"}
                 value={searchValue}
                 onChange={(e) => setSearchValue(e.target.value)}
-                className="h-9"
+                className="w-full"
                 data-testid="input-search-value"
               />
             </div>
+          </div>
 
+          {/* Row 2: Search Button */}
+          <div className="flex justify-end">
             <Button
               onClick={handleSearch}
               disabled={isLoading}
-              className="h-9 px-4 bg-primary"
+              className="gap-2 bg-primary"
               data-testid="button-search-numbers"
             >
-              {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+              {isLoading ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <Search className="h-4 w-4" />
+              )}
+              Search Numbers
             </Button>
           </div>
         </div>
@@ -884,7 +903,7 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
                           )}>
                             {isSelected && <Check className="h-3 w-3 text-white" />}
                           </div>
-                          <span className="font-medium font-mono text-sm">{formatUSPhoneNumber(number.phone_number)}</span>
+                          <span className="font-medium font-mono text-sm">{number.phone_number}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -897,7 +916,7 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
                         {getCapabilityBadges(number.features)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className="font-medium">${getConfiguredPrice(number.phone_number_type)}/mo</span>
+                        <span className="font-medium">${number.cost_information.monthly_cost}</span>
                       </td>
                     </tr>
                   );
@@ -907,7 +926,7 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
           ) : (
             <div className="flex flex-col items-center justify-center h-full text-center px-6 py-12">
               <Phone className="h-12 w-12 text-muted-foreground mb-4" />
-              <p className="text-muted-foreground">No numbers found for this search</p>
+              <p className="text-muted-foreground">No numbers found for this area code</p>
             </div>
           )}
         </div>

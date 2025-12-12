@@ -106,8 +106,7 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
       });
     }
     
-    // Always use best_effort=true to get results
-    // We'll filter exact matches server-side when area code is specified
+    // Always use best_effort to return results even if exact match not available
     queryParams.append("filter[best_effort]", "true");
     
     // Use page[size] and page[number] for proper pagination
@@ -129,20 +128,6 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
     if (!response.ok) {
       const errorText = await response.text();
       console.error(`[Telnyx Numbers] Search error: ${response.status} - ${errorText}`);
-      
-      // Handle "no numbers found" as empty result, not error
-      if (response.status === 400 && errorText.includes("10031")) {
-        console.log("[Telnyx Numbers] No exact matches found for filters");
-        return {
-          success: true,
-          numbers: [],
-          totalCount: 0,
-          currentPage: 1,
-          totalPages: 0,
-          pageSize: params.limit || 50,
-        };
-      }
-      
       return {
         success: false,
         error: `Telnyx API error: ${response.status}`,
@@ -152,27 +137,12 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
     const result = await response.json();
     
     const meta = result.meta || {};
-    const allNumbers = result.data || [];
-    
-    // Filter exact matches when area code is specified
-    let filteredNumbers = allNumbers;
-    if (params.national_destination_code) {
-      const areaCode = params.national_destination_code;
-      filteredNumbers = allNumbers.filter((n: any) => {
-        // Phone is in E.164 format: +1XXXXXXXXXX
-        // Area code is positions 2-4 (after +1)
-        const phone = n.phone_number || '';
-        return phone.startsWith(`+1${areaCode}`);
-      });
-      console.log(`[Telnyx Numbers] Filtered ${allNumbers.length} -> ${filteredNumbers.length} exact matches for area code ${areaCode}`);
-    } else {
-      console.log(`[Telnyx Numbers] Found ${allNumbers.length} numbers on page ${meta.page_number || pageNumber}`);
-    }
+    console.log(`[Telnyx Numbers] Found ${result.data?.length || 0} numbers on page ${meta.page_number || pageNumber} of ${meta.total_pages || 1}`);
 
     return {
       success: true,
-      numbers: filteredNumbers,
-      totalCount: filteredNumbers.length,
+      numbers: result.data || [],
+      totalCount: meta.total_results,
       currentPage: meta.page_number || pageNumber,
       totalPages: meta.total_pages || 1,
       pageSize: meta.page_size || pageSize,
