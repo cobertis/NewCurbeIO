@@ -9,6 +9,19 @@ import { ThemeToggle } from "@/components/theme-toggle";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ProtectedRoute } from "@/components/protected-route";
+
+// Component to block agents from accessing certain routes (like Billing)
+function AgentBlockedRoute({ children }: { children: React.ReactNode }) {
+  const [, setLocation] = useLocation();
+  const { data: sessionData } = useQuery<{ user: User }>({ queryKey: ["/api/session"] });
+  
+  if (sessionData?.user?.role === "agent") {
+    setLocation("/");
+    return null;
+  }
+  
+  return <>{children}</>;
+}
 import { UploadAvatarDialog } from "@/components/upload-avatar-dialog";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -1523,7 +1536,9 @@ function Router() {
       <Route path="/billing">
         <ProtectedRoute>
           <DashboardLayout>
-            <Billing />
+            <AgentBlockedRoute>
+              <Billing />
+            </AgentBlockedRoute>
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
