@@ -27958,6 +27958,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/telnyx/purchase-number", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      // Only admins can modify phone system settings
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
+      }
       const { phoneNumber } = req.body;
 
       if (!phoneNumber) {
@@ -28184,6 +28188,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/telnyx/cnam/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      // Only admins can modify phone system settings
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
+      }
       const { phoneNumberId } = req.params;
       const { enabled, cnamName } = req.body;
 
@@ -28259,6 +28267,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/telnyx/call-recording/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      // Only admins can modify phone system settings
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
+      }
       const { phoneNumberId } = req.params;
       const { enabled, format = "mp3", channels = "single" } = req.body;
 
@@ -28292,6 +28304,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/telnyx/spam-protection/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      // Only admins can modify phone system settings
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
+      }
       const { phoneNumberId } = req.params;
       const { mode } = req.body;
 
@@ -28325,6 +28341,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/telnyx/caller-id-lookup/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      // Only admins can modify phone system settings
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
+      }
       const { phoneNumberId } = req.params;
       const { enabled } = req.body;
 
@@ -28393,6 +28413,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/telnyx/call-forwarding/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      // Only admins can modify phone system settings
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
+      }
       const { phoneNumberId } = req.params;
       const { enabled, destination, keepCallerId = true } = req.body;
 
@@ -28458,6 +28482,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/telnyx/voicemail/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      // Only admins can modify phone system settings
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
+      }
       const { phoneNumberId } = req.params;
       const { enabled, pin } = req.body;
 
@@ -28524,6 +28552,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/telnyx/noise-suppression", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      // Only admins can modify phone system settings
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
+      }
       
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
