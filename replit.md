@@ -41,6 +41,14 @@ All WebRTC implementations follow official Telnyx documentation, including progr
 **Telnyx Call Control Architecture:**
 Phone numbers are routed via a Call Control Application for proper hangup using the Telnyx REST API. This involves webhook-driven call flow (`call.initiated` -> answer PSTN -> dial SIP -> `call.answered` -> bridge legs), and a specific hangup API call with `NORMAL_CLEARING (16)`. E911 must be disabled using a dedicated action endpoint before reassigning numbers to the Call Control Application.
 
+**Telephony Billing Architecture (Dec 2024):**
+- **Immediate Purchase Billing:** Phone numbers are charged to company wallet immediately upon purchase (first month fee)
+- **Monthly Recurring Billing:** Runs on the 1st of each month via `node-cron` scheduler, charges active numbers + CNAM fees
+- **CNAM Pricing:** $0.50/month per phone number (not flat subscription) - charged via `CNAM_MONTHLY` transaction type
+- **Call Billing:** 60-second increments (matches Telnyx), includes base rate + recording cost + CNAM lookup cost
+- **Transaction Types:** `NUMBER_PURCHASE`, `NUMBER_RENTAL`, `CNAM_MONTHLY`, `CALL_COST`, `MONTHLY_FEE`
+- **Billing Fields:** `telnyx_phone_numbers` table includes `numberType`, `retailMonthlyRate`, `telnyxMonthlyCost`, `lastBilledAt`, `nextBillingAt`
+
 **Security Architecture:**
 Session security (`SESSION_SECRET`), webhook signature validation (Twilio, BulkVS, BlueBubbles), Zod schema validation for all public endpoints, open redirect protection via allowlist, unsubscribe token enforcement, user-scoped data isolation (BulkVS), iMessage webhook secret isolation, and multi-tenant session isolation for WhatsApp integration with real-time webhooks and secure media storage.
 
