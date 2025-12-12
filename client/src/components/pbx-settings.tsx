@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -102,6 +102,7 @@ export function PbxSettings() {
   const [editingExtension, setEditingExtension] = useState<PbxExtension | null>(null);
   const [editingMenuOption, setEditingMenuOption] = useState<PbxMenuOption | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [localIvrExtension, setLocalIvrExtension] = useState("100");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -282,6 +283,20 @@ export function PbxSettings() {
     settingsMutation.mutate({ [key]: value });
   };
 
+  // Sync local IVR extension state with server data
+  useEffect(() => {
+    if (settings?.ivrExtension) {
+      setLocalIvrExtension(settings.ivrExtension);
+    }
+  }, [settings?.ivrExtension]);
+
+  // Handle IVR extension save on blur
+  const handleIvrExtensionBlur = () => {
+    if (localIvrExtension !== settings?.ivrExtension) {
+      handleSettingChange("ivrExtension", localIvrExtension);
+    }
+  };
+
   if (settingsLoading) {
     return <LoadingSpinner />;
   }
@@ -456,12 +471,13 @@ export function PbxSettings() {
                 <Input
                   type="number"
                   placeholder="100"
-                  value={settings?.ivrExtension || "100"}
-                  onChange={(e) => handleSettingChange("ivrExtension", e.target.value)}
+                  value={localIvrExtension}
+                  onChange={(e) => setLocalIvrExtension(e.target.value)}
+                  onBlur={handleIvrExtensionBlur}
                   data-testid="input-ivr-extension"
                 />
                 <p className="text-xs text-muted-foreground">
-                  User extensions will start from {parseInt(settings?.ivrExtension || "100") + 1}
+                  User extensions will start from {parseInt(localIvrExtension || "100") + 1}
                 </p>
               </div>
 
@@ -963,12 +979,25 @@ function ExtensionDialog({
   });
   const users = usersData?.users || [];
 
+  // Sync form state when extension prop changes or dialog opens
+  useEffect(() => {
+    if (open) {
+      if (extension) {
+        setExt(extension.extension);
+        setDisplayName(extension.displayName || "");
+        setUserId(extension.userId);
+      } else {
+        // Reset form for creating new extension
+        setExt("");
+        setDisplayName("");
+        setUserId("");
+      }
+    }
+  }, [open, extension]);
+
   const handleOpenChange = (isOpen: boolean) => {
-    if (isOpen && extension) {
-      setExt(extension.extension);
-      setDisplayName(extension.displayName || "");
-      setUserId(extension.userId);
-    } else if (!isOpen) {
+    if (!isOpen) {
+      // Reset form when closing
       setExt("");
       setDisplayName("");
       setUserId("");

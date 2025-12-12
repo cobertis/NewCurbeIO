@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import fs from "fs";
 import path from "path";
 import { createServer, type Server } from "http";
@@ -32262,60 +32262,72 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
   
-  app.post("/api/pbx/ivr-greeting", requireActiveCompany, ivrGreetingUpload.single('audio'), async (req: Request, res: Response) => {
-    try {
-      const user = req.user as User;
-      const file = req.file;
-      
-      if (!file) {
-        return res.status(400).json({ error: "No audio file provided" });
+  app.post("/api/pbx/ivr-greeting", requireActiveCompany, (req: Request, res: Response, next: NextFunction) => {
+    // Wrap multer to handle its errors properly
+    ivrGreetingUpload.single('audio')(req, res, async (multerError: any) => {
+      try {
+        if (multerError) {
+          console.error("[PBX] Multer error uploading IVR greeting:", multerError);
+          if (multerError.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ error: "File too large. Maximum size is 5MB.", code: "FILE_TOO_LARGE" });
+          }
+          return res.status(400).json({ error: multerError.message || "Upload failed", code: multerError.code || "UPLOAD_ERROR" });
+        }
+        
+        const user = req.user as User;
+        const file = req.file;
+        
+        if (!file) {
+          return res.status(400).json({ error: "No audio file provided", code: "NO_FILE" });
+        }
+        
+        // Generate unique filename
+        const extension = file.mimetype.includes('wav') ? 'wav' : 'mp3';
+        const filename = `ivr-greeting-${user.companyId}-${Date.now()}.${extension}`;
+        
+        // Upload to Object Storage
+        const privateObjectDir = objectStorage.getPrivateObjectDir();
+        const objectPath = `${privateObjectDir}/pbx-audio/${filename}`;
+        const parts = objectPath.split('/').filter(p => p);
+        const bucketName = parts[0];
+        const objectName = parts.slice(1).join('/');
+        
+        const bucket = objectStorageClient.bucket(bucketName);
+        const objectFile = bucket.file(objectName);
+        
+        await objectFile.save(file.buffer, {
+          contentType: file.mimetype,
+          metadata: {
+            cacheControl: 'public, max-age=31536000',
+          },
+        });
+        
+        // Generate signed URL for Telnyx (valid for 1 year)
+        const [signedUrl] = await objectFile.getSignedUrl({
+          action: 'read',
+          expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
+        });
+        
+        // Update PBX settings with the new audio URL
+        const settings = await pbxService.createOrUpdatePbxSettings(user.companyId, {
+          greetingAudioUrl: signedUrl,
+          useTextToSpeech: false
+        });
+        
+        console.log(`[PBX] IVR greeting audio uploaded for company ${user.companyId}: ${filename}`);
+        
+        return res.json({ 
+          success: true, 
+          url: signedUrl,
+          settings 
+        });
+      } catch (error: any) {
+        console.error("[PBX] Error uploading IVR greeting:", error);
+        return res.status(500).json({ error: error.message || "Upload failed", code: "SERVER_ERROR" });
       }
-      
-      // Generate unique filename
-      const extension = file.mimetype.includes('wav') ? 'wav' : 'mp3';
-      const filename = `ivr-greeting-${user.companyId}-${Date.now()}.${extension}`;
-      
-      // Upload to Object Storage
-      const privateObjectDir = objectStorage.getPrivateObjectDir();
-      const objectPath = `${privateObjectDir}/pbx-audio/${filename}`;
-      const parts = objectPath.split('/').filter(p => p);
-      const bucketName = parts[0];
-      const objectName = parts.slice(1).join('/');
-      
-      const bucket = objectStorageClient.bucket(bucketName);
-      const objectFile = bucket.file(objectName);
-      
-      await objectFile.save(file.buffer, {
-        contentType: file.mimetype,
-        metadata: {
-          cacheControl: 'public, max-age=31536000',
-        },
-      });
-      
-      // Generate signed URL for Telnyx (valid for 1 year)
-      const [signedUrl] = await objectFile.getSignedUrl({
-        action: 'read',
-        expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
-      });
-      
-      // Update PBX settings with the new audio URL
-      const settings = await pbxService.createOrUpdatePbxSettings(user.companyId, {
-        greetingAudioUrl: signedUrl,
-        useTextToSpeech: false
-      });
-      
-      console.log(`[PBX] IVR greeting audio uploaded for company ${user.companyId}: ${filename}`);
-      
-      return res.json({ 
-        success: true, 
-        url: signedUrl,
-        settings 
-      });
-    } catch (error: any) {
-      console.error("[PBX] Error uploading IVR greeting:", error);
-      return res.status(500).json({ error: error.message });
-    }
+    });
   });
+
   
   // DELETE /api/pbx/ivr-greeting - Delete IVR greeting audio
   app.delete("/api/pbx/ivr-greeting", requireActiveCompany, async (req: Request, res: Response) => {

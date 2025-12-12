@@ -1471,6 +1471,7 @@ export function WebPhoneFloatingWindow() {
   const localAudioRef = useRef<HTMLAudioElement>(null);
   const dialInputRef = useRef<HTMLInputElement>(null);
   const ringtoneIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const ringbackIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
   
   const isVisible = useWebPhoneStore(state => state.dialpadVisible);
@@ -1609,7 +1610,7 @@ export function WebPhoneFloatingWindow() {
     };
   }, [currentExtCall?.state, currentExtCall?.answerTime]);
   
-  // Ringtone generator function using Web Audio API
+  // Ringtone generator function using Web Audio API (for incoming calls)
   const playRingtoneBurst = useCallback(() => {
     try {
       if (!audioContextRef.current) {
@@ -1646,6 +1647,47 @@ export function WebPhoneFloatingWindow() {
     }
   }, []);
   
+  // Ringback tone generator function using Web Audio API (for outgoing calls)
+  // Standard North American ringback: 440Hz + 480Hz, 2 seconds on, 4 seconds off
+  const playRingbackBurst = useCallback(() => {
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      const ctx = audioContextRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      
+      const now = ctx.currentTime;
+      const oscillator1 = ctx.createOscillator();
+      const oscillator2 = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      
+      // Standard US ringback frequencies (same as ringtone but different pattern)
+      oscillator1.type = 'sine';
+      oscillator1.frequency.value = 440;
+      oscillator2.type = 'sine';
+      oscillator2.frequency.value = 480;
+      
+      oscillator1.connect(gainNode);
+      oscillator2.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      // 2 seconds of tone with fade out
+      gainNode.gain.setValueAtTime(0.12, now);
+      gainNode.gain.setValueAtTime(0.12, now + 1.8);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 2);
+      
+      oscillator1.start(now);
+      oscillator2.start(now);
+      oscillator1.stop(now + 2);
+      oscillator2.stop(now + 2);
+    } catch (e) {
+      console.warn('[WebPhone] Ringback playback failed:', e);
+    }
+  }, []);
+  
   // Ringtone and auto-open effect for incoming calls
   useEffect(() => {
     const hasIncomingCall = !!telnyxIncomingCall || !!incomingExtCall;
@@ -1673,6 +1715,37 @@ export function WebPhoneFloatingWindow() {
       }
     };
   }, [telnyxIncomingCall, incomingExtCall, isVisible, toggleDialpad, playRingtoneBurst]);
+  
+  // Ringback tone effect for outgoing calls (when dialing, before answer)
+  useEffect(() => {
+    // Play ringback when there's an outgoing call that hasn't been answered yet
+    // telnyxOutgoingCall = dialing, telnyxCurrentCall = answered
+    const hasOutgoingRinging = !!telnyxOutgoingCall && !telnyxCurrentCall;
+    // Also for extension calls that are ringing (not yet connected)
+    const hasExtOutgoingRinging = !!currentExtCall && currentExtCall.state !== 'connected';
+    
+    const shouldPlayRingback = hasOutgoingRinging || hasExtOutgoingRinging;
+    
+    if (shouldPlayRingback) {
+      playRingbackBurst();
+      // Standard ringback pattern: 2 seconds on, 4 seconds off = 6 second cycle
+      ringbackIntervalRef.current = setInterval(() => {
+        playRingbackBurst();
+      }, 6000);
+    } else {
+      if (ringbackIntervalRef.current) {
+        clearInterval(ringbackIntervalRef.current);
+        ringbackIntervalRef.current = null;
+      }
+    }
+    
+    return () => {
+      if (ringbackIntervalRef.current) {
+        clearInterval(ringbackIntervalRef.current);
+        ringbackIntervalRef.current = null;
+      }
+    };
+  }, [telnyxOutgoingCall, telnyxCurrentCall, currentExtCall, playRingbackBurst]);
   
   // Check if phone is available (either SIP extension, Telnyx number, or PBX extension)
   const hasPhoneCapability = !!sipExtension || hasTelnyxNumber || !!extMyExtension;
