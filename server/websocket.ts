@@ -446,6 +446,36 @@ export function broadcastNotificationUpdateToUser(userId: string) {
   console.log(`[WebSocket] Broadcasting notification_update to user ${userId} (${sentCount} active sessions)`);
 }
 
+// Broadcast Telnyx phone number assignment to a specific user
+export function broadcastTelnyxNumberAssigned(userId: string, phoneNumber: string, telnyxPhoneNumberId: string) {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const message = JSON.stringify({
+    type: 'telnyx_number_assigned',
+    phoneNumber,
+    telnyxPhoneNumberId,
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    if (authClient.userId === userId) {
+      client.send(message);
+      sentCount++;
+    }
+  });
+
+  console.log(`[WebSocket] Broadcasting telnyx_number_assigned to user ${userId} (${sentCount} active sessions)`);
+}
+
 // Broadcast subscription update to tenant-scoped clients only
 export function broadcastSubscriptionUpdate(companyId: string) {
   if (!wss) {
