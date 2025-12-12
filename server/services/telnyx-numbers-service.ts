@@ -1493,11 +1493,22 @@ export async function updateNumberVoiceSettings(
             enabled: true,
           };
           
-          const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumber.telnyxPhoneNumberId}/voicemail`, {
-            method: "PUT",
+          // Try PATCH first, then POST if 404
+          let response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumber.telnyxPhoneNumberId}/voicemail`, {
+            method: "PATCH",
             headers,
             body: JSON.stringify(voicemailPayload),
           });
+          
+          if (response.status === 404) {
+            // Voicemail not created yet, use POST to create
+            console.log(`[Voicemail] Creating new voicemail config for ${phoneNumber.phoneNumber}`);
+            response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumber.telnyxPhoneNumberId}/voicemail`, {
+              method: "POST",
+              headers,
+              body: JSON.stringify(voicemailPayload),
+            });
+          }
           
           if (!response.ok) {
             const errorText = await response.text();
@@ -1506,18 +1517,19 @@ export async function updateNumberVoiceSettings(
             console.log(`[Voicemail] Enabled for ${phoneNumber.phoneNumber} with PIN`);
           }
         } else if (!updatedNumber?.voicemailEnabled) {
-          // Disable voicemail
+          // Disable voicemail - use PATCH
           const voicemailPayload = {
             enabled: false,
           };
           
           const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumber.telnyxPhoneNumberId}/voicemail`, {
-            method: "PUT",
+            method: "PATCH",
             headers,
             body: JSON.stringify(voicemailPayload),
           });
           
-          if (!response.ok) {
+          // 404 when disabling means voicemail was never created, which is fine
+          if (!response.ok && response.status !== 404) {
             const errorText = await response.text();
             console.error(`[Voicemail] Disable failed for ${phoneNumber.phoneNumber}: ${response.status} - ${errorText}`);
           } else {
