@@ -563,8 +563,9 @@ export default function Settings() {
   // Determine current tab
   const currentTab = getCurrentTab();
   
-  // Only wait for company data if we're on a tab that needs it
-  const needsCompanyData = currentTab === "company" || currentTab === "team";
+  // Only wait for company data if we're on the overview tab (which shows company info)
+  // Note: "team" tab doesn't need companyData - it only needs usersData which loads independently
+  const needsCompanyData = currentTab === "overview";
   
   // Check if critical data is still loading
   const isLoadingCriticalData = isLoadingUser || isLoadingPreferences || (needsCompanyData && !isCompanyDataReady);
