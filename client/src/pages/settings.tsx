@@ -3557,9 +3557,8 @@ function UserDetailsDialog({ user, open, onOpenChange }: UserDetailsDialogProps)
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="superadmin">Superadmin</SelectItem>
+                    <SelectItem value="superadmin">Super Admin</SelectItem>
                     <SelectItem value="admin">Admin</SelectItem>
-                    <SelectItem value="user">User</SelectItem>
                     <SelectItem value="member">Member</SelectItem>
                     <SelectItem value="viewer">Viewer</SelectItem>
                   </SelectContent>
