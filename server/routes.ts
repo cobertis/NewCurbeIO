@@ -118,6 +118,7 @@ import { getManagedAccountConfig, buildHeaders } from "./services/telnyx-e911-se
 import { vipPassService } from "./services/vip-pass-service";
 import { vipPassApnsService } from "./services/vip-pass-apns-service";
 import { pbxService } from "./services/pbx-service";
+import { objectStorage, objectStorageClient } from "./objectStorage";
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -32246,6 +32247,111 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+  // POST /api/pbx/ivr-greeting - Upload IVR greeting audio
+  const ivrGreetingUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/wave'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only MP3 and WAV audio files are allowed'));
+      }
+    }
+  });
+  
+  app.post("/api/pbx/ivr-greeting", requireActiveCompany, ivrGreetingUpload.single('audio'), async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const file = req.file;
+      
+      if (!file) {
+        return res.status(400).json({ error: "No audio file provided" });
+      }
+      
+      // Generate unique filename
+      const extension = file.mimetype.includes('wav') ? 'wav' : 'mp3';
+      const filename = `ivr-greeting-${user.companyId}-${Date.now()}.${extension}`;
+      
+      // Upload to Object Storage
+      const privateObjectDir = objectStorage.getPrivateObjectDir();
+      const objectPath = `${privateObjectDir}/pbx-audio/${filename}`;
+      const parts = objectPath.split('/').filter(p => p);
+      const bucketName = parts[0];
+      const objectName = parts.slice(1).join('/');
+      
+      const bucket = objectStorageClient.bucket(bucketName);
+      const objectFile = bucket.file(objectName);
+      
+      await objectFile.save(file.buffer, {
+        contentType: file.mimetype,
+        metadata: {
+          cacheControl: 'public, max-age=31536000',
+        },
+      });
+      
+      // Generate signed URL for Telnyx (valid for 1 year)
+      const [signedUrl] = await objectFile.getSignedUrl({
+        action: 'read',
+        expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
+      });
+      
+      // Update PBX settings with the new audio URL
+      const settings = await pbxService.createOrUpdatePbxSettings(user.companyId, {
+        greetingAudioUrl: signedUrl,
+        useTextToSpeech: false
+      });
+      
+      console.log(`[PBX] IVR greeting audio uploaded for company ${user.companyId}: ${filename}`);
+      
+      return res.json({ 
+        success: true, 
+        url: signedUrl,
+        settings 
+      });
+    } catch (error: any) {
+      console.error("[PBX] Error uploading IVR greeting:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // DELETE /api/pbx/ivr-greeting - Delete IVR greeting audio
+  app.delete("/api/pbx/ivr-greeting", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      // Get current settings to find the file URL before deleting
+      const currentSettings = await pbxService.getPbxSettings(user.companyId);
+      
+      // If there's an existing greeting audio, delete it from Object Storage
+      if (currentSettings?.greetingAudioUrl) {
+        try {
+          // Normalize the signed URL to internal path format
+          const normalizedPath = objectStorage.normalizeObjectEntityPath(currentSettings.greetingAudioUrl);
+          const objectFile = await objectStorage.getObjectEntityFile(normalizedPath);
+          await objectFile.delete();
+          console.log(`[PBX] Deleted IVR greeting file from storage: ${normalizedPath}`);
+        } catch (deleteError: any) {
+          // Log but don't fail if file doesn't exist or can't be deleted
+          console.warn(`[PBX] Could not delete greeting file from storage: ${deleteError.message}`);
+        }
+      }
+      
+      // Update PBX settings to clear the audio URL
+      const settings = await pbxService.createOrUpdatePbxSettings(user.companyId, {
+        greetingAudioUrl: null
+      });
+      
+      console.log(`[PBX] IVR greeting audio deleted for company ${user.companyId}`);
+      
+      return res.json({ success: true, settings });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting IVR greeting:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
   // GET /api/pbx/queues - Get all queues
   app.get("/api/pbx/queues", requireActiveCompany, async (req: Request, res: Response) => {
     try {

@@ -143,13 +143,21 @@ export class ObjectStorageService {
       return rawPath;
     }
     const url = new URL(rawPath);
-    const rawObjectPath = url.pathname;
+    let rawObjectPath = url.pathname;
+    // Remove leading slash from pathname for comparison
+    if (rawObjectPath.startsWith("/")) {
+      rawObjectPath = rawObjectPath.slice(1);
+    }
     let objectEntityDir = this.getPrivateObjectDir();
+    // Remove leading slash from entityDir for comparison
+    if (objectEntityDir.startsWith("/")) {
+      objectEntityDir = objectEntityDir.slice(1);
+    }
     if (!objectEntityDir.endsWith("/")) {
       objectEntityDir = `${objectEntityDir}/`;
     }
     if (!rawObjectPath.startsWith(objectEntityDir)) {
-      return rawObjectPath;
+      return `/${rawObjectPath}`;
     }
     const entityId = rawObjectPath.slice(objectEntityDir.length);
     return `/objects/${entityId}`;

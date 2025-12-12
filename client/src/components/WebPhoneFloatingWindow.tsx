@@ -1470,6 +1470,8 @@ export function WebPhoneFloatingWindow() {
   const remoteAudioRef = useRef<HTMLAudioElement>(null);
   const localAudioRef = useRef<HTMLAudioElement>(null);
   const dialInputRef = useRef<HTMLInputElement>(null);
+  const ringtoneIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
   
   const isVisible = useWebPhoneStore(state => state.dialpadVisible);
   const connectionStatus = useWebPhoneStore(state => state.connectionStatus);
@@ -1606,6 +1608,71 @@ export function WebPhoneFloatingWindow() {
       if (extTimerRef.current) clearInterval(extTimerRef.current);
     };
   }, [currentExtCall?.state, currentExtCall?.answerTime]);
+  
+  // Ringtone generator function using Web Audio API
+  const playRingtoneBurst = useCallback(() => {
+    try {
+      if (!audioContextRef.current) {
+        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      }
+      const ctx = audioContextRef.current;
+      if (ctx.state === 'suspended') {
+        ctx.resume();
+      }
+      
+      const now = ctx.currentTime;
+      const oscillator1 = ctx.createOscillator();
+      const oscillator2 = ctx.createOscillator();
+      const gainNode = ctx.createGain();
+      
+      oscillator1.type = 'sine';
+      oscillator1.frequency.value = 440;
+      oscillator2.type = 'sine';
+      oscillator2.frequency.value = 480;
+      
+      oscillator1.connect(gainNode);
+      oscillator2.connect(gainNode);
+      gainNode.connect(ctx.destination);
+      
+      gainNode.gain.setValueAtTime(0.15, now);
+      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
+      
+      oscillator1.start(now);
+      oscillator2.start(now);
+      oscillator1.stop(now + 0.8);
+      oscillator2.stop(now + 0.8);
+    } catch (e) {
+      console.warn('[WebPhone] Ringtone playback failed:', e);
+    }
+  }, []);
+  
+  // Ringtone and auto-open effect for incoming calls
+  useEffect(() => {
+    const hasIncomingCall = !!telnyxIncomingCall || !!incomingExtCall;
+    
+    if (hasIncomingCall) {
+      if (!isVisible) {
+        toggleDialpad();
+      }
+      
+      playRingtoneBurst();
+      ringtoneIntervalRef.current = setInterval(() => {
+        playRingtoneBurst();
+      }, 2000);
+    } else {
+      if (ringtoneIntervalRef.current) {
+        clearInterval(ringtoneIntervalRef.current);
+        ringtoneIntervalRef.current = null;
+      }
+    }
+    
+    return () => {
+      if (ringtoneIntervalRef.current) {
+        clearInterval(ringtoneIntervalRef.current);
+        ringtoneIntervalRef.current = null;
+      }
+    };
+  }, [telnyxIncomingCall, incomingExtCall, isVisible, toggleDialpad, playRingtoneBurst]);
   
   // Check if phone is available (either SIP extension, Telnyx number, or PBX extension)
   const hasPhoneCapability = !!sipExtension || hasTelnyxNumber || !!extMyExtension;

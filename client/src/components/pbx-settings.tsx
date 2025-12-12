@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -26,7 +26,11 @@ import {
   Voicemail,
   Clock,
   Music,
-  Mic
+  Mic,
+  Upload,
+  Play,
+  Pause,
+  Volume2
 } from "lucide-react";
 
 interface PbxSettings {
@@ -96,6 +100,9 @@ export function PbxSettings() {
   const [editingQueue, setEditingQueue] = useState<PbxQueue | null>(null);
   const [editingExtension, setEditingExtension] = useState<PbxExtension | null>(null);
   const [editingMenuOption, setEditingMenuOption] = useState<PbxMenuOption | null>(null);
+  const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { data: settings, isLoading: settingsLoading } = useQuery<PbxSettings>({
     queryKey: ["/api/pbx/settings"],
@@ -126,6 +133,74 @@ export function PbxSettings() {
       toast({ title: "Error", description: error.message, variant: "destructive" });
     },
   });
+
+  const uploadGreetingMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append('audio', file);
+      const response = await fetch('/api/pbx/ivr-greeting', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Upload failed');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pbx/settings"] });
+      toast({ title: "Audio uploaded", description: "IVR greeting audio uploaded successfully." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteGreetingMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("DELETE", "/api/pbx/ivr-greeting");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pbx/settings"] });
+      if (audioRef.current) {
+        audioRef.current.pause();
+        setIsPlayingAudio(false);
+      }
+      toast({ title: "Audio deleted", description: "IVR greeting audio removed." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      uploadGreetingMutation.mutate(file);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const toggleAudioPlayback = () => {
+    if (!settings?.greetingAudioUrl) return;
+    
+    if (!audioRef.current) {
+      audioRef.current = new Audio(settings.greetingAudioUrl);
+      audioRef.current.onended = () => setIsPlayingAudio(false);
+    }
+    
+    if (isPlayingAudio) {
+      audioRef.current.pause();
+      setIsPlayingAudio(false);
+    } else {
+      audioRef.current.play();
+      setIsPlayingAudio(true);
+    }
+  };
 
   const queueMutation = useMutation({
     mutationFn: async (data: { id?: string; name: string; description?: string; ringStrategy: string }) => {
@@ -295,14 +370,83 @@ export function PbxSettings() {
                   />
                 </div>
               ) : (
-                <div className="space-y-2">
-                  <Label>Greeting Audio URL</Label>
-                  <Input
-                    placeholder="https://example.com/greeting.mp3"
-                    value={settings?.greetingAudioUrl || ""}
-                    onChange={(e) => handleSettingChange("greetingAudioUrl", e.target.value)}
-                    data-testid="input-greeting-audio"
+                <div className="space-y-3">
+                  <Label>Greeting Audio</Label>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept=".mp3,.wav,audio/mpeg,audio/wav"
+                    className="hidden"
+                    data-testid="input-greeting-audio-file"
                   />
+                  
+                  {settings?.greetingAudioUrl ? (
+                    <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={toggleAudioPlayback}
+                        className="h-10 w-10 p-0"
+                        data-testid="button-play-greeting"
+                      >
+                        {isPlayingAudio ? (
+                          <Pause className="h-4 w-4" />
+                        ) : (
+                          <Play className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">Greeting Audio</p>
+                        <p className="text-xs text-muted-foreground">Click to preview</p>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => fileInputRef.current?.click()}
+                          disabled={uploadGreetingMutation.isPending}
+                          data-testid="button-replace-greeting"
+                        >
+                          {uploadGreetingMutation.isPending ? (
+                            <LoadingSpinner fullScreen={false} />
+                          ) : (
+                            <Upload className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => deleteGreetingMutation.mutate()}
+                          disabled={deleteGreetingMutation.isPending}
+                          className="text-red-500 hover:text-red-600"
+                          data-testid="button-delete-greeting"
+                        >
+                          {deleteGreetingMutation.isPending ? (
+                            <LoadingSpinner fullScreen={false} />
+                          ) : (
+                            <Trash2 className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div 
+                      className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-colors"
+                      onClick={() => fileInputRef.current?.click()}
+                      data-testid="button-upload-greeting"
+                    >
+                      {uploadGreetingMutation.isPending ? (
+                        <LoadingSpinner fullScreen={false} />
+                      ) : (
+                        <>
+                          <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                          <p className="text-sm font-medium text-foreground">Upload greeting audio</p>
+                          <p className="text-xs text-muted-foreground mt-1">MP3 or WAV (max 5MB)</p>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 
