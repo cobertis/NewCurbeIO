@@ -90,7 +90,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, or, sql, inArray, count, isNotNull, isNull } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, vipPassDevices, vipPassInstances, telnyxGlobalPricing, users } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, vipPassDevices, vipPassInstances, telnyxGlobalPricing, users, pbxExtensions } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -28215,9 +28215,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.json({ 
           hasAssignedNumber: false, 
           canMakeCalls: false,
+          hasPbxExtension: false,
           reason: 'no_company' 
         });
       }
+      
+      // Check if user has a PBX extension assigned
+      const userExtension = await db.query.pbxExtensions.findFirst({
+        where: and(
+          eq(pbxExtensions.companyId, currentUser.companyId),
+          eq(pbxExtensions.userId, currentUser.id)
+        ),
+      });
       
       // Check if user has a phone number assigned to them
       const assignedNumber = await db.query.telnyxPhoneNumbers.findFirst({
@@ -28251,6 +28260,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               hasAssignedNumber: true, 
               canMakeCalls: true,
               phoneNumber: anyCompanyNumber.phoneNumber,
+              hasPbxExtension: !!userExtension,
+              pbxExtension: userExtension?.extension || null,
               reason: isPhoneSystemOwner ? 'phone_system_owner' : 'superadmin_access' 
             });
           }
@@ -28262,14 +28273,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           hasAssignedNumber: true, 
           canMakeCalls: true,
           phoneNumber: assignedNumber.phoneNumber,
+          hasPbxExtension: !!userExtension,
+          pbxExtension: userExtension?.extension || null,
           reason: 'assigned' 
         });
       }
       
-      // User has no assigned number
+      // Check if user has only a PBX extension (no Telnyx number)
+      if (userExtension) {
+        return res.json({ 
+          hasAssignedNumber: false, 
+          canMakeCalls: true,
+          hasPbxExtension: true,
+          pbxExtension: userExtension.extension,
+          reason: 'pbx_extension_only'
+        });
+      }
+      
+      // User has no assigned number or extension
       res.json({ 
         hasAssignedNumber: false, 
         canMakeCalls: false,
+        hasPbxExtension: false,
         reason: 'no_number_assigned',
         message: 'Please contact your account manager to have a phone number assigned to you.'
       });

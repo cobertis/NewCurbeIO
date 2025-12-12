@@ -125,7 +125,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const telnyxCurrentCall = useTelnyxStore(state => state.currentCall);
   
   // Extension calling state
-  const { connectionStatus: extConnectionStatus, myExtension: extMyExtension } = useExtensionCall();
+  const { connectionStatus: extConnectionStatus, myExtension: extMyExtension, connect: connectExtension } = useExtensionCall();
   
   // Query for Telnyx phone numbers
   const { data: telnyxNumbersData } = useQuery<{ numbers: any[] }>({
@@ -193,18 +193,27 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   const hasPhoneSystemAccess = phoneSystemAccessData?.hasAccess || false;
 
   // Query for user phone status - check if user can make calls
-  const { data: userPhoneStatusData } = useQuery<{ hasAssignedNumber: boolean; canMakeCalls: boolean; reason: string; message?: string; phoneNumber?: string }>({
+  const { data: userPhoneStatusData } = useQuery<{ hasAssignedNumber: boolean; canMakeCalls: boolean; reason: string; message?: string; phoneNumber?: string; hasPbxExtension?: boolean; pbxExtension?: string }>({
     queryKey: ['/api/telnyx/user-phone-status'],
     enabled: !!user,
   });
-  // User can make calls if they have a Telnyx number OR have an extension assigned
-  const canMakeCalls = userPhoneStatusData?.canMakeCalls || !!extMyExtension;
+  // User can make calls if they have a Telnyx number OR have an extension assigned (from server, not WebSocket)
+  const hasPbxExtension = userPhoneStatusData?.hasPbxExtension || false;
+  const canMakeCalls = userPhoneStatusData?.canMakeCalls || false;
   const noPhoneMessage = userPhoneStatusData?.message || 'Contact your account manager to get a phone number assigned.';
 
   // Effective connection status that considers if user can make calls (including extension users)
   const effectiveConnectionStatus = canMakeCalls 
     ? (extConnectionStatus === 'connected' ? 'connected' : connectionStatus)
     : 'disconnected';
+
+  // Auto-connect extension WebSocket when user has a PBX extension
+  useEffect(() => {
+    if (hasPbxExtension && extConnectionStatus === 'disconnected') {
+      console.log('[Extension] Auto-connecting WebSocket for PBX extension user');
+      connectExtension();
+    }
+  }, [hasPbxExtension, extConnectionStatus, connectExtension]);
 
   // Listen for WhatsApp unread count updates via WebSocket
   useEffect(() => {
@@ -1046,7 +1055,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* WebPhone Floating Window - Visible to admins, superadmins, or users with extensions */}
-      {(user?.role === 'admin' || user?.role === 'superadmin' || !!extMyExtension) && <WebPhoneFloatingWindow />}
+      {(user?.role === 'admin' || user?.role === 'superadmin' || hasPbxExtension) && <WebPhoneFloatingWindow />}
 
       {/* Timezone Dialog */}
       <Dialog open={timezoneDialogOpen} onOpenChange={setTimezoneDialogOpen}>
