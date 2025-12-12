@@ -4806,6 +4806,7 @@ export type InsertCallRate = z.infer<typeof insertCallRateSchema>;
 export const telnyxPhoneNumbers = pgTable("telnyx_phone_numbers", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "cascade" }),
   phoneNumber: text("phone_number").notNull(), // E.164 format (+1XXXXXXXXXX)
   telnyxPhoneNumberId: text("telnyx_phone_number_id").notNull(), // Telnyx resource ID
   displayName: text("display_name"), // Friendly name for UI
@@ -4837,6 +4838,7 @@ export const telnyxPhoneNumbers = pgTable("telnyx_phone_numbers", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   companyIdIdx: index("telnyx_phone_numbers_company_id_idx").on(table.companyId),
+  ownerUserIdIdx: index("telnyx_phone_numbers_owner_user_id_idx").on(table.ownerUserId),
   phoneNumberIdx: index("telnyx_phone_numbers_phone_number_idx").on(table.phoneNumber),
   telnyxIdIdx: index("telnyx_phone_numbers_telnyx_id_idx").on(table.telnyxPhoneNumberId),
 }));

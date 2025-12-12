@@ -28011,7 +28011,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const billingResult = await purchaseAndBillPhoneNumber(phoneNumber, user.companyId, {
         orderId: result.orderId || "",
         phoneNumberId: result.phoneNumberId || "",
-      });
+      }, user.id);
 
       if (!billingResult.success) {
         console.error(`[Billing] Failed to bill for number purchase: ${billingResult.error}`);
@@ -28094,25 +28094,35 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // GET /api/telnyx/my-numbers - Get company's purchased phone numbers
+  // GET /api/telnyx/my-numbers - Get user's purchased phone numbers (user-scoped)
   app.get("/api/telnyx/my-numbers", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
       
-      // Superadmin can query any company by passing companyId param
-      let targetCompanyId = user.companyId;
-      if (user.role === "superadmin" && req.query.companyId) {
-        targetCompanyId = req.query.companyId as string;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
       }
       
-      const { getCompanyPhoneNumbers } = await import("./services/telnyx-numbers-service");
-      const result = await getCompanyPhoneNumbers(targetCompanyId);
+      // Superadmin can query any company's numbers (all numbers in that company)
+      if (user.role === "superadmin" && req.query.companyId) {
+        const targetCompanyId = req.query.companyId as string;
+        const { getCompanyPhoneNumbers } = await import("./services/telnyx-numbers-service");
+        const result = await getCompanyPhoneNumbers(targetCompanyId);
+        if (!result.success) {
+          return res.status(500).json({ message: result.error });
+        }
+        return res.json({ numbers: result.numbers, totalCount: result.totalCount, currentPage: result.currentPage, totalPages: result.totalPages, pageSize: result.pageSize });
+      }
+      
+      // Regular users only see their own numbers (user-scoped)
+      const { getUserPhoneNumbers } = await import("./services/telnyx-numbers-service");
+      const result = await getUserPhoneNumbers(user.companyId, user.id);
 
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
 
-      res.json({ numbers: result.numbers, totalCount: result.totalCount, currentPage: result.currentPage, totalPages: result.totalPages, pageSize: result.pageSize });
+      res.json({ numbers: result.numbers, totalCount: result.numbers?.length || 0 });
     } catch (error: any) {
       console.error("[Telnyx Numbers] Get numbers error:", error);
       res.status(500).json({ message: "Failed to get phone numbers" });
@@ -29416,7 +29426,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
-      const credentials = await telephonyProvisioningService.getSipCredentials(user.companyId);
+      const credentials = await telephonyProvisioningService.getSipCredentials(user.companyId, user.id);
 
       if (!credentials) {
         return res.status(404).json({ 
@@ -29447,7 +29457,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated with user" });
       }
 
-      // Use the SAME method as /api/webrtc/token - query telephonyCredentials table directly
+      // Use the SAME method as /api/webrtc/token - query telephonyCredentials table directly (user-scoped)
       const [credential] = await db
         .select({ 
           sipUsername: telephonyCredentials.sipUsername,
@@ -29457,6 +29467,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .where(
           and(
             eq(telephonyCredentials.companyId, user.companyId),
+            eq(telephonyCredentials.userId, user.id),
             eq(telephonyCredentials.isActive, true)
           )
         )
@@ -30548,7 +30559,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.json({ found: false });
     }
   });
-  // GET /api/call-logs - Get call history for company
+  // GET /api/call-logs - Get call history for user (user-scoped)
   app.get("/api/call-logs", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -30560,10 +30571,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { filter, limit = "50" } = req.query;
       const parsedLimit = Math.min(parseInt(limit as string) || 50, 100);
 
+      // Superadmin can see all call logs for a company
+      if (user.role === "superadmin") {
+        const logs = await db
+          .select()
+          .from(callLogs)
+          .where(eq(callLogs.companyId, user.companyId))
+          .orderBy(desc(callLogs.startedAt))
+          .limit(parsedLimit);
+        return res.json({ logs });
+      }
+
+      // Regular users only see their own call logs (user-scoped)
       const logs = await db
         .select()
         .from(callLogs)
-        .where(eq(callLogs.companyId, user.companyId))
+        .where(and(
+          eq(callLogs.companyId, user.companyId),
+          eq(callLogs.userId, user.id)
+        ))
         .orderBy(desc(callLogs.startedAt))
         .limit(parsedLimit);
 
@@ -30762,7 +30788,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // DELETE /api/call-logs - Clear all call logs for company
+  // DELETE /api/call-logs - Clear all call logs for user (user-scoped)
   app.delete("/api/call-logs", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -30771,9 +30797,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated with user" });
       }
 
-      await db
-        .delete(callLogs)
-        .where(eq(callLogs.companyId, user.companyId));
+      // Superadmin can clear all company call logs
+      if (user.role === "superadmin") {
+        await db
+          .delete(callLogs)
+          .where(eq(callLogs.companyId, user.companyId));
+      } else {
+        // Regular users can only clear their own call logs (user-scoped)
+        await db
+          .delete(callLogs)
+          .where(and(
+            eq(callLogs.companyId, user.companyId),
+            eq(callLogs.userId, user.id)
+          ));
+      }
 
       res.json({ success: true });
     } catch (error: any) {

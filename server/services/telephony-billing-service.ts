@@ -23,7 +23,8 @@ export async function purchaseAndBillPhoneNumber(
     phoneNumberId: string;
     numberType?: "local" | "toll_free";
     telnyxMonthlyCost?: number;
-  }
+  },
+  ownerUserId?: string
 ): Promise<PurchaseAndBillResult> {
   try {
     const wallet = await getOrCreateWallet(companyId);
@@ -93,13 +94,15 @@ export async function purchaseAndBillPhoneNumber(
           nextBillingAt: nextBillingDate,
           purchasedAt: now,
           updatedAt: now,
+          ...(ownerUserId && { ownerUserId }),
         })
         .where(eq(telnyxPhoneNumbers.phoneNumber, phoneNumber));
       
-      console.log(`[Billing] Updated existing phone number record: ${phoneNumber}`);
+      console.log(`[Billing] Updated existing phone number record: ${phoneNumber}, ownerUserId: ${ownerUserId || 'none'}`);
     } else {
       await db.insert(telnyxPhoneNumbers).values({
         companyId,
+        ownerUserId: ownerUserId || null,
         phoneNumber,
         telnyxPhoneNumberId: telnyxOrderResult.phoneNumberId,
         status: "active",
@@ -111,7 +114,7 @@ export async function purchaseAndBillPhoneNumber(
         purchasedAt: now,
       });
       
-      console.log(`[Billing] Created new phone number record: ${phoneNumber}`);
+      console.log(`[Billing] Created new phone number record: ${phoneNumber}, ownerUserId: ${ownerUserId || 'none'}`);
     }
     
     return {

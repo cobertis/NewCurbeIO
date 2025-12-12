@@ -6,7 +6,7 @@ import {
   companies,
   TelephonyProvisioningStatus 
 } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { SecretsService } from "./secrets-service";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
@@ -760,17 +760,22 @@ export class TelephonyProvisioningService {
     };
   }
 
-  async getSipCredentials(companyId: string): Promise<{
+  async getSipCredentials(companyId: string, userId?: string): Promise<{
     username: string;
     password: string;
   } | null> {
+    // If userId is provided, filter by both companyId and userId (user-scoped)
+    const whereCondition = userId 
+      ? and(eq(telephonyCredentials.companyId, companyId), eq(telephonyCredentials.userId, userId))
+      : eq(telephonyCredentials.companyId, companyId);
+    
     const [cred] = await db
       .select({
         username: telephonyCredentials.sipUsername,
         encryptedPassword: telephonyCredentials.sipPassword,
       })
       .from(telephonyCredentials)
-      .where(eq(telephonyCredentials.companyId, companyId));
+      .where(whereCondition);
 
     if (!cred) return null;
 

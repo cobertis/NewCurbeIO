@@ -1169,3 +1169,33 @@ export async function getCompanyPhoneNumbers(companyId: string): Promise<{
     };
   }
 }
+
+export async function getUserPhoneNumbers(companyId: string, userId: string): Promise<{
+  success: boolean;
+  numbers?: any[];
+  error?: string;
+}> {
+  try {
+    // Get phone numbers from local DB filtered by ownerUserId
+    const numbers = await db
+      .select()
+      .from(telnyxPhoneNumbers)
+      .where(
+        and(
+          eq(telnyxPhoneNumbers.companyId, companyId),
+          eq(telnyxPhoneNumbers.ownerUserId, userId)
+        )
+      );
+
+    return {
+      success: true,
+      numbers: numbers || [],
+    };
+  } catch (error) {
+    console.error("[Telnyx Numbers] Get user numbers error:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Failed to get phone numbers",
+    };
+  }
+}
