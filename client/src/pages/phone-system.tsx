@@ -990,6 +990,47 @@ export default function PhoneSystem() {
 
           {/* Numbers Tab - Split View */}
           <TabsContent value="numbers" className="flex-1 m-0 overflow-auto">
+            {/* Global Connection Settings */}
+            <div className="px-6 pt-4 pb-2">
+              <div className="p-4 rounded-lg bg-slate-50 dark:bg-muted/50 space-y-3">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="font-medium text-slate-700 dark:text-foreground">Noise Suppression</p>
+                    <p className="text-sm text-slate-500">Reduce background noise on all calls</p>
+                  </div>
+                  <Switch
+                    checked={noiseSuppressionData?.enabled || false}
+                    onCheckedChange={(checked) => noiseSuppressionMutation.mutate({ 
+                      enabled: checked, 
+                      direction: noiseSuppressionData?.direction || 'outbound' 
+                    })}
+                    disabled={noiseSuppressionMutation.isPending}
+                    data-testid="switch-noise-suppression"
+                  />
+                </div>
+                {noiseSuppressionData?.enabled && (
+                  <div className="pt-2 border-t border-slate-200 dark:border-slate-700">
+                    <Label className="text-xs text-slate-500 mb-2 block">Direction</Label>
+                    <Select
+                      value={noiseSuppressionData?.direction || "outbound"}
+                      onValueChange={(value: "inbound" | "outbound" | "both") => {
+                        noiseSuppressionMutation.mutate({ enabled: true, direction: value });
+                      }}
+                      disabled={noiseSuppressionMutation.isPending}
+                    >
+                      <SelectTrigger className="h-9 w-48" data-testid="select-noise-direction">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="inbound">Inbound Only</SelectItem>
+                        <SelectItem value="outbound">Outbound Only</SelectItem>
+                        <SelectItem value="both">Both Directions</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
+              </div>
+            </div>
             {isLoadingNumbers ? (
               <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-slate-400" /></div>
             ) : !numbersData?.numbers?.length ? (
@@ -1187,56 +1228,6 @@ export default function PhoneSystem() {
                               disabled={numberVoiceSettingsMutation.isPending}
                               data-testid="switch-cnam-number"
                             />
-                          </div>
-                          <div className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <div>
-                                <p className="text-sm font-medium text-slate-700 dark:text-foreground">Noise Suppression</p>
-                                <p className="text-xs text-slate-500">Reduce background noise on calls</p>
-                              </div>
-                              <Switch
-                                checked={selectedNumber.noiseSuppressionEnabled || false}
-                                onCheckedChange={(checked) => {
-                                  if (selectedNumber.telnyxPhoneNumberId) {
-                                    numberVoiceSettingsMutation.mutate({
-                                      phoneNumberId: selectedNumber.telnyxPhoneNumberId,
-                                      settings: { noiseSuppressionEnabled: checked }
-                                    });
-                                  }
-                                }}
-                                disabled={numberVoiceSettingsMutation.isPending}
-                                data-testid="switch-noise-suppression-number"
-                              />
-                            </div>
-                            {selectedNumber.noiseSuppressionEnabled && (
-                              <div className="pl-4 border-l-2 border-slate-200 dark:border-slate-700">
-                                <Label className="text-xs text-slate-500 mb-1 block">Direction</Label>
-                                <Select
-                                  value={selectedNumber.noiseSuppressionDirection || "outbound"}
-                                  onValueChange={(value: "inbound" | "outbound" | "both") => {
-                                    if (selectedNumber.telnyxPhoneNumberId) {
-                                      numberVoiceSettingsMutation.mutate({
-                                        phoneNumberId: selectedNumber.telnyxPhoneNumberId,
-                                        settings: { noiseSuppressionDirection: value }
-                                      });
-                                    }
-                                  }}
-                                  disabled={numberVoiceSettingsMutation.isPending}
-                                >
-                                  <SelectTrigger className="h-8 text-xs" data-testid="select-noise-direction">
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="inbound">Inbound Only</SelectItem>
-                                    <SelectItem value="outbound">Outbound Only</SelectItem>
-                                    <SelectItem value="both">Both Directions</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                                <p className="text-xs text-slate-400 mt-1">
-                                  {selectedNumber.noiseSuppressionDirection === "both" ? "Applied to both directions" : "Applied to one direction"}
-                                </p>
-                              </div>
-                            )}
                           </div>
                           <div className="space-y-2">
                             <div className="flex items-center justify-between">
@@ -2177,7 +2168,7 @@ function PhoneNumberCard({ number, onConfigureE911 }: PhoneNumberCardProps) {
               <div className="flex items-center justify-between p-4 rounded-lg bg-slate-50 dark:bg-muted/50">
                 <div>
                   <p className="font-medium text-slate-700 dark:text-foreground">Caller ID Lookup</p>
-                  <p className="text-sm text-slate-500">Show caller names ($0.40/mo)</p>
+                  <p className="text-sm text-slate-500">Show caller names on incoming calls</p>
                 </div>
                 <Switch
                   checked={settings?.callerIdNameEnabled || false}

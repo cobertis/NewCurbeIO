@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, ChevronLeft, ChevronRight, Check, Search, ShoppingBag, ExternalLink, RefreshCw, MessageSquare, Loader2, Shield, MapPin, type LucideIcon } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, ChevronLeft, ChevronRight, Check, Search, ShoppingBag, ExternalLink, RefreshCw, MessageSquare, Loader2, Shield, MapPin, Square, Trash2, type LucideIcon } from 'lucide-react';
 import { EmergencyAddressForm } from '@/components/EmergencyAddressForm';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
@@ -160,6 +160,237 @@ function formatCallerNumber(phoneNumber: string): string {
 }
 
 type ViewMode = 'recents' | 'contacts' | 'keypad' | 'voicemail';
+
+interface Voicemail {
+  id: string;
+  fromNumber: string;
+  callerName?: string;
+  duration: number;
+  recordingUrl: string;
+  transcription?: string;
+  status: 'new' | 'read' | 'deleted';
+  receivedAt: string;
+}
+
+interface VoicemailViewProps {
+  voicemails: Voicemail[];
+  unreadCount: number;
+  refetchVoicemails: () => void;
+}
+
+function VoicemailView({ voicemails, unreadCount, refetchVoicemails }: VoicemailViewProps) {
+  const { toast } = useToast();
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const [audioProgress, setAudioProgress] = useState<{ [key: string]: number }>({});
+  const audioRefs = useRef<{ [key: string]: HTMLAudioElement }>({});
+
+  const markAsReadMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/voicemails/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: 'read' })
+      });
+      if (!res.ok) throw new Error('Failed to mark as read');
+      return res.json();
+    },
+    onSuccess: () => {
+      refetchVoicemails();
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const res = await fetch(`/api/voicemails/${id}`, {
+        method: 'DELETE',
+        credentials: 'include'
+      });
+      if (!res.ok) throw new Error('Failed to delete voicemail');
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Voicemail deleted" });
+      refetchVoicemails();
+    },
+    onError: () => {
+      toast({ title: "Failed to delete", variant: "destructive" });
+    }
+  });
+
+  const formatDuration = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const formatRelativeTime = (dateStr: string): string => {
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    
+    if (days === 0) {
+      return date.toLocaleTimeString([], { hour: 'numeric', minute: '2-digit' });
+    } else if (days === 1) {
+      return 'Yesterday';
+    } else if (days < 7) {
+      return date.toLocaleDateString([], { weekday: 'short' });
+    } else {
+      return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+    }
+  };
+
+  const handlePlay = (voicemail: Voicemail) => {
+    // Stop any currently playing audio
+    if (playingId && playingId !== voicemail.id) {
+      const prevAudio = audioRefs.current[playingId];
+      if (prevAudio) {
+        prevAudio.pause();
+        prevAudio.currentTime = 0;
+      }
+    }
+
+    if (!audioRefs.current[voicemail.id]) {
+      const audio = new Audio(voicemail.recordingUrl);
+      audio.onended = () => {
+        setPlayingId(null);
+        setAudioProgress(prev => ({ ...prev, [voicemail.id]: 0 }));
+      };
+      audio.ontimeupdate = () => {
+        const progress = (audio.currentTime / audio.duration) * 100;
+        setAudioProgress(prev => ({ ...prev, [voicemail.id]: progress }));
+      };
+      audioRefs.current[voicemail.id] = audio;
+    }
+
+    const audio = audioRefs.current[voicemail.id];
+    
+    if (playingId === voicemail.id) {
+      audio.pause();
+      setPlayingId(null);
+    } else {
+      audio.play();
+      setPlayingId(voicemail.id);
+      
+      // Mark as read when played
+      if (voicemail.status === 'new') {
+        markAsReadMutation.mutate(voicemail.id);
+      }
+    }
+  };
+
+  if (!voicemails || voicemails.length === 0) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-full py-12">
+        <Voicemail className="h-12 w-12 text-muted-foreground/30 mb-3" />
+        <p className="text-sm text-muted-foreground">No voicemails</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col h-full">
+      {unreadCount > 0 && (
+        <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b">
+          <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
+            {unreadCount} new voicemail{unreadCount !== 1 ? 's' : ''}
+          </p>
+        </div>
+      )}
+      
+      <div className="divide-y divide-border">
+        {voicemails.map((vm) => (
+          <div 
+            key={vm.id} 
+            className={cn(
+              "px-4 py-3",
+              vm.status === 'new' && "bg-blue-50/50 dark:bg-blue-900/10"
+            )}
+            data-testid={`voicemail-item-${vm.id}`}
+          >
+            <div className="flex items-start gap-3">
+              <div className="flex-shrink-0 w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                <User className="h-5 w-5 text-muted-foreground" />
+              </div>
+              
+              <div className="flex-1 min-w-0">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <span className={cn(
+                      "font-medium text-sm truncate",
+                      vm.status === 'new' && "text-foreground font-semibold"
+                    )}>
+                      {vm.callerName || formatPhoneInput(vm.fromNumber)}
+                    </span>
+                    {vm.status === 'new' && (
+                      <div className="w-2 h-2 rounded-full bg-blue-500 flex-shrink-0" />
+                    )}
+                  </div>
+                  <span className="text-xs text-muted-foreground flex-shrink-0">
+                    {formatRelativeTime(vm.receivedAt)}
+                  </span>
+                </div>
+                
+                {vm.callerName && (
+                  <p className="text-xs text-muted-foreground truncate">
+                    {formatPhoneInput(vm.fromNumber)}
+                  </p>
+                )}
+                
+                <div className="flex items-center gap-2 mt-2">
+                  <button
+                    onClick={() => handlePlay(vm)}
+                    className={cn(
+                      "w-8 h-8 rounded-full flex items-center justify-center transition-colors",
+                      playingId === vm.id 
+                        ? "bg-blue-500 text-white" 
+                        : "bg-muted hover:bg-muted/80"
+                    )}
+                    data-testid={`button-play-voicemail-${vm.id}`}
+                  >
+                    {playingId === vm.id ? (
+                      <Square className="h-3 w-3" fill="currentColor" />
+                    ) : (
+                      <Play className="h-3 w-3 ml-0.5" fill="currentColor" />
+                    )}
+                  </button>
+                  
+                  <div className="flex-1 flex items-center gap-2">
+                    <div className="flex-1 h-1 bg-muted rounded-full overflow-hidden">
+                      <div 
+                        className="h-full bg-blue-500 transition-all duration-100"
+                        style={{ width: `${audioProgress[vm.id] || 0}%` }}
+                      />
+                    </div>
+                    <span className="text-xs text-muted-foreground w-10 text-right">
+                      {formatDuration(vm.duration)}
+                    </span>
+                  </div>
+                  
+                  <button
+                    onClick={() => deleteMutation.mutate(vm.id)}
+                    disabled={deleteMutation.isPending}
+                    className="w-8 h-8 rounded-full flex items-center justify-center hover:bg-red-100 dark:hover:bg-red-900/20 text-muted-foreground hover:text-red-500 transition-colors"
+                    data-testid={`button-delete-voicemail-${vm.id}`}
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </button>
+                </div>
+                
+                {vm.transcription && (
+                  <p className="text-xs text-muted-foreground mt-2 line-clamp-2">
+                    {vm.transcription}
+                  </p>
+                )}
+              </div>
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface Contact {
   id: string;
@@ -2681,10 +2912,11 @@ export function WebPhoneFloatingWindow() {
                   )}
                   
                   {viewMode === 'voicemail' && (
-                    /* Voicemail - Empty State */
-                    <div className="flex items-center justify-center min-h-full">
-                      <p className="text-sm text-muted-foreground">Coming soon</p>
-                    </div>
+                    <VoicemailView 
+                      voicemails={voicemailList}
+                      unreadCount={voicemailUnreadCount}
+                      refetchVoicemails={refetchVoicemails}
+                    />
                   )}
                 </div>
                 
