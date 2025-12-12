@@ -721,14 +721,16 @@ export default function PhoneSystem() {
             )}
           </div>
 
-          {/* Right: Quick Actions */}
-          <div className="flex items-center gap-2">
+          {/* Right: Balance + Add Funds */}
+          <div className="flex items-center gap-3">
             <Button variant="outline" size="sm" onClick={() => setShowAddFunds(true)} data-testid="button-add-funds-quick">
               <Plus className="h-3 w-3 mr-1" />Add Funds
             </Button>
-            <Button size="sm" onClick={() => setShowBuyNumber(true)} data-testid="button-buy-number">
-              <Plus className="h-3 w-3 mr-1" />Buy Number
-            </Button>
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${walletBalance > 10 ? 'bg-green-500' : walletBalance > 0 ? 'bg-amber-500' : 'bg-red-500'}`} />
+              <span className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(walletBalance)}</span>
+              {walletBalance < 10 && <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">Low</Badge>}
+            </div>
           </div>
         </div>
       </div>
