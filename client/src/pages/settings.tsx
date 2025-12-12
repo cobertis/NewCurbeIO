@@ -2420,22 +2420,55 @@ export default function Settings() {
 
             {/* Team Tab */}
             <TabsContent value="team" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Team Members</CardTitle>
-                  <CardDescription>
-                    View and manage users in your company
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <TeamMembersTable />
-                </CardContent>
-              </Card>
+              <TeamMembersSection />
             </TabsContent>
           </Tabs>
         </div>
       </div>
     </div>
+  );
+}
+
+// Team Members Section with user count display
+function TeamMembersSection() {
+  const { data: limitsData, isLoading: isLoadingLimits } = useQuery<{ 
+    maxUsers: number | null;
+    currentUsers: number;
+    canAddUsers: boolean;
+    planName: string | null;
+  }>({
+    queryKey: ["/api/users/limits"],
+  });
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+        <div className="space-y-1">
+          <CardTitle>Team Members</CardTitle>
+          <CardDescription>
+            View and manage users in your company
+          </CardDescription>
+        </div>
+        {!isLoadingLimits && limitsData && (
+          <div className="flex items-center gap-2">
+            <div className="text-right">
+              <p className="text-sm font-medium">
+                {limitsData.currentUsers} / {limitsData.maxUsers ?? "∞"} users
+              </p>
+              {limitsData.planName && (
+                <p className="text-xs text-muted-foreground">{limitsData.planName} Plan</p>
+              )}
+            </div>
+            <div className="h-8 w-8 rounded-full flex items-center justify-center bg-muted">
+              <Users className="h-4 w-4 text-muted-foreground" />
+            </div>
+          </div>
+        )}
+      </CardHeader>
+      <CardContent>
+        <TeamMembersTable />
+      </CardContent>
+    </Card>
   );
 }
 
