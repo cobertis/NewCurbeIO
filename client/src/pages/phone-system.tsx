@@ -54,6 +54,7 @@ import { BarChart as RechartsBarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip
 import { useWebSocket } from "@/hooks/use-websocket";
 import { BuyNumbersDialog } from "@/components/WebPhoneFloatingWindow";
 import { E911ConfigDialog } from "@/components/E911ConfigDialog";
+import { PbxSettings } from "@/components/pbx-settings";
 
 interface ManagedAccountDetails {
   id: string;
@@ -767,6 +768,9 @@ export default function PhoneSystem() {
               </TabsTrigger>
               <TabsTrigger value="pricing" className="data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 rounded-none px-4 py-3 text-sm font-medium bg-transparent">
                 Pricing
+              </TabsTrigger>
+              <TabsTrigger value="pbx" className="data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 rounded-none px-4 py-3 text-sm font-medium bg-transparent" data-testid="tab-pbx">
+                PBX
               </TabsTrigger>
             </TabsList>
           </div>
@@ -1561,6 +1565,10 @@ export default function PhoneSystem() {
                 </div>
               </div>
             </div>
+          </TabsContent>
+
+          <TabsContent value="pbx" className="flex-1 m-0 overflow-auto">
+            <PbxSettings />
           </TabsContent>
 
         </Tabs>

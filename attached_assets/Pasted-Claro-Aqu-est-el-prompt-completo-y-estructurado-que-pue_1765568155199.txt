@@ -1,0 +1,438 @@
+Claro! Aquí está el prompt completo y estructurado que puedes darle al agente de Replit:
+
+***
+
+# INSTRUCCIONES CRÍTICAS PARA MEJORAS DE SEGURIDAD Y ARQUITECTURA
+
+## 🔴 PRIORIDAD MÁXIMA: SEGURIDAD MULTI-TENANT
+
+### 1. ELIMINAR TODAS LAS REFERENCIAS A CREDENCIALES EN process.env
+**PROBLEMA DE SEGURIDAD CRÍTICO:** Esta aplicación es multi-tenant. Cada compañía debe usar sus propias credenciales almacenadas en la base de datos. NUNCA usar `process.env.TELNYX_API_KEY` o similares.
+
+**ACCIÓN REQUERIDA:**
+- Buscar TODOS los archivos que usen `process.env.TELNYX_API_KEY`, `process.env.STRIPE_SECRET_KEY`, etc.
+- Reemplazar con llamadas a `getCompanyCredential(companyId, service, key)`
+- Las únicas variables de entorno permitidas son: `DATABASE_URL`, `SESSION_SECRET`, `NODE_ENV`, `ENCRYPTION_KEY`
+
+**Ejemplo de lo que está MAL y debe corregirse:**
+```typescript
+// ❌ ELIMINAR - Inseguro en multi-tenant
+const apiKey = process.env.TELNYX_API_KEY;
+
+// ✅ CORRECTO - Usar credenciales de la base de datos
+const apiKey = await getCompanyCredential(companyId, 'telnyx', 'api_key');
+```
+
+### 2. IMPLEMENTAR AISLAMIENTO ESTRICTO DE COMPAÑÍAS
+
+**Crear archivo:** `server/middleware/multi-tenant.ts`
+```typescript
+import { Request, Response, NextFunction } from 'express';
+
+export interface AuthenticatedRequest extends Request {
+  user?: {
+    id: string;
+    companyId: string;
+    role: string;
+  };
+}
+
+export async function requireCompanyAccess(
+  req: AuthenticatedRequest,
+  res: Response,
+  next: NextFunction
+) {
+  const user = req.user;
+  const requestedCompanyId = req.params.companyId || req.body.companyId;
+  
+  if (!user) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+  
+  // CRÍTICO: Validar que el usuario NO acceda a datos de otra compañía
+  if (user.companyId !== requestedCompanyId && user.role !== 'super_admin') {
+    console.error('❌ INTENTO DE ACCESO CROSS-TENANT:', {
+      userId: user.id,
+      userCompanyId: user.companyId,
+      requestedCompanyId,
+      path: req.path
+    });
+    return res.status(403).json({ error: 'Access denied to this company' });
+  }
+  
+  next();
+}
+```
+
+**Aplicar este middleware a TODAS las rutas de API:**
+```typescript
+router.get('/api/companies/:companyId/phone-numbers', 
+  requireAuth, 
+  requireCompanyAccess, // ← AGREGAR ESTO
+  async (req, res) => { /* ... */ }
+);
+```
+
+### 3. AUDITAR Y CORREGIR SERVICIOS DE TELNYX
+
+**Archivos a revisar y corregir:**
+- `server/services/telnyx-manager-service.ts`
+- `server/services/telnyx-numbers-service.ts`
+- `server/services/telnyx-webhook-service.ts`
+- `server/services/telnyx-e911-service.ts`
+
+**Patrón obligatorio en TODAS las funciones:**
+```typescript
+export async function getTelnyxNumbers(
+  companyId: string,  // ← SIEMPRE requerir companyId
+  userId: string      // ← Para audit log
+): Promise<TelnyxNumber[]> {
+  // 1. Obtener credencial de la compañía específica
+  const apiKey = await getCompanyCredential(companyId, 'telnyx', 'api_key');
+  
+  if (!apiKey) {
+    throw new Error(`Telnyx not configured for company ${companyId}`);
+  }
+  
+  // 2. Usar la credencial de esa compañía
+  const response = await fetch('https://api.telnyx.com/v2/phone_numbers', {
+    headers: {
+      'Authorization': `Bearer ${apiKey}`,
+      'Content-Type': 'application/json'
+    }
+  });
+  
+  // 3. Audit log
+  await logCredentialAccess(companyId, userId, 'telnyx', 'read', req.ip);
+  
+  return response.json();
+}
+```
+
+### 4. MEJORAR SERVICIO DE CREDENCIALES
+
+**Crear/actualizar:** `server/services/credential-provider.ts`
+```typescript
+import { db } from '../db';
+import { eq, and } from 'drizzle-orm';
+import { credentials } from '../db/schema';
+
+export class CredentialNotFoundError extends Error {
+  constructor(message: string) {
+    super(message);
+    this.name = 'CredentialNotFoundError';
+  }
+}
+
+/**
+ * Obtiene credencial de forma segura para una compañía específica
+ * @throws CredentialNotFoundError si no existe
+ */
+export async function getCompanyCredential(
+  companyId: string,
+  service: string,
+  key: string
+): Promise<string> {
+  const result = await db
+    .select({ value: credentials.value })
+    .from(credentials)
+    .where(
+      and(
+        eq(credentials.companyId, companyId),
+        eq(credentials.service, service),
+        eq(credentials.key, key),
+        eq(credentials.environment, process.env.NODE_ENV || 'production')
+      )
+    )
+    .limit(1);
+
+  if (!result || result.length === 0) {
+    throw new CredentialNotFoundError(
+      `Credential ${service}.${key} not found for company ${companyId}`
+    );
+  }
+
+  // TODO: Implementar desencriptación aquí cuando esté listo
+  return result[0].value;
+}
+
+/**
+ * Valida que exista una credencial antes de usarla
+ */
+export async function validateCompanyHasCredential(
+  companyId: string,
+  service: string,
+  key: string
+): Promise<boolean> {
+  try {
+    await getCompanyCredential(companyId, service, key);
+    return true;
+  } catch (error) {
+    if (error instanceof CredentialNotFoundError) {
+      return false;
+    }
+    throw error;
+  }
+}
+```
+
+### 5. MANEJO DE ERRORES CONSISTENTE
+
+**Crear:** `server/lib/errors.ts`
+```typescript
+export class AppError extends Error {
+  constructor(
+    message: string,
+    public statusCode: number = 500,
+    public code?: string,
+    public context?: Record<string, any>
+  ) {
+    super(message);
+    this.name = this.constructor.name;
+  }
+}
+
+export class TelnyxServiceError extends AppError {
+  constructor(message: string, context?: Record<string, any>) {
+    super(message, 500, 'TELNYX_ERROR', context);
+  }
+}
+
+export class UnauthorizedError extends AppError {
+  constructor(message: string = 'Unauthorized') {
+    super(message, 401, 'UNAUTHORIZED');
+  }
+}
+
+export class ForbiddenError extends AppError {
+  constructor(message: string = 'Access denied') {
+    super(message, 403, 'FORBIDDEN');
+  }
+}
+```
+
+**Middleware global de errores:**
+```typescript
+// server/middleware/error-handler.ts
+export function errorHandler(
+  err: Error,
+  req: Request,
+  res: Response,
+  next: NextFunction
+) {
+  if (err instanceof AppError) {
+    return res.status(err.statusCode).json({
+      error: err.message,
+      code: err.code,
+      ...(process.env.NODE_ENV === 'development' && { context: err.context })
+    });
+  }
+
+  // Log errores no manejados
+  console.error('❌ Unhandled error:', err);
+  
+  res.status(500).json({
+    error: 'Internal server error',
+    ...(process.env.NODE_ENV === 'development' && { details: err.message })
+  });
+}
+```
+
+### 6. VALIDACIÓN CON ZOD
+
+**Instalar:** `npm install zod`
+
+**Crear:** `server/schemas/telnyx.ts`
+```typescript
+import { z } from 'zod';
+
+export const CreateVoiceProfileSchema = z.object({
+  organizationName: z.string().min(1).max(100),
+  maxConcurrentCalls: z.number().int().positive().max(100).default(10),
+});
+
+export const PurchaseNumberSchema = z.object({
+  phoneNumber: z.string().regex(/^\+?[1-9]\d{1,14}$/),
+});
+
+// Middleware helper
+export function validateRequest<T>(schema: z.ZodSchema<T>) {
+  return (req: Request, res: Response, next: NextFunction) => {
+    try {
+      req.body = schema.parse(req.body);
+      next();
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ 
+          error: 'Validation failed', 
+          details: error.errors 
+        });
+      }
+      next(error);
+    }
+  };
+}
+```
+
+### 7. CUSTOM HOOKS EN EL FRONTEND
+
+**Crear:** `client/src/hooks/useTelnyxNumbers.ts`
+```typescript
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useToast } from './use-toast';
+
+export function useTelnyxNumbers(companyId: string) {
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  const { data: numbers, isLoading, error } = useQuery({
+    queryKey: [`/api/companies/${companyId}/phone-numbers`],
+    enabled: !!companyId,
+  });
+
+  const purchaseNumber = useMutation({
+    mutationFn: async (phoneNumber: string) => {
+      const res = await fetch(`/api/companies/${companyId}/phone-numbers/purchase`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phoneNumber }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ 
+        queryKey: [`/api/companies/${companyId}/phone-numbers`] 
+      });
+      toast({ title: 'Number purchased successfully' });
+    },
+    onError: (err: Error) => {
+      toast({ 
+        title: 'Failed to purchase number', 
+        description: err.message,
+        variant: 'destructive' 
+      });
+    },
+  });
+
+  return { 
+    numbers, 
+    isLoading, 
+    error, 
+    purchaseNumber: purchaseNumber.mutate,
+    isPurchasing: purchaseNumber.isPending 
+  };
+}
+```
+
+### 8. TYPESCRIPT STRICT - ELIMINAR ANY
+
+**Buscar y reemplazar todos los `any`:**
+```bash
+# Encontrar archivos con 'any'
+grep -r ": any" server/ client/src/
+```
+
+**Patrones correctos:**
+```typescript
+// ❌ MAL
+function processData(data: any) { }
+
+// ✅ BIEN - Tipo específico
+interface TelnyxWebhookPayload {
+  event_type: string;
+  payload: {
+    id: string;
+    // ... campos específicos
+  };
+}
+function processData(data: TelnyxWebhookPayload) { }
+
+// ✅ BIEN - Generic cuando sea apropiado
+function processData<T extends { id: string }>(data: T) { }
+```
+
+## 📋 CHECKLIST DE TAREAS
+
+### SPRINT 1 - SEGURIDAD CRÍTICA (Completar primero)
+- [ ] Eliminar TODAS las referencias a `process.env` para API keys
+- [ ] Implementar `requireCompanyAccess` middleware
+- [ ] Aplicar middleware a todas las rutas de API
+- [ ] Auditar y corregir servicios de Telnyx para usar `companyId`
+- [ ] Crear `credential-provider.ts` robusto
+- [ ] Implementar clases de error personalizadas
+- [ ] Testing manual de cross-tenant access (intentar acceder a datos de otra compañía)
+
+### SPRINT 2 - MEJORAS DE CÓDIGO
+- [ ] Implementar validación Zod en endpoints
+- [ ] Crear custom hooks para lógica de UI
+- [ ] Eliminar todos los `any` de TypeScript
+- [ ] Agregar JSDoc a funciones públicas
+- [ ] Implementar error handler middleware global
+
+### SPRINT 3 - TESTING Y MONITORING
+- [ ] Tests unitarios para servicios críticos
+- [ ] Audit logging para acceso a credenciales
+- [ ] Alertas para intentos de cross-tenant access
+- [ ] Rate limiting por compañía
+
+## 🎯 EJEMPLO COMPLETO DE CORRECCIÓN
+
+**ANTES (Inseguro):**
+```typescript
+// server/routes/phone-system.ts - INSEGURO
+router.get('/api/phone-numbers', async (req, res) => {
+  const apiKey = process.env.TELNYX_API_KEY; // ❌ MAL
+  const response = await fetch('https://api.telnyx.com/v2/phone_numbers', {
+    headers: { 'Authorization': `Bearer ${apiKey}` }
+  });
+  res.json(await response.json());
+});
+```
+
+**DESPUÉS (Seguro):**
+```typescript
+// server/routes/phone-system.ts - SEGURO
+router.get(
+  '/api/companies/:companyId/phone-numbers',
+  requireAuth,
+  requireCompanyAccess, // ✅ Valida acceso
+  validateRequest(z.object({ companyId: z.string().uuid() })),
+  async (req: AuthenticatedRequest, res: Response, next: NextFunction) => {
+    try {
+      const { companyId } = req.params;
+      
+      // ✅ Obtener credencial de la compañía específica
+      const apiKey = await getCompanyCredential(companyId, 'telnyx', 'api_key');
+      
+      const response = await fetch('https://api.telnyx.com/v2/phone_numbers', {
+        headers: { 
+          'Authorization': `Bearer ${apiKey}`,
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (!response.ok) {
+        throw new TelnyxServiceError(
+          `Failed to fetch numbers: ${response.status}`,
+          { companyId, status: response.status }
+        );
+      }
+      
+      res.json(await response.json());
+    } catch (error) {
+      next(error); // Pasa al error handler
+    }
+  }
+);
+```
+
+***
+
+## 🚨 RECORDATORIO FINAL
+
+**NUNCA:**
+- Usar `process.env.TELNYX_API_KEY` o similares para APIs de terceros
+- Permitir que un usuario acceda a datos de otra compañía
+- Dejar `catch` blocks vacíos
+- Usar `any` en
