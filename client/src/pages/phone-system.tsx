@@ -535,14 +535,48 @@ export default function PhoneSystem() {
                 E911: {hasE911Issues ? 'Needs Setup' : 'Ready'}
               </span>
             </div>
-            {/* Recording Status */}
-            {billingFeaturesData?.recordingEnabled && (
-              <div className="flex items-center gap-2">
-                <Mic className="h-4 w-4 text-red-500" />
-                <span className="text-sm text-slate-600 dark:text-slate-400">Recording On</span>
-              </div>
-            )}
           </div>
+
+          {/* Center: Feature Toggles */}
+          <div className="flex items-center gap-4 border-l border-r border-slate-200 dark:border-slate-700 px-6">
+            {/* Recording Toggle */}
+            <div className="flex items-center gap-2">
+              <Mic className={`h-4 w-4 ${billingFeaturesData?.recordingEnabled ? 'text-red-500' : 'text-slate-400'}`} />
+              <span className="text-xs text-slate-600 dark:text-slate-400">Recording</span>
+              <Switch
+                checked={billingFeaturesData?.recordingEnabled || false}
+                onCheckedChange={handleRecordingToggle}
+                disabled={billingFeaturesMutation.isPending || syncedRecordingMutation.isPending}
+                className="scale-75"
+                data-testid="switch-recording-quick"
+              />
+            </div>
+            {/* CNAM Toggle */}
+            <div className="flex items-center gap-2">
+              <User className={`h-4 w-4 ${billingFeaturesData?.cnamEnabled ? 'text-blue-500' : 'text-slate-400'}`} />
+              <span className="text-xs text-slate-600 dark:text-slate-400">CNAM</span>
+              <Switch
+                checked={billingFeaturesData?.cnamEnabled || false}
+                onCheckedChange={handleCnamToggle}
+                disabled={billingFeaturesMutation.isPending}
+                className="scale-75"
+                data-testid="switch-cnam-quick"
+              />
+            </div>
+            {/* Noise Suppression Toggle */}
+            <div className="flex items-center gap-2">
+              <Volume2 className={`h-4 w-4 ${noiseSuppressionData?.enabled ? 'text-indigo-500' : 'text-slate-400'}`} />
+              <span className="text-xs text-slate-600 dark:text-slate-400">Noise</span>
+              <Switch
+                checked={noiseSuppressionData?.enabled || false}
+                onCheckedChange={(checked) => noiseSuppressionMutation.mutate({ enabled: checked, direction: noiseSuppressionData?.direction || 'outbound' })}
+                disabled={noiseSuppressionMutation.isPending}
+                className="scale-75"
+                data-testid="switch-noise-quick"
+              />
+            </div>
+          </div>
+
           {/* Right: Quick Actions */}
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setShowAddFunds(true)} data-testid="button-add-funds-quick">
@@ -1145,16 +1179,8 @@ export default function PhoneSystem() {
 
               {/* Call Recording */}
               <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
-                      <Mic className="h-4 w-4 text-red-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm text-slate-700 dark:text-foreground">Call Recording</p>
-                      <p className="text-xs text-slate-500">$0.005/min - Record all calls</p>
-                    </div>
-                  </div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="font-medium text-sm text-slate-700 dark:text-foreground">Call Recording</p>
                   <Switch
                     checked={billingFeaturesData?.recordingEnabled || false}
                     onCheckedChange={handleRecordingToggle}
@@ -1162,20 +1188,18 @@ export default function PhoneSystem() {
                     data-testid="switch-call-recording"
                   />
                 </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+                    <Mic className="h-4 w-4 text-red-600" />
+                  </div>
+                  <p className="text-xs text-slate-500">$0.005/min - Record all calls automatically</p>
+                </div>
               </div>
 
               {/* CNAM */}
               <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-                      <User className="h-4 w-4 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm text-slate-700 dark:text-foreground">CNAM (Caller ID Name)</p>
-                      <p className="text-xs text-slate-500">$1/mo + $0.01/call - Show caller names</p>
-                    </div>
-                  </div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="font-medium text-sm text-slate-700 dark:text-foreground">CNAM (Caller ID Name)</p>
                   <Switch
                     checked={billingFeaturesData?.cnamEnabled || false}
                     onCheckedChange={handleCnamToggle}
@@ -1183,26 +1207,30 @@ export default function PhoneSystem() {
                     data-testid="switch-cnam"
                   />
                 </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                    <User className="h-4 w-4 text-blue-600" />
+                  </div>
+                  <p className="text-xs text-slate-500">$1/mo + $0.01/call - Show caller names on incoming calls</p>
+                </div>
               </div>
 
               {/* Noise Suppression */}
               <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
-                      <Volume2 className="h-4 w-4 text-indigo-600" />
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm text-slate-700 dark:text-foreground">Noise Suppression</p>
-                      <p className="text-xs text-slate-500">Reduce background noise</p>
-                    </div>
-                  </div>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="font-medium text-sm text-slate-700 dark:text-foreground">Noise Suppression</p>
                   <Switch
                     checked={noiseSuppressionData?.enabled || false}
                     onCheckedChange={(checked) => noiseSuppressionMutation.mutate({ enabled: checked, direction: noiseSuppressionData?.direction || 'outbound' })}
                     disabled={noiseSuppressionMutation.isPending}
                     data-testid="switch-noise-suppression"
                   />
+                </div>
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
+                    <Volume2 className="h-4 w-4 text-indigo-600" />
+                  </div>
+                  <p className="text-xs text-slate-500">Reduce background noise during calls</p>
                 </div>
                 {noiseSuppressionData?.enabled && (
                   <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
