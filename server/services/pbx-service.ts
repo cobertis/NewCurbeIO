@@ -9,6 +9,7 @@ import {
   pbxActiveCalls,
   pbxAudioFiles,
   users,
+  telephonySettings,
   PbxSettings,
   PbxMenuOption,
   PbxQueue,
@@ -20,6 +21,7 @@ import {
   PbxAgentStatusType,
 } from "@shared/schema";
 import { eq, and, asc } from "drizzle-orm";
+import { TelephonyProvisioningService } from "./telephony-provisioning-service";
 
 export class PbxService {
   async getPbxSettings(companyId: string): Promise<PbxSettings | null> {
@@ -37,20 +39,65 @@ export class PbxService {
     const { companyId: _, id: __, ...safeData } = data;
     const existing = await this.getPbxSettings(companyId);
 
+    let result: PbxSettings;
+
     if (existing) {
       const [updated] = await db
         .update(pbxSettings)
         .set({ ...safeData, updatedAt: new Date() })
         .where(eq(pbxSettings.id, existing.id))
         .returning();
-      return updated;
+      result = updated;
+    } else {
+      const [created] = await db
+        .insert(pbxSettings)
+        .values({ ...safeData, companyId } as any)
+        .returning();
+      result = created;
     }
 
-    const [created] = await db
-      .insert(pbxSettings)
-      .values({ ...safeData, companyId } as any)
-      .returning();
-    return created;
+    // Auto-provision Call Control when IVR is enabled
+    if (safeData.ivrEnabled === true) {
+      await this.autoProvisionCallControl(companyId);
+    }
+
+    return result;
+  }
+
+  private async autoProvisionCallControl(companyId: string): Promise<void> {
+    try {
+      console.log(`[PBX] Auto-provisioning Call Control for company: ${companyId}`);
+      
+      // Get Telnyx settings for this company
+      const [settings] = await db
+        .select()
+        .from(telephonySettings)
+        .where(eq(telephonySettings.companyId, companyId));
+
+      if (!settings?.managedAccountId) {
+        console.log(`[PBX] No Telnyx managed account found for company: ${companyId}`);
+        return;
+      }
+
+      // Check if already provisioned with Call Control App
+      if (settings.callControlAppId) {
+        console.log(`[PBX] Company already has Call Control App: ${settings.callControlAppId}, skipping provisioning`);
+        return;
+      }
+
+      const provisioningService = new TelephonyProvisioningService();
+      
+      // Migrate all phone numbers to Call Control Application
+      const result = await provisioningService.migrateToCallControl(companyId);
+      
+      if (result.success) {
+        console.log(`[PBX] Call Control provisioning successful. App: ${result.callControlAppId}, Migrated: ${result.migratedCount} numbers`);
+      } else {
+        console.error(`[PBX] Call Control provisioning had errors:`, result.errors);
+      }
+    } catch (error) {
+      console.error(`[PBX] Auto-provisioning error:`, error);
+    }
   }
 
   async getQueues(companyId: string): Promise<PbxQueue[]> {

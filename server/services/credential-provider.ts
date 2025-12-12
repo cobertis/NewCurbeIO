@@ -1,178 +1,196 @@
-import { db } from '../db';
-import { apiCredentials } from '../db/schema';
-import { eq, and } from 'drizzle-orm';
-import { CredentialNotFoundError } from '../lib/errors';
+import { SecretsService } from "./secrets-service";
+import type { ApiProvider } from "@shared/schema";
 
-/**
- * Obtiene una credencial de forma segura para una compañía específica.
- * NUNCA usar process.env para credenciales de APIs de terceros.
- * 
- * @param companyId - ID de la compañía (OBLIGATORIO para multi-tenant security)
- * @param service - Nombre del servicio (ej: 'telnyx', 'stripe', 'intercom')
- * @param key - Nombre de la credencial (ej: 'api_key', 'secret_key')
- * @returns El valor de la credencial (desencriptado si aplica)
- * @throws {CredentialNotFoundError} Si la credencial no existe
- */
-export async function getCompanyCredential(
-  companyId: string,
-  service: string,
-  key: string
-): Promise<string> {
-  if (!companyId || !service || !key) {
-    throw new Error('companyId, service, and key are required');
-  }
+type CredentialCache = Map<string, { value: any; expires: number }>;
 
-  const environment = process.env.NODE_ENV || 'production';
+const cache: CredentialCache = new Map();
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const secretsService = new SecretsService();
 
-  try {
-    const result = await db
-      .select({ 
-        value: apiCredentials.value,
-        encrypted: apiCredentials.encrypted
-      })
-      .from(apiCredentials)
-      .where(
-        and(
-          eq(apiCredentials.companyId, companyId),
-          eq(apiCredentials.service, service),
-          eq(apiCredentials.key, key),
-          eq(apiCredentials.environment, environment)
-        )
-      )
-      .limit(1);
-
-    if (!result || result.length === 0) {
-      throw new CredentialNotFoundError(service, key, companyId);
-    }
-
-    const credential = result[0];
-    
-    // TODO: Implementar desencriptación cuando esté listo
-    // if (credential.encrypted) {
-    //   return decryptCredential(credential.value);
-    // }
-    
-    return credential.value;
-  } catch (error) {
-    if (error instanceof CredentialNotFoundError) {
-      throw error;
-    }
-    
-    console.error('[CredentialProvider] Error fetching credential:', {
-      companyId,
-      service,
-      key,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-    
-    throw new Error(`Failed to fetch credential: ${error instanceof Error ? error.message : 'Unknown error'}`);
-  }
+function getCacheKey(provider: string, key?: string): string {
+  return key ? `${provider}:${key}` : provider;
 }
 
-/**
- * Valida que una compañía tenga configurada una credencial específica.
- * Útil para validar antes de ejecutar operaciones que requieren la credencial.
- */
-export async function validateCompanyHasCredential(
-  companyId: string,
-  service: string,
-  key: string
-): Promise<boolean> {
-  try {
-    await getCompanyCredential(companyId, service, key);
-    return true;
-  } catch (error) {
-    if (error instanceof CredentialNotFoundError) {
-      return false;
-    }
-    throw error;
+function getFromCache<T>(key: string): T | null {
+  const cached = cache.get(key);
+  if (cached && cached.expires > Date.now()) {
+    return cached.value as T;
   }
+  cache.delete(key);
+  return null;
 }
 
-/**
- * Obtiene TODAS las credenciales de un servicio para una compañía.
- * Útil cuando necesitas múltiples credenciales del mismo servicio.
- */
-export async function getCompanyServiceCredentials(
-  companyId: string,
-  service: string
-): Promise<Record<string, string>> {
-  const environment = process.env.NODE_ENV || 'production';
-
-  try {
-    const results = await db
-      .select({ 
-        key: apiCredentials.key,
-        value: apiCredentials.value,
-        encrypted: apiCredentials.encrypted
-      })
-      .from(apiCredentials)
-      .where(
-        and(
-          eq(apiCredentials.companyId, companyId),
-          eq(apiCredentials.service, service),
-          eq(apiCredentials.environment, environment)
-        )
-      );
-
-    if (!results || results.length === 0) {
-      throw new CredentialNotFoundError(service, '*', companyId);
-    }
-
-    const credentials: Record<string, string> = {};
-    
-    for (const cred of results) {
-      // TODO: Implementar desencriptación
-      credentials[cred.key] = cred.value;
-    }
-
-    return credentials;
-  } catch (error) {
-    if (error instanceof CredentialNotFoundError) {
-      throw error;
-    }
-    
-    console.error('[CredentialProvider] Error fetching service credentials:', {
-      companyId,
-      service,
-      error: error instanceof Error ? error.message : 'Unknown error'
-    });
-    
-    throw new Error(`Failed to fetch ${service} credentials`);
-  }
+function setCache<T>(key: string, value: T): void {
+  cache.set(key, { value, expires: Date.now() + CACHE_TTL });
 }
 
-/**
- * Helper para crear headers de autenticación con credenciales de la compañía.
- */
-export async function getCompanyAuthHeaders(
-  companyId: string,
-  service: string,
-  headerType: 'Bearer' | 'Basic' | 'ApiKey' = 'Bearer'
-): Promise<Record<string, string>> {
-  const apiKey = await getCompanyCredential(companyId, service, 'api_key');
+export const credentialProvider = {
+  async getStripe(): Promise<{ secretKey: string; webhookSecret: string }> {
+    const cacheKey = getCacheKey('stripe');
+    const cached = getFromCache<{ secretKey: string; webhookSecret: string }>(cacheKey);
+    if (cached) return cached;
 
-  switch (headerType) {
-    case 'Bearer':
-      return {
-        'Authorization': `Bearer ${apiKey}`,
-        'Content-Type': 'application/json'
-      };
+    const secretKey = await secretsService.getCredential("stripe" as ApiProvider, "secret_key") || 
+                      process.env.STRIPE_SECRET_KEY || '';
+    const webhookSecret = await secretsService.getCredential("stripe" as ApiProvider, "webhook_secret") || 
+                          process.env.STRIPE_WEBHOOK_SECRET || '';
     
-    case 'Basic':
-      const encoded = Buffer.from(`${apiKey}:`).toString('base64');
-      return {
-        'Authorization': `Basic ${encoded}`,
-        'Content-Type': 'application/json'
-      };
+    const result = { secretKey, webhookSecret };
+    setCache(cacheKey, result);
+    return result;
+  },
+
+  async getTwilio(): Promise<{ accountSid: string; authToken: string; phoneNumber: string }> {
+    const cacheKey = getCacheKey('twilio');
+    const cached = getFromCache<{ accountSid: string; authToken: string; phoneNumber: string }>(cacheKey);
+    if (cached) return cached;
+
+    const accountSid = await secretsService.getCredential("twilio" as ApiProvider, "account_sid") || 
+                       process.env.TWILIO_ACCOUNT_SID || '';
+    const authToken = await secretsService.getCredential("twilio" as ApiProvider, "auth_token") || 
+                      process.env.TWILIO_AUTH_TOKEN || '';
+    const phoneNumber = await secretsService.getCredential("twilio" as ApiProvider, "phone_number") || 
+                        process.env.TWILIO_PHONE_NUMBER || '';
     
-    case 'ApiKey':
-      return {
-        'X-API-Key': apiKey,
-        'Content-Type': 'application/json'
-      };
+    const result = { accountSid, authToken, phoneNumber };
+    setCache(cacheKey, result);
+    return result;
+  },
+
+  async getBulkVS(): Promise<{ apiKey: string; apiSecret: string; accountId: string }> {
+    const cacheKey = getCacheKey('bulkvs');
+    const cached = getFromCache<{ apiKey: string; apiSecret: string; accountId: string }>(cacheKey);
+    if (cached) return cached;
+
+    const apiKey = await secretsService.getCredential("bulkvs" as ApiProvider, "api_key") || 
+                   process.env.BULKVS_API_KEY || '';
+    const apiSecret = await secretsService.getCredential("bulkvs" as ApiProvider, "api_secret") || 
+                      process.env.BULKVS_API_SECRET || '';
+    const accountId = await secretsService.getCredential("bulkvs" as ApiProvider, "account_id") || 
+                      process.env.BULKVS_ACCOUNT_ID || '';
     
-    default:
-      throw new Error(`Unsupported header type: ${headerType}`);
+    const result = { apiKey, apiSecret, accountId };
+    setCache(cacheKey, result);
+    return result;
+  },
+
+  async getNodemailer(): Promise<{ host: string; port: number; user: string; password: string; fromEmail: string }> {
+    const cacheKey = getCacheKey('nodemailer');
+    const cached = getFromCache<{ host: string; port: number; user: string; password: string; fromEmail: string }>(cacheKey);
+    if (cached) return cached;
+
+    const host = await secretsService.getCredential("nodemailer" as ApiProvider, "host") || 
+                 process.env.SMTP_HOST || '';
+    const portStr = await secretsService.getCredential("nodemailer" as ApiProvider, "port") || 
+                    process.env.SMTP_PORT || '587';
+    const port = parseInt(portStr, 10);
+    const user = await secretsService.getCredential("nodemailer" as ApiProvider, "user") || 
+                 process.env.SMTP_USER || '';
+    const password = await secretsService.getCredential("nodemailer" as ApiProvider, "password") || 
+                     process.env.SMTP_PASSWORD || '';
+    const fromEmail = await secretsService.getCredential("nodemailer" as ApiProvider, "from_email") || 
+                      process.env.SMTP_FROM_EMAIL || user;
+    
+    const result = { host, port, user, password, fromEmail };
+    setCache(cacheKey, result);
+    return result;
+  },
+
+  async getImapBounce(): Promise<{ host: string; port: number; user: string; password: string; tls: boolean }> {
+    const cacheKey = getCacheKey('imap_bounce');
+    const cached = getFromCache<{ host: string; port: number; user: string; password: string; tls: boolean }>(cacheKey);
+    if (cached) return cached;
+
+    const host = await secretsService.getCredential("nodemailer" as ApiProvider, "bounce_imap_host") || 
+                 process.env.BOUNCE_IMAP_HOST || '';
+    const portStr = await secretsService.getCredential("nodemailer" as ApiProvider, "bounce_imap_port") || 
+                    process.env.BOUNCE_IMAP_PORT || '993';
+    const port = parseInt(portStr, 10);
+    const user = await secretsService.getCredential("nodemailer" as ApiProvider, "bounce_imap_user") || 
+                 process.env.BOUNCE_IMAP_USER || '';
+    const password = await secretsService.getCredential("nodemailer" as ApiProvider, "bounce_imap_password") || 
+                     process.env.BOUNCE_IMAP_PASSWORD || '';
+    const tlsStr = await secretsService.getCredential("nodemailer" as ApiProvider, "bounce_imap_tls") || 
+                   process.env.BOUNCE_IMAP_TLS || 'true';
+    const tls = tlsStr !== 'false';
+    
+    const result = { host, port, user, password, tls };
+    setCache(cacheKey, result);
+    return result;
+  },
+
+  async getGooglePlaces(): Promise<{ apiKey: string }> {
+    const cacheKey = getCacheKey('google_places');
+    const cached = getFromCache<{ apiKey: string }>(cacheKey);
+    if (cached) return cached;
+
+    const apiKey = await secretsService.getCredential("google" as ApiProvider, "places_api_key") || 
+                   process.env.GOOGLE_PLACES_API_KEY || '';
+    
+    const result = { apiKey };
+    setCache(cacheKey, result);
+    return result;
+  },
+
+  async getCloudflare(): Promise<{ apiToken: string; zoneId: string }> {
+    const cacheKey = getCacheKey('cloudflare');
+    const cached = getFromCache<{ apiToken: string; zoneId: string }>(cacheKey);
+    if (cached) return cached;
+
+    const apiToken = await secretsService.getCredential("cloudflare" as ApiProvider, "api_token") || 
+                     process.env.CLOUDFLARE_API_TOKEN || '';
+    const zoneId = await secretsService.getCredential("cloudflare" as ApiProvider, "zone_id") || 
+                   process.env.CLOUDFLARE_ZONE_ID || '';
+    
+    const result = { apiToken, zoneId };
+    setCache(cacheKey, result);
+    return result;
+  },
+
+  async getEvolutionAPI(): Promise<{ baseUrl: string; globalApiKey: string }> {
+    const cacheKey = getCacheKey('evolution_api');
+    const cached = getFromCache<{ baseUrl: string; globalApiKey: string }>(cacheKey);
+    if (cached) return cached;
+
+    const baseUrl = await secretsService.getCredential("evolution" as ApiProvider, "base_url") || 
+                    process.env.EVOLUTION_API_URL || '';
+    const globalApiKey = await secretsService.getCredential("evolution" as ApiProvider, "api_key") || 
+                         process.env.EVOLUTION_API_KEY || '';
+    
+    const result = { baseUrl, globalApiKey };
+    setCache(cacheKey, result);
+    return result;
+  },
+
+  async get(service: string, key: string): Promise<string> {
+    const cacheKey = getCacheKey(service, key);
+    const cached = getFromCache<string>(cacheKey);
+    if (cached) return cached;
+
+    const value = await secretsService.getCredential(service as ApiProvider, key) || 
+                  process.env[`${service.toUpperCase()}_${key.toUpperCase()}`] || '';
+    
+    setCache(cacheKey, value);
+    return value;
+  },
+
+  invalidate(provider: string, keyName?: string): void {
+    if (keyName) {
+      cache.delete(getCacheKey(provider, keyName));
+    } else {
+      cache.delete(getCacheKey(provider));
+      const keys = Array.from(cache.keys());
+      for (const key of keys) {
+        if (key.startsWith(`${provider}:`)) {
+          cache.delete(key);
+        }
+      }
+    }
+  },
+
+  invalidateAll(): void {
+    cache.clear();
   }
-}
+};
+
+export default credentialProvider;

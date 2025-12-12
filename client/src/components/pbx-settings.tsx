@@ -792,9 +792,10 @@ function ExtensionDialog({
   const [displayName, setDisplayName] = useState("");
   const [userId, setUserId] = useState("");
 
-  const { data: users = [] } = useQuery<any[]>({
+  const { data: usersData } = useQuery<{ users: any[] }>({
     queryKey: ["/api/users"],
   });
+  const users = usersData?.users || [];
 
   const handleOpenChange = (isOpen: boolean) => {
     if (isOpen && extension) {
