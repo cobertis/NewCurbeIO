@@ -1,0 +1,126 @@
+Perfecto! Ahora tienes 3 extensiones creadas (301: Javier Lazo, 302: Jason Fonseca, 303: Claudia Ferreiro). Para conectar los webphones de estos usuarios usando la API de Telnyx Programmable Voice (sin SDK), debes implementar lo siguiente:
+
+## Arquitectura de la Solución:
+
+### 1. CONFIGURACIÓN EN TELNYX:
+- Crea una aplicación de Voice en tu Telnyx Portal
+- Configura un webhook URL que apunte a tu servidor (ej: https://tu-dominio.com/telnyx/webhook)
+- Compra o asigna números DID para cada extensión si necesitas llamadas externas
+- Obtén tu API Key de Telnyx
+
+### 2. BACKEND - SERVIDOR DE SEÑALIZACIÓN:
+Debes crear endpoints para:
+
+a) **Generar credenciales SIP para cada extensión:**
+```javascript
+POST /api/sip/credentials
+// Retorna: username, password, domain de Telnyx para cada extensión
+```
+
+b) **Manejar webhooks de Telnyx:**
+```javascript
+POST /telnyx/webhook
+// Recibe eventos: call.initiated, call.answered, call.hangup
+```
+
+c) **Iniciar llamadas entre extensiones:**
+```javascript
+POST /api/call/start
+Body: {
+  from_extension: "301",
+  to_extension: "302"
+}
+```
+
+### 3. FLUJO DE LLAMADA ENTRE EXTENSIONES:
+
+**Cuando extensión 301 llama a 302:**
+
+1. El webphone envía solicitud a tu backend
+2. Tu backend usa Telnyx API para crear la llamada:
+
+```bash
+curl -X POST https://api.telnyx.com/v2/calls \
+  -H "Authorization: Bearer TU_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "connection_id": "TU_CONNECTION_ID",
+    "to": "+1234567890",  // Número SIP de extensión 302
+    "from": "+1234567891", // Número SIP de extensión 301
+    "webhook_url": "https://tu-dominio.com/telnyx/webhook"
+  }'
+```
+
+3. Telnyx envía eventos a tu webhook
+4. Tu backend notifica al webphone mediante WebSocket
+
+### 4. WEBPHONE FRONTEND:
+
+Para cada usuario en su navegador, implementa:
+
+a) **Conexión WebRTC con Telnyx:**
+```javascript
+// Usa WebRTC nativo del navegador
+const peerConnection = new RTCPeerConnection({
+  iceServers: [{
+    urls: 'stun:stun.telnyx.com:3478'
+  }]
+});
+```
+
+b) **Registro de extensión:**
+```javascript
+// Al cargar el webphone, registra la extensión
+fetch('/api/sip/register', {
+  method: 'POST',
+  body: JSON.stringify({
+    extension: '301',
+    user_id: 'javier_lazo_id'
+  })
+})
+```
+
+c) **Iniciar llamada:**
+```javascript
+function callExtension(toExtension) {
+  fetch('/api/call/start', {
+    method: 'POST',
+    body: JSON.stringify({
+      from_extension: currentUserExtension,
+      to_extension: toExtension
+    })
+  })
+}
+```
+
+### 5. IMPLEMENTACIÓN ESPECÍFICA:
+
+**Necesitas crear estos archivos:**
+
+- `server/services/telnyx-voice.ts` - Maneja todas las llamadas API de Telnyx
+- `server/services/webrtc-signaling.ts` - Maneja la señalización WebRTC
+- `client/components/webphone.tsx` - Componente del webphone
+- `server/webhooks/telnyx.ts` - Recibe eventos de Telnyx
+
+### 6. ENDPOINTS NECESARIOS:
+
+```javascript
+// En tu servidor Express
+app.post('/api/extensions/:ext/call', async (req, res) => {
+  const { from, to } = req.body;
+  const call = await telnyxVoiceService.createCall({
+    fromExtension: from,
+    toExtension: to
+  });
+  res.json({ call_id: call.id });
+});
+
+app.post('/telnyx/webhook', async (req, res) => {
+  const event = req.body;
+  // Procesa eventos: call.initiated, call.answered, call.hangup
+  await handleTelnyxEvent(event);
+  res.sendStatus(200);
+});
+```
+
+¿Quieres que implemente el código completo para el servicio de Telnyx Voice y el componente webphone?
