@@ -232,6 +232,59 @@ export class PbxService {
     return extensions;
   }
 
+  async getNextExtensionNumber(companyId: string): Promise<string> {
+    const settings = await this.getPbxSettings(companyId);
+    const ivrExtension = parseInt(settings?.ivrExtension || "100", 10);
+    
+    const existingExtensions = await db
+      .select({ extension: pbxExtensions.extension })
+      .from(pbxExtensions)
+      .where(eq(pbxExtensions.companyId, companyId));
+    
+    const usedNumbers = new Set(
+      existingExtensions.map(e => parseInt(e.extension, 10)).filter(n => !isNaN(n))
+    );
+    
+    let nextExtension = ivrExtension + 1;
+    while (usedNumbers.has(nextExtension)) {
+      nextExtension++;
+    }
+    
+    return nextExtension.toString();
+  }
+
+  async validateExtensionNumber(companyId: string, extensionNumber: string, excludeExtensionId?: string): Promise<{ valid: boolean; error?: string }> {
+    const settings = await this.getPbxSettings(companyId);
+    const ivrExtension = parseInt(settings?.ivrExtension || "100", 10);
+    const extNum = parseInt(extensionNumber, 10);
+    
+    if (isNaN(extNum)) {
+      return { valid: false, error: "Extension must be a number" };
+    }
+    
+    if (extNum <= ivrExtension) {
+      return { valid: false, error: `Extension must be greater than IVR extension (${ivrExtension})` };
+    }
+    
+    const existingQuery = db
+      .select({ id: pbxExtensions.id })
+      .from(pbxExtensions)
+      .where(
+        and(
+          eq(pbxExtensions.companyId, companyId),
+          eq(pbxExtensions.extension, extensionNumber)
+        )
+      );
+    
+    const existing = await existingQuery;
+    
+    if (existing.length > 0 && (!excludeExtensionId || existing[0].id !== excludeExtensionId)) {
+      return { valid: false, error: `Extension ${extensionNumber} is already in use` };
+    }
+    
+    return { valid: true };
+  }
+
   async createExtension(companyId: string, data: Record<string, any>): Promise<PbxExtension> {
     const { companyId: _, id: __, ...safeData } = data;
     const [extension] = await db

@@ -32437,6 +32437,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // GET /api/pbx/extensions/next - Get next available extension number
+  app.get("/api/pbx/extensions/next", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const nextExtension = await pbxService.getNextExtensionNumber(user.companyId);
+      return res.json({ nextExtension });
+    } catch (error: any) {
+      console.error("[PBX] Error getting next extension:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
   // GET /api/pbx/extensions - Get all extensions
   app.get("/api/pbx/extensions", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -32453,6 +32465,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/pbx/extensions", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user as User;
+      
+      // Validate extension number if provided
+      if (req.body.extension) {
+        const validation = await pbxService.validateExtensionNumber(user.companyId, req.body.extension);
+        if (!validation.valid) {
+          return res.status(400).json({ error: validation.error });
+        }
+      } else {
+        // Auto-assign next available extension
+        req.body.extension = await pbxService.getNextExtensionNumber(user.companyId);
+      }
+      
       const extension = await pbxService.createExtension(user.companyId, req.body);
       return res.json(extension);
     } catch (error: any) {
