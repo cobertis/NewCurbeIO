@@ -8037,210 +8037,259 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: error.message });
     }
   });
-  // Get payment methods
+  // =====================================================
+  // USER-SCOPED BILLING PAYMENT METHODS
+  // Each admin has isolated payment methods with their own Stripe customer
+  // =====================================================
+
+  // Helper function to get or create Stripe customer for a user
+  async function getOrCreateUserStripeCustomer(userId: string, companyId: string, userEmail: string, userName: string): Promise<string> {
+    // Check if user already has a Stripe customer ID from existing payment methods
+    const existingMethods = await storage.getUserPaymentMethods(companyId, userId);
+    if (existingMethods.length > 0 && existingMethods[0].stripeCustomerId) {
+      return existingMethods[0].stripeCustomerId;
+    }
+    
+    // Create a new Stripe customer for this user
+    const stripeClient = await getStripeClient();
+    const company = await storage.getCompany(companyId);
+    
+    const customer = await stripeClient.customers.create({
+      email: userEmail,
+      name: userName,
+      metadata: {
+        userId: userId,
+        companyId: companyId,
+        companyName: company?.name || 'Unknown',
+        type: 'user_billing' // Distinguish from company subscription customer
+      }
+    });
+    
+    console.log(`[STRIPE] Created new customer ${customer.id} for user ${userId}`);
+    return customer.id;
+  }
+
+  // Get payment methods (USER-SCOPED: each admin sees only their own)
   app.get("/api/billing/payment-methods", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
-    // Only admin or superadmin can view payment methods
     if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden" });
     }
-    const companyId = currentUser.role === "superadmin" 
-      ? req.query.companyId as string
-      : currentUser.companyId;
+    const companyId = currentUser.companyId;
     if (!companyId) {
       return res.status(400).json({ message: "Company ID required" });
     }
-    // SECURITY: For non-superadmins, verify the company matches the user's company
-    if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
-      return res.status(403).json({ message: "Unauthorized access to company payment methods" });
-    }
     try {
-      const subscription = await storage.getSubscriptionByCompany(companyId);
-      if (!subscription || !subscription.stripeCustomerId) {
-        return res.json({ paymentMethods: [] });
-      }
-      const { getPaymentMethods } = await import("./stripe");
-      const stripePaymentMethods = await getPaymentMethods(subscription.stripeCustomerId);
-      // Get customer to find default payment method
-      const { getStripeClient: getAsyncStripeClient } = await import("./stripe");
-      const stripeClientPM = await getAsyncStripeClient();
-      if (!stripeClientPM) {
-        return res.status(500).json({ message: "Stripe is not configured" });
-      }
-      const customer = await stripeClientPM.customers.retrieve(subscription.stripeCustomerId) as any;
-      const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method;
-      // Transform Stripe payment methods to match frontend interface
-      const paymentMethods = stripePaymentMethods.map((pm: any) => ({
+      // USER-SCOPED: Get payment methods from user_payment_methods table
+      const userMethods = await storage.getUserPaymentMethods(companyId, currentUser.id);
+      
+      const paymentMethods = userMethods.map((pm) => ({
         id: pm.id,
-        brand: pm.card?.brand || '',
-        last4: pm.card?.last4 || '',
-        expMonth: pm.card?.exp_month || 0,
-        expYear: pm.card?.exp_year || 0,
-        isDefault: pm.id === defaultPaymentMethodId
+        stripePaymentMethodId: pm.stripePaymentMethodId,
+        brand: pm.brand || '',
+        last4: pm.last4 || '',
+        expMonth: pm.expMonth || 0,
+        expYear: pm.expYear || 0,
+        isDefault: pm.isDefault
       }));
       res.json({ paymentMethods });
     } catch (error: any) {
+      console.error('[BILLING] Error fetching payment methods:', error);
       res.status(500).json({ message: error.message });
     }
   });
-  // Create SetupIntent for adding a new payment method
+
+  // Create SetupIntent for adding a new payment method (USER-SCOPED)
   app.post("/api/billing/create-setup-intent", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
-    // Only admin or superadmin can add payment methods
     if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden" });
     }
-    const companyId = currentUser.role === "superadmin" 
-      ? req.body.companyId as string
-      : currentUser.companyId;
+    const companyId = currentUser.companyId;
     if (!companyId) {
       return res.status(400).json({ message: "Company ID required" });
     }
     try {
-      const subscription = await storage.getSubscriptionByCompany(companyId);
-      if (!subscription || !subscription.stripeCustomerId) {
-        return res.status(400).json({ message: "No active subscription found" });
-      }
-      // Create a SetupIntent for this customer
-      const { getStripeClient: getStripeClientAsync } = await import("./stripe");
-      const stripeClient = await getStripeClientAsync();
+      const stripeClient = await getStripeClient();
       if (!stripeClient) {
         return res.status(500).json({ message: "Stripe is not configured" });
       }
+      
+      // Get or create user's own Stripe customer
+      const userStripeCustomerId = await getOrCreateUserStripeCustomer(
+        currentUser.id,
+        companyId,
+        currentUser.email,
+        `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || currentUser.email
+      );
+      
       const setupIntent = await stripeClient.setupIntents.create({
-        customer: subscription.stripeCustomerId,
+        customer: userStripeCustomerId,
         payment_method_types: ['card'],
-        usage: 'off_session', // Save for future use
+        usage: 'off_session',
         metadata: {
           companyId,
-          userId: currentUser.id
+          userId: currentUser.id,
+          userEmail: currentUser.email
         }
-
       });
+      
       res.json({ 
         clientSecret: setupIntent.client_secret,
-        customerId: subscription.stripeCustomerId
+        customerId: userStripeCustomerId
       });
     } catch (error: any) {
       console.error('[STRIPE] Error creating setup intent:', error);
       res.status(500).json({ message: error.message });
     }
   });
-  // Attach payment method and set as default
+
+  // Attach payment method (USER-SCOPED: saves to user_payment_methods table)
   app.post("/api/billing/attach-payment-method", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { paymentMethodId } = req.body;
-    // Only admin or superadmin can manage payment methods
     if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden" });
     }
-    const companyId = currentUser.role === "superadmin" 
-      ? req.body.companyId as string
-      : currentUser.companyId;
-    if (!companyId) {
-      return res.status(400).json({ message: "Company ID required" });
-    }
-    if (!paymentMethodId) {
-      return res.status(400).json({ message: "Payment method ID required" });
+    const companyId = currentUser.companyId;
+    if (!companyId || !paymentMethodId) {
+      return res.status(400).json({ message: "Company ID and payment method ID required" });
     }
     try {
-      const subscription = await storage.getSubscriptionByCompany(companyId);
-      if (!subscription || !subscription.stripeCustomerId) {
-        return res.status(400).json({ message: "No active subscription found" });
-      }
-      // Set this payment method as the default for the customer
-      const { getStripeClient: getStripeClientAsync2 } = await import("./stripe");
-      const stripeClient2 = await getStripeClientAsync2();
-      if (!stripeClient2) {
+      const stripeClient = await getStripeClient();
+      if (!stripeClient) {
         return res.status(500).json({ message: "Stripe is not configured" });
       }
-      await stripeClient2.customers.update(subscription.stripeCustomerId, {
-        invoice_settings: {
-          default_payment_method: paymentMethodId,
-        },
+      
+      // Get or create user's Stripe customer
+      const userStripeCustomerId = await getOrCreateUserStripeCustomer(
+        currentUser.id,
+        companyId,
+        currentUser.email,
+        `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || currentUser.email
+      );
+      
+      // Retrieve the payment method from Stripe to get card details
+      const pm = await stripeClient.paymentMethods.retrieve(paymentMethodId);
+      
+      // Check if this is the first payment method (make it default)
+      const existingMethods = await storage.getUserPaymentMethods(companyId, currentUser.id);
+      const isFirst = existingMethods.length === 0;
+      
+      // Save to user_payment_methods table
+      await storage.createUserPaymentMethod({
+        companyId,
+        ownerUserId: currentUser.id,
+        stripePaymentMethodId: paymentMethodId,
+        stripeCustomerId: userStripeCustomerId,
+        type: pm.type || 'card',
+        brand: pm.card?.brand || null,
+        last4: pm.card?.last4 || null,
+        expMonth: pm.card?.exp_month || null,
+        expYear: pm.card?.exp_year || null,
+        isDefault: isFirst,
+        status: 'active'
       });
-      // If the subscription exists, update its default payment method
-      if (subscription.stripeSubscriptionId) {
-        await stripeClient2.subscriptions.update(subscription.stripeSubscriptionId, {
-          default_payment_method: paymentMethodId,
+      
+      // Set as default in Stripe if first card
+      if (isFirst) {
+        await stripeClient.customers.update(userStripeCustomerId, {
+          invoice_settings: { default_payment_method: paymentMethodId }
         });
       }
+      
+      console.log(`[BILLING] Added payment method ${paymentMethodId} for user ${currentUser.id}`);
       res.json({ success: true, message: "Payment method added successfully" });
     } catch (error: any) {
       console.error('[STRIPE] Error attaching payment method:', error);
       res.status(500).json({ message: error.message });
     }
   });
-  // Set default payment method (for existing payment methods)
+
+  // Set default payment method (USER-SCOPED)
   app.post("/api/billing/set-default-payment-method", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { paymentMethodId } = req.body;
-    // Only admin or superadmin can manage payment methods
     if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden" });
     }
-    const companyId = currentUser.role === "superadmin" 
-      ? req.body.companyId as string
-      : currentUser.companyId;
-    if (!companyId) {
-      return res.status(400).json({ message: "Company ID required" });
-    }
-    if (!paymentMethodId) {
-      return res.status(400).json({ message: "Payment method ID required" });
+    const companyId = currentUser.companyId;
+    if (!companyId || !paymentMethodId) {
+      return res.status(400).json({ message: "Company ID and payment method ID required" });
     }
     try {
-      const subscription = await storage.getSubscriptionByCompany(companyId);
-      if (!subscription || !subscription.stripeCustomerId) {
-        return res.status(400).json({ message: "No active subscription found" });
+      // Get the payment method record (paymentMethodId is our internal ID)
+      const pmRecord = await storage.getUserPaymentMethod(paymentMethodId);
+      if (!pmRecord) {
+        return res.status(404).json({ message: "Payment method not found" });
       }
-      // Set this payment method as the default for the customer
-      await getStripeClient().customers.update(subscription.stripeCustomerId, {
-        invoice_settings: {
-          default_payment_method: paymentMethodId,
-        },
-      });
-      // If the subscription exists, update its default payment method
-      if (subscription.stripeSubscriptionId) {
-        await getStripeClient().subscriptions.update(subscription.stripeSubscriptionId, {
-          default_payment_method: paymentMethodId,
+      
+      // Security check: verify ownership
+      if (pmRecord.ownerUserId !== currentUser.id) {
+        return res.status(403).json({ message: "Not authorized to modify this payment method" });
+      }
+      
+      // Update in our database
+      await storage.setDefaultUserPaymentMethod(currentUser.id, paymentMethodId);
+      
+      // Update in Stripe if we have a Stripe customer
+      if (pmRecord.stripeCustomerId && pmRecord.stripePaymentMethodId) {
+        const stripeClient = await getStripeClient();
+        await stripeClient.customers.update(pmRecord.stripeCustomerId, {
+          invoice_settings: { default_payment_method: pmRecord.stripePaymentMethodId }
         });
       }
+      
       res.json({ success: true, message: "Default payment method updated successfully" });
     } catch (error: any) {
       console.error('[STRIPE] Error setting default payment method:', error);
       res.status(500).json({ message: error.message });
     }
   });
-  // Delete payment method
+
+  // Delete payment method (USER-SCOPED)
   app.delete("/api/billing/payment-method/:paymentMethodId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { paymentMethodId } = req.params;
-    // Only admin or superadmin can manage payment methods
     if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden" });
     }
-    const companyId = currentUser.role === "superadmin" 
-      ? req.body.companyId as string
-      : currentUser.companyId;
-    if (!companyId) {
-      return res.status(400).json({ message: "Company ID required" });
-    }
-    if (!paymentMethodId) {
-      return res.status(400).json({ message: "Payment method ID required" });
+    const companyId = currentUser.companyId;
+    if (!companyId || !paymentMethodId) {
+      return res.status(400).json({ message: "Company ID and payment method ID required" });
     }
     try {
-      const subscription = await storage.getSubscriptionByCompany(companyId);
-      if (!subscription || !subscription.stripeCustomerId) {
-        return res.status(400).json({ message: "No active subscription found" });
+      // Get the payment method record (paymentMethodId is our internal ID)
+      const pmRecord = await storage.getUserPaymentMethod(paymentMethodId);
+      if (!pmRecord) {
+        return res.status(404).json({ message: "Payment method not found" });
       }
-      // First, check if this is the default payment method
-      const customer = await getStripeClient().customers.retrieve(subscription.stripeCustomerId) as any;
-      const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method;
-      if (defaultPaymentMethodId === paymentMethodId) {
+      
+      // Security check: verify ownership
+      if (pmRecord.ownerUserId !== currentUser.id) {
+        return res.status(403).json({ message: "Not authorized to delete this payment method" });
+      }
+      
+      // Check if this is the default payment method
+      if (pmRecord.isDefault) {
         return res.status(400).json({ message: "Cannot delete the default payment method. Please set another card as default first." });
       }
-      // Detach the payment method from the customer
-      await getStripeClient().paymentMethods.detach(paymentMethodId);
+      
+      // Detach from Stripe
+      if (pmRecord.stripePaymentMethodId) {
+        try {
+          const stripeClient = await getStripeClient();
+          await stripeClient.paymentMethods.detach(pmRecord.stripePaymentMethodId);
+        } catch (stripeError: any) {
+          // Log but don't fail if Stripe detach fails (might already be detached)
+          console.warn('[STRIPE] Warning detaching payment method:', stripeError.message);
+        }
+      }
+      
+      // Soft delete in our database
+      await storage.deleteUserPaymentMethod(paymentMethodId);
+      
+      console.log(`[BILLING] Deleted payment method ${paymentMethodId} for user ${currentUser.id}`);
       res.json({ success: true, message: "Payment method deleted successfully" });
     } catch (error: any) {
       console.error('[STRIPE] Error deleting payment method:', error);
