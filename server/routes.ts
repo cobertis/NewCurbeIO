@@ -27867,6 +27867,51 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // GET /api/telnyx/pricing - Get all telephony pricing for clients
+  app.get("/api/telnyx/pricing", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { loadGlobalPricing } = await import("./services/pricing-config");
+      const pricing = await loadGlobalPricing();
+      
+      res.json({
+        voice: {
+          local: {
+            outbound: pricing.usage.local_outbound_minute,
+            inbound: pricing.usage.local_inbound_minute,
+          },
+          tollfree: {
+            outbound: pricing.usage.tollfree_outbound_minute,
+            inbound: pricing.usage.tollfree_inbound_minute,
+          },
+          recording: pricing.usage.recording_minute,
+          cnamLookup: pricing.usage.cnam_lookup_per_call,
+        },
+        sms: {
+          local: {
+            outbound: pricing.sms.longcode_outbound,
+            inbound: pricing.sms.longcode_inbound,
+          },
+          tollfree: {
+            outbound: pricing.sms.tollfree_outbound,
+            inbound: pricing.sms.tollfree_inbound,
+          },
+        },
+        monthly: {
+          localNumber: pricing.monthly.local_did,
+          tollfreeNumber: pricing.monthly.tollfree_did,
+        },
+        billing: {
+          minimumSeconds: pricing.billing.min_billable_seconds,
+          incrementSeconds: pricing.billing.billing_increment,
+        },
+        lastUpdated: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      console.error("[Telnyx Pricing] Error:", error);
+      res.status(500).json({ message: "Failed to get pricing" });
+    }
+  });
+
   // GET /api/telnyx/available-numbers - Search available phone numbers
   app.get("/api/telnyx/available-numbers", requireAuth, async (req: Request, res: Response) => {
     try {

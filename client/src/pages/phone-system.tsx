@@ -45,7 +45,8 @@ import {
   ArrowDown,
   Filter,
   Search,
-  ChevronRight
+  ChevronRight,
+  Hash
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
@@ -264,6 +265,31 @@ export default function PhoneSystem() {
     cnamEnabled: boolean;
   }>({
     queryKey: ["/api/telnyx/billing-features"],
+    enabled: statusData?.configured === true || statusData?.hasAccount === true,
+  });
+
+  const { data: pricingData, isLoading: isLoadingPricing } = useQuery<{
+    voice: {
+      local: { outbound: number; inbound: number };
+      tollfree: { outbound: number; inbound: number };
+      recording: number;
+      cnamLookup: number;
+    };
+    sms: {
+      local: { outbound: number; inbound: number };
+      tollfree: { outbound: number; inbound: number };
+    };
+    monthly: {
+      localNumber: number;
+      tollfreeNumber: number;
+    };
+    billing: {
+      minimumSeconds: number;
+      incrementSeconds: number;
+    };
+    lastUpdated: string;
+  }>({
+    queryKey: ["/api/telnyx/pricing"],
     enabled: statusData?.configured === true || statusData?.hasAccount === true,
   });
 
@@ -547,6 +573,9 @@ export default function PhoneSystem() {
               </TabsTrigger>
               <TabsTrigger value="calls" className="data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 rounded-none px-4 py-3 text-sm font-medium bg-transparent">
                 Calls
+              </TabsTrigger>
+              <TabsTrigger value="pricing" className="data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 rounded-none px-4 py-3 text-sm font-medium bg-transparent">
+                Pricing
               </TabsTrigger>
               <TabsTrigger value="settings" className="data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 rounded-none px-4 py-3 text-sm font-medium bg-transparent">
                 Settings
@@ -848,6 +877,126 @@ export default function PhoneSystem() {
               isLoadingCallLogs={isLoadingCallLogs}
               billingFeaturesData={billingFeaturesData}
             />
+          </TabsContent>
+
+          {/* Pricing Tab - All telephony rates in one place */}
+          <TabsContent value="pricing" className="flex-1 m-0 overflow-auto">
+            <div className="p-6 max-w-4xl">
+              <div className="mb-6">
+                <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-1">Telephony Pricing</h2>
+                <p className="text-sm text-slate-500">Current rates for voice calls, SMS messages, and phone numbers</p>
+              </div>
+
+              {isLoadingPricing ? (
+                <div className="flex items-center justify-center py-12">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                </div>
+              ) : pricingData ? (
+                <div className="grid md:grid-cols-2 gap-6">
+                  {/* Voice Calls */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Phone className="h-5 w-5 text-indigo-600" />
+                      <h3 className="font-semibold text-slate-900 dark:text-white">Voice Calls</h3>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Local Outbound</span>
+                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-local-outbound">${pricingData.voice.local.outbound.toFixed(4)}/min</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Local Inbound</span>
+                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-local-inbound">${pricingData.voice.local.inbound.toFixed(4)}/min</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Toll-Free Outbound</span>
+                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-tollfree-outbound">${pricingData.voice.tollfree.outbound.toFixed(4)}/min</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Toll-Free Inbound</span>
+                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-tollfree-inbound">${pricingData.voice.tollfree.inbound.toFixed(4)}/min</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Call Recording</span>
+                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-recording">${pricingData.voice.recording.toFixed(4)}/min</span>
+                      </div>
+                      <div className="flex justify-between py-2">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">CNAM Lookup</span>
+                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-cnam">${pricingData.voice.cnamLookup.toFixed(4)}/call</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* SMS Messages */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <MessageSquare className="h-5 w-5 text-indigo-600" />
+                      <h3 className="font-semibold text-slate-900 dark:text-white">SMS Messages</h3>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Local Outbound</span>
+                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-sms-local-outbound">${pricingData.sms.local.outbound.toFixed(4)}/msg</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Local Inbound</span>
+                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-sms-local-inbound">${pricingData.sms.local.inbound.toFixed(4)}/msg</span>
+                      </div>
+                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Toll-Free Outbound</span>
+                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-sms-tollfree-outbound">${pricingData.sms.tollfree.outbound.toFixed(4)}/msg</span>
+                      </div>
+                      <div className="flex justify-between py-2">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Toll-Free Inbound</span>
+                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-sms-tollfree-inbound">${pricingData.sms.tollfree.inbound.toFixed(4)}/msg</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-4">Note: Carrier fees (~$0.003) may apply to SMS messages</p>
+                  </div>
+
+                  {/* Monthly Numbers */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Hash className="h-5 w-5 text-indigo-600" />
+                      <h3 className="font-semibold text-slate-900 dark:text-white">Phone Numbers</h3>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Local Number</span>
+                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-did-local">${pricingData.monthly.localNumber.toFixed(2)}/month</span>
+                      </div>
+                      <div className="flex justify-between py-2">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Toll-Free Number</span>
+                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="price-did-tollfree">${pricingData.monthly.tollfreeNumber.toFixed(2)}/month</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Billing Rules */}
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg p-5">
+                    <div className="flex items-center gap-2 mb-4">
+                      <Clock className="h-5 w-5 text-indigo-600" />
+                      <h3 className="font-semibold text-slate-900 dark:text-white">Billing Rules</h3>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between py-2 border-b border-slate-100 dark:border-slate-800">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Minimum Billable</span>
+                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="billing-minimum">{pricingData.billing.minimumSeconds} seconds</span>
+                      </div>
+                      <div className="flex justify-between py-2">
+                        <span className="text-sm text-slate-600 dark:text-slate-400">Billing Increment</span>
+                        <span className="text-sm font-medium text-slate-900 dark:text-white" data-testid="billing-increment">{pricingData.billing.incrementSeconds} seconds</span>
+                      </div>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-4">Calls are billed in {pricingData.billing.incrementSeconds}-second increments with a {pricingData.billing.minimumSeconds}-second minimum</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-slate-500">Unable to load pricing information</p>
+                </div>
+              )}
+            </div>
           </TabsContent>
 
           {/* Settings Tab - Two Column Layout with Grouped Sections */}
