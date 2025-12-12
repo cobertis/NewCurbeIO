@@ -1209,3 +1209,91 @@ export async function getUserPhoneNumbers(companyId: string, userId?: string): P
     };
   }
 }
+
+// Sync all company phone numbers with billing features (recording, CNAM)
+export async function syncBillingFeaturesToTelnyx(
+  companyId: string,
+  recordingEnabled?: boolean,
+  cnamEnabled?: boolean
+): Promise<{ success: boolean; syncedCount: number; errors: string[] }> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.companyId, companyId));
+    
+    if (!wallet?.telnyxAccountId) {
+      return { success: false, syncedCount: 0, errors: ["Company wallet or Telnyx account not found"] };
+    }
+    
+    // Get all phone numbers for this company
+    const numbers = await db
+      .select()
+      .from(telnyxPhoneNumbers)
+      .where(eq(telnyxPhoneNumbers.companyId, companyId));
+    
+    if (numbers.length === 0) {
+      console.log(`[Billing Features Sync] No phone numbers found for company ${companyId}`);
+      return { success: true, syncedCount: 0, errors: [] };
+    }
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+      "x-managed-account-id": wallet.telnyxAccountId,
+    };
+    
+    const errors: string[] = [];
+    let syncedCount = 0;
+    
+    for (const number of numbers) {
+      try {
+        const payload: Record<string, any> = {};
+        
+        // Update call recording if specified
+        if (typeof recordingEnabled === 'boolean') {
+          payload.call_recording = {
+            inbound_call_recording_enabled: recordingEnabled,
+            inbound_call_recording_format: "mp3",
+            inbound_call_recording_channels: "single",
+          };
+        }
+        
+        // Update CNAM if specified
+        if (typeof cnamEnabled === 'boolean') {
+          payload.cnam_listing = {
+            cnam_listing_enabled: cnamEnabled,
+          };
+        }
+        
+        if (Object.keys(payload).length === 0) continue;
+        
+        const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${number.telnyxPhoneNumberId}/voice`, {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify(payload),
+        });
+        
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[Billing Features Sync] Failed for ${number.phoneNumber}: ${response.status} - ${errorText}`);
+          errors.push(`${number.phoneNumber}: ${errorText}`);
+          continue;
+        }
+        
+        syncedCount++;
+        console.log(`[Billing Features Sync] Synced ${number.phoneNumber}: recording=${recordingEnabled}, cnam=${cnamEnabled}`);
+      } catch (error) {
+        errors.push(`${number.phoneNumber}: ${error instanceof Error ? error.message : 'Unknown error'}`);
+      }
+    }
+    
+    console.log(`[Billing Features Sync] Completed for company ${companyId}: ${syncedCount}/${numbers.length} synced`);
+    return { success: errors.length === 0, syncedCount, errors };
+  } catch (error) {
+    console.error("[Billing Features Sync] Error:", error);
+    return { success: false, syncedCount: 0, errors: [error instanceof Error ? error.message : 'Unknown error'] };
+  }
+}

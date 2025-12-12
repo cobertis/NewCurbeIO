@@ -1037,34 +1037,54 @@ export default function PhoneSystem() {
                         </div>
                       </div>
 
-                      {/* Voice Settings */}
+                      {/* Voice Settings - Interactive */}
                       <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
                         <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
                           <p className="font-medium text-sm text-slate-700 dark:text-foreground">Voice Settings</p>
                         </div>
-                        <div className="p-4 space-y-3">
-                          <div className="flex justify-between text-sm">
-                            <span className="text-slate-600 dark:text-slate-400">Call Recording</span>
-                            <Badge variant="outline" className={`text-xs ${billingFeaturesData?.recordingEnabled ? 'text-green-600 border-green-300' : 'text-slate-500'}`}>
-                              {billingFeaturesData?.recordingEnabled ? 'Enabled' : 'Disabled'}
-                            </Badge>
+                        <div className="p-4 space-y-4">
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-slate-700 dark:text-foreground">Call Recording</p>
+                              <p className="text-xs text-slate-500">$0.005/min - Record all calls</p>
+                            </div>
+                            <Switch
+                              checked={billingFeaturesData?.recordingEnabled || false}
+                              onCheckedChange={handleRecordingToggle}
+                              disabled={syncedRecordingMutation.isPending}
+                              data-testid="switch-recording-number"
+                            />
                           </div>
-                          <div className="flex justify-between text-sm">
-                            <span className="text-slate-600 dark:text-slate-400">CNAM Lookup</span>
-                            <Badge variant="outline" className={`text-xs ${billingFeaturesData?.cnamEnabled ? 'text-green-600 border-green-300' : 'text-slate-500'}`}>
-                              {billingFeaturesData?.cnamEnabled ? 'Enabled' : 'Disabled'}
-                            </Badge>
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="text-sm font-medium text-slate-700 dark:text-foreground">CNAM Lookup</p>
+                              <p className="text-xs text-slate-500">$0.40/mo - Show caller names</p>
+                            </div>
+                            <Switch
+                              checked={billingFeaturesData?.cnamEnabled || false}
+                              onCheckedChange={handleCnamToggle}
+                              disabled={billingFeaturesMutation.isPending}
+                              data-testid="switch-cnam-number"
+                            />
                           </div>
                         </div>
                       </div>
 
-                      {/* Caller ID */}
-                      {selectedNumber.cnam_listing && (
-                        <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                          <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Caller ID Name</p>
-                          <p className="font-medium text-slate-900 dark:text-white">{selectedNumber.cnam_listing.listing_name || 'Not set'}</p>
+                      {/* CNAM Listing - Outbound Caller ID Name */}
+                      <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                        <div className="flex items-center justify-between mb-3">
+                          <div>
+                            <p className="text-sm font-medium text-slate-700 dark:text-foreground">Outbound Caller ID Name</p>
+                            <p className="text-xs text-slate-500">Display your business name when making calls</p>
+                          </div>
                         </div>
-                      )}
+                        <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
+                          Current: <span className="font-medium text-slate-900 dark:text-white">{selectedNumber.caller_id_name || selectedNumber.cnam_listing?.listing_name || 'Not configured'}</span>
+                        </p>
+                        <p className="text-xs text-slate-500">
+                          To change your outbound caller ID name, contact support. Changes take 12-72 hours to propagate to all carriers.
+                        </p>
+                      </div>
                     </div>
                   ) : (
                     <div className="flex items-center justify-center h-full text-center">

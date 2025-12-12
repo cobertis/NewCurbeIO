@@ -28812,6 +28812,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       console.log(`[Billing Features] Updated for company ${user.companyId}: recording=${updatedSettings?.recordingEnabled}, cnam=${updatedSettings?.cnamEnabled}`);
       
+      // Sync to Telnyx API for all company phone numbers
+      const { syncBillingFeaturesToTelnyx } = await import("./services/telnyx-numbers-service");
+      const syncResult = await syncBillingFeaturesToTelnyx(
+        user.companyId,
+        typeof recordingEnabled === "boolean" ? recordingEnabled : undefined,
+        typeof cnamEnabled === "boolean" ? cnamEnabled : undefined
+      );
+      
+      if (!syncResult.success) {
+        console.warn(`[Billing Features] Sync to Telnyx had errors: ${syncResult.errors.join(", ")}`);
+      } else {
+        console.log(`[Billing Features] Synced ${syncResult.syncedCount} phone numbers to Telnyx`);
+      }
+      
       res.json({
         success: true,
         recordingEnabled: updatedSettings?.recordingEnabled || false,
