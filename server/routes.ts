@@ -27850,6 +27850,23 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Webhook processing failed" });
     }
   });
+
+  // GET /api/telnyx/number-pricing - Get client pricing for phone numbers
+  app.get("/api/telnyx/number-pricing", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { loadGlobalPricing } = await import("./services/pricing-config");
+      const pricing = await loadGlobalPricing();
+      
+      res.json({
+        localMonthly: pricing.monthly.local_did,
+        tollfreeMonthly: pricing.monthly.tollfree_did,
+      });
+    } catch (error: any) {
+      console.error("[Telnyx Number Pricing] Error:", error);
+      res.status(500).json({ message: "Failed to get pricing" });
+    }
+  });
+
   // GET /api/telnyx/available-numbers - Search available phone numbers
   app.get("/api/telnyx/available-numbers", requireAuth, async (req: Request, res: Response) => {
     try {

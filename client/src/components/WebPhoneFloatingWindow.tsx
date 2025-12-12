@@ -339,6 +339,38 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
     { value: "fax", label: "Fax" },
   ];
 
+
+  // Query for client pricing
+  const { data: pricingData } = useQuery<{ localMonthly: number; tollfreeMonthly: number }>({ 
+    queryKey: ["/api/telnyx/number-pricing"],
+    staleTime: 60000,
+  });
+
+  // Format phone number for USA display: +12605551234 -> (260) 555-1234
+  const formatPhoneNumber = (phone: string): string => {
+    const cleaned = phone.replace(/\D/g, "");
+    if (cleaned.length === 11 && cleaned.startsWith("1")) {
+      const areaCode = cleaned.slice(1, 4);
+      const exchange = cleaned.slice(4, 7);
+      const subscriber = cleaned.slice(7, 11);
+      return `(${areaCode}) ${exchange}-${subscriber}`;
+    }
+    if (cleaned.length === 10) {
+      const areaCode = cleaned.slice(0, 3);
+      const exchange = cleaned.slice(3, 6);
+      const subscriber = cleaned.slice(6, 10);
+      return `(${areaCode}) ${exchange}-${subscriber}`;
+    }
+    return phone;
+  };
+
+  // Get client price based on number type
+  const getClientPrice = (number: AvailablePhoneNumber): string => {
+    const isTollfree = number.phone_number_type === "toll_free" || number.record_type === "tollfree";
+    const price = isTollfree ? (pricingData?.tollfreeMonthly ?? 1.50) : (pricingData?.localMonthly ?? 1.00);
+    return price.toFixed(2);
+  };
+
   const { data: numbersData, isLoading, refetch } = useQuery<{ 
     numbers: AvailablePhoneNumber[]; 
     totalCount?: number;
@@ -903,7 +935,7 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
                           )}>
                             {isSelected && <Check className="h-3 w-3 text-white" />}
                           </div>
-                          <span className="font-medium font-mono text-sm">{number.phone_number}</span>
+                          <span className="font-medium font-mono text-sm">{formatPhoneNumber(number.phone_number)}</span>
                         </div>
                       </td>
                       <td className="px-4 py-3">
@@ -916,7 +948,7 @@ export function BuyNumbersDialog({ open, onOpenChange, onNumberPurchased }: BuyN
                         {getCapabilityBadges(number.features)}
                       </td>
                       <td className="px-4 py-3 text-right">
-                        <span className="font-medium">${number.cost_information.monthly_cost}</span>
+                        <span className="font-medium">${getClientPrice(number)}/mo</span>
                       </td>
                     </tr>
                   );
