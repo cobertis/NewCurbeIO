@@ -84,13 +84,17 @@ interface StatusResponse {
 }
 
 interface NumberInfo {
-  phone_number: string;
-  connection_name: string;
+  phoneNumber: string;
+  connectionName?: string;
   status: string;
-  phone_number_type?: string;
-  created_at?: string;
+  numberType?: string;
+  createdAt?: string;
   id?: string;
-  emergency_enabled?: boolean;
+  e911Enabled?: boolean;
+  e911AddressId?: string;
+  telnyxPhoneNumberId?: string;
+  callerIdName?: string;
+  cnamEnabled?: boolean;
 }
 
 function formatPhoneDisplay(phone: string | undefined | null): string {
@@ -178,8 +182,8 @@ export default function PhoneSystem() {
   useEffect(() => {
     if (numbersData?.numbers?.length) {
       // If no number selected, or selected number no longer exists in list, select first
-      const currentId = selectedNumber?.phone_number;
-      const stillExists = currentId && numbersData.numbers.some(n => n.phone_number === currentId);
+      const currentId = selectedNumber?.phoneNumber;
+      const stillExists = currentId && numbersData.numbers.some(n => n.phoneNumber === currentId);
       if (!selectedNumber || !stillExists) {
         setSelectedNumber(numbersData.numbers[0]);
       }
@@ -448,13 +452,14 @@ export default function PhoneSystem() {
   const hasAccount = statusData?.configured || statusData?.hasAccount;
   const accountDetails = statusData?.accountDetails;
   const accountId = statusData?.managedAccountId;
-  const walletBalance = walletData?.wallet?.balance || "0";
+  const walletBalance = parseFloat(walletData?.wallet?.balance || "0");
   const walletCurrency = walletData?.wallet?.currency || "USD";
   const numbersCount = numbersData?.numbers?.length || 0;
-  const hasE911Issues = numbersData?.numbers?.some(n => !n.emergency_enabled) || numbersCount === 0;
+  const hasE911Issues = numbersData?.numbers?.some(n => !n.e911Enabled) || numbersCount === 0;
 
-  const formatCurrency = (amount: string, currency: string = "USD") => {
-    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(parseFloat(amount || "0"));
+  const formatCurrency = (amount: string | number, currency: string = "USD") => {
+    const numAmount = typeof amount === 'number' ? amount : parseFloat(amount || "0");
+    return new Intl.NumberFormat('en-US', { style: 'currency', currency }).format(numAmount);
   };
 
   if (!hasAccount) {
@@ -538,9 +543,9 @@ export default function PhoneSystem() {
                     className={`flex items-center gap-2 ${hasE911Issues ? 'cursor-pointer hover:bg-amber-50 dark:hover:bg-amber-900/20 px-2 py-1 -mx-2 -my-1 rounded-md transition-colors' : ''}`}
                     onClick={() => {
                       if (hasE911Issues) {
-                        const numbersWithoutE911 = numbersData?.numbers?.filter(n => !n.emergency_enabled) || [];
+                        const numbersWithoutE911 = numbersData?.numbers?.filter(n => !n.e911Enabled) || [];
                         if (numbersWithoutE911.length === 1) {
-                          setSelectedNumberForE911({ phoneNumber: numbersWithoutE911[0].phone_number, phoneNumberId: numbersWithoutE911[0].id || "" });
+                          setSelectedNumberForE911({ phoneNumber: numbersWithoutE911[0].phoneNumber, phoneNumberId: numbersWithoutE911[0].id || "" });
                           setShowE911Dialog(true);
                         } else if (numbersWithoutE911.length > 1) {
                           setActiveTab("numbers");
@@ -953,8 +958,8 @@ export default function PhoneSystem() {
                   </div>
                   <div className="divide-y divide-slate-100 dark:divide-slate-800">
                     {numbersData.numbers.map((number, idx) => {
-                      const hasE911 = number.emergency_address_id || number.emergency_enabled;
-                      const isSelected = selectedNumber?.phone_number === number.phone_number;
+                      const hasE911 = number.e911AddressId || number.e911Enabled;
+                      const isSelected = selectedNumber?.phoneNumber === number.phoneNumber;
                       return (
                         <div
                           key={number.id || idx}
@@ -964,7 +969,7 @@ export default function PhoneSystem() {
                         >
                           <div className="flex items-center justify-between">
                             <div>
-                              <p className="font-medium text-slate-900 dark:text-white">{formatPhoneDisplay(number.phone_number)}</p>
+                              <p className="font-medium text-slate-900 dark:text-white">{formatPhoneDisplay(number.phoneNumber)}</p>
                               <div className="flex items-center gap-2 mt-1">
                                 <Badge variant="outline" className={`text-xs ${number.status === 'active' ? 'text-green-600 border-green-300' : 'text-slate-500'}`}>
                                   {number.status}
@@ -987,9 +992,9 @@ export default function PhoneSystem() {
                       {/* Number Header */}
                       <div className="flex items-center justify-between">
                         <div>
-                          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{formatPhoneDisplay(selectedNumber.phone_number)}</h2>
+                          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{formatPhoneDisplay(selectedNumber.phoneNumber)}</h2>
                           <p className="text-sm text-slate-500 mt-1">
-                            {selectedNumber.number_type === 'toll_free' ? 'Toll-Free' : 'Local'} Number
+                            {selectedNumber.numberType === 'toll_free' ? 'Toll-Free' : 'Local'} Number
                           </p>
                         </div>
                         <Badge className={`${selectedNumber.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-slate-100 text-slate-600'}`}>
@@ -1001,11 +1006,11 @@ export default function PhoneSystem() {
                       <div className="grid grid-cols-2 gap-4">
                         <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
                           <p className="text-xs text-slate-500 uppercase tracking-wide">Type</p>
-                          <p className="font-medium text-slate-900 dark:text-white mt-1">{selectedNumber.number_type === 'toll_free' ? 'Toll-Free' : 'Local'}</p>
+                          <p className="font-medium text-slate-900 dark:text-white mt-1">{selectedNumber.numberType === 'toll_free' ? 'Toll-Free' : 'Local'}</p>
                         </div>
                         <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
                           <p className="text-xs text-slate-500 uppercase tracking-wide">Monthly Cost</p>
-                          <p className="font-medium text-slate-900 dark:text-white mt-1">{selectedNumber.number_type === 'toll_free' ? '$1.50' : '$1.00'}/mo</p>
+                          <p className="font-medium text-slate-900 dark:text-white mt-1">{selectedNumber.numberType === 'toll_free' ? '$1.50' : '$1.00'}/mo</p>
                         </div>
                       </div>
 
@@ -1013,26 +1018,26 @@ export default function PhoneSystem() {
                       <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedNumber.emergency_address_id || selectedNumber.emergency_enabled ? 'bg-green-50 dark:bg-green-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
-                              <MapPin className={`h-5 w-5 ${selectedNumber.emergency_address_id || selectedNumber.emergency_enabled ? 'text-green-600' : 'text-amber-600'}`} />
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedNumber.e911AddressId || selectedNumber.e911Enabled ? 'bg-green-50 dark:bg-green-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
+                              <MapPin className={`h-5 w-5 ${selectedNumber.e911AddressId || selectedNumber.e911Enabled ? 'text-green-600' : 'text-amber-600'}`} />
                             </div>
                             <div>
                               <p className="font-medium text-sm text-slate-700 dark:text-foreground">E911 Emergency Services</p>
                               <p className="text-xs text-slate-500">
-                                {selectedNumber.emergency_address_id || selectedNumber.emergency_enabled ? 'Configured' : 'Not configured - Required for emergency calls'}
+                                {selectedNumber.e911AddressId || selectedNumber.e911Enabled ? 'Configured' : 'Not configured - Required for emergency calls'}
                               </p>
                             </div>
                           </div>
                           <Button
-                            variant={selectedNumber.emergency_address_id || selectedNumber.emergency_enabled ? "outline" : "default"}
+                            variant={selectedNumber.e911AddressId || selectedNumber.e911Enabled ? "outline" : "default"}
                             size="sm"
                             onClick={() => {
-                              setSelectedNumberForE911({ phoneNumber: selectedNumber.phone_number, phoneNumberId: selectedNumber.id || "" });
+                              setSelectedNumberForE911({ phoneNumber: selectedNumber.phoneNumber, phoneNumberId: selectedNumber.id || "" });
                               setShowE911Dialog(true);
                             }}
                             data-testid="button-configure-e911"
                           >
-                            {selectedNumber.emergency_address_id || selectedNumber.emergency_enabled ? 'Update' : 'Configure'}
+                            {selectedNumber.e911AddressId || selectedNumber.e911Enabled ? 'Update' : 'Configure'}
                           </Button>
                         </div>
                       </div>
@@ -1079,7 +1084,7 @@ export default function PhoneSystem() {
                           </div>
                         </div>
                         <p className="text-sm text-slate-600 dark:text-slate-400 mb-2">
-                          Current: <span className="font-medium text-slate-900 dark:text-white">{selectedNumber.caller_id_name || selectedNumber.cnam_listing?.listing_name || 'Not configured'}</span>
+                          Current: <span className="font-medium text-slate-900 dark:text-white">{selectedNumber.callerIdName || 'Not configured'}</span>
                         </p>
                         <p className="text-xs text-slate-500">
                           To change your outbound caller ID name, contact support. Changes take 12-72 hours to propagate to all carriers.
@@ -1901,15 +1906,15 @@ function PhoneNumberCard({ number, onConfigureE911 }: PhoneNumberCardProps) {
               <Phone className="h-6 w-6 text-indigo-600" />
             </div>
             <div>
-              <p className="text-lg font-semibold text-slate-900 dark:text-foreground">{formatPhoneDisplay(number.phone_number)}</p>
-              <p className="text-sm text-slate-500">{number.phone_number_type?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Local'}</p>
+              <p className="text-lg font-semibold text-slate-900 dark:text-foreground">{formatPhoneDisplay(number.phoneNumber)}</p>
+              <p className="text-sm text-slate-500">{number.numberType?.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Local'}</p>
             </div>
           </div>
           <div className="flex items-center gap-3">
             <Badge variant={number.status === 'active' ? 'default' : 'secondary'} className={number.status === 'active' ? 'bg-green-100 text-green-700 border-green-200' : ''}>
               {number.status === 'active' ? 'Active' : number.status}
             </Badge>
-            {!number.emergency_enabled && onConfigureE911 && (
+            {!number.e911Enabled && onConfigureE911 && (
               <Button variant="outline" size="sm" onClick={onConfigureE911} className="text-amber-600 border-amber-300 hover:bg-amber-50">
                 <MapPin className="h-3 w-3 mr-1" />E911
               </Button>
