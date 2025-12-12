@@ -1190,7 +1190,7 @@ export default function PhoneSystem() {
                             <div className="flex items-center justify-between">
                               <div>
                                 <p className="text-sm font-medium text-slate-700 dark:text-foreground">Noise Suppression</p>
-                                <p className="text-xs text-slate-500">Reduce background noise ($0.002/min per direction)</p>
+                                <p className="text-xs text-slate-500">Reduce background noise on calls</p>
                               </div>
                               <Switch
                                 checked={selectedNumber.noiseSuppressionEnabled || false}
@@ -1231,7 +1231,7 @@ export default function PhoneSystem() {
                                   </SelectContent>
                                 </Select>
                                 <p className="text-xs text-slate-400 mt-1">
-                                  {selectedNumber.noiseSuppressionDirection === "both" ? "Charged for both legs" : "Single leg charge"}
+                                  {selectedNumber.noiseSuppressionDirection === "both" ? "Applied to both directions" : "Applied to one direction"}
                                 </p>
                               </div>
                             )}
