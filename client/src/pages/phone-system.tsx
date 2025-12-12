@@ -44,7 +44,8 @@ import {
   ArrowUp,
   ArrowDown,
   Filter,
-  Search
+  Search,
+  ChevronRight
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
@@ -129,6 +130,7 @@ export default function PhoneSystem() {
   const lastSavedStateRef = useRef({ enabled: false, threshold: "10", amount: "50" });
   const [showRecordingConfirm, setShowRecordingConfirm] = useState(false);
   const [showCnamConfirm, setShowCnamConfirm] = useState(false);
+  const [selectedNumber, setSelectedNumber] = useState<NumberInfo | null>(null);
 
   const { data: statusData, isLoading: isLoadingStatus, refetch } = useQuery<StatusResponse>({
     queryKey: ["/api/telnyx/managed-accounts/status"],
@@ -167,6 +169,20 @@ export default function PhoneSystem() {
       setTimeout(() => { isInitialLoadRef.current = false; }, 100);
     }
   }, [walletData]);
+
+  // Auto-select first number when data loads or if current selection becomes invalid
+  useEffect(() => {
+    if (numbersData?.numbers?.length) {
+      // If no number selected, or selected number no longer exists in list, select first
+      const currentId = selectedNumber?.phone_number;
+      const stillExists = currentId && numbersData.numbers.some(n => n.phone_number === currentId);
+      if (!selectedNumber || !stillExists) {
+        setSelectedNumber(numbersData.numbers[0]);
+      }
+    } else {
+      setSelectedNumber(null);
+    }
+  }, [numbersData]);
 
   const handleAutoRechargeToggle = (enabled: boolean) => {
     setAutoRechargeEnabled(enabled);
@@ -468,123 +484,167 @@ export default function PhoneSystem() {
 
   return (
     <div className="flex flex-col h-full bg-slate-50 dark:bg-slate-950">
-      {/* Header - Clean, organized */}
-      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4">
+      {/* GLOBAL STATUS BAR - Account Status at a glance */}
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3">
         <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold text-slate-900 dark:text-foreground" data-testid="text-page-title">Phone System</h1>
-            <p className="text-sm text-slate-500">Manage your business phone lines</p>
-          </div>
-          <div className="flex items-center gap-3">
-            <Button variant="outline" onClick={() => setShowBuyNumber(true)} data-testid="button-buy-number">
-              <Plus className="h-4 w-4 mr-2" />
-              Buy Number
-            </Button>
-            <div 
-              className="flex items-center gap-3 px-4 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors"
-              onClick={() => setShowAddFunds(true)}
-              data-testid="button-add-funds"
-            >
-              <Wallet className="h-4 w-4 text-slate-500" />
-              <div>
-                <p className="text-xs text-slate-500">Balance</p>
-                <p className="text-sm font-semibold text-slate-900 dark:text-white" data-testid="text-balance">{formatCurrency(walletBalance, walletCurrency)}</p>
-              </div>
-              <Plus className="h-3 w-3 text-slate-400" />
+          {/* Left: Status Indicators */}
+          <div className="flex items-center gap-6">
+            {/* Balance Status */}
+            <div className="flex items-center gap-2">
+              <div className={`w-2 h-2 rounded-full ${walletBalance > 10 ? 'bg-green-500' : walletBalance > 0 ? 'bg-amber-500' : 'bg-red-500'}`} />
+              <span className="text-sm text-slate-600 dark:text-slate-400">Balance:</span>
+              <span className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(walletBalance)}</span>
+              {walletBalance < 10 && <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">Low</Badge>}
             </div>
+            {/* Numbers Count */}
+            <div className="flex items-center gap-2">
+              <Phone className="h-4 w-4 text-slate-400" />
+              <span className="text-sm text-slate-600 dark:text-slate-400">{numbersCount} Number{numbersCount !== 1 ? 's' : ''}</span>
+            </div>
+            {/* E911 Status */}
+            <div className="flex items-center gap-2">
+              <MapPin className={`h-4 w-4 ${hasE911Issues ? 'text-amber-500' : 'text-green-500'}`} />
+              <span className={`text-sm ${hasE911Issues ? 'text-amber-600' : 'text-green-600'}`}>
+                E911: {hasE911Issues ? 'Needs Setup' : 'Ready'}
+              </span>
+            </div>
+            {/* Recording Status */}
+            {billingFeaturesData?.recordingEnabled && (
+              <div className="flex items-center gap-2">
+                <Mic className="h-4 w-4 text-red-500" />
+                <span className="text-sm text-slate-600 dark:text-slate-400">Recording On</span>
+              </div>
+            )}
+          </div>
+          {/* Right: Quick Actions */}
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setShowAddFunds(true)} data-testid="button-add-funds-quick">
+              <Plus className="h-3 w-3 mr-1" />Add Funds
+            </Button>
+            <Button size="sm" onClick={() => setShowBuyNumber(true)} data-testid="button-buy-number">
+              <Plus className="h-3 w-3 mr-1" />Buy Number
+            </Button>
           </div>
         </div>
       </div>
 
+      {/* PAGE HEADER */}
+      <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-4">
+        <h1 className="text-xl font-semibold text-slate-900 dark:text-foreground" data-testid="text-page-title">Phone System</h1>
+      </div>
+
       {/* Main Content with Tabs */}
       <div className="flex-1 overflow-auto">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full">
-          {/* Tab Navigation - Clean pills */}
-          <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 py-3">
-            <TabsList className="bg-slate-100 dark:bg-slate-800 p-1 rounded-lg">
-              <TabsTrigger value="overview" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm rounded-md px-4 py-2 text-sm font-medium">
-                <TrendingUp className="h-4 w-4 mr-2" />Overview
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
+          {/* Tab Navigation */}
+          <div className="bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6">
+            <TabsList className="bg-transparent h-12 p-0 gap-0">
+              <TabsTrigger value="overview" className="data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 rounded-none px-4 py-3 text-sm font-medium bg-transparent">
+                Overview
               </TabsTrigger>
-              <TabsTrigger value="numbers" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm rounded-md px-4 py-2 text-sm font-medium">
-                <Phone className="h-4 w-4 mr-2" />Numbers
+              <TabsTrigger value="numbers" className="data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 rounded-none px-4 py-3 text-sm font-medium bg-transparent">
+                Numbers
               </TabsTrigger>
-              <TabsTrigger value="calls" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm rounded-md px-4 py-2 text-sm font-medium">
-                <History className="h-4 w-4 mr-2" />Call History
+              <TabsTrigger value="calls" className="data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 rounded-none px-4 py-3 text-sm font-medium bg-transparent">
+                Calls
               </TabsTrigger>
-              <TabsTrigger value="settings" className="data-[state=active]:bg-white dark:data-[state=active]:bg-slate-700 data-[state=active]:shadow-sm rounded-md px-4 py-2 text-sm font-medium">
-                <Settings2 className="h-4 w-4 mr-2" />Settings
+              <TabsTrigger value="settings" className="data-[state=active]:border-b-2 data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 rounded-none px-4 py-3 text-sm font-medium bg-transparent">
+                Settings
               </TabsTrigger>
             </TabsList>
           </div>
 
-          {/* Overview Tab - Clean organization */}
-          <TabsContent value="overview" className="p-6 m-0">
-            <div className="space-y-6">
-              {/* Stats Row - Simple grid */}
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
-                      <Phone className="h-5 w-5 text-indigo-600" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-foreground">{numbersCount}</p>
-                      <p className="text-xs text-slate-500">Phone Numbers</p>
-                    </div>
+          {/* Overview Tab - Two Column Layout */}
+          <TabsContent value="overview" className="flex-1 m-0 overflow-auto">
+            <div className="grid lg:grid-cols-3 gap-0 h-full">
+              {/* Left Column: Summary & Quick Stats */}
+              <div className="lg:col-span-1 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 p-6">
+                <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">Account Summary</h2>
+                
+                {/* Wallet Section */}
+                <div className="mb-6 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm text-slate-600 dark:text-slate-400">Wallet Balance</span>
+                    <Button variant="ghost" size="sm" onClick={() => setShowAddFunds(true)} className="h-7 text-xs">Add Funds</Button>
                   </div>
+                  <p className="text-3xl font-bold text-slate-900 dark:text-white">{formatCurrency(walletBalance)}</p>
+                  {autoRechargeEnabled && <p className="text-xs text-slate-500 mt-1">Auto-recharge enabled at ${autoRechargeThreshold}</p>}
                 </div>
-                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-green-50 dark:bg-green-900/20 flex items-center justify-center">
-                      <DollarSign className="h-5 w-5 text-green-600" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-foreground">{formatCurrency(walletBalance)}</p>
-                      <p className="text-xs text-slate-500">Wallet Balance</p>
-                    </div>
+
+                {/* Numbers Section */}
+                <div className="mb-6">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Phone Numbers</span>
+                    <span className="text-lg font-bold text-slate-900 dark:text-white">{numbersCount}</span>
                   </div>
+                  {numbersData?.numbers?.slice(0, 3).map((num, idx) => (
+                    <div key={idx} className="flex items-center justify-between py-2 border-b border-slate-100 dark:border-slate-800 last:border-0">
+                      <span className="text-sm text-slate-700 dark:text-slate-300">{formatPhoneDisplay(num.phone_number)}</span>
+                      <Badge variant="outline" className={`text-xs ${num.status === 'active' ? 'text-green-600 border-green-300' : 'text-slate-500'}`}>
+                        {num.status === 'active' ? 'Active' : num.status}
+                      </Badge>
+                    </div>
+                  ))}
+                  {numbersCount > 3 && (
+                    <Button variant="ghost" size="sm" onClick={() => setActiveTab("numbers")} className="p-0 h-auto text-xs text-indigo-600 hover:text-indigo-700">
+                      View all {numbersCount} numbers
+                    </Button>
+                  )}
                 </div>
-                <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-                      <PhoneCall className="h-5 w-5 text-blue-600" />
-                    </div>
-                    <div>
-                      <p className="text-2xl font-bold text-slate-900 dark:text-foreground">{callLogsData?.logs?.length || 0}</p>
-                      <p className="text-xs text-slate-500">Total Calls</p>
-                    </div>
+
+                {/* Alerts Section */}
+                {(hasE911Issues || walletBalance < 10) && (
+                  <div className="space-y-2">
+                    <h3 className="text-sm font-medium text-slate-700 dark:text-slate-300">Alerts</h3>
+                    {hasE911Issues && (
+                      <div 
+                        className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg cursor-pointer"
+                        onClick={() => {
+                          if (numbersData?.numbers?.[0]) {
+                            setSelectedNumberForE911({ phoneNumber: numbersData.numbers[0].phone_number, phoneNumberId: numbersData.numbers[0].id || "" });
+                            setShowE911Dialog(true);
+                          }
+                        }}
+                      >
+                        <AlertTriangle className="h-4 w-4 text-amber-600" />
+                        <span className="text-sm text-amber-700 dark:text-amber-400">E911 configuration needed</span>
+                      </div>
+                    )}
+                    {walletBalance < 10 && (
+                      <div className="flex items-center gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg cursor-pointer" onClick={() => setShowAddFunds(true)}>
+                        <Wallet className="h-4 w-4 text-amber-600" />
+                        <span className="text-sm text-amber-700 dark:text-amber-400">Low balance - Add funds</span>
+                      </div>
+                    )}
                   </div>
-                </div>
-                <div 
-                  className={`bg-white dark:bg-slate-900 rounded-lg border p-4 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors ${hasE911Issues ? 'border-amber-300 dark:border-amber-700' : 'border-slate-200 dark:border-slate-800'}`}
-                  onClick={() => {
-                    if (numbersData?.numbers?.[0]) {
-                      setSelectedNumberForE911({ phoneNumber: numbersData.numbers[0].phone_number, phoneNumberId: numbersData.numbers[0].id || "" });
-                      setShowE911Dialog(true);
-                    }
-                  }}
-                >
-                  <div className="flex items-center gap-3">
-                    <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${hasE911Issues ? 'bg-amber-50 dark:bg-amber-900/20' : 'bg-emerald-50 dark:bg-emerald-900/20'}`}>
-                      <MapPin className={`h-5 w-5 ${hasE911Issues ? 'text-amber-600' : 'text-emerald-600'}`} />
-                    </div>
-                    <div>
-                      <p className="text-sm font-semibold text-slate-900 dark:text-foreground">E911 Status</p>
-                      <p className={`text-xs ${hasE911Issues ? 'text-amber-600' : 'text-emerald-600'}`}>
-                        {hasE911Issues ? 'Action Required' : 'Configured'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
+                )}
               </div>
 
-              {/* Recent Calls - Clean table */}
-              <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
-                <div className="flex items-center justify-between px-4 py-3 border-b border-slate-200 dark:border-slate-800">
-                  <h3 className="font-semibold text-slate-900 dark:text-foreground">Recent Calls</h3>
-                  <Button variant="ghost" size="sm" onClick={() => setActiveTab("calls")}>View All</Button>
+              {/* Right Column: Activity & Calls */}
+              <div className="lg:col-span-2 p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Recent Activity</h2>
+                  <Button variant="ghost" size="sm" onClick={() => setActiveTab("calls")}>View All Calls</Button>
                 </div>
-                <div>
+
+                {/* Call Stats Row */}
+                <div className="grid grid-cols-3 gap-4 mb-6">
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 text-center">
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{callLogsData?.logs?.length || 0}</p>
+                    <p className="text-xs text-slate-500">Total Calls</p>
+                  </div>
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 text-center">
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{callLogsData?.logs?.filter(l => l.direction === 'inbound').length || 0}</p>
+                    <p className="text-xs text-slate-500">Inbound</p>
+                  </div>
+                  <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg p-4 text-center">
+                    <p className="text-2xl font-bold text-slate-900 dark:text-white">{callLogsData?.logs?.filter(l => l.direction === 'outbound').length || 0}</p>
+                    <p className="text-xs text-slate-500">Outbound</p>
+                  </div>
+                </div>
+
+                {/* Recent Calls Table */}
+                <div className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-lg overflow-hidden">
                   {isLoadingCallLogs ? (
                     <div className="flex justify-center py-8"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
                   ) : !callLogsData?.logs?.length ? (
@@ -593,41 +653,49 @@ export default function PhoneSystem() {
                       <p className="text-sm">No calls yet</p>
                     </div>
                   ) : (
-                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {callLogsData.logs.slice(0, 5).map((log) => (
-                        <div key={log.id} className="flex items-center justify-between px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                          <div className="flex items-center gap-3">
-                            <div className={`p-2 rounded-full ${log.direction === 'inbound' ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-green-50 dark:bg-green-900/20'}`}>
-                              {log.direction === 'inbound' ? <PhoneIncoming className="h-4 w-4 text-blue-600" /> : <PhoneOutgoing className="h-4 w-4 text-green-600" />}
-                            </div>
-                            <div>
-                              <p className="text-sm font-medium text-slate-900 dark:text-foreground">
-                                {formatPhoneDisplay(log.direction === 'inbound' ? log.fromNumber : log.toNumber)}
-                              </p>
-                              <p className="text-xs text-slate-500">{format(new Date(log.startedAt), "MMM dd, h:mm a")}</p>
-                            </div>
-                          </div>
-                          <div className="flex items-center gap-3">
-                            {log.duration > 0 && <span className="text-sm text-slate-600 dark:text-slate-400">{Math.floor(log.duration / 60)}:{(log.duration % 60).toString().padStart(2, '0')}</span>}
-                            <Badge variant="outline" className={`text-xs ${log.status === 'answered' ? 'text-green-600 border-green-200' : 'text-slate-500'}`}>
-                              {log.status}
-                            </Badge>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                    <table className="w-full text-sm">
+                      <thead className="bg-slate-50 dark:bg-slate-800">
+                        <tr>
+                          <th className="text-left px-4 py-2 font-medium text-slate-600 dark:text-slate-400">Phone</th>
+                          <th className="text-left px-4 py-2 font-medium text-slate-600 dark:text-slate-400">Date</th>
+                          <th className="text-left px-4 py-2 font-medium text-slate-600 dark:text-slate-400">Status</th>
+                          <th className="text-right px-4 py-2 font-medium text-slate-600 dark:text-slate-400">Duration</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                        {callLogsData.logs.slice(0, 8).map((log) => (
+                          <tr key={log.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-2">
+                                {log.direction === 'inbound' ? <PhoneIncoming className="h-4 w-4 text-blue-500" /> : <PhoneOutgoing className="h-4 w-4 text-green-500" />}
+                                <span className="font-medium text-slate-900 dark:text-white">{formatPhoneDisplay(log.direction === 'inbound' ? log.fromNumber : log.toNumber)}</span>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3 text-slate-600 dark:text-slate-400">{format(new Date(log.startedAt), "MMM dd, h:mm a")}</td>
+                            <td className="px-4 py-3">
+                              <Badge variant="outline" className={`text-xs ${log.status === 'answered' ? 'text-green-600 border-green-300' : 'text-slate-500'}`}>
+                                {log.status}
+                              </Badge>
+                            </td>
+                            <td className="px-4 py-3 text-right text-slate-600 dark:text-slate-400">
+                              {log.duration > 0 ? `${Math.floor(log.duration / 60)}:${(log.duration % 60).toString().padStart(2, '0')}` : '-'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   )}
                 </div>
               </div>
             </div>
           </TabsContent>
 
-          {/* Numbers Tab - Clean organization */}
-          <TabsContent value="numbers" className="p-6 m-0">
-            <div className="space-y-4">
-              {isLoadingNumbers ? (
-                <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-slate-400" /></div>
-              ) : !numbersData?.numbers?.length ? (
+          {/* Numbers Tab - Split View */}
+          <TabsContent value="numbers" className="flex-1 m-0 overflow-auto">
+            {isLoadingNumbers ? (
+              <div className="flex justify-center py-12"><Loader2 className="h-8 w-8 animate-spin text-slate-400" /></div>
+            ) : !numbersData?.numbers?.length ? (
+              <div className="p-6">
                 <div className="bg-white dark:bg-slate-900 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-700 p-12 text-center">
                   <Phone className="h-12 w-12 mx-auto mb-4 text-slate-300" />
                   <h3 className="text-lg font-medium text-slate-900 dark:text-foreground mb-2">No Phone Numbers</h3>
@@ -636,19 +704,141 @@ export default function PhoneSystem() {
                     <Plus className="h-4 w-4 mr-2" />Get a Number
                   </Button>
                 </div>
-              ) : (
-                numbersData.numbers.map((number, idx) => (
-                  <PhoneNumberCard 
-                    key={number.id || idx} 
-                    number={number} 
-                    onConfigureE911={() => {
-                      setSelectedNumberForE911({ phoneNumber: number.phone_number, phoneNumberId: number.id || "" });
-                      setShowE911Dialog(true);
-                    }}
-                  />
-                ))
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="grid lg:grid-cols-3 gap-0 h-full">
+                {/* Left Column: Numbers List */}
+                <div className="lg:col-span-1 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 overflow-auto">
+                  <div className="p-4 border-b border-slate-200 dark:border-slate-800">
+                    <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Phone Numbers</h2>
+                    <p className="text-xs text-slate-400 mt-1">{numbersData.numbers.length} number{numbersData.numbers.length !== 1 ? 's' : ''}</p>
+                  </div>
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {numbersData.numbers.map((number, idx) => {
+                      const hasE911 = number.emergency_address_id || number.emergency_enabled;
+                      const isSelected = selectedNumber?.phone_number === number.phone_number;
+                      return (
+                        <div
+                          key={number.id || idx}
+                          className={`px-4 py-3 cursor-pointer transition-colors ${isSelected ? 'bg-indigo-50 dark:bg-indigo-900/20 border-l-2 border-l-indigo-600' : 'hover:bg-slate-50 dark:hover:bg-slate-800 border-l-2 border-l-transparent'}`}
+                          onClick={() => setSelectedNumber(number)}
+                          data-testid={`number-item-${idx}`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <div>
+                              <p className="font-medium text-slate-900 dark:text-white">{formatPhoneDisplay(number.phone_number)}</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <Badge variant="outline" className={`text-xs ${number.status === 'active' ? 'text-green-600 border-green-300' : 'text-slate-500'}`}>
+                                  {number.status}
+                                </Badge>
+                                {!hasE911 && <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">No E911</Badge>}
+                              </div>
+                            </div>
+                            <ChevronRight className="h-4 w-4 text-slate-400" />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Right Column: Number Details */}
+                <div className="lg:col-span-2 p-6">
+                  {selectedNumber ? (
+                    <div className="space-y-6">
+                      {/* Number Header */}
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">{formatPhoneDisplay(selectedNumber.phone_number)}</h2>
+                          <p className="text-sm text-slate-500 mt-1">
+                            {selectedNumber.number_type === 'toll_free' ? 'Toll-Free' : 'Local'} Number
+                          </p>
+                        </div>
+                        <Badge className={`${selectedNumber.status === 'active' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'bg-slate-100 text-slate-600'}`}>
+                          {selectedNumber.status}
+                        </Badge>
+                      </div>
+
+                      {/* Quick Info Grid */}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+                          <p className="text-xs text-slate-500 uppercase tracking-wide">Type</p>
+                          <p className="font-medium text-slate-900 dark:text-white mt-1">{selectedNumber.number_type === 'toll_free' ? 'Toll-Free' : 'Local'}</p>
+                        </div>
+                        <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4">
+                          <p className="text-xs text-slate-500 uppercase tracking-wide">Monthly Cost</p>
+                          <p className="font-medium text-slate-900 dark:text-white mt-1">{selectedNumber.number_type === 'toll_free' ? '$1.50' : '$1.00'}/mo</p>
+                        </div>
+                      </div>
+
+                      {/* E911 Section */}
+                      <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedNumber.emergency_address_id || selectedNumber.emergency_enabled ? 'bg-green-50 dark:bg-green-900/20' : 'bg-amber-50 dark:bg-amber-900/20'}`}>
+                              <MapPin className={`h-5 w-5 ${selectedNumber.emergency_address_id || selectedNumber.emergency_enabled ? 'text-green-600' : 'text-amber-600'}`} />
+                            </div>
+                            <div>
+                              <p className="font-medium text-sm text-slate-700 dark:text-foreground">E911 Emergency Services</p>
+                              <p className="text-xs text-slate-500">
+                                {selectedNumber.emergency_address_id || selectedNumber.emergency_enabled ? 'Configured' : 'Not configured - Required for emergency calls'}
+                              </p>
+                            </div>
+                          </div>
+                          <Button
+                            variant={selectedNumber.emergency_address_id || selectedNumber.emergency_enabled ? "outline" : "default"}
+                            size="sm"
+                            onClick={() => {
+                              setSelectedNumberForE911({ phoneNumber: selectedNumber.phone_number, phoneNumberId: selectedNumber.id || "" });
+                              setShowE911Dialog(true);
+                            }}
+                            data-testid="button-configure-e911"
+                          >
+                            {selectedNumber.emergency_address_id || selectedNumber.emergency_enabled ? 'Update' : 'Configure'}
+                          </Button>
+                        </div>
+                      </div>
+
+                      {/* Voice Settings */}
+                      <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                        <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                          <p className="font-medium text-sm text-slate-700 dark:text-foreground">Voice Settings</p>
+                        </div>
+                        <div className="p-4 space-y-3">
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-600 dark:text-slate-400">Call Recording</span>
+                            <Badge variant="outline" className={`text-xs ${billingFeaturesData?.recordingEnabled ? 'text-green-600 border-green-300' : 'text-slate-500'}`}>
+                              {billingFeaturesData?.recordingEnabled ? 'Enabled' : 'Disabled'}
+                            </Badge>
+                          </div>
+                          <div className="flex justify-between text-sm">
+                            <span className="text-slate-600 dark:text-slate-400">CNAM Lookup</span>
+                            <Badge variant="outline" className={`text-xs ${billingFeaturesData?.cnamEnabled ? 'text-green-600 border-green-300' : 'text-slate-500'}`}>
+                              {billingFeaturesData?.cnamEnabled ? 'Enabled' : 'Disabled'}
+                            </Badge>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Caller ID */}
+                      {selectedNumber.cnam_listing && (
+                        <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                          <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Caller ID Name</p>
+                          <p className="font-medium text-slate-900 dark:text-white">{selectedNumber.cnam_listing.listing_name || 'Not set'}</p>
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="flex items-center justify-center h-full text-center">
+                      <div>
+                        <Phone className="h-12 w-12 mx-auto mb-4 text-slate-300" />
+                        <p className="text-slate-500">Select a number to view details</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </TabsContent>
 
           {/* Call History Tab */}
@@ -660,109 +850,93 @@ export default function PhoneSystem() {
             />
           </TabsContent>
 
-          {/* Settings Tab */}
-          <TabsContent value="settings" className="p-6 m-0">
-            <div className="grid gap-6 lg:grid-cols-2">
-              {/* Wallet & Billing - Primary Card */}
-              <Card className="border-slate-200 dark:border-border lg:col-span-2">
-                <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <CardTitle className="text-lg flex items-center gap-2">
-                        <Wallet className="h-5 w-5 text-green-600" />Wallet Balance
-                      </CardTitle>
-                      <CardDescription>Your prepaid balance for calls and messaging</CardDescription>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-3xl font-bold text-slate-900 dark:text-white">{formatCurrency(walletBalance)}</p>
-                      <p className="text-xs text-slate-500">Available</p>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 sm:grid-cols-2">
-                    <Button onClick={() => setShowAddFunds(true)} className="h-12" data-testid="button-add-funds">
-                      <Plus className="h-4 w-4 mr-2" />Add Funds
+          {/* Settings Tab - Two Column Layout with Grouped Sections */}
+          <TabsContent value="settings" className="flex-1 m-0 overflow-auto">
+            <div className="grid lg:grid-cols-2 gap-0 h-full">
+              {/* Left Column: Billing & Wallet */}
+              <div className="bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 p-6">
+                <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">Billing & Wallet</h2>
+                
+                {/* Balance Card */}
+                <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <span className="text-sm text-slate-600 dark:text-slate-400">Current Balance</span>
+                    <Button variant="ghost" size="sm" onClick={() => setShowAddFunds(true)} className="h-7 text-xs" data-testid="button-add-funds">
+                      <Plus className="h-3 w-3 mr-1" />Add Funds
                     </Button>
-                    <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700">
-                      <div>
-                        <p className="font-medium text-sm text-slate-700 dark:text-foreground">Auto-Recharge</p>
-                        <p className="text-xs text-slate-500">Add funds when balance is low</p>
-                      </div>
-                      <Switch checked={autoRechargeEnabled} onCheckedChange={handleAutoRechargeToggle} data-testid="switch-auto-recharge" />
+                  </div>
+                  <p className="text-3xl font-bold text-slate-900 dark:text-white">{formatCurrency(walletBalance)}</p>
+                </div>
+
+                {/* Auto-Recharge */}
+                <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div>
+                      <p className="font-medium text-sm text-slate-700 dark:text-foreground">Auto-Recharge</p>
+                      <p className="text-xs text-slate-500">Automatically add funds when balance is low</p>
                     </div>
+                    <Switch checked={autoRechargeEnabled} onCheckedChange={handleAutoRechargeToggle} data-testid="switch-auto-recharge" />
                   </div>
                   {autoRechargeEnabled && (
-                    <div className="grid grid-cols-2 gap-4 mt-4 p-4 bg-slate-50 dark:bg-slate-800/50 rounded-lg">
+                    <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
                       <div>
-                        <Label className="text-xs">Threshold</Label>
+                        <Label className="text-xs text-slate-500">When below</Label>
                         <div className="relative mt-1">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
-                          <Input type="number" min="5" max="100" value={autoRechargeThreshold} onChange={(e) => setAutoRechargeThreshold(e.target.value)} className="pl-7" data-testid="input-auto-recharge-threshold" />
+                          <Input type="number" min="5" max="100" value={autoRechargeThreshold} onChange={(e) => setAutoRechargeThreshold(e.target.value)} className="pl-7 h-9" data-testid="input-auto-recharge-threshold" />
                         </div>
                       </div>
                       <div>
-                        <Label className="text-xs">Recharge Amount</Label>
+                        <Label className="text-xs text-slate-500">Add amount</Label>
                         <div className="relative mt-1">
                           <span className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500">$</span>
-                          <Input type="number" min="10" max="500" value={autoRechargeAmount} onChange={(e) => setAutoRechargeAmount(e.target.value)} className="pl-7" data-testid="input-auto-recharge-amount" />
+                          <Input type="number" min="10" max="500" value={autoRechargeAmount} onChange={(e) => setAutoRechargeAmount(e.target.value)} className="pl-7 h-9" data-testid="input-auto-recharge-amount" />
                         </div>
                       </div>
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
 
-              {/* Call Rates Card */}
-              <Card className="border-slate-200 dark:border-border">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Phone className="h-4 w-4" />Call Rates
-                  </CardTitle>
-                  <CardDescription>Per-minute rates by destination</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-2 text-sm">
-                    <div className="flex justify-between p-2 rounded bg-slate-50 dark:bg-muted/50">
+                {/* Call Rates */}
+                <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                  <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                    <p className="font-medium text-sm text-slate-700 dark:text-foreground">Call Rates</p>
+                  </div>
+                  <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                    <div className="flex justify-between px-4 py-2.5 text-sm">
                       <span className="text-slate-600 dark:text-slate-400">USA / Canada</span>
-                      <span className="font-medium">$0.02/min</span>
+                      <span className="font-medium text-slate-900 dark:text-white">$0.02/min</span>
                     </div>
-                    <div className="flex justify-between p-2 rounded bg-slate-50 dark:bg-muted/50">
+                    <div className="flex justify-between px-4 py-2.5 text-sm">
                       <span className="text-slate-600 dark:text-slate-400">Mexico (Landline)</span>
-                      <span className="font-medium">$0.035/min</span>
+                      <span className="font-medium text-slate-900 dark:text-white">$0.035/min</span>
                     </div>
-                    <div className="flex justify-between p-2 rounded bg-slate-50 dark:bg-muted/50">
+                    <div className="flex justify-between px-4 py-2.5 text-sm">
                       <span className="text-slate-600 dark:text-slate-400">Mexico (Mobile)</span>
-                      <span className="font-medium">$0.045/min</span>
+                      <span className="font-medium text-slate-900 dark:text-white">$0.045/min</span>
                     </div>
-                    <div className="flex justify-between p-2 rounded bg-slate-50 dark:bg-muted/50">
-                      <span className="text-slate-600 dark:text-slate-400">Toll-Free (1800/1888)</span>
+                    <div className="flex justify-between px-4 py-2.5 text-sm">
+                      <span className="text-slate-600 dark:text-slate-400">Toll-Free</span>
                       <span className="font-medium text-green-600">Free</span>
                     </div>
-                    <div className="flex justify-between p-2 rounded bg-slate-50 dark:bg-muted/50">
-                      <span className="text-slate-600 dark:text-slate-400">UK / Germany / France</span>
-                      <span className="font-medium">$0.015-0.02/min</span>
-                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
 
-              {/* Billing Features Card */}
-              <Card className="border-slate-200 dark:border-border">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <DollarSign className="h-4 w-4" />Billing Features
-                  </CardTitle>
-                  <CardDescription>Enable paid features for enhanced call functionality</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
+              {/* Right Column: System Configuration */}
+              <div className="p-6">
+                <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide mb-4">System Configuration</h2>
+
+                {/* Call Recording */}
+                <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <Mic className="h-4 w-4 text-red-600" />
+                      <div className="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
+                        <Mic className="h-4 w-4 text-red-600" />
+                      </div>
                       <div>
                         <p className="font-medium text-sm text-slate-700 dark:text-foreground">Call Recording</p>
-                        <p className="text-xs text-slate-500">Record all calls for quality assurance</p>
-                        <Badge variant="outline" className="mt-1 text-xs text-amber-600 border-amber-300">$0.005/min</Badge>
+                        <p className="text-xs text-slate-500">$0.005/min - Record all calls</p>
                       </div>
                     </div>
                     <Switch
@@ -772,13 +946,18 @@ export default function PhoneSystem() {
                       data-testid="switch-call-recording"
                     />
                   </div>
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
+                </div>
+
+                {/* CNAM */}
+                <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4 mb-4">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <User className="h-4 w-4 text-blue-600" />
+                      <div className="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
+                        <User className="h-4 w-4 text-blue-600" />
+                      </div>
                       <div>
                         <p className="font-medium text-sm text-slate-700 dark:text-foreground">CNAM (Caller ID Name)</p>
-                        <p className="text-xs text-slate-500">Display caller names for incoming calls</p>
-                        <Badge variant="outline" className="mt-1 text-xs text-amber-600 border-amber-300">$1.00/month + $0.01 per inbound call</Badge>
+                        <p className="text-xs text-slate-500">$1/mo + $0.01/call - Show caller names</p>
                       </div>
                     </div>
                     <Switch
@@ -788,24 +967,18 @@ export default function PhoneSystem() {
                       data-testid="switch-cnam"
                     />
                   </div>
-                </CardContent>
-              </Card>
+                </div>
 
-              {/* Audio Settings Card */}
-              <Card className="border-slate-200 dark:border-border">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Volume2 className="h-4 w-4" />Audio Settings
-                  </CardTitle>
-                  <CardDescription>Configure call audio quality</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex items-center justify-between p-3 rounded-lg bg-slate-50 dark:bg-muted/50">
+                {/* Noise Suppression */}
+                <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                  <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
-                      <Mic className="h-4 w-4 text-indigo-600" />
+                      <div className="w-8 h-8 rounded-lg bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
+                        <Volume2 className="h-4 w-4 text-indigo-600" />
+                      </div>
                       <div>
                         <p className="font-medium text-sm text-slate-700 dark:text-foreground">Noise Suppression</p>
-                        <p className="text-xs text-slate-500">Reduces background noise</p>
+                        <p className="text-xs text-slate-500">Reduce background noise</p>
                       </div>
                     </div>
                     <Switch
@@ -816,8 +989,8 @@ export default function PhoneSystem() {
                     />
                   </div>
                   {noiseSuppressionData?.enabled && (
-                    <div className="flex items-center justify-between p-3 rounded-lg border border-slate-200 dark:border-slate-700">
-                      <Label className="text-sm">Direction</Label>
+                    <div className="flex items-center justify-between mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                      <Label className="text-sm text-slate-600 dark:text-slate-400">Direction</Label>
                       <Select
                         value={noiseSuppressionData?.direction || 'outbound'}
                         onValueChange={(value: 'inbound' | 'outbound' | 'both') => noiseSuppressionMutation.mutate({ enabled: true, direction: value })}
@@ -831,8 +1004,8 @@ export default function PhoneSystem() {
                       </Select>
                     </div>
                   )}
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
