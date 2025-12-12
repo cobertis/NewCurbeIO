@@ -4718,7 +4718,9 @@ export const walletTransactionTypes = [
   "CALL_COST",
   "SMS_COST",
   "NUMBER_RENTAL",
+  "NUMBER_PURCHASE",
   "MONTHLY_FEE",
+  "CNAM_MONTHLY",
   "SUBSCRIPTION",
   "REFUND",
   "ADJUSTMENT",
@@ -4821,6 +4823,13 @@ export const telnyxPhoneNumbers = pgTable("telnyx_phone_numbers", {
   callForwardingEnabled: boolean("call_forwarding_enabled").notNull().default(false),
   callForwardingDestination: text("call_forwarding_destination"), // E.164 format destination
   callForwardingKeepCallerId: boolean("call_forwarding_keep_caller_id").notNull().default(true),
+  
+  // Billing Fields - For monthly recurring charges
+  numberType: text("number_type").default("local").$type<"local" | "toll_free">(), // Type of number for pricing
+  retailMonthlyRate: numeric("retail_monthly_rate", { precision: 10, scale: 4 }), // Client-facing monthly rate
+  telnyxMonthlyCost: numeric("telnyx_monthly_cost", { precision: 10, scale: 4 }), // Wholesale cost from Telnyx
+  lastBilledAt: timestamp("last_billed_at", { withTimezone: true }), // Last monthly billing date
+  nextBillingAt: timestamp("next_billing_at", { withTimezone: true }), // Next billing date (purchasedAt + 1 month)
   
   purchasedAt: timestamp("purchased_at", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
