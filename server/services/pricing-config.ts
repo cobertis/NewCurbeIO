@@ -110,7 +110,7 @@ export const PRICING = {
   },
   monthly: {
     number_rental: DEFAULT_PRICING.monthly.local_did,
-    cnam_subscription: 1.00,
+    cnam_per_number: 0.50,
   },
   billing: {
     min_billable_seconds: DEFAULT_PRICING.billing.min_billable_seconds,

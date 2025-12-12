@@ -57,10 +57,11 @@ async function processMonthlyBilling(): Promise<BillingResult[]> {
 
       const phoneNumberFee = new Decimal(PRICING.monthly.number_rental);
       const totalPhoneNumberFees = phoneNumberFee.times(activePhoneNumbers.length);
-      const cnamFee = cnamEnabled ? new Decimal(PRICING.monthly.cnam_subscription) : new Decimal(0);
-      const totalCharge = totalPhoneNumberFees.plus(cnamFee);
+      const cnamFeePerNumber = new Decimal(PRICING.monthly.cnam_per_number);
+      const totalCnamFee = cnamEnabled ? cnamFeePerNumber.times(activePhoneNumbers.length) : new Decimal(0);
+      const totalCharge = totalPhoneNumberFees.plus(totalCnamFee);
 
-      console.log(`[MONTHLY BILLING] Company ${company.name} (${company.id}): ${activePhoneNumbers.length} numbers x $${phoneNumberFee} = $${totalPhoneNumberFees}${cnamEnabled ? ` + CNAM $${cnamFee}` : ''} = Total $${totalCharge}`);
+      console.log(`[MONTHLY BILLING] Company ${company.name} (${company.id}): ${activePhoneNumbers.length} numbers x $${phoneNumberFee} = $${totalPhoneNumberFees}${cnamEnabled ? ` + CNAM ${activePhoneNumbers.length} x $${cnamFeePerNumber} = $${totalCnamFee}` : ''} = Total $${totalCharge}`);
 
       const result = await db.transaction(async (tx) => {
         const [wallet] = await tx
@@ -112,17 +113,17 @@ async function processMonthlyBilling(): Promise<BillingResult[]> {
 
         console.log(`[MONTHLY BILLING] Company ${company.name}: Created MONTHLY_FEE transaction for $${totalPhoneNumberFees}`);
 
-        if (cnamEnabled && cnamFee.greaterThan(0)) {
+        if (cnamEnabled && totalCnamFee.greaterThan(0)) {
           await tx.insert(walletTransactions).values({
             walletId: wallet.id,
-            amount: cnamFee.negated().toFixed(4),
-            type: "SUBSCRIPTION",
-            description: `CNAM subscription fee - ${billingPeriod}`,
-            externalReferenceId: `cnam-subscription-${billingPeriod}-${company.id}`,
+            amount: totalCnamFee.negated().toFixed(4),
+            type: "CNAM_MONTHLY",
+            description: `CNAM listing fee (${activePhoneNumbers.length} numbers x $${cnamFeePerNumber.toFixed(2)}) - ${billingPeriod}`,
+            externalReferenceId: `cnam-monthly-${billingPeriod}-${company.id}`,
             balanceAfter: newBalance.toFixed(4),
           });
 
-          console.log(`[MONTHLY BILLING] Company ${company.name}: Created SUBSCRIPTION transaction for CNAM $${cnamFee}`);
+          console.log(`[MONTHLY BILLING] Company ${company.name}: Created CNAM_MONTHLY transaction for $${totalCnamFee}`);
         }
 
         return {
@@ -131,7 +132,7 @@ async function processMonthlyBilling(): Promise<BillingResult[]> {
           phoneNumbersCharged: activePhoneNumbers.length,
           phoneNumberFees: totalPhoneNumberFees.toFixed(4),
           cnamCharged: cnamEnabled,
-          cnamFee: cnamFee.toFixed(4),
+          cnamFee: totalCnamFee.toFixed(4),
           totalCharged: totalCharge.toFixed(4),
           insufficientBalance: false,
           newBalance: newBalance.toFixed(4),
