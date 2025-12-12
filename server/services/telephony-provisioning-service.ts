@@ -1092,7 +1092,7 @@ export class TelephonyProvisioningService {
           // Assign directly to Credential Connection (not Call Control App)
           const response = await this.makeApiRequest(
             managedAccountId,
-            `phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
+            `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
             "PATCH",
             { 
               connection_id: settings.credentialConnectionId,
