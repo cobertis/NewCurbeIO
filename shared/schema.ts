@@ -4966,13 +4966,13 @@ export const telephonySettings = pgTable("telephony_settings", {
   monthlyUsageLimit: numeric("monthly_usage_limit", { precision: 10, scale: 2 }).default("25.00"),
   usageLimitAction: text("usage_limit_action").default("block").$type<"block" | "notify">(),
   
-  // Audio Features
-  noiseSuppressionEnabled: boolean("noise_suppression_enabled").notNull().default(false),
+  // Audio Features (enabled by default for new accounts)
+  noiseSuppressionEnabled: boolean("noise_suppression_enabled").notNull().default(true),
   noiseSuppressionDirection: text("noise_suppression_direction").default("outbound").$type<"inbound" | "outbound" | "both">(),
   
-  // Billable Features
-  recordingEnabled: boolean("recording_enabled").notNull().default(false), // $0.005/min extra
-  cnamEnabled: boolean("cnam_enabled").notNull().default(false), // $1.00/month + $0.01/call
+  // Billable Features (enabled by default for new accounts - included in plan)
+  recordingEnabled: boolean("recording_enabled").notNull().default(true), // $0.005/min extra
+  cnamEnabled: boolean("cnam_enabled").notNull().default(true), // $1.00/month + $0.01/call
   
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
