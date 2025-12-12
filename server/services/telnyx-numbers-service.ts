@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { wallets, companies, telnyxPhoneNumbers, telephonySettings } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 import { SecretsService } from "./secrets-service";
 import { assignPhoneNumberToCredentialConnection } from "./telnyx-e911-service";
 import { getCompanyTelnyxAccountId, getCompanyTelnyxApiToken } from "./wallet-service";
@@ -615,6 +615,27 @@ export async function getVoiceSettings(
   try {
     const apiKey = await getTelnyxMasterApiKey();
     
+    // First, look up the Telnyx phone number ID from our database
+    // phoneNumberId could be either our internal ID or the Telnyx ID
+    const [localNumber] = await db
+      .select()
+      .from(telnyxPhoneNumbers)
+      .where(
+        or(
+          eq(telnyxPhoneNumbers.id, phoneNumberId),
+          eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId)
+        )
+      );
+    
+    if (!localNumber) {
+      return { success: false, error: "Phone number not found in database" };
+    }
+    
+    const telnyxPhoneId = localNumber.telnyxPhoneNumberId;
+    if (!telnyxPhoneId) {
+      return { success: false, error: "Telnyx phone number ID not found" };
+    }
+    
     // Get the company's shared Telnyx account ID
     const telnyxAccountId = await getCompanyTelnyxAccountId(companyId);
     
@@ -628,7 +649,7 @@ export async function getVoiceSettings(
       "x-managed-account-id": telnyxAccountId,
     };
     
-    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${telnyxPhoneId}/voice`, {
       method: "GET",
       headers,
     });
@@ -642,11 +663,7 @@ export async function getVoiceSettings(
     const result = await response.json();
     const data = result.data;
     
-    // Get call forwarding settings from local database (not Telnyx API)
-    const [localNumber] = await db
-      .select()
-      .from(telnyxPhoneNumbers)
-      .where(eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId));
+    // localNumber already fetched at the beginning of the function
     
     // Check outbound voice profile recording status
     let outboundEnabled = false;
