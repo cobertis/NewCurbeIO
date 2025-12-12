@@ -28551,6 +28551,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       console.log(`[Telnyx Assign] Phone ${phoneNumber.phoneNumber} assigned to user ${userId || "unassigned"} by admin ${user.id}`);
 
+      // Broadcast real-time notification to the assigned user so their WebRTC auto-connects
+      if (userId) {
+        const { broadcastTelnyxNumberAssigned } = await import('./websocket');
+        broadcastTelnyxNumberAssigned(userId, phoneNumber.phoneNumber, phoneNumberId);
+      }
+
       res.json({
         success: true,
         phoneNumberId,
