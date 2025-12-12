@@ -492,11 +492,23 @@ export async function updateCnamListing(
     
     // Extract CNAM settings from the voice settings response
     const cnamListing = result.data?.cnam_listing;
+    const finalCnamName = cnamListing?.cnam_listing_details ?? cnamDetails;
+    
+    // Save the callerIdName to local database
+    try {
+      await db
+        .update(telnyxPhoneNumbers)
+        .set({ callerIdName: finalCnamName || null })
+        .where(eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId));
+      console.log(`[Telnyx CNAM] Saved callerIdName to local DB: "${finalCnamName}"`);
+    } catch (dbError) {
+      console.error("[Telnyx CNAM] Failed to save callerIdName to local DB:", dbError);
+    }
     
     return {
       success: true,
       cnamEnabled: cnamListing?.cnam_listing_enabled ?? enabled,
-      cnamName: cnamListing?.cnam_listing_details ?? cnamDetails,
+      cnamName: finalCnamName,
     };
   } catch (error) {
     console.error("[Telnyx CNAM] Update error:", error);
