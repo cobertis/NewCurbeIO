@@ -1,6 +1,6 @@
 import cron from 'node-cron';
 import { db } from './db.js';
-import { companies, telephonySettings, telnyxPhoneNumbers, wallets, walletTransactions } from '../shared/schema.js';
+import { companies, telephonySettings, telnyxPhoneNumbers, telnyxE911Addresses, wallets, walletTransactions } from '../shared/schema.js';
 import { eq, and } from 'drizzle-orm';
 import Decimal from 'decimal.js';
 import { PRICING } from './services/pricing-config.js';
@@ -16,6 +16,8 @@ interface BillingResult {
   phoneNumberFees: string;
   cnamCharged: boolean;
   cnamFee: string;
+  e911AddressesCharged: number;
+  e911Fee: string;
   totalCharged: string;
   insufficientBalance: boolean;
   newBalance: string;
@@ -55,13 +57,21 @@ async function processMonthlyBilling(): Promise<BillingResult[]> {
 
       const cnamEnabled = settings?.cnamEnabled ?? false;
 
+      // Get E911 addresses for this company
+      const e911Addresses = await db
+        .select()
+        .from(telnyxE911Addresses)
+        .where(eq(telnyxE911Addresses.companyId, company.id));
+
       const phoneNumberFee = new Decimal(PRICING.monthly.number_rental);
       const totalPhoneNumberFees = phoneNumberFee.times(activePhoneNumbers.length);
       const cnamFeePerNumber = new Decimal(PRICING.monthly.cnam_per_number);
       const totalCnamFee = cnamEnabled ? cnamFeePerNumber.times(activePhoneNumbers.length) : new Decimal(0);
-      const totalCharge = totalPhoneNumberFees.plus(totalCnamFee);
+      const e911FeePerAddress = new Decimal(PRICING.monthly.e911_per_address);
+      const totalE911Fee = e911Addresses.length > 0 ? e911FeePerAddress.times(e911Addresses.length) : new Decimal(0);
+      const totalCharge = totalPhoneNumberFees.plus(totalCnamFee).plus(totalE911Fee);
 
-      console.log(`[MONTHLY BILLING] Company ${company.name} (${company.id}): ${activePhoneNumbers.length} numbers x $${phoneNumberFee} = $${totalPhoneNumberFees}${cnamEnabled ? ` + CNAM ${activePhoneNumbers.length} x $${cnamFeePerNumber} = $${totalCnamFee}` : ''} = Total $${totalCharge}`);
+      console.log(`[MONTHLY BILLING] Company ${company.name} (${company.id}): ${activePhoneNumbers.length} numbers x $${phoneNumberFee} = $${totalPhoneNumberFees}${cnamEnabled ? ` + CNAM ${activePhoneNumbers.length} x $${cnamFeePerNumber} = $${totalCnamFee}` : ''}${e911Addresses.length > 0 ? ` + E911 ${e911Addresses.length} x $${e911FeePerAddress} = $${totalE911Fee}` : ''} = Total $${totalCharge}`);
 
       const result = await db.transaction(async (tx) => {
         const [wallet] = await tx
@@ -88,6 +98,8 @@ async function processMonthlyBilling(): Promise<BillingResult[]> {
             phoneNumberFees: "0.0000",
             cnamCharged: false,
             cnamFee: "0.0000",
+            e911AddressesCharged: 0,
+            e911Fee: "0.0000",
             totalCharged: "0.0000",
             insufficientBalance: true,
             newBalance: currentBalance.toFixed(4),
@@ -113,6 +125,8 @@ async function processMonthlyBilling(): Promise<BillingResult[]> {
 
         console.log(`[MONTHLY BILLING] Company ${company.name}: Created MONTHLY_FEE transaction for $${totalPhoneNumberFees}`);
 
+        let runningBalance = currentBalance.minus(totalPhoneNumberFees);
+
         if (cnamEnabled && totalCnamFee.greaterThan(0)) {
           await tx.insert(walletTransactions).values({
             walletId: wallet.id,
@@ -120,10 +134,24 @@ async function processMonthlyBilling(): Promise<BillingResult[]> {
             type: "CNAM_MONTHLY",
             description: `CNAM listing fee (${activePhoneNumbers.length} numbers x $${cnamFeePerNumber.toFixed(2)}) - ${billingPeriod}`,
             externalReferenceId: `cnam-monthly-${billingPeriod}-${company.id}`,
+            balanceAfter: runningBalance.minus(totalCnamFee).toFixed(4),
+          });
+
+          runningBalance = runningBalance.minus(totalCnamFee);
+          console.log(`[MONTHLY BILLING] Company ${company.name}: Created CNAM_MONTHLY transaction for $${totalCnamFee}`);
+        }
+
+        if (e911Addresses.length > 0 && totalE911Fee.greaterThan(0)) {
+          await tx.insert(walletTransactions).values({
+            walletId: wallet.id,
+            amount: totalE911Fee.negated().toFixed(4),
+            type: "E911_MONTHLY",
+            description: `E911 service fee (${e911Addresses.length} address${e911Addresses.length > 1 ? 'es' : ''} x $${e911FeePerAddress.toFixed(2)}) - ${billingPeriod}`,
+            externalReferenceId: `e911-monthly-${billingPeriod}-${company.id}`,
             balanceAfter: newBalance.toFixed(4),
           });
 
-          console.log(`[MONTHLY BILLING] Company ${company.name}: Created CNAM_MONTHLY transaction for $${totalCnamFee}`);
+          console.log(`[MONTHLY BILLING] Company ${company.name}: Created E911_MONTHLY transaction for $${totalE911Fee}`);
         }
 
         return {
@@ -133,6 +161,8 @@ async function processMonthlyBilling(): Promise<BillingResult[]> {
           phoneNumberFees: totalPhoneNumberFees.toFixed(4),
           cnamCharged: cnamEnabled,
           cnamFee: totalCnamFee.toFixed(4),
+          e911AddressesCharged: e911Addresses.length,
+          e911Fee: totalE911Fee.toFixed(4),
           totalCharged: totalCharge.toFixed(4),
           insufficientBalance: false,
           newBalance: newBalance.toFixed(4),

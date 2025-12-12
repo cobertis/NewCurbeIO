@@ -43,10 +43,13 @@ Phone numbers are routed via a Call Control Application for proper hangup using 
 
 **Telephony Billing Architecture (Dec 2024):**
 - **Immediate Purchase Billing:** Phone numbers are charged to company wallet immediately upon purchase (first month fee)
-- **Monthly Recurring Billing:** Runs on the 1st of each month via `node-cron` scheduler, charges active numbers + CNAM fees
-- **CNAM Pricing:** $0.50/month per phone number (not flat subscription) - charged via `CNAM_MONTHLY` transaction type
+- **Monthly Recurring Billing:** Runs on the 1st of each month via `node-cron` scheduler, charges active numbers + CNAM fees + E911 fees
+- **Monthly Fee Structure:**
+  - Phone Number Rental: $1.00/month per local number, $1.50/month per toll-free number
+  - CNAM Listing: $0.50/month per phone number (if enabled)
+  - E911 Service: $2.00/month per emergency address
 - **Call Billing:** 60-second increments (matches Telnyx), includes base rate + recording cost + CNAM lookup cost
-- **Transaction Types:** `NUMBER_PURCHASE`, `NUMBER_RENTAL`, `CNAM_MONTHLY`, `CALL_COST`, `MONTHLY_FEE`
+- **Transaction Types:** `NUMBER_PURCHASE`, `NUMBER_RENTAL`, `CNAM_MONTHLY`, `E911_MONTHLY`, `CALL_COST`, `MONTHLY_FEE`
 - **Billing Fields:** `telnyx_phone_numbers` table includes `numberType`, `retailMonthlyRate`, `telnyxMonthlyCost`, `lastBilledAt`, `nextBillingAt`
 
 **Security Architecture:**

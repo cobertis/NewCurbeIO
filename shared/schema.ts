@@ -4721,6 +4721,7 @@ export const walletTransactionTypes = [
   "NUMBER_PURCHASE",
   "MONTHLY_FEE",
   "CNAM_MONTHLY",
+  "E911_MONTHLY",
   "SUBSCRIPTION",
   "REFUND",
   "ADJUSTMENT",
