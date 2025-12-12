@@ -424,17 +424,25 @@ export default function Settings() {
   const user = userData?.user;
 
   // Fetch company data if user has a companyId
-  const { data: companyData, isLoading: isLoadingCompany } = useQuery<{ company: any }>({
+  const { data: companyData, isLoading: isLoadingCompany, isError: isCompanyError } = useQuery<{ company: any }>({
     queryKey: ["/api/companies", user?.companyId],
     queryFn: async () => {
       if (!user?.companyId) throw new Error("No company ID");
       const response = await fetch(`/api/companies/${user.companyId}`, {
         credentials: 'include',
       });
-      if (!response.ok) throw new Error('Failed to fetch company');
+      if (!response.ok) {
+        const errorText = await response.text();
+        throw new Error(`Failed to fetch company: ${response.status}`);
+      }
+      const contentType = response.headers.get('content-type');
+      if (!contentType || !contentType.includes('application/json')) {
+        throw new Error('Invalid response format');
+      }
       return response.json();
     },
     enabled: !!user?.companyId,
+    retry: false,
   });
 
   // Fetch subscription data to show plan information
@@ -557,8 +565,9 @@ export default function Settings() {
   };
 
   // CRITICAL: Ensure company data is loaded before rendering (prevents race conditions)
-  // For users with companyId, we MUST wait for companyData to be available
-  const isCompanyDataReady = !user?.companyId || (!!companyData?.company && !isLoadingCompany);
+  // For users with companyId, we MUST wait for companyData to be available OR for the query to error out
+  // Adding isCompanyError ensures we don't get stuck in infinite loading if the company fetch fails
+  const isCompanyDataReady = !user?.companyId || (!!companyData?.company && !isLoadingCompany) || isCompanyError;
   
   // Determine current tab
   const currentTab = getCurrentTab();
