@@ -250,28 +250,30 @@ export function PbxSettings() {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Enable IVR</Label>
-                  <p className="text-sm text-slate-500">Play a greeting and offer menu options to callers</p>
+              <div className="grid grid-cols-2 gap-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Enable IVR</Label>
+                    <p className="text-sm text-slate-500">Play a greeting and offer menu options to callers</p>
+                  </div>
+                  <Switch
+                    checked={settings?.ivrEnabled || false}
+                    onCheckedChange={(checked) => handleSettingChange("ivrEnabled", checked)}
+                    data-testid="switch-ivr-enabled"
+                  />
                 </div>
-                <Switch
-                  checked={settings?.ivrEnabled || false}
-                  onCheckedChange={(checked) => handleSettingChange("ivrEnabled", checked)}
-                  data-testid="switch-ivr-enabled"
-                />
-              </div>
 
-              <div className="flex items-center justify-between">
-                <div>
-                  <Label>Use Text-to-Speech</Label>
-                  <p className="text-sm text-slate-500">Generate greeting audio from text</p>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <Label>Use Text-to-Speech</Label>
+                    <p className="text-sm text-slate-500">Generate greeting audio from text</p>
+                  </div>
+                  <Switch
+                    checked={settings?.useTextToSpeech || false}
+                    onCheckedChange={(checked) => handleSettingChange("useTextToSpeech", checked)}
+                    data-testid="switch-use-tts"
+                  />
                 </div>
-                <Switch
-                  checked={settings?.useTextToSpeech || false}
-                  onCheckedChange={(checked) => handleSettingChange("useTextToSpeech", checked)}
-                  data-testid="switch-use-tts"
-                />
               </div>
 
               {settings?.useTextToSpeech ? (
