@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { wallets, walletTransactions, WalletTransactionType, companies } from "@shared/schema";
-import { eq, sql } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 
 // Track auto-recharge in progress to prevent duplicate charges
 const autoRechargeInProgress = new Set<string>();
@@ -190,14 +190,61 @@ export async function processTransaction(params: ProcessTransactionParams): Prom
   }
 }
 
-export async function getOrCreateWallet(companyId: string): Promise<{ 
+export async function getOrCreateWallet(companyId: string, userId?: string): Promise<{ 
   id: string; 
   balance: string; 
   currency: string;
   autoRecharge: boolean;
   autoRechargeThreshold: string | null;
   autoRechargeAmount: string | null;
+  telnyxAccountId?: string | null;
 }> {
+  // If userId is provided, look for user-specific wallet
+  if (userId) {
+    const [existingUserWallet] = await db
+      .select()
+      .from(wallets)
+      .where(and(
+        eq(wallets.companyId, companyId),
+        eq(wallets.ownerUserId, userId)
+      ));
+
+    if (existingUserWallet) {
+      return {
+        id: existingUserWallet.id,
+        balance: existingUserWallet.balance,
+        currency: existingUserWallet.currency,
+        autoRecharge: existingUserWallet.autoRecharge ?? false,
+        autoRechargeThreshold: existingUserWallet.autoRechargeThreshold,
+        autoRechargeAmount: existingUserWallet.autoRechargeAmount,
+        telnyxAccountId: existingUserWallet.telnyxAccountId,
+      };
+    }
+
+    // Get company's telnyxAccountId from any existing wallet to copy
+    const telnyxAccountId = await getCompanyTelnyxAccountId(companyId);
+
+    const [newWallet] = await db
+      .insert(wallets)
+      .values({ 
+        companyId,
+        ownerUserId: userId,
+        telnyxAccountId: telnyxAccountId || null,
+      })
+      .returning();
+
+    return {
+      id: newWallet.id,
+      balance: newWallet.balance,
+      currency: newWallet.currency,
+      autoRecharge: newWallet.autoRecharge ?? false,
+      autoRechargeThreshold: newWallet.autoRechargeThreshold,
+      autoRechargeAmount: newWallet.autoRechargeAmount,
+      telnyxAccountId: newWallet.telnyxAccountId,
+    };
+  }
+
+  // Fallback: company-level wallet lookup (for backward compatibility)
   const [existingWallet] = await db
     .select()
     .from(wallets)
@@ -211,6 +258,7 @@ export async function getOrCreateWallet(companyId: string): Promise<{
       autoRecharge: existingWallet.autoRecharge ?? false,
       autoRechargeThreshold: existingWallet.autoRechargeThreshold,
       autoRechargeAmount: existingWallet.autoRechargeAmount,
+      telnyxAccountId: existingWallet.telnyxAccountId,
     };
   }
 
@@ -226,7 +274,56 @@ export async function getOrCreateWallet(companyId: string): Promise<{
     autoRecharge: newWallet.autoRecharge ?? false,
     autoRechargeThreshold: newWallet.autoRechargeThreshold,
     autoRechargeAmount: newWallet.autoRechargeAmount,
+    telnyxAccountId: newWallet.telnyxAccountId,
   };
+}
+
+/**
+ * Get wallet for a specific user in a company
+ */
+export async function getWalletByUser(companyId: string, userId: string) {
+  const [wallet] = await db
+    .select()
+    .from(wallets)
+    .where(and(
+      eq(wallets.companyId, companyId),
+      eq(wallets.ownerUserId, userId)
+    ));
+
+  return wallet || null;
+}
+
+/**
+ * Get the company's shared Telnyx account ID from any wallet in the company
+ * This is used for Telnyx API calls (shared account at company level)
+ */
+export async function getCompanyTelnyxAccountId(companyId: string): Promise<string | null> {
+  const [walletWithTelnyx] = await db
+    .select({ telnyxAccountId: wallets.telnyxAccountId })
+    .from(wallets)
+    .where(and(
+      eq(wallets.companyId, companyId),
+      sql`${wallets.telnyxAccountId} IS NOT NULL`
+    ))
+    .limit(1);
+
+  return walletWithTelnyx?.telnyxAccountId || null;
+}
+
+/**
+ * Get the company's Telnyx API token from any wallet in the company
+ */
+export async function getCompanyTelnyxApiToken(companyId: string): Promise<string | null> {
+  const [walletWithTelnyx] = await db
+    .select({ telnyxApiToken: wallets.telnyxApiToken })
+    .from(wallets)
+    .where(and(
+      eq(wallets.companyId, companyId),
+      sql`${wallets.telnyxApiToken} IS NOT NULL`
+    ))
+    .limit(1);
+
+  return walletWithTelnyx?.telnyxApiToken || null;
 }
 
 export async function getWalletByCompany(companyId: string) {

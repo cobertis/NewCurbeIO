@@ -4728,11 +4728,12 @@ export const walletTransactionTypes = [
 ] as const;
 export type WalletTransactionType = typeof walletTransactionTypes[number];
 
-// Wallets table - One per company
+// Wallets table - One per USER (User-scoped billing, shared Telnyx managed account per company)
 export const wallets = pgTable("wallets", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }).unique(),
-  telnyxAccountId: text("telnyx_account_id"),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "cascade" }), // User who owns this wallet
+  telnyxAccountId: text("telnyx_account_id"), // Shared across all wallets in company
   telnyxApiToken: text("telnyx_api_token"),
   balance: numeric("balance", { precision: 10, scale: 4 }).notNull().default("0.0000"),
   currency: text("currency").notNull().default("USD"),
@@ -4743,6 +4744,8 @@ export const wallets = pgTable("wallets", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   companyIdIdx: index("wallets_company_id_idx").on(table.companyId),
+  ownerUserIdIdx: index("wallets_owner_user_id_idx").on(table.ownerUserId),
+  userUniqueIdx: uniqueIndex("wallets_user_unique_idx").on(table.ownerUserId), // One wallet per user
 }));
 
 // Wallet Transactions table (Ledger) - Every movement is recorded

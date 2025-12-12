@@ -27,7 +27,8 @@ export async function purchaseAndBillPhoneNumber(
   ownerUserId?: string
 ): Promise<PurchaseAndBillResult> {
   try {
-    const wallet = await getOrCreateWallet(companyId);
+    // Get user-specific wallet if userId provided, otherwise fallback to company wallet
+    const wallet = await getOrCreateWallet(companyId, ownerUserId);
     const pricing = await loadGlobalPricing();
     
     const isTollFree = telnyxOrderResult.numberType === "toll_free" || 

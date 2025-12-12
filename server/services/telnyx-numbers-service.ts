@@ -3,6 +3,7 @@ import { wallets, companies, telnyxPhoneNumbers, telephonySettings } from "@shar
 import { eq, and } from "drizzle-orm";
 import { SecretsService } from "./secrets-service";
 import { assignPhoneNumberToCredentialConnection } from "./telnyx-e911-service";
+import { getCompanyTelnyxAccountId, getCompanyTelnyxApiToken } from "./wallet-service";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
 const secretsService = new SecretsService();
@@ -227,20 +228,15 @@ export async function purchasePhoneNumber(
   try {
     const apiKey = await getTelnyxMasterApiKey();
 
-    const [wallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.companyId, companyId));
+    // Get the company's shared Telnyx managed account ID
+    const managedAccountId = await getCompanyTelnyxAccountId(companyId);
 
-    if (!wallet) {
+    if (!managedAccountId) {
       return {
         success: false,
-        error: "Company wallet not found. Please setup phone system first.",
+        error: "Company Telnyx account not found. Please setup phone system first.",
       };
     }
-
-    // Check if company has a managed account
-    const managedAccountId = wallet.telnyxAccountId;
     
     console.log(`[Telnyx Numbers] Purchasing ${phoneNumber} for company ${companyId}${managedAccountId ? ` (managed account: ${managedAccountId})` : ''}`);
 
@@ -421,22 +417,20 @@ export async function updateCnamListing(
   try {
     const apiKey = await getTelnyxMasterApiKey();
     
-    const [wallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.companyId, companyId));
+    // Get the company's shared Telnyx account ID
+    const telnyxAccountId = await getCompanyTelnyxAccountId(companyId);
     
-    if (!wallet?.telnyxAccountId) {
+    if (!telnyxAccountId) {
       return {
         success: false,
-        error: "Company wallet or Telnyx account not found"
+        error: "Company Telnyx account not found"
       };
     }
     
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "x-managed-account-id": wallet.telnyxAccountId,
+      "x-managed-account-id": telnyxAccountId,
     };
     
     // Get the actual cnam_listing_details value
@@ -529,22 +523,20 @@ export async function getCnamSettings(
   try {
     const apiKey = await getTelnyxMasterApiKey();
     
-    const [wallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.companyId, companyId));
+    // Get the company's shared Telnyx account ID
+    const telnyxAccountId = await getCompanyTelnyxAccountId(companyId);
     
-    if (!wallet?.telnyxAccountId) {
+    if (!telnyxAccountId) {
       return {
         success: false,
-        error: "Company wallet or Telnyx account not found"
+        error: "Company Telnyx account not found"
       };
     }
     
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Accept": "application/json",
-      "x-managed-account-id": wallet.telnyxAccountId,
+      "x-managed-account-id": telnyxAccountId,
     };
     
     // First get basic phone number info
@@ -623,19 +615,17 @@ export async function getVoiceSettings(
   try {
     const apiKey = await getTelnyxMasterApiKey();
     
-    const [wallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.companyId, companyId));
+    // Get the company's shared Telnyx account ID
+    const telnyxAccountId = await getCompanyTelnyxAccountId(companyId);
     
-    if (!wallet?.telnyxAccountId) {
-      return { success: false, error: "Company wallet or Telnyx account not found" };
+    if (!telnyxAccountId) {
+      return { success: false, error: "Company Telnyx account not found" };
     }
     
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Accept": "application/json",
-      "x-managed-account-id": wallet.telnyxAccountId,
+      "x-managed-account-id": telnyxAccountId,
     };
     
     const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voice`, {

@@ -26005,7 +26005,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getOrCreateWallet } = await import("./services/wallet-service");
-      const wallet = await getOrCreateWallet(user.companyId);
+      const wallet = await getOrCreateWallet(user.companyId, user.id);
       res.json({ wallet });
     } catch (error: any) {
       console.error("[Wallet] Error getting wallet:", error);
@@ -26024,8 +26024,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const limit = parseInt(req.query.limit as string) || 50;
       const offset = parseInt(req.query.offset as string) || 0;
 
-      const { getWalletByCompany, getWalletTransactions } = await import("./services/wallet-service");
-      const wallet = await getWalletByCompany(user.companyId);
+      const { getWalletByUser, getWalletTransactions } = await import("./services/wallet-service");
+      const wallet = await getWalletByUser(user.companyId, user.id);
       
       if (!wallet) {
         return res.json({ transactions: [], total: 0 });
@@ -26074,7 +26074,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getOrCreateWallet, deposit } = await import("./services/wallet-service");
-      const wallet = await getOrCreateWallet(user.companyId);
+      const wallet = await getOrCreateWallet(user.companyId, user.id);
       const result = await deposit(wallet.id, amount, description, externalReferenceId);
 
       if (!result.success) {
@@ -26111,7 +26111,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getOrCreateWallet, charge } = await import("./services/wallet-service");
-      const wallet = await getOrCreateWallet(user.companyId);
+      const wallet = await getOrCreateWallet(user.companyId, user.id);
       const result = await charge(wallet.id, amount, type, description, externalReferenceId);
 
       if (!result.success) {
@@ -26138,7 +26138,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getWalletByCompany } = await import("./services/wallet-service");
-      const wallet = await getWalletByCompany(user.companyId);
+      const wallet = await getWalletByUser(user.companyId, user.id);
       
       if (!wallet) {
         return res.json({ balance: "0.0000", currency: "USD" });
@@ -26220,7 +26220,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       // Add funds to wallet
       const { getOrCreateWallet, deposit } = await import("./services/wallet-service");
-      const wallet = await getOrCreateWallet(user.companyId);
+      const wallet = await getOrCreateWallet(user.companyId, user.id);
       const depositResult = await deposit(
         wallet.id, 
         amount, 
@@ -26278,7 +26278,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       // Update wallet auto-recharge settings
       const { getOrCreateWallet } = await import("./services/wallet-service");
-      const wallet = await getOrCreateWallet(user.companyId);
+      const wallet = await getOrCreateWallet(user.companyId, user.id);
       
       await db
         .update(wallets)
@@ -26346,7 +26346,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getWalletByCompany } = await import("./services/wallet-service");
-      const wallet = await getWalletByCompany(user.companyId);
+      const wallet = await getWalletByUser(user.companyId, user.id);
 
       if (!wallet) {
         return res.json({
@@ -26848,7 +26848,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getOrCreateWallet } = await import("./services/wallet-service");
-      const wallet = await getOrCreateWallet(user.companyId);
+      const wallet = await getOrCreateWallet(user.companyId, user.id);
       res.json({ wallet });
     } catch (error: any) {
       console.error("[Wallet] Error getting wallet:", error);
@@ -26867,8 +26867,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const limit = parseInt(req.query.limit as string) || 50;
       const offset = parseInt(req.query.offset as string) || 0;
 
-      const { getWalletByCompany, getWalletTransactions } = await import("./services/wallet-service");
-      const wallet = await getWalletByCompany(user.companyId);
+      const { getWalletByUser, getWalletTransactions } = await import("./services/wallet-service");
+      const wallet = await getWalletByUser(user.companyId, user.id);
       
       if (!wallet) {
         return res.json({ transactions: [], total: 0 });
@@ -26917,7 +26917,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getOrCreateWallet, deposit } = await import("./services/wallet-service");
-      const wallet = await getOrCreateWallet(user.companyId);
+      const wallet = await getOrCreateWallet(user.companyId, user.id);
       const result = await deposit(wallet.id, amount, description, externalReferenceId);
 
       if (!result.success) {
@@ -26954,7 +26954,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getOrCreateWallet, charge } = await import("./services/wallet-service");
-      const wallet = await getOrCreateWallet(user.companyId);
+      const wallet = await getOrCreateWallet(user.companyId, user.id);
       const result = await charge(wallet.id, amount, type, description, externalReferenceId);
 
       if (!result.success) {
@@ -26981,7 +26981,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getWalletByCompany } = await import("./services/wallet-service");
-      const wallet = await getWalletByCompany(user.companyId);
+      const wallet = await getWalletByUser(user.companyId, user.id);
       
       if (!wallet) {
         return res.json({ balance: "0.0000", currency: "USD" });
@@ -27976,7 +27976,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { getOrCreateWallet } = await import("./services/wallet-service");
       const { loadGlobalPricing } = await import("./services/pricing-config");
       
-      const wallet = await getOrCreateWallet(user.companyId);
+      const wallet = await getOrCreateWallet(user.companyId, user.id);
       const pricing = await loadGlobalPricing();
       
       // Determine number type and required balance
@@ -30072,7 +30072,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getWalletByCompany } = await import("./services/wallet-service");
-      const wallet = await getWalletByCompany(user.companyId);
+      const wallet = await getWalletByUser(user.companyId, user.id);
       
       const MINIMUM_BALANCE_FOR_CALLS = 0.50;
       const currentBalance = wallet ? parseFloat(wallet.balance) : 0;

@@ -408,8 +408,11 @@ export async function listManagedAccounts(): Promise<TelnyxManagedAccountRespons
  * 1. Creates Telnyx Managed Account (with rollup_billing)
  * 2. Creates restrictive Outbound Voice Profile (US only, $25 cap)
  * 3. Stores account info in wallet
+ * 
+ * @param companyId - The company ID
+ * @param userId - Optional user ID for user-scoped wallet creation
  */
-export async function setupPhoneSystemForCompany(companyId: string): Promise<{
+export async function setupPhoneSystemForCompany(companyId: string, userId?: string): Promise<{
   success: boolean;
   wallet?: {
     id: string;
@@ -420,19 +423,39 @@ export async function setupPhoneSystemForCompany(companyId: string): Promise<{
   alreadySetup?: boolean;
 }> {
   try {
-    const [existingWallet] = await db
-      .select()
-      .from(wallets)
-      .where(eq(wallets.companyId, companyId));
-
-    if (existingWallet?.telnyxAccountId) {
-      console.log(`[Telnyx] Company ${companyId} already has Telnyx account: ${existingWallet.telnyxAccountId}`);
+    // Check if company already has a Telnyx account in any wallet
+    const existingTelnyxAccountId = await getCompanyTelnyxAccountId(companyId);
+    
+    if (existingTelnyxAccountId) {
+      console.log(`[Telnyx] Company ${companyId} already has Telnyx account: ${existingTelnyxAccountId}`);
+      
+      // If userId provided, ensure user has a wallet with the shared telnyxAccountId
+      if (userId) {
+        const { getOrCreateWallet } = await import("./wallet-service");
+        const userWallet = await getOrCreateWallet(companyId, userId);
+        return {
+          success: true,
+          alreadySetup: true,
+          wallet: {
+            id: userWallet.id,
+            telnyxAccountId: existingTelnyxAccountId,
+            balance: userWallet.balance,
+          },
+        };
+      }
+      
+      // Get any wallet for backward compatibility
+      const [existingWallet] = await db
+        .select()
+        .from(wallets)
+        .where(eq(wallets.companyId, companyId));
+        
       return {
         success: true,
         alreadySetup: true,
         wallet: {
           id: existingWallet.id,
-          telnyxAccountId: existingWallet.telnyxAccountId,
+          telnyxAccountId: existingTelnyxAccountId,
           balance: existingWallet.balance,
         },
       };
@@ -457,6 +480,22 @@ export async function setupPhoneSystemForCompany(companyId: string): Promise<{
         success: false,
         error: subAccountResult.error || "Failed to create Telnyx sub-account",
       };
+    }
+
+    // Check if user already has a wallet (without telnyx account)
+    let existingWallet: typeof wallets.$inferSelect | undefined;
+    if (userId) {
+      const [userWallet] = await db
+        .select()
+        .from(wallets)
+        .where(eq(wallets.ownerUserId, userId));
+      existingWallet = userWallet;
+    } else {
+      const [companyWallet] = await db
+        .select()
+        .from(wallets)
+        .where(eq(wallets.companyId, companyId));
+      existingWallet = companyWallet;
     }
 
     if (existingWallet) {
@@ -485,12 +524,13 @@ export async function setupPhoneSystemForCompany(companyId: string): Promise<{
       .insert(wallets)
       .values({
         companyId,
+        ownerUserId: userId || null,
         telnyxAccountId: subAccountResult.accountId,
         telnyxApiToken: subAccountResult.apiToken,
       })
       .returning();
 
-    console.log(`[Telnyx] Created new wallet ${newWallet.id} with Telnyx account for company ${companyId}`);
+    console.log(`[Telnyx] Created new wallet ${newWallet.id} with Telnyx account for company ${companyId}${userId ? `, user ${userId}` : ''}`);
 
     return {
       success: true,
@@ -507,6 +547,23 @@ export async function setupPhoneSystemForCompany(companyId: string): Promise<{
       error: error instanceof Error ? error.message : "Failed to setup phone system",
     };
   }
+}
+
+/**
+ * Get the company's shared Telnyx account ID from any wallet in the company
+ * This is used for Telnyx API calls (shared account at company level)
+ */
+export async function getCompanyTelnyxAccountId(companyId: string): Promise<string | null> {
+  const [walletWithTelnyx] = await db
+    .select({ telnyxAccountId: wallets.telnyxAccountId })
+    .from(wallets)
+    .where(eq(wallets.companyId, companyId));
+
+  // Return the first non-null telnyxAccountId found
+  if (walletWithTelnyx?.telnyxAccountId) {
+    return walletWithTelnyx.telnyxAccountId;
+  }
+  return null;
 }
 
 export async function getSubAccountApiToken(companyId: string): Promise<string | null> {
