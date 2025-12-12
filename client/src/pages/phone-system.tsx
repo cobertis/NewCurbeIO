@@ -558,7 +558,7 @@ export default function PhoneSystem() {
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-xs">
                   <p className="font-medium">Call Recording</p>
-                  <p className="text-xs text-slate-400 mt-1">Automatically records all your calls. Recordings are stored securely and can be played back in the Calls tab. Cost: $0.005/min</p>
+                  <p className="text-xs text-slate-400 mt-1">Automatically records all your calls. Recordings are stored securely and can be played back in the Calls tab.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -580,7 +580,7 @@ export default function PhoneSystem() {
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-xs">
                   <p className="font-medium">Caller ID Name (CNAM)</p>
-                  <p className="text-xs text-slate-400 mt-1">Shows the name of who is calling you on incoming calls, instead of just the phone number. Cost: $0.50/month per number</p>
+                  <p className="text-xs text-slate-400 mt-1">Shows the name of who is calling you on incoming calls, instead of just the phone number.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
@@ -602,10 +602,26 @@ export default function PhoneSystem() {
                 </TooltipTrigger>
                 <TooltipContent side="bottom" className="max-w-xs">
                   <p className="font-medium">Noise Suppression</p>
-                  <p className="text-xs text-slate-400 mt-1">Reduces background noise during calls for clearer conversations. Works on outbound, inbound, or both directions. No additional cost.</p>
+                  <p className="text-xs text-slate-400 mt-1">Reduces background noise during calls for clearer conversations.</p>
                 </TooltipContent>
               </Tooltip>
             </TooltipProvider>
+            {/* Noise Direction Selector - Only show when enabled */}
+            {noiseSuppressionData?.enabled && (
+              <Select
+                value={noiseSuppressionData?.direction || 'outbound'}
+                onValueChange={(value: 'inbound' | 'outbound' | 'both') => noiseSuppressionMutation.mutate({ enabled: true, direction: value })}
+              >
+                <SelectTrigger className="h-7 w-[90px] text-xs" data-testid="select-noise-direction">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="outbound">Outbound</SelectItem>
+                  <SelectItem value="inbound">Inbound</SelectItem>
+                  <SelectItem value="both">Both</SelectItem>
+                </SelectContent>
+              </Select>
+            )}
           </div>
 
           {/* Right: Quick Actions */}
