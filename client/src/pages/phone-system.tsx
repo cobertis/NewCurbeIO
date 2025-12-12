@@ -579,13 +579,6 @@ export default function PhoneSystem() {
         <div className="flex items-center justify-between">
           {/* Left: Status Indicators */}
           <div className="flex items-center gap-6">
-            {/* Balance Status */}
-            <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full ${walletBalance > 10 ? 'bg-green-500' : walletBalance > 0 ? 'bg-amber-500' : 'bg-red-500'}`} />
-              <span className="text-sm text-slate-600 dark:text-slate-400">Balance:</span>
-              <span className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(walletBalance)}</span>
-              {walletBalance < 10 && <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">Low</Badge>}
-            </div>
             {/* Numbers Count */}
             <div className="flex items-center gap-2">
               <Phone className="h-4 w-4 text-slate-400" />
@@ -721,13 +714,14 @@ export default function PhoneSystem() {
             )}
           </div>
 
-          {/* Right: Balance + Add Funds */}
+          {/* Right: Add Funds + Balance */}
           <div className="flex items-center gap-3">
             <Button variant="outline" size="sm" onClick={() => setShowAddFunds(true)} data-testid="button-add-funds-quick">
               <Plus className="h-3 w-3 mr-1" />Add Funds
             </Button>
             <div className="flex items-center gap-2">
               <div className={`w-2 h-2 rounded-full ${walletBalance > 10 ? 'bg-green-500' : walletBalance > 0 ? 'bg-amber-500' : 'bg-red-500'}`} />
+              <span className="text-sm text-slate-600 dark:text-slate-400">Balance:</span>
               <span className="text-sm font-semibold text-slate-900 dark:text-white">{formatCurrency(walletBalance)}</span>
               {walletBalance < 10 && <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">Low</Badge>}
             </div>
