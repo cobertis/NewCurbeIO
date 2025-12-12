@@ -208,6 +208,9 @@ export const users = pgTable("users", {
   emailNotifications: boolean("email_notifications").notNull().default(true), // General email notifications
   invoiceAlerts: boolean("invoice_alerts").notNull().default(true), // Invoice notification emails
   
+  // Billing
+  stripeCustomerId: text("stripe_customer_id"), // User's own Stripe customer ID for billing
+  
   // Security
   lastLoginAt: timestamp("last_login_at"),
   passwordChangedAt: timestamp("password_changed_at"),

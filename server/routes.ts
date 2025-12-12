@@ -8044,9 +8044,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // Helper function to get or create Stripe customer for a user
   async function getOrCreateUserStripeCustomer(userId: string, companyId: string, userEmail: string, userName: string): Promise<string> {
-    // Check if user already has a Stripe customer ID from existing payment methods
+    // First check if user already has a Stripe customer ID in their profile
+    const user = await storage.getUser(userId);
+    if (user?.stripeCustomerId) {
+      return user.stripeCustomerId;
+    }
+    
+    // Fallback: check existing payment methods (for backward compatibility)
     const existingMethods = await storage.getUserPaymentMethods(companyId, userId);
     if (existingMethods.length > 0 && existingMethods[0].stripeCustomerId) {
+      // Save to user profile for future use
+      await storage.updateUser(userId, { stripeCustomerId: existingMethods[0].stripeCustomerId });
       return existingMethods[0].stripeCustomerId;
     }
     
@@ -8061,9 +8069,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         userId: userId,
         companyId: companyId,
         companyName: company?.name || 'Unknown',
-        type: 'user_billing' // Distinguish from company subscription customer
+        type: 'user_billing'
       }
     });
+    
+    // Save the Stripe customer ID to the user's profile
+    await storage.updateUser(userId, { stripeCustomerId: customer.id });
     
     console.log(`[STRIPE] Created new customer ${customer.id} for user ${userId}`);
     return customer.id;
