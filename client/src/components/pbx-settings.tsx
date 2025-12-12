@@ -290,10 +290,19 @@ export function PbxSettings() {
     }
   }, [settings?.ivrExtension]);
 
-  // Handle IVR extension save on blur
+  // Handle IVR extension save on blur with validation
   const handleIvrExtensionBlur = () => {
-    if (localIvrExtension !== settings?.ivrExtension) {
-      handleSettingChange("ivrExtension", localIvrExtension);
+    // Validate: must be a positive integer >= 100
+    const parsed = parseInt(localIvrExtension, 10);
+    if (isNaN(parsed) || parsed < 100 || localIvrExtension.trim() === '') {
+      // Invalid value - restore to server value or default
+      setLocalIvrExtension(settings?.ivrExtension || "100");
+      return;
+    }
+    // Only save if value actually changed
+    const validValue = parsed.toString();
+    if (validValue !== settings?.ivrExtension) {
+      handleSettingChange("ivrExtension", validValue);
     }
   };
 
@@ -477,7 +486,7 @@ export function PbxSettings() {
                   data-testid="input-ivr-extension"
                 />
                 <p className="text-xs text-muted-foreground">
-                  User extensions will start from {parseInt(localIvrExtension || "100") + 1}
+                  User extensions will start from {(parseInt(localIvrExtension, 10) || 100) + 1}
                 </p>
               </div>
 

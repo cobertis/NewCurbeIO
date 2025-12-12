@@ -1718,21 +1718,28 @@ export function WebPhoneFloatingWindow() {
   
   // Ringback tone effect for outgoing calls (when dialing, before answer)
   useEffect(() => {
-    // Play ringback when there's an outgoing call that hasn't been answered yet
-    // telnyxOutgoingCall = dialing, telnyxCurrentCall = answered
-    const hasOutgoingRinging = !!telnyxOutgoingCall && !telnyxCurrentCall;
-    // Also for extension calls that are ringing (not yet connected)
-    const hasExtOutgoingRinging = !!currentExtCall && currentExtCall.state !== 'connected';
+    // Play ringback ONLY when there's an outgoing call that hasn't been answered yet
+    // Key insight: When Telnyx call is answered, telnyxCurrentCall is set AND telnyxOutgoingCall may persist
+    // So we must check: outgoing exists AND current does NOT exist AND no incoming call
+    const hasOutgoingRinging = !!telnyxOutgoingCall && !telnyxCurrentCall && !telnyxIncomingCall;
+    
+    // For extension calls: only play if call is explicitly in 'ringing' state
+    const hasExtOutgoingRinging = !!currentExtCall && currentExtCall.state === 'ringing';
     
     const shouldPlayRingback = hasOutgoingRinging || hasExtOutgoingRinging;
     
     if (shouldPlayRingback) {
+      // Clear any existing interval first to prevent duplicates
+      if (ringbackIntervalRef.current) {
+        clearInterval(ringbackIntervalRef.current);
+      }
       playRingbackBurst();
       // Standard ringback pattern: 2 seconds on, 4 seconds off = 6 second cycle
       ringbackIntervalRef.current = setInterval(() => {
         playRingbackBurst();
       }, 6000);
     } else {
+      // Stop ringback immediately when call is answered or ended
       if (ringbackIntervalRef.current) {
         clearInterval(ringbackIntervalRef.current);
         ringbackIntervalRef.current = null;
@@ -1745,7 +1752,7 @@ export function WebPhoneFloatingWindow() {
         ringbackIntervalRef.current = null;
       }
     };
-  }, [telnyxOutgoingCall, telnyxCurrentCall, currentExtCall, playRingbackBurst]);
+  }, [telnyxOutgoingCall, telnyxCurrentCall, telnyxIncomingCall, currentExtCall, playRingbackBurst]);
   
   // Check if phone is available (either SIP extension, Telnyx number, or PBX extension)
   const hasPhoneCapability = !!sipExtension || hasTelnyxNumber || !!extMyExtension;
