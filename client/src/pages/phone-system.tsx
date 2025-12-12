@@ -1245,7 +1245,9 @@ export default function PhoneSystem() {
                                 checked={selectedNumber.voicemailEnabled || false}
                                 onCheckedChange={(checked) => {
                                   if (selectedNumber.telnyxPhoneNumberId) {
-                                    if (checked && !selectedNumber.voicemailPin) {
+                                    // Use local state voicemailPinInput (user may have just typed it)
+                                    const currentPin = voicemailPinInput || selectedNumber.voicemailPin;
+                                    if (checked && (!currentPin || currentPin.length < 4)) {
                                       toast({ title: "PIN Required", description: "Please set a 4-digit PIN below to enable voicemail." });
                                       return;
                                     }
