@@ -64,60 +64,71 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
   try {
     const apiKey = await getTelnyxMasterApiKey();
     
-    const queryParams = new URLSearchParams();
-    
-    if (params.country_code) {
-      queryParams.append("filter[country_code]", params.country_code);
-    } else {
-      queryParams.append("filter[country_code]", "US");
-    }
-    
-    if (params.phone_number_type) {
-      queryParams.append("filter[phone_number_type]", params.phone_number_type);
-    }
-    
-    if (params.locality) {
-      queryParams.append("filter[locality]", params.locality);
-    }
-    
-    if (params.administrative_area) {
-      queryParams.append("filter[administrative_area]", params.administrative_area);
-    }
-    
-    if (params.national_destination_code) {
-      queryParams.append("filter[national_destination_code]", params.national_destination_code);
-    }
-    
-    if (params.starts_with) {
-      queryParams.append("filter[phone_number][starts_with]", params.starts_with);
-    }
-    
-    if (params.ends_with) {
-      queryParams.append("filter[phone_number][ends_with]", params.ends_with);
-    }
-    
-    if (params.contains) {
-      queryParams.append("filter[phone_number][contains]", params.contains);
-    }
-    
-    if (params.features && params.features.length > 0) {
-      params.features.forEach(feature => {
-        queryParams.append("filter[features][]", feature);
-      });
-    }
-    
-    // Always use best_effort to return results even if exact match not available
-    queryParams.append("filter[best_effort]", "true");
-    
-    // Use page[size] and page[number] for proper pagination
+    const buildQueryParams = (useBestEffort: boolean): URLSearchParams => {
+      const queryParams = new URLSearchParams();
+      
+      if (params.country_code) {
+        queryParams.append("filter[country_code]", params.country_code);
+      } else {
+        queryParams.append("filter[country_code]", "US");
+      }
+      
+      if (params.phone_number_type) {
+        queryParams.append("filter[phone_number_type]", params.phone_number_type);
+      }
+      
+      if (params.locality) {
+        queryParams.append("filter[locality]", params.locality);
+      }
+      
+      if (params.administrative_area) {
+        queryParams.append("filter[administrative_area]", params.administrative_area);
+      }
+      
+      if (params.national_destination_code) {
+        queryParams.append("filter[national_destination_code]", params.national_destination_code);
+      }
+      
+      if (params.starts_with) {
+        queryParams.append("filter[phone_number][starts_with]", params.starts_with);
+      }
+      
+      if (params.ends_with) {
+        queryParams.append("filter[phone_number][ends_with]", params.ends_with);
+      }
+      
+      if (params.contains) {
+        queryParams.append("filter[phone_number][contains]", params.contains);
+      }
+      
+      if (params.features && params.features.length > 0) {
+        params.features.forEach(feature => {
+          queryParams.append("filter[features][]", feature);
+        });
+      }
+      
+      // Only add best_effort when explicitly needed
+      if (useBestEffort) {
+        queryParams.append("filter[best_effort]", "true");
+      }
+      
+      // Use page[size] and page[number] for proper pagination
+      const pageSize = params.limit || 50;
+      const pageNumber = params.page || 1;
+      queryParams.append("page[size]", String(pageSize));
+      queryParams.append("page[number]", String(pageNumber));
+      
+      return queryParams;
+    };
+
     const pageSize = params.limit || 50;
     const pageNumber = params.page || 1;
-    queryParams.append("page[size]", String(pageSize));
-    queryParams.append("page[number]", String(pageNumber));
+    
+    // First try WITHOUT best_effort to get exact matches
+    let queryParams = buildQueryParams(false);
+    console.log(`[Telnyx Numbers] Searching exact match on page ${pageNumber}: ${queryParams.toString()}`);
 
-    console.log(`[Telnyx Numbers] Searching page ${pageNumber} with params: ${queryParams.toString()}`);
-
-    const response = await fetch(`${TELNYX_API_BASE}/available_phone_numbers?${queryParams.toString()}`, {
+    let response = await fetch(`${TELNYX_API_BASE}/available_phone_numbers?${queryParams.toString()}`, {
       method: "GET",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
@@ -125,19 +136,64 @@ export async function searchAvailableNumbers(params: SearchNumbersParams): Promi
       },
     });
 
+    // If exact search fails with 10031 error or returns no results, try with best_effort
+    let result: any;
+    let usedBestEffort = false;
+    
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[Telnyx Numbers] Search error: ${response.status} - ${errorText}`);
-      return {
-        success: false,
-        error: `Telnyx API error: ${response.status}`,
-      };
+      console.log(`[Telnyx Numbers] Exact search returned error: ${response.status}, trying best_effort...`);
+      
+      // Try with best_effort=true as fallback
+      queryParams = buildQueryParams(true);
+      console.log(`[Telnyx Numbers] Searching with best_effort: ${queryParams.toString()}`);
+      
+      response = await fetch(`${TELNYX_API_BASE}/available_phone_numbers?${queryParams.toString()}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Accept": "application/json",
+        },
+      });
+      
+      if (!response.ok) {
+        const fallbackError = await response.text();
+        console.error(`[Telnyx Numbers] Best effort search also failed: ${response.status} - ${fallbackError}`);
+        return {
+          success: false,
+          error: `No numbers available for the specified criteria`,
+        };
+      }
+      
+      usedBestEffort = true;
     }
-
-    const result = await response.json();
+    
+    result = await response.json();
+    
+    // Check if we got empty results without best_effort
+    if (!usedBestEffort && (!result.data || result.data.length === 0)) {
+      console.log(`[Telnyx Numbers] No exact matches found, trying best_effort...`);
+      
+      queryParams = buildQueryParams(true);
+      response = await fetch(`${TELNYX_API_BASE}/available_phone_numbers?${queryParams.toString()}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Accept": "application/json",
+        },
+      });
+      
+      if (response.ok) {
+        result = await response.json();
+        usedBestEffort = true;
+      }
+    }
     
     const meta = result.meta || {};
-    console.log(`[Telnyx Numbers] Found ${result.data?.length || 0} numbers on page ${meta.page_number || pageNumber} of ${meta.total_pages || 1}`);
+    const exactCount = usedBestEffort ? 0 : (result.data?.length || 0);
+    const bestEffortCount = usedBestEffort ? (result.data?.length || 0) : 0;
+    
+    console.log(`[Telnyx Numbers] Found ${result.data?.length || 0} numbers (${exactCount} exact, ${bestEffortCount} best_effort) on page ${meta.page_number || pageNumber}`);
 
     return {
       success: true,
