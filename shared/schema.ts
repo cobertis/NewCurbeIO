@@ -4890,10 +4890,11 @@ export const telephonyProvisioningStatuses = [
 ] as const;
 export type TelephonyProvisioningStatus = typeof telephonyProvisioningStatuses[number];
 
-// Telephony Settings - One per company (WebRTC infrastructure)
+// Telephony Settings - One per USER (User-scoped WebRTC infrastructure)
 export const telephonySettings = pgTable("telephony_settings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }).unique(),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "cascade" }), // User who owns this telephony setup
   
   // Telnyx Resource IDs
   outboundVoiceProfileId: text("outbound_voice_profile_id"),
@@ -4926,14 +4927,17 @@ export const telephonySettings = pgTable("telephony_settings", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
   companyIdIdx: index("telephony_settings_company_id_idx").on(table.companyId),
+  ownerUserIdIdx: index("telephony_settings_owner_user_id_idx").on(table.ownerUserId),
   statusIdx: index("telephony_settings_status_idx").on(table.provisioningStatus),
+  userUniqueIdx: uniqueIndex("telephony_settings_user_unique_idx").on(table.ownerUserId), // One settings per user
 }));
 
-// Telephony Credentials - Per user SIP credentials for WebRTC
+// Telephony Credentials - Per user SIP credentials for WebRTC (User-scoped)
 export const telephonyCredentials = pgTable("telephony_credentials", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }), // Legacy - use ownerUserId
+  ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "cascade" }), // User who owns these credentials
   
   // Telnyx Credential
   telnyxCredentialId: text("telnyx_credential_id"),
@@ -4949,7 +4953,9 @@ export const telephonyCredentials = pgTable("telephony_credentials", {
 }, (table) => ({
   companyIdIdx: index("telephony_credentials_company_id_idx").on(table.companyId),
   userIdIdx: index("telephony_credentials_user_id_idx").on(table.userId),
+  ownerUserIdIdx: index("telephony_credentials_owner_user_id_idx").on(table.ownerUserId),
   sipUsernameIdx: index("telephony_credentials_sip_username_idx").on(table.sipUsername),
+  userUniqueIdx: uniqueIndex("telephony_credentials_user_unique_idx").on(table.ownerUserId), // One credential set per user
 }));
 
 // Telephony Insert Schemas

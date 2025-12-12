@@ -882,7 +882,8 @@ export async function updateCallForwarding(
   companyId: string,
   enabled: boolean,
   destination?: string,
-  keepCallerId: boolean = true
+  keepCallerId: boolean = true,
+  ownerUserId?: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
     // Validate destination is E.164 US number if enabled
@@ -963,6 +964,7 @@ export async function updateCallForwarding(
       // Create local record with call forwarding settings
       await db.insert(telnyxPhoneNumbers).values({
         companyId,
+        ownerUserId: ownerUserId || null,
         phoneNumber,
         telnyxPhoneNumberId: phoneNumberId,
         status: "active",
@@ -1170,22 +1172,23 @@ export async function getCompanyPhoneNumbers(companyId: string): Promise<{
   }
 }
 
-export async function getUserPhoneNumbers(companyId: string, userId: string): Promise<{
+export async function getUserPhoneNumbers(companyId: string, userId?: string): Promise<{
   success: boolean;
   numbers?: any[];
   error?: string;
 }> {
   try {
-    // Get phone numbers from local DB filtered by ownerUserId
+    // Get phone numbers from local DB
+    // When userId is provided, filter by ownerUserId (for admins seeing their own)
+    // When userId is undefined, get all company numbers (for superadmins)
+    const whereConditions = userId
+      ? and(eq(telnyxPhoneNumbers.companyId, companyId), eq(telnyxPhoneNumbers.ownerUserId, userId))
+      : eq(telnyxPhoneNumbers.companyId, companyId);
+    
     const numbers = await db
       .select()
       .from(telnyxPhoneNumbers)
-      .where(
-        and(
-          eq(telnyxPhoneNumbers.companyId, companyId),
-          eq(telnyxPhoneNumbers.ownerUserId, userId)
-        )
-      );
+      .where(whereConditions);
 
     return {
       success: true,

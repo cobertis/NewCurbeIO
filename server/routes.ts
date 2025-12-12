@@ -28046,7 +28046,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       // Auto-trigger WebRTC provisioning if not already completed
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
-      const existingStatus = await telephonyProvisioningService.getProvisioningStatus(user.companyId);
+      const existingStatus = await telephonyProvisioningService.getProvisioningStatus(user.companyId, user.id);
       
       // Only trigger provisioning for new or failed states
       // Skip if: completed (already done), pending (job dispatched), in_progress (actively running)
@@ -28062,7 +28062,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (managedAccountId) {
           console.log("[Provisioning] Auto-triggering WebRTC provisioning for company:", user.companyId, "current status:", existingStatus?.status || "none");
           // Trigger provisioning in background (don't wait)
-          telephonyProvisioningService.provisionClientInfrastructure(user.companyId, managedAccountId)
+          telephonyProvisioningService.provisionClientInfrastructure(user.companyId, managedAccountId, user.id)
             .then(provResult => {
               if (provResult.success) {
                 console.log("[Provisioning] WebRTC infrastructure auto-provisioned for company:", user.companyId);
@@ -28115,8 +28115,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Regular users only see their own numbers (user-scoped)
+      // Superadmins see all company numbers, regular users only see their own
+      const userId = user.role === 'superadmin' ? undefined : user.id;
       const { getUserPhoneNumbers } = await import("./services/telnyx-numbers-service");
-      const result = await getUserPhoneNumbers(user.companyId, user.id);
+      const result = await getUserPhoneNumbers(user.companyId, userId);
 
       if (!result.success) {
         return res.status(500).json({ message: result.error });
@@ -28447,7 +28449,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { updateCallForwarding } = await import("./services/telnyx-numbers-service");
-      const result = await updateCallForwarding(phoneNumberId, user.companyId, enabled, destination, keepCallerId);
+      const result = await updateCallForwarding(phoneNumberId, user.companyId, enabled, destination, keepCallerId, user.id);
 
       if (!result.success) {
         return res.status(500).json({ message: result.error });
@@ -29149,7 +29151,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
       
       // Check if already provisioned
-      const existingStatus = await telephonyProvisioningService.getProvisioningStatus(user.companyId);
+      const existingStatus = await telephonyProvisioningService.getProvisioningStatus(user.companyId, user.id);
       if (existingStatus?.status === "completed") {
         return res.json({ 
           success: true, 
@@ -29159,7 +29161,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // Trigger provisioning (async - don't wait)
-      telephonyProvisioningService.provisionClientInfrastructure(user.companyId, managedAccountId)
+      telephonyProvisioningService.provisionClientInfrastructure(user.companyId, managedAccountId, user.id)
         .then(result => {
           if (result.success) {
             console.log("[Provisioning] WebRTC infrastructure provisioned for company:", user.companyId);
@@ -29191,7 +29193,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
-      const status = await telephonyProvisioningService.getProvisioningStatus(user.companyId);
+      // Superadmins can see all company telephony resources, admins only see their own
+      const userId = user.role === 'superadmin' ? undefined : user.id;
+      const status = await telephonyProvisioningService.getProvisioningStatus(user.companyId, userId);
 
       if (!status) {
         return res.json({ 
@@ -29235,7 +29239,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
       
       // Check current status
-      const currentStatus = await telephonyProvisioningService.getProvisioningStatus(user.companyId);
+      const currentStatus = await telephonyProvisioningService.getProvisioningStatus(user.companyId, user.id);
       if (currentStatus?.status === "provisioning") {
         return res.status(409).json({ 
           message: "Provisioning is already in progress. Please wait." 
@@ -29243,7 +29247,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // Trigger provisioning
-      const result = await telephonyProvisioningService.provisionClientInfrastructure(user.companyId, managedAccountId);
+      const result = await telephonyProvisioningService.provisionClientInfrastructure(user.companyId, managedAccountId, user.id);
 
       if (result.success) {
         res.json({ 
@@ -29277,7 +29281,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
-      const result = await telephonyProvisioningService.repairPhoneNumberRouting(user.companyId);
+      const result = await telephonyProvisioningService.repairPhoneNumberRouting(user.companyId, user.id);
 
       if (result.success) {
         res.json({ 
@@ -29307,7 +29311,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
-      const result = await telephonyProvisioningService.fixTexmlWebhooks(user.companyId);
+      const result = await telephonyProvisioningService.fixTexmlWebhooks(user.companyId, user.id);
 
       if (result.success) {
         res.json({ 
@@ -29337,7 +29341,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
-      const result = await telephonyProvisioningService.repairSipUriCalling(user.companyId);
+      const result = await telephonyProvisioningService.repairSipUriCalling(user.companyId, user.id);
 
       if (result.success) {
         res.json({ 
@@ -29366,7 +29370,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
-      const result = await telephonyProvisioningService.repairSrtpSettings(user.companyId);
+      const result = await telephonyProvisioningService.repairSrtpSettings(user.companyId, user.id);
 
       if (result.success) {
         res.json({ 
@@ -29394,7 +29398,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log(`[Migration] Starting Call Control migration for company: ${companyId}`);
 
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
-      const result = await telephonyProvisioningService.migrateToCallControl(companyId);
+      const result = await telephonyProvisioningService.migrateToCallControl(companyId, user.id);
 
       if (result.success) {
         res.json({
@@ -29426,7 +29430,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
-      const credentials = await telephonyProvisioningService.getSipCredentials(user.companyId, user.id);
+      // Superadmins can see all company telephony resources, admins only see their own
+      const userId = user.role === 'superadmin' ? undefined : user.id;
+      const credentials = await telephonyProvisioningService.getSipCredentials(user.companyId, userId);
 
       if (!credentials) {
         return res.status(404).json({ 

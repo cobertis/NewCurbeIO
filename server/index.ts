@@ -223,10 +223,16 @@ app.use((req, res, next) => {
         const { telephonySettings } = await import("@shared/schema");
         const settings = await db.select().from(telephonySettings);
         for (const setting of settings) {
+          // Skip settings without ownerUserId (user-scoping not configured yet)
+          if (!setting.ownerUserId) {
+            console.log(`[Startup Repair] Skipping company ${setting.companyId} - no ownerUserId set`);
+            continue;
+          }
+          const userId = setting.ownerUserId; // Store in const for TypeScript narrowing
           if (setting.credentialConnectionId) {
             // SRTP Repair
             console.log(`[SRTP Repair] Checking SRTP for company ${setting.companyId}...`);
-            telephonyProvisioningService.repairSrtpSettings(setting.companyId).then((result) => {
+            telephonyProvisioningService.repairSrtpSettings(setting.companyId, userId).then((result) => {
               if (result.success) {
                 console.log(`[SRTP Repair] Successfully disabled SRTP for company ${setting.companyId}`);
               } else {
@@ -238,28 +244,28 @@ app.use((req, res, next) => {
             // This fixes USER_BUSY hangup issue by enabling Call Control API for proper call termination
             if (!setting.callControlAppId) {
               console.log(`[Call Control Migration] Company ${setting.companyId} needs migration to Call Control...`);
-              telephonyProvisioningService.migrateToCallControl(setting.companyId).then((result) => {
+              telephonyProvisioningService.migrateToCallControl(setting.companyId, userId).then((result) => {
                 if (result.success) {
                   console.log(`[Call Control Migration] Successfully migrated company ${setting.companyId} to Call Control App: ${result.callControlAppId}`);
                 } else {
                   console.log(`[Call Control Migration] Could not migrate ${setting.companyId}: ${result.errors?.join(', ')}`);
                   // Fall back to Credential Connection routing repair
                   console.log(`[Routing Repair] Falling back to Credential Connection for ${setting.companyId}...`);
-                  telephonyProvisioningService.repairPhoneNumberRouting(setting.companyId).catch((err) => 
+                  telephonyProvisioningService.repairPhoneNumberRouting(setting.companyId, userId).catch((err) => 
                     console.error(`[Routing Repair] Error:`, err)
                   );
                 }
               }).catch((err) => {
                 console.error(`[Call Control Migration] Error:`, err);
                 // Fall back to Credential Connection routing repair
-                telephonyProvisioningService.repairPhoneNumberRouting(setting.companyId).catch((e) => 
+                telephonyProvisioningService.repairPhoneNumberRouting(setting.companyId, userId).catch((e) => 
                   console.error(`[Routing Repair] Error:`, e)
                 );
               });
             } else {
               // Already has Call Control App - repair routing (includes webhook URL update)
               console.log(`[Routing Repair] Company ${setting.companyId} already has Call Control App, repairing...`);
-              telephonyProvisioningService.repairPhoneNumberRouting(setting.companyId).then((result) => {
+              telephonyProvisioningService.repairPhoneNumberRouting(setting.companyId, userId).then((result) => {
                 if (result.success && result.repairedCount > 0) {
                   console.log(`[Routing Repair] Fixed ${result.repairedCount} phone number(s) for company ${setting.companyId}`);
                 } else if (result.success) {

@@ -184,9 +184,10 @@ export class TelephonyProvisioningService {
 
   async provisionClientInfrastructure(
     companyId: string,
-    managedAccountId: string
+    managedAccountId: string,
+    userId: string
   ): Promise<ProvisioningResult> {
-    console.log(`[TelephonyProvisioning] Starting infrastructure provisioning for company: ${companyId}, managedAccount: ${managedAccountId}`);
+    console.log(`[TelephonyProvisioning] Starting infrastructure provisioning for company: ${companyId}, managedAccount: ${managedAccountId}, userId: ${userId}`);
 
     let outboundVoiceProfileId: string | null = null;
     let texmlAppId: string | null = null;
@@ -194,7 +195,7 @@ export class TelephonyProvisioningService {
     let sipCredentials: { id: string; username: string } | null = null;
 
     try {
-      await this.updateProvisioningStatus(companyId, "provisioning", null);
+      await this.updateProvisioningStatus(companyId, userId, "provisioning", null);
 
       const [company] = await db
         .select({ name: companies.name })
@@ -246,6 +247,7 @@ export class TelephonyProvisioningService {
       const sipResult = await this.createSipCredential(
         managedAccountId,
         companyId,
+        userId,
         credentialConnectionId
       );
       if (!sipResult.success || !sipResult.credentials) {
@@ -285,7 +287,7 @@ export class TelephonyProvisioningService {
           provisionedAt: new Date(),
           updatedAt: new Date(),
         })
-        .where(eq(telephonySettings.companyId, companyId));
+        .where(and(eq(telephonySettings.companyId, companyId), eq(telephonySettings.ownerUserId, userId)));
 
       console.log(`[TelephonyProvisioning] Infrastructure provisioning completed successfully`);
 
@@ -301,7 +303,7 @@ export class TelephonyProvisioningService {
       const errorMessage = error instanceof Error ? error.message : "Unknown error";
       console.error(`[TelephonyProvisioning] Provisioning failed:`, errorMessage);
 
-      await this.updateProvisioningStatus(companyId, "failed", errorMessage);
+      await this.updateProvisioningStatus(companyId, userId, "failed", errorMessage);
 
       return {
         success: false,
@@ -471,16 +473,16 @@ export class TelephonyProvisioningService {
    * Repair existing credential connection to enable SIP URI calling
    * Call this to fix companies that were provisioned before this feature was added
    */
-  async repairSipUriCalling(companyId: string): Promise<{ success: boolean; error?: string }> {
-    console.log(`[TelephonyProvisioning] Repairing SIP URI Calling for company: ${companyId}`);
+  async repairSipUriCalling(companyId: string, userId: string): Promise<{ success: boolean; error?: string }> {
+    console.log(`[TelephonyProvisioning] Repairing SIP URI Calling for company: ${companyId}, userId: ${userId}`);
     
     const [settings] = await db
       .select()
       .from(telephonySettings)
-      .where(eq(telephonySettings.companyId, companyId));
+      .where(and(eq(telephonySettings.companyId, companyId), eq(telephonySettings.ownerUserId, userId)));
 
     if (!settings || !settings.credentialConnectionId) {
-      return { success: false, error: "No credential connection found for company" };
+      return { success: false, error: "No credential connection found for user" };
     }
 
     const { getCompanyManagedAccountId } = await import("./telnyx-managed-accounts");
@@ -538,16 +540,16 @@ export class TelephonyProvisioningService {
    * Repair existing credential connection to disable SRTP for WebRTC compatibility
    * Call this to fix 488 errors on outbound calls
    */
-  async repairSrtpSettings(companyId: string): Promise<{ success: boolean; error?: string }> {
-    console.log(`[TelephonyProvisioning] Repairing SRTP settings for company: ${companyId}`);
+  async repairSrtpSettings(companyId: string, userId: string): Promise<{ success: boolean; error?: string }> {
+    console.log(`[TelephonyProvisioning] Repairing SRTP settings for company: ${companyId}, userId: ${userId}`);
     
     const [settings] = await db
       .select()
       .from(telephonySettings)
-      .where(eq(telephonySettings.companyId, companyId));
+      .where(and(eq(telephonySettings.companyId, companyId), eq(telephonySettings.ownerUserId, userId)));
 
     if (!settings || !settings.credentialConnectionId) {
-      return { success: false, error: "No credential connection found for company" };
+      return { success: false, error: "No credential connection found for user" };
     }
 
     const { getCompanyManagedAccountId } = await import("./telnyx-managed-accounts");
@@ -563,6 +565,7 @@ export class TelephonyProvisioningService {
   private async createSipCredential(
     managedAccountId: string,
     companyId: string,
+    userId: string,
     connectionId: string
   ): Promise<{ success: boolean; credentials?: { id: string; username: string }; error?: string }> {
     try {
@@ -594,6 +597,7 @@ export class TelephonyProvisioningService {
 
       await db.insert(telephonyCredentials).values({
         companyId,
+        ownerUserId: userId,
         telnyxCredentialId: credentialId,
         sipUsername,
         sipPassword: encryptedPassword,
@@ -709,13 +713,14 @@ export class TelephonyProvisioningService {
 
   private async updateProvisioningStatus(
     companyId: string,
+    userId: string,
     status: TelephonyProvisioningStatus,
     error: string | null
   ): Promise<void> {
     const [existing] = await db
       .select()
       .from(telephonySettings)
-      .where(eq(telephonySettings.companyId, companyId));
+      .where(and(eq(telephonySettings.companyId, companyId), eq(telephonySettings.ownerUserId, userId)));
 
     if (existing) {
       await db
@@ -725,27 +730,32 @@ export class TelephonyProvisioningService {
           provisioningError: error,
           updatedAt: new Date(),
         })
-        .where(eq(telephonySettings.companyId, companyId));
+        .where(and(eq(telephonySettings.companyId, companyId), eq(telephonySettings.ownerUserId, userId)));
     } else {
       await db.insert(telephonySettings).values({
         companyId,
+        ownerUserId: userId,
         provisioningStatus: status,
         provisioningError: error,
       });
     }
   }
 
-  async getProvisioningStatus(companyId: string): Promise<{
+  async getProvisioningStatus(companyId: string, userId?: string): Promise<{
     status: TelephonyProvisioningStatus;
     error?: string | null;
     texmlAppId?: string | null;
     outboundVoiceProfileId?: string | null;
     provisionedAt?: Date | null;
   } | null> {
+    const whereConditions = userId 
+      ? and(eq(telephonySettings.companyId, companyId), eq(telephonySettings.ownerUserId, userId))
+      : eq(telephonySettings.companyId, companyId);
+    
     const [settings] = await db
       .select()
       .from(telephonySettings)
-      .where(eq(telephonySettings.companyId, companyId));
+      .where(whereConditions);
 
     if (!settings) {
       return null;
@@ -764,9 +774,8 @@ export class TelephonyProvisioningService {
     username: string;
     password: string;
   } | null> {
-    // If userId is provided, filter by both companyId and userId (user-scoped)
-    const whereCondition = userId 
-      ? and(eq(telephonyCredentials.companyId, companyId), eq(telephonyCredentials.userId, userId))
+    const whereConditions = userId
+      ? and(eq(telephonyCredentials.companyId, companyId), eq(telephonyCredentials.ownerUserId, userId))
       : eq(telephonyCredentials.companyId, companyId);
     
     const [cred] = await db
@@ -775,7 +784,7 @@ export class TelephonyProvisioningService {
         encryptedPassword: telephonyCredentials.sipPassword,
       })
       .from(telephonyCredentials)
-      .where(whereCondition);
+      .where(whereConditions);
 
     if (!cred) return null;
 
@@ -791,16 +800,16 @@ export class TelephonyProvisioningService {
    * FIX TeXML WEBHOOKS: Update the TeXML app to use company-specific webhook URLs
    * This fixes the issue where calls were being rejected instead of routed to WebRTC
    */
-  async fixTexmlWebhooks(companyId: string): Promise<{ success: boolean; error?: string }> {
-    console.log(`[TelephonyProvisioning] Fixing TeXML webhooks for company: ${companyId}`);
+  async fixTexmlWebhooks(companyId: string, userId: string): Promise<{ success: boolean; error?: string }> {
+    console.log(`[TelephonyProvisioning] Fixing TeXML webhooks for company: ${companyId}, userId: ${userId}`);
     
     const [settings] = await db
       .select()
       .from(telephonySettings)
-      .where(eq(telephonySettings.companyId, companyId));
+      .where(and(eq(telephonySettings.companyId, companyId), eq(telephonySettings.ownerUserId, userId)));
 
     if (!settings?.texmlAppId) {
-      return { success: false, error: "No TeXML app found" };
+      return { success: false, error: "No TeXML app found for user" };
     }
 
     const { getCompanyManagedAccountId } = await import("./telnyx-managed-accounts");
@@ -921,13 +930,13 @@ export class TelephonyProvisioningService {
    * Migrate company from Credential Connection routing to Call Control Application routing
    * This enables REST API call management with call_control_id for hangup functionality
    */
-  async migrateToCallControl(companyId: string): Promise<{
+  async migrateToCallControl(companyId: string, userId: string): Promise<{
     success: boolean;
     callControlAppId?: string;
     migratedCount: number;
     errors: string[];
   }> {
-    console.log(`[TelephonyProvisioning] Starting Call Control migration for company: ${companyId}`);
+    console.log(`[TelephonyProvisioning] Starting Call Control migration for company: ${companyId}, userId: ${userId}`);
     
     const errors: string[] = [];
     let migratedCount = 0;
@@ -936,10 +945,10 @@ export class TelephonyProvisioningService {
     const [settings] = await db
       .select()
       .from(telephonySettings)
-      .where(eq(telephonySettings.companyId, companyId));
+      .where(and(eq(telephonySettings.companyId, companyId), eq(telephonySettings.ownerUserId, userId)));
 
     if (!settings) {
-      return { success: false, migratedCount: 0, errors: ["Telephony settings not found"] };
+      return { success: false, migratedCount: 0, errors: ["Telephony settings not found for user"] };
     }
 
     if (!settings.outboundVoiceProfileId) {
@@ -988,16 +997,16 @@ export class TelephonyProvisioningService {
           callControlAppId,
           updatedAt: new Date(),
         })
-        .where(eq(telephonySettings.companyId, companyId));
+        .where(and(eq(telephonySettings.companyId, companyId), eq(telephonySettings.ownerUserId, userId)));
     } else {
       console.log(`[TelephonyProvisioning] Using existing Call Control App: ${callControlAppId}`);
     }
 
-    // Get all phone numbers for the company
+    // Get all phone numbers for the user
     const phoneNumbers = await db
       .select()
       .from(telnyxPhoneNumbers)
-      .where(eq(telnyxPhoneNumbers.companyId, companyId));
+      .where(and(eq(telnyxPhoneNumbers.companyId, companyId), eq(telnyxPhoneNumbers.ownerUserId, userId)));
 
     if (phoneNumbers.length === 0) {
       console.log(`[TelephonyProvisioning] No phone numbers to migrate`);
@@ -1035,21 +1044,21 @@ export class TelephonyProvisioningService {
    * If Call Control App is configured, assign numbers to it
    * Otherwise, assign to Credential Connection for backward compatibility
    */
-  async repairPhoneNumberRouting(companyId: string): Promise<{
+  async repairPhoneNumberRouting(companyId: string, userId: string): Promise<{
     success: boolean;
     repairedCount: number;
     errors: string[];
   }> {
-    console.log(`[TelephonyProvisioning] Starting phone number routing repair for company: ${companyId}`);
+    console.log(`[TelephonyProvisioning] Starting phone number routing repair for company: ${companyId}, userId: ${userId}`);
     
     // Get telephony settings
     const [settings] = await db
       .select()
       .from(telephonySettings)
-      .where(eq(telephonySettings.companyId, companyId));
+      .where(and(eq(telephonySettings.companyId, companyId), eq(telephonySettings.ownerUserId, userId)));
 
     if (!settings) {
-      return { success: false, repairedCount: 0, errors: ["Telephony settings not found"] };
+      return { success: false, repairedCount: 0, errors: ["Telephony settings not found for user"] };
     }
 
     // Get managed account from company
@@ -1065,11 +1074,11 @@ export class TelephonyProvisioningService {
     if (settings.credentialConnectionId) {
       console.log(`[TelephonyProvisioning] Using DIRECT routing to Credential Connection: ${settings.credentialConnectionId}`);
       
-      // Get all phone numbers
+      // Get all phone numbers for user
       const phoneNumbers = await db
         .select()
         .from(telnyxPhoneNumbers)
-        .where(eq(telnyxPhoneNumbers.companyId, companyId));
+        .where(and(eq(telnyxPhoneNumbers.companyId, companyId), eq(telnyxPhoneNumbers.ownerUserId, userId)));
 
       if (phoneNumbers.length === 0) {
         return { success: true, repairedCount: 0, errors: [] };
