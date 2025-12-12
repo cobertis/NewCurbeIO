@@ -111,6 +111,41 @@ function formatPhoneDisplay(phone: string | undefined | null): string {
 
 export default function PhoneSystem() {
   const { toast } = useToast();
+  
+  // Access control - check if user has access to Phone System
+  const { data: accessData, isLoading: isLoadingAccess } = useQuery<{ 
+    hasAccess: boolean; 
+    isOwner: boolean; 
+    reason: string; 
+  }>({
+    queryKey: ['/api/telnyx/phone-system-access'],
+  });
+  
+  // Show access denied if user doesn't have permission
+  if (isLoadingAccess) {
+    return <LoadingSpinner fullScreen={true} />;
+  }
+  
+  if (!accessData?.hasAccess) {
+    return (
+      <div className="flex items-center justify-center h-full">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Shield className="h-5 w-5 text-slate-500" />
+              Access Restricted
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground">
+              Only the phone system administrator can access this page. 
+              Contact your company administrator for telephony configuration.
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   // WebSocket handler for real-time call log updates
   const handleWebSocketMessage = useCallback((message: any) => {

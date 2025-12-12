@@ -27918,6 +27918,45 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+  // GET /api/telnyx/phone-system-access - Check if current user has access to Phone System tab
+  app.get("/api/telnyx/phone-system-access", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user as User;
+      
+      // Superadmin always has access
+      if (currentUser.role === 'superadmin') {
+        return res.json({ hasAccess: true, isOwner: true, reason: 'superadmin' });
+      }
+      
+      // Get the telephony settings for user's company
+      const settings = await db.query.telephonySettings.findFirst({
+        where: eq(telephonySettings.companyId, currentUser.companyId || ''),
+      });
+      
+      // No phone system configured - only admins can activate (and become owner)
+      if (!settings) {
+        return res.json({ 
+          hasAccess: currentUser.role === 'admin',
+          isOwner: false, 
+          reason: currentUser.role === 'admin' ? 'admin_can_activate' : 'not_activated' 
+        });
+      }
+      
+      // Check if user is the owner
+      const isOwner = settings.ownerUserId === currentUser.id;
+      
+      res.json({ 
+        hasAccess: isOwner, 
+        isOwner,
+        reason: isOwner ? 'owner' : 'not_owner',
+        ownerUserId: settings.ownerUserId 
+      });
+    } catch (error: any) {
+      console.error("[Phone System Access] Error:", error);
+      res.status(500).json({ message: "Failed to check access" });
+    }
+  });
   // GET /api/telnyx/number-pricing - Get client pricing for phone numbers
   app.get("/api/telnyx/number-pricing", requireAuth, async (req: Request, res: Response) => {
     try {
