@@ -65,6 +65,7 @@ class ExtensionCallService {
   unregisterExtension(extensionId: string): void {
     const client = this.connectedClients.get(extensionId);
     if (client) {
+      const companyId = client.companyId;
       this.connectedClients.delete(extensionId);
       console.log(`[ExtensionCall] Extension ${client.extension} unregistered`);
 
@@ -73,7 +74,29 @@ class ExtensionCallService {
           this.endCall(callId, "disconnect");
         }
       });
+      
+      // Broadcast updated list to all remaining clients in the same company
+      this.broadcastOnlineExtensions(companyId);
     }
+  }
+
+  /**
+   * Broadcast updated online extensions list to all connected clients in a company
+   * Called after register/unregister to keep all clients in sync
+   */
+  async broadcastOnlineExtensions(companyId: string): Promise<void> {
+    const online = await this.getOnlineExtensions(companyId);
+    const message = JSON.stringify({ type: 'online_extensions', extensions: online });
+    
+    let sentCount = 0;
+    Array.from(this.connectedClients.values()).forEach((client) => {
+      if (client.companyId === companyId && client.ws.readyState === WebSocket.OPEN) {
+        client.ws.send(message);
+        sentCount++;
+      }
+    });
+    
+    console.log(`[ExtensionCall] Broadcast online_extensions to ${sentCount} clients in company ${companyId}`);
   }
 
   async getOnlineExtensions(companyId: string): Promise<Array<{

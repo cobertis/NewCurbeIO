@@ -346,9 +346,9 @@ async function handlePbxConnection(ws: AuthenticatedWebSocket, req: IncomingMess
       displayName: client.displayName
     }));
     
-    // Send online extensions list
-    const online = await extensionCallService.getOnlineExtensions(companyId);
-    ws.send(JSON.stringify({ type: 'online_extensions', extensions: online }));
+    // Broadcast updated online extensions list to ALL clients in this company
+    // This ensures existing clients learn about the newly registered extension
+    await extensionCallService.broadcastOnlineExtensions(companyId);
     
     ws.on('message', async (data) => {
       try {
