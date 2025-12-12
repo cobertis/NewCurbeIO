@@ -27957,6 +27957,69 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to check access" });
     }
   });
+
+  // GET /api/telnyx/user-phone-status - Check if current user has an assigned phone number for calling
+  app.get("/api/telnyx/user-phone-status", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user as User;
+      
+      if (!currentUser.companyId) {
+        return res.json({ 
+          hasAssignedNumber: false, 
+          canMakeCalls: false,
+          reason: 'no_company' 
+        });
+      }
+      
+      // Check if user has a phone number assigned to them
+      const assignedNumber = await db.query.telnyxPhoneNumbers.findFirst({
+        where: and(
+          eq(telnyxPhoneNumbers.companyId, currentUser.companyId),
+          eq(telnyxPhoneNumbers.ownerUserId, currentUser.id),
+          eq(telnyxPhoneNumbers.status, 'active')
+        ),
+      });
+      
+      // Superadmins and Admins can use any company number (they see all numbers)
+      if (!assignedNumber && (currentUser.role === 'superadmin' || currentUser.role === 'admin')) {
+        const anyCompanyNumber = await db.query.telnyxPhoneNumbers.findFirst({
+          where: and(
+            eq(telnyxPhoneNumbers.companyId, currentUser.companyId),
+            eq(telnyxPhoneNumbers.status, 'active')
+          ),
+        });
+        
+        if (anyCompanyNumber) {
+          return res.json({ 
+            hasAssignedNumber: true, 
+            canMakeCalls: true,
+            phoneNumber: anyCompanyNumber.phoneNumber,
+            reason: 'admin_access' 
+          });
+        }
+      }
+      
+      if (assignedNumber) {
+        return res.json({ 
+          hasAssignedNumber: true, 
+          canMakeCalls: true,
+          phoneNumber: assignedNumber.phoneNumber,
+          reason: 'assigned' 
+        });
+      }
+      
+      // User has no assigned number
+      res.json({ 
+        hasAssignedNumber: false, 
+        canMakeCalls: false,
+        reason: 'no_number_assigned',
+        message: 'Please contact your account manager to have a phone number assigned to you.'
+      });
+    } catch (error: any) {
+      console.error("[User Phone Status] Error:", error);
+      res.status(500).json({ message: "Failed to check phone status" });
+    }
+  });
   // GET /api/telnyx/number-pricing - Get client pricing for phone numbers
   app.get("/api/telnyx/number-pricing", requireAuth, async (req: Request, res: Response) => {
     try {
