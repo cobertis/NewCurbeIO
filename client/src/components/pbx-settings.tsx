@@ -1559,7 +1559,25 @@ function QueueDialog({
               </Select>
             </div>
             <div className="space-y-2">
-              <Label>Queue Members (Extensions)</Label>
+              <div className="flex items-center justify-between">
+                <Label>Queue Members (Extensions)</Label>
+                {extensions.length > 1 && (
+                  <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground">
+                    <Checkbox
+                      checked={selectedMemberIds.length === extensions.length && extensions.length > 0}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedMemberIds(extensions.map(e => e.userId));
+                        } else {
+                          setSelectedMemberIds([]);
+                        }
+                      }}
+                      data-testid="checkbox-members-select-all"
+                    />
+                    Select All
+                  </label>
+                )}
+              </div>
               {extensions.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No extensions available. Create extensions first.</p>
               ) : (
@@ -1596,7 +1614,25 @@ function QueueDialog({
           </div>
           <div className="space-y-4">
             <div className="space-y-2">
-              <Label>Hold Music</Label>
+              <div className="flex items-center justify-between">
+                <Label>Hold Music</Label>
+                {holdMusicOptions.length > 1 && (
+                  <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground">
+                    <Checkbox
+                      checked={selectedHoldMusicIds.length === holdMusicOptions.length && holdMusicOptions.length > 0}
+                      onCheckedChange={(checked) => {
+                        if (checked) {
+                          setSelectedHoldMusicIds(holdMusicOptions.map(a => a.id));
+                        } else {
+                          setSelectedHoldMusicIds([]);
+                        }
+                      }}
+                      data-testid="checkbox-holdmusic-select-all"
+                    />
+                    Select All
+                  </label>
+                )}
+              </div>
               {holdMusicOptions.length === 0 ? (
                 <p className="text-sm text-muted-foreground">
                   No hold music files available. Upload audio files with type "Hold Music" in the Audio tab.
