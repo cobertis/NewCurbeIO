@@ -284,6 +284,14 @@ export class WebPushService {
         )
       );
   }
+
+  async getSubscriptionsCountByCompany(companyId: string): Promise<number> {
+    const result = await db
+      .select()
+      .from(pushSubscriptions)
+      .where(eq(pushSubscriptions.companyId, companyId));
+    return result.length;
+  }
 }
 
 export const webPushService = new WebPushService();

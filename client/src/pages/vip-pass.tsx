@@ -55,6 +55,7 @@ interface VipPassStats {
   revokedPasses: number;
   registeredDevices: number;
   totalDownloads: number;
+  pushSubscriptions: number;
 }
 
 interface VipPassInstance {
@@ -651,7 +652,7 @@ export default function VipPassPage() {
           </TabsContent>
 
           <TabsContent value="management" className="space-y-6">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                   <CardTitle className="text-sm font-medium">Total Passes</CardTitle>
@@ -686,6 +687,15 @@ export default function VipPassPage() {
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{stats?.totalDownloads || 0}</div>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                  <CardTitle className="text-sm font-medium">Push Enabled</CardTitle>
+                  <Bell className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-blue-600">{stats?.pushSubscriptions || 0}</div>
                 </CardContent>
               </Card>
             </div>
