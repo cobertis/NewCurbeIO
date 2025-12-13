@@ -154,7 +154,7 @@ export function PbxSettings() {
   });
 
   const { data: ivrMenuOptions = [] } = useQuery<PbxMenuOption[]>({
-    queryKey: ["/api/pbx/ivrs", selectedIvrId, "menu-options"],
+    queryKey: [`/api/pbx/ivrs/${selectedIvrId}/menu-options`],
     enabled: !!selectedIvrId,
   });
 
@@ -373,14 +373,16 @@ export function PbxSettings() {
   });
 
   const ivrMenuOptionMutation = useMutation({
-    mutationFn: async (data: any) => {
+    mutationFn: async (data: any & { ivrId: string }) => {
+      const ivrId = data.ivrId || selectedIvrId;
       if (data.id) {
-        return apiRequest("PATCH", `/api/pbx/ivrs/${selectedIvrId}/menu-options/${data.id}`, data);
+        return apiRequest("PATCH", `/api/pbx/ivrs/${ivrId}/menu-options/${data.id}`, data);
       }
-      return apiRequest("POST", `/api/pbx/ivrs/${selectedIvrId}/menu-options`, data);
+      return apiRequest("POST", `/api/pbx/ivrs/${ivrId}/menu-options`, data);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/pbx/ivrs", selectedIvrId, "menu-options"] });
+    onSuccess: (_data, variables) => {
+      const ivrId = variables.ivrId || selectedIvrId;
+      queryClient.invalidateQueries({ queryKey: [`/api/pbx/ivrs/${ivrId}/menu-options`] });
       setShowIvrMenuDialog(false);
       setEditingIvrMenuOption(null);
       toast({ title: "Menu option saved" });
@@ -391,11 +393,11 @@ export function PbxSettings() {
   });
 
   const deleteIvrMenuOptionMutation = useMutation({
-    mutationFn: async (optionId: string) => {
-      return apiRequest("DELETE", `/api/pbx/ivrs/${selectedIvrId}/menu-options/${optionId}`);
+    mutationFn: async ({ optionId, ivrId }: { optionId: string; ivrId: string }) => {
+      return apiRequest("DELETE", `/api/pbx/ivrs/${ivrId}/menu-options/${optionId}`);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/pbx/ivrs", selectedIvrId, "menu-options"] });
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: [`/api/pbx/ivrs/${variables.ivrId}/menu-options`] });
       toast({ title: "Menu option deleted" });
     },
   });
@@ -469,10 +471,6 @@ export function PbxSettings() {
           <TabsTrigger value="ivrs" data-testid="tab-pbx-ivrs">
             <Languages className="w-4 h-4 mr-2" />
             IVRs
-          </TabsTrigger>
-          <TabsTrigger value="ivr" data-testid="tab-pbx-ivr">
-            <PhoneIncoming className="w-4 h-4 mr-2" />
-            Legacy IVR
           </TabsTrigger>
           <TabsTrigger value="queues" data-testid="tab-pbx-queues">
             <ListOrdered className="w-4 h-4 mr-2" />
@@ -757,7 +755,7 @@ export function PbxSettings() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => deleteIvrMenuOptionMutation.mutate(option.id)}
+                              onClick={() => deleteIvrMenuOptionMutation.mutate({ optionId: option.id, ivrId: selectedIvrId! })}
                             >
                               <Trash2 className="w-4 h-4 text-red-500" />
                             </Button>
@@ -770,83 +768,6 @@ export function PbxSettings() {
               </CardContent>
             </Card>
           </div>
-        </TabsContent>
-
-        <TabsContent value="ivr" className="space-y-6 mt-6">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle className="flex items-center gap-2">
-                <ListOrdered className="w-5 h-5" />
-                Legacy IVR Menu Options
-              </CardTitle>
-              <Button onClick={() => { setEditingMenuOption(null); setShowMenuDialog(true); }} data-testid="button-add-menu-option">
-                <Plus className="w-4 h-4 mr-2" />
-                Add Option
-              </Button>
-            </CardHeader>
-            <CardContent>
-              {menuOptions.length === 0 ? (
-                <div className="text-center py-8 text-slate-500">
-                  <Mic className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                  <p>No menu options configured</p>
-                  <p className="text-sm">Add options like "Press 1 for sales" to your IVR</p>
-                </div>
-              ) : (
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Key</TableHead>
-                      <TableHead>Label</TableHead>
-                      <TableHead>Action</TableHead>
-                      <TableHead>Target</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {menuOptions.map((option) => (
-                      <TableRow key={option.id}>
-                        <TableCell className="font-mono font-bold">{option.digit}</TableCell>
-                        <TableCell>{option.label}</TableCell>
-                        <TableCell className="capitalize">{option.actionType?.replace("_", " ") || "-"}</TableCell>
-                        <TableCell>
-                          {option.actionType === "queue" && queues.find(q => q.id === option.targetQueueId)?.name}
-                          {option.actionType === "extension" && extensions.find(e => e.id === option.targetExtensionId)?.extension}
-                          {option.actionType === "external" && option.targetExternalNumber}
-                          {option.actionType === "voicemail" && "Voicemail"}
-                          {option.actionType === "hangup" && "Hang Up"}
-                        </TableCell>
-                        <TableCell>
-                          <Badge variant={option.isActive ? "default" : "secondary"}>
-                            {option.isActive ? "Active" : "Disabled"}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setEditingMenuOption(option);
-                              setShowMenuDialog(true);
-                            }}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteMenuOptionMutation.mutate(option.id)}
-                          >
-                            <Trash2 className="w-4 h-4 text-red-500" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              )}
-            </CardContent>
-          </Card>
         </TabsContent>
 
         <TabsContent value="queues" className="space-y-6 mt-6">
@@ -1029,7 +950,7 @@ export function PbxSettings() {
         extensions={extensions}
         ivrs={ivrs}
         currentIvrId={selectedIvrId}
-        onSubmit={(data) => ivrMenuOptionMutation.mutate(data)}
+        onSubmit={(data) => ivrMenuOptionMutation.mutate({ ...data, ivrId: selectedIvrId })}
         isPending={ivrMenuOptionMutation.isPending}
       />
     </div>
