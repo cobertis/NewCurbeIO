@@ -72,6 +72,7 @@ interface PbxQueue {
   ringTimeout: number;
   maxWaitTime: number;
   holdMusicUrl: string | null;
+  holdMusicPlaybackMode: string | null;
   status: string;
   adsEnabled: boolean;
   adsIntervalMin: number | null;
@@ -287,8 +288,8 @@ export function PbxSettings() {
   };
 
   const queueMutation = useMutation({
-    mutationFn: async (data: { id?: string; name: string; description?: string; ringStrategy: string; memberIds?: string[] }) => {
-      const { memberIds, ...queueData } = data;
+    mutationFn: async (data: { id?: string; name: string; description?: string; ringStrategy: string; memberIds?: string[]; holdMusicPlaybackMode?: string; holdMusicAudioIds?: string[] }) => {
+      const { memberIds, holdMusicAudioIds, ...queueData } = data;
       let queueId = data.id;
       
       if (data.id) {
@@ -302,12 +303,17 @@ export function PbxSettings() {
         await apiRequest("PUT", `/api/pbx/queues/${queueId}/members/sync`, { memberIds });
       }
       
+      if (queueId && holdMusicAudioIds !== undefined) {
+        await apiRequest("PUT", `/api/pbx/queues/${queueId}/hold-music/sync`, { audioFileIds: holdMusicAudioIds });
+      }
+      
       return { queueId };
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["/api/pbx/queues"] });
       if (result.queueId) {
         queryClient.invalidateQueries({ queryKey: [`/api/pbx/queues/${result.queueId}/members`] });
+        queryClient.invalidateQueries({ queryKey: [`/api/pbx/queues/${result.queueId}/hold-music`] });
       }
       setShowQueueDialog(false);
       setEditingQueue(null);
@@ -1311,7 +1317,8 @@ function QueueDialog({
   const [extension, setExtension] = useState("");
   const [ringStrategy, setRingStrategy] = useState("ring_all");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
-  const [holdMusicAudioId, setHoldMusicAudioId] = useState<string>("");
+  const [selectedHoldMusicIds, setSelectedHoldMusicIds] = useState<string[]>([]);
+  const [holdMusicPlaybackMode, setHoldMusicPlaybackMode] = useState<string>("sequential");
   const [adsEnabled, setAdsEnabled] = useState(false);
   const [adsIntervalMin, setAdsIntervalMin] = useState(45);
   const [adsIntervalMax, setAdsIntervalMax] = useState(60);
@@ -1328,6 +1335,34 @@ function QueueDialog({
   const { data: queueAds = [], refetch: refetchAds } = useQuery<QueueAd[]>({
     queryKey: [`/api/pbx/queues/${queue?.id}/ads`],
     enabled: !!queue?.id,
+  });
+
+  interface QueueHoldMusic {
+    id: string;
+    queueId: string;
+    audioFileId: string;
+    displayOrder: number;
+    isActive: boolean;
+    audioFile: {
+      id: string;
+      name: string;
+      fileUrl: string;
+      duration: number | null;
+    };
+  }
+
+  const { data: queueHoldMusic = [], refetch: refetchHoldMusic } = useQuery<QueueHoldMusic[]>({
+    queryKey: [`/api/pbx/queues/${queue?.id}/hold-music`],
+    enabled: !!queue?.id,
+  });
+
+  const syncHoldMusicMutation = useMutation({
+    mutationFn: async (audioFileIds: string[]) => {
+      return apiRequest("PUT", `/api/pbx/queues/${queue?.id}/hold-music/sync`, { audioFileIds });
+    },
+    onSuccess: () => {
+      refetchHoldMusic();
+    },
   });
 
   const addAdMutation = useMutation({
@@ -1364,9 +1399,7 @@ function QueueDialog({
         setDescription(queue.description || "");
         setExtension(queue.extension || "");
         setRingStrategy(queue.ringStrategy);
-        // Find audio file that matches holdMusicUrl
-        const matchingAudio = audioFiles.find(a => a.fileUrl === queue.holdMusicUrl);
-        setHoldMusicAudioId(matchingAudio?.id || "");
+        setHoldMusicPlaybackMode(queue.holdMusicPlaybackMode || "sequential");
         setAdsEnabled(queue.adsEnabled || false);
         setAdsIntervalMin(queue.adsIntervalMin ?? 45);
         setAdsIntervalMax(queue.adsIntervalMax ?? 60);
@@ -1376,7 +1409,8 @@ function QueueDialog({
         setExtension("");
         setRingStrategy("ring_all");
         setSelectedMemberIds([]);
-        setHoldMusicAudioId("");
+        setSelectedHoldMusicIds([]);
+        setHoldMusicPlaybackMode("sequential");
         setAdsEnabled(false);
         setAdsIntervalMin(45);
         setAdsIntervalMax(60);
@@ -1387,8 +1421,18 @@ function QueueDialog({
   useEffect(() => {
     if (open && queue?.id) {
       setSelectedMemberIds(existingMembers.map(m => m.userId));
+    } else if (open && !queue?.id) {
+      setSelectedMemberIds([]);
     }
   }, [existingMembers, open, queue?.id]);
+
+  useEffect(() => {
+    if (open && queue?.id) {
+      setSelectedHoldMusicIds(queueHoldMusic.map(hm => hm.audioFileId));
+    } else if (open && !queue?.id) {
+      setSelectedHoldMusicIds([]);
+    }
+  }, [queueHoldMusic, open, queue?.id]);
 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
@@ -1397,12 +1441,21 @@ function QueueDialog({
       setExtension("");
       setRingStrategy("ring_all");
       setSelectedMemberIds([]);
-      setHoldMusicAudioId("");
-        setAdsEnabled(false);
-        setAdsIntervalMin(45);
-        setAdsIntervalMax(60);
+      setSelectedHoldMusicIds([]);
+      setHoldMusicPlaybackMode("sequential");
+      setAdsEnabled(false);
+      setAdsIntervalMin(45);
+      setAdsIntervalMax(60);
     }
     onOpenChange(isOpen);
+  };
+
+  const toggleHoldMusic = (audioId: string) => {
+    setSelectedHoldMusicIds(prev => 
+      prev.includes(audioId) 
+        ? prev.filter(id => id !== audioId)
+        : [...prev, audioId]
+    );
   };
 
   const toggleMember = (userId: string) => {
@@ -1500,28 +1553,56 @@ function QueueDialog({
           </div>
           <div className="space-y-2">
             <Label>Hold Music</Label>
-            <Select value={holdMusicAudioId || "none"} onValueChange={(val) => setHoldMusicAudioId(val === "none" ? "" : val)}>
-              <SelectTrigger data-testid="select-hold-music">
-                <SelectValue placeholder="Select from library" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">None</SelectItem>
-                {holdMusicOptions.map((audio) => (
-                  <SelectItem key={audio.id} value={audio.id}>
-                    <div className="flex items-center gap-2">
-                      <Music className="w-3 h-3 text-muted-foreground" />
-                      {audio.name}
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {holdMusicOptions.length === 0 && (
-              <p className="text-xs text-muted-foreground">
+            {holdMusicOptions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">
                 No hold music files available. Upload audio files with type "Hold Music" in the Audio tab.
+              </p>
+            ) : (
+              <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+                {holdMusicOptions.map((audio) => (
+                  <div 
+                    key={audio.id} 
+                    className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50 cursor-pointer"
+                    onClick={() => toggleHoldMusic(audio.id)}
+                    data-testid={`checkbox-holdmusic-${audio.id}`}
+                  >
+                    <Checkbox
+                      checked={selectedHoldMusicIds.includes(audio.id)}
+                      onCheckedChange={() => toggleHoldMusic(audio.id)}
+                    />
+                    <div className="flex items-center gap-2 flex-1 min-w-0">
+                      <Music className="w-4 h-4 text-muted-foreground" />
+                      <p className="text-sm font-medium truncate">{audio.name}</p>
+                      {audio.duration && (
+                        <span className="text-xs text-muted-foreground">
+                          ({Math.floor(audio.duration / 60)}:{String(audio.duration % 60).padStart(2, '0')})
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {selectedHoldMusicIds.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {selectedHoldMusicIds.length} track{selectedHoldMusicIds.length !== 1 ? 's' : ''} selected
               </p>
             )}
           </div>
+          {selectedHoldMusicIds.length > 1 && (
+            <div className="space-y-2">
+              <Label>Playback Mode</Label>
+              <Select value={holdMusicPlaybackMode} onValueChange={setHoldMusicPlaybackMode}>
+                <SelectTrigger data-testid="select-holdmusic-playback-mode">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="sequential">Sequential (play in order)</SelectItem>
+                  <SelectItem value="random">Random (shuffle)</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
           </div>
           <div className="space-y-4 border-t pt-4">
             <div className="flex items-center justify-between">
@@ -1629,7 +1710,6 @@ function QueueDialog({
           </Button>
           <Button
             onClick={() => {
-              const selectedAudio = audioFiles.find(a => a.id === holdMusicAudioId);
               onSubmit({ 
                 id: queue?.id, 
                 name, 
@@ -1637,7 +1717,8 @@ function QueueDialog({
                 extension, 
                 ringStrategy, 
                 memberIds: selectedMemberIds.filter(id => id),
-                holdMusicUrl: selectedAudio?.fileUrl || null,
+                holdMusicPlaybackMode: selectedHoldMusicIds.length > 1 ? holdMusicPlaybackMode : "sequential",
+                holdMusicAudioIds: selectedHoldMusicIds,
                 adsEnabled,
                 adsIntervalMin,
                 adsIntervalMax 
