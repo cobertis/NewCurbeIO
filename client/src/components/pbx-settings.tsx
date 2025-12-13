@@ -71,6 +71,7 @@ interface PbxQueue {
   ringStrategy: string;
   ringTimeout: number;
   maxWaitTime: number;
+  holdMusicUrl: string | null;
   status: string;
 }
 
@@ -1158,6 +1159,7 @@ export function PbxSettings() {
         onOpenChange={setShowQueueDialog}
         queue={editingQueue}
         extensions={extensions}
+        audioFiles={audioFiles}
         onSubmit={(data) => queueMutation.mutate(data)}
         isPending={queueMutation.isPending}
       />
@@ -1185,6 +1187,7 @@ export function PbxSettings() {
         open={showIvrDialog}
         onOpenChange={setShowIvrDialog}
         ivr={editingIvr}
+        audioFiles={audioFiles}
         onSubmit={(data) => ivrMutation.mutate(data)}
         onUploadGreeting={(ivrId, file) => uploadIvrGreetingMutation.mutate({ ivrId, file })}
         onDeleteGreeting={(ivrId) => deleteIvrGreetingMutation.mutate(ivrId)}
@@ -1274,6 +1277,7 @@ function QueueDialog({
   onOpenChange,
   queue,
   extensions,
+  audioFiles,
   onSubmit,
   isPending,
 }: {
@@ -1281,6 +1285,7 @@ function QueueDialog({
   onOpenChange: (open: boolean) => void;
   queue: PbxQueue | null;
   extensions: PbxExtension[];
+  audioFiles: PbxAudioFile[];
   onSubmit: (data: any) => void;
   isPending: boolean;
 }) {
@@ -1289,6 +1294,9 @@ function QueueDialog({
   const [extension, setExtension] = useState("");
   const [ringStrategy, setRingStrategy] = useState("ring_all");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+  const [holdMusicAudioId, setHoldMusicAudioId] = useState<string>("");
+  
+  const holdMusicOptions = audioFiles.filter(a => a.audioType === 'hold_music');
 
   const { data: existingMembers = [] } = useQuery<QueueMember[]>({
     queryKey: [`/api/pbx/queues/${queue?.id}/members`],
@@ -1302,15 +1310,19 @@ function QueueDialog({
         setDescription(queue.description || "");
         setExtension(queue.extension || "");
         setRingStrategy(queue.ringStrategy);
+        // Find audio file that matches holdMusicUrl
+        const matchingAudio = audioFiles.find(a => a.fileUrl === queue.holdMusicUrl);
+        setHoldMusicAudioId(matchingAudio?.id || "");
       } else {
         setName("");
         setDescription("");
         setExtension("");
         setRingStrategy("ring_all");
         setSelectedMemberIds([]);
+        setHoldMusicAudioId("");
       }
     }
-  }, [open, queue]);
+  }, [open, queue, audioFiles]);
 
   useEffect(() => {
     if (open && queue?.id) {
@@ -1325,6 +1337,7 @@ function QueueDialog({
       setExtension("");
       setRingStrategy("ring_all");
       setSelectedMemberIds([]);
+      setHoldMusicAudioId("");
     }
     onOpenChange(isOpen);
   };
@@ -1422,13 +1435,48 @@ function QueueDialog({
               </p>
             )}
           </div>
+          <div className="space-y-2">
+            <Label>Hold Music</Label>
+            <Select value={holdMusicAudioId} onValueChange={setHoldMusicAudioId}>
+              <SelectTrigger data-testid="select-hold-music">
+                <SelectValue placeholder="Select from library" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="">None</SelectItem>
+                {holdMusicOptions.map((audio) => (
+                  <SelectItem key={audio.id} value={audio.id}>
+                    <div className="flex items-center gap-2">
+                      <Music className="w-3 h-3 text-muted-foreground" />
+                      {audio.name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {holdMusicOptions.length === 0 && (
+              <p className="text-xs text-muted-foreground">
+                No hold music files available. Upload audio files with type "Hold Music" in the Audio tab.
+              </p>
+            )}
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
-            onClick={() => onSubmit({ id: queue?.id, name, description, extension, ringStrategy, memberIds: selectedMemberIds.filter(id => id) })}
+            onClick={() => {
+              const selectedAudio = audioFiles.find(a => a.id === holdMusicAudioId);
+              onSubmit({ 
+                id: queue?.id, 
+                name, 
+                description, 
+                extension, 
+                ringStrategy, 
+                memberIds: selectedMemberIds.filter(id => id),
+                holdMusicUrl: selectedAudio?.fileUrl || null 
+              });
+            }}
             disabled={isPending || !name}
             data-testid="button-save-queue"
           >
@@ -1751,6 +1799,7 @@ function IvrDialog({
   open,
   onOpenChange,
   ivr,
+  audioFiles,
   onSubmit,
   onUploadGreeting,
   onDeleteGreeting,
@@ -1761,6 +1810,7 @@ function IvrDialog({
   open: boolean;
   onOpenChange: (open: boolean) => void;
   ivr: PbxIvr | null;
+  audioFiles: PbxAudioFile[];
   onSubmit: (data: any) => void;
   onUploadGreeting: (ivrId: string, file: File) => void;
   onDeleteGreeting: (ivrId: string) => void;
@@ -1776,7 +1826,11 @@ function IvrDialog({
   const [greetingText, setGreetingText] = useState("");
   const [ivrTimeout, setIvrTimeout] = useState(10);
   const [maxRetries, setMaxRetries] = useState(3);
+  const [audioSource, setAudioSource] = useState<"library" | "upload">("library");
+  const [selectedAudioId, setSelectedAudioId] = useState<string>("");
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  const greetingAudioOptions = audioFiles.filter(a => a.audioType === 'greeting' || a.audioType === 'announcement');
 
   const { data: nextExtension } = useQuery<{ extension: string }>({
     queryKey: ["/api/pbx/ivrs/next-extension"],
@@ -1794,6 +1848,18 @@ function IvrDialog({
         setGreetingText(ivr.greetingText || "");
         setIvrTimeout(ivr.ivrTimeout);
         setMaxRetries(ivr.maxRetries);
+        // Check if greeting audio matches a library file
+        const matchingAudio = audioFiles.find(a => a.fileUrl === ivr.greetingAudioUrl);
+        if (matchingAudio) {
+          setAudioSource("library");
+          setSelectedAudioId(matchingAudio.id);
+        } else if (ivr.greetingAudioUrl) {
+          setAudioSource("upload");
+          setSelectedAudioId("");
+        } else {
+          setAudioSource("library");
+          setSelectedAudioId("");
+        }
       } else {
         setName("");
         setDescription("");
@@ -1803,9 +1869,11 @@ function IvrDialog({
         setGreetingText("");
         setIvrTimeout(10);
         setMaxRetries(3);
+        setAudioSource("library");
+        setSelectedAudioId("");
       }
     }
-  }, [open, ivr, nextExtension]);
+  }, [open, ivr, nextExtension, audioFiles]);
 
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
@@ -1817,6 +1885,8 @@ function IvrDialog({
       setGreetingText("");
       setIvrTimeout(10);
       setMaxRetries(3);
+      setAudioSource("library");
+      setSelectedAudioId("");
     }
     onOpenChange(isOpen);
   };
@@ -1911,58 +1981,109 @@ function IvrDialog({
                 data-testid="input-ivr-greeting-text"
               />
             </div>
-          ) : ivr?.id ? (
-            <div className="space-y-2">
+          ) : (
+            <div className="space-y-3">
               <Label>Greeting Audio</Label>
-              <input
-                type="file"
-                ref={fileInputRef}
-                onChange={handleFileUpload}
-                accept=".mp3,.wav,audio/mpeg,audio/wav"
-                className="hidden"
-              />
-              {ivr?.greetingAudioUrl ? (
-                <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30">
-                  <div className="flex-1">
-                    <p className="text-sm font-medium">Audio uploaded</p>
-                  </div>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isUploadPending}
-                  >
-                    {isUploadPending ? <LoadingSpinner fullScreen={false} /> : <Upload className="h-4 w-4" />}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => onDeleteGreeting(ivr.id)}
-                    disabled={isDeletePending}
-                    className="text-red-500"
-                  >
-                    {isDeletePending ? <LoadingSpinner fullScreen={false} /> : <Trash2 className="h-4 w-4" />}
-                  </Button>
-                </div>
-              ) : (
-                <div
-                  className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50"
-                  onClick={() => fileInputRef.current?.click()}
+              <div className="flex gap-2">
+                <Button
+                  variant={audioSource === "library" ? "default" : "outline"}
+                  size="sm"
+                  onClick={() => setAudioSource("library")}
+                  data-testid="button-audio-source-library"
                 >
-                  {isUploadPending ? (
-                    <LoadingSpinner fullScreen={false} />
-                  ) : (
-                    <>
-                      <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                      <p className="text-sm font-medium">Upload audio</p>
-                      <p className="text-xs text-muted-foreground">MP3 or WAV</p>
-                    </>
+                  <Library className="w-4 h-4 mr-1" />
+                  From Library
+                </Button>
+                {ivr?.id && (
+                  <Button
+                    variant={audioSource === "upload" ? "default" : "outline"}
+                    size="sm"
+                    onClick={() => setAudioSource("upload")}
+                    data-testid="button-audio-source-upload"
+                  >
+                    <Upload className="w-4 h-4 mr-1" />
+                    Upload New
+                  </Button>
+                )}
+              </div>
+              
+              {audioSource === "library" ? (
+                <div className="space-y-2">
+                  <Select value={selectedAudioId} onValueChange={setSelectedAudioId}>
+                    <SelectTrigger data-testid="select-ivr-greeting-audio">
+                      <SelectValue placeholder="Select from library" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">None</SelectItem>
+                      {greetingAudioOptions.map((audio) => (
+                        <SelectItem key={audio.id} value={audio.id}>
+                          <div className="flex items-center gap-2">
+                            <Mic className="w-3 h-3 text-muted-foreground" />
+                            {audio.name}
+                          </div>
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  {greetingAudioOptions.length === 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      No greeting audio available. Upload audio files with type "IVR Greeting" in the Audio tab.
+                    </p>
                   )}
                 </div>
+              ) : ivr?.id ? (
+                <div className="space-y-2">
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileUpload}
+                    accept=".mp3,.wav,audio/mpeg,audio/wav"
+                    className="hidden"
+                  />
+                  {ivr?.greetingAudioUrl && audioSource === "upload" ? (
+                    <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">Custom audio uploaded</p>
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={isUploadPending}
+                      >
+                        {isUploadPending ? <LoadingSpinner fullScreen={false} /> : <Upload className="h-4 w-4" />}
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onDeleteGreeting(ivr.id)}
+                        disabled={isDeletePending}
+                        className="text-red-500"
+                      >
+                        {isDeletePending ? <LoadingSpinner fullScreen={false} /> : <Trash2 className="h-4 w-4" />}
+                      </Button>
+                    </div>
+                  ) : (
+                    <div
+                      className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50"
+                      onClick={() => fileInputRef.current?.click()}
+                    >
+                      {isUploadPending ? (
+                        <LoadingSpinner fullScreen={false} />
+                      ) : (
+                        <>
+                          <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                          <p className="text-sm font-medium">Upload audio</p>
+                          <p className="text-xs text-muted-foreground">MP3 or WAV</p>
+                        </>
+                      )}
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">Save the IVR first to upload custom audio.</p>
               )}
             </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">Save the IVR first to upload audio greeting.</p>
           )}
 
           <div className="grid grid-cols-2 gap-4">
@@ -1991,17 +2112,25 @@ function IvrDialog({
             Cancel
           </Button>
           <Button
-            onClick={() => onSubmit({
-              id: ivr?.id,
-              name,
-              description: description || null,
-              extension,
-              language,
-              useTextToSpeech,
-              greetingText: useTextToSpeech ? greetingText : null,
-              ivrTimeout,
-              maxRetries,
-            })}
+            onClick={() => {
+              const selectedAudio = audioFiles.find(a => a.id === selectedAudioId);
+              let greetingUrl = null;
+              if (!useTextToSpeech && audioSource === "library" && selectedAudio) {
+                greetingUrl = selectedAudio.fileUrl;
+              }
+              onSubmit({
+                id: ivr?.id,
+                name,
+                description: description || null,
+                extension,
+                language,
+                useTextToSpeech,
+                greetingText: useTextToSpeech ? greetingText : null,
+                greetingAudioUrl: greetingUrl,
+                ivrTimeout,
+                maxRetries,
+              });
+            }}
             disabled={isPending || !name || !extension}
             data-testid="button-save-ivr"
           >
