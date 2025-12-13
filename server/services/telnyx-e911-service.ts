@@ -115,15 +115,56 @@ async function getOrCreateOutboundVoiceProfile(
     .where(eq(companies.id, companyId));
 
   const companyName = company?.name || "Company";
+  const profileName = `${companyName} - Outbound Profile`;
 
-  console.log(`[E911] Creating outbound voice profile for ${companyName}...`);
+  console.log(`[E911] Looking for existing outbound voice profile: ${profileName}...`);
 
   try {
+    // First, search for existing profile by name in Telnyx
+    const searchResponse = await fetch(
+      `${TELNYX_API_BASE}/outbound_voice_profiles?filter[name]=${encodeURIComponent(profileName)}`,
+      {
+        method: "GET",
+        headers: buildHeaders(config),
+      }
+    );
+
+    if (searchResponse.ok) {
+      const searchData = await searchResponse.json();
+      const existingProfile = searchData.data?.find((p: any) => p.name === profileName);
+      
+      if (existingProfile?.id) {
+        console.log(`[E911] Found existing outbound voice profile in Telnyx: ${existingProfile.id}`);
+        
+        // Save to database
+        const [existing] = await db
+          .select({ id: telephonySettings.id })
+          .from(telephonySettings)
+          .where(eq(telephonySettings.companyId, companyId));
+
+        if (existing) {
+          await db.update(telephonySettings)
+            .set({ outboundVoiceProfileId: existingProfile.id, updatedAt: new Date() })
+            .where(eq(telephonySettings.companyId, companyId));
+        } else {
+          await db.insert(telephonySettings).values({
+            companyId,
+            outboundVoiceProfileId: existingProfile.id,
+            provisioningStatus: "provisioning" as const,
+          });
+        }
+
+        return { success: true, profileId: existingProfile.id };
+      }
+    }
+
+    console.log(`[E911] Creating outbound voice profile for ${companyName}...`);
+
     const response = await fetch(`${TELNYX_API_BASE}/outbound_voice_profiles`, {
       method: "POST",
       headers: buildHeaders(config),
       body: JSON.stringify({
-        name: `${companyName} - Outbound Profile`,
+        name: profileName,
         service_plan: "global",
         traffic_type: "conversational",
         usage_payment_method: "rate-deck",
@@ -239,11 +280,14 @@ function generateSipUsername(companyId: string): string {
   return `${prefix}${companyPart}${randomPart}`.toLowerCase();
 }
 
-function generateSipUsernameWithExtension(companyId: string, extension: string): string {
-  const prefix = "curbe";
-  const companyPart = companyId.replace(/-/g, '').slice(0, 6);
+function generateSipUsernameWithExtension(companyName: string, extension: string): string {
+  // Use company name + extension for readable format (e.g., cobertis1001)
+  const sanitizedName = companyName
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '') // Remove non-alphanumeric
+    .slice(0, 20); // Max 20 chars for company name
   const extPart = extension.replace(/\D/g, '').slice(0, 4);
-  return `${prefix}${companyPart}ext${extPart}`.toLowerCase();
+  return `${sanitizedName}${extPart}`;
 }
 
 function generateSipPassword(): string {
@@ -986,8 +1030,15 @@ export async function createUserSipCredentialWithExtension(
       connectionId = connResult.connectionId;
     }
 
-    // Generate unique SIP credentials with extension
-    const sipUsername = generateSipUsernameWithExtension(companyId, extension);
+    // Get company name for readable SIP username
+    const [company] = await db
+      .select({ name: companies.name })
+      .from(companies)
+      .where(eq(companies.id, companyId));
+    const companyName = company?.name || "company";
+
+    // Generate unique SIP credentials with company name + extension (e.g., cobertis1001)
+    const sipUsername = generateSipUsernameWithExtension(companyName, extension);
     const sipPassword = generateSipPassword();
 
     console.log(`[SIP User] Creating Telnyx credential: ${sipUsername} for connection ${connectionId}`);
@@ -1016,25 +1067,33 @@ export async function createUserSipCredentialWithExtension(
 
     console.log(`[SIP User] Credential created: ${credentialId}, SIP: ${returnedSipUsername}@sip.telnyx.com`);
 
-    // Save to database with ownerUserId
-    await db.insert(telephonyCredentials).values({
-      companyId,
-      userId,
-      ownerUserId: userId,
-      telnyxCredentialId: credentialId,
-      sipUsername: returnedSipUsername,
-      sipPassword: sipPassword,
-      isActive: true,
-    }).onConflictDoUpdate({
-      target: [telephonyCredentials.ownerUserId],
-      set: {
+    // Save to database with ownerUserId - check for existing first
+    const [existingUserCred] = await db
+      .select({ id: telephonyCredentials.id })
+      .from(telephonyCredentials)
+      .where(eq(telephonyCredentials.ownerUserId, userId));
+
+    if (existingUserCred) {
+      await db.update(telephonyCredentials)
+        .set({
+          telnyxCredentialId: credentialId,
+          sipUsername: returnedSipUsername,
+          sipPassword: sipPassword,
+          isActive: true,
+          updatedAt: new Date(),
+        })
+        .where(eq(telephonyCredentials.ownerUserId, userId));
+    } else {
+      await db.insert(telephonyCredentials).values({
+        companyId,
+        userId,
+        ownerUserId: userId,
         telnyxCredentialId: credentialId,
         sipUsername: returnedSipUsername,
         sipPassword: sipPassword,
         isActive: true,
-        updatedAt: new Date(),
-      },
-    });
+      });
+    }
 
     return { success: true, credentialId, sipUsername: returnedSipUsername, sipPassword };
   } catch (error) {
