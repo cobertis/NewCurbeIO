@@ -18,7 +18,7 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Loader2, Plus, Trash2, Save, Smartphone, QrCode, CreditCard, 
-  Palette, Settings2, BarChart3, Eye, Download, Bell, Users, RefreshCw, Send
+  Palette, Settings2, BarChart3, Eye, Download, Bell, Users, RefreshCw, Send, Copy, Link
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -68,6 +68,7 @@ interface VipPassInstance {
   status: string;
   downloadCount: number;
   createdAt: string;
+  authenticationToken: string;
 }
 
 interface NotificationHistory {
@@ -711,6 +712,7 @@ export default function VipPassPage() {
                               <TableHead>Status</TableHead>
                               <TableHead>Downloads</TableHead>
                               <TableHead>Created</TableHead>
+                              <TableHead>Public Link</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                           </TableHeader>
@@ -727,6 +729,42 @@ export default function VipPassPage() {
                                 </TableCell>
                                 <TableCell>{instance.downloadCount}</TableCell>
                                 <TableCell>{format(new Date(instance.createdAt), "MMM d, yyyy")}</TableCell>
+                                <TableCell>
+                                  <div className="flex items-center gap-1">
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button 
+                                          variant="outline" 
+                                          size="sm" 
+                                          onClick={() => {
+                                            const publicUrl = `${window.location.origin}/p/${instance.authenticationToken}`;
+                                            navigator.clipboard.writeText(publicUrl);
+                                            toast({ title: "Link Copied", description: "Public link copied to clipboard" });
+                                          }}
+                                          disabled={instance.status !== "active"}
+                                          data-testid={`button-copy-link-${instance.id}`}
+                                        >
+                                          <Copy className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Copy public link</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button 
+                                          variant="outline" 
+                                          size="sm" 
+                                          onClick={() => window.open(`/p/${instance.authenticationToken}`, "_blank")}
+                                          disabled={instance.status !== "active"}
+                                          data-testid={`button-open-link-${instance.id}`}
+                                        >
+                                          <Link className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Open public page</TooltipContent>
+                                    </Tooltip>
+                                  </div>
+                                </TableCell>
                                 <TableCell className="text-right">
                                   <div className="flex justify-end gap-1">
                                     <Button variant="outline" size="sm" onClick={() => window.open(`/api/vip-pass/instances/${instance.id}/download`, "_blank")}>
