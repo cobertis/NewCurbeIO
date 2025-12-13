@@ -1,5 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react';
-import { useExtensionCallStore, OnlineExtension, IncomingExtCall } from '@/stores/extensionCallStore';
+import { useExtensionCallStore, OnlineExtension, IncomingExtCall, QueueCall } from '@/stores/extensionCallStore';
 import { useToast } from '@/hooks/use-toast';
 
 const ICE_SERVERS = [
@@ -22,6 +22,7 @@ export function useExtensionCall() {
     onlineExtensions,
     currentExtCall,
     incomingExtCall,
+    queueCall,
     isMuted,
     setWsConnection,
     setConnectionStatus,
@@ -30,6 +31,7 @@ export function useExtensionCall() {
     setOnlineExtensions,
     setCurrentExtCall,
     setIncomingExtCall,
+    setQueueCall,
     setIsMuted,
     updateCallState,
     reset,
@@ -164,11 +166,65 @@ export function useExtensionCall() {
             toast({ title: "Call declined" });
           }
           break;
+
+        case "queue_call_offer":
+          console.log("[useExtensionCall] Queue call offer received:", msg);
+          setQueueCall({
+            queueCallId: msg.queueCallId,
+            callControlId: msg.callControlId,
+            queueId: msg.queueId,
+            callerNumber: msg.callerNumber,
+          });
+          toast({
+            title: "Incoming Queue Call",
+            description: `Call from ${msg.callerNumber}`,
+          });
+          break;
+
+        case "queue_call_taken":
+          const currentQueueCall = useExtensionCallStore.getState().queueCall;
+          if (currentQueueCall?.callControlId === msg.callControlId) {
+            setQueueCall(null);
+            toast({
+              title: "Call Taken",
+              description: "Another agent answered the call",
+            });
+          }
+          break;
+
+        case "queue_call_ended":
+          const activeQueueCall = useExtensionCallStore.getState().queueCall;
+          if (activeQueueCall?.callControlId === msg.callControlId) {
+            setQueueCall(null);
+            toast({
+              title: "Queue Call Ended",
+              description: msg.reason === "timeout" ? "Call timed out" : "Caller disconnected",
+            });
+          }
+          break;
+
+        case "queue_call_connected":
+          toast({
+            title: "Call Connected",
+            description: `Connected to caller: ${msg.callerNumber}`,
+          });
+          break;
+
+        case "accept_queue_call_result":
+          if (!msg.success) {
+            toast({
+              title: "Accept Failed",
+              description: msg.error || "Could not accept call",
+              variant: "destructive",
+            });
+            setQueueCall(null);
+          }
+          break;
       }
     } catch (e) {
       console.error("[useExtensionCall] Message parse error:", e);
     }
-  }, [toast, setConnectionStatus, setMyExtension, setMyDisplayName, setOnlineExtensions, setIncomingExtCall, updateCallState, cleanupCall]);
+  }, [toast, setConnectionStatus, setMyExtension, setMyDisplayName, setOnlineExtensions, setIncomingExtCall, setQueueCall, updateCallState, cleanupCall]);
 
   const connect = useCallback(() => {
     if (wsRef.current?.readyState === WebSocket.OPEN) return;
@@ -335,6 +391,30 @@ export function useExtensionCall() {
     }
   }, []);
 
+  const acceptQueueCall = useCallback(() => {
+    const qc = useExtensionCallStore.getState().queueCall;
+    if (!qc || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    
+    console.log("[useExtensionCall] Accepting queue call:", qc.callControlId);
+    wsRef.current.send(JSON.stringify({
+      type: "accept_queue_call",
+      callControlId: qc.callControlId,
+    }));
+    setQueueCall(null);
+  }, [setQueueCall]);
+
+  const rejectQueueCall = useCallback(() => {
+    const qc = useExtensionCallStore.getState().queueCall;
+    if (!qc || !wsRef.current || wsRef.current.readyState !== WebSocket.OPEN) return;
+    
+    console.log("[useExtensionCall] Rejecting queue call:", qc.callControlId);
+    wsRef.current.send(JSON.stringify({
+      type: "reject_queue_call",
+      callControlId: qc.callControlId,
+    }));
+    setQueueCall(null);
+  }, [setQueueCall]);
+
   useEffect(() => {
     remoteAudioRef.current = new Audio();
     remoteAudioRef.current.autoplay = true;
@@ -353,6 +433,7 @@ export function useExtensionCall() {
     onlineExtensions,
     currentExtCall,
     incomingExtCall,
+    queueCall,
     isMuted,
     connect,
     disconnect,
@@ -362,6 +443,8 @@ export function useExtensionCall() {
     endCall,
     toggleMute,
     refreshOnlineExtensions,
+    acceptQueueCall,
+    rejectQueueCall,
   };
 }
 

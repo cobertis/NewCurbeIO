@@ -1581,6 +1581,7 @@ export function WebPhoneFloatingWindow() {
     onlineExtensions: extOnlineExtensions,
     currentExtCall,
     incomingExtCall,
+    queueCall,
     isMuted: extIsMuted,
     connect: extConnect,
     startCall: extStartCall,
@@ -1589,6 +1590,8 @@ export function WebPhoneFloatingWindow() {
     endCall: extEndCall,
     toggleMute: extToggleMute,
     refreshOnlineExtensions: extRefreshOnlineExtensions,
+    acceptQueueCall,
+    rejectQueueCall,
   } = useExtensionCall();
   
   // Auto-connect to extension WebSocket when user has an extension
@@ -1682,9 +1685,9 @@ export function WebPhoneFloatingWindow() {
     }
   }, []);
   
-  // Ringtone and auto-open effect for incoming calls
+  // Ringtone and auto-open effect for incoming calls (including queue calls)
   useEffect(() => {
-    const hasIncomingCall = !!telnyxIncomingCall || !!incomingExtCall;
+    const hasIncomingCall = !!telnyxIncomingCall || !!incomingExtCall || !!queueCall;
     
     if (hasIncomingCall) {
       if (!isVisible) {
@@ -1698,7 +1701,7 @@ export function WebPhoneFloatingWindow() {
     return () => {
       stopRingtone();
     };
-  }, [telnyxIncomingCall, incomingExtCall, isVisible, toggleDialpad, playRingtone, stopRingtone]);
+  }, [telnyxIncomingCall, incomingExtCall, queueCall, isVisible, toggleDialpad, playRingtone, stopRingtone]);
   
   // Ringback tone effect for outgoing calls (when dialing, before answer)
   useEffect(() => {
@@ -2567,6 +2570,46 @@ export function WebPhoneFloatingWindow() {
                 Need to transfer an existing number? Contact support for assistance.
               </p>
             </div>
+          ) : queueCall ? (
+              /* Queue Call Incoming Screen */
+              <div className="flex-1 flex flex-col items-center justify-center px-6 sm:px-8 text-center">
+                <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-orange-100 dark:bg-orange-900/50 flex items-center justify-center mb-4 animate-pulse">
+                  <PhoneIncoming className="h-8 w-8 sm:h-10 sm:w-10 text-orange-600 dark:text-orange-400" />
+                </div>
+                <h2 className="text-lg sm:text-xl font-semibold text-foreground mb-2">
+                  Incoming Queue Call
+                </h2>
+                <p className="text-base sm:text-lg font-medium text-foreground">
+                  {queueCall.callerNumber}
+                </p>
+                <p className="text-sm text-muted-foreground mb-6">
+                  External Caller
+                </p>
+                
+                <div className="grid grid-cols-2 gap-4 sm:gap-6 w-full max-w-xs">
+                  <button
+                    onClick={acceptQueueCall}
+                    className="flex flex-col items-center gap-2 sm:gap-3 transition-all active:scale-95"
+                    data-testid="button-accept-queue-call"
+                  >
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center shadow-lg">
+                      <Phone className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+                    </div>
+                    <span className="text-sm sm:text-base text-foreground font-medium">Accept</span>
+                  </button>
+                  
+                  <button
+                    onClick={rejectQueueCall}
+                    className="flex flex-col items-center gap-2 sm:gap-3 transition-all active:scale-95"
+                    data-testid="button-reject-queue-call"
+                  >
+                    <div className="w-16 h-16 sm:w-20 sm:h-20 rounded-full bg-red-500 hover:bg-red-600 flex items-center justify-center shadow-lg">
+                      <PhoneOff className="h-8 w-8 sm:h-10 sm:w-10 text-white" />
+                    </div>
+                    <span className="text-sm sm:text-base text-foreground font-medium">Decline</span>
+                  </button>
+                </div>
+              </div>
           ) : effectiveCall ? (
               /* Active Call Screen - No bottom navigation */
               <div className="flex-1 overflow-y-auto">

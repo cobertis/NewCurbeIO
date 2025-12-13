@@ -23,6 +23,13 @@ export interface CurrentExtCall {
   answerTime?: Date;
 }
 
+export interface QueueCall {
+  queueCallId: string;
+  callControlId: string;
+  queueId: string;
+  callerNumber: string;
+}
+
 interface ExtensionCallState {
   wsConnection: WebSocket | null;
   connectionStatus: "disconnected" | "connecting" | "connected";
@@ -31,6 +38,7 @@ interface ExtensionCallState {
   onlineExtensions: OnlineExtension[];
   currentExtCall: CurrentExtCall | null;
   incomingExtCall: IncomingExtCall | null;
+  queueCall: QueueCall | null;
   isMuted: boolean;
   
   setWsConnection: (ws: WebSocket | null) => void;
@@ -40,6 +48,7 @@ interface ExtensionCallState {
   setOnlineExtensions: (extensions: OnlineExtension[]) => void;
   setCurrentExtCall: (call: CurrentExtCall | null) => void;
   setIncomingExtCall: (call: IncomingExtCall | null) => void;
+  setQueueCall: (call: QueueCall | null) => void;
   setIsMuted: (muted: boolean) => void;
   updateCallState: (state: "calling" | "ringing" | "connected") => void;
   reset: () => void;
@@ -53,6 +62,7 @@ const initialState = {
   onlineExtensions: [],
   currentExtCall: null,
   incomingExtCall: null,
+  queueCall: null,
   isMuted: false,
 };
 
@@ -66,6 +76,7 @@ export const useExtensionCallStore = create<ExtensionCallState>((set) => ({
   setOnlineExtensions: (extensions) => set({ onlineExtensions: extensions }),
   setCurrentExtCall: (call) => set({ currentExtCall: call }),
   setIncomingExtCall: (call) => set({ incomingExtCall: call }),
+  setQueueCall: (call) => set({ queueCall: call }),
   setIsMuted: (muted) => set({ isMuted: muted }),
   updateCallState: (state) => set((s) => {
     if (!s.currentExtCall) return s;
