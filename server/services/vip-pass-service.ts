@@ -1,7 +1,7 @@
 import { PKPass } from "passkit-generator";
 import { db } from "../db";
-import { vipPassDesigns, vipPassInstances, companies, contacts } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { vipPassDesigns, vipPassInstances, companies, contacts, pushSubscriptions } from "@shared/schema";
+import { eq, and, sql } from "drizzle-orm";
 import crypto from "crypto";
 import path from "path";
 import fs from "fs";
@@ -199,11 +199,28 @@ export class VipPassService {
   }
 
   async getPassInstances(companyId: string) {
-    return await db
+    const instances = await db
       .select()
       .from(vipPassInstances)
       .where(eq(vipPassInstances.companyId, companyId))
       .orderBy(vipPassInstances.createdAt);
+    
+    // Get push subscription counts for each instance
+    const instancesWithPushCount = await Promise.all(
+      instances.map(async (instance) => {
+        const subs = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(pushSubscriptions)
+          .where(eq(pushSubscriptions.passInstanceId, instance.id));
+        
+        return {
+          ...instance,
+          pushSubscriptionCount: subs[0]?.count || 0,
+        };
+      })
+    );
+    
+    return instancesWithPushCount;
   }
 
   async incrementDownloadCount(passInstanceId: string) {

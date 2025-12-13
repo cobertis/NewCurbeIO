@@ -70,6 +70,7 @@ interface VipPassInstance {
   downloadCount: number;
   createdAt: string;
   authenticationToken: string;
+  pushSubscriptionCount: number;
 }
 
 interface NotificationHistory {
@@ -720,6 +721,7 @@ export default function VipPassPage() {
                               <TableHead>Recipient</TableHead>
                               <TableHead>Email</TableHead>
                               <TableHead>Status</TableHead>
+                              <TableHead>Push</TableHead>
                               <TableHead>Downloads</TableHead>
                               <TableHead>Created</TableHead>
                               <TableHead>Public Link</TableHead>
@@ -736,6 +738,16 @@ export default function VipPassPage() {
                                   <Badge variant={instance.status === "active" ? "default" : "destructive"} className={instance.status === "active" ? "bg-green-500" : ""}>
                                     {instance.status}
                                   </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  {instance.pushSubscriptionCount > 0 ? (
+                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                                      <Bell className="h-3 w-3 mr-1" />
+                                      {instance.pushSubscriptionCount}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-muted-foreground text-sm">-</span>
+                                  )}
                                 </TableCell>
                                 <TableCell>{instance.downloadCount}</TableCell>
                                 <TableCell>{format(new Date(instance.createdAt), "MMM d, yyyy")}</TableCell>
