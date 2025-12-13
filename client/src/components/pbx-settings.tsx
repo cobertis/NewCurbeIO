@@ -605,10 +605,6 @@ export function PbxSettings() {
             Configure your IVR, call queues, and extensions
           </p>
         </div>
-        <div className="text-right">
-          <span className="text-sm text-muted-foreground">IVR Ext:</span>
-          <span className="ml-1 font-mono font-bold text-lg">1000</span>
-        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
