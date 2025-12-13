@@ -33,7 +33,10 @@ import {
   Pause,
   Volume2,
   Languages,
-  Star
+  Star,
+  Library,
+  FileAudio,
+  MoreVertical
 } from "lucide-react";
 
 interface PbxSettings {
@@ -114,6 +117,22 @@ interface PbxIvr {
   isActive: boolean;
 }
 
+interface PbxAudioFile {
+  id: string;
+  companyId: string;
+  name: string;
+  description: string | null;
+  notes: string | null;
+  fileUrl: string;
+  fileName: string;
+  fileSize: number | null;
+  duration: number | null;
+  mimeType: string | null;
+  audioType: string;
+  createdAt: string;
+  usage: { type: string; name: string; id: string }[];
+}
+
 export function PbxSettings() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("general");
@@ -129,8 +148,13 @@ export function PbxSettings() {
   const [editingIvrMenuOption, setEditingIvrMenuOption] = useState<PbxMenuOption | null>(null);
   const [selectedIvrId, setSelectedIvrId] = useState<string | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
+  const [showAudioDialog, setShowAudioDialog] = useState(false);
+  const [editingAudio, setEditingAudio] = useState<PbxAudioFile | null>(null);
+  const [playingAudioId, setPlayingAudioId] = useState<string | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const libraryAudioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const audioLibraryInputRef = useRef<HTMLInputElement>(null);
 
   const { data: settings, isLoading: settingsLoading } = useQuery<PbxSettings>({
     queryKey: ["/api/pbx/settings"],
@@ -157,6 +181,11 @@ export function PbxSettings() {
     queryKey: [`/api/pbx/ivrs/${selectedIvrId}/menu-options`],
     enabled: !!selectedIvrId,
   });
+
+  const { data: audioFilesData, isLoading: audioFilesLoading } = useQuery<{ audioFiles: PbxAudioFile[] }>({
+    queryKey: ["/api/pbx/audio"],
+  });
+  const audioFiles = audioFilesData?.audioFiles ?? [];
 
   const settingsMutation = useMutation({
     mutationFn: async (data: Partial<PbxSettings>) => {
@@ -439,6 +468,96 @@ export function PbxSettings() {
     },
   });
 
+  const uploadAudioFileMutation = useMutation({
+    mutationFn: async (data: { file: File; name: string; description?: string; notes?: string; audioType: string }) => {
+      const formData = new FormData();
+      formData.append('audio', data.file);
+      formData.append('name', data.name);
+      if (data.description) formData.append('description', data.description);
+      if (data.notes) formData.append('notes', data.notes);
+      formData.append('audioType', data.audioType);
+      const response = await fetch('/api/pbx/audio', {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || 'Upload failed');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pbx/audio"] });
+      setShowAudioDialog(false);
+      toast({ title: "Audio uploaded", description: "Audio file added to library." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const updateAudioFileMutation = useMutation({
+    mutationFn: async (data: { audioId: string; name?: string; description?: string; notes?: string }) => {
+      const { audioId, ...body } = data;
+      return apiRequest("PATCH", `/api/pbx/audio/${audioId}`, body);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pbx/audio"] });
+      setEditingAudio(null);
+      toast({ title: "Audio updated", description: "Audio file details saved." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Update failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteAudioFileMutation = useMutation({
+    mutationFn: async (audioId: string) => {
+      return apiRequest("DELETE", `/api/pbx/audio/${audioId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pbx/audio"] });
+      toast({ title: "Audio deleted", description: "Audio file removed from library." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const toggleLibraryAudioPlayback = (audioFile: PbxAudioFile) => {
+    if (playingAudioId === audioFile.id) {
+      libraryAudioRef.current?.pause();
+      setPlayingAudioId(null);
+    } else {
+      if (libraryAudioRef.current) {
+        libraryAudioRef.current.pause();
+      }
+      libraryAudioRef.current = new Audio(audioFile.fileUrl);
+      libraryAudioRef.current.onended = () => setPlayingAudioId(null);
+      libraryAudioRef.current.play();
+      setPlayingAudioId(audioFile.id);
+    }
+  };
+
+  const getAudioTypeLabel = (type: string) => {
+    switch (type) {
+      case 'greeting': return 'IVR Greeting';
+      case 'hold_music': return 'Hold Music';
+      case 'announcement': return 'Announcement';
+      case 'voicemail_greeting': return 'Voicemail Greeting';
+      default: return type;
+    }
+  };
+
+  const getUsageLabel = (usage: { type: string; name: string }) => {
+    switch (usage.type) {
+      case 'ivr_greeting': return `IVR: ${usage.name}`;
+      case 'queue_hold_music': return `Queue: ${usage.name}`;
+      default: return usage.name;
+    }
+  };
+
   const handleSettingChange = (key: keyof PbxSettings, value: any) => {
     settingsMutation.mutate({ [key]: value });
   };
@@ -479,6 +598,10 @@ export function PbxSettings() {
           <TabsTrigger value="extensions" data-testid="tab-pbx-extensions">
             <Users className="w-4 h-4 mr-2" />
             Extensions
+          </TabsTrigger>
+          <TabsTrigger value="audio" data-testid="tab-pbx-audio">
+            <Library className="w-4 h-4 mr-2" />
+            Audio
           </TabsTrigger>
         </TabsList>
 
@@ -900,7 +1023,135 @@ export function PbxSettings() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="audio" className="space-y-6 mt-6">
+          <Card>
+            <CardHeader className="flex flex-row items-center justify-between">
+              <CardTitle className="flex items-center gap-2">
+                <Library className="w-5 h-5" />
+                Audio Library
+              </CardTitle>
+              <Button onClick={() => setShowAudioDialog(true)} data-testid="button-add-audio">
+                <Plus className="w-4 h-4 mr-2" />
+                Upload Audio
+              </Button>
+            </CardHeader>
+            <CardContent>
+              {audioFilesLoading ? (
+                <LoadingSpinner fullScreen={false} />
+              ) : audioFiles.length === 0 ? (
+                <div className="text-center py-8 text-slate-500">
+                  <FileAudio className="w-12 h-12 mx-auto mb-4 opacity-50" />
+                  <p>No audio files uploaded</p>
+                  <p className="text-sm">Upload audio files to use as IVR greetings or hold music</p>
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50px]">Play</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Notes</TableHead>
+                      <TableHead>Used By</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {audioFiles.map((audio) => (
+                      <TableRow key={audio.id}>
+                        <TableCell>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => toggleLibraryAudioPlayback(audio)}
+                            data-testid={`button-play-audio-${audio.id}`}
+                          >
+                            {playingAudioId === audio.id ? (
+                              <Pause className="w-4 h-4" />
+                            ) : (
+                              <Play className="w-4 h-4" />
+                            )}
+                          </Button>
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {audio.name}
+                          {audio.description && (
+                            <p className="text-xs text-muted-foreground">{audio.description}</p>
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant="outline">{getAudioTypeLabel(audio.audioType)}</Badge>
+                        </TableCell>
+                        <TableCell className="max-w-[200px]">
+                          <p className="text-sm text-muted-foreground truncate">{audio.notes || "-"}</p>
+                        </TableCell>
+                        <TableCell>
+                          {audio.usage.length === 0 ? (
+                            <span className="text-sm text-muted-foreground">Not in use</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {audio.usage.map((u, idx) => (
+                                <Badge key={idx} variant="secondary" className="text-xs">
+                                  {getUsageLabel(u)}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setEditingAudio(audio)}
+                            data-testid={`button-edit-audio-${audio.id}`}
+                          >
+                            <Edit className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              if (audio.usage.length > 0) {
+                                toast({ 
+                                  title: "Cannot delete", 
+                                  description: "This audio file is in use. Remove it from IVRs/Queues first.",
+                                  variant: "destructive"
+                                });
+                              } else {
+                                deleteAudioFileMutation.mutate(audio.id);
+                              }
+                            }}
+                            disabled={deleteAudioFileMutation.isPending}
+                            data-testid={`button-delete-audio-${audio.id}`}
+                          >
+                            <Trash2 className="w-4 h-4 text-red-500" />
+                          </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+
       </Tabs>
+
+      <AudioUploadDialog
+        open={showAudioDialog}
+        onOpenChange={setShowAudioDialog}
+        onSubmit={(data) => uploadAudioFileMutation.mutate(data)}
+        isPending={uploadAudioFileMutation.isPending}
+      />
+
+      <AudioEditDialog
+        open={!!editingAudio}
+        onOpenChange={(open) => !open && setEditingAudio(null)}
+        audio={editingAudio}
+        onSubmit={(data) => updateAudioFileMutation.mutate(data)}
+        isPending={updateAudioFileMutation.isPending}
+      />
 
       <QueueDialog
         open={showQueueDialog}
@@ -1958,6 +2209,229 @@ function IvrMenuOptionDialog({
             }
             disabled={isPending || !digit || !label}
             data-testid="button-save-ivr-menu-option"
+          >
+            {isPending ? <LoadingSpinner fullScreen={false} /> : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AudioUploadDialog({
+  open,
+  onOpenChange,
+  onSubmit,
+  isPending,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  onSubmit: (data: { file: File; name: string; description?: string; notes?: string; audioType: string }) => void;
+  isPending: boolean;
+}) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [notes, setNotes] = useState("");
+  const [audioType, setAudioType] = useState("greeting");
+  const [file, setFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!open) {
+      setName("");
+      setDescription("");
+      setNotes("");
+      setAudioType("greeting");
+      setFile(null);
+    }
+  }, [open]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFile = e.target.files?.[0];
+    if (selectedFile) {
+      setFile(selectedFile);
+      if (!name) {
+        setName(selectedFile.name.replace(/\.[^/.]+$/, ""));
+      }
+    }
+  };
+
+  const handleSubmit = () => {
+    if (file && name && audioType) {
+      onSubmit({ file, name, description: description || undefined, notes: notes || undefined, audioType });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Upload Audio File</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Audio File</Label>
+            <div className="flex items-center gap-2">
+              <Input
+                ref={fileInputRef}
+                type="file"
+                accept="audio/*"
+                onChange={handleFileChange}
+                className="flex-1"
+                data-testid="input-audio-file"
+              />
+            </div>
+            {file && (
+              <p className="text-sm text-muted-foreground">
+                Selected: {file.name} ({(file.size / 1024).toFixed(1)} KB)
+              </p>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Name</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              placeholder="My IVR Greeting"
+              data-testid="input-audio-name"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Type</Label>
+            <Select value={audioType} onValueChange={setAudioType}>
+              <SelectTrigger data-testid="select-audio-type">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="greeting">IVR Greeting</SelectItem>
+                <SelectItem value="hold_music">Hold Music</SelectItem>
+                <SelectItem value="announcement">Announcement</SelectItem>
+                <SelectItem value="voicemail_greeting">Voicemail Greeting</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Description (optional)</Label>
+            <Input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Brief description"
+              data-testid="input-audio-description"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Notes (optional)</Label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Internal notes about this audio file"
+              rows={3}
+              data-testid="input-audio-notes"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={isPending || !file || !name || !audioType}
+            data-testid="button-upload-audio"
+          >
+            {isPending ? <LoadingSpinner fullScreen={false} /> : "Upload"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function AudioEditDialog({
+  open,
+  onOpenChange,
+  audio,
+  onSubmit,
+  isPending,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  audio: PbxAudioFile | null;
+  onSubmit: (data: { audioId: string; name?: string; description?: string; notes?: string }) => void;
+  isPending: boolean;
+}) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [notes, setNotes] = useState("");
+
+  useEffect(() => {
+    if (audio) {
+      setName(audio.name);
+      setDescription(audio.description || "");
+      setNotes(audio.notes || "");
+    }
+  }, [audio]);
+
+  const handleSubmit = () => {
+    if (audio) {
+      onSubmit({ 
+        audioId: audio.id, 
+        name: name || undefined, 
+        description: description || undefined, 
+        notes: notes || undefined 
+      });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Edit Audio Details</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="space-y-2">
+            <Label>Name</Label>
+            <Input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              data-testid="input-edit-audio-name"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Description</Label>
+            <Input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Brief description"
+              data-testid="input-edit-audio-description"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Notes</Label>
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Internal notes"
+              rows={3}
+              data-testid="input-edit-audio-notes"
+            />
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={handleSubmit}
+            disabled={isPending || !name}
+            data-testid="button-save-audio"
           >
             {isPending ? <LoadingSpinner fullScreen={false} /> : "Save"}
           </Button>
