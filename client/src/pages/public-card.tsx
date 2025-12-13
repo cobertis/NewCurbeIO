@@ -134,6 +134,12 @@ export default function PublicCard() {
   }, [token]);
 
   useEffect(() => {
+    if (cardData?.company?.name) {
+      document.title = cardData.company.name;
+    }
+  }, [cardData?.company?.name]);
+
+  useEffect(() => {
     if (!pushSupported || !token) return;
 
     async function checkSubscription() {
