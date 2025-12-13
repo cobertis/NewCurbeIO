@@ -1903,11 +1903,11 @@ function IvrDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-lg">
+      <DialogContent className="max-w-xl">
         <DialogHeader>
           <DialogTitle>{ivr ? "Edit IVR" : "Create IVR"}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto px-1">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Name</Label>
