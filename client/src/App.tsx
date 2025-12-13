@@ -1405,6 +1405,30 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 }
 
 function Router() {
+  const [pwaCheckDone, setPwaCheckDone] = useState(false);
+
+  // PWA Standalone Mode: Redirect to last viewed card when opened from home screen
+  // This MUST complete before routes render to prevent "/dashboard" redirect from firing first
+  useEffect(() => {
+    const isStandalone = window.matchMedia("(display-mode: standalone)").matches || 
+                         (window.navigator as any).standalone === true;
+    const lastCardToken = localStorage.getItem("last_card_token");
+    
+    if (isStandalone && lastCardToken && window.location.pathname === "/") {
+      // Redirect and don't set pwaCheckDone - page will navigate away
+      window.location.replace(`/p/${lastCardToken}?src=home`);
+      return;
+    }
+    
+    // No PWA redirect needed, allow routes to render
+    setPwaCheckDone(true);
+  }, []);
+
+  // Block rendering until PWA redirect check is complete
+  if (!pwaCheckDone) {
+    return null;
+  }
+
   return (
     <Switch>
       <Route path="/">
