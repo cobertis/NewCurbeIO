@@ -103,7 +103,6 @@ export function PbxSettings() {
   const [editingExtension, setEditingExtension] = useState<PbxExtension | null>(null);
   const [editingMenuOption, setEditingMenuOption] = useState<PbxMenuOption | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [localIvrExtension, setLocalIvrExtension] = useState("1001");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -298,29 +297,6 @@ export function PbxSettings() {
     settingsMutation.mutate({ [key]: value });
   };
 
-  // Sync local IVR extension state with server data
-  useEffect(() => {
-    if (settings?.ivrExtension) {
-      setLocalIvrExtension(settings.ivrExtension);
-    }
-  }, [settings?.ivrExtension]);
-
-  // Handle IVR extension save on blur with validation
-  const handleIvrExtensionBlur = () => {
-    // Validate: must be a positive integer >= 100
-    const parsed = parseInt(localIvrExtension, 10);
-    if (isNaN(parsed) || parsed < 100 || localIvrExtension.trim() === '') {
-      // Invalid value - restore to server value or default
-      setLocalIvrExtension(settings?.ivrExtension || "100");
-      return;
-    }
-    // Only save if value actually changed
-    const validValue = parsed.toString();
-    if (validValue !== settings?.ivrExtension) {
-      handleSettingChange("ivrExtension", validValue);
-    }
-  };
-
   if (settingsLoading) {
     return <LoadingSpinner />;
   }
@@ -336,7 +312,7 @@ export function PbxSettings() {
         </div>
         <div className="text-right">
           <span className="text-sm text-muted-foreground">IVR Ext:</span>
-          <span className="ml-1 font-mono font-bold text-lg">{settings?.ivrExtension || 1001}</span>
+          <span className="ml-1 font-mono font-bold text-lg">1000</span>
         </div>
       </div>
 
@@ -493,21 +469,6 @@ export function PbxSettings() {
                   )}
                 </div>
               )}
-
-              <div className="space-y-2">
-                <Label>IVR Extension Number</Label>
-                <Input
-                  type="number"
-                  placeholder="1001"
-                  value={localIvrExtension}
-                  onChange={(e) => setLocalIvrExtension(e.target.value)}
-                  onBlur={handleIvrExtensionBlur}
-                  data-testid="input-ivr-extension"
-                />
-                <p className="text-xs text-muted-foreground">
-                  User extensions will start from {(parseInt(localIvrExtension, 10) || 1001) + 1}
-                </p>
-              </div>
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">

@@ -5553,7 +5553,7 @@ export const pbxSettings = pgTable("pbx_settings", {
   
   // IVR Configuration
   ivrEnabled: boolean("ivr_enabled").notNull().default(false),
-  ivrExtension: text("ivr_extension").default("1001"),
+  ivrExtension: text("ivr_extension").default("1000"),
   greetingAudioUrl: text("greeting_audio_url"),
   greetingText: text("greeting_text"),
   useTextToSpeech: boolean("use_text_to_speech").notNull().default(true),
