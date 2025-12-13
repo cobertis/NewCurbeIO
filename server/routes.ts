@@ -31971,10 +31971,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const { webPushService } = await import("./services/web-push-service");
       
-      const [instances, deviceCount, pushSubscriptionsCount] = await Promise.all([
+      const [instances, deviceCount, pushSubscriptionsCount, platformCounts] = await Promise.all([
         vipPassService.getPassInstances(user.companyId),
         vipPassApnsService.getDevicesCount(user.companyId),
         webPushService.getSubscriptionsCountByCompany(user.companyId),
+        webPushService.getSubscriptionsCountByPlatform(user.companyId),
       ]);
       
       const activeCount = instances.filter(i => i.status === "active").length;
@@ -31988,6 +31989,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         registeredDevices: deviceCount,
         totalDownloads,
         pushSubscriptions: pushSubscriptionsCount,
+        platformCounts,
       });
     } catch (error) {
       console.error("[VIP Pass] Error getting stats:", error);

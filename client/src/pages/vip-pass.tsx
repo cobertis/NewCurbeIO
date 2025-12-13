@@ -59,6 +59,11 @@ interface VipPassStats {
   registeredDevices: number;
   totalDownloads: number;
   pushSubscriptions: number;
+  platformCounts?: {
+    android: number;
+    ios: number;
+    desktop: number;
+  };
 }
 
 interface VipPassInstance {
@@ -747,7 +752,17 @@ export default function VipPassPage() {
                   <Bell className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-blue-600">{stats?.pushSubscriptions || 0}</div>
+                  <div className="text-2xl font-bold text-blue-600" data-testid="text-push-subscriptions">{stats?.pushSubscriptions || 0}</div>
+                  {stats?.platformCounts && (stats.platformCounts.android > 0 || stats.platformCounts.ios > 0) && (
+                    <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
+                      {stats.platformCounts.android > 0 && (
+                        <span data-testid="text-android-count">Android: {stats.platformCounts.android}</span>
+                      )}
+                      {stats.platformCounts.ios > 0 && (
+                        <span data-testid="text-ios-count">iOS: {stats.platformCounts.ios}</span>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </div>

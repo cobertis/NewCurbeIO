@@ -305,6 +305,30 @@ export class WebPushService {
       .where(eq(pushSubscriptions.companyId, companyId));
     return result.length;
   }
+
+  async getSubscriptionsCountByPlatform(companyId: string): Promise<{ android: number; ios: number; desktop: number }> {
+    const subscriptions = await db
+      .select({ platform: pushSubscriptions.platform })
+      .from(pushSubscriptions)
+      .where(eq(pushSubscriptions.companyId, companyId));
+    
+    let android = 0;
+    let ios = 0;
+    let desktop = 0;
+    
+    for (const sub of subscriptions) {
+      const platform = (sub.platform || '').toLowerCase();
+      if (platform === 'android') {
+        android++;
+      } else if (platform === 'ios') {
+        ios++;
+      } else {
+        desktop++;
+      }
+    }
+    
+    return { android, ios, desktop };
+  }
 }
 
 export const webPushService = new WebPushService();

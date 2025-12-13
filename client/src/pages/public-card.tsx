@@ -380,7 +380,32 @@ export default function PublicCard() {
 
         {platform === "android" && (
           <div className="space-y-3">
-            {!isPwa ? (
+            {/* Botón de Notificaciones */}
+            {pushSupported && !pushSubscribed && (
+              <Button
+                onClick={subscribeToPush}
+                disabled={subscribing}
+                className="w-full bg-green-600 hover:bg-green-700"
+                data-testid="button-enable-notifications"
+              >
+                {subscribing ? (
+                  <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />
+                ) : (
+                  <Bell className="h-4 w-4 mr-2" />
+                )}
+                Activar Notificaciones
+              </Button>
+            )}
+            
+            {pushSubscribed && (
+              <div className="flex items-center justify-center gap-2 py-1 text-green-500" data-testid="notifications-enabled">
+                <Bell className="h-4 w-4" />
+                <span className="text-sm">Notificaciones activadas</span>
+              </div>
+            )}
+
+            {/* Botón de Agregar al Inicio */}
+            {!isPwa && (
               <>
                 <Button
                   onClick={handleInstallPwa}
@@ -407,10 +432,12 @@ export default function PublicCard() {
                   </Card>
                 )}
               </>
-            ) : (
-              <div className="flex items-center justify-center gap-2 py-2 text-green-500" data-testid="text-card-ready">
+            )}
+            
+            {isPwa && (
+              <div className="flex items-center justify-center gap-2 py-1 text-green-500" data-testid="text-card-ready">
                 <Home className="h-4 w-4" />
-                <span className="text-sm">Tu tarjeta está lista</span>
+                <span className="text-sm">Instalada en tu pantalla</span>
               </div>
             )}
           </div>
@@ -418,8 +445,10 @@ export default function PublicCard() {
 
         <p className="text-center text-xs text-gray-500 pt-4">
           {platform === "ios" && "Usa Apple Wallet para la mejor experiencia"}
-          {platform === "android" && !isPwa && "Un toque para acceso rápido desde tu pantalla"}
-          {platform === "android" && isPwa && "Abre desde tu pantalla de inicio"}
+          {platform === "android" && !pushSubscribed && !isPwa && "Activa notificaciones y agrega al inicio"}
+          {platform === "android" && pushSubscribed && !isPwa && "Agrega al inicio para acceso rápido"}
+          {platform === "android" && !pushSubscribed && isPwa && "Activa notificaciones para estar al día"}
+          {platform === "android" && pushSubscribed && isPwa && "Tu tarjeta está lista"}
           {platform === "desktop" && "Abre en tu móvil para la experiencia completa"}
         </p>
       </div>
