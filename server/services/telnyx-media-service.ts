@@ -1,11 +1,14 @@
 import { getTelnyxMasterApiKey } from "./telnyx-numbers-service";
 import FormData from "form-data";
+import { Readable } from "stream";
+import https from "https";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
 
 export interface TelnyxMediaUploadResult {
   success: boolean;
   mediaId?: string;
+  mediaName?: string;
   mediaUrl?: string;
   error?: string;
 }
@@ -23,21 +26,46 @@ export async function uploadMediaToTelnyx(
   try {
     const apiKey = await getTelnyxMasterApiKey();
     
-    // Create proper multipart/form-data with the file buffer
+    // Convert buffer to readable stream for proper multipart handling
+    const bufferStream = new Readable();
+    bufferStream.push(fileBuffer);
+    bufferStream.push(null);
+    
+    // Create proper multipart/form-data
     const formData = new FormData();
-    formData.append("media_name", fileName);
-    formData.append("media", fileBuffer, {
+    formData.append("media", bufferStream, {
       filename: fileName,
       contentType: mimeType,
+      knownLength: fileBuffer.length,
     });
     
-    const response = await fetch(`${TELNYX_API_BASE}/media`, {
-      method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        ...formData.getHeaders(),
-      },
-      body: formData as any,
+    // Use https module for proper multipart streaming
+    const response = await new Promise<Response>((resolve, reject) => {
+      const req = https.request({
+        hostname: "api.telnyx.com",
+        port: 443,
+        path: "/v2/media",
+        method: "POST",
+        headers: {
+          ...formData.getHeaders(),
+          "Authorization": `Bearer ${apiKey}`,
+          "Accept": "application/json",
+        },
+      }, (res: any) => {
+        let data = "";
+        res.on("data", (chunk: string) => data += chunk);
+        res.on("end", () => {
+          resolve({
+            ok: res.statusCode >= 200 && res.statusCode < 300,
+            status: res.statusCode,
+            text: async () => data,
+            json: async () => JSON.parse(data),
+          } as any);
+        });
+      });
+      
+      req.on("error", reject);
+      formData.pipe(req);
     });
 
     if (!response.ok) {
@@ -53,17 +81,16 @@ export async function uploadMediaToTelnyx(
     const mediaData = result.data;
     
     console.log("[TelnyxMedia] Upload success:", {
-      mediaId: mediaData.id,
       mediaName: mediaData.media_name,
+      contentType: mediaData.content_type,
     });
 
-    // The download URL format for Telnyx media
-    const mediaUrl = `https://api.telnyx.com/v2/media/${mediaData.id}/download`;
-
+    // Use the media_name for playback (this is the ID for Telnyx)
     return {
       success: true,
-      mediaId: mediaData.id,
-      mediaUrl: mediaUrl,
+      mediaId: mediaData.media_name,
+      mediaName: mediaData.media_name,
+      mediaUrl: `https://api.telnyx.com/v2/media/${mediaData.media_name}/download`,
     };
   } catch (error: any) {
     console.error("[TelnyxMedia] Upload error:", error);
