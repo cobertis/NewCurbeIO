@@ -27064,10 +27064,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               body: JSON.stringify({
                 to: sipUri,
                 from: to, // Use DID as caller ID (Telnyx requirement)
-                sip_headers: [
-                  { name: "X-Original-Caller", value: from },
-                  { name: "X-Called-Number", value: to }
-                ],
                 timeout_secs: 30
               })
             });
