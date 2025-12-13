@@ -2057,7 +2057,6 @@ function IvrDialog({
               ) : (
                 <p className="text-sm text-muted-foreground">Save the IVR first to upload custom audio.</p>
               )}
-            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-4">
