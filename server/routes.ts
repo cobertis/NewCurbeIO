@@ -26937,195 +26937,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     res.set("Content-Type", "application/xml");
     res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
   });
-
-  // ==== CALL CONTROL API WEBHOOKS (proper hangup support) ====
-  // These handle inbound calls via Call Control Application (not TeXML)
-  // This allows server-side hangup with NORMAL_CLEARING instead of SDK's 486 USER_BUSY
+  // ==== CALL CONTROL API WEBHOOKS (WebSocket-based routing) ====
+  // These handle inbound calls via Call Control Application
+  // Delegates to CallControlWebhookService which uses WebSocket to notify agents
   
   app.post("/webhooks/telnyx/call-control/:companyId", async (req: Request, res: Response) => {
-    // LATENCY DIAGNOSTIC
-    const T0 = Date.now();
-    console.log(`[LATENCY] T0: Webhook received at ${T0} (${new Date(T0).toISOString()})`);
-
     // CRITICAL: Respond immediately to meet 200ms webhook requirement
     res.status(200).json({ received: true });
     
     try {
       const { companyId } = req.params;
-      const payload = req.body.data?.payload || req.body;
-      const eventType = req.body.data?.event_type || req.body.event_type;
-      const callControlId = payload.call_control_id;
-      const from = payload.from;
-      const to = payload.to;
-      const direction = payload.direction;
+      console.log("[Telnyx Call Control] Webhook received for company:", companyId);
       
-      console.log("[Telnyx Call Control] Event received:", {
-        eventType,
-        callControlId,
-        direction,
-        from,
-        to,
-        companyId
-      });
+      // Delegate to CallControlWebhookService which uses WebSocket-based routing
+      const { callControlWebhookService } = await import("./services/call-control-webhook-service");
+      await callControlWebhookService.handleWebhook(req.body);
       
-      // Get Telnyx API key for API calls
-      const { SecretsService } = await import("./services/secrets-service");
-      const secretsService = new SecretsService();
-      let telnyxApiKey = await secretsService.getCredential("telnyx", "api_key");
-      if (!telnyxApiKey) {
-        console.error("[Telnyx Call Control] API key not configured");
-        return;
-      }
-      telnyxApiKey = telnyxApiKey.trim().replace(/[\r\n\t]/g, "");
-      
-      // Get managed account ID for this company
-      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
-      const managedAccountId = await getCompanyManagedAccountId(companyId);
-      const T2 = Date.now();
-      console.log(`[LATENCY] T2: Managed account fetched (+${T2-T0}ms)`);
-      
-      switch (eventType) {
-        case "call.initiated": {
-          if (direction === "incoming") {
-            // INBOUND CALL: Use TRANSFER to route directly to SIP credential
-            // Per Telnyx docs: transfer does NOT require answer first
-            console.log("[Telnyx Call Control] Incoming call - transferring to WebRTC");
-            
-            const T3 = Date.now();
-            console.log(`[LATENCY] T3: Starting SIP lookup (+${T3-T0}ms)`);
-            // Get SIP username from cache or DB
-            const cached = sipUsernameCache.get(companyId);
-            let sipUsername: string | null = null;
-            
-            if (cached && Date.now() - cached.timestamp < SIP_CACHE_TTL) {
-              sipUsername = cached.username;
-            } else {
-              const [credential] = await db
-                .select({ sipUsername: telephonyCredentials.sipUsername })
-                .from(telephonyCredentials)
-                .where(
-                  and(
-                    eq(telephonyCredentials.companyId, companyId),
-                    eq(telephonyCredentials.isActive, true)
-                  )
-                )
-                .orderBy(desc(telephonyCredentials.lastUsedAt))
-                .limit(1);
-              
-              if (credential?.sipUsername) {
-                sipUsername = credential.sipUsername;
-                sipUsernameCache.set(companyId, { 
-                  username: sipUsername, 
-                  timestamp: Date.now()
-                } as any);
-              }
-            }
-            
-            if (!sipUsername) {
-              console.error("[Telnyx Call Control] No SIP credential for company:", companyId);
-              // Reject the call with busy signal
-              await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/hangup`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": `Bearer ${telnyxApiKey}`,
-                  ...(managedAccountId && { "X-Managed-Account-Id": managedAccountId })
-                },
-                body: JSON.stringify({ cause: "USER_BUSY" })
-              });
-              return;
-            }
-            
-            // Store mapping for tracking
-            callControlToSipMap.set(callControlId, { sipUsername, companyId, from, to });
-            activeCallsMap.set(sipUsername, {
-              callSid: callControlId,
-              from,
-              to,
-              companyId,
-              startTime: new Date(),
-              callControlId: callControlId
-            });
-            
-            // Use TRANSFER command - per Telnyx docs this transfers the call
-            // directly to the SIP URI without needing to answer first
-            const sipUri = `sip:${sipUsername}@sip.telnyx.com`;
-            console.log("[Telnyx Call Control] Transferring to:", sipUri);
-            
-            const T4 = Date.now();
-            console.log(`[LATENCY] T4: Starting Telnyx transfer API call (+${T4-T0}ms)`);
-            const transferRes = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/transfer`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${telnyxApiKey}`,
-                ...(managedAccountId && { "X-Managed-Account-Id": managedAccountId })
-              },
-              body: JSON.stringify({
-                to: sipUri,
-                from: to, // Use DID as caller ID (Telnyx requirement)
-                timeout_secs: 30
-              })
-            });
-            
-            if (!transferRes.ok) {
-              const errText = await transferRes.text();
-              console.error("[Telnyx Call Control] Transfer failed:", transferRes.status, errText);
-              // Hang up since transfer failed
-              await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/hangup`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": `Bearer ${telnyxApiKey}`,
-                  ...(managedAccountId && { "X-Managed-Account-Id": managedAccountId })
-                },
-                body: JSON.stringify({ cause: "NORMAL_CLEARING" })
-              });
-              return;
-            }
-            
-            const T5 = Date.now();
-            console.log(`[LATENCY] T5: Transfer API complete (+${T5-T0}ms, API took ${T5-T4}ms)`);
-            console.log("[Telnyx Call Control] Transfer initiated successfully");
-          }
-          break;
-        }
-        
-        case "call.answered": {
-          // With transfer, bridging is automatic when the SIP endpoint answers
-          const mapping = callControlToSipMap.get(callControlId);
-          if (mapping) {
-            console.log("[Telnyx Call Control] Call answered - transfer auto-bridged:", mapping.sipUsername);
-          }
-          break;
-        }
-        
-        case "call.bridged": {
-          // Calls are now connected
-          console.log("[Telnyx Call Control] Calls bridged successfully");
-          break;
-        }
-        
-        case "call.hangup": {
-          // Clean up tracking maps
-          const mapping = callControlToSipMap.get(callControlId);
-          if (mapping) {
-            console.log("[Telnyx Call Control] Call hangup - cleaning up:", mapping.sipUsername);
-            activeCallsMap.delete(mapping.sipUsername);
-            callControlToSipMap.delete(callControlId);
-            
-            // Also clean up the other leg if exists
-            const call = activeCallsMap.get(mapping.sipUsername);
-            if (call?.dialedLegControlId) {
-              callControlToSipMap.delete(call.dialedLegControlId);
-            }
-          }
-          break;
-        }
-        
-        default:
-          console.log("[Telnyx Call Control] Unhandled event:", eventType);
-      }
     } catch (error: any) {
       console.error("[Telnyx Call Control] Webhook error:", error);
     }
@@ -27136,7 +26963,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     console.error("[Telnyx Call Control Fallback] Fallback triggered:", req.body);
     res.status(200).json({ received: true });
   });
-
     // POST /webhooks/telnyx/status/:companyId - Handle status callbacks per company
   app.post("/webhooks/telnyx/status/:companyId", async (req: Request, res: Response) => {
     try {
