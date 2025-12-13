@@ -103,7 +103,7 @@ export function PbxSettings() {
   const [editingExtension, setEditingExtension] = useState<PbxExtension | null>(null);
   const [editingMenuOption, setEditingMenuOption] = useState<PbxMenuOption | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const [localIvrExtension, setLocalIvrExtension] = useState("100");
+  const [localIvrExtension, setLocalIvrExtension] = useState("1001");
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
