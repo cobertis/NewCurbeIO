@@ -46,12 +46,26 @@ export async function uploadAudioToTelnyxMedia(audioUrl: string, mediaName: stri
     };
     
     // Add managed account header if company has one
+    let managedAccountId: string | null = null;
     if (companyId) {
-      const managedAccountId = await getCompanyManagedAccountId(companyId);
+      managedAccountId = await getCompanyManagedAccountId(companyId);
       if (managedAccountId) {
         headers["X-Managed-Account-Id"] = managedAccountId;
         console.log(`[TelnyxMedia] Using managed account: ${managedAccountId}`);
       }
+    }
+    
+    // First, try to delete existing media with the same name
+    try {
+      const deleteResponse = await fetch(`https://api.telnyx.com/v2/media/${encodeURIComponent(mediaName)}`, {
+        method: "DELETE",
+        headers
+      });
+      if (deleteResponse.ok) {
+        console.log(`[TelnyxMedia] Deleted existing media: ${mediaName}`);
+      }
+    } catch (deleteError) {
+      // Ignore delete errors - media may not exist
     }
     
     const response = await fetch("https://api.telnyx.com/v2/media", {
