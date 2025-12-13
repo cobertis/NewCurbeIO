@@ -1,6 +1,8 @@
 import { db } from "../db";
 import { pbxService } from "./pbx-service";
 import { extensionCallService } from "./extension-call-service";
+import { getCompanyManagedAccountId } from "./telnyx-managed-accounts";
+import { SecretsService } from "./secrets-service";
 import {
   pbxSettings,
   pbxQueues,
@@ -16,7 +18,22 @@ import {
 import { eq, and, inArray } from "drizzle-orm";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
-const TELNYX_API_KEY = process.env.TELNYX_API_KEY || "";
+const secretsService = new SecretsService();
+
+// Track call context for managed account routing
+interface CallContext {
+  companyId: string;
+  managedAccountId: string | null;
+}
+const callContextMap = new Map<string, CallContext>();
+
+async function getTelnyxApiKey(): Promise<string> {
+  let apiKey = await secretsService.getCredential("telnyx", "api_key");
+  if (!apiKey) {
+    throw new Error("Telnyx API key not configured");
+  }
+  return apiKey.trim().replace(/[\r\n\t]/g, '');
+}
 
 interface CallControlEvent {
   data: {
@@ -102,6 +119,14 @@ export class CallControlWebhookService {
       return;
     }
 
+    // Store call context for managed account routing
+    const managedAccountId = await getCompanyManagedAccountId(phoneNumber.companyId);
+    callContextMap.set(call_control_id, {
+      companyId: phoneNumber.companyId,
+      managedAccountId
+    });
+    console.log(`[CallControl] Stored call context: companyId=${phoneNumber.companyId}, managedAccountId=${managedAccountId}`);
+
     await this.answerCall(call_control_id);
 
     // Check for internal call with specific target (IVR or Queue)
@@ -182,6 +207,9 @@ export class CallControlWebhookService {
 
     // End any queue call notifications for this call
     extensionCallService.endQueueCall(call_control_id, "caller_hangup");
+
+    // Clean up call context
+    callContextMap.delete(call_control_id);
 
     if (client_state) {
       try {
@@ -609,12 +637,26 @@ export class CallControlWebhookService {
     const url = `${TELNYX_API_BASE}/calls/${callControlId}/actions/${action}`;
 
     try {
+      const apiKey = await getTelnyxApiKey();
+      
+      // Get managed account from call context
+      const context = callContextMap.get(callControlId);
+      const managedAccountId = context?.managedAccountId;
+      
+      const headers: Record<string, string> = {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      };
+      
+      // CRITICAL: Include managed account header for multi-tenant routing
+      if (managedAccountId) {
+        headers["X-Managed-Account-Id"] = managedAccountId;
+        console.log(`[CallControl] API call with managed account: ${managedAccountId}`);
+      }
+
       const response = await fetch(url, {
         method: "POST",
-        headers: {
-          Authorization: `Bearer ${TELNYX_API_KEY}`,
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify(payload),
       });
 
