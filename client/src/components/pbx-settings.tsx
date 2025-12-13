@@ -31,7 +31,9 @@ import {
   Upload,
   Play,
   Pause,
-  Volume2
+  Volume2,
+  Languages,
+  Star
 } from "lucide-react";
 
 interface PbxSettings {
@@ -91,6 +93,24 @@ interface PbxMenuOption {
   targetQueueId: string | null;
   targetExtensionId: string | null;
   targetExternalNumber: string | null;
+  targetIvrId: string | null;
+  isActive: boolean;
+}
+
+interface PbxIvr {
+  id: string;
+  companyId: string;
+  name: string;
+  description: string | null;
+  extension: string;
+  language: string;
+  greetingAudioUrl: string | null;
+  greetingMediaName: string | null;
+  greetingText: string | null;
+  useTextToSpeech: boolean;
+  ivrTimeout: number;
+  maxRetries: number;
+  isDefault: boolean;
   isActive: boolean;
 }
 
@@ -100,9 +120,14 @@ export function PbxSettings() {
   const [showQueueDialog, setShowQueueDialog] = useState(false);
   const [showExtensionDialog, setShowExtensionDialog] = useState(false);
   const [showMenuDialog, setShowMenuDialog] = useState(false);
+  const [showIvrDialog, setShowIvrDialog] = useState(false);
+  const [showIvrMenuDialog, setShowIvrMenuDialog] = useState(false);
   const [editingQueue, setEditingQueue] = useState<PbxQueue | null>(null);
   const [editingExtension, setEditingExtension] = useState<PbxExtension | null>(null);
   const [editingMenuOption, setEditingMenuOption] = useState<PbxMenuOption | null>(null);
+  const [editingIvr, setEditingIvr] = useState<PbxIvr | null>(null);
+  const [editingIvrMenuOption, setEditingIvrMenuOption] = useState<PbxMenuOption | null>(null);
+  const [selectedIvrId, setSelectedIvrId] = useState<string | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -122,6 +147,15 @@ export function PbxSettings() {
   const { data: menuOptions = [] } = useQuery<PbxMenuOption[]>({
     queryKey: ["/api/pbx/menu-options", settings?.id],
     enabled: !!settings?.id,
+  });
+
+  const { data: ivrs = [], isLoading: ivrsLoading } = useQuery<PbxIvr[]>({
+    queryKey: ["/api/pbx/ivrs"],
+  });
+
+  const { data: ivrMenuOptions = [] } = useQuery<PbxMenuOption[]>({
+    queryKey: ["/api/pbx/ivrs", selectedIvrId, "menu-options"],
+    enabled: !!selectedIvrId,
   });
 
   const settingsMutation = useMutation({
@@ -294,6 +328,115 @@ export function PbxSettings() {
     },
   });
 
+  const ivrMutation = useMutation({
+    mutationFn: async (data: Partial<PbxIvr> & { id?: string }) => {
+      if (data.id) {
+        return apiRequest("PATCH", `/api/pbx/ivrs/${data.id}`, data);
+      }
+      return apiRequest("POST", "/api/pbx/ivrs", data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pbx/ivrs"] });
+      setShowIvrDialog(false);
+      setEditingIvr(null);
+      toast({ title: "IVR saved", description: "IVR configuration updated successfully." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteIvrMutation = useMutation({
+    mutationFn: async (ivrId: string) => {
+      return apiRequest("DELETE", `/api/pbx/ivrs/${ivrId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pbx/ivrs"] });
+      if (selectedIvrId) {
+        setSelectedIvrId(null);
+      }
+      toast({ title: "IVR deleted" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const setDefaultIvrMutation = useMutation({
+    mutationFn: async (ivrId: string) => {
+      return apiRequest("PATCH", `/api/pbx/ivrs/${ivrId}`, { isDefault: true });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pbx/ivrs"] });
+      toast({ title: "Default IVR updated" });
+    },
+  });
+
+  const ivrMenuOptionMutation = useMutation({
+    mutationFn: async (data: any) => {
+      if (data.id) {
+        return apiRequest("PATCH", `/api/pbx/ivrs/${selectedIvrId}/menu-options/${data.id}`, data);
+      }
+      return apiRequest("POST", `/api/pbx/ivrs/${selectedIvrId}/menu-options`, data);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pbx/ivrs", selectedIvrId, "menu-options"] });
+      setShowIvrMenuDialog(false);
+      setEditingIvrMenuOption(null);
+      toast({ title: "Menu option saved" });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteIvrMenuOptionMutation = useMutation({
+    mutationFn: async (optionId: string) => {
+      return apiRequest("DELETE", `/api/pbx/ivrs/${selectedIvrId}/menu-options/${optionId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pbx/ivrs", selectedIvrId, "menu-options"] });
+      toast({ title: "Menu option deleted" });
+    },
+  });
+
+  const uploadIvrGreetingMutation = useMutation({
+    mutationFn: async ({ ivrId, file }: { ivrId: string; file: File }) => {
+      const formData = new FormData();
+      formData.append('audio', file);
+      const response = await fetch(`/api/pbx/ivrs/${ivrId}/upload-greeting`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.error || 'Upload failed');
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pbx/ivrs"] });
+      toast({ title: "Audio uploaded", description: "IVR greeting audio uploaded successfully." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Upload failed", description: error.message, variant: "destructive" });
+    },
+  });
+
+  const deleteIvrGreetingMutation = useMutation({
+    mutationFn: async (ivrId: string) => {
+      return apiRequest("DELETE", `/api/pbx/ivrs/${ivrId}/greeting`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/pbx/ivrs"] });
+      toast({ title: "Audio deleted", description: "IVR greeting audio removed." });
+    },
+    onError: (error: any) => {
+      toast({ title: "Delete failed", description: error.message, variant: "destructive" });
+    },
+  });
+
   const handleSettingChange = (key: keyof PbxSettings, value: any) => {
     settingsMutation.mutate({ [key]: value });
   };
@@ -323,9 +466,13 @@ export function PbxSettings() {
             <Settings className="w-4 h-4 mr-2" />
             General
           </TabsTrigger>
+          <TabsTrigger value="ivrs" data-testid="tab-pbx-ivrs">
+            <Languages className="w-4 h-4 mr-2" />
+            IVRs
+          </TabsTrigger>
           <TabsTrigger value="ivr" data-testid="tab-pbx-ivr">
             <PhoneIncoming className="w-4 h-4 mr-2" />
-            IVR Menu
+            Legacy IVR
           </TabsTrigger>
           <TabsTrigger value="queues" data-testid="tab-pbx-queues">
             <ListOrdered className="w-4 h-4 mr-2" />
@@ -338,162 +485,6 @@ export function PbxSettings() {
         </TabsList>
 
         <TabsContent value="general" className="space-y-6 mt-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Phone className="w-5 h-5" />
-                IVR Settings
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-2 gap-6">
-                <div className="rounded-lg border border-border bg-muted/30 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Enable IVR</Label>
-                      <p className="text-sm text-slate-500">Play a greeting and offer menu options to callers</p>
-                    </div>
-                    <Switch
-                      checked={settings?.ivrEnabled || false}
-                      onCheckedChange={(checked) => handleSettingChange("ivrEnabled", checked)}
-                      data-testid="switch-ivr-enabled"
-                    />
-                  </div>
-                </div>
-
-                <div className="rounded-lg border border-border bg-muted/30 p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <Label>Use Text-to-Speech</Label>
-                      <p className="text-sm text-slate-500">Generate greeting audio from text</p>
-                    </div>
-                    <Switch
-                      checked={settings?.useTextToSpeech || false}
-                      onCheckedChange={(checked) => handleSettingChange("useTextToSpeech", checked)}
-                      data-testid="switch-use-tts"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {settings?.useTextToSpeech ? (
-                <div className="space-y-2">
-                  <Label>Greeting Text</Label>
-                  <Textarea
-                    placeholder="Welcome to our company. Press 1 for sales, press 2 for support, or stay on the line to speak with an operator."
-                    value={settings?.greetingText || ""}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setTimeout(() => handleSettingChange("greetingText", value), 500);
-                    }}
-                    data-testid="input-greeting-text"
-                    rows={4}
-                  />
-                </div>
-              ) : (
-                <div className="space-y-3">
-                  <Label>Greeting Audio</Label>
-                  <input
-                    type="file"
-                    ref={fileInputRef}
-                    onChange={handleFileUpload}
-                    accept=".mp3,.wav,audio/mpeg,audio/wav"
-                    className="hidden"
-                    data-testid="input-greeting-audio-file"
-                  />
-                  
-                  {settings?.greetingAudioUrl ? (
-                    <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={toggleAudioPlayback}
-                        className="h-10 w-10 p-0"
-                        data-testid="button-play-greeting"
-                      >
-                        {isPlayingAudio ? (
-                          <Pause className="h-4 w-4" />
-                        ) : (
-                          <Play className="h-4 w-4" />
-                        )}
-                      </Button>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">Greeting Audio</p>
-                        <p className="text-xs text-muted-foreground">Click to preview</p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => fileInputRef.current?.click()}
-                          disabled={uploadGreetingMutation.isPending}
-                          data-testid="button-replace-greeting"
-                        >
-                          {uploadGreetingMutation.isPending ? (
-                            <LoadingSpinner fullScreen={false} />
-                          ) : (
-                            <Upload className="h-4 w-4" />
-                          )}
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => deleteGreetingMutation.mutate()}
-                          disabled={deleteGreetingMutation.isPending}
-                          className="text-red-500 hover:text-red-600"
-                          data-testid="button-delete-greeting"
-                        >
-                          {deleteGreetingMutation.isPending ? (
-                            <LoadingSpinner fullScreen={false} />
-                          ) : (
-                            <Trash2 className="h-4 w-4" />
-                          )}
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <div 
-                      className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50 hover:bg-muted/30 transition-colors"
-                      onClick={() => fileInputRef.current?.click()}
-                      data-testid="button-upload-greeting"
-                    >
-                      {uploadGreetingMutation.isPending ? (
-                        <LoadingSpinner fullScreen={false} />
-                      ) : (
-                        <>
-                          <Upload className="h-8 w-8 text-muted-foreground mb-2" />
-                          <p className="text-sm font-medium text-foreground">Upload greeting audio</p>
-                          <p className="text-xs text-muted-foreground mt-1">MP3 or WAV (max 5MB)</p>
-                        </>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>IVR Timeout (seconds)</Label>
-                  <Input
-                    type="number"
-                    value={settings?.ivrTimeout || 10}
-                    onChange={(e) => handleSettingChange("ivrTimeout", parseInt(e.target.value))}
-                    data-testid="input-ivr-timeout"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label>Ring Timeout (seconds)</Label>
-                  <Input
-                    type="number"
-                    value={settings?.ringTimeout || 30}
-                    onChange={(e) => handleSettingChange("ringTimeout", parseInt(e.target.value))}
-                    data-testid="input-ring-timeout"
-                  />
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -604,12 +595,189 @@ export function PbxSettings() {
           </Card>
         </TabsContent>
 
+        <TabsContent value="ivrs" className="space-y-6 mt-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <Card className="lg:col-span-1">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <Languages className="w-5 h-5" />
+                  IVR List
+                </CardTitle>
+                <Button size="sm" onClick={() => { setEditingIvr(null); setShowIvrDialog(true); }} data-testid="button-add-ivr">
+                  <Plus className="w-4 h-4 mr-1" />
+                  Add
+                </Button>
+              </CardHeader>
+              <CardContent className="p-0">
+                {ivrsLoading ? (
+                  <div className="p-6">
+                    <LoadingSpinner fullScreen={false} />
+                  </div>
+                ) : ivrs.length === 0 ? (
+                  <div className="text-center py-8 px-4 text-slate-500">
+                    <Languages className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">No IVRs configured</p>
+                    <p className="text-xs mt-1">Create IVRs for different languages or departments</p>
+                  </div>
+                ) : (
+                  <div className="divide-y">
+                    {ivrs.map((ivr) => (
+                      <div
+                        key={ivr.id}
+                        className={`p-4 cursor-pointer hover:bg-muted/50 transition-colors ${selectedIvrId === ivr.id ? 'bg-muted' : ''}`}
+                        onClick={() => setSelectedIvrId(ivr.id)}
+                        data-testid={`ivr-item-${ivr.id}`}
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium truncate">{ivr.name}</span>
+                              {ivr.isDefault && (
+                                <Badge variant="secondary" className="text-xs">
+                                  <Star className="w-3 h-3 mr-1" />
+                                  Default
+                                </Badge>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground">
+                              <span className="font-mono">Ext. {ivr.extension}</span>
+                              <span>{ivr.language}</span>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1">
+                            {!ivr.isDefault && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setDefaultIvrMutation.mutate(ivr.id);
+                                }}
+                                title="Set as default"
+                                data-testid={`button-set-default-${ivr.id}`}
+                              >
+                                <Star className="w-4 h-4" />
+                              </Button>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setEditingIvr(ivr);
+                                setShowIvrDialog(true);
+                              }}
+                              data-testid={`button-edit-ivr-${ivr.id}`}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                if (confirm("Are you sure you want to delete this IVR?")) {
+                                  deleteIvrMutation.mutate(ivr.id);
+                                }
+                              }}
+                              data-testid={`button-delete-ivr-${ivr.id}`}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
+            <Card className="lg:col-span-2">
+              <CardHeader className="flex flex-row items-center justify-between">
+                <CardTitle className="flex items-center gap-2">
+                  <ListOrdered className="w-5 h-5" />
+                  {selectedIvrId ? `Menu Options - ${ivrs.find(i => i.id === selectedIvrId)?.name}` : 'Menu Options'}
+                </CardTitle>
+                {selectedIvrId && (
+                  <Button size="sm" onClick={() => { setEditingIvrMenuOption(null); setShowIvrMenuDialog(true); }} data-testid="button-add-ivr-menu-option">
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add Option
+                  </Button>
+                )}
+              </CardHeader>
+              <CardContent>
+                {!selectedIvrId ? (
+                  <div className="text-center py-8 text-slate-500">
+                    <Mic className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">Select an IVR to manage its menu options</p>
+                  </div>
+                ) : ivrMenuOptions.length === 0 ? (
+                  <div className="text-center py-8 text-slate-500">
+                    <Mic className="w-10 h-10 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">No menu options for this IVR</p>
+                    <p className="text-xs mt-1">Add options like "Press 1 for sales"</p>
+                  </div>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Key</TableHead>
+                        <TableHead>Label</TableHead>
+                        <TableHead>Action</TableHead>
+                        <TableHead>Target</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {ivrMenuOptions.map((option) => (
+                        <TableRow key={option.id}>
+                          <TableCell className="font-mono font-bold">{option.digit}</TableCell>
+                          <TableCell>{option.label}</TableCell>
+                          <TableCell className="capitalize">{option.actionType.replace("_", " ")}</TableCell>
+                          <TableCell>
+                            {option.actionType === "queue" && queues.find(q => q.id === option.targetQueueId)?.name}
+                            {option.actionType === "extension" && extensions.find(e => e.id === option.targetExtensionId)?.extension}
+                            {option.actionType === "external" && option.targetExternalNumber}
+                            {option.actionType === "ivr" && ivrs.find(i => i.id === option.targetIvrId)?.name}
+                            {option.actionType === "voicemail" && "Voicemail"}
+                            {option.actionType === "hangup" && "Hang Up"}
+                          </TableCell>
+                          <TableCell className="text-right">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setEditingIvrMenuOption(option);
+                                setShowIvrMenuDialog(true);
+                              }}
+                            >
+                              <Edit className="w-4 h-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => deleteIvrMenuOptionMutation.mutate(option.id)}
+                            >
+                              <Trash2 className="w-4 h-4 text-red-500" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
+              </CardContent>
+            </Card>
+          </div>
+        </TabsContent>
+
         <TabsContent value="ivr" className="space-y-6 mt-6">
           <Card>
             <CardHeader className="flex flex-row items-center justify-between">
               <CardTitle className="flex items-center gap-2">
                 <ListOrdered className="w-5 h-5" />
-                IVR Menu Options
+                Legacy IVR Menu Options
               </CardTitle>
               <Button onClick={() => { setEditingMenuOption(null); setShowMenuDialog(true); }} data-testid="button-add-menu-option">
                 <Plus className="w-4 h-4 mr-2" />
@@ -836,8 +1004,33 @@ export function PbxSettings() {
         option={editingMenuOption}
         queues={queues}
         extensions={extensions}
+        ivrs={ivrs}
         onSubmit={(data) => menuOptionMutation.mutate(data)}
         isPending={menuOptionMutation.isPending}
+      />
+
+      <IvrDialog
+        open={showIvrDialog}
+        onOpenChange={setShowIvrDialog}
+        ivr={editingIvr}
+        onSubmit={(data) => ivrMutation.mutate(data)}
+        onUploadGreeting={(ivrId, file) => uploadIvrGreetingMutation.mutate({ ivrId, file })}
+        onDeleteGreeting={(ivrId) => deleteIvrGreetingMutation.mutate(ivrId)}
+        isPending={ivrMutation.isPending}
+        isUploadPending={uploadIvrGreetingMutation.isPending}
+        isDeletePending={deleteIvrGreetingMutation.isPending}
+      />
+
+      <IvrMenuOptionDialog
+        open={showIvrMenuDialog}
+        onOpenChange={setShowIvrMenuDialog}
+        option={editingIvrMenuOption}
+        queues={queues}
+        extensions={extensions}
+        ivrs={ivrs}
+        currentIvrId={selectedIvrId}
+        onSubmit={(data) => ivrMenuOptionMutation.mutate(data)}
+        isPending={ivrMenuOptionMutation.isPending}
       />
     </div>
   );
@@ -1187,6 +1380,7 @@ function MenuOptionDialog({
   option,
   queues,
   extensions,
+  ivrs,
   onSubmit,
   isPending,
 }: {
@@ -1195,6 +1389,7 @@ function MenuOptionDialog({
   option: PbxMenuOption | null;
   queues: PbxQueue[];
   extensions: PbxExtension[];
+  ivrs: PbxIvr[];
   onSubmit: (data: any) => void;
   isPending: boolean;
 }) {
@@ -1204,6 +1399,7 @@ function MenuOptionDialog({
   const [targetQueueId, setTargetQueueId] = useState("");
   const [targetExtensionId, setTargetExtensionId] = useState("");
   const [targetExternalNumber, setTargetExternalNumber] = useState("");
+  const [targetIvrId, setTargetIvrId] = useState("");
 
   useEffect(() => {
     if (open) {
@@ -1214,6 +1410,7 @@ function MenuOptionDialog({
         setTargetQueueId(option.targetQueueId || "");
         setTargetExtensionId(option.targetExtensionId || "");
         setTargetExternalNumber(option.targetExternalNumber || "");
+        setTargetIvrId(option.targetIvrId || "");
       } else {
         setDigit("");
         setLabel("");
@@ -1221,6 +1418,7 @@ function MenuOptionDialog({
         setTargetQueueId("");
         setTargetExtensionId("");
         setTargetExternalNumber("");
+        setTargetIvrId("");
       }
     }
   }, [open, option]);
@@ -1233,6 +1431,7 @@ function MenuOptionDialog({
       setTargetQueueId("");
       setTargetExtensionId("");
       setTargetExternalNumber("");
+      setTargetIvrId("");
     }
     onOpenChange(isOpen);
   };
@@ -1275,6 +1474,7 @@ function MenuOptionDialog({
                 <SelectItem value="queue">Route to Queue</SelectItem>
                 <SelectItem value="extension">Route to Extension</SelectItem>
                 <SelectItem value="external">Forward to External Number</SelectItem>
+                <SelectItem value="ivr">Route to IVR</SelectItem>
                 <SelectItem value="voicemail">Go to Voicemail</SelectItem>
                 <SelectItem value="hangup">Hang Up</SelectItem>
               </SelectContent>
@@ -1328,6 +1528,24 @@ function MenuOptionDialog({
               />
             </div>
           )}
+
+          {actionType === "ivr" && (
+            <div className="space-y-2">
+              <Label>Target IVR</Label>
+              <Select value={targetIvrId} onValueChange={setTargetIvrId}>
+                <SelectTrigger data-testid="select-target-ivr">
+                  <SelectValue placeholder="Select IVR" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ivrs.map((ivr) => (
+                    <SelectItem key={ivr.id} value={ivr.id}>
+                      {ivr.name} ({ivr.language})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
@@ -1343,10 +1561,482 @@ function MenuOptionDialog({
                 targetQueueId: actionType === "queue" ? targetQueueId : null,
                 targetExtensionId: actionType === "extension" ? targetExtensionId : null,
                 targetExternalNumber: actionType === "external" ? targetExternalNumber : null,
+                targetIvrId: actionType === "ivr" ? targetIvrId : null,
               })
             }
             disabled={isPending || !digit || !label}
             data-testid="button-save-menu-option"
+          >
+            {isPending ? <LoadingSpinner fullScreen={false} /> : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function IvrDialog({
+  open,
+  onOpenChange,
+  ivr,
+  onSubmit,
+  onUploadGreeting,
+  onDeleteGreeting,
+  isPending,
+  isUploadPending,
+  isDeletePending,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  ivr: PbxIvr | null;
+  onSubmit: (data: any) => void;
+  onUploadGreeting: (ivrId: string, file: File) => void;
+  onDeleteGreeting: (ivrId: string) => void;
+  isPending: boolean;
+  isUploadPending: boolean;
+  isDeletePending: boolean;
+}) {
+  const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
+  const [extension, setExtension] = useState("");
+  const [language, setLanguage] = useState("en-US");
+  const [useTextToSpeech, setUseTextToSpeech] = useState(true);
+  const [greetingText, setGreetingText] = useState("");
+  const [ivrTimeout, setIvrTimeout] = useState(10);
+  const [maxRetries, setMaxRetries] = useState(3);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const { data: nextExtension } = useQuery<{ extension: string }>({
+    queryKey: ["/api/pbx/ivrs/next-extension"],
+    enabled: open && !ivr,
+  });
+
+  useEffect(() => {
+    if (open) {
+      if (ivr) {
+        setName(ivr.name);
+        setDescription(ivr.description || "");
+        setExtension(ivr.extension);
+        setLanguage(ivr.language);
+        setUseTextToSpeech(ivr.useTextToSpeech);
+        setGreetingText(ivr.greetingText || "");
+        setIvrTimeout(ivr.ivrTimeout);
+        setMaxRetries(ivr.maxRetries);
+      } else {
+        setName("");
+        setDescription("");
+        setExtension(nextExtension?.extension || "");
+        setLanguage("en-US");
+        setUseTextToSpeech(true);
+        setGreetingText("");
+        setIvrTimeout(10);
+        setMaxRetries(3);
+      }
+    }
+  }, [open, ivr, nextExtension]);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      setName("");
+      setDescription("");
+      setExtension("");
+      setLanguage("en-US");
+      setUseTextToSpeech(true);
+      setGreetingText("");
+      setIvrTimeout(10);
+      setMaxRetries(3);
+    }
+    onOpenChange(isOpen);
+  };
+
+  const handleFileUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file && ivr?.id) {
+      onUploadGreeting(ivr.id, file);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>{ivr ? "Edit IVR" : "Create IVR"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Name</Label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="English IVR, Spanish IVR"
+                data-testid="input-ivr-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Extension</Label>
+              <Input
+                value={extension}
+                onChange={(e) => setExtension(e.target.value)}
+                placeholder="1000"
+                data-testid="input-ivr-extension"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label>Description</Label>
+            <Input
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Optional description"
+              data-testid="input-ivr-description"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <Label>Language</Label>
+            <Select value={language} onValueChange={setLanguage}>
+              <SelectTrigger data-testid="select-ivr-language">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="en-US">English (US)</SelectItem>
+                <SelectItem value="es-ES">Spanish (Spain)</SelectItem>
+                <SelectItem value="es-MX">Spanish (Mexico)</SelectItem>
+                <SelectItem value="fr-FR">French (France)</SelectItem>
+                <SelectItem value="de-DE">German (Germany)</SelectItem>
+                <SelectItem value="pt-BR">Portuguese (Brazil)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="rounded-lg border border-border bg-muted/30 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label>Use Text-to-Speech</Label>
+                <p className="text-sm text-muted-foreground">Generate greeting from text</p>
+              </div>
+              <Switch
+                checked={useTextToSpeech}
+                onCheckedChange={setUseTextToSpeech}
+                data-testid="switch-ivr-tts"
+              />
+            </div>
+          </div>
+
+          {useTextToSpeech ? (
+            <div className="space-y-2">
+              <Label>Greeting Text</Label>
+              <Textarea
+                value={greetingText}
+                onChange={(e) => setGreetingText(e.target.value)}
+                placeholder="Welcome to our company. Press 1 for Sales, Press 2 for Support..."
+                rows={4}
+                data-testid="input-ivr-greeting-text"
+              />
+            </div>
+          ) : ivr?.id ? (
+            <div className="space-y-2">
+              <Label>Greeting Audio</Label>
+              <input
+                type="file"
+                ref={fileInputRef}
+                onChange={handleFileUpload}
+                accept=".mp3,.wav,audio/mpeg,audio/wav"
+                className="hidden"
+              />
+              {ivr?.greetingAudioUrl ? (
+                <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30">
+                  <div className="flex-1">
+                    <p className="text-sm font-medium">Audio uploaded</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isUploadPending}
+                  >
+                    {isUploadPending ? <LoadingSpinner fullScreen={false} /> : <Upload className="h-4 w-4" />}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => onDeleteGreeting(ivr.id)}
+                    disabled={isDeletePending}
+                    className="text-red-500"
+                  >
+                    {isDeletePending ? <LoadingSpinner fullScreen={false} /> : <Trash2 className="h-4 w-4" />}
+                  </Button>
+                </div>
+              ) : (
+                <div
+                  className="flex flex-col items-center justify-center p-6 border-2 border-dashed border-border rounded-lg cursor-pointer hover:border-primary/50"
+                  onClick={() => fileInputRef.current?.click()}
+                >
+                  {isUploadPending ? (
+                    <LoadingSpinner fullScreen={false} />
+                  ) : (
+                    <>
+                      <Upload className="h-8 w-8 text-muted-foreground mb-2" />
+                      <p className="text-sm font-medium">Upload audio</p>
+                      <p className="text-xs text-muted-foreground">MP3 or WAV</p>
+                    </>
+                  )}
+                </div>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">Save the IVR first to upload audio greeting.</p>
+          )}
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Timeout (seconds)</Label>
+              <Input
+                type="number"
+                value={ivrTimeout}
+                onChange={(e) => setIvrTimeout(parseInt(e.target.value) || 10)}
+                data-testid="input-ivr-timeout"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Max Retries</Label>
+              <Input
+                type="number"
+                value={maxRetries}
+                onChange={(e) => setMaxRetries(parseInt(e.target.value) || 3)}
+                data-testid="input-ivr-max-retries"
+              />
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() => onSubmit({
+              id: ivr?.id,
+              name,
+              description: description || null,
+              extension,
+              language,
+              useTextToSpeech,
+              greetingText: useTextToSpeech ? greetingText : null,
+              ivrTimeout,
+              maxRetries,
+            })}
+            disabled={isPending || !name || !extension}
+            data-testid="button-save-ivr"
+          >
+            {isPending ? <LoadingSpinner fullScreen={false} /> : "Save"}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+function IvrMenuOptionDialog({
+  open,
+  onOpenChange,
+  option,
+  queues,
+  extensions,
+  ivrs,
+  currentIvrId,
+  onSubmit,
+  isPending,
+}: {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  option: PbxMenuOption | null;
+  queues: PbxQueue[];
+  extensions: PbxExtension[];
+  ivrs: PbxIvr[];
+  currentIvrId: string | null;
+  onSubmit: (data: any) => void;
+  isPending: boolean;
+}) {
+  const [digit, setDigit] = useState("");
+  const [label, setLabel] = useState("");
+  const [actionType, setActionType] = useState("queue");
+  const [targetQueueId, setTargetQueueId] = useState("");
+  const [targetExtensionId, setTargetExtensionId] = useState("");
+  const [targetExternalNumber, setTargetExternalNumber] = useState("");
+  const [targetIvrId, setTargetIvrId] = useState("");
+
+  useEffect(() => {
+    if (open) {
+      if (option) {
+        setDigit(option.digit);
+        setLabel(option.label);
+        setActionType(option.actionType);
+        setTargetQueueId(option.targetQueueId || "");
+        setTargetExtensionId(option.targetExtensionId || "");
+        setTargetExternalNumber(option.targetExternalNumber || "");
+        setTargetIvrId(option.targetIvrId || "");
+      } else {
+        setDigit("");
+        setLabel("");
+        setActionType("queue");
+        setTargetQueueId("");
+        setTargetExtensionId("");
+        setTargetExternalNumber("");
+        setTargetIvrId("");
+      }
+    }
+  }, [open, option]);
+
+  const handleOpenChange = (isOpen: boolean) => {
+    if (!isOpen) {
+      setDigit("");
+      setLabel("");
+      setActionType("queue");
+      setTargetQueueId("");
+      setTargetExtensionId("");
+      setTargetExternalNumber("");
+      setTargetIvrId("");
+    }
+    onOpenChange(isOpen);
+  };
+
+  const availableIvrs = ivrs.filter(i => i.id !== currentIvrId);
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{option ? "Edit Menu Option" : "Create Menu Option"}</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Key (0-9, *, #)</Label>
+              <Input
+                value={digit}
+                onChange={(e) => setDigit(e.target.value)}
+                placeholder="1"
+                maxLength={1}
+                data-testid="input-ivr-menu-digit"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Label</Label>
+              <Input
+                value={label}
+                onChange={(e) => setLabel(e.target.value)}
+                placeholder="Sales"
+                data-testid="input-ivr-menu-label"
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label>Action</Label>
+            <Select value={actionType} onValueChange={setActionType}>
+              <SelectTrigger data-testid="select-ivr-menu-action">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="queue">Route to Queue</SelectItem>
+                <SelectItem value="extension">Route to Extension</SelectItem>
+                <SelectItem value="external">Forward to External Number</SelectItem>
+                <SelectItem value="ivr">Route to IVR</SelectItem>
+                <SelectItem value="voicemail">Go to Voicemail</SelectItem>
+                <SelectItem value="hangup">Hang Up</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {actionType === "queue" && (
+            <div className="space-y-2">
+              <Label>Target Queue</Label>
+              <Select value={targetQueueId} onValueChange={setTargetQueueId}>
+                <SelectTrigger data-testid="select-ivr-target-queue">
+                  <SelectValue placeholder="Select queue" />
+                </SelectTrigger>
+                <SelectContent>
+                  {queues.map((queue) => (
+                    <SelectItem key={queue.id} value={queue.id}>
+                      {queue.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {actionType === "extension" && (
+            <div className="space-y-2">
+              <Label>Target Extension</Label>
+              <Select value={targetExtensionId} onValueChange={setTargetExtensionId}>
+                <SelectTrigger data-testid="select-ivr-target-extension">
+                  <SelectValue placeholder="Select extension" />
+                </SelectTrigger>
+                <SelectContent>
+                  {extensions.map((ext) => (
+                    <SelectItem key={ext.id} value={ext.id}>
+                      {ext.extension} - {ext.displayName || ext.user?.firstName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {actionType === "external" && (
+            <div className="space-y-2">
+              <Label>External Number</Label>
+              <Input
+                value={targetExternalNumber}
+                onChange={(e) => setTargetExternalNumber(e.target.value)}
+                placeholder="+1XXXXXXXXXX"
+                data-testid="input-ivr-external-number"
+              />
+            </div>
+          )}
+
+          {actionType === "ivr" && (
+            <div className="space-y-2">
+              <Label>Target IVR</Label>
+              <Select value={targetIvrId} onValueChange={setTargetIvrId}>
+                <SelectTrigger data-testid="select-ivr-target-ivr">
+                  <SelectValue placeholder="Select IVR" />
+                </SelectTrigger>
+                <SelectContent>
+                  {availableIvrs.map((i) => (
+                    <SelectItem key={i.id} value={i.id}>
+                      {i.name} ({i.language})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Cancel
+          </Button>
+          <Button
+            onClick={() =>
+              onSubmit({
+                id: option?.id,
+                digit,
+                label,
+                actionType,
+                targetQueueId: actionType === "queue" ? targetQueueId : null,
+                targetExtensionId: actionType === "extension" ? targetExtensionId : null,
+                targetExternalNumber: actionType === "external" ? targetExternalNumber : null,
+                targetIvrId: actionType === "ivr" ? targetIvrId : null,
+              })
+            }
+            disabled={isPending || !digit || !label}
+            data-testid="button-save-ivr-menu-option"
           >
             {isPending ? <LoadingSpinner fullScreen={false} /> : "Save"}
           </Button>

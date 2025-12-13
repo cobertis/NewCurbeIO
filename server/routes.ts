@@ -28929,7 +28929,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
       }
       const { phoneNumberId } = req.params;
-      const { recordingEnabled, cnamLookupEnabled, noiseSuppressionEnabled, noiseSuppressionDirection, voicemailEnabled, voicemailPin } = req.body;
+      const { recordingEnabled, cnamLookupEnabled, noiseSuppressionEnabled, noiseSuppressionDirection, voicemailEnabled, voicemailPin, ivrId } = req.body;
 
       if (!phoneNumberId) {
         return res.status(400).json({ message: "Phone number ID is required" });
@@ -28947,6 +28947,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         noiseSuppressionDirection,
         voicemailEnabled,
         voicemailPin,
+        ivrId,
       });
 
       if (!result.success) {

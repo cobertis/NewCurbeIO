@@ -109,6 +109,18 @@ interface NumberInfo {
   noiseSuppressionDirection?: string;
   voicemailEnabled?: boolean;
   voicemailPin?: string;
+  ivrId?: string | null;
+}
+
+interface PbxIvr {
+  id: string;
+  companyId: string;
+  name: string;
+  description: string | null;
+  extension: string;
+  language: string;
+  isDefault: boolean;
+  isActive: boolean;
 }
 
 function formatPhoneDisplay(phone: string | undefined | null): string {
@@ -189,6 +201,10 @@ export default function PhoneSystem() {
     };
   }>({
     queryKey: ["/api/wallet"],
+  });
+
+  const { data: ivrs = [] } = useQuery<PbxIvr[]>({
+    queryKey: ["/api/pbx/ivrs"],
   });
 
   useEffect(() => {
@@ -519,6 +535,7 @@ export default function PhoneSystem() {
         noiseSuppressionDirection?: string;
         voicemailEnabled?: boolean;
         voicemailPin?: string;
+        ivrId?: string | null;
       } 
     }) => {
       return apiRequest("POST", `/api/telnyx/number-voice-settings/${phoneNumberId}`, settings);
@@ -1196,6 +1213,51 @@ export default function PhoneSystem() {
                             </SelectContent>
                           </Select>
                         </div>
+                      </div>
+
+                      {/* Entry IVR Section */}
+                      <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedNumber.ivrId ? 'bg-indigo-50 dark:bg-indigo-900/20' : 'bg-slate-50 dark:bg-slate-800'}`}>
+                            <PhoneIncoming className={`h-5 w-5 ${selectedNumber.ivrId ? 'text-indigo-600' : 'text-slate-400'}`} />
+                          </div>
+                          <div>
+                            <p className="font-medium text-sm text-slate-700 dark:text-foreground">Entry IVR</p>
+                            <p className="text-xs text-slate-500">
+                              {selectedNumber.ivrId 
+                                ? ivrs.find(i => i.id === selectedNumber.ivrId)?.name || 'IVR Selected'
+                                : 'Using default IVR'}
+                            </p>
+                          </div>
+                        </div>
+                        <Select
+                          value={selectedNumber.ivrId || "default"}
+                          onValueChange={(value) => {
+                            const ivrId = value === "default" ? null : value;
+                            if (selectedNumber.telnyxPhoneNumberId) {
+                              numberVoiceSettingsMutation.mutate({
+                                phoneNumberId: selectedNumber.telnyxPhoneNumberId,
+                                settings: { ivrId }
+                              });
+                            }
+                          }}
+                          disabled={numberVoiceSettingsMutation.isPending}
+                        >
+                          <SelectTrigger className="w-full" data-testid="select-entry-ivr">
+                            <SelectValue placeholder="Select IVR" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="default">Use Default IVR</SelectItem>
+                            {ivrs.map((ivr) => (
+                              <SelectItem key={ivr.id} value={ivr.id}>
+                                {ivr.name} {ivr.isDefault && '(Default)'} - Ext. {ivr.extension}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <p className="text-xs text-slate-500 mt-2">
+                          Select which IVR handles incoming calls to this number
+                        </p>
                       </div>
 
                       {/* Voice Settings - Per Number */}

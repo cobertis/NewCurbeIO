@@ -1360,7 +1360,7 @@ export async function syncBillingFeaturesToTelnyx(
   }
 }
 
-// Update per-number voice settings (recordingEnabled, cnamLookupEnabled, noiseSuppressionEnabled, voicemailEnabled, voicemailPin)
+// Update per-number voice settings (recordingEnabled, cnamLookupEnabled, noiseSuppressionEnabled, voicemailEnabled, voicemailPin, ivrId)
 export async function updateNumberVoiceSettings(
   phoneNumberId: string,
   companyId: string,
@@ -1371,6 +1371,7 @@ export async function updateNumberVoiceSettings(
     noiseSuppressionDirection?: "inbound" | "outbound" | "both";
     voicemailEnabled?: boolean;
     voicemailPin?: string;
+    ivrId?: string | null;
   }
 ): Promise<{ success: boolean; error?: string }> {
   try {
@@ -1407,6 +1408,9 @@ export async function updateNumberVoiceSettings(
     }
     if (settings.voicemailPin) {
       updateData.voicemailPin = settings.voicemailPin;
+    }
+    if (settings.ivrId !== undefined) {
+      updateData.ivrId = settings.ivrId;
     }
     
     // Update local DB - use local database ID from the fetched record
