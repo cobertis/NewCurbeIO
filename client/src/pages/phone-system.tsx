@@ -1230,9 +1230,9 @@ export default function PhoneSystem() {
                             </div>
                           </div>
                           <Select
-                            value={selectedNumber.ivrId || "default"}
+                            value={selectedNumber.ivrId === null ? "unassigned" : (selectedNumber.ivrId || "default")}
                             onValueChange={(value) => {
-                              const ivrId = value === "default" ? null : value;
+                              const ivrId = value === "default" ? null : (value === "unassigned" ? "unassigned" : value);
                               if (selectedNumber.telnyxPhoneNumberId) {
                                 numberVoiceSettingsMutation.mutate({
                                   phoneNumberId: selectedNumber.telnyxPhoneNumberId,
@@ -1247,6 +1247,7 @@ export default function PhoneSystem() {
                             </SelectTrigger>
                             <SelectContent>
                               <SelectItem value="default">Use Default IVR</SelectItem>
+                              <SelectItem value="unassigned">Unassigned (No IVR)</SelectItem>
                               {ivrs.map((ivr) => (
                                 <SelectItem key={ivr.id} value={ivr.id}>
                                   {ivr.name} {ivr.isDefault && '(Default)'} - Ext. {ivr.extension}
