@@ -119,16 +119,29 @@ export async function uploadMediaToTelnyx(
   }
 }
 
-export async function deleteMediaFromTelnyx(mediaId: string): Promise<TelnyxMediaDeleteResult> {
+export async function deleteMediaFromTelnyx(mediaId: string, companyId?: string): Promise<TelnyxMediaDeleteResult> {
   try {
     const apiKey = await getTelnyxMasterApiKey();
     
+    // Get managed account ID if companyId is provided
+    let managedAccountId: string | null = null;
+    if (companyId) {
+      managedAccountId = await getCompanyManagedAccountId(companyId);
+      console.log("[TelnyxMedia] Using managed account for delete:", managedAccountId);
+    }
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+    
+    if (managedAccountId) {
+      headers["X-Managed-Account-Id"] = managedAccountId;
+    }
+    
     const response = await fetch(`${TELNYX_API_BASE}/media/${mediaId}`, {
       method: "DELETE",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      },
+      headers,
     });
 
     if (!response.ok) {

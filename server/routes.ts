@@ -33116,7 +33116,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Delete from Telnyx Media Storage
         try {
           const { deleteMediaFromTelnyx } = await import("./services/telnyx-media-service");
-          await deleteMediaFromTelnyx(existing.telnyxMediaId);
+          await deleteMediaFromTelnyx(existing.telnyxMediaId, user.companyId);
         } catch (telnyxError) {
           console.error("[PBX Audio] Failed to delete from Telnyx:", telnyxError);
         }
