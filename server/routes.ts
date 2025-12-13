@@ -169,6 +169,8 @@ function detectStopKeyword(messageBody: string): boolean {
   const stopKeywords = ["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"];
   const normalizedBody = messageBody.trim().toUpperCase();
   return stopKeywords.some(keyword => normalizedBody === keyword || normalizedBody.startsWith(keyword + " "));
+
+  return httpServer;
 }
 // Verify ffmpeg is available at startup
 (async () => {
@@ -197,6 +199,8 @@ async function extractAudioDuration(audioPath: string): Promise<number> {
     const stats = await fsPromises.stat(audioPath);
     return Math.floor(stats.size / 3000);
   }
+
+  return httpServer;
 }
 // Helper function to generate real waveform from audio file
 // Returns 40-64 amplitude samples normalized to 0-255
@@ -271,6 +275,8 @@ async function generateAudioWaveform(audioPath: string, targetSamples: number = 
     console.log(`[Waveform] Generated ${waveform.length} fallback samples`);
     return waveform;
   }
+
+  return httpServer;
 }
 async function convertWebMToCAF(inputPath: string, tryOpus: boolean = true): Promise<{ path: string, metadata: AudioMetadata }> {
   const parsed = path.parse(inputPath);
@@ -362,6 +368,8 @@ async function convertWebMToCAF(inputPath: string, tryOpus: boolean = true): Pro
       })
       .save(outputPath);
   });
+
+  return httpServer;
 }
 interface AudioMetadata {
   duration: number; // milliseconds
@@ -370,6 +378,8 @@ interface AudioMetadata {
   uti: string;
   codec: string;
   sampleRate: number;
+
+  return httpServer;
 }
 async function ensureUserSlug(userId: string, companyId: string): Promise<string> {
   const user = await storage.getUser(userId);
@@ -408,6 +418,8 @@ async function ensureUserSlug(userId: string, companyId: string): Promise<string
     }
   }
   return finalSlug;
+
+  return httpServer;
 }
 export async function registerRoutes(app: Express, sessionStore?: any): Promise<Server> {
   // Initialize Stripe for type safety
@@ -33314,6 +33326,234 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(500).json({ error: error.message });
     }
   });
+
+  // ============================================================
+  // WEB PUSH ENDPOINTS (Android PWA)
+  // ============================================================
+  
+  // Get VAPID public key
+  app.get("/api/push/public-key", async (_req: Request, res: Response) => {
+    try {
+      const { webPushService } = await import("./services/web-push-service");
+      const publicKey = webPushService.getPublicKey();
+      
+      if (!publicKey) {
+        return res.status(503).json({ message: "Push notifications not configured" });
+      }
+      
+      return res.json({ publicKey });
+    } catch (error: any) {
+      console.error("[WebPush] Error getting public key:", error);
+      return res.status(500).json({ message: "Failed to get public key" });
+    }
+  });
+  
+  // Subscribe to push notifications (public - uses token)
+  app.post("/api/push/subscribe", async (req: Request, res: Response) => {
+    try {
+      const { token, subscription, userAgent, platform } = req.body;
+      
+      if (!token || !subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      
+      // Find pass instance by token
+      const [passInstance] = await db
+        .select()
+        .from(vipPassInstances)
+        .where(eq(vipPassInstances.authenticationToken, token))
+        .limit(1);
+      
+      if (!passInstance) {
+        return res.status(404).json({ message: "Invalid token" });
+      }
+      
+      const { webPushService } = await import("./services/web-push-service");
+      const result = await webPushService.subscribe({
+        companyId: passInstance.companyId,
+        contactId: passInstance.contactId,
+        passInstanceId: passInstance.id,
+        endpoint: subscription.endpoint,
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
+        userAgent: userAgent || null,
+        platform: platform || null,
+      });
+      
+      return res.json({ success: true, subscriptionId: result.id });
+    } catch (error: any) {
+      console.error("[WebPush] Subscribe error:", error);
+      return res.status(500).json({ message: "Failed to subscribe" });
+    }
+  });
+  
+  // Unsubscribe from push notifications
+  app.post("/api/push/unsubscribe", async (req: Request, res: Response) => {
+    try {
+      const { endpoint } = req.body;
+      
+      if (!endpoint) {
+        return res.status(400).json({ message: "Endpoint required" });
+      }
+      
+      const { webPushService } = await import("./services/web-push-service");
+      await webPushService.unsubscribe(endpoint);
+      
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[WebPush] Unsubscribe error:", error);
+      return res.status(500).json({ message: "Failed to unsubscribe" });
+    }
+  });
+  
+  // Test push notification (requires token)
+  app.post("/api/push/test", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ message: "Token required" });
+      }
+      
+      // Find pass instance by token
+      const [passInstance] = await db
+        .select()
+        .from(vipPassInstances)
+        .where(eq(vipPassInstances.authenticationToken, token))
+        .limit(1);
+      
+      if (!passInstance) {
+        return res.status(404).json({ message: "Invalid token" });
+      }
+      
+      const { webPushService } = await import("./services/web-push-service");
+      const result = await webPushService.sendToPassInstance(passInstance.id, {
+        title: "VIP Card Active",
+        body: "Push notifications are working!",
+        icon: "/icons/icon-192.png",
+      });
+      
+      return res.json({ success: true, ...result });
+    } catch (error: any) {
+      console.error("[WebPush] Test error:", error);
+      return res.status(500).json({ message: "Failed to send test notification" });
+    }
+  });
+  
+  // Internal push send (protected by API key)
+  app.post("/api/push/send", async (req: Request, res: Response) => {
+    try {
+      const apiKey = req.headers["x-internal-key"];
+      const expectedKey = process.env.PUSH_INTERNAL_API_KEY;
+      
+      if (!expectedKey || apiKey !== expectedKey) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { passInstanceId, contactId, companyId, title, body, url, icon } = req.body;
+      
+      if (!title || !body) {
+        return res.status(400).json({ message: "Title and body required" });
+      }
+      
+      const { webPushService } = await import("./services/web-push-service");
+      
+      let result;
+      if (passInstanceId) {
+        result = await webPushService.sendToPassInstance(passInstanceId, { title, body, url, icon });
+      } else if (contactId && companyId) {
+        result = await webPushService.sendToContact(companyId, contactId, { title, body, url, icon });
+      } else {
+        return res.status(400).json({ message: "passInstanceId or (contactId + companyId) required" });
+      }
+      
+      return res.json({ success: true, ...result });
+    } catch (error: any) {
+      console.error("[WebPush] Send error:", error);
+      return res.status(500).json({ message: "Failed to send notification" });
+    }
+  });
+
+  // ============================================================
+  // PUBLIC CARD ENDPOINT (for /p/:token page)
+  // ============================================================
+  
+  app.get("/api/public/card/:token", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.params;
+      
+      // Find pass instance by authentication token
+      const [passInstance] = await db
+        .select({
+          id: vipPassInstances.id,
+          companyId: vipPassInstances.companyId,
+          contactId: vipPassInstances.contactId,
+          serialNumber: vipPassInstances.serialNumber,
+          status: vipPassInstances.status,
+          memberName: vipPassInstances.memberName,
+          memberSince: vipPassInstances.memberSince,
+          tierLevel: vipPassInstances.tierLevel,
+          points: vipPassInstances.points,
+          expirationDate: vipPassInstances.expirationDate,
+        })
+        .from(vipPassInstances)
+        .where(eq(vipPassInstances.authenticationToken, token))
+        .limit(1);
+      
+      if (!passInstance) {
+        return res.status(404).json({ message: "Card not found" });
+      }
+      
+      if (passInstance.status !== "active") {
+        return res.status(410).json({ message: "Card is no longer active" });
+      }
+      
+      // Get company info for branding
+      const [company] = await db
+        .select({
+          id: companies.id,
+          name: companies.name,
+          logo: companies.logo,
+        })
+        .from(companies)
+        .where(eq(companies.id, passInstance.companyId))
+        .limit(1);
+      
+      // Get contact info if available
+      let contact = null;
+      if (passInstance.contactId) {
+        const [contactData] = await db
+          .select({
+            id: contacts.id,
+            firstName: contacts.firstName,
+            lastName: contacts.lastName,
+            email: contacts.email,
+            phone: contacts.phone,
+          })
+          .from(contacts)
+          .where(eq(contacts.id, passInstance.contactId))
+          .limit(1);
+        contact = contactData || null;
+      }
+      
+      return res.json({
+        card: {
+          serialNumber: passInstance.serialNumber,
+          memberName: passInstance.memberName,
+          memberSince: passInstance.memberSince,
+          tierLevel: passInstance.tierLevel,
+          points: passInstance.points,
+          expirationDate: passInstance.expirationDate,
+        },
+        company: company || null,
+        contact,
+      });
+    } catch (error: any) {
+      console.error("[PublicCard] Error:", error);
+      return res.status(500).json({ message: "Failed to load card" });
+    }
+  });
+
 
   return httpServer;
 }

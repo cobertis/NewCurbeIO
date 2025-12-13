@@ -5937,3 +5937,37 @@ export type InsertPbxActiveCall = z.infer<typeof insertPbxActiveCallSchema>;
 
 export type PbxAudioFile = typeof pbxAudioFiles.$inferSelect;
 export type InsertPbxAudioFile = z.infer<typeof insertPbxAudioFileSchema>;
+
+// =============================================================================
+// ANDROID PUSH SUBSCRIPTIONS - Web Push for PWA Card System
+// =============================================================================
+
+export const pushSubscriptions = pgTable("push_subscriptions", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  contactId: text("contact_id").references(() => contacts.id, { onDelete: "cascade" }),
+  passInstanceId: text("pass_instance_id").references(() => vipPassInstances.id, { onDelete: "cascade" }),
+  
+  // Web Push subscription data
+  endpoint: text("endpoint").notNull().unique(),
+  p256dh: text("p256dh").notNull(),
+  auth: text("auth").notNull(),
+  
+  // Device info
+  userAgent: text("user_agent"),
+  platform: text("platform"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  companyContactIdx: index("push_subscriptions_company_contact_idx").on(table.companyId, table.contactId),
+}));
+
+export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type PushSubscription = typeof pushSubscriptions.$inferSelect;
+export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
