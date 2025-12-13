@@ -139,7 +139,6 @@ async function playHoldMusic(callControlId: string, state: HoldPlaybackState): P
     return;
   }
   
-  console.log(`[HoldPlayback] Playing hold music track ${state.currentTrackIndex + 1}/${state.holdMusicTracks.length} for call ${callControlId}`);
   state.isPlayingAd = false;
   
   try {
@@ -151,6 +150,9 @@ async function playHoldMusic(callControlId: string, state: HoldPlaybackState): P
         audioUrl = `https://${domain}${audioUrl}`;
       }
     }
+    
+    console.log(`[HoldPlayback] Playing hold music track ${state.currentTrackIndex + 1}/${state.holdMusicTracks.length} for call ${callControlId}`);
+    console.log(`[HoldPlayback] Audio URL: ${audioUrl}`);
     
     const apiKey = await getTelnyxApiKey();
     const context = callContextMap.get(callControlId);
@@ -175,7 +177,7 @@ async function playHoldMusic(callControlId: string, state: HoldPlaybackState): P
     // If single track, loop infinitely. If multiple tracks, play once then advance
     const shouldLoop = state.holdMusicTracks.length === 1;
     
-    await fetch(`${TELNYX_API_BASE}/calls/${callControlId}/actions/playback_start`, {
+    const response = await fetch(`${TELNYX_API_BASE}/calls/${callControlId}/actions/playback_start`, {
       method: "POST",
       headers,
       body: JSON.stringify({
@@ -184,6 +186,13 @@ async function playHoldMusic(callControlId: string, state: HoldPlaybackState): P
         client_state: clientState,
       }),
     });
+    
+    const responseData = await response.json();
+    if (!response.ok) {
+      console.error(`[HoldPlayback] Telnyx playback_start failed:`, responseData);
+    } else {
+      console.log(`[HoldPlayback] Playback started successfully`);
+    }
   } catch (error) {
     console.error(`[HoldPlayback] Error playing hold music:`, error);
   }
