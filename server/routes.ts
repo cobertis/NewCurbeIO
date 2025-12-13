@@ -32120,9 +32120,24 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Generate URL for serving the file
         const audioUrl = `/uploads/pbx-audio/${filename}`;
         
-        // Update PBX settings with the new audio URL
+        // Upload to Telnyx Media Storage for instant playback
+        const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0];
+        const absoluteUrl = domain ? `https://${domain}${audioUrl}` : audioUrl;
+        const mediaName = `ivr-greeting-${user.companyId}`;
+        
+        let greetingMediaName: string | null = null;
+        try {
+          const { uploadAudioToTelnyxMedia } = await import("./services/call-control-webhook-service");
+          greetingMediaName = await uploadAudioToTelnyxMedia(absoluteUrl, mediaName);
+          console.log(`[PBX] Audio uploaded to Telnyx Media Storage: ${greetingMediaName}`);
+        } catch (telnyxError: any) {
+          console.warn(`[PBX] Telnyx Media upload failed, falling back to URL: ${telnyxError.message}`);
+        }
+        
+        // Update PBX settings with the new audio URL and media name
         const settings = await pbxService.createOrUpdatePbxSettings(user.companyId, {
           greetingAudioUrl: audioUrl,
+          greetingMediaName: greetingMediaName,
           useTextToSpeech: false
         });
         

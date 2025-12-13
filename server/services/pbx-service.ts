@@ -506,6 +506,14 @@ export class PbxService {
     await db.delete(pbxActiveCalls).where(eq(pbxActiveCalls.callControlId, callControlId));
   }
 
+  async getActiveCall(callControlId: string): Promise<PbxActiveCall | null> {
+    const [call] = await db
+      .select()
+      .from(pbxActiveCalls)
+      .where(eq(pbxActiveCalls.callControlId, callControlId));
+    return call || null;
+  }
+
   async getAudioFiles(companyId: string, audioType?: string): Promise<PbxAudioFile[]> {
     if (audioType) {
       return db

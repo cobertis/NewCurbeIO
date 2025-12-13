@@ -35,6 +35,39 @@ async function getTelnyxApiKey(): Promise<string> {
   return apiKey.trim().replace(/[\r\n\t]/g, '');
 }
 
+export async function uploadAudioToTelnyxMedia(audioUrl: string, mediaName: string): Promise<string | null> {
+  try {
+    const apiKey = await getTelnyxApiKey();
+    console.log(`[TelnyxMedia] Uploading audio to Telnyx Media Storage: ${mediaName}`);
+    
+    const response = await fetch("https://api.telnyx.com/v2/media", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        media_url: audioUrl,
+        media_name: mediaName,
+        ttl_secs: 31536000
+      })
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      console.error(`[TelnyxMedia] Upload failed: ${error}`);
+      return null;
+    }
+
+    const data = await response.json();
+    console.log(`[TelnyxMedia] Upload successful: ${mediaName}`, data);
+    return mediaName;
+  } catch (error) {
+    console.error(`[TelnyxMedia] Error uploading audio:`, error);
+    return null;
+  }
+}
+
 interface CallControlEvent {
   data: {
     event_type: string;
@@ -610,8 +643,12 @@ export class CallControlWebhookService {
     if (settings.useTextToSpeech && settings.greetingText) {
       // For TTS, use speak with client_state - gather will start on speak.ended
       await this.speakTextWithState(callControlId, settings.greetingText, clientState);
+    } else if (settings.greetingMediaName) {
+      // Use Telnyx Media Storage for instant playback (no 5s delay)
+      console.log(`[CallControl] Using Telnyx Media Storage: ${settings.greetingMediaName}`);
+      await this.playMediaWithState(callControlId, settings.greetingMediaName, clientState);
     } else if (settings.greetingAudioUrl) {
-      // For audio file, use playback with client_state - gather will start on playback.ended
+      // Fallback to audio URL (has 5s delay for first playback)
       await this.playAudioWithState(callControlId, settings.greetingAudioUrl, clientState);
     } else {
       await this.speakTextWithState(callControlId, "Welcome. Please enter your selection.", clientState);
@@ -674,6 +711,15 @@ export class CallControlWebhookService {
     
     await this.makeCallControlRequest(callControlId, "playback_start", {
       audio_url: absoluteUrl,
+      client_state: clientState,
+    });
+  }
+
+  private async playMediaWithState(callControlId: string, mediaName: string, clientState: string): Promise<void> {
+    // Use Telnyx Media Storage for instant playback
+    console.log(`[CallControl] Playing from Telnyx Media Storage: ${mediaName}`);
+    await this.makeCallControlRequest(callControlId, "playback_start", {
+      media_name: mediaName,
       client_state: clientState,
     });
   }
