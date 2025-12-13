@@ -32766,6 +32766,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ error: "No phone number configured" });
       }
       
+      // Get Call Control App ID from telephony settings
+      const [settings] = await db
+        .select({ callControlAppId: telephonySettings.callControlAppId })
+        .from(telephonySettings)
+        .where(eq(telephonySettings.companyId, user.companyId));
+      
+      if (!settings?.callControlAppId) {
+        return res.status(400).json({ error: "Call Control App not configured. Please set up phone system first." });
+      }
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ error: "No phone number configured" });
+      }
+      
       const TELNYX_API_KEY = await getTelnyxMasterApiKey();
       const userSipUri = `sip:${credential.sipUsername}@sip.telnyx.com`;
       
@@ -32788,7 +32802,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         body: JSON.stringify({
           to: userSipUri,  // Call TO the user
           from: phoneNumber.phoneNumber,  // FROM company number
-          connection_id: phoneNumber.connectionId || "",
+          connection_id: settings?.callControlAppId || "",
           timeout_secs: 60,
           client_state: clientState,
           webhook_url: `${process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : ""}/api/webhooks/telnyx/call-control`,
