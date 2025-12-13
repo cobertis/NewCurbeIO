@@ -299,15 +299,19 @@ export class CallControlWebhookService {
       const state = JSON.parse(Buffer.from(client_state, "base64").toString());
       const { companyId, pbxSettingsId } = state;
 
-      // Check for timeout, call_hangup, or cancelled status
-      if (status === "timeout" || status === "cancelled" || status === "call_hangup") {
-        await this.speakText(call_control_id, "Sorry, we didn't receive your selection. Goodbye.");
-        await this.hangupCall(call_control_id, "NORMAL_CLEARING");
+      // Handle call hangup - caller disconnected
+      if (status === "call_hangup") {
+        console.log(`[CallControl] Caller hung up during IVR`);
         return;
       }
 
-      if (!digits) {
-        console.log(`[CallControl] No digits received`);
+      // Handle timeout or no digits - replay the IVR greeting
+      if (status === "timeout" || status === "cancelled" || !digits) {
+        console.log(`[CallControl] No selection received, replaying IVR greeting`);
+        const settings = await pbxService.getPbxSettings(companyId);
+        if (settings) {
+          await this.playIvrGreeting(call_control_id, companyId, settings);
+        }
         return;
       }
 
