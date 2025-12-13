@@ -607,7 +607,21 @@ export function PbxSettings() {
         </div>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs value={activeTab} onValueChange={(tab) => {
+        setActiveTab(tab);
+        // Refresh data when switching tabs
+        if (tab === "general") {
+          queryClient.invalidateQueries({ queryKey: ["/api/pbx/settings"] });
+        } else if (tab === "ivrs") {
+          queryClient.invalidateQueries({ queryKey: ["/api/pbx/ivrs"] });
+        } else if (tab === "queues") {
+          queryClient.invalidateQueries({ queryKey: ["/api/pbx/queues"] });
+        } else if (tab === "extensions") {
+          queryClient.invalidateQueries({ queryKey: ["/api/pbx/extensions"] });
+        } else if (tab === "audio") {
+          queryClient.invalidateQueries({ queryKey: ["/api/pbx/audio"] });
+        }
+      }}>
         <TabsList>
           <TabsTrigger value="general" data-testid="tab-pbx-general">
             <Settings className="w-4 h-4 mr-2" />
