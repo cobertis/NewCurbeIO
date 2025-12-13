@@ -29,19 +29,36 @@ self.addEventListener('push', (event) => {
 
   try {
     const data = event.data.json();
+    
     const options = {
       body: data.body || '',
       icon: data.icon || '/icons/icon-192.png',
-      badge: data.badge || '/icons/icon-192.png',
-      vibrate: [100, 50, 100],
+      badge: data.badge || '/icons/icon-72.png',
+      image: data.image || undefined,
+      tag: data.tag || undefined,
+      renotify: data.renotify || false,
+      requireInteraction: data.requireInteraction || false,
+      silent: data.silent || false,
+      vibrate: data.silent ? undefined : [100, 50, 100],
       data: {
-        url: data.url || '/'
-      },
-      actions: [
+        url: data.url || '/',
+        notificationType: data.notificationType || 'INFO',
+        timestamp: Date.now()
+      }
+    };
+
+    if (data.actions && Array.isArray(data.actions) && data.actions.length > 0) {
+      options.actions = data.actions.slice(0, 3).map(action => ({
+        action: action.action || 'default',
+        title: action.title || 'Open',
+        icon: action.icon || undefined
+      }));
+    } else {
+      options.actions = [
         { action: 'open', title: 'Open' },
         { action: 'close', title: 'Dismiss' }
-      ]
-    };
+      ];
+    }
 
     event.waitUntil(
       self.registration.showNotification(data.title || 'VIP Card', options)
@@ -54,7 +71,7 @@ self.addEventListener('push', (event) => {
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
 
-  if (event.action === 'close') return;
+  if (event.action === 'close' || event.action === 'dismiss') return;
 
   const urlToOpen = event.notification.data?.url || '/';
 
