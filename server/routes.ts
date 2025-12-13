@@ -32977,11 +32977,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
 
         // Upload to Telnyx Media Storage for fast playback during calls
+        // CRITICAL: Pass companyId to upload to the managed account (not master account)
         const { uploadMediaToTelnyx } = await import("./services/telnyx-media-service");
         const uploadResult = await uploadMediaToTelnyx(
           file.buffer,
           file.originalname,
-          file.mimetype
+          file.mimetype,
+          user.companyId
         );
 
         if (!uploadResult.success || !uploadResult.mediaId) {

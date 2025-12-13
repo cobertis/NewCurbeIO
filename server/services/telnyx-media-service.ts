@@ -1,4 +1,5 @@
 import { getTelnyxMasterApiKey } from "./telnyx-numbers-service";
+import { getCompanyManagedAccountId } from "./telnyx-managed-accounts";
 import FormData from "form-data";
 import { Readable } from "stream";
 import https from "https";
@@ -21,10 +22,20 @@ export interface TelnyxMediaDeleteResult {
 export async function uploadMediaToTelnyx(
   fileBuffer: Buffer,
   fileName: string,
-  mimeType: string
+  mimeType: string,
+  companyId?: string
 ): Promise<TelnyxMediaUploadResult> {
   try {
     const apiKey = await getTelnyxMasterApiKey();
+    
+    // Get managed account ID if companyId is provided
+    // This is CRITICAL: Media must be uploaded to the managed account
+    // for Call Control to access it (media is NOT shared between accounts)
+    let managedAccountId: string | null = null;
+    if (companyId) {
+      managedAccountId = await getCompanyManagedAccountId(companyId);
+      console.log("[TelnyxMedia] Using managed account for upload:", managedAccountId);
+    }
     
     // Convert buffer to readable stream for proper multipart handling
     const bufferStream = new Readable();
@@ -39,6 +50,17 @@ export async function uploadMediaToTelnyx(
       knownLength: fileBuffer.length,
     });
     
+    // Build headers - include X-Managed-Account-Id if we have a managed account
+    const headers: Record<string, string> = {
+      ...formData.getHeaders(),
+      "Authorization": `Bearer ${apiKey}`,
+      "Accept": "application/json",
+    };
+    
+    if (managedAccountId) {
+      headers["X-Managed-Account-Id"] = managedAccountId;
+    }
+    
     // Use https module for proper multipart streaming
     const response = await new Promise<Response>((resolve, reject) => {
       const req = https.request({
@@ -46,11 +68,7 @@ export async function uploadMediaToTelnyx(
         port: 443,
         path: "/v2/media",
         method: "POST",
-        headers: {
-          ...formData.getHeaders(),
-          "Authorization": `Bearer ${apiKey}`,
-          "Accept": "application/json",
-        },
+        headers,
       }, (res: any) => {
         let data = "";
         res.on("data", (chunk: string) => data += chunk);
