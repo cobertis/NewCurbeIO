@@ -1,0 +1,496 @@
+Implementar flujo público “tarjeta del cliente” con link único. Al abrir el link, detectar iOS vs Android:
+
+iOS: NO implementar push. Solo mostrar el botón/flow existente de Apple Wallet Pass (ya existe en el sistema).
+
+Android: implementar PWA + Web Push con un solo botón (“Agregar Tarjeta”) que haga todo: registrar Service Worker → pedir permiso de notificaciones → crear subscription → guardarla en DB → mostrar éxito → enviar push de prueba opcional.
+
+Importante: El cliente NO debe loguearse. El link es público con token seguro.
+Importante #2: No romper nada existente de iPhone (Wallet Pass). Android es el nuevo módulo.
+Importante #3: Todo debe quedar listo hoy, con endpoints funcionales y prueba real de push desde backend.
+
+1) Reglas y checklist antes de tocar código
+
+Inspecciona el repo y confirma:
+
+Framework frontend: (React SPA / Next.js / SSR / EJS, etc.)
+
+Backend: (Express / Fastify / Next API routes / etc.)
+
+DB: Postgres (ya existe). Ubica cómo corren migraciones.
+
+Dominio ya tiene HTTPS (requisito PWA). No implementar sin HTTPS.
+
+No crees un nuevo proyecto ni cambies de framework. Integra en la estructura existente.
+
+Usa Postgres para guardar subscriptions. Nada en memoria.
+
+2) Link único y endpoint público de datos
+2.1 Generación del link (ya sea que exista o hay que crear)
+
+Debe existir una manera en el CRM de generar un link público por cliente:
+
+Formato requerido:
+https://app.curbe.io/p/<token>
+
+El token debe ser:
+
+aleatorio fuerte (mínimo 32 bytes)
+
+almacenado hasheado o almacenado tal cual pero no predecible
+
+asociado a client_id y tenant_id (si es multi-tenant)
+
+con opción de rotación/expiración si quieres (opcional)
+
+Si ya existe “iPhone wallet pass link”, reusa el mismo token o crea uno nuevo pero que resuelva al mismo client_id.
+
+2.2 Endpoint público para resolver el token
+
+Crear endpoint:
+
+GET /api/public/card/:token
+
+Debe devolver JSON:
+
+{
+  "ok": true,
+  "clientId": 123,
+  "tenantId": 10,
+  "card": {
+    "memberName": "Juan Perez",
+    "memberId": "ABC123",
+    "planName": "Oscar / Aetna / etc",
+    "effectiveDate": "2026-01-01",
+    "supportPhone": "+1...."
+  },
+  "ios": {
+    "walletPassUrl": "https://app.curbe.io/api/wallet/pass/<token-or-id>"
+  }
+}
+
+
+Notas:
+
+ios.walletPassUrl debe apuntar a tu sistema existente de wallet pass (NO inventar). Si no hay una URL clara, buscar en el repo cómo se entrega el .pkpass y usar ese endpoint.
+
+Este endpoint debe hacer validación del token y devolver 404 si no existe.
+
+3) Página pública /p/:token con detección iOS vs Android
+
+Crear ruta pública:
+
+Si es SSR/Express: GET /p/:token devuelve HTML (landing mínima).
+
+Si es Next: /pages/p/[token].tsx o /app/p/[token]/page.tsx.
+
+Si es SPA: route en router y servir el index + vista.
+
+La página debe:
+
+cargar
+
+llamar a /api/public/card/:token
+
+detectar OS
+
+mostrar UI correcta
+
+3.1 Detección OS (front)
+
+Usa esto:
+
+function detectOS() {
+  const ua = navigator.userAgent.toLowerCase();
+  const isIOS = /iphone|ipad|ipod/.test(ua);
+  const isAndroid = /android/.test(ua);
+  return { isIOS, isAndroid };
+}
+
+3.2 UI requerida
+Si iOS:
+
+Mostrar “Agregar a Apple Wallet” con el link existente:
+
+botón: href = data.ios.walletPassUrl
+
+NO pedir push.
+
+Mensaje simple: “Esta tarjeta para iPhone se guarda en Apple Wallet”.
+
+Si Android:
+
+Mostrar tarjeta visual (datos básicos del plan)
+
+Un SOLO botón grande:
+
+“Agregar Tarjeta”
+
+Ese botón ejecuta todo el flujo Android.
+
+4) Implementación Android PWA + Web Push (VAPID)
+4.1 Dependencias backend
+
+Instalar en backend:
+
+npm i web-push
+
+
+(si usas TS: npm i -D @types/web-push)
+
+4.2 Generar llaves VAPID (una sola vez)
+
+En entorno dev:
+
+npx web-push generate-vapid-keys
+
+
+Guardar en .env del backend:
+
+VAPID_PUBLIC_KEY=xxxx
+VAPID_PRIVATE_KEY=xxxx
+VAPID_SUBJECT=mailto:support@curbe.io
+PUSH_INTERNAL_API_KEY=pon_un_string_largo_aqui
+
+
+Nota: PUSH_INTERNAL_API_KEY se usa para proteger el endpoint interno de envío.
+
+5) Base de datos: tabla push_subscriptions
+
+Crear migración SQL:
+
+CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id BIGSERIAL PRIMARY KEY,
+  tenant_id BIGINT NOT NULL,
+  client_id BIGINT NOT NULL,
+  endpoint TEXT NOT NULL UNIQUE,
+  p256dh TEXT NOT NULL,
+  auth TEXT NOT NULL,
+  user_agent TEXT,
+  platform TEXT,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_push_subscriptions_tenant_client
+  ON push_subscriptions(tenant_id, client_id);
+
+
+Importante: endpoint UNIQUE para evitar duplicados.
+
+6) Backend: endpoints push
+6.1 Configurar web-push
+
+Crear módulo push.ts / push.js:
+
+import webpush from "web-push";
+
+webpush.setVapidDetails(
+  process.env.VAPID_SUBJECT,
+  process.env.VAPID_PUBLIC_KEY,
+  process.env.VAPID_PRIVATE_KEY
+);
+
+export async function sendPush(subscription, payload) {
+  return webpush.sendNotification(subscription, JSON.stringify(payload));
+}
+
+6.2 Public key endpoint
+
+GET /api/push/public-key
+
+res.json({ key: process.env.VAPID_PUBLIC_KEY });
+
+6.3 Subscribe endpoint (público desde /p/:token)
+
+POST /api/push/subscribe
+
+Body:
+
+{
+  "token": "PUBLIC_TOKEN",
+  "subscription": { "endpoint": "...", "keys": { "p256dh": "...", "auth": "..." } },
+  "userAgent": "...",
+  "platform": "..."
+}
+
+
+Reglas:
+
+No confíes en clientId enviado por cliente.
+
+Resuelve el token en backend → tenant_id, client_id.
+
+Upsert por endpoint.
+
+Ejemplo:
+
+app.post("/api/push/subscribe", async (req, res) => {
+  const { token, subscription, userAgent, platform } = req.body || {};
+  const endpoint = subscription?.endpoint;
+  const p256dh = subscription?.keys?.p256dh;
+  const auth = subscription?.keys?.auth;
+
+  if (!token || !endpoint || !p256dh || !auth) return res.status(400).json({ ok:false });
+
+  const card = await resolveToken(token); // <-- implementar: retorna tenant_id, client_id o null
+  if (!card) return res.status(404).json({ ok:false });
+
+  await db.query(`
+    INSERT INTO push_subscriptions (tenant_id, client_id, endpoint, p256dh, auth, user_agent, platform)
+    VALUES ($1,$2,$3,$4,$5,$6,$7)
+    ON CONFLICT (endpoint)
+    DO UPDATE SET tenant_id=$1, client_id=$2, p256dh=$4, auth=$5, user_agent=$6, platform=$7, updated_at=now()
+  `, [card.tenant_id, card.client_id, endpoint, p256dh, auth, userAgent || null, platform || null]);
+
+  res.json({ ok:true });
+});
+
+6.4 Unsubscribe endpoint (opcional)
+
+POST /api/push/unsubscribe con endpoint, borrar de DB.
+
+6.5 Send endpoint interno (desde CRM)
+
+POST /api/push/send protegido por API key (header):
+
+Header: X-Internal-Key: <PUSH_INTERNAL_API_KEY>
+
+Body:
+
+{
+  "tenantId": 10,
+  "clientId": 123,
+  "title": "Curbe",
+  "body": "Tienes una actualización.",
+  "url": "https://app.curbe.io/p/<token>"
+}
+
+
+Lógica:
+
+Buscar subscriptions por tenant/client
+
+mandar webpush
+
+si error status 404/410: borrar esa subscription
+
+devolver {sent, failed}
+
+7) Frontend Android: PWA assets + Service Worker
+7.1 Archivos estáticos requeridos
+
+En el root público (según framework):
+
+/manifest.webmanifest
+
+/sw.js
+
+/icons/icon-192.png
+
+/icons/icon-512.png
+
+manifest.webmanifest
+{
+  "name": "Curbe Card",
+  "short_name": "Curbe",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0b0f19",
+  "theme_color": "#0b0f19",
+  "icons": [
+    { "src": "/icons/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icons/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}
+
+sw.js
+self.addEventListener("push", (event) => {
+  let data = {};
+  try { data = event.data.json(); } catch { data = { title:"Curbe", body:event.data?.text() || "" }; }
+
+  event.waitUntil(
+    self.registration.showNotification(data.title || "Curbe", {
+      body: data.body || "",
+      icon: "/icons/icon-192.png",
+      badge: "/icons/icon-192.png",
+      data: { url: data.url || "/" }
+    })
+  );
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const url = event.notification.data?.url || "/";
+  event.waitUntil(clients.openWindow(url));
+});
+
+Incluir manifest en la página pública
+
+En el HTML/head de /p/:token (o componente):
+
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#0b0f19">
+
+8) Frontend Android: botón único “Agregar Tarjeta”
+8.1 Registrar SW al cargar (silencioso)
+async function registerSW() {
+  if ("serviceWorker" in navigator) {
+    await navigator.serviceWorker.register("/sw.js");
+  }
+}
+
+8.2 Funciones utilitarias (VAPID key)
+function urlBase64ToUint8Array(base64String) {
+  const padding = "=".repeat((4 - base64String.length % 4) % 4);
+  const base64 = (base64String + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const rawData = atob(base64);
+  return Uint8Array.from([...rawData].map((c) => c.charCodeAt(0)));
+}
+
+8.3 Handler del botón (UN SOLO CLICK)
+
+Este es el core. Debe pedir permiso SOLO al click.
+
+async function addCardAndroid(token) {
+  // 1) SW ready
+  if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+    showError("Este dispositivo no soporta notificaciones.");
+    return;
+  }
+
+  await registerSW();
+  const reg = await navigator.serviceWorker.ready;
+
+  // 2) pedir permiso (solo aquí)
+  const perm = await Notification.requestPermission();
+  if (perm !== "granted") {
+    showError("No se activaron las alertas.");
+    return;
+  }
+
+  // 3) subscribe
+  const { key } = await fetch("/api/push/public-key").then(r => r.json());
+  const sub = await reg.pushManager.subscribe({
+    userVisibleOnly: true,
+    applicationServerKey: urlBase64ToUint8Array(key),
+  });
+
+  // 4) guardar en backend (por token)
+  const resp = await fetch("/api/push/subscribe", {
+    method: "POST",
+    headers: { "Content-Type":"application/json" },
+    body: JSON.stringify({
+      token,
+      subscription: sub,
+      userAgent: navigator.userAgent,
+      platform: navigator.platform
+    })
+  }).then(r => r.json());
+
+  if (!resp.ok) {
+    showError("Error guardando notificaciones.");
+    return;
+  }
+
+  // 5) Éxito UI
+  showSuccess("Tarjeta agregada. Te avisaremos con alertas.");
+
+  // 6) (Opcional recomendado) disparar push test desde backend
+  // Idealmente un endpoint público /api/push/test que envíe solo a este token
+  await fetch("/api/push/test", {
+    method: "POST",
+    headers: { "Content-Type":"application/json" },
+    body: JSON.stringify({ token })
+  }).catch(()=>{});
+}
+
+9) Endpoint público de prueba (para confirmar en 60 segundos)
+
+Crear:
+
+POST /api/push/test (público pero rate-limited por token/IP)
+
+Resuelve token → client_id
+
+Busca subscription de ese client
+
+Envía payload:
+
+{
+  "title": "Curbe",
+  "body": "✅ Notificaciones activadas correctamente.",
+  "url": "https://app.curbe.io/p/<token>"
+}
+
+
+Si falla con 410/404: borrar endpoint.
+
+Esto te permite validar sin entrar al CRM.
+
+10) Seguridad mínima obligatoria (no negociable)
+
+Rate limit en /api/push/subscribe y /api/push/test:
+
+por IP + por token
+
+Nunca aceptar clientId del frontend. Solo token.
+
+/api/push/send debe ser interno con X-Internal-Key.
+
+Al enviar push, si error 404/410, borrar subscription.
+
+11) Pruebas reales (pasos exactos)
+
+Abre en Android Chrome: https://app.curbe.io/p/<token>
+
+Debe mostrar UI Android con botón Agregar Tarjeta
+
+Tap botón → debe aparecer prompt del sistema para notificaciones
+
+Tap “Allow”
+
+Debe decir “Tarjeta agregada…”
+
+Debe llegar push de prueba (si endpoint test implementado)
+
+Luego desde CRM, usar /api/push/send y confirmar sent > 0
+
+12) Entregables exactos que debes dejar listos en PR
+
+ Ruta pública /p/:token funcionando
+
+ Endpoint /api/public/card/:token
+
+ Detección iOS/Android y UI diferente
+
+ Archivos PWA: manifest + sw + icons
+
+ VAPID configurado y documentado (env vars)
+
+ Migración DB push_subscriptions
+
+ Endpoints:
+
+ /api/push/public-key
+
+ /api/push/subscribe
+
+ /api/push/test
+
+ /api/push/send (interno protegido)
+
+ Limpieza de subscriptions muertas (410/404)
+
+ Prueba real documentada con token de ejemplo
+
+Notas finales (para evitar estupideces)
+
+NO implementar nada para iPhone push.
+
+iPhone = wallet pass existente.
+
+Android = PWA push.
+
+Un solo botón sí, pero el permiso del sistema siempre aparece (normal).
+
+No pedir permiso al cargar la página: siempre en click.

@@ -21,7 +21,6 @@ import {
   Users, 
   ListOrdered, 
   Plus, 
-  Trash2, 
   Edit, 
   PhoneIncoming,
   Voicemail,
@@ -36,7 +35,8 @@ import {
   Star,
   Library,
   FileAudio,
-  MoreVertical
+  MoreVertical,
+  Trash2
 } from "lucide-react";
 
 interface PbxSettings {
@@ -76,6 +76,20 @@ interface PbxQueue {
   adsEnabled: boolean;
   adsIntervalMin: number | null;
   adsIntervalMax: number | null;
+}
+
+interface QueueAd {
+  id: string;
+  queueId: string;
+  audioFileId: string;
+  displayOrder: number;
+  isActive: boolean;
+  audioFile: {
+    id: string;
+    name: string;
+    fileUrl: string;
+    duration: number | null;
+  };
 }
 
 interface PbxExtension {
@@ -1309,6 +1323,40 @@ function QueueDialog({
     enabled: !!queue?.id,
   });
 
+  const announcementOptions = audioFiles.filter(a => a.audioType === 'announcement');
+
+  const { data: queueAds = [], refetch: refetchAds } = useQuery<QueueAd[]>({
+    queryKey: [`/api/pbx/queues/${queue?.id}/ads`],
+    enabled: !!queue?.id,
+  });
+
+  const addAdMutation = useMutation({
+    mutationFn: async (audioFileId: string) => {
+      return apiRequest("POST", `/api/pbx/queues/${queue?.id}/ads`, { audioFileId, displayOrder: queueAds.length });
+    },
+    onSuccess: () => {
+      refetchAds();
+    },
+  });
+
+  const removeAdMutation = useMutation({
+    mutationFn: async (adId: string) => {
+      return apiRequest("DELETE", `/api/pbx/queues/${queue?.id}/ads/${adId}`);
+    },
+    onSuccess: () => {
+      refetchAds();
+    },
+  });
+
+  const toggleAdMutation = useMutation({
+    mutationFn: async ({ adId, isActive }: { adId: string; isActive: boolean }) => {
+      return apiRequest("PATCH", `/api/pbx/queues/${queue?.id}/ads/${adId}`, { isActive });
+    },
+    onSuccess: () => {
+      refetchAds();
+    },
+  });
+
   useEffect(() => {
     if (open) {
       if (queue) {
@@ -1490,6 +1538,7 @@ function QueueDialog({
               />
             </div>
             {adsEnabled && (
+              <>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Min Interval (sec)</Label>
@@ -1514,8 +1563,66 @@ function QueueDialog({
                   />
                 </div>
               </div>
+              {queue?.id && (
+                <div className="space-y-3 mt-4">
+                  <Label>Advertisement Audio Files</Label>
+                  {queueAds.length === 0 ? (
+                    <p className="text-xs text-muted-foreground">No ads configured. Add audio files below.</p>
+                  ) : (
+                    <div className="space-y-2 max-h-32 overflow-y-auto">
+                      {queueAds.map((ad) => (
+                        <div key={ad.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-md" data-testid={`ad-item-${ad.id}`}>
+                          <div className="flex items-center gap-2 flex-1 min-w-0">
+                            <Switch
+                              checked={ad.isActive}
+                              onCheckedChange={(checked) => toggleAdMutation.mutate({ adId: ad.id, isActive: checked })}
+                              data-testid={`switch-ad-active-${ad.id}`}
+                            />
+                            <span className="text-sm truncate">{ad.audioFile.name}</span>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => removeAdMutation.mutate(ad.id)}
+                            disabled={removeAdMutation.isPending}
+                            data-testid={`button-remove-ad-${ad.id}`}
+                          >
+                            <Trash2 className="w-4 h-4 text-destructive" />
+                          </Button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {announcementOptions.length > 0 ? (
+                    <Select onValueChange={(audioFileId) => addAdMutation.mutate(audioFileId)}>
+                      <SelectTrigger data-testid="select-add-ad">
+                        <SelectValue placeholder="Add advertisement audio..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {announcementOptions
+                          .filter(audio => !queueAds.some(ad => ad.audioFileId === audio.id))
+                          .map((audio) => (
+                            <SelectItem key={audio.id} value={audio.id}>
+                              {audio.name}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      No announcement audio files available. Upload audio files with type "Announcement" in the Audio tab.
+                    </p>
+                  )}
+                </div>
+              )}
+              {!queue?.id && (
+                <p className="text-xs text-muted-foreground mt-2">
+                  Save the queue first to add advertisement audio files.
+                </p>
+              )}
+              </>
             )}
-        </div>
+          </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
