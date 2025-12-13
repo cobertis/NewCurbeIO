@@ -325,6 +325,27 @@ export class CallControlWebhookService {
     // Clean up call context
     callContextMap.delete(call_control_id);
 
+    // Clean up pending bridges - agent leg hung up before answering
+    if (pendingBridges.has(call_control_id)) {
+      console.log(`[CallControl] Cleaning up pending bridge for agent call ${call_control_id}`);
+      pendingBridges.delete(call_control_id);
+    }
+
+    // Also check if this was the caller leg - clean up any pending bridges waiting for this caller
+    const bridgeEntries = Array.from(pendingBridges.entries());
+    for (const [agentCallId, bridge] of bridgeEntries) {
+      if (bridge.callerCallControlId === call_control_id) {
+        console.log(`[CallControl] Caller ${call_control_id} hung up, cleaning pending bridge for agent ${agentCallId}`);
+        pendingBridges.delete(agentCallId);
+        // Hangup the agent leg since caller is gone
+        try {
+          await this.hangupCall(agentCallId, "NORMAL_CLEARING");
+        } catch (e) {
+          console.log(`[CallControl] Could not hangup orphaned agent call ${agentCallId}`);
+        }
+      }
+    }
+
     if (client_state) {
       try {
         const state = JSON.parse(Buffer.from(client_state, "base64").toString());
