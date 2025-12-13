@@ -1,0 +1,83 @@
+Content-Length: 0
+
+
+
+injected.js:37 Fri Dec 12 2025 21:43:06 GMT-0500 (Eastern Standard Time) | sip.Transport | Received WebSocket text message:
+
+SIP/2.0 403 Authentication Failed
+Via: SIP/2.0/WSS nnh1a6iuf14i.invalid;rport=59873;received=71.145.228.251;branch=z9hG4bK3135817
+To: <sip:curbeb5325600gm3h@sip.telnyx.com>;tag=729ecbaadffafe36fbe80bc94da0ff5f-d5140000
+From: "Curbe" <sip:curbeb5325600gm3h@sip.telnyx.com>;tag=2k9k7smrie
+CSeq: 3 REGISTER
+Call-ID: fkmfm5j4bjjvdpje0v52
+Server: Telnyx Registrar
+Content-Length: 0
+
+
+
+injected.js:37 Fri Dec 12 2025 21:43:06 GMT-0500 (Eastern Standard Time) | sip.Registerer | Failed to register, status code 403
+(anonymous) @ injected.js:37
+print @ sip__js.js?v=e90720fb:6962
+genericLog @ sip__js.js?v=e90720fb:6941
+genericLog @ sip__js.js?v=e90720fb:6881
+warn @ sip__js.js?v=e90720fb:6872
+onReject @ sip__js.js?v=e90720fb:5694
+receiveResponse @ sip__js.js?v=e90720fb:8759
+receiveResponse @ sip__js.js?v=e90720fb:8779
+receiveResponse @ sip__js.js?v=e90720fb:7781
+receiveResponseFromTransport @ sip__js.js?v=e90720fb:11320
+receiveIncomingResponseFromTransport @ sip__js.js?v=e90720fb:11051
+onTransportMessage @ sip__js.js?v=e90720fb:13378
+transport.onMessage @ sip__js.js?v=e90720fb:13296
+onWebSocketMessage @ sip__js.js?v=e90720fb:12473
+(anonymous) @ sip__js.js?v=e90720fb:12295
+InterceptedWebSocket.ws.onmessage @ telnyx-webrtc.ts:101Understand this warning
+injected.js:37 Fri Dec 12 2025 21:43:06 GMT-0500 (Eastern Standard Time) | sip.Registerer | Registration transitioned to state Unregistered
+injected.js:37 [SIP.js WebRTC] Registerer state: Unregistered
+injected.js:37 [SIP.js WebRTC] Unregistered
+injected.js:37 Fri Dec 12 2025 21:43:06 GMT-0500 (Eastern Standard Time) | sip.Registerer | Waiting toggled to false
+injected.js:37 [WebPhone] Detected 4-digit extension, routing via internal API: 1000
+injected.js:37 [WebPhone] Extension info: {type: 'ivr', extension: '1000'}
+injected.js:214  POST https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/pbx/internal-call 500 (Internal Server Error)
+apply @ injected.js:214
+handleCall @ WebPhoneFloatingWindow.tsx:2276
+await in handleCall
+callCallback2 @ chunk-RPCDYKBN.js?v=e90720fb:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=e90720fb:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=e90720fb:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=e90720fb:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=e90720fb:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=e90720fb:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=e90720fb:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=e90720fb:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=e90720fb:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=e90720fb:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=e90720fb:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=e90720fb:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=e90720fb:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=e90720fb:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=e90720fb:5449Understand this error
+injected.js:37 [WebPhone] Making extension-to-extension call to: 1002 Jason Fonseca
+injected.js:37 [WebPhone] Detected 4-digit extension, routing via internal API: 1000
+injected.js:37 [WebPhone] Extension info: {type: 'ivr', extension: '1000'}
+injected.js:214  POST https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/pbx/internal-call 500 (Internal Server Error)
+apply @ injected.js:214
+handleCall @ WebPhoneFloatingWindow.tsx:2276
+await in handleCall
+callCallback2 @ chunk-RPCDYKBN.js?v=e90720fb:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=e90720fb:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=e90720fb:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=e90720fb:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=e90720fb:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=e90720fb:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=e90720fb:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=e90720fb:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=e90720fb:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=e90720fb:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=e90720fb:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=e90720fb:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=e90720fb:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=e90720fb:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=e90720fb:5449Understand this error
+faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://8bb41dbe-f08e-48eb-a4e6…:1  GET https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=http://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev&size=32 404 (Not Found)Understand this error
+faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://8bb41dbe-f08e-48eb-a4e…:1  GET https://t3.gstatic.com/faviconV2?client=SOCIAL&type=FAVICON&fallback_opts=TYPE,SIZE,URL&url=https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/&size=32 404 (Not Found)
