@@ -2255,50 +2255,56 @@ export function WebPhoneFloatingWindow() {
         return;
       }
       
-      // Check if dialing IVR extension
-      console.log('[WebPhone] Checking special extensions:', { digits, pbxSpecialExtensions, hasTelnyxNumber });
-      if (pbxSpecialExtensions?.ivrExtension && digits === pbxSpecialExtensions.ivrExtension) {
-        console.log('[WebPhone] Dialing IVR extension:', digits);
+      // Check if dialing a 4-digit extension (1000-9999) - route via internal API
+      if (digits.length === 4 && /^[1-9]\d{3}$/.test(digits)) {
+        console.log('[WebPhone] Detected 4-digit extension, routing via internal API:', digits);
         try {
-          const response = await fetch('/api/pbx/internal-call', {
+          // First check if this is a known extension type
+          const checkRes = await fetch('/api/pbx/check-extension', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             credentials: 'include',
-            body: JSON.stringify({ targetType: 'ivr' }),
+            body: JSON.stringify({ extension: digits }),
           });
-          if (response.ok) {
-            toast({ title: 'Calling IVR', description: 'Your phone will ring shortly...' });
-          } else {
-            toast({ title: 'Call Failed', description: 'Could not connect to IVR', variant: 'destructive' });
+          
+          if (checkRes.ok) {
+            const extInfo = await checkRes.json();
+            console.log('[WebPhone] Extension info:', extInfo);
+            
+            if (extInfo.type === 'ivr' || extInfo.type === 'queue') {
+              // Route via internal call API (Telnyx will call user back)
+              const response = await fetch('/api/pbx/internal-call', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+                body: JSON.stringify({ 
+                  targetType: extInfo.type,
+                  queueId: extInfo.queueId || null,
+                }),
+              });
+              
+              if (response.ok) {
+                toast({ 
+                  title: extInfo.type === 'ivr' ? 'Calling IVR' : `Calling ${extInfo.name || 'Queue'}`, 
+                  description: 'Your phone will ring shortly...' 
+                });
+              } else {
+                toast({ title: 'Call Failed', description: 'Could not connect', variant: 'destructive' });
+              }
+              setDialNumber('');
+              return;
+            }
+            // If it's a user extension and they're online, already handled above by extOnlineExtensions
+            // If offline, show message
+            if (extInfo.type === 'user' && !extInfo.online) {
+              toast({ title: 'Extension Offline', description: `Extension ${digits} is not available`, variant: 'destructive' });
+              setDialNumber('');
+              return;
+            }
           }
         } catch (error) {
-          toast({ title: 'Call Failed', description: 'Could not connect to IVR', variant: 'destructive' });
+          console.error('[WebPhone] Extension check failed:', error);
         }
-        setDialNumber('');
-        return;
-      }
-      
-      // Check if dialing a queue extension
-      const targetQueue = pbxSpecialExtensions?.queues?.find(q => q.extension === digits);
-      if (targetQueue) {
-        console.log('[WebPhone] Dialing queue extension:', digits, targetQueue.name);
-        try {
-          const response = await fetch('/api/pbx/internal-call', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ targetType: 'queue', queueId: targetQueue.id }),
-          });
-          if (response.ok) {
-            toast({ title: `Calling ${targetQueue.name}`, description: 'Your phone will ring shortly...' });
-          } else {
-            toast({ title: 'Call Failed', description: 'Could not connect to queue', variant: 'destructive' });
-          }
-        } catch (error) {
-          toast({ title: 'Call Failed', description: 'Could not connect to queue', variant: 'destructive' });
-        }
-        setDialNumber('');
-        return;
       }
       
       // Use Telnyx WebRTC if available, otherwise fallback to SIP.js

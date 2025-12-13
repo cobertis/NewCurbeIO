@@ -1,0 +1,264 @@
+[WebPhone] Checking special extensions: {digits: '1000', pbxSpecialExtensions: undefined, hasTelnyxNumber: true}
+injected.js:214  POST https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/webrtc/check-balance 500 (Internal Server Error)
+apply @ injected.js:214
+handleCall @ WebPhoneFloatingWindow.tsx:2308
+callCallback2 @ chunk-RPCDYKBN.js?v=e90720fb:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=e90720fb:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=e90720fb:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=e90720fb:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=e90720fb:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=e90720fb:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=e90720fb:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=e90720fb:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=e90720fb:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=e90720fb:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=e90720fb:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=e90720fb:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=e90720fb:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=e90720fb:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=e90720fb:5449Understand this error
+injected.js:37 [WebPhone] Balance check returned non-OK status: 500
+(anonymous) @ injected.js:37
+handleCall @ WebPhoneFloatingWindow.tsx:2336
+await in handleCall
+callCallback2 @ chunk-RPCDYKBN.js?v=e90720fb:3674
+invokeGuardedCallbackDev @ chunk-RPCDYKBN.js?v=e90720fb:3699
+invokeGuardedCallback @ chunk-RPCDYKBN.js?v=e90720fb:3733
+invokeGuardedCallbackAndCatchFirstError @ chunk-RPCDYKBN.js?v=e90720fb:3736
+executeDispatch @ chunk-RPCDYKBN.js?v=e90720fb:7014
+processDispatchQueueItemsInOrder @ chunk-RPCDYKBN.js?v=e90720fb:7034
+processDispatchQueue @ chunk-RPCDYKBN.js?v=e90720fb:7043
+dispatchEventsForPlugins @ chunk-RPCDYKBN.js?v=e90720fb:7051
+(anonymous) @ chunk-RPCDYKBN.js?v=e90720fb:7174
+batchedUpdates$1 @ chunk-RPCDYKBN.js?v=e90720fb:18913
+batchedUpdates @ chunk-RPCDYKBN.js?v=e90720fb:3579
+dispatchEventForPluginEventSystem @ chunk-RPCDYKBN.js?v=e90720fb:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay @ chunk-RPCDYKBN.js?v=e90720fb:5478
+dispatchEvent @ chunk-RPCDYKBN.js?v=e90720fb:5472
+dispatchDiscreteEvent @ chunk-RPCDYKBN.js?v=e90720fb:5449Understand this warning
+injected.js:37 [WebPhone] Making call via Telnyx WebRTC to: 1000
+injected.js:37 [SIP.js WebRTC] Calling: +111000
+injected.js:37 [SIP.js WebRTC] ICE config: {"iceTransportPolicy":"all","iceServersCount":3,"turnServersCount":2}
+injected.js:37 [SIP.js WebRTC] Extracted caller info: {callerNumber: '+111000', callerName: undefined, isOutgoing: true, telnyxCallLegId: 'not found'}
+injected.js:37 [SIP.js CallLog] Creating call log: outbound from +13058423033 to +111000, telnyxLegId: pending
+injected.js:37 [SIP.js WebRTC] Extracted caller info: {callerNumber: '+111000', callerName: undefined, isOutgoing: true, telnyxCallLegId: 'not found'}
+injected.js:37 Fri Dec 12 2025 21:40:39 GMT-0500 (Eastern Standard Time) | sip.Inviter | Inviter.invite
+injected.js:37 Fri Dec 12 2025 21:40:39 GMT-0500 (Eastern Standard Time) | sip.Inviter | Session pp3j99jc8rkvcfklvla2096nb016gm transitioned to state Establishing
+injected.js:37 [SIP.js WebRTC] Session state changed: Establishing
+injected.js:37 [SIP.js WebRTC] Call establishing...
+injected.js:37 Fri Dec 12 2025 21:40:39 GMT-0500 (Eastern Standard Time) | sip.Transport | Sending WebSocket message:
+
+INVITE sip:+111000@sip.telnyx.com SIP/2.0
+Via: SIP/2.0/WSS 7peanqcimrm4.invalid;branch=z9hG4bK5790955
+To: <sip:+111000@sip.telnyx.com>
+From: "Curbe" <sip:curbeb5325600gm3h@sip.telnyx.com>;tag=096nb016gm
+CSeq: 1 INVITE
+Call-ID: pp3j99jc8rkvcfklvla2
+Max-Forwards: 70
+P-Asserted-Identity: <sip:+13058423033@sip.telnyx.com>
+Contact: <sip:curbeb5325600gm3h@7peanqcimrm4.invalid;transport=ws;ob>
+Allow: ACK,CANCEL,INVITE,MESSAGE,BYE,OPTIONS,INFO,NOTIFY,REFER
+Supported: outbound
+User-Agent: SIP.js/0.21.1 Curbe/+13058423033
+Content-Type: application/sdp
+Content-Length: 1830
+
+v=0
+o=- 7544494995138166437 2 IN IP4 127.0.0.1
+s=-
+t=0 0
+a=group:BUNDLE 0
+a=extmap-allow-mixed
+a=msid-semantic: WMS 3cbcad01-6bad-432c-8ada-461d74146cbd
+m=audio 49154 UDP/TLS/RTP/SAVPF 111 63 9 0 8 13 110 126
+c=IN IP4 71.145.228.251
+a=rtcp:9 IN IP4 0.0.0.0
+a=candidate:2551589559 1 udp 2122194687 71.145.228.251 49154 typ host generation 0 network-id 2 network-cost 10
+a=candidate:2627876424 1 udp 2122262783 2600:1700:3d5e:c000:cd14:3787:c58d:19e6 51273 typ host generation 0 network-id 1 network-cost 10
+a=candidate:3873032239 1 tcp 1518214911 71.145.228.251 9 typ host tcptype active generation 0 network-id 2 network-cost 10
+a=candidate:3798848720 1 tcp 1518283007 2600:1700:3d5e:c000:cd14:3787:c58d:19e6 9 typ host tcptype active generation 0 network-id 1 network-cost 10
+a=ice-ufrag:554T
+a=ice-pwd:CKNXoYyaQ539jB9RxtyMFhUl
+a=ice-options:trickle
+a=fingerprint:sha-256 E2:F2:6E:BC:48:F4:45:9C:AF:15:D9:54:22:59:91:55:9E:1B:3B:50:03:50:81:1D:84:E1:9D:CE:96:9F:B6:EB
+a=setup:actpass
+a=mid:0
+a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level
+a=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time
+a=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
+a=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid
+a=sendrecv
+a=msid:3cbcad01-6bad-432c-8ada-461d74146cbd aa962662-d34d-4ee9-a4e2-18fb1091bfbc
+a=rtcp-mux
+a=rtcp-rsize
+a=rtpmap:111 opus/48000/2
+a=rtcp-fb:111 transport-cc
+a=fmtp:111 minptime=10;useinbandfec=1
+a=rtpmap:63 red/48000/2
+a=fmtp:63 111/111
+a=rtpmap:9 G722/8000
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:13 CN/8000
+a=rtpmap:110 telephone-event/48000
+a=rtpmap:126 telephone-event/8000
+a=ssrc:3515078209 cname:5r0i47uBkZAUQf56
+a=ssrc:3515078209 msid:3cbcad01-6bad-432c-8ada-461d74146cbd aa962662-d34d-4ee9-a4e2-18fb1091bfbc
+
+
+injected.js:37 [SIP.js WebRTC] INVITE sent
+injected.js:37 [SIP.js CallLog] Call log created: d20d5a79-0da9-44b1-ba85-e181a78bbc6a
+injected.js:37 Fri Dec 12 2025 21:40:39 GMT-0500 (Eastern Standard Time) | sip.Transport | Received WebSocket text message:
+
+SIP/2.0 100 Telnyx Trying
+Via: SIP/2.0/WSS 7peanqcimrm4.invalid;branch=z9hG4bK5790955;rport=59076;received=71.145.228.251
+To: <sip:+111000@sip.telnyx.com>
+From: "Curbe" <sip:curbeb5325600gm3h@sip.telnyx.com>;tag=096nb016gm
+CSeq: 1 INVITE
+Call-ID: pp3j99jc8rkvcfklvla2
+Server: Telnyx SIP Proxy
+Content-Length: 0
+
+
+
+injected.js:37 Fri Dec 12 2025 21:40:39 GMT-0500 (Eastern Standard Time) | sip.Inviter | Inviter.onTrying
+injected.js:37 Fri Dec 12 2025 21:40:40 GMT-0500 (Eastern Standard Time) | sip.Transport | Received WebSocket text message:
+
+SIP/2.0 407 Proxy Authentication Required
+Via: SIP/2.0/WSS 7peanqcimrm4.invalid;rport=59076;received=71.145.228.251;branch=z9hG4bK5790955
+From: "Curbe" <sip:curbeb5325600gm3h@sip.telnyx.com>;tag=096nb016gm
+To: <sip:+111000@sip.telnyx.com>;tag=7gjcH90mK3DjD
+Call-ID: pp3j99jc8rkvcfklvla2
+CSeq: 1 INVITE
+Accept: application/sdp
+Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REFER, NOTIFY
+Supported: path
+Allow-Events: talk, hold, conference, refer
+Proxy-Authenticate: Digest realm="sip.telnyx.com", nonce="50db9295-8d97-45b8-a4d7-1c69cf1010e4", algorithm=MD5, qop="auth", opaque="4b89376f-f1bc-4566-9df3-47f77ff99f79/10.239.132.224"
+Content-Length: 0
+
+
+
+injected.js:37 Fri Dec 12 2025 21:40:40 GMT-0500 (Eastern Standard Time) | sip.Transport | Sending WebSocket message:
+
+ACK sip:+111000@sip.telnyx.com SIP/2.0
+Via: SIP/2.0/WSS 7peanqcimrm4.invalid;branch=z9hG4bK5790955
+To: <sip:+111000@sip.telnyx.com>;tag=7gjcH90mK3DjD
+From: "Curbe" <sip:curbeb5325600gm3h@sip.telnyx.com>;tag=096nb016gm
+Call-ID: pp3j99jc8rkvcfklvla2
+CSeq: 1 ACK
+Max-Forwards: 70
+Content-Length: 0
+
+
+
+injected.js:37 Fri Dec 12 2025 21:40:40 GMT-0500 (Eastern Standard Time) | sip.Transport | Sending WebSocket message:
+
+INVITE sip:+111000@sip.telnyx.com SIP/2.0
+Via: SIP/2.0/WSS 7peanqcimrm4.invalid;branch=z9hG4bK8519435
+To: <sip:+111000@sip.telnyx.com>
+From: "Curbe" <sip:curbeb5325600gm3h@sip.telnyx.com>;tag=096nb016gm
+CSeq: 2 INVITE
+Call-ID: pp3j99jc8rkvcfklvla2
+Max-Forwards: 70
+Proxy-Authorization: Digest algorithm=MD5, username="curbeb5325600gm3h", realm="sip.telnyx.com", nonce="50db9295-8d97-45b8-a4d7-1c69cf1010e4", uri="sip:+111000@sip.telnyx.com", response="c21d103a2ed95461921b34b895420fe7", opaque="4b89376f-f1bc-4566-9df3-47f77ff99f79/10.239.132.224", qop=auth, cnonce="em9nkr1q5nm9", nc=00000001
+P-Asserted-Identity: <sip:+13058423033@sip.telnyx.com>
+Contact: <sip:curbeb5325600gm3h@7peanqcimrm4.invalid;transport=ws;ob>
+Allow: ACK,CANCEL,INVITE,MESSAGE,BYE,OPTIONS,INFO,NOTIFY,REFER
+Supported: outbound
+User-Agent: SIP.js/0.21.1 Curbe/+13058423033
+Content-Type: application/sdp
+Content-Length: 1830
+
+v=0
+o=- 7544494995138166437 2 IN IP4 127.0.0.1
+s=-
+t=0 0
+a=group:BUNDLE 0
+a=extmap-allow-mixed
+a=msid-semantic: WMS 3cbcad01-6bad-432c-8ada-461d74146cbd
+m=audio 49154 UDP/TLS/RTP/SAVPF 111 63 9 0 8 13 110 126
+c=IN IP4 71.145.228.251
+a=rtcp:9 IN IP4 0.0.0.0
+a=candidate:2551589559 1 udp 2122194687 71.145.228.251 49154 typ host generation 0 network-id 2 network-cost 10
+a=candidate:2627876424 1 udp 2122262783 2600:1700:3d5e:c000:cd14:3787:c58d:19e6 51273 typ host generation 0 network-id 1 network-cost 10
+a=candidate:3873032239 1 tcp 1518214911 71.145.228.251 9 typ host tcptype active generation 0 network-id 2 network-cost 10
+a=candidate:3798848720 1 tcp 1518283007 2600:1700:3d5e:c000:cd14:3787:c58d:19e6 9 typ host tcptype active generation 0 network-id 1 network-cost 10
+a=ice-ufrag:554T
+a=ice-pwd:CKNXoYyaQ539jB9RxtyMFhUl
+a=ice-options:trickle
+a=fingerprint:sha-256 E2:F2:6E:BC:48:F4:45:9C:AF:15:D9:54:22:59:91:55:9E:1B:3B:50:03:50:81:1D:84:E1:9D:CE:96:9F:B6:EB
+a=setup:actpass
+a=mid:0
+a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level
+a=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time
+a=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
+a=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid
+a=sendrecv
+a=msid:3cbcad01-6bad-432c-8ada-461d74146cbd aa962662-d34d-4ee9-a4e2-18fb1091bfbc
+a=rtcp-mux
+a=rtcp-rsize
+a=rtpmap:111 opus/48000/2
+a=rtcp-fb:111 transport-cc
+a=fmtp:111 minptime=10;useinbandfec=1
+a=rtpmap:63 red/48000/2
+a=fmtp:63 111/111
+a=rtpmap:9 G722/8000
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:13 CN/8000
+a=rtpmap:110 telephone-event/48000
+a=rtpmap:126 telephone-event/8000
+a=ssrc:3515078209 cname:5r0i47uBkZAUQf56
+a=ssrc:3515078209 msid:3cbcad01-6bad-432c-8ada-461d74146cbd aa962662-d34d-4ee9-a4e2-18fb1091bfbc
+
+
+injected.js:37 Fri Dec 12 2025 21:40:40 GMT-0500 (Eastern Standard Time) | sip.Transport | Received WebSocket text message:
+
+SIP/2.0 100 Telnyx Trying
+Via: SIP/2.0/WSS 7peanqcimrm4.invalid;branch=z9hG4bK8519435;rport=59076;received=71.145.228.251
+To: <sip:+111000@sip.telnyx.com>
+From: "Curbe" <sip:curbeb5325600gm3h@sip.telnyx.com>;tag=096nb016gm
+CSeq: 2 INVITE
+Call-ID: pp3j99jc8rkvcfklvla2
+Server: Telnyx SIP Proxy
+Content-Length: 0
+
+
+
+injected.js:37 Fri Dec 12 2025 21:40:40 GMT-0500 (Eastern Standard Time) | sip.Inviter | Inviter.onTrying
+injected.js:37 Fri Dec 12 2025 21:40:40 GMT-0500 (Eastern Standard Time) | sip.Transport | Received WebSocket text message:
+
+SIP/2.0 403 Forbidden
+Via: SIP/2.0/WSS 7peanqcimrm4.invalid;rport=59076;received=71.145.228.251;branch=z9hG4bK8519435
+From: "Curbe" <sip:curbeb5325600gm3h@sip.telnyx.com>;tag=096nb016gm
+To: <sip:+111000@sip.telnyx.com>;tag=8SB5j4Hrgc44r
+Call-ID: pp3j99jc8rkvcfklvla2
+CSeq: 2 INVITE
+Accept: application/sdp
+Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REFER, NOTIFY
+Supported: path
+Allow-Events: talk, hold, conference, refer
+Content-Length: 0
+
+
+
+injected.js:37 Fri Dec 12 2025 21:40:40 GMT-0500 (Eastern Standard Time) | sip.Transport | Sending WebSocket message:
+
+ACK sip:+111000@sip.telnyx.com SIP/2.0
+Via: SIP/2.0/WSS 7peanqcimrm4.invalid;branch=z9hG4bK8519435
+To: <sip:+111000@sip.telnyx.com>;tag=8SB5j4Hrgc44r
+From: "Curbe" <sip:curbeb5325600gm3h@sip.telnyx.com>;tag=096nb016gm
+Call-ID: pp3j99jc8rkvcfklvla2
+CSeq: 2 ACK
+Max-Forwards: 70
+Content-Length: 0
+
+
+
+injected.js:37 Fri Dec 12 2025 21:40:40 GMT-0500 (Eastern Standard Time) | sip.Inviter | Inviter.onReject
+injected.js:37 Fri Dec 12 2025 21:40:40 GMT-0500 (Eastern Standard Time) | sip.Inviter | Session pp3j99jc8rkvcfklvla2096nb016gm transitioned to state Terminated
+injected.js:37 [SIP.js WebRTC] Session state changed: Terminated
+injected.js:37 [SIP.js WebRTC] Call terminated
+injected.js:37 [SIP.js CallLog] Finalizing call log d20d5a79-0da9-44b1-ba85-e181a78bbc6a: status=missed, duration=0s
+injected.js:37 Fri Dec 12 2025 21:40:40 GMT-0500 (Eastern Standard Time) | sip.Inviter | Session pp3j99jc8rkvcfklvla2096nb016gm in state Terminated is being disposed

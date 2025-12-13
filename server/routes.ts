@@ -32652,6 +32652,59 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
 
+
+  // POST /api/pbx/check-extension - Check what type an extension is
+  app.post("/api/pbx/check-extension", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { extension } = req.body;
+      
+      if (!extension) {
+        return res.status(400).json({ error: "Extension required" });
+      }
+      
+      // Check if it's the IVR extension
+      const settings = await pbxService.getPbxSettings(user.companyId);
+      if (settings?.ivrEnabled && settings.ivrExtension === extension) {
+        return res.json({ type: "ivr", extension });
+      }
+      
+      // Check if it's a queue extension
+      const [queue] = await db
+        .select({ id: pbxQueues.id, name: pbxQueues.name, extension: pbxQueues.extension })
+        .from(pbxQueues)
+        .where(and(
+          eq(pbxQueues.companyId, user.companyId),
+          eq(pbxQueues.extension, extension),
+          eq(pbxQueues.status, "active")
+        ));
+      
+      if (queue) {
+        return res.json({ type: "queue", extension, queueId: queue.id, name: queue.name });
+      }
+      
+      // Check if it's a user extension
+      const [userExt] = await db
+        .select()
+        .from(pbxExtensions)
+        .where(and(
+          eq(pbxExtensions.companyId, user.companyId),
+          eq(pbxExtensions.extension, extension),
+          eq(pbxExtensions.isActive, true)
+        ));
+      
+      if (userExt) {
+        return res.json({ type: "user", extension, userId: userExt.userId, online: false });
+      }
+      
+      // Extension not found
+      return res.json({ type: "unknown", extension });
+    } catch (error: any) {
+      console.error("[PBX] Error checking extension:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
   // GET /api/pbx/special-extensions - Get IVR and queue extensions for WebPhone
   app.get("/api/pbx/special-extensions", requireActiveCompany, async (req: Request, res: Response) => {
     try {
