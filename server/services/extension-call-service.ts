@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { pbxExtensions, users } from "@shared/schema";
+import { pbxExtensions, pbxSettings, pbxQueues, users } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import WebSocket from "ws";
 
@@ -136,10 +136,40 @@ class ExtensionCallService {
     callerExtensionId: string,
     calleeExtension: string,
     sdpOffer: string
-  ): Promise<{ success: boolean; callId?: string; error?: string }> {
+  ): Promise<{ success: boolean; callId?: string; error?: string; specialExtension?: { type: "ivr" | "queue"; queueId?: string } }> {
     const caller = this.connectedClients.get(callerExtensionId);
     if (!caller) {
       return { success: false, error: "Caller not registered" };
+    }
+
+    // Check if dialing IVR extension
+    const settings = await db.query.pbxSettings.findFirst({
+      where: eq(pbxSettings.companyId, caller.companyId),
+    });
+    
+    if (settings?.ivrEnabled && settings.ivrExtension === calleeExtension) {
+      console.log(`[ExtensionCall] Caller ${caller.extension} dialing IVR extension ${calleeExtension}`);
+      return { 
+        success: true, 
+        specialExtension: { type: "ivr" } 
+      };
+    }
+
+    // Check if dialing a queue extension
+    const queue = await db.query.pbxQueues.findFirst({
+      where: and(
+        eq(pbxQueues.companyId, caller.companyId),
+        eq(pbxQueues.extension, calleeExtension),
+        eq(pbxQueues.status, "active")
+      ),
+    });
+
+    if (queue) {
+      console.log(`[ExtensionCall] Caller ${caller.extension} dialing queue extension ${calleeExtension} (${queue.name})`);
+      return { 
+        success: true, 
+        specialExtension: { type: "queue", queueId: queue.id } 
+      };
     }
 
     const calleeExtensionRecord = await db.query.pbxExtensions.findFirst({

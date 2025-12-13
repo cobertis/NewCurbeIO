@@ -144,8 +144,47 @@ export function ExtensionPhone({ className }: ExtensionPhoneProps) {
 
           case "call_result":
             if (msg.success) {
-              callIdRef.current = msg.callId;
-              setCurrentCallId(msg.callId);
+              // Check if this is a special extension (IVR or Queue) that needs Telnyx routing
+              if (msg.specialExtension) {
+                console.log(`[ExtensionPhone] Special extension detected: ${msg.specialExtension.type}`);
+                // Initiate call via Telnyx API for IVR/Queue
+                try {
+                  const response = await fetch("/api/pbx/internal-call", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    credentials: "include",
+                    body: JSON.stringify({
+                      targetType: msg.specialExtension.type,
+                      queueId: msg.specialExtension.queueId || null,
+                    }),
+                  });
+                  
+                  if (response.ok) {
+                    const data = await response.json();
+                    toast({ 
+                      title: msg.specialExtension.type === "ivr" ? "Calling IVR" : "Calling Queue",
+                      description: "Your phone will ring shortly..."
+                    });
+                    // The call will come back via Telnyx WebRTC, reset P2P state
+                    setCallState("idle");
+                    setRemoteParty(null);
+                  } else {
+                    throw new Error("Failed to initiate call");
+                  }
+                } catch (error) {
+                  toast({ 
+                    title: "Call Failed", 
+                    description: "Could not connect to IVR/Queue",
+                    variant: "destructive"
+                  });
+                  setCallState("idle");
+                  setRemoteParty(null);
+                }
+              } else {
+                // Normal P2P extension call
+                callIdRef.current = msg.callId;
+                setCurrentCallId(msg.callId);
+              }
             } else {
               toast({ 
                 title: "Call Failed", 

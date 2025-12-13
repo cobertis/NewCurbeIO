@@ -98,7 +98,7 @@ export class CallControlWebhookService {
   }
 
   private async handleCallInitiated(payload: CallControlEvent["data"]["payload"]): Promise<void> {
-    const { call_control_id, from, to, direction } = payload;
+    const { call_control_id, from, to, direction, client_state } = payload;
 
     if (direction !== "incoming") {
       console.log(`[CallControl] Ignoring outgoing call initiated event`);
@@ -113,6 +113,27 @@ export class CallControlWebhookService {
     }
 
     await this.answerCall(call_control_id);
+
+    // Check for internal call with specific target (IVR or Queue)
+    if (client_state) {
+      try {
+        const state = JSON.parse(Buffer.from(client_state, "base64").toString());
+        
+        if (state.internalCall) {
+          console.log(`[CallControl] Internal call detected, target: ${state.targetType}`);
+          
+          if (state.targetType === "queue" && state.queueId) {
+            // Direct route to queue without IVR
+            await pbxService.trackActiveCall(phoneNumber.companyId, call_control_id, from, to, "queue");
+            await this.routeToQueue(call_control_id, phoneNumber.companyId, state.queueId);
+            return;
+          }
+          // For IVR targetType, continue to play IVR greeting below
+        }
+      } catch (e) {
+        console.log(`[CallControl] Could not parse client_state in handleCallInitiated`);
+      }
+    }
 
     const settings = await pbxService.getPbxSettings(phoneNumber.companyId);
 

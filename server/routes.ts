@@ -32651,6 +32651,84 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/pbx/internal-call - Initiate internal call to IVR or Queue via Telnyx
+  app.post("/api/pbx/internal-call", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { targetType, queueId } = req.body; // targetType: 'ivr' | 'queue'
+      
+      // Get user's SIP credentials
+      const [credential] = await db
+        .select()
+        .from(telephonyCredentials)
+        .where(and(
+          eq(telephonyCredentials.companyId, user.companyId),
+          eq(telephonyCredentials.userId, user.id)
+        ));
+      
+      if (!credential) {
+        return res.status(400).json({ error: "No SIP credentials configured" });
+      }
+      
+      // Get company's main phone number for outbound caller ID
+      const [phoneNumber] = await db
+        .select()
+        .from(telnyxPhoneNumbers)
+        .where(eq(telnyxPhoneNumbers.companyId, user.companyId));
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ error: "No phone number configured" });
+      }
+      
+      const TELNYX_API_KEY = process.env.TELNYX_API_KEY || "";
+      const userSipUri = `sip:${credential.sipUsername}@sip.telnyx.com`;
+      
+      // Create client_state with routing info
+      const clientState = Buffer.from(JSON.stringify({
+        companyId: user.companyId,
+        userId: user.id,
+        targetType,
+        queueId: queueId || null,
+        internalCall: true
+      })).toString("base64");
+      
+      // Initiate call from user's SIP to company number (triggers IVR/queue routing)
+      const response = await fetch("https://api.telnyx.com/v2/calls", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${TELNYX_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: phoneNumber.phoneNumber,
+          from: userSipUri,
+          connection_id: phoneNumber.connectionId || "",
+          timeout_secs: 60,
+          client_state: clientState,
+          webhook_url: `${process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : ""}/api/webhooks/telnyx/call-control`,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("[PBX Internal Call] Telnyx API error:", errorData);
+        return res.status(500).json({ error: "Failed to initiate call" });
+      }
+      
+      const data = await response.json();
+      console.log(`[PBX Internal Call] Initiated ${targetType} call for user ${user.id}:`, data.data?.call_control_id);
+      
+      return res.json({ 
+        success: true, 
+        callControlId: data.data?.call_control_id,
+        targetType
+      });
+    } catch (error: any) {
+      console.error("[PBX Internal Call] Error:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
 
   // ============================================================
   // Telnyx Call Control Webhook (PBX/IVR)
