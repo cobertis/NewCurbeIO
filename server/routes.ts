@@ -32933,9 +32933,23 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // Multer configuration for PBX audio library uploads
+  const pbxAudioUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit for audio files
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ["audio/mpeg", "audio/wav", "audio/mp3", "audio/ogg", "audio/aac", "audio/x-wav"];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error("Invalid file type. Only audio files (mp3, wav, ogg, aac) are allowed."));
+      }
+    },
+  });
+
   // POST /api/pbx/audio - Upload new audio file
   app.post("/api/pbx/audio", requireActiveCompany, (req: Request, res: Response, next: NextFunction) => {
-    upload.single("audio")(req, res, async (err: any) => {
+    pbxAudioUpload.single("audio")(req, res, async (err: any) => {
       try {
         if (err) {
           console.error("[PBX Audio] Multer error:", err);
