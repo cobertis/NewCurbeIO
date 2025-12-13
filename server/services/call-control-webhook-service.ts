@@ -193,8 +193,8 @@ async function playHoldMusic(callControlId: string, state: HoldPlaybackState): P
     };
     
     if (telnyxMediaId) {
-      // Use media_id for Telnyx Media Storage (doesn't require auth on Call Control side)
-      playbackBody.media_id = telnyxMediaId;
+      // Use media_name for Telnyx Media Storage (same as IVR greeting playback)
+      playbackBody.media_name = telnyxMediaId;
     } else {
       // Use audio_url for external URLs
       playbackBody.audio_url = audioUrl;
