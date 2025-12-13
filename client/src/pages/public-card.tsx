@@ -10,11 +10,10 @@ import { useToast } from "@/hooks/use-toast";
 interface CardData {
   card: {
     serialNumber: string;
-    memberName: string;
+    memberName: string | null;
     memberSince: string | null;
     tierLevel: string | null;
-    points: number | null;
-    expirationDate: string | null;
+    memberId: string | null;
   };
   company: {
     id: string;
@@ -310,17 +309,17 @@ export default function PublicCard() {
             )}
 
             <div className="grid grid-cols-2 gap-4 text-sm">
-              {card.points !== null && (
+              {card.memberId && (
                 <div className="bg-white/5 rounded-lg p-3 text-center">
-                  <p className="text-gray-400 text-xs">Points</p>
-                  <p className="text-xl font-bold" data-testid="text-points">{card.points.toLocaleString()}</p>
+                  <p className="text-gray-400 text-xs">Member ID</p>
+                  <p className="text-xl font-bold" data-testid="text-member-id">{card.memberId}</p>
                 </div>
               )}
               
               {card.memberSince && (
                 <div className="bg-white/5 rounded-lg p-3 text-center">
                   <p className="text-gray-400 text-xs">Member Since</p>
-                  <p className="font-medium" data-testid="text-member-since">{card.memberSince}</p>
+                  <p className="font-medium" data-testid="text-member-since">{new Date(card.memberSince).toLocaleDateString()}</p>
                 </div>
               )}
             </div>
@@ -329,12 +328,6 @@ export default function PublicCard() {
               <p className="text-xs text-gray-500 text-center">
                 Card #{card.serialNumber}
               </p>
-              {card.expirationDate && (
-                <p className="text-xs text-gray-500 text-center flex items-center justify-center gap-1 mt-1">
-                  <Calendar className="h-3 w-3" />
-                  Expires: {card.expirationDate}
-                </p>
-              )}
             </div>
           </div>
         </Card>
