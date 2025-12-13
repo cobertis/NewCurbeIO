@@ -1,0 +1,156 @@
+**INSTRUCCIONES PARA IMPLEMENTAR “AGREGAR AL HOME SCREEN” EN ANDROID (PWA INSTALL) + ABRIR DIRECTO LA CARD**
+
+**Objetivo**
+En Android/Chrome: después de que el usuario haga “Agregar Tarjeta” (push subscribe), queremos ofrecer un segundo paso súper simple: **crear acceso directo en Home** (idealmente como PWA instalada). Debe funcionar por dominio custom del tenant.
+
+**Reglas duras**
+
+* No se puede “crear el acceso directo” sin interacción del usuario. Solo podemos mostrar el prompt nativo de instalación (PWA) cuando el navegador lo permita.
+* Debe hacerse en Android Chrome/Edge. iPhone se ignora (usamos Apple Wallet en iOS).
+
+---
+
+## 1) Pre-requisitos de instalabilidad (verificar en el repo)
+
+Asegurar que en el dominio del tenant se sirven estos recursos:
+
+* `/manifest.webmanifest` (válido)
+* `/sw.js` (service worker registrado desde `/`)
+* íconos: `/icons/icon-192.png` y `/icons/icon-512.png`
+* todo bajo HTTPS
+
+Si alguno falta, `beforeinstallprompt` nunca se dispara.
+
+---
+
+## 2) Manifest: asegurar start_url que abra la card
+
+Queremos que al tocar el ícono en el home, se abra la card del cliente (público token).
+
+**Opción A (simple y recomendada, no dinámica):**
+
+* Mantener `manifest.webmanifest` estático con `start_url: "/"`.
+* En la app, cuando se abre desde home (standalone), redirigir automáticamente a la última card vista por ese dispositivo:
+
+  * Guardar en `localStorage` el último token visitado: `last_card_token`.
+  * En `"/"` (o una ruta inicial), si `display-mode: standalone` y existe `last_card_token`, redirect a `/p/<token>`.
+
+**Opción B (más avanzada): manifest dinámico por token**
+
+* Servir `/manifest.webmanifest?token=<token>`
+* y que incluya `start_url: "/p/<token>?src=home"`
+* Requiere configurar el HTML de la página `/p/:token` para apuntar al manifest con ese token.
+  (Implementar solo si es fácil con el framework actual.)
+
+Implementar **Opción A primero** para garantizar que funcione hoy.
+
+---
+
+## 3) Capturar evento `beforeinstallprompt` y mostrar botón “Agregar al inicio”
+
+En la página pública `/p/:token` (solo Android), implementar:
+
+### 3.1 Guardar token visto
+
+Cuando cargue la card:
+
+* `localStorage.setItem("last_card_token", token)`
+
+### 3.2 Capturar prompt
+
+```js
+let deferredInstallPrompt = null;
+
+window.addEventListener("beforeinstallprompt", (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  showInstallCTA(true); // mostrar botón “Agregar al inicio”
+});
+```
+
+### 3.3 Botón “Agregar al inicio”
+
+En UI Android (debajo del éxito de push):
+
+* botón grande: “Agregar acceso al inicio”
+
+Handler:
+
+```js
+async function installToHome() {
+  if (!deferredInstallPrompt) {
+    // fallback: mostrar instrucciones “menú ⋮ > Add to Home screen”
+    showManualInstallHelp();
+    return;
+  }
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  // opcional: log outcome accepted/dismissed
+}
+```
+
+### 3.4 Detectar si ya está instalada (ocultar CTA)
+
+```js
+const isStandalone = window.matchMedia("(display-mode: standalone)").matches;
+if (isStandalone) showInstallCTA(false);
+```
+
+---
+
+## 4) Integración con flujo existente “Agregar Tarjeta” (push)
+
+En Android, el flujo ideal es:
+
+1. usuario toca link `/p/:token`
+2. botón: “Agregar Tarjeta”
+
+   * registra SW
+   * Notification.requestPermission()
+   * subscribe push
+   * POST `/api/push/subscribe` con token
+3. al éxito, mostrar:
+
+   * “✅ Tarjeta activada”
+   * debajo: “Agregar acceso al inicio” (solo si `deferredInstallPrompt` existe o si Android)
+   * si no existe deferred prompt, mostrar mini-ayuda:
+     “En Chrome: menú ⋮ → Agregar a pantalla principal”
+
+---
+
+## 5) Página inicial: redirigir a la última card en modo standalone (Opción A)
+
+En la ruta `/` (o landing inicial PWA), al cargar:
+
+```js
+const isStandalone = window.matchMedia("(display-mode: standalone)").matches;
+const last = localStorage.getItem("last_card_token");
+if (isStandalone && last && location.pathname === "/") {
+  location.replace(`/p/${last}?src=home`);
+}
+```
+
+---
+
+## 6) QA: cómo probar que funciona
+
+1. Android Chrome: abrir `https://tenant-domain.com/p/<token>`
+2. Completar push (permiso + subscribe)
+3. Ver botón “Agregar acceso al inicio”
+4. Tocarlo → debe salir prompt nativo “Install”
+5. Aceptar → se crea ícono
+6. Tocar ícono → debe abrir la card (Opción A: redirige a last_card_token; Opción B: start_url directo)
+7. Confirmar que en modo standalone no aparece barra de navegador.
+
+---
+
+## 7) Entregables
+
+* UI Android: botón “Agregar acceso al inicio” integrado al flujo
+* Captura `beforeinstallprompt` + prompt nativo
+* Fallback help si no hay prompt
+* Persistencia `last_card_token` y redirect en standalone para abrir card
+* No tocar flujo iOS wallet (solo detectar y mostrar botón wallet)
+
+**No adivinar framework:** adaptar a Next/React/SSR según el repo actual.

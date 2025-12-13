@@ -31858,36 +31858,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const { webPushService } = await import("./services/web-push-service");
       
-      // Create notification record FIRST to get the notificationId for tracking
-      const [notificationRecord] = await db.insert(vipPassNotifications).values({
-        companyId: user.companyId,
-        passInstanceId: passInstanceId || null,
-        targetType: passInstanceId ? "single" : "all",
-        title: title || "VIP Pass Update",
-        message: notificationBody,
-        url: url || null,
-        eventType: notificationType || null,
-        sentCount: 0,
-        successCount: 0,
-        failedCount: 0,
-      }).returning();
-      
-      const notificationId = notificationRecord.id;
-      
-      // Build URL with tracking parameters
-      let trackingUrl = url;
-      if (url) {
-        const urlObj = new URL(url, 'https://placeholder.com');
-        urlObj.searchParams.set('nid', notificationId);
-        urlObj.searchParams.set('src', 'push');
-        trackingUrl = url.startsWith('http') ? urlObj.toString() : urlObj.pathname + urlObj.search;
-      }
-      
-      // Build rich push payload with notificationId for click tracking
+      // Build rich push payload
       const pushPayload = {
         title: title || "VIP Pass Update",
         body: notificationBody,
-        url: trackingUrl || undefined,
+        url: url || undefined,
         icon: icon || undefined,
         badge: badge || undefined,
         image: image || undefined,
@@ -31897,7 +31872,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         silent: silent || false,
         actions: actions || undefined,
         notificationType: notificationType || 'INFO',
-        notificationId: notificationId,
       };
       
       let apnsResult = { successCount: 0, failedCount: 0 };
@@ -31922,18 +31896,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
       
-      // Update notification record with actual results
+      // Log notification to database for tracking
       const totalSent = apnsResult.successCount + webPushResult.sent;
-      await db.update(vipPassNotifications)
-        .set({
+      if (totalSent > 0) {
+        await db.insert(vipPassNotifications).values({
+          companyId: user.companyId,
+          passInstanceId: passInstanceId || null,
+          targetType: passInstanceId ? "single" : "all",
+          message: notificationBody,
           sentCount: apnsResult.successCount + apnsResult.failedCount + webPushResult.sent + webPushResult.failed,
           successCount: totalSent,
           failedCount: apnsResult.failedCount + webPushResult.failed,
-        })
-        .where(eq(vipPassNotifications.id, notificationId));
+        });
+      }
       
       return res.json({
-        notificationId: notificationId,
         successCount: apnsResult.successCount + webPushResult.sent,
         failedCount: apnsResult.failedCount + webPushResult.failed,
         apns: apnsResult,
@@ -33678,65 +33655,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("[WebPush] Send error:", error);
       return res.status(500).json({ message: "Failed to send notification" });
-    }
-  });
-
-  // Track push notification events (clicked, landed, action_completed)
-  app.post("/api/push/track", async (req: Request, res: Response) => {
-    try {
-      const e = req.query.e as string;
-      const nid = req.query.nid as string;
-      
-      if (!e || !nid) {
-        return res.status(400).json({ message: "Missing e (event) or nid (notification id)" });
-      }
-      
-      const validEvents = ['clicked', 'landed', 'action_completed'];
-      if (!validEvents.includes(e)) {
-        return res.status(400).json({ message: "Invalid event type" });
-      }
-      
-      // Verify notification exists
-      const [notification] = await db
-        .select()
-        .from(vipPassNotifications)
-        .where(eq(vipPassNotifications.id, nid))
-        .limit(1);
-      
-      if (!notification) {
-        return res.status(404).json({ message: "Notification not found" });
-      }
-      
-      // Insert event record
-      await db.insert(vipPassNotificationEvents).values({
-        notificationId: nid,
-        event: e,
-        meta: {
-          userAgent: req.headers['user-agent'] || null,
-          referer: req.headers['referer'] || null,
-          timestamp: new Date().toISOString(),
-        },
-      });
-      
-      // Update aggregated counter on notification record
-      if (e === 'clicked') {
-        await db.update(vipPassNotifications)
-          .set({ clickedCount: sql`${vipPassNotifications.clickedCount} + 1` })
-          .where(eq(vipPassNotifications.id, nid));
-      } else if (e === 'landed') {
-        await db.update(vipPassNotifications)
-          .set({ landedCount: sql`${vipPassNotifications.landedCount} + 1` })
-          .where(eq(vipPassNotifications.id, nid));
-      } else if (e === 'action_completed') {
-        await db.update(vipPassNotifications)
-          .set({ completedCount: sql`${vipPassNotifications.completedCount} + 1` })
-          .where(eq(vipPassNotifications.id, nid));
-      }
-      
-      return res.json({ success: true });
-    } catch (error: any) {
-      console.error("[PushTrack] Error:", error);
-      return res.status(500).json({ message: "Failed to track event" });
     }
   });
 

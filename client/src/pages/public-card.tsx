@@ -84,6 +84,25 @@ export default function PublicCard() {
     return () => window.removeEventListener("beforeinstallprompt", handleBeforeInstall);
   }, []);
 
+  // Track 'landed' event when user arrives from push notification
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const nid = urlParams.get('nid');
+    const src = urlParams.get('src');
+    
+    if (nid && src === 'push') {
+      // Send landed event to backend
+      fetch(`/api/push/track?e=landed&nid=${nid}`, { 
+        method: 'POST',
+        keepalive: true 
+      }).catch(err => console.error('Failed to track landed:', err));
+      
+      // Clean up URL params without triggering reload
+      const cleanUrl = window.location.pathname;
+      window.history.replaceState({}, '', cleanUrl);
+    }
+  }, []);
+
   useEffect(() => {
     if (!token) return;
 

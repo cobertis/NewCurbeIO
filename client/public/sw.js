@@ -43,6 +43,7 @@ self.addEventListener('push', (event) => {
       data: {
         url: data.url || '/',
         notificationType: data.notificationType || 'INFO',
+        notificationId: data.notificationId || null,
         timestamp: Date.now()
       }
     };
@@ -74,9 +75,24 @@ self.addEventListener('notificationclick', (event) => {
   if (event.action === 'close' || event.action === 'dismiss') return;
 
   const urlToOpen = event.notification.data?.url || '/';
+  const notificationId = event.notification.data?.notificationId;
 
   event.waitUntil(
-    clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
+    (async () => {
+      // Track the click event if we have a notificationId
+      if (notificationId) {
+        try {
+          await fetch(`/api/push/track?e=clicked&nid=${notificationId}`, { 
+            method: 'POST',
+            keepalive: true 
+          });
+        } catch (err) {
+          console.error('[SW] Failed to track click:', err);
+        }
+      }
+
+      // Open the target URL
+      const clientList = await clients.matchAll({ type: 'window', includeUncontrolled: true });
       for (const client of clientList) {
         if (client.url.includes(urlToOpen) && 'focus' in client) {
           return client.focus();
@@ -85,7 +101,7 @@ self.addEventListener('notificationclick', (event) => {
       if (clients.openWindow) {
         return clients.openWindow(urlToOpen);
       }
-    })
+    })()
   );
 });
 
