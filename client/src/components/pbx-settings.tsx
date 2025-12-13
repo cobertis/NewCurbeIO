@@ -11,6 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
@@ -205,11 +206,22 @@ export function PbxSettings() {
   };
 
   const queueMutation = useMutation({
-    mutationFn: async (data: { id?: string; name: string; description?: string; ringStrategy: string }) => {
+    mutationFn: async (data: { id?: string; name: string; description?: string; ringStrategy: string; memberIds?: string[] }) => {
+      const { memberIds, ...queueData } = data;
+      let queueId = data.id;
+      
       if (data.id) {
-        return apiRequest("PATCH", `/api/pbx/queues/${data.id}`, data);
+        await apiRequest("PATCH", `/api/pbx/queues/${data.id}`, queueData);
+      } else {
+        const result = await apiRequest("POST", "/api/pbx/queues", queueData);
+        queueId = result.id;
       }
-      return apiRequest("POST", "/api/pbx/queues", data);
+      
+      if (queueId && memberIds !== undefined) {
+        await apiRequest("PUT", `/api/pbx/queues/${queueId}/members/sync`, { memberIds });
+      }
+      
+      return { queueId };
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/pbx/queues"] });
@@ -726,6 +738,7 @@ export function PbxSettings() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
+                      <TableHead>Extensions</TableHead>
                       <TableHead>Ring Strategy</TableHead>
                       <TableHead>Timeout</TableHead>
                       <TableHead>Status</TableHead>
@@ -734,35 +747,16 @@ export function PbxSettings() {
                   </TableHeader>
                   <TableBody>
                     {queues.map((queue) => (
-                      <TableRow key={queue.id}>
-                        <TableCell className="font-medium">{queue.name}</TableCell>
-                        <TableCell className="capitalize">{queue.ringStrategy.replace("_", " ")}</TableCell>
-                        <TableCell>{queue.ringTimeout}s</TableCell>
-                        <TableCell>
-                          <Badge variant={queue.status === "active" ? "default" : "secondary"}>
-                            {queue.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setEditingQueue(queue);
-                              setShowQueueDialog(true);
-                            }}
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => deleteQueueMutation.mutate(queue.id)}
-                          >
-                            <Trash2 className="w-4 h-4 text-red-500" />
-                          </Button>
-                        </TableCell>
-                      </TableRow>
+                      <QueueTableRow
+                        key={queue.id}
+                        queue={queue}
+                        extensions={extensions}
+                        onEdit={() => {
+                          setEditingQueue(queue);
+                          setShowQueueDialog(true);
+                        }}
+                        onDelete={() => deleteQueueMutation.mutate(queue.id)}
+                      />
                     ))}
                   </TableBody>
                 </Table>
@@ -854,6 +848,7 @@ export function PbxSettings() {
         open={showQueueDialog}
         onOpenChange={setShowQueueDialog}
         queue={editingQueue}
+        extensions={extensions}
         onSubmit={(data) => queueMutation.mutate(data)}
         isPending={queueMutation.isPending}
       />
@@ -879,39 +874,134 @@ export function PbxSettings() {
   );
 }
 
+interface QueueMember {
+  id: string;
+  queueId: string;
+  userId: string;
+  priority: number;
+}
+
+function QueueTableRow({
+  queue,
+  extensions,
+  onEdit,
+  onDelete,
+}: {
+  queue: PbxQueue;
+  extensions: PbxExtension[];
+  onEdit: () => void;
+  onDelete: () => void;
+}) {
+  const { data: members = [] } = useQuery<QueueMember[]>({
+    queryKey: ["/api/pbx/queues", queue.id, "members"],
+  });
+
+  const memberExtensions = members
+    .map(m => extensions.find(e => e.userId === m.userId))
+    .filter(Boolean) as PbxExtension[];
+
+  return (
+    <TableRow>
+      <TableCell className="font-medium">{queue.name}</TableCell>
+      <TableCell>
+        {memberExtensions.length === 0 ? (
+          <span className="text-muted-foreground text-sm">None</span>
+        ) : (
+          <div className="flex flex-wrap gap-1">
+            {memberExtensions.map((ext) => (
+              <Badge key={ext.id} variant="outline" className="text-xs">
+                {ext.extension} - {ext.displayName || `${ext.user.firstName} ${ext.user.lastName}`}
+              </Badge>
+            ))}
+          </div>
+        )}
+      </TableCell>
+      <TableCell className="capitalize">{queue.ringStrategy.replace("_", " ")}</TableCell>
+      <TableCell>{queue.ringTimeout}s</TableCell>
+      <TableCell>
+        <Badge variant={queue.status === "active" ? "default" : "secondary"}>
+          {queue.status}
+        </Badge>
+      </TableCell>
+      <TableCell className="text-right">
+        <Button variant="ghost" size="sm" onClick={onEdit}>
+          <Edit className="w-4 h-4" />
+        </Button>
+        <Button variant="ghost" size="sm" onClick={onDelete}>
+          <Trash2 className="w-4 h-4 text-red-500" />
+        </Button>
+      </TableCell>
+    </TableRow>
+  );
+}
+
 function QueueDialog({
   open,
   onOpenChange,
   queue,
+  extensions,
   onSubmit,
   isPending,
 }: {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   queue: PbxQueue | null;
+  extensions: PbxExtension[];
   onSubmit: (data: any) => void;
   isPending: boolean;
 }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [ringStrategy, setRingStrategy] = useState("ring_all");
+  const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
+
+  const { data: existingMembers = [] } = useQuery<QueueMember[]>({
+    queryKey: ["/api/pbx/queues", queue?.id, "members"],
+    enabled: !!queue?.id,
+  });
+
+  useEffect(() => {
+    if (open) {
+      if (queue) {
+        setName(queue.name);
+        setDescription(queue.description || "");
+        setRingStrategy(queue.ringStrategy);
+      } else {
+        setName("");
+        setDescription("");
+        setRingStrategy("ring_all");
+        setSelectedMemberIds([]);
+      }
+    }
+  }, [open, queue]);
+
+  useEffect(() => {
+    if (open && queue?.id) {
+      setSelectedMemberIds(existingMembers.map(m => m.userId));
+    }
+  }, [existingMembers, open, queue?.id]);
 
   const handleOpenChange = (isOpen: boolean) => {
-    if (isOpen && queue) {
-      setName(queue.name);
-      setDescription(queue.description || "");
-      setRingStrategy(queue.ringStrategy);
-    } else if (!isOpen) {
+    if (!isOpen) {
       setName("");
       setDescription("");
       setRingStrategy("ring_all");
+      setSelectedMemberIds([]);
     }
     onOpenChange(isOpen);
   };
 
+  const toggleMember = (userId: string) => {
+    setSelectedMemberIds(prev => 
+      prev.includes(userId) 
+        ? prev.filter(id => id !== userId)
+        : [...prev, userId]
+    );
+  };
+
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent>
+      <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>{queue ? "Edit Queue" : "Create Queue"}</DialogTitle>
         </DialogHeader>
@@ -948,13 +1038,48 @@ function QueueDialog({
               </SelectContent>
             </Select>
           </div>
+          <div className="space-y-2">
+            <Label>Queue Members (Extensions)</Label>
+            {extensions.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No extensions available. Create extensions first.</p>
+            ) : (
+              <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
+                {extensions.map((ext) => (
+                  <div 
+                    key={ext.id} 
+                    className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50 cursor-pointer"
+                    onClick={() => toggleMember(ext.userId)}
+                    data-testid={`checkbox-member-${ext.id}`}
+                  >
+                    <Checkbox
+                      checked={selectedMemberIds.includes(ext.userId)}
+                      onCheckedChange={() => toggleMember(ext.userId)}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {ext.displayName || `${ext.user.firstName} ${ext.user.lastName}`}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        Ext. {ext.extension}
+                      </p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+            {selectedMemberIds.length > 0 && (
+              <p className="text-xs text-muted-foreground">
+                {selectedMemberIds.length} member{selectedMemberIds.length !== 1 ? 's' : ''} selected
+              </p>
+            )}
+          </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
           </Button>
           <Button
-            onClick={() => onSubmit({ id: queue?.id, name, description, ringStrategy })}
+            onClick={() => onSubmit({ id: queue?.id, name, description, ringStrategy, memberIds: selectedMemberIds })}
             disabled={isPending || !name}
             data-testid="button-save-queue"
           >

@@ -32437,6 +32437,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // PUT /api/pbx/queues/:queueId/members/sync - Sync queue members
+  app.put("/api/pbx/queues/:queueId/members/sync", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { memberIds } = req.body;
+      if (!Array.isArray(memberIds)) {
+        return res.status(400).json({ error: "memberIds must be an array" });
+      }
+      await pbxService.syncQueueMembers(user.companyId, req.params.queueId, memberIds);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error syncing queue members:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
   // GET /api/pbx/extensions/next - Get next available extension number
   app.get("/api/pbx/extensions/next", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -32513,7 +32529,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.get("/api/pbx/menu-options", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user as User;
-      const settings = await pbxService.getSettings(user.companyId);
+      const settings = await pbxService.getPbxSettings(user.companyId);
       if (!settings) {
         return res.json([]);
       }

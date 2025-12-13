@@ -20,7 +20,7 @@ import {
   PbxAudioFile,
   PbxAgentStatusType,
 } from "@shared/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, inArray } from "drizzle-orm";
 import { TelephonyProvisioningService } from "./telephony-provisioning-service";
 
 export class PbxService {
@@ -198,6 +198,38 @@ export class PbxService {
         )
       );
     return true;
+  }
+
+  async syncQueueMembers(companyId: string, queueId: string, memberIds: string[]): Promise<void> {
+    // Get existing members
+    const existingMembers = await db
+      .select({ userId: pbxQueueMembers.userId })
+      .from(pbxQueueMembers)
+      .where(and(eq(pbxQueueMembers.companyId, companyId), eq(pbxQueueMembers.queueId, queueId)));
+    
+    const existingUserIds = existingMembers.map(m => m.userId);
+    
+    // Find members to add and remove
+    const toAdd = memberIds.filter(id => !existingUserIds.includes(id));
+    const toRemove = existingUserIds.filter(id => !memberIds.includes(id));
+    
+    // Remove members no longer in the list
+    if (toRemove.length > 0) {
+      await db
+        .delete(pbxQueueMembers)
+        .where(
+          and(
+            eq(pbxQueueMembers.companyId, companyId),
+            eq(pbxQueueMembers.queueId, queueId),
+            inArray(pbxQueueMembers.userId, toRemove)
+          )
+        );
+    }
+    
+    // Add new members
+    for (let i = 0; i < toAdd.length; i++) {
+      await this.addQueueMember(companyId, queueId, toAdd[i], i + 1);
+    }
   }
 
   async getExtensions(companyId: string): Promise<any[]> {
