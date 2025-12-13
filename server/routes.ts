@@ -32285,32 +32285,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const extension = file.mimetype.includes('wav') ? 'wav' : 'mp3';
         const filename = `ivr-greeting-${user.companyId}-${Date.now()}.${extension}`;
         
-        // Upload to Object Storage
-        const privateObjectDir = objectStorage.getPrivateObjectDir();
-        const objectPath = `${privateObjectDir}/pbx-audio/${filename}`;
-        const parts = objectPath.split('/').filter(p => p);
-        const bucketName = parts[0];
-        const objectName = parts.slice(1).join('/');
+        // Save to local uploads directory
+        const uploadDir = path.join(process.cwd(), 'uploads', 'pbx-audio');
+        const filePath = path.join(uploadDir, filename);
         
-        const bucket = objectStorageClient.bucket(bucketName);
-        const objectFile = bucket.file(objectName);
+        // Ensure directory exists
+        const fsPromises = await import('fs/promises');
+        await fsPromises.mkdir(uploadDir, { recursive: true });
+        await fsPromises.writeFile(filePath, file.buffer);
         
-        await objectFile.save(file.buffer, {
-          contentType: file.mimetype,
-          metadata: {
-            cacheControl: 'public, max-age=31536000',
-          },
-        });
-        
-        // Generate signed URL for Telnyx (valid for 1 year)
-        const [signedUrl] = await objectFile.getSignedUrl({
-          action: 'read',
-          expires: Date.now() + 365 * 24 * 60 * 60 * 1000,
-        });
+        // Generate URL for serving the file
+        const audioUrl = `/uploads/pbx-audio/${filename}`;
         
         // Update PBX settings with the new audio URL
         const settings = await pbxService.createOrUpdatePbxSettings(user.companyId, {
-          greetingAudioUrl: signedUrl,
+          greetingAudioUrl: audioUrl,
           useTextToSpeech: false
         });
         
@@ -32318,7 +32307,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         return res.json({ 
           success: true, 
-          url: signedUrl,
           settings 
         });
       } catch (error: any) {
