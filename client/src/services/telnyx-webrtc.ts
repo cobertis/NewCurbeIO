@@ -6,6 +6,7 @@
 
 import { UserAgent, Registerer, Inviter, Invitation, SessionState, Session, RegistererState } from "sip.js";
 import { create } from "zustand";
+import { useExtensionCallStore } from "@/stores/extensionCallStore";
 
 // ============================================================================
 // CONSTANTS
@@ -989,7 +990,6 @@ class TelnyxWebRTCManager {
     
     // Check if this is a queue call that was already accepted via WebSocket
     // If so, auto-answer immediately without showing incoming call UI
-    const { useExtensionCallStore } = require('@/stores/extensionCallStore');
     const extStore = useExtensionCallStore.getState();
     
     if (extStore.pendingQueueCallAutoAnswer) {
