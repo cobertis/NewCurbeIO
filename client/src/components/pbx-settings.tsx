@@ -734,7 +734,7 @@ export function PbxSettings() {
                         <TableRow key={option.id}>
                           <TableCell className="font-mono font-bold">{option.digit}</TableCell>
                           <TableCell>{option.label}</TableCell>
-                          <TableCell className="capitalize">{option.actionType.replace("_", " ")}</TableCell>
+                          <TableCell className="capitalize">{option.actionType?.replace("_", " ") || "-"}</TableCell>
                           <TableCell>
                             {option.actionType === "queue" && queues.find(q => q.id === option.targetQueueId)?.name}
                             {option.actionType === "extension" && extensions.find(e => e.id === option.targetExtensionId)?.extension}
@@ -808,7 +808,7 @@ export function PbxSettings() {
                       <TableRow key={option.id}>
                         <TableCell className="font-mono font-bold">{option.digit}</TableCell>
                         <TableCell>{option.label}</TableCell>
-                        <TableCell className="capitalize">{option.actionType.replace("_", " ")}</TableCell>
+                        <TableCell className="capitalize">{option.actionType?.replace("_", " ") || "-"}</TableCell>
                         <TableCell>
                           {option.actionType === "queue" && queues.find(q => q.id === option.targetQueueId)?.name}
                           {option.actionType === "extension" && extensions.find(e => e.id === option.targetExtensionId)?.extension}
