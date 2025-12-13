@@ -1723,8 +1723,8 @@ export function WebPhoneFloatingWindow() {
     // So we must check: outgoing exists AND current does NOT exist AND no incoming call
     const hasOutgoingRinging = !!telnyxOutgoingCall && !telnyxCurrentCall && !telnyxIncomingCall;
     
-    // For extension calls: only play if call is explicitly in 'ringing' state
-    const hasExtOutgoingRinging = !!currentExtCall && currentExtCall.state === 'ringing';
+    // For extension calls: play ringback when calling or ringing (before connected)
+    const hasExtOutgoingRinging = !!currentExtCall && (currentExtCall.state === 'calling' || currentExtCall.state === 'ringing');
     
     const shouldPlayRingback = hasOutgoingRinging || hasExtOutgoingRinging;
     
