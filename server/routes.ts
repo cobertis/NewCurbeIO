@@ -33372,6 +33372,24 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           usage.push({ type: 'queue_hold_music', name: queue.name, id: queue.id });
         });
 
+        // Check Queue Ads (announcements) using this audio
+        const queueAdsUsingAudio = await db
+          .select({ 
+            adId: pbxQueueAds.id,
+            queueId: pbxQueueAds.queueId,
+            queueName: pbxQueues.name 
+          })
+          .from(pbxQueueAds)
+          .innerJoin(pbxQueues, eq(pbxQueueAds.queueId, pbxQueues.id))
+          .where(and(
+            eq(pbxQueueAds.companyId, user.companyId!),
+            eq(pbxQueueAds.audioFileId, audio.id)
+          ));
+        
+        queueAdsUsingAudio.forEach(ad => {
+          usage.push({ type: 'queue_announcement', name: ad.queueName, id: ad.queueId });
+        });
+
         return { ...audio, usage };
       }));
 
