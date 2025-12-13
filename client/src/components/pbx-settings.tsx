@@ -2608,7 +2608,7 @@ function AudioUploadDialog({
   const [description, setDescription] = useState("");
   const [notes, setNotes] = useState("");
   const [audioType, setAudioType] = useState("greeting");
-  const [file, setFile] = useState<File | null>(null);
+  const [files, setFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -2617,23 +2617,26 @@ function AudioUploadDialog({
       setDescription("");
       setNotes("");
       setAudioType("greeting");
-      setFile(null);
+      setFiles([]);
     }
   }, [open]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
-    if (selectedFile) {
-      setFile(selectedFile);
-      if (!name) {
-        setName(selectedFile.name.replace(/\.[^/.]+$/, ""));
+    const selectedFiles = Array.from(e.target.files || []);
+    if (selectedFiles.length > 0) {
+      setFiles(selectedFiles);
+      if (!name && selectedFiles.length === 1) {
+        setName(selectedFiles[0].name.replace(/\.[^/.]+$/, ""));
       }
     }
   };
 
-  const handleSubmit = () => {
-    if (file && name && audioType) {
-      onSubmit({ file, name, description: description || undefined, notes: notes || undefined, audioType });
+  const handleSubmit = async () => {
+    if (files.length > 0 && audioType) {
+      for (const file of files) {
+        const fileName = files.length === 1 && name ? name : file.name.replace(/\.[^/.]+$/, "");
+        await onSubmit({ file, name: fileName, description: description || undefined, notes: notes || undefined, audioType });
+      }
     }
   };
 
@@ -2651,15 +2654,20 @@ function AudioUploadDialog({
                 ref={fileInputRef}
                 type="file"
                 accept="audio/*"
+                multiple
                 onChange={handleFileChange}
                 className="flex-1"
                 data-testid="input-audio-file"
               />
             </div>
-            {file && (
-              <p className="text-sm text-muted-foreground">
-                Selected: {file.name} ({(file.size / 1024).toFixed(1)} KB)
-              </p>
+            {files.length > 0 && (
+              <div className="text-sm text-muted-foreground space-y-1">
+                {files.length === 1 ? (
+                  <p>Selected: {files[0].name} ({(files[0].size / 1024).toFixed(1)} KB)</p>
+                ) : (
+                  <p>{files.length} files selected ({(files.reduce((acc, f) => acc + f.size, 0) / 1024).toFixed(1)} KB total)</p>
+                )}
+              </div>
             )}
           </div>
 
@@ -2715,7 +2723,7 @@ function AudioUploadDialog({
           </Button>
           <Button
             onClick={handleSubmit}
-            disabled={isPending || !file || !name || !audioType}
+            disabled={isPending || files.length === 0 || (files.length === 1 && !name) || !audioType}
             data-testid="button-upload-audio"
           >
             {isPending ? <LoadingSpinner fullScreen={false} /> : "Upload"}
