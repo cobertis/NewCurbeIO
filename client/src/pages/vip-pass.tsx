@@ -741,12 +741,9 @@ export default function VipPassPage() {
                                 </TableCell>
                                 <TableCell>
                                   {instance.pushSubscriptionCount > 0 ? (
-                                    <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                                      <Bell className="h-3 w-3 mr-1" />
-                                      {instance.pushSubscriptionCount}
-                                    </Badge>
+                                    <span className="text-green-600 font-medium">Yes</span>
                                   ) : (
-                                    <span className="text-muted-foreground text-sm">-</span>
+                                    <span className="text-muted-foreground">No</span>
                                   )}
                                 </TableCell>
                                 <TableCell>{instance.downloadCount}</TableCell>
