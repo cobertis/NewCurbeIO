@@ -2256,6 +2256,7 @@ export function WebPhoneFloatingWindow() {
       }
       
       // Check if dialing IVR extension
+      console.log('[WebPhone] Checking special extensions:', { digits, pbxSpecialExtensions, hasTelnyxNumber });
       if (pbxSpecialExtensions?.ivrExtension && digits === pbxSpecialExtensions.ivrExtension) {
         console.log('[WebPhone] Dialing IVR extension:', digits);
         try {

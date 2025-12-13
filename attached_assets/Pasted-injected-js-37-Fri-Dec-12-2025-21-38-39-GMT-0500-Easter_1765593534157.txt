@@ -1,0 +1,110 @@
+injected.js:37 Fri Dec 12 2025 21:38:39 GMT-0500 (Eastern Standard Time) | sip.Transport | Sending WebSocket message:
+
+INVITE sip:+111000@sip.telnyx.com SIP/2.0
+Via: SIP/2.0/WSS l0mph8befdoh.invalid;branch=z9hG4bK1598207
+To: <sip:+111000@sip.telnyx.com>
+From: "Curbe" <sip:curbeb5325600gm3h@sip.telnyx.com>;tag=4rbiksockg
+CSeq: 2 INVITE
+Call-ID: njod8m2lj4c7do5faufg
+Max-Forwards: 70
+Proxy-Authorization: Digest algorithm=MD5, username="curbeb5325600gm3h", realm="sip.telnyx.com", nonce="6a101a72-84a1-498e-b99b-49ec86969c2c", uri="sip:+111000@sip.telnyx.com", response="80ca0002cdbedc963d5d0bd3c491a3b8", opaque="1a60c33b-b424-4f4b-bea7-2b164ff0d915/10.239.89.24", qop=auth, cnonce="9hdp9qqfbemc", nc=00000001
+P-Asserted-Identity: <sip:+13058423033@sip.telnyx.com>
+Contact: <sip:curbeb5325600gm3h@l0mph8befdoh.invalid;transport=ws;ob>
+Allow: ACK,CANCEL,INVITE,MESSAGE,BYE,OPTIONS,INFO,NOTIFY,REFER
+Supported: outbound
+User-Agent: SIP.js/0.21.1 Curbe/+13058423033
+Content-Type: application/sdp
+Content-Length: 1827
+
+v=0
+o=- 831895602554033490 2 IN IP4 127.0.0.1
+s=-
+t=0 0
+a=group:BUNDLE 0
+a=extmap-allow-mixed
+a=msid-semantic: WMS 45df9520-7737-43f6-b3bd-24cffffaac16
+m=audio 49637 UDP/TLS/RTP/SAVPF 111 63 9 0 8 13 110 126
+c=IN IP4 71.145.228.251
+a=rtcp:9 IN IP4 0.0.0.0
+a=candidate:1241682032 1 udp 2122194687 71.145.228.251 49637 typ host generation 0 network-id 2 network-cost 10
+a=candidate:1320586383 1 udp 2122262783 2600:1700:3d5e:c000:cd14:3787:c58d:19e6 50288 typ host generation 0 network-id 1 network-cost 10
+a=candidate:885879528 1 tcp 1518214911 71.145.228.251 9 typ host tcptype active generation 0 network-id 2 network-cost 10
+a=candidate:813264407 1 tcp 1518283007 2600:1700:3d5e:c000:cd14:3787:c58d:19e6 9 typ host tcptype active generation 0 network-id 1 network-cost 10
+a=ice-ufrag:HTQI
+a=ice-pwd:BTMmjzPiNFxCuegtbwH6p2TU
+a=ice-options:trickle
+a=fingerprint:sha-256 0C:5B:87:86:26:2D:F4:7C:50:AA:FC:BD:78:FA:CE:0C:84:FE:C9:E2:F8:AA:A0:17:2E:CA:9B:2E:00:B1:88:A9
+a=setup:actpass
+a=mid:0
+a=extmap:1 urn:ietf:params:rtp-hdrext:ssrc-audio-level
+a=extmap:2 http://www.webrtc.org/experiments/rtp-hdrext/abs-send-time
+a=extmap:3 http://www.ietf.org/id/draft-holmer-rmcat-transport-wide-cc-extensions-01
+a=extmap:4 urn:ietf:params:rtp-hdrext:sdes:mid
+a=sendrecv
+a=msid:45df9520-7737-43f6-b3bd-24cffffaac16 12191ae2-8523-4e54-8c02-94471c1028e1
+a=rtcp-mux
+a=rtcp-rsize
+a=rtpmap:111 opus/48000/2
+a=rtcp-fb:111 transport-cc
+a=fmtp:111 minptime=10;useinbandfec=1
+a=rtpmap:63 red/48000/2
+a=fmtp:63 111/111
+a=rtpmap:9 G722/8000
+a=rtpmap:0 PCMU/8000
+a=rtpmap:8 PCMA/8000
+a=rtpmap:13 CN/8000
+a=rtpmap:110 telephone-event/48000
+a=rtpmap:126 telephone-event/8000
+a=ssrc:2157558198 cname:wVaK3qu7B6vEL4D2
+a=ssrc:2157558198 msid:45df9520-7737-43f6-b3bd-24cffffaac16 12191ae2-8523-4e54-8c02-94471c1028e1
+
+
+injected.js:37 Fri Dec 12 2025 21:38:39 GMT-0500 (Eastern Standard Time) | sip.Transport | Received WebSocket text message:
+
+SIP/2.0 100 Telnyx Trying
+Via: SIP/2.0/WSS l0mph8befdoh.invalid;branch=z9hG4bK1598207;rport=58595;received=71.145.228.251
+To: <sip:+111000@sip.telnyx.com>
+From: "Curbe" <sip:curbeb5325600gm3h@sip.telnyx.com>;tag=4rbiksockg
+CSeq: 2 INVITE
+Call-ID: njod8m2lj4c7do5faufg
+Server: Telnyx SIP Proxy
+Content-Length: 0
+
+
+
+injected.js:37 Fri Dec 12 2025 21:38:39 GMT-0500 (Eastern Standard Time) | sip.Inviter | Inviter.onTrying
+injected.js:37 Fri Dec 12 2025 21:38:39 GMT-0500 (Eastern Standard Time) | sip.Transport | Received WebSocket text message:
+
+SIP/2.0 403 Forbidden
+Via: SIP/2.0/WSS l0mph8befdoh.invalid;rport=58595;received=71.145.228.251;branch=z9hG4bK1598207
+From: "Curbe" <sip:curbeb5325600gm3h@sip.telnyx.com>;tag=4rbiksockg
+To: <sip:+111000@sip.telnyx.com>;tag=6g219Kr4ym9XS
+Call-ID: njod8m2lj4c7do5faufg
+CSeq: 2 INVITE
+Accept: application/sdp
+Allow: INVITE, ACK, BYE, CANCEL, OPTIONS, MESSAGE, INFO, UPDATE, REFER, NOTIFY
+Supported: path
+Allow-Events: talk, hold, conference, refer
+Content-Length: 0
+
+
+
+injected.js:37 Fri Dec 12 2025 21:38:39 GMT-0500 (Eastern Standard Time) | sip.Transport | Sending WebSocket message:
+
+ACK sip:+111000@sip.telnyx.com SIP/2.0
+Via: SIP/2.0/WSS l0mph8befdoh.invalid;branch=z9hG4bK1598207
+To: <sip:+111000@sip.telnyx.com>;tag=6g219Kr4ym9XS
+From: "Curbe" <sip:curbeb5325600gm3h@sip.telnyx.com>;tag=4rbiksockg
+Call-ID: njod8m2lj4c7do5faufg
+CSeq: 2 ACK
+Max-Forwards: 70
+Content-Length: 0
+
+
+
+injected.js:37 Fri Dec 12 2025 21:38:39 GMT-0500 (Eastern Standard Time) | sip.Inviter | Inviter.onReject
+injected.js:37 Fri Dec 12 2025 21:38:39 GMT-0500 (Eastern Standard Time) | sip.Inviter | Session njod8m2lj4c7do5faufg4rbiksockg transitioned to state Terminated
+injected.js:37 [SIP.js WebRTC] Session state changed: Terminated
+injected.js:37 [SIP.js WebRTC] Call terminated
+injected.js:37 [SIP.js CallLog] Finalizing call log e3708853-f28b-4ede-b783-249a3cef7a2c: status=missed, duration=0s
+injected.js:37 Fri Dec 12 2025 21:38:39 GMT-0500 (Eastern Standard Time) | sip.Inviter | Session njod8m2lj4c7do5faufg4rbiksockg in state Terminated is being disposed
