@@ -1,0 +1,181 @@
+Bien, aquí está la verdad técnica: **en Web Push no existe un “delivered/read receipt” confiable** como en WhatsApp. El navegador no te da “lo vio”. Lo que sí puedes medir (y exprimir) es:
+
+* **Suscrito** (tiene permisos + subscription guardada)
+* **Enviado** (tu servidor intentó mandar)
+* **Aceptado por el push service** (tu `web-push` no falló)
+* **Click** en la notificación (esto sí es oro)
+* **Acción completada** después del click (el verdadero ROI)
+
+Si montas bien esa tubería, puedes convertir push en un “motor” de conversión: documentos subidos, pagos completados, citas confirmadas, renovaciones terminadas.
+
+---
+
+## Qué significa “evento de apertura” en tu caso
+
+En push, “apertura” no es “la vio”. Es:
+
+### A) Click en la notificación
+
+El usuario tocó la notificación. Eso lo capturas con `notificationclick` (service worker) + tracking.
+
+### B) Apertura de la página destino “desde push”
+
+Aunque no logres trackear el click en el SW (por restricciones o red), **la página que se abre puede reportar**: “llegué desde push”.
+
+Esto es el camino más robusto.
+
+---
+
+## El modelo mental que te conviene
+
+Piensa en cada notificación como un mini-embudo:
+
+**Sent → Clicked → Landed → Completed**
+
+Tu objetivo no es “mandar notificaciones”. Tu objetivo es **mover estados** del cliente.
+
+---
+
+## Implementación que te da tracking sólido (sin inventos)
+
+### 1) Genera un `notification_id` único por notificación
+
+Cuando mandes push desde backend, crea un registro en DB primero:
+
+**Tabla `push_notifications`**
+
+* `id` (uuid o bigserial) ← este es tu `notification_id`
+* `tenant_id`
+* `client_id`
+* `event_type` (DOCUMENT_AVAILABLE / PAYMENT_FAILED / APPT_REMINDER / RENEWAL_ACTION…)
+* `title`, `body`, `url`
+* `status` (queued/sent/failed)
+* `created_at`
+
+**Tabla `push_notification_events`**
+
+* `notification_id`
+* `event` (sent | failed | clicked | landed | action_completed)
+* `meta` (jsonb: user_agent, platform, referrer, etc.)
+* `created_at`
+
+### 2) Pega ese `notification_id` en el payload del push
+
+Payload ejemplo:
+
+```json
+{
+  "title":"DLS Insurance",
+  "body":"Falta tu documento. Súbelo aquí.",
+  "url":"https://dls.com/p/abc123?src=push&nid=987654",
+  "data":{
+    "notificationId":"987654",
+    "tenantId":10,
+    "clientId":123
+  },
+  "tag":"documents",
+  "requireInteraction":true,
+  "actions":[{"action":"upload","title":"Subir documento"}]
+}
+```
+
+**Clave:** el `nid` en la URL es tu paracaídas. Aunque falle todo lo demás, si la página abre, tú lo ves.
+
+### 3) Tracking en el service worker (opcional, “best effort”)
+
+En `sw.js`:
+
+* Cuando hay `notificationclick`, intentas enviar `clicked` al server con `fetch`.
+* Pero **no dependas** de eso: puede fallar si está offline o el SW muere rápido.
+
+Aun así, vale la pena:
+
+```js
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+  const nid = event.notification.data?.notificationId;
+  const url = event.notification.data?.url || "/";
+
+  // best-effort click tracking
+  event.waitUntil((async () => {
+    try {
+      if (nid) await fetch(`/api/push/track?e=clicked&nid=${encodeURIComponent(nid)}`, { method:"POST" });
+    } catch {}
+    return clients.openWindow(url);
+  })());
+});
+```
+
+### 4) Tracking “Landed” en la página destino (esto es lo bueno)
+
+En la página que se abre (por ejemplo `/p/:token` o la pantalla de “Subir documento”):
+
+* Si detectas `src=push&nid=...`, mandas evento `landed`.
+* Esto es 10x más confiable que el SW.
+
+```js
+const params = new URLSearchParams(location.search);
+const nid = params.get("nid");
+const src = params.get("src");
+
+if (src === "push" && nid) {
+  fetch("/api/push/track", {
+    method: "POST",
+    headers: {"Content-Type":"application/json"},
+    body: JSON.stringify({ event: "landed", nid })
+  }).catch(()=>{});
+}
+```
+
+### 5) Tracking de “Action completed” (donde está el dinero)
+
+Cuando el usuario haga la acción (subir doc, pagar, confirmar cita), en tu backend registras:
+
+* `action_completed` con ese `nid` (si lo tienes en sesión o en querystring)
+* o lo vinculas por `client_id + event_type + ventana de tiempo`
+
+Este evento es el KPI real.
+
+---
+
+## Qué puedes medir (y cómo exprimirlo)
+
+### Métricas útiles (no vanity)
+
+* **Click rate** = clicked / sent
+* **Land rate** = landed / sent
+* **Completion rate** = action_completed / sent
+* **Time-to-complete** = action_completed_at - sent_at
+* **Drop-off** = landed pero no completó (tu UX o tu proceso está mal)
+
+### Inteligencia operativa
+
+* Si `sent` alto pero `clicked` bajo → copy/valor malo o estás spameando.
+* Si `clicked` alto pero `completed` bajo → la landing apesta o el flujo es friccionado.
+* Si `completed` alto → ese push es “money printer”. Repítelo en eventos similares.
+
+---
+
+## Truco pro: “degradación elegante” (si no hay push)
+
+Con ese tracking vas a poder segmentar:
+
+* Cliente **con push activo** → push primero
+* Cliente **sin push** → fallback SMS/iMessage solo si es acción crítica
+* Cliente que **nunca hace click** → baja frecuencia (si no, te bloquea)
+
+Eso es optimización de costos y reputación.
+
+---
+
+## Límites (para no auto-engañarte)
+
+* No sabes con certeza si la notificación “se mostró” (el SO decide).
+* No sabes si la leyó sin click.
+* Sí sabes si hizo click/abrió y si completó.
+
+Y eso es suficiente para construir un sistema de performance real.
+
+---
+
+Si montas esto, tu CRM deja de “mandar mensajes” y empieza a correr **experimentos**: cuál notificación reduce lapses, cuál acelera documentos, cuál sube confirmaciones de citas. Ese es el máximo provecho.

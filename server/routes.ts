@@ -90,7 +90,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, or, sql, inArray, count, isNotNull, isNull } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, vipPassDevices, vipPassInstances, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, vipPassDevices, vipPassInstances, vipPassNotifications, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -31894,6 +31894,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             webPushResult.failed += result.failed;
           }
         }
+      }
+      
+      // Log notification to database for tracking
+      const totalSent = apnsResult.successCount + webPushResult.sent;
+      if (totalSent > 0) {
+        await db.insert(vipPassNotifications).values({
+          companyId: user.companyId,
+          passInstanceId: passInstanceId || null,
+          targetType: passInstanceId ? "single" : "all",
+          message: notificationBody,
+          sentCount: apnsResult.successCount + apnsResult.failedCount + webPushResult.sent + webPushResult.failed,
+          successCount: totalSent,
+          failedCount: apnsResult.failedCount + webPushResult.failed,
+        });
       }
       
       return res.json({
