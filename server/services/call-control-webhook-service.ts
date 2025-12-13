@@ -30,6 +30,14 @@ interface CallContext {
 }
 const callContextMap = new Map<string, CallContext>();
 
+// Track pending bridges - when agent answers, bridge with caller
+interface PendingBridge {
+  callerCallControlId: string;
+  clientState: string;
+  companyId: string;
+}
+const pendingBridges = new Map<string, PendingBridge>();
+
 async function getTelnyxApiKey(): Promise<string> {
   let apiKey = await secretsService.getCredential("telnyx", "api_key");
   if (!apiKey) {
@@ -245,6 +253,29 @@ export class CallControlWebhookService {
 
   private async handleCallAnswered(payload: CallControlEvent["data"]["payload"]): Promise<void> {
     const { call_control_id, client_state } = payload;
+
+    // Check if this is an agent answering a queue call - need to bridge
+    const pendingBridge = pendingBridges.get(call_control_id);
+    if (pendingBridge) {
+      console.log(`[CallControl] Agent answered! Bridging with caller ${pendingBridge.callerCallControlId}`);
+      pendingBridges.delete(call_control_id);
+
+      try {
+        // Bridge the caller with the agent
+        await this.makeCallControlRequest(pendingBridge.callerCallControlId, "bridge", {
+          call_control_id: call_control_id,
+          client_state: pendingBridge.clientState,
+        });
+        console.log(`[CallControl] Successfully bridged caller with agent`);
+      } catch (bridgeError) {
+        console.error(`[CallControl] Failed to bridge calls:`, bridgeError);
+        // Hangup agent call if bridge fails
+        try {
+          await this.hangupCall(call_control_id, "NORMAL_CLEARING");
+        } catch (e) { /* ignore */ }
+      }
+      return;
+    }
 
     if (client_state) {
       try {
@@ -714,26 +745,17 @@ export class CallControlWebhookService {
 
     console.log(`[CallControl] Created outbound call to agent: ${agentCallControlId}`);
 
-    // Store context for the new call leg
+    // Store context for the new call leg with pending bridge info
     callContextMap.set(agentCallControlId, { companyId, managedAccountId });
+    
+    // Store pending bridge info - will be processed when agent answers (call.answered event)
+    pendingBridges.set(agentCallControlId, {
+      callerCallControlId: callControlId,
+      clientState,
+      companyId,
+    });
 
-    // Bridge the original caller's call with the agent's call
-    // Wait a moment for the call to be established before bridging
-    setTimeout(async () => {
-      try {
-        await this.makeCallControlRequest(callControlId, "bridge", {
-          call_control_id: agentCallControlId,
-          client_state: clientState,
-        });
-        console.log(`[CallControl] Bridged caller ${callControlId} with agent ${agentCallControlId}`);
-      } catch (bridgeError) {
-        console.error(`[CallControl] Failed to bridge calls:`, bridgeError);
-        // Hangup agent call if bridge fails
-        try {
-          await this.makeCallControlRequest(agentCallControlId, "hangup", { hangup_cause: "NORMAL_CLEARING" });
-        } catch (e) { /* ignore */ }
-      }
-    }, 500);
+    console.log(`[CallControl] Waiting for agent to answer call ${agentCallControlId}, will bridge with ${callControlId}`);
   }
 
   /**
