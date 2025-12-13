@@ -377,24 +377,9 @@ export default function PublicCard() {
                 Enable Notifications
               </Button>
             ) : (
-              <div className="flex gap-2">
-                <Button
-                  onClick={testPush}
-                  variant="outline"
-                  className="flex-1"
-                  data-testid="button-test-notification"
-                >
-                  Test Notification
-                </Button>
-                <Button
-                  onClick={unsubscribeFromPush}
-                  disabled={subscribing}
-                  variant="ghost"
-                  className="text-red-500"
-                  data-testid="button-disable-notifications"
-                >
-                  <BellOff className="h-4 w-4" />
-                </Button>
+              <div className="flex items-center justify-center gap-2 py-2 text-green-500" data-testid="notifications-enabled">
+                <Bell className="h-4 w-4" />
+                <span className="text-sm">Notifications enabled</span>
               </div>
             )}
           </div>
