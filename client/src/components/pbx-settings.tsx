@@ -1956,33 +1956,7 @@ function IvrDialog({
             </Select>
           </div>
 
-          <div className="rounded-lg border border-border bg-muted/30 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <Label>Use Text-to-Speech</Label>
-                <p className="text-sm text-muted-foreground">Generate greeting from text</p>
-              </div>
-              <Switch
-                checked={useTextToSpeech}
-                onCheckedChange={setUseTextToSpeech}
-                data-testid="switch-ivr-tts"
-              />
-            </div>
-          </div>
-
-          {useTextToSpeech ? (
-            <div className="space-y-2">
-              <Label>Greeting Text</Label>
-              <Textarea
-                value={greetingText}
-                onChange={(e) => setGreetingText(e.target.value)}
-                placeholder="Welcome to our company. Press 1 for Sales, Press 2 for Support..."
-                rows={4}
-                data-testid="input-ivr-greeting-text"
-              />
-            </div>
-          ) : (
-            <div className="space-y-3">
+          <div className="space-y-3">
               <Label>Greeting Audio</Label>
               <div className="flex gap-2">
                 <Button
@@ -2084,7 +2058,7 @@ function IvrDialog({
                 <p className="text-sm text-muted-foreground">Save the IVR first to upload custom audio.</p>
               )}
             </div>
-          )}
+          </div>
 
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -2115,7 +2089,7 @@ function IvrDialog({
             onClick={() => {
               const selectedAudio = audioFiles.find(a => a.id === selectedAudioId);
               let greetingUrl = null;
-              if (!useTextToSpeech && audioSource === "library" && selectedAudio) {
+              if (audioSource === "library" && selectedAudio) {
                 greetingUrl = selectedAudio.fileUrl;
               }
               onSubmit({
@@ -2124,8 +2098,8 @@ function IvrDialog({
                 description: description || null,
                 extension,
                 language,
-                useTextToSpeech,
-                greetingText: useTextToSpeech ? greetingText : null,
+                useTextToSpeech: false,
+                greetingText: null,
                 greetingAudioUrl: greetingUrl,
                 ivrTimeout,
                 maxRetries,
