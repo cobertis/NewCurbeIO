@@ -2212,10 +2212,10 @@ export function WebPhoneFloatingWindow() {
     
     if (limitedDigits.length === 0) return '';
     
-    // Don't format if 3 or fewer digits (extensions like 301)
-    if (limitedDigits.length <= 3) return limitedDigits;
+    // Don't format if 4 or fewer digits (extensions like 1000, 1001, 2001)
+    if (limitedDigits.length <= 4) return limitedDigits;
     
-    // Format only after 4th digit
+    // Format only after 5th digit (phone numbers)
     if (limitedDigits.length <= 6) {
       return `(${limitedDigits.slice(0, 3)}) ${limitedDigits.slice(3)}`;
     }
