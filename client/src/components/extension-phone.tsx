@@ -28,7 +28,7 @@ interface ExtensionPhoneProps {
   className?: string;
 }
 
-type CallState = "idle" | "calling" | "ringing" | "connected";
+type CallState = "idle" | "calling" | "ringing" | "connected" | "queue_ringing";
 
 export function ExtensionPhone({ className }: ExtensionPhoneProps) {
   const { toast } = useToast();
@@ -52,6 +52,12 @@ export function ExtensionPhone({ className }: ExtensionPhoneProps) {
     callerExtension: string;
     callerDisplayName: string;
     sdpOffer: string;
+  } | null>(null);
+  const [queueCall, setQueueCall] = useState<{
+    queueCallId: string;
+    callControlId: string;
+    queueId: string;
+    callerNumber: string;
   } | null>(null);
 
   const iceServers = [
@@ -219,6 +225,59 @@ export function ExtensionPhone({ className }: ExtensionPhoneProps) {
               title: "Call Ended", 
               description: msg.reason === "rejected" ? "Call was declined" : "Call ended" 
             });
+            break;
+
+          case "queue_call_offer":
+            setQueueCall({
+              queueCallId: msg.queueCallId,
+              callControlId: msg.callControlId,
+              queueId: msg.queueId,
+              callerNumber: msg.callerNumber,
+            });
+            setCallState("queue_ringing");
+            break;
+
+          case "queue_call_taken":
+            if (queueCall?.callControlId === msg.callControlId) {
+              setQueueCall(null);
+              setCallState("idle");
+              toast({
+                title: "Call Taken",
+                description: "Another agent answered the call",
+              });
+            }
+            break;
+
+          case "queue_call_ended":
+            if (queueCall?.callControlId === msg.callControlId) {
+              setQueueCall(null);
+              setCallState("idle");
+              toast({
+                title: "Queue Call Ended",
+                description: msg.reason === "timeout" ? "Call timed out" : "Caller disconnected",
+              });
+            }
+            break;
+
+          case "queue_call_connected":
+            toast({
+              title: "Call Connected",
+              description: `Connected to caller: ${msg.callerNumber}`,
+            });
+            setCallState("connected");
+            setRemoteParty({ extension: msg.callerNumber, displayName: msg.callerNumber });
+            break;
+
+          case "accept_queue_call_result":
+            if (!msg.success) {
+              toast({
+                title: "Accept Failed",
+                description: msg.error || "Could not accept call",
+                variant: "destructive",
+              });
+              setQueueCall(null);
+              setCallState("idle");
+            }
             break;
         }
       } catch (e) {
@@ -402,6 +461,25 @@ export function ExtensionPhone({ className }: ExtensionPhoneProps) {
     wsRef.current?.send(JSON.stringify({ type: "get_online" }));
   };
 
+  const acceptQueueCall = () => {
+    if (!queueCall) return;
+    wsRef.current?.send(JSON.stringify({
+      type: "accept_queue_call",
+      callControlId: queueCall.callControlId,
+    }));
+    setQueueCall(null);
+  };
+
+  const rejectQueueCall = () => {
+    if (!queueCall) return;
+    wsRef.current?.send(JSON.stringify({
+      type: "reject_queue_call",
+      callControlId: queueCall.callControlId,
+    }));
+    setQueueCall(null);
+    setCallState("idle");
+  };
+
   if (!isConnected) {
     return (
       <Card className={className}>
@@ -463,6 +541,40 @@ export function ExtensionPhone({ className }: ExtensionPhoneProps) {
                   >
                     <Phone className="h-4 w-4 mr-1" />
                     Answer
+                  </Button>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {callState === "queue_ringing" && queueCall && (
+          <Card className="bg-orange-50 dark:bg-orange-950 border-orange-200 dark:border-orange-800">
+            <CardContent className="py-4">
+              <div className="text-center">
+                <PhoneIncoming className="h-8 w-8 mx-auto mb-2 text-orange-600 animate-pulse" />
+                <p className="font-medium">Incoming Queue Call</p>
+                <p className="text-lg">{queueCall.callerNumber}</p>
+                <p className="text-sm text-muted-foreground">External Caller</p>
+                <div className="flex gap-2 justify-center mt-4">
+                  <Button 
+                    variant="destructive" 
+                    size="sm" 
+                    onClick={rejectQueueCall}
+                    data-testid="button-reject-queue-call"
+                  >
+                    <PhoneOff className="h-4 w-4 mr-1" />
+                    Decline
+                  </Button>
+                  <Button 
+                    variant="default" 
+                    size="sm" 
+                    className="bg-green-600 hover:bg-green-700"
+                    onClick={acceptQueueCall}
+                    data-testid="button-accept-queue-call"
+                  >
+                    <Phone className="h-4 w-4 mr-1" />
+                    Accept
                   </Button>
                 </div>
               </div>

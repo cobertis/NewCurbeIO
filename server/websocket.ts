@@ -384,6 +384,40 @@ async function handlePbxConnection(ws: AuthenticatedWebSocket, req: IncomingMess
             const extensions = await extensionCallService.getOnlineExtensions(companyId);
             ws.send(JSON.stringify({ type: 'online_extensions', extensions }));
             break;
+            
+          case 'accept_queue_call':
+            // Agent accepts an incoming queue call
+            if (msg.callControlId) {
+              const { callControlWebhookService } = await import('./services/call-control-webhook-service');
+              const acceptResult = await callControlWebhookService.handleAgentAcceptQueueCall(
+                msg.callControlId,
+                client.extensionId,
+                companyId
+              );
+              ws.send(JSON.stringify({ 
+                type: 'accept_queue_call_result', 
+                callControlId: msg.callControlId,
+                ...acceptResult 
+              }));
+            }
+            break;
+            
+          case 'reject_queue_call':
+            // Agent rejects/declines an incoming queue call
+            if (msg.callControlId) {
+              const { callControlWebhookService } = await import('./services/call-control-webhook-service');
+              const rejectResult = await callControlWebhookService.handleAgentRejectQueueCall(
+                msg.callControlId,
+                client.extensionId,
+                companyId
+              );
+              ws.send(JSON.stringify({ 
+                type: 'reject_queue_call_result', 
+                callControlId: msg.callControlId,
+                ...rejectResult 
+              }));
+            }
+            break;
         }
       } catch (e) {
         console.error('[PBX WebSocket] Message error:', e);

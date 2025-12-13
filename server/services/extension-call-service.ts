@@ -21,9 +21,25 @@ interface ActiveCall {
   answerTime?: Date;
 }
 
+// Queue calls from external callers via IVR
+interface QueueCall {
+  id: string;
+  callControlId: string;
+  companyId: string;
+  queueId: string;
+  callerNumber: string;
+  status: "ringing" | "answered" | "failed";
+  notifiedAgents: string[]; // extensionIds that received notification
+  answeredByExtensionId: string | null;
+  ringTimeout: number;
+  timeoutHandle: NodeJS.Timeout | null;
+  startTime: Date;
+}
+
 class ExtensionCallService {
   private connectedClients: Map<string, ExtensionClient> = new Map();
   private activeCalls: Map<string, ActiveCall> = new Map();
+  private queueCalls: Map<string, QueueCall> = new Map(); // keyed by callControlId
 
   async registerExtension(
     ws: WebSocket,
@@ -330,6 +346,248 @@ class ExtensionCallService {
 
   getClientByExtensionId(extensionId: string): ExtensionClient | undefined {
     return this.connectedClients.get(extensionId);
+  }
+
+  // ===== QUEUE CALL HANDLING (for IVR/Queue routing) =====
+
+  /**
+   * Get available agents (online + not busy) for a company
+   */
+  getAvailableAgentsForCompany(companyId: string): ExtensionClient[] {
+    const available: ExtensionClient[] = [];
+    
+    Array.from(this.connectedClients.values()).forEach((client) => {
+      if (client.companyId === companyId && client.ws.readyState === WebSocket.OPEN) {
+        // Check if agent is busy
+        const isBusy = Array.from(this.activeCalls.values()).some(
+          (call) =>
+            (call.callerExtensionId === client.extensionId || 
+             call.calleeExtensionId === client.extensionId) &&
+            call.status !== "ended"
+        ) || Array.from(this.queueCalls.values()).some(
+          (qc) => qc.answeredByExtensionId === client.extensionId && qc.status === "answered"
+        );
+        
+        if (!isBusy) {
+          available.push(client);
+        }
+      }
+    });
+    
+    return available;
+  }
+
+  /**
+   * Start a queue call - notify all available agents via WebSocket
+   * Returns the queue call ID for tracking
+   */
+  startQueueCall(
+    callControlId: string,
+    companyId: string,
+    queueId: string,
+    callerNumber: string,
+    ringTimeout: number = 30
+  ): { success: boolean; queueCallId?: string; notifiedCount: number; error?: string } {
+    const availableAgents = this.getAvailableAgentsForCompany(companyId);
+    
+    if (availableAgents.length === 0) {
+      console.log(`[ExtensionCall] No available agents for queue call ${callControlId}`);
+      return { success: false, notifiedCount: 0, error: "No agents available" };
+    }
+
+    const queueCallId = crypto.randomUUID();
+    
+    // Create timeout handle
+    const timeoutHandle = setTimeout(() => {
+      this.handleQueueCallTimeout(callControlId);
+    }, ringTimeout * 1000);
+
+    const queueCall: QueueCall = {
+      id: queueCallId,
+      callControlId,
+      companyId,
+      queueId,
+      callerNumber,
+      status: "ringing",
+      notifiedAgents: [],
+      answeredByExtensionId: null,
+      ringTimeout,
+      timeoutHandle,
+      startTime: new Date(),
+    };
+
+    this.queueCalls.set(callControlId, queueCall);
+
+    // Notify all available agents
+    for (const agent of availableAgents) {
+      this.sendToClient(agent.ws, {
+        type: "queue_call_offer",
+        queueCallId,
+        callControlId,
+        queueId,
+        callerNumber,
+        extensionId: agent.extensionId,
+      });
+      queueCall.notifiedAgents.push(agent.extensionId);
+      console.log(`[ExtensionCall] Notified agent ${agent.extension} (${agent.displayName}) about queue call`);
+    }
+
+    console.log(`[ExtensionCall] Queue call ${queueCallId} started, notified ${queueCall.notifiedAgents.length} agents`);
+    
+    return { success: true, queueCallId, notifiedCount: queueCall.notifiedAgents.length };
+  }
+
+  /**
+   * Handle agent accepting a queue call
+   */
+  acceptQueueCall(
+    callControlId: string,
+    extensionId: string
+  ): { success: boolean; error?: string } {
+    const queueCall = this.queueCalls.get(callControlId);
+    
+    if (!queueCall) {
+      return { success: false, error: "Queue call not found" };
+    }
+
+    if (queueCall.status !== "ringing") {
+      return { success: false, error: "Queue call already answered or ended" };
+    }
+
+    if (!queueCall.notifiedAgents.includes(extensionId)) {
+      return { success: false, error: "Agent was not offered this call" };
+    }
+
+    // Mark as answered
+    queueCall.status = "answered";
+    queueCall.answeredByExtensionId = extensionId;
+
+    // Clear timeout
+    if (queueCall.timeoutHandle) {
+      clearTimeout(queueCall.timeoutHandle);
+      queueCall.timeoutHandle = null;
+    }
+
+    // Notify other agents that call was taken
+    for (const agentExtId of queueCall.notifiedAgents) {
+      if (agentExtId !== extensionId) {
+        const agent = this.connectedClients.get(agentExtId);
+        if (agent) {
+          this.sendToClient(agent.ws, {
+            type: "queue_call_taken",
+            callControlId,
+            takenByExtensionId: extensionId,
+          });
+        }
+      }
+    }
+
+    const answeringAgent = this.connectedClients.get(extensionId);
+    console.log(`[ExtensionCall] Queue call ${callControlId} accepted by ${answeringAgent?.extension || extensionId}`);
+
+    return { success: true };
+  }
+
+  /**
+   * Handle agent rejecting/declining a queue call
+   */
+  rejectQueueCall(
+    callControlId: string,
+    extensionId: string
+  ): { success: boolean; remainingAgents: number } {
+    const queueCall = this.queueCalls.get(callControlId);
+    
+    if (!queueCall || queueCall.status !== "ringing") {
+      return { success: false, remainingAgents: 0 };
+    }
+
+    // Remove this agent from notified list
+    queueCall.notifiedAgents = queueCall.notifiedAgents.filter(id => id !== extensionId);
+    
+    console.log(`[ExtensionCall] Agent ${extensionId} rejected queue call, ${queueCall.notifiedAgents.length} agents remaining`);
+
+    return { success: true, remainingAgents: queueCall.notifiedAgents.length };
+  }
+
+  /**
+   * Handle queue call timeout - no one answered
+   */
+  private handleQueueCallTimeout(callControlId: string): void {
+    const queueCall = this.queueCalls.get(callControlId);
+    
+    if (!queueCall || queueCall.status !== "ringing") {
+      return;
+    }
+
+    console.log(`[ExtensionCall] Queue call ${callControlId} timed out`);
+    
+    queueCall.status = "failed";
+    
+    // Notify all agents that the call timed out
+    for (const agentExtId of queueCall.notifiedAgents) {
+      const agent = this.connectedClients.get(agentExtId);
+      if (agent) {
+        this.sendToClient(agent.ws, {
+          type: "queue_call_ended",
+          callControlId,
+          reason: "timeout",
+        });
+      }
+    }
+  }
+
+  /**
+   * End a queue call (caller hung up, etc.)
+   */
+  endQueueCall(callControlId: string, reason: string): void {
+    const queueCall = this.queueCalls.get(callControlId);
+    
+    if (!queueCall) {
+      return;
+    }
+
+    // Clear timeout
+    if (queueCall.timeoutHandle) {
+      clearTimeout(queueCall.timeoutHandle);
+      queueCall.timeoutHandle = null;
+    }
+
+    // Notify all notified agents
+    for (const agentExtId of queueCall.notifiedAgents) {
+      const agent = this.connectedClients.get(agentExtId);
+      if (agent) {
+        this.sendToClient(agent.ws, {
+          type: "queue_call_ended",
+          callControlId,
+          reason,
+        });
+      }
+    }
+
+    this.queueCalls.delete(callControlId);
+    console.log(`[ExtensionCall] Queue call ${callControlId} ended: ${reason}`);
+  }
+
+  /**
+   * Get queue call info
+   */
+  getQueueCall(callControlId: string): QueueCall | undefined {
+    return this.queueCalls.get(callControlId);
+  }
+
+  /**
+   * Check if there are any pending queue calls for an extension
+   */
+  getPendingQueueCallsForExtension(extensionId: string): QueueCall[] {
+    const pending: QueueCall[] = [];
+    
+    Array.from(this.queueCalls.values()).forEach((qc) => {
+      if (qc.status === "ringing" && qc.notifiedAgents.includes(extensionId)) {
+        pending.push(qc);
+      }
+    });
+    
+    return pending;
   }
 }
 

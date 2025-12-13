@@ -1,5 +1,6 @@
 import { db } from "../db";
 import { pbxService } from "./pbx-service";
+import { extensionCallService } from "./extension-call-service";
 import {
   pbxSettings,
   pbxQueues,
@@ -16,18 +17,6 @@ import { eq, and, inArray } from "drizzle-orm";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
 const TELNYX_API_KEY = process.env.TELNYX_API_KEY || "";
-
-// Track active queue ring attempts for ring-all strategy
-interface QueueRingAttempt {
-  originalCallControlId: string;
-  companyId: string;
-  queueId: string;
-  agentCallControlIds: string[];
-  answeredBy: string | null;
-  status: "ringing" | "answered" | "failed";
-}
-
-const activeQueueRings = new Map<string, QueueRingAttempt>();
 
 interface CallControlEvent {
   data: {
@@ -176,18 +165,6 @@ export class CallControlWebhookService {
           return;
         }
 
-        // Handle ring-all answer - bridge and cancel other rings
-        if (state.ringAllAttempt && state.originalCallControlId) {
-          await this.handleRingAllAnswer(
-            call_control_id,
-            state.originalCallControlId,
-            state.agentUserId,
-            state.companyId,
-            state.queueId
-          );
-          return;
-        }
-
         if (state.agentUserId) {
           await pbxService.updateAgentStatus(state.companyId, state.agentUserId, "busy", call_control_id);
         }
@@ -203,38 +180,12 @@ export class CallControlWebhookService {
 
     await pbxService.removeActiveCall(call_control_id);
 
-    // Check if this is the original caller hanging up during a ring-all attempt
-    const ringAttempt = activeQueueRings.get(call_control_id);
-    if (ringAttempt && ringAttempt.status === "ringing") {
-      console.log(`[CallControl] Ring-all: original caller hung up, cancelling all agent calls`);
-      ringAttempt.status = "failed";
-      
-      // Hangup all agent legs
-      for (const agentCallId of ringAttempt.agentCallControlIds) {
-        try {
-          await this.hangupCall(agentCallId, "NORMAL_CLEARING");
-        } catch (e) {
-          // Ignore errors for already disconnected calls
-        }
-      }
-      activeQueueRings.delete(call_control_id);
-      return;
-    }
+    // End any queue call notifications for this call
+    extensionCallService.endQueueCall(call_control_id, "caller_hangup");
 
-    // Check if this is an agent leg in a ring-all attempt that failed/timed out
     if (client_state) {
       try {
         const state = JSON.parse(Buffer.from(client_state, "base64").toString());
-        
-        // Handle ring-all agent leg hangup (timeout, rejected, etc.)
-        if (state.ringAllAttempt && state.originalCallControlId) {
-          await this.handleRingAllAgentHangup(
-            call_control_id,
-            state.originalCallControlId,
-            state.companyId
-          );
-          return;
-        }
         
         if (state.agentUserId) {
           await pbxService.updateAgentStatus(state.companyId, state.agentUserId, "available");
@@ -242,35 +193,6 @@ export class CallControlWebhookService {
       } catch (e) {
         console.log(`[CallControl] Could not parse client_state on hangup`);
       }
-    }
-  }
-
-  private async handleRingAllAgentHangup(
-    agentCallControlId: string,
-    originalCallControlId: string,
-    companyId: string
-  ): Promise<void> {
-    const ringAttempt = activeQueueRings.get(originalCallControlId);
-    if (!ringAttempt) return;
-
-    // If already answered, ignore this hangup (normal disconnect of other agents)
-    if (ringAttempt.status === "answered") return;
-
-    // Remove this agent from the list
-    ringAttempt.agentCallControlIds = ringAttempt.agentCallControlIds.filter(
-      id => id !== agentCallControlId
-    );
-
-    console.log(`[CallControl] Ring-all: agent leg hung up, remaining agents: ${ringAttempt.agentCallControlIds.length}`);
-
-    // If all agent legs have failed, route to voicemail
-    if (ringAttempt.agentCallControlIds.length === 0) {
-      console.log(`[CallControl] Ring-all: all agents failed, routing to voicemail`);
-      ringAttempt.status = "failed";
-      activeQueueRings.delete(originalCallControlId);
-      
-      await this.speakText(originalCallControlId, "All agents are unavailable. Please leave a message after the tone.");
-      await this.routeToVoicemail(originalCallControlId, companyId);
     }
   }
 
@@ -367,7 +289,7 @@ export class CallControlWebhookService {
   }
 
   private async routeToQueue(callControlId: string, companyId: string, queueId: string): Promise<void> {
-    console.log(`[CallControl] Routing call to queue: ${queueId}`);
+    console.log(`[CallControl] Routing call to queue: ${queueId} via WebSocket`);
 
     const queue = await pbxService.getQueue(companyId, queueId);
     if (!queue) {
@@ -376,218 +298,110 @@ export class CallControlWebhookService {
       return;
     }
 
-    // Get queue members with their extensions
-    const queueMembers = await pbxService.getQueueMembers(companyId, queueId);
-    if (queueMembers.length === 0) {
-      await this.speakText(callControlId, "No agents are configured for this queue. Please try again later.");
-      await this.routeToVoicemail(callControlId, companyId);
-      return;
-    }
+    const ringTimeout = queue.ringTimeout || 30;
 
-    // Get users with phone numbers for all queue members (using Call Control API, not SIP)
-    const memberUserIds = queueMembers.map(m => m.userId);
-    const memberUsers = await db
-      .select()
-      .from(users)
-      .where(inArray(users.id, memberUserIds));
+    // Use extensionCallService to notify agents via WebSocket
+    // This finds agents connected to /ws/pbx and sends them a notification
+    const activeCall = await pbxService.getActiveCall(callControlId);
+    const callerNumber = activeCall?.from || "Unknown";
 
-    // Filter to only agents with phone numbers configured
-    const agentsWithPhones = memberUsers.filter(u => u.phone && u.phone.trim() !== "");
-
-    if (agentsWithPhones.length === 0) {
-      await this.speakText(callControlId, "No agents are available. Please leave a message.");
-      await this.routeToVoicemail(callControlId, companyId);
-      return;
-    }
-
-    const ringTimeout = queue.ringTimeout || 20;
-    const ringStrategy = queue.ringStrategy as PbxRingStrategy || "ring_all";
-
-    console.log(`[CallControl] Queue ring strategy: ${ringStrategy}, agents with phones: ${agentsWithPhones.length}`);
-
-    await this.speakText(callControlId, "Please hold while we connect you to an agent.");
-
-    // Update call state to queue
-    await pbxService.trackActiveCall(companyId, callControlId, "", "", "queue", {
-      queueId,
-      ringStrategy,
-      agentCount: agentsWithPhones.length
-    });
-
-    if (ringStrategy === "ring_all" && agentsWithPhones.length > 1) {
-      // Ring all agents simultaneously by calling their phone numbers
-      await this.ringAllAgents(callControlId, companyId, queueId, agentsWithPhones, ringTimeout);
-    } else {
-      // For round_robin, least_recent, or single agent - dial first available
-      const firstAgent = agentsWithPhones[0];
-      
-      const clientState = Buffer.from(JSON.stringify({
-        companyId,
-        queueId,
-        agentUserId: firstAgent.id,
-        ringStrategy
-      })).toString("base64");
-
-      console.log(`[CallControl] Transferring to agent phone: ${firstAgent.phone}`);
-
-      await this.makeCallControlRequest(callControlId, "transfer", {
-        to: firstAgent.phone,
-        client_state: clientState,
-        timeout_secs: ringTimeout,
-      });
-    }
-  }
-
-  private async ringAllAgents(
-    callControlId: string,
-    companyId: string,
-    queueId: string,
-    agentUsers: any[],
-    ringTimeout: number
-  ): Promise<void> {
-    console.log(`[CallControl] Ring-all: dialing ${agentUsers.length} agents simultaneously via phone numbers`);
-
-    // Track this ring attempt
-    const ringAttempt: QueueRingAttempt = {
-      originalCallControlId: callControlId,
+    const result = extensionCallService.startQueueCall(
+      callControlId,
       companyId,
       queueId,
-      agentCallControlIds: [],
-      answeredBy: null,
-      status: "ringing"
-    };
-    activeQueueRings.set(callControlId, ringAttempt);
+      callerNumber,
+      ringTimeout
+    );
 
-    // Get the company's outbound caller ID (main phone number) and Call Control App ID
-    const [phoneNumber] = await db
-      .select()
-      .from(telnyxPhoneNumbers)
-      .where(eq(telnyxPhoneNumbers.companyId, companyId));
-
-    const fromNumber = phoneNumber?.phoneNumber || "";
-    
-    // Get Call Control App ID from telephony settings
-    const [telSettings] = await db
-      .select()
-      .from(telephonySettings)
-      .where(eq(telephonySettings.companyId, companyId));
-    
-    const connectionId = telSettings?.callControlAppId || phoneNumber?.connectionId || "";
-
-    // Create outbound calls to all agents simultaneously using their phone numbers
-    for (const agent of agentUsers) {
-      try {
-        const clientState = Buffer.from(JSON.stringify({
-          companyId,
-          queueId,
-          agentUserId: agent.id,
-          originalCallControlId: callControlId,
-          ringAllAttempt: true
-        })).toString("base64");
-
-        console.log(`[CallControl] Ring-all: dialing agent ${agent.firstName} ${agent.lastName} at ${agent.phone}`);
-
-        const response = await fetch(`${TELNYX_API_BASE}/calls`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${TELNYX_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            to: agent.phone,
-            from: fromNumber,
-            connection_id: connectionId,
-            timeout_secs: ringTimeout,
-            client_state: clientState,
-          }),
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const agentCallControlId = data.data?.call_control_id;
-          if (agentCallControlId) {
-            ringAttempt.agentCallControlIds.push(agentCallControlId);
-            console.log(`[CallControl] Ring-all: initiated call to agent ${agent.id} (${agent.phone})`);
-          }
-        } else {
-          const errorText = await response.text();
-          console.error(`[CallControl] Ring-all: failed to dial agent ${agent.id}:`, response.status, errorText);
-        }
-      } catch (error) {
-        console.error(`[CallControl] Ring-all: failed to dial agent ${agent.id}:`, error);
-      }
-    }
-
-    // If no calls were initiated, fall back to transfer
-    if (ringAttempt.agentCallControlIds.length === 0) {
-      activeQueueRings.delete(callControlId);
-      console.log(`[CallControl] Ring-all: no calls initiated, falling back to transfer`);
-      
-      const firstAgent = agentUsers[0];
-      const clientState = Buffer.from(JSON.stringify({
-        companyId,
-        queueId,
-        agentUserId: firstAgent.id
-      })).toString("base64");
-
-      await this.makeCallControlRequest(callControlId, "transfer", {
-        to: firstAgent.phone,
-        client_state: clientState,
-        timeout_secs: ringTimeout,
-      });
-    }
-  }
-
-  private async handleRingAllAnswer(
-    agentCallControlId: string,
-    originalCallControlId: string,
-    agentUserId: string,
-    companyId: string,
-    queueId: string
-  ): Promise<void> {
-    const ringAttempt = activeQueueRings.get(originalCallControlId);
-    if (!ringAttempt || ringAttempt.status === "answered") {
-      // Already answered by another agent, hangup this one
-      await this.hangupCall(agentCallControlId, "NORMAL_CLEARING");
+    if (!result.success || result.notifiedCount === 0) {
+      console.log(`[CallControl] No agents available via WebSocket, routing to voicemail`);
+      await this.speakText(callControlId, "All agents are currently unavailable. Please leave a message after the tone.");
+      await this.routeToVoicemail(callControlId, companyId);
       return;
     }
 
-    ringAttempt.status = "answered";
-    ringAttempt.answeredBy = agentUserId;
+    console.log(`[CallControl] Notified ${result.notifiedCount} agents via WebSocket for queue call`);
 
-    console.log(`[CallControl] Ring-all: agent ${agentUserId} answered, bridging calls`);
+    // Play hold message while waiting for agent to accept
+    await this.speakText(callControlId, "Please hold while we connect you to an available agent.");
 
-    // Hangup all other ringing agents
-    for (const otherCallId of ringAttempt.agentCallControlIds) {
-      if (otherCallId !== agentCallControlId) {
-        try {
-          await this.hangupCall(otherCallId, "NORMAL_CLEARING");
-        } catch (e) {
-          // Ignore errors for already disconnected calls
-        }
-      }
+    // Update call state to queue
+    await pbxService.trackActiveCall(companyId, callControlId, callerNumber, "", "queue", {
+      queueId,
+      queueCallId: result.queueCallId,
+      notifiedAgents: result.notifiedCount
+    });
+  }
+
+  /**
+   * Handle when an agent accepts a queue call via WebSocket
+   * This is called from the API route when agent clicks "Accept"
+   */
+  async handleAgentAcceptQueueCall(
+    callControlId: string,
+    extensionId: string,
+    companyId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    const queueCall = extensionCallService.getQueueCall(callControlId);
+    if (!queueCall) {
+      return { success: false, error: "Queue call not found" };
     }
 
-    // Bridge the answered agent call with the original caller
-    try {
-      await this.makeCallControlRequest(originalCallControlId, "bridge", {
-        call_control_id: agentCallControlId,
-      });
-      
-      // Update agent status
-      await pbxService.updateAgentStatus(companyId, agentUserId, "busy", agentCallControlId);
-      
-      // Update active call state
-      await pbxService.trackActiveCall(companyId, originalCallControlId, "", "", "connected", {
-        queueId,
-        agentUserId
-      });
-    } catch (error) {
-      console.error(`[CallControl] Ring-all: bridge failed:`, error);
+    const acceptResult = extensionCallService.acceptQueueCall(callControlId, extensionId);
+    if (!acceptResult.success) {
+      return acceptResult;
     }
 
-    // Clean up
-    activeQueueRings.delete(originalCallControlId);
+    const agent = extensionCallService.getClientByExtensionId(extensionId);
+    console.log(`[CallControl] Agent ${agent?.extension || extensionId} accepted queue call ${callControlId}`);
+
+    // Update call state to connected
+    await pbxService.trackActiveCall(companyId, callControlId, queueCall.callerNumber, "", "connected", {
+      queueId: queueCall.queueId,
+      answeredByExtensionId: extensionId
+    });
+
+    // Notify the agent that they are now connected
+    if (agent) {
+      agent.ws.send(JSON.stringify({
+        type: "queue_call_connected",
+        callControlId,
+        callerNumber: queueCall.callerNumber,
+      }));
+    }
+
+    return { success: true };
+  }
+
+  /**
+   * Handle when an agent rejects a queue call via WebSocket
+   */
+  async handleAgentRejectQueueCall(
+    callControlId: string,
+    extensionId: string,
+    companyId: string
+  ): Promise<{ success: boolean; routeToVoicemail: boolean }> {
+    const result = extensionCallService.rejectQueueCall(callControlId, extensionId);
+    
+    if (result.remainingAgents === 0) {
+      // All agents rejected, route to voicemail
+      console.log(`[CallControl] All agents rejected queue call ${callControlId}, routing to voicemail`);
+      extensionCallService.endQueueCall(callControlId, "all_rejected");
+      await this.speakText(callControlId, "All agents are currently unavailable. Please leave a message after the tone.");
+      await this.routeToVoicemail(callControlId, companyId);
+      return { success: true, routeToVoicemail: true };
+    }
+
+    return { success: result.success, routeToVoicemail: false };
+  }
+
+  /**
+   * Handle queue call timeout (called from extensionCallService)
+   */
+  async handleQueueCallTimeout(callControlId: string, companyId: string): Promise<void> {
+    console.log(`[CallControl] Queue call ${callControlId} timed out, routing to voicemail`);
+    await this.speakText(callControlId, "All agents are currently unavailable. Please leave a message after the tone.");
+    await this.routeToVoicemail(callControlId, companyId);
   }
 
   private async routeToExtension(
@@ -595,7 +409,7 @@ export class CallControlWebhookService {
     companyId: string,
     extensionId: string
   ): Promise<void> {
-    console.log(`[CallControl] Routing call to extension: ${extensionId}`);
+    console.log(`[CallControl] Routing call to extension: ${extensionId} via WebSocket`);
 
     const extensions = await pbxService.getExtensions(companyId);
     const extension = extensions.find((ext) => ext.id === extensionId);
@@ -605,13 +419,33 @@ export class CallControlWebhookService {
       return;
     }
 
-    const [user] = await db.select().from(users).where(eq(users.id, extension.userId));
-    if (!user) {
-      await this.speakText(callControlId, "User not found for this extension.");
+    // Check if the agent is connected via WebSocket
+    const agent = extensionCallService.getClientByExtensionId(extensionId);
+    if (!agent) {
+      await this.speakText(callControlId, "The extension is currently offline. Please leave a message.");
+      await this.routeToVoicemail(callControlId, companyId);
       return;
     }
 
-    await this.dialUserPhone(callControlId, companyId, user);
+    const activeCall = await pbxService.getActiveCall(callControlId);
+    const callerNumber = activeCall?.from || "Unknown";
+
+    // Create a queue call for this single extension
+    const result = extensionCallService.startQueueCall(
+      callControlId,
+      companyId,
+      "direct-extension",
+      callerNumber,
+      30 // 30 second timeout
+    );
+
+    if (!result.success) {
+      await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
+      await this.routeToVoicemail(callControlId, companyId);
+      return;
+    }
+
+    await this.speakText(callControlId, "Please hold while we connect you.");
   }
 
   private async routeToVoicemail(callControlId: string, companyId: string): Promise<void> {
@@ -645,45 +479,34 @@ export class CallControlWebhookService {
     callControlId: string,
     phoneNumber: any
   ): Promise<void> {
+    console.log(`[CallControl] Routing to default agent via WebSocket`);
+
     if (!phoneNumber.ownerUserId) {
       await this.speakText(callControlId, "This number is not configured. Please try again later.");
       await this.hangupCall(callControlId, "NORMAL_CLEARING");
       return;
     }
 
-    const [user] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, phoneNumber.ownerUserId));
+    const companyId = phoneNumber.companyId;
+    const activeCall = await pbxService.getActiveCall(callControlId);
+    const callerNumber = activeCall?.from || "Unknown";
 
-    if (!user) {
-      await this.hangupCall(callControlId, "NORMAL_CLEARING");
+    // Use WebSocket to notify available agents
+    const result = extensionCallService.startQueueCall(
+      callControlId,
+      companyId,
+      "default-agent",
+      callerNumber,
+      30
+    );
+
+    if (!result.success || result.notifiedCount === 0) {
+      await this.speakText(callControlId, "No agents are available. Please leave a message.");
+      await this.routeToVoicemail(callControlId, companyId);
       return;
     }
 
-    await this.dialUserPhone(callControlId, phoneNumber.companyId, user);
-  }
-
-  private async dialUserPhone(callControlId: string, companyId: string, user: any): Promise<void> {
-    // Use agent's phone number instead of SIP URI (Call Control API only, no SIP registration required)
-    if (!user.phone || user.phone.trim() === "") {
-      console.log(`[CallControl] No phone number configured for user: ${user.id}`);
-      await this.speakText(callControlId, "The agent is not available.");
-      await this.hangupCall(callControlId, "NORMAL_CLEARING");
-      return;
-    }
-
-    const clientState = Buffer.from(
-      JSON.stringify({ companyId, agentUserId: user.id })
-    ).toString("base64");
-
-    console.log(`[CallControl] Dialing user phone: ${user.phone} (${user.firstName} ${user.lastName})`);
-
-    await this.makeCallControlRequest(callControlId, "transfer", {
-      to: user.phone,
-      client_state: clientState,
-      timeout_secs: 30,
-    });
+    await this.speakText(callControlId, "Please hold while we connect you to an agent.");
   }
 
   private async transferToExternal(
