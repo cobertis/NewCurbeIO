@@ -1792,22 +1792,38 @@ function QueueDialog({
                     </div>
                   )}
                   {announcementOptions.length > 0 ? (
-                    <div className="max-h-32 overflow-y-auto border rounded-md p-2 space-y-1">
-                      {announcementOptions
-                        .filter(audio => !queueAds.some(ad => ad.audioFileId === audio.id))
-                        .map((audio) => (
-                          <label key={audio.id} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1.5 rounded text-sm" data-testid={`ad-option-${audio.id}`}>
-                            <Checkbox
-                              checked={false}
-                              onCheckedChange={() => addAdMutation.mutate(audio.id)}
-                              data-testid={`checkbox-ad-${audio.id}`}
-                            />
-                            <span>{audio.name}</span>
-                          </label>
-                        ))}
-                      {announcementOptions.filter(audio => !queueAds.some(ad => ad.audioFileId === audio.id)).length === 0 && (
-                        <p className="text-xs text-muted-foreground p-1">All available ads are already added.</p>
+                    <div className="space-y-2">
+                      {announcementOptions.filter(audio => !queueAds.some(ad => ad.audioFileId === audio.id)).length > 1 && (
+                        <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground">
+                          <Checkbox
+                            checked={false}
+                            onCheckedChange={() => {
+                              announcementOptions
+                                .filter(audio => !queueAds.some(ad => ad.audioFileId === audio.id))
+                                .forEach(audio => addAdMutation.mutate(audio.id));
+                            }}
+                            data-testid="checkbox-ads-add-all"
+                          />
+                          Add All Available
+                        </label>
                       )}
+                      <div className="max-h-32 overflow-y-auto border rounded-md p-2 space-y-1">
+                        {announcementOptions
+                          .filter(audio => !queueAds.some(ad => ad.audioFileId === audio.id))
+                          .map((audio) => (
+                            <label key={audio.id} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1.5 rounded text-sm" data-testid={`ad-option-${audio.id}`}>
+                              <Checkbox
+                                checked={false}
+                                onCheckedChange={() => addAdMutation.mutate(audio.id)}
+                                data-testid={`checkbox-ad-${audio.id}`}
+                              />
+                              <span>{audio.name}</span>
+                            </label>
+                          ))}
+                        {announcementOptions.filter(audio => !queueAds.some(ad => ad.audioFileId === audio.id)).length === 0 && (
+                          <p className="text-xs text-muted-foreground p-1">All available ads are already added.</p>
+                        )}
+                      </div>
                     </div>
                   ) : (
                     <p className="text-xs text-muted-foreground">
