@@ -743,7 +743,19 @@ export default function VipPassPage() {
                   <Smartphone className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats?.registeredDevices || 0}</div>
+                  <div className="text-2xl font-bold" data-testid="text-total-devices">
+                    {(stats?.platformCounts?.android || 0) + (stats?.platformCounts?.ios || 0)}
+                  </div>
+                  {stats?.platformCounts && (stats.platformCounts.android > 0 || stats.platformCounts.ios > 0) && (
+                    <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
+                      {stats.platformCounts.android > 0 && (
+                        <span>Android: {stats.platformCounts.android}</span>
+                      )}
+                      {stats.platformCounts.ios > 0 && (
+                        <span>iOS: {stats.platformCounts.ios}</span>
+                      )}
+                    </div>
+                  )}
                 </CardContent>
               </Card>
               <Card>
