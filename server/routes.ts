@@ -32616,6 +32616,33 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/pbx/calls/:callControlId/hold - Start hold music on a call
+  app.post("/api/pbx/calls/:callControlId/hold", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { callControlId } = req.params;
+      const { callControlWebhookService } = await import("./services/call-control-webhook-service");
+      const result = await callControlWebhookService.startHoldMusic(callControlId, user.companyId);
+      return res.json(result);
+    } catch (error: any) {
+      console.error("[PBX] Error starting hold music:", error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/calls/:callControlId/hold - Stop hold music on a call
+  app.delete("/api/pbx/calls/:callControlId/hold", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const { callControlId } = req.params;
+      const { callControlWebhookService } = await import("./services/call-control-webhook-service");
+      const result = await callControlWebhookService.stopHoldMusic(callControlId);
+      return res.json(result);
+    } catch (error: any) {
+      console.error("[PBX] Error stopping hold music:", error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
   // GET /api/pbx/extensions/next - Get next available extension number
   app.get("/api/pbx/extensions/next", requireActiveCompany, async (req: Request, res: Response) => {
     try {

@@ -1937,13 +1937,42 @@ export function WebPhoneFloatingWindow() {
     }
   }, [isExtensionCall, isTelnyxCall, isMuted, extToggleMute]);
   
-  const handleHoldToggle = useCallback(() => {
-    if (isTelnyxCall) {
+  const handleHoldToggle = useCallback(async () => {
+    // For queue calls with Call Control, use server-side hold with music
+    if (queueCall?.callControlId) {
+      try {
+        const response = await fetch(`/api/pbx/calls/${queueCall.callControlId}/hold`, {
+          method: isOnHold ? 'DELETE' : 'POST',
+          credentials: 'include',
+        });
+        const result = await response.json();
+        
+        if (!response.ok || !result.success) {
+          console.error('[WebPhone] Hold API error:', result.error);
+          toast({
+            title: isOnHold ? "Failed to resume call" : "Failed to put on hold",
+            description: result.error || "Please try again",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Toggle local hold state via Telnyx SDK
+        telnyxWebRTC.toggleHold();
+      } catch (error) {
+        console.error('[WebPhone] Hold toggle error:', error);
+        toast({
+          title: "Hold error",
+          description: "Could not toggle hold",
+          variant: "destructive",
+        });
+      }
+    } else if (isTelnyxCall) {
       telnyxWebRTC.toggleHold();
     } else {
       isOnHold ? webPhone.unholdCall() : webPhone.holdCall();
     }
-  }, [isTelnyxCall, isOnHold]);
+  }, [isTelnyxCall, isOnHold, queueCall, toast]);
   
   const handleHangup = useCallback(() => {
     if (isExtensionCall) {

@@ -10,6 +10,7 @@ import {
   pbxMenuOptions,
   pbxExtensions,
   pbxAgentStatus,
+  pbxAudioFiles,
   telnyxPhoneNumbers,
   telephonyCredentials,
   telephonySettings,
@@ -1975,6 +1976,124 @@ export class CallControlWebhookService {
     } catch (error) {
       console.error(`[CallControl] Request failed for ${action}:`, error);
       throw error;
+    }
+  }
+
+  /**
+   * Start hold music for a call (agent-initiated hold with music playback to caller)
+   */
+  public async startHoldMusic(callControlId: string, companyId: string): Promise<{ success: boolean; error?: string }> {
+    console.log(`[CallControl] Starting hold music for call ${callControlId}`);
+    
+    try {
+      const apiKey = await getTelnyxApiKey();
+      const context = callContextMap.get(callControlId);
+      
+      const headers: Record<string, string> = {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      };
+      if (context?.managedAccountId) {
+        headers["X-Managed-Account-Id"] = context.managedAccountId;
+      }
+      
+      // Get hold music from company PBX settings
+      const settings = await pbxService.getPbxSettings(companyId);
+      
+      // Check if there's a default hold music file in PBX audio library
+      const [audioFile] = await db
+        .select()
+        .from(pbxAudioFiles)
+        .where(and(
+          eq(pbxAudioFiles.companyId, companyId),
+          eq(pbxAudioFiles.audioType, "hold_music")
+        ))
+        .limit(1);
+      
+      let playbackBody: Record<string, any> = {
+        loop: "infinity",
+        client_state: Buffer.from(JSON.stringify({
+          holdPlayback: true,
+          type: 'agent_hold',
+          companyId,
+        })).toString("base64"),
+      };
+      
+      if (audioFile?.telnyxMediaId) {
+        // Use Telnyx media_name for uploaded audio
+        playbackBody.media_name = audioFile.telnyxMediaId;
+        console.log(`[CallControl] Using Telnyx media: ${audioFile.telnyxMediaId}`);
+      } else if (settings?.holdMusicUrl) {
+        // Fallback to holdMusicUrl from settings
+        let audioUrl = settings.holdMusicUrl;
+        if (audioUrl.startsWith('/')) {
+          const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0];
+          if (domain) {
+            audioUrl = `https://${domain}${audioUrl}`;
+          }
+        }
+        playbackBody.audio_url = audioUrl;
+        console.log(`[CallControl] Using audio URL: ${audioUrl}`);
+      } else {
+        console.log(`[CallControl] No hold music configured for company ${companyId}`);
+        return { success: false, error: "No hold music configured" };
+      }
+      
+      const response = await fetch(`${TELNYX_API_BASE}/calls/${callControlId}/actions/playback_start`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify(playbackBody),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error(`[CallControl] playback_start failed:`, errorData);
+        return { success: false, error: "Failed to start hold music" };
+      }
+      
+      console.log(`[CallControl] Hold music started successfully`);
+      return { success: true };
+    } catch (error) {
+      console.error(`[CallControl] Error starting hold music:`, error);
+      return { success: false, error: "Internal error" };
+    }
+  }
+
+  /**
+   * Stop hold music for a call (agent resumes call)
+   */
+  public async stopHoldMusic(callControlId: string): Promise<{ success: boolean; error?: string }> {
+    console.log(`[CallControl] Stopping hold music for call ${callControlId}`);
+    
+    try {
+      const apiKey = await getTelnyxApiKey();
+      const context = callContextMap.get(callControlId);
+      
+      const headers: Record<string, string> = {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      };
+      if (context?.managedAccountId) {
+        headers["X-Managed-Account-Id"] = context.managedAccountId;
+      }
+      
+      const response = await fetch(`${TELNYX_API_BASE}/calls/${callControlId}/actions/playback_stop`, {
+        method: "POST",
+        headers,
+        body: JSON.stringify({}),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error(`[CallControl] playback_stop failed:`, errorData);
+        return { success: false, error: "Failed to stop hold music" };
+      }
+      
+      console.log(`[CallControl] Hold music stopped successfully`);
+      return { success: true };
+    } catch (error) {
+      console.error(`[CallControl] Error stopping hold music:`, error);
+      return { success: false, error: "Internal error" };
     }
   }
 }
