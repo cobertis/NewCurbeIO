@@ -33606,6 +33606,40 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         platform: platform || null,
       });
       
+      // Create notification for company users about new push subscription
+      try {
+        // Get contact info for the notification message
+        const [contact] = await db
+          .select()
+          .from(contacts)
+          .where(eq(contacts.id, passInstance.contactId!))
+          .limit(1);
+        
+        const contactName = contact 
+          ? `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || contact.email || 'Un contacto'
+          : 'Un contacto';
+        
+        // Get all users from the company to notify them
+        const companyUsers = await storage.getUsersByCompany(passInstance.companyId);
+        
+        // Create notifications for each user
+        for (const user of companyUsers) {
+          await storage.createNotification({
+            userId: user.id,
+            type: 'vip_pass',
+            title: 'Nueva suscripción push VIP Pass',
+            message: `${contactName} activó notificaciones push en su tarjeta VIP`,
+            isRead: false,
+          });
+        }
+        
+        // Broadcast notification update to the company
+        broadcastNotificationUpdate(passInstance.companyId);
+      } catch (notifError) {
+        console.error("[WebPush] Failed to create bell notification:", notifError);
+        // Don't fail the request if notification creation fails
+      }
+      
       return res.json({ success: true, subscriptionId: result.id });
     } catch (error: any) {
       console.error("[WebPush] Subscribe error:", error);

@@ -730,11 +730,15 @@ export default function VipPassPage() {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Active</CardTitle>
+                  <CardTitle className="text-sm font-medium">Passes</CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-green-600">{stats?.activePasses || 0}</div>
+                  <div className="text-2xl font-bold">{stats?.totalPasses || 0}</div>
+                  <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
+                    <span className="text-green-600">Active: {stats?.activePasses || 0}</span>
+                    <span className="text-red-600">Revoked: {stats?.revokedPasses || 0}</span>
+                  </div>
                 </CardContent>
               </Card>
               <Card>
