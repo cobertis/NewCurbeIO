@@ -27,6 +27,7 @@ const secretsService = new SecretsService();
 interface CallContext {
   companyId: string;
   managedAccountId: string | null;
+  callerNumber?: string; // Original caller's phone number
 }
 const callContextMap = new Map<string, CallContext>();
 
@@ -194,13 +195,14 @@ export class CallControlWebhookService {
       return;
     }
 
-    // Store call context for managed account routing
+    // Store call context for managed account routing (including caller number for queue routing)
     const managedAccountId = await getCompanyManagedAccountId(phoneNumber.companyId);
     callContextMap.set(call_control_id, {
       companyId: phoneNumber.companyId,
-      managedAccountId
+      managedAccountId,
+      callerNumber: from // Store original caller number
     });
-    console.log(`[CallControl] Stored call context: companyId=${phoneNumber.companyId}, managedAccountId=${managedAccountId}`);
+    console.log(`[CallControl] Stored call context: companyId=${phoneNumber.companyId}, managedAccountId=${managedAccountId}, callerNumber=${from}`);
 
     await this.answerCall(call_control_id);
 
@@ -621,8 +623,11 @@ export class CallControlWebhookService {
     }
 
     const ringTimeout = queue.ringTimeout || 30;
-    const activeCall = await pbxService.getActiveCall(callControlId);
-    const callerNumber = activeCall?.from || "Unknown";
+    
+    // Get caller number from call context (stored when call initiated)
+    const context = callContextMap.get(callControlId);
+    const callerNumber = context?.callerNumber || "Unknown";
+    console.log(`[CallControl] Queue routing - caller number from context: ${callerNumber}`);
 
     // Get all queue members
     const members = await pbxService.getQueueMembers(companyId, queueId);
@@ -640,9 +645,8 @@ export class CallControlWebhookService {
     // Play hold message while ringing agents
     await this.speakText(callControlId, "Please hold while we connect you to an available agent.");
 
-    // Get API key and context for making calls
+    // Get API key for making calls (context already obtained above)
     const apiKey = await getTelnyxApiKey();
-    const context = callContextMap.get(callControlId);
     const managedAccountId = context?.managedAccountId;
 
     // Get company's caller ID

@@ -742,16 +742,25 @@ class TelnyxWebRTCManager {
     let telnyxCallLegId: string | undefined;
     
     if (session instanceof Invitation) {
-      // Incoming call - check for X-Original-Caller header FIRST (set by backend transfer)
+      // Incoming call - check for custom headers (set by backend for queue calls)
       try {
         const request = session.request;
+        
+        // Check for X-Original-Caller header (the actual caller's phone number)
         const originalCaller = request.getHeader("X-Original-Caller");
-        if (originalCaller) {
+        if (originalCaller && originalCaller !== "Unknown") {
           callerNumber = originalCaller;
           console.log("[SIP.js WebRTC] Found X-Original-Caller header:", originalCaller);
         }
+        
+        // Check for X-Queue-Name header (the queue this call came from)
+        const queueName = request.getHeader("X-Queue-Name");
+        if (queueName) {
+          callerName = `${queueName}`;
+          console.log("[SIP.js WebRTC] Found X-Queue-Name header:", queueName);
+        }
       } catch (e) {
-        console.warn("[SIP.js WebRTC] Error reading X-Original-Caller:", e);
+        console.warn("[SIP.js WebRTC] Error reading custom headers:", e);
       }
       
       // Fallback to remoteIdentity if no custom header
