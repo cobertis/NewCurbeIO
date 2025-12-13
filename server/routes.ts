@@ -33509,11 +33509,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           contactId: vipPassInstances.contactId,
           serialNumber: vipPassInstances.serialNumber,
           status: vipPassInstances.status,
-          memberName: vipPassInstances.memberName,
-          memberSince: vipPassInstances.memberSince,
+          recipientName: vipPassInstances.recipientName,
+          recipientEmail: vipPassInstances.recipientEmail,
           tierLevel: vipPassInstances.tierLevel,
-          points: vipPassInstances.points,
-          expirationDate: vipPassInstances.expirationDate,
+          memberId: vipPassInstances.memberId,
+          createdAt: vipPassInstances.createdAt,
         })
         .from(vipPassInstances)
         .where(eq(vipPassInstances.authenticationToken, token))
@@ -33558,11 +33558,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.json({
         card: {
           serialNumber: passInstance.serialNumber,
-          memberName: passInstance.memberName,
-          memberSince: passInstance.memberSince,
+          memberName: passInstance.recipientName,
+          memberSince: passInstance.createdAt,
           tierLevel: passInstance.tierLevel,
-          points: passInstance.points,
-          expirationDate: passInstance.expirationDate,
+          memberId: passInstance.memberId,
         },
         company: company || null,
         contact,
