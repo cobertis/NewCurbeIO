@@ -739,7 +739,7 @@ export default function VipPassPage() {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Devices</CardTitle>
+                  <CardTitle className="text-sm font-medium">Active Devices</CardTitle>
                   <Smartphone className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
