@@ -4889,6 +4889,9 @@ export const telnyxPhoneNumbers = pgTable("telnyx_phone_numbers", {
   voicemailEnabled: boolean("voicemail_enabled").notNull().default(false), // Voicemail for this number
   voicemailPin: text("voicemail_pin"), // 4-digit PIN for voicemail access (dial *98)
   
+  // IVR Routing - Which IVR should handle incoming calls to this number
+  ivrId: text("ivr_id"), // Links to pbxIvrs.id - null means use company default IVR
+  
   // Billing Fields - For monthly recurring charges
   numberType: text("number_type").default("local").$type<"local" | "toll_free">(), // Type of number for pricing
   retailMonthlyRate: numeric("retail_monthly_rate", { precision: 10, scale: 4 }), // Client-facing monthly rate
@@ -5585,24 +5588,57 @@ export const pbxSettings = pgTable("pbx_settings", {
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
+// PBX IVRs - Multiple IVRs per company (English IVR, Spanish IVR, etc.)
+export const pbxIvrs = pgTable("pbx_ivrs", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // IVR Identity
+  name: text("name").notNull(), // e.g., "Main Menu", "English IVR", "Spanish IVR"
+  description: text("description"),
+  extension: text("extension").notNull(), // e.g., "1000", "1001" - unique per company
+  language: text("language").default("en-US"), // Language for TTS
+  
+  // Greeting Configuration
+  greetingAudioUrl: text("greeting_audio_url"),
+  greetingMediaName: text("greeting_media_name"), // Telnyx Media Storage name
+  greetingText: text("greeting_text"), // TTS greeting text
+  useTextToSpeech: boolean("use_text_to_speech").notNull().default(true),
+  
+  // Timeout Settings
+  ivrTimeout: integer("ivr_timeout").notNull().default(10), // Seconds to wait for input
+  maxRetries: integer("max_retries").notNull().default(3), // Max retries before hangup
+  
+  // Status
+  isDefault: boolean("is_default").notNull().default(false), // Default IVR for new numbers
+  isActive: boolean("is_active").notNull().default(true),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  companyExtensionUnique: uniqueIndex("pbx_ivrs_company_extension_unique").on(table.companyId, table.extension),
+}));
+
 // PBX IVR Menu Options - Press 1 for Sales, Press 2 for Support, etc.
 export const pbxMenuOptions = pgTable("pbx_menu_options", {
   id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
   companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-  pbxSettingsId: text("pbx_settings_id").notNull().references(() => pbxSettings.id, { onDelete: "cascade" }),
+  pbxSettingsId: text("pbx_settings_id").references(() => pbxSettings.id, { onDelete: "cascade" }),
+  ivrId: text("ivr_id").references(() => pbxIvrs.id, { onDelete: "cascade" }), // New: Link to specific IVR
   
   // DTMF digit (1-9, 0, *, #)
   digit: text("digit").notNull(),
   label: text("label").notNull(),
   
-  // Action to take
-  actionType: text("action_type").notNull().$type<"queue" | "extension" | "external" | "voicemail" | "submenu" | "hangup">(),
+  // Action to take - Added "ivr" type to route to another IVR
+  actionType: text("action_type").notNull().$type<"queue" | "extension" | "external" | "voicemail" | "submenu" | "hangup" | "ivr">(),
   
   // Target based on action type
   targetQueueId: text("target_queue_id").references(() => pbxQueues.id, { onDelete: "set null" }),
   targetExtensionId: text("target_extension_id").references(() => pbxExtensions.id, { onDelete: "set null" }),
   targetExternalNumber: text("target_external_number"),
   targetSubmenuId: text("target_submenu_id"),
+  targetIvrId: text("target_ivr_id").references(() => pbxIvrs.id, { onDelete: "set null" }), // New: Target IVR for "ivr" action
   
   // Audio announcement before action
   announcementText: text("announcement_text"),
@@ -5798,6 +5834,12 @@ export const insertPbxSettingsSchema = createInsertSchema(pbxSettings).omit({
   updatedAt: true,
 });
 
+export const insertPbxIvrSchema = createInsertSchema(pbxIvrs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertPbxMenuOptionSchema = createInsertSchema(pbxMenuOptions).omit({
   id: true,
   createdAt: true,
@@ -5838,6 +5880,9 @@ export const insertPbxAudioFileSchema = createInsertSchema(pbxAudioFiles).omit({
 // Types for PBX
 export type PbxSettings = typeof pbxSettings.$inferSelect;
 export type InsertPbxSettings = z.infer<typeof insertPbxSettingsSchema>;
+
+export type PbxIvr = typeof pbxIvrs.$inferSelect;
+export type InsertPbxIvr = z.infer<typeof insertPbxIvrSchema>;
 
 export type PbxMenuOption = typeof pbxMenuOptions.$inferSelect;
 export type InsertPbxMenuOption = z.infer<typeof insertPbxMenuOptionSchema>;
