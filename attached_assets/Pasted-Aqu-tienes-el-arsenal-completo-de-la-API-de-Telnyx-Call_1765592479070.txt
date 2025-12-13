@@ -1,0 +1,59 @@
+Aquí tienes el arsenal completo de la API de Telnyx (Call Control). Esta lista es la "Biblia" para tu agente de Replit.
+
+Dile al agente que **no invente endpoints**. Estas son las únicas acciones ("Verbos") que existen. Si intenta usar algo que no está aquí, fallará.
+
+Copia y pega esto en tu `SPEC.md` bajo una sección llamada `## TELNYX API CAPABILITIES (STRICT)`:
+
+---
+
+### 1. CONTROL DE LLAMADAS (Básico)
+* `Dial`: Iniciar una llamada saliente a un número (PSTN) o SIP URI.
+* `Answer`: Contestar una llamada entrante (Webhook de entrada).
+* `Hangup`: Cortar la llamada activamente.
+* `Reject`: Rechazar una llamada entrante sin descolgar (útil para listas negras).
+* `Transfer`: Mover la llamada a otro número o flujo SIP.
+* `Bridge`: Conectar dos llamadas activas (La base del "Click-to-Call": conectas al Agente con el Cliente).
+
+### 2. AUDIO Y MEDIOS (Lo que se escucha)
+* `Speak` (TTS): Convertir texto a voz.
+    * *Motores soportados:* Telnyx, Amazon Polly, Google Cloud, Azure.
+    * *Idiomas:* Español, Inglés, etc.
+* `Play Audio`: Reproducir un archivo de audio pregrabado (MP3/WAV) desde una URL pública.
+* `Stop Audio`: Interrumpir lo que se está reproduciendo o hablando.
+* `Record Start/Stop`: Grabar la llamada.
+    * *Modos:* `dual` (cada persona en un canal separado, CRÍTICO para IA) o `single` (mezclado).
+* `Forking Start/Stop`: "Clonar" el audio de la llamada y enviarlo a otro destino en tiempo real.
+
+### 3. INTERACCIÓN Y ENTRADA
+* `Gather`: Esperar a que el usuario presione teclas (DTMF) o diga algo.
+    * *Uso:* Menús IVR ("Pulse 1 para Ventas").
+* `Send DTMF`: Enviar tonos de marcado (ej. para navegar el IVR de otra empresa).
+
+### 4. INTELIGENCIA ARTIFICIAL Y AVANZADO (La ventaja de Curbe.io)
+* `Answering Machine Detection (AMD)`: Detectar si contestó un humano o un buzón de voz.
+    * *Estados:* `machine_detected`, `human_detected`, `silence`, `beep_detected`.
+* `Media Streaming`: Enviar el audio crudo (RAW) vía WebSocket a tu servidor en tiempo real.
+    * *Uso:* Para transcribir en vivo con OpenAI/Deepgram o análisis de sentimientos mientras hablan.
+* `Noise Suppression`: Activar cancelación de ruido por IA en la llamada.
+* `Transcription`: Transcripción nativa de Telnyx (Speech-to-Text).
+
+### 5. GESTIÓN DE FLUJO (Colas y Conferencias)
+* `Enqueue`: Meter la llamada en una cola de espera con música.
+* `Dequeue`: Sacar la llamada de la cola y conectarla.
+* `Conference`: Crear salas de conferencia (varios participantes).
+    * *Acciones:* Mute, Unmute, Hold, Kick participant.
+
+### 6. INFORMACIÓN Y METADATA
+* `Client State`: Adjuntar un JSON personalizado a la llamada (ej. `{ "user_id": "1001", "lead_id": "555" }`) para rastrearla en tus webhooks sin consultar la base de datos a cada segundo.
+
+---
+
+### TU ESTRATEGIA INMEDIATA
+
+Tu agente se va a marear si le das todo esto. Dale orden de prioridad según lo que estás construyendo **HOY**:
+
+1.  **Fase 1 (Softphone Básico):** Solo necesita `Dial`, `Answer`, `Hangup` y `Client State` (para saber quién llama).
+2.  **Fase 2 (Grabación):** Añadir `Record Start` (Dual channel).
+3.  **Fase 3 (El CRM Real):** Implementar `Media Streaming` (para la IA) y `AMD` (para el marcador automático).
+
+¿Qué fase le vas a pedir ahora?

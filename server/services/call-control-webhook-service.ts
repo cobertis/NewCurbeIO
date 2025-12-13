@@ -153,6 +153,28 @@ export class CallControlWebhookService {
         const state = JSON.parse(Buffer.from(client_state, "base64").toString());
         console.log(`[CallControl] Call answered with state:`, state);
 
+        // Handle internal call (IVR or Queue) - user answered the call from company
+        if (state.internalCall && state.companyId) {
+          console.log(`[CallControl] Internal call answered, target: ${state.targetType}`);
+          
+          if (state.targetType === "queue" && state.queueId) {
+            // Direct route to queue
+            await pbxService.trackActiveCall(state.companyId, call_control_id, "", "", "queue");
+            await this.routeToQueue(call_control_id, state.companyId, state.queueId);
+          } else {
+            // Play IVR greeting
+            const settings = await pbxService.getPbxSettings(state.companyId);
+            if (settings?.ivrEnabled) {
+              await pbxService.trackActiveCall(state.companyId, call_control_id, "", "", "ivr");
+              await this.playIvrGreeting(call_control_id, state.companyId, settings);
+            } else {
+              await this.speakText(call_control_id, "IVR is not enabled.");
+              await this.hangupCall(call_control_id, "NORMAL_CLEARING");
+            }
+          }
+          return;
+        }
+
         // Handle ring-all answer - bridge and cancel other rings
         if (state.ringAllAttempt && state.originalCallControlId) {
           await this.handleRingAllAnswer(

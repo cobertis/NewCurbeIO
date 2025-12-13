@@ -32700,8 +32700,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          to: phoneNumber.phoneNumber,
-          from: userSipUri,
+          to: userSipUri,  // Call TO the user
+          from: phoneNumber.phoneNumber,  // FROM company number
           connection_id: phoneNumber.connectionId || "",
           timeout_secs: 60,
           client_state: clientState,
