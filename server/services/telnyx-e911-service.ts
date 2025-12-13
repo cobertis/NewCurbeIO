@@ -1127,7 +1127,24 @@ export async function generateWebRTCToken(
   try {
     const config = await getManagedAccountConfig(companyId);
 
-    const credResult = await getOrCreateWebRTCCredential(companyId, userId, userName);
+    // First, check if user has their own SIP credentials (created via PBX extension)
+    const userCreds = await getUserSipCredentials(userId);
+    let credResult: { success: boolean; credentialId?: string; sipUsername?: string; sipPassword?: string; error?: string };
+    
+    if (userCreds) {
+      console.log(`[WebRTC] Using user's own SIP credentials: ${userCreds.sipUsername}`);
+      credResult = {
+        success: true,
+        credentialId: userCreds.telnyxCredentialId,
+        sipUsername: userCreds.sipUsername,
+        sipPassword: userCreds.sipPassword,
+      };
+    } else {
+      // Fallback to company-wide credential
+      console.log(`[WebRTC] No user-specific credentials, using company-wide credential...`);
+      credResult = await getOrCreateWebRTCCredential(companyId, userId, userName);
+    }
+    
     if (!credResult.success || !credResult.credentialId) {
       return { success: false, error: credResult.error || "Failed to get credential" };
     }

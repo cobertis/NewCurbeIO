@@ -3,6 +3,7 @@ import { pbxService } from "./pbx-service";
 import { extensionCallService } from "./extension-call-service";
 import { getCompanyManagedAccountId } from "./telnyx-managed-accounts";
 import { SecretsService } from "./secrets-service";
+import { getUserSipCredentials } from "./telnyx-e911-service";
 import {
   pbxSettings,
   pbxQueues,
@@ -538,6 +539,7 @@ export class CallControlWebhookService {
   /**
    * Handle when an agent accepts a queue call via WebSocket
    * This is called from the API route when agent clicks "Accept"
+   * Dials the agent's personal SIP URI and bridges the call
    */
   async handleAgentAcceptQueueCall(
     callControlId: string,
@@ -557,22 +559,181 @@ export class CallControlWebhookService {
     const agent = extensionCallService.getClientByExtensionId(extensionId);
     console.log(`[CallControl] Agent ${agent?.extension || extensionId} accepted queue call ${callControlId}`);
 
-    // Update call state to connected
-    await pbxService.trackActiveCall(companyId, callControlId, queueCall.callerNumber, "", "connected", {
-      queueId: queueCall.queueId,
-      answeredByExtensionId: extensionId
-    });
+    // Get the agent's userId from the extension
+    const [extension] = await db
+      .select({ userId: pbxExtensions.userId })
+      .from(pbxExtensions)
+      .where(eq(pbxExtensions.id, extensionId));
 
-    // Notify the agent that they are now connected
-    if (agent) {
-      agent.ws.send(JSON.stringify({
-        type: "queue_call_connected",
-        callControlId,
-        callerNumber: queueCall.callerNumber,
-      }));
+    if (!extension?.userId) {
+      console.error(`[CallControl] No userId found for extension ${extensionId}`);
+      return { success: false, error: "Extension has no assigned user" };
     }
 
-    return { success: true };
+    // Get the agent's personal SIP credentials
+    const sipCreds = await getUserSipCredentials(extension.userId);
+    
+    if (sipCreds?.sipUsername) {
+      // Dial the agent's personal SIP URI
+      const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
+      console.log(`[CallControl] Dialing agent's SIP URI: ${sipUri}`);
+
+      try {
+        // Create client state for the bridged call
+        const clientState = Buffer.from(JSON.stringify({
+          companyId,
+          agentUserId: extension.userId,
+          extensionId,
+          queueId: queueCall.queueId,
+          originalCallControlId: callControlId,
+        })).toString("base64");
+
+        // Dial the agent's SIP endpoint and bridge the call
+        await this.dialAndBridgeToSip(callControlId, sipUri, clientState, companyId);
+
+        // Update call state to connected
+        await pbxService.trackActiveCall(companyId, callControlId, queueCall.callerNumber, sipUri, "connected", {
+          queueId: queueCall.queueId,
+          answeredByExtensionId: extensionId,
+          agentSipUri: sipUri
+        });
+
+        // Notify the agent that they are now connected
+        if (agent) {
+          agent.ws.send(JSON.stringify({
+            type: "queue_call_connected",
+            callControlId,
+            callerNumber: queueCall.callerNumber,
+            sipUri,
+          }));
+        }
+
+        return { success: true };
+      } catch (error) {
+        console.error(`[CallControl] Failed to dial agent SIP:`, error);
+        return { success: false, error: "Failed to connect to agent" };
+      }
+    } else {
+      // No personal SIP credentials - notify via WebSocket only (fallback)
+      console.log(`[CallControl] Agent has no personal SIP credentials, using WebSocket notification only`);
+      
+      // Update call state to connected
+      await pbxService.trackActiveCall(companyId, callControlId, queueCall.callerNumber, "", "connected", {
+        queueId: queueCall.queueId,
+        answeredByExtensionId: extensionId
+      });
+
+      // Notify the agent that they are now connected
+      if (agent) {
+        agent.ws.send(JSON.stringify({
+          type: "queue_call_connected",
+          callControlId,
+          callerNumber: queueCall.callerNumber,
+        }));
+      }
+
+      return { success: true };
+    }
+  }
+
+  /**
+   * Create outbound call to SIP URI and bridge it to existing call
+   * Uses POST /calls to create new leg, then bridges both calls
+   */
+  private async dialAndBridgeToSip(
+    callControlId: string,
+    sipUri: string,
+    clientState: string,
+    companyId: string
+  ): Promise<void> {
+    console.log(`[CallControl] Creating outbound call to SIP: ${sipUri} for bridging with ${callControlId}`);
+
+    const apiKey = await getTelnyxApiKey();
+    const context = callContextMap.get(callControlId);
+    const managedAccountId = context?.managedAccountId;
+
+    // Get company's caller ID and connection
+    const [phoneNumber] = await db
+      .select({ 
+        phoneNumber: telnyxPhoneNumbers.phoneNumber,
+        connectionId: telnyxPhoneNumbers.connectionId 
+      })
+      .from(telnyxPhoneNumbers)
+      .where(eq(telnyxPhoneNumbers.companyId, companyId))
+      .limit(1);
+
+    const callerIdNumber = phoneNumber?.phoneNumber || "+15555555555";
+
+    // Get credential connection for the company
+    const [settings] = await db
+      .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+
+    const connectionId = settings?.credentialConnectionId || phoneNumber?.connectionId;
+
+    if (!connectionId) {
+      throw new Error("No connection ID found for company");
+    }
+
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+
+    if (managedAccountId) {
+      headers["X-Managed-Account-Id"] = managedAccountId;
+    }
+
+    // Create outbound call to the agent's SIP endpoint
+    const response = await fetch(`${TELNYX_API_BASE}/calls`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        connection_id: connectionId,
+        to: sipUri,
+        from: callerIdNumber,
+        timeout_secs: 30,
+        answering_machine_detection: "disabled",
+        client_state: clientState,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[CallControl] Failed to create outbound call: ${response.status} - ${errorText}`);
+      throw new Error(`Failed to dial agent: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const agentCallControlId = data.data?.call_control_id;
+
+    if (!agentCallControlId) {
+      throw new Error("No call_control_id returned from dial");
+    }
+
+    console.log(`[CallControl] Created outbound call to agent: ${agentCallControlId}`);
+
+    // Store context for the new call leg
+    callContextMap.set(agentCallControlId, { companyId, managedAccountId });
+
+    // Bridge the original caller's call with the agent's call
+    // Wait a moment for the call to be established before bridging
+    setTimeout(async () => {
+      try {
+        await this.makeCallControlRequest(callControlId, "bridge", {
+          call_control_id: agentCallControlId,
+          client_state: clientState,
+        });
+        console.log(`[CallControl] Bridged caller ${callControlId} with agent ${agentCallControlId}`);
+      } catch (bridgeError) {
+        console.error(`[CallControl] Failed to bridge calls:`, bridgeError);
+        // Hangup agent call if bridge fails
+        try {
+          await this.makeCallControlRequest(agentCallControlId, "hangup", { hangup_cause: "NORMAL_CLEARING" });
+        } catch (e) { /* ignore */ }
+      }
+    }, 500);
   }
 
   /**
