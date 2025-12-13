@@ -73,6 +73,9 @@ interface PbxQueue {
   maxWaitTime: number;
   holdMusicUrl: string | null;
   status: string;
+  adsEnabled: boolean;
+  adsIntervalMin: number | null;
+  adsIntervalMax: number | null;
 }
 
 interface PbxExtension {
@@ -1295,6 +1298,9 @@ function QueueDialog({
   const [ringStrategy, setRingStrategy] = useState("ring_all");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
   const [holdMusicAudioId, setHoldMusicAudioId] = useState<string>("");
+  const [adsEnabled, setAdsEnabled] = useState(false);
+  const [adsIntervalMin, setAdsIntervalMin] = useState(45);
+  const [adsIntervalMax, setAdsIntervalMax] = useState(60);
   
   const holdMusicOptions = audioFiles.filter(a => a.audioType === 'hold_music');
 
@@ -1313,6 +1319,9 @@ function QueueDialog({
         // Find audio file that matches holdMusicUrl
         const matchingAudio = audioFiles.find(a => a.fileUrl === queue.holdMusicUrl);
         setHoldMusicAudioId(matchingAudio?.id || "");
+        setAdsEnabled(queue.adsEnabled || false);
+        setAdsIntervalMin(queue.adsIntervalMin ?? 45);
+        setAdsIntervalMax(queue.adsIntervalMax ?? 60);
       } else {
         setName("");
         setDescription("");
@@ -1320,6 +1329,9 @@ function QueueDialog({
         setRingStrategy("ring_all");
         setSelectedMemberIds([]);
         setHoldMusicAudioId("");
+        setAdsEnabled(false);
+        setAdsIntervalMin(45);
+        setAdsIntervalMax(60);
       }
     }
   }, [open, queue, audioFiles]);
@@ -1338,6 +1350,9 @@ function QueueDialog({
       setRingStrategy("ring_all");
       setSelectedMemberIds([]);
       setHoldMusicAudioId("");
+        setAdsEnabled(false);
+        setAdsIntervalMin(45);
+        setAdsIntervalMax(60);
     }
     onOpenChange(isOpen);
   };
@@ -1459,6 +1474,47 @@ function QueueDialog({
               </p>
             )}
           </div>
+          </div>
+          <div className="space-y-4 border-t pt-4">
+            <div className="flex items-center justify-between">
+              <div className="space-y-0.5">
+                <Label>Intercalated Advertisements</Label>
+                <p className="text-xs text-muted-foreground">
+                  Play audio ads between hold music at random intervals
+                </p>
+              </div>
+              <Switch
+                checked={adsEnabled}
+                onCheckedChange={setAdsEnabled}
+                data-testid="switch-ads-enabled"
+              />
+            </div>
+            {adsEnabled && (
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label>Min Interval (sec)</Label>
+                  <Input
+                    type="number"
+                    value={adsIntervalMin}
+                    onChange={(e) => setAdsIntervalMin(parseInt(e.target.value) || 45)}
+                    min={15}
+                    max={300}
+                    data-testid="input-ads-interval-min"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Max Interval (sec)</Label>
+                  <Input
+                    type="number"
+                    value={adsIntervalMax}
+                    onChange={(e) => setAdsIntervalMax(parseInt(e.target.value) || 60)}
+                    min={15}
+                    max={300}
+                    data-testid="input-ads-interval-max"
+                  />
+                </div>
+              </div>
+            )}
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
@@ -1474,7 +1530,10 @@ function QueueDialog({
                 extension, 
                 ringStrategy, 
                 memberIds: selectedMemberIds.filter(id => id),
-                holdMusicUrl: selectedAudio?.fileUrl || null 
+                holdMusicUrl: selectedAudio?.fileUrl || null,
+                adsEnabled,
+                adsIntervalMin,
+                adsIntervalMax 
               });
             }}
             disabled={isPending || !name}

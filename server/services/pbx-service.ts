@@ -5,6 +5,7 @@ import {
   pbxMenuOptions,
   pbxQueues,
   pbxQueueMembers,
+  pbxQueueAds,
   pbxExtensions,
   pbxAgentStatus,
   pbxActiveCalls,
@@ -16,6 +17,7 @@ import {
   PbxMenuOption,
   PbxQueue,
   PbxQueueMember,
+  PbxQueueAd,
   PbxExtension,
   PbxAgentStatus,
   PbxActiveCall,
@@ -719,6 +721,92 @@ export class PbxService {
       nextExt++;
     }
     return nextExt.toString();
+  }
+
+  // =====================================================
+  // Queue Ads CRUD Operations
+  // =====================================================
+
+  async getQueueAds(companyId: string, queueId: string): Promise<any[]> {
+    const ads = await db
+      .select({
+        id: pbxQueueAds.id,
+        companyId: pbxQueueAds.companyId,
+        queueId: pbxQueueAds.queueId,
+        audioFileId: pbxQueueAds.audioFileId,
+        displayOrder: pbxQueueAds.displayOrder,
+        isActive: pbxQueueAds.isActive,
+        createdAt: pbxQueueAds.createdAt,
+        audioFile: {
+          id: pbxAudioFiles.id,
+          name: pbxAudioFiles.name,
+          fileUrl: pbxAudioFiles.fileUrl,
+          duration: pbxAudioFiles.duration,
+        },
+      })
+      .from(pbxQueueAds)
+      .innerJoin(pbxAudioFiles, eq(pbxQueueAds.audioFileId, pbxAudioFiles.id))
+      .where(and(eq(pbxQueueAds.companyId, companyId), eq(pbxQueueAds.queueId, queueId)))
+      .orderBy(asc(pbxQueueAds.displayOrder));
+    return ads;
+  }
+
+  async getActiveQueueAds(companyId: string, queueId: string): Promise<any[]> {
+    const ads = await db
+      .select({
+        id: pbxQueueAds.id,
+        audioFileId: pbxQueueAds.audioFileId,
+        displayOrder: pbxQueueAds.displayOrder,
+        audioFile: {
+          id: pbxAudioFiles.id,
+          name: pbxAudioFiles.name,
+          fileUrl: pbxAudioFiles.fileUrl,
+        },
+      })
+      .from(pbxQueueAds)
+      .innerJoin(pbxAudioFiles, eq(pbxQueueAds.audioFileId, pbxAudioFiles.id))
+      .where(
+        and(
+          eq(pbxQueueAds.companyId, companyId),
+          eq(pbxQueueAds.queueId, queueId),
+          eq(pbxQueueAds.isActive, true)
+        )
+      )
+      .orderBy(asc(pbxQueueAds.displayOrder));
+    return ads;
+  }
+
+  async addQueueAd(
+    companyId: string,
+    queueId: string,
+    audioFileId: string,
+    displayOrder: number = 0
+  ): Promise<PbxQueueAd> {
+    const [ad] = await db
+      .insert(pbxQueueAds)
+      .values({ companyId, queueId, audioFileId, displayOrder } as any)
+      .returning();
+    return ad;
+  }
+
+  async updateQueueAd(
+    companyId: string,
+    adId: string,
+    data: { displayOrder?: number; isActive?: boolean }
+  ): Promise<PbxQueueAd | null> {
+    const [updated] = await db
+      .update(pbxQueueAds)
+      .set(data)
+      .where(and(eq(pbxQueueAds.companyId, companyId), eq(pbxQueueAds.id, adId)))
+      .returning();
+    return updated || null;
+  }
+
+  async removeQueueAd(companyId: string, adId: string): Promise<boolean> {
+    await db
+      .delete(pbxQueueAds)
+      .where(and(eq(pbxQueueAds.companyId, companyId), eq(pbxQueueAds.id, adId)));
+    return true;
   }
 }
 

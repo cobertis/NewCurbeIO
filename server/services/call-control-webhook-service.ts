@@ -43,6 +43,275 @@ const pendingBridges = new Map<string, PendingBridge>();
 // When one agent answers, we cancel all the other legs
 const ringAllLegs = new Map<string, Set<string>>();
 
+// =====================================================
+// Hold Playback Manager - Music + Ads for Queue Hold
+// =====================================================
+interface HoldPlaybackState {
+  companyId: string;
+  queueId: string;
+  holdMusicUrl: string | null;
+  ads: { id: string; audioUrl: string }[];
+  currentAdIndex: number;
+  adsEnabled: boolean;
+  adsIntervalMin: number; // seconds
+  adsIntervalMax: number; // seconds
+  timerId: NodeJS.Timeout | null;
+  isPlayingAd: boolean;
+}
+const holdPlaybackMap = new Map<string, HoldPlaybackState>();
+
+/**
+ * Start hold music with periodic ads for a caller in queue
+ */
+async function startHoldMusicWithAds(
+  callControlId: string,
+  companyId: string,
+  queueId: string,
+  queue: any
+): Promise<void> {
+  console.log(`[HoldPlayback] Starting hold music with ads for call ${callControlId}`);
+  
+  // Get active ads for this queue
+  let ads: { id: string; audioUrl: string }[] = [];
+  if (queue.adsEnabled) {
+    const queueAds = await pbxService.getActiveQueueAds(companyId, queueId);
+    ads = queueAds.map(ad => ({
+      id: ad.id,
+      audioUrl: ad.audioFile?.fileUrl || ''
+    })).filter(ad => ad.audioUrl);
+    console.log(`[HoldPlayback] Found ${ads.length} active ads for queue ${queueId}`);
+  }
+  
+  // Store state
+  const state: HoldPlaybackState = {
+    companyId,
+    queueId,
+    holdMusicUrl: queue.holdMusicUrl || null,
+    ads,
+    currentAdIndex: 0,
+    adsEnabled: queue.adsEnabled && ads.length > 0,
+    adsIntervalMin: queue.adsIntervalMin || 45,
+    adsIntervalMax: queue.adsIntervalMax || 60,
+    timerId: null,
+    isPlayingAd: false,
+  };
+  holdPlaybackMap.set(callControlId, state);
+  
+  // Start hold music loop
+  await playHoldMusic(callControlId, state);
+  
+  // Schedule first ad if enabled
+  if (state.adsEnabled) {
+    scheduleNextAd(callControlId, state);
+  }
+}
+
+/**
+ * Play hold music in loop for a call
+ */
+async function playHoldMusic(callControlId: string, state: HoldPlaybackState): Promise<void> {
+  if (!state.holdMusicUrl) {
+    console.log(`[HoldPlayback] No hold music URL configured for queue ${state.queueId}`);
+    return;
+  }
+  
+  console.log(`[HoldPlayback] Playing hold music (loop) for call ${callControlId}`);
+  state.isPlayingAd = false;
+  
+  try {
+    // Convert relative URLs to absolute
+    let audioUrl = state.holdMusicUrl;
+    if (audioUrl.startsWith('/')) {
+      const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0];
+      if (domain) {
+        audioUrl = `https://${domain}${audioUrl}`;
+      }
+    }
+    
+    const apiKey = await getTelnyxApiKey();
+    const context = callContextMap.get(callControlId);
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    };
+    if (context?.managedAccountId) {
+      headers["X-Managed-Account-Id"] = context.managedAccountId;
+    }
+    
+    // Client state to identify this as hold music
+    const clientState = Buffer.from(JSON.stringify({
+      holdPlayback: true,
+      type: 'music',
+      companyId: state.companyId,
+      queueId: state.queueId,
+    })).toString("base64");
+    
+    await fetch(`${TELNYX_API_BASE}/calls/${callControlId}/actions/playback_start`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        audio_url: audioUrl,
+        loop: "infinity",
+        client_state: clientState,
+      }),
+    });
+  } catch (error) {
+    console.error(`[HoldPlayback] Error playing hold music:`, error);
+  }
+}
+
+/**
+ * Schedule the next ad to play after a random interval
+ */
+function scheduleNextAd(callControlId: string, state: HoldPlaybackState): void {
+  // Clear any existing timer
+  if (state.timerId) {
+    clearTimeout(state.timerId);
+  }
+  
+  // Calculate random interval between min and max
+  const intervalSecs = state.adsIntervalMin + Math.random() * (state.adsIntervalMax - state.adsIntervalMin);
+  console.log(`[HoldPlayback] Scheduling next ad in ${intervalSecs.toFixed(1)}s for call ${callControlId}`);
+  
+  state.timerId = setTimeout(async () => {
+    const currentState = holdPlaybackMap.get(callControlId);
+    if (!currentState || currentState.isPlayingAd) {
+      return; // Call ended or already playing an ad
+    }
+    
+    await playNextAd(callControlId, currentState);
+  }, intervalSecs * 1000);
+}
+
+/**
+ * Stop hold music and play the next ad
+ */
+async function playNextAd(callControlId: string, state: HoldPlaybackState): Promise<void> {
+  if (state.ads.length === 0) return;
+  
+  const ad = state.ads[state.currentAdIndex];
+  console.log(`[HoldPlayback] Playing ad ${state.currentAdIndex + 1}/${state.ads.length} for call ${callControlId}`);
+  
+  state.isPlayingAd = true;
+  state.currentAdIndex = (state.currentAdIndex + 1) % state.ads.length; // Rotate to next ad
+  
+  try {
+    const apiKey = await getTelnyxApiKey();
+    const context = callContextMap.get(callControlId);
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    };
+    if (context?.managedAccountId) {
+      headers["X-Managed-Account-Id"] = context.managedAccountId;
+    }
+    
+    // First, stop the current hold music
+    await fetch(`${TELNYX_API_BASE}/calls/${callControlId}/actions/playback_stop`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({}),
+    });
+    
+    // Wait a bit for stop to take effect
+    await new Promise(resolve => setTimeout(resolve, 100));
+    
+    // Convert relative URLs to absolute
+    let audioUrl = ad.audioUrl;
+    if (audioUrl.startsWith('/')) {
+      const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0];
+      if (domain) {
+        audioUrl = `https://${domain}${audioUrl}`;
+      }
+    }
+    
+    // Client state to identify this as an ad
+    const clientState = Buffer.from(JSON.stringify({
+      holdPlayback: true,
+      type: 'ad',
+      adId: ad.id,
+      companyId: state.companyId,
+      queueId: state.queueId,
+    })).toString("base64");
+    
+    // Play the ad (no loop - plays once)
+    await fetch(`${TELNYX_API_BASE}/calls/${callControlId}/actions/playback_start`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        audio_url: audioUrl,
+        client_state: clientState,
+      }),
+    });
+  } catch (error) {
+    console.error(`[HoldPlayback] Error playing ad:`, error);
+    // On error, try to resume hold music
+    state.isPlayingAd = false;
+    await playHoldMusic(callControlId, state);
+    scheduleNextAd(callControlId, state);
+  }
+}
+
+/**
+ * Handle when an ad finishes playing - resume hold music
+ */
+async function handleHoldAdEnded(callControlId: string): Promise<void> {
+  const state = holdPlaybackMap.get(callControlId);
+  if (!state) return;
+  
+  console.log(`[HoldPlayback] Ad ended, resuming hold music for call ${callControlId}`);
+  
+  // Resume hold music
+  await playHoldMusic(callControlId, state);
+  
+  // Schedule next ad
+  if (state.adsEnabled) {
+    scheduleNextAd(callControlId, state);
+  }
+}
+
+/**
+ * Stop all hold playback for a call (agent answered or caller hung up)
+ */
+async function stopHoldPlayback(callControlId: string): Promise<void> {
+  const state = holdPlaybackMap.get(callControlId);
+  if (!state) return;
+  
+  console.log(`[HoldPlayback] Stopping hold playback for call ${callControlId}`);
+  
+  // Clear the ad timer
+  if (state.timerId) {
+    clearTimeout(state.timerId);
+  }
+  
+  // Stop any current playback
+  try {
+    const apiKey = await getTelnyxApiKey();
+    const context = callContextMap.get(callControlId);
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    };
+    if (context?.managedAccountId) {
+      headers["X-Managed-Account-Id"] = context.managedAccountId;
+    }
+    
+    await fetch(`${TELNYX_API_BASE}/calls/${callControlId}/actions/playback_stop`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({}),
+    });
+  } catch (error) {
+    console.error(`[HoldPlayback] Error stopping playback:`, error);
+  }
+  
+  // Clean up state
+  holdPlaybackMap.delete(callControlId);
+}
+
 async function getTelnyxApiKey(): Promise<string> {
   let apiKey = await secretsService.getCredential("telnyx", "api_key");
   if (!apiKey) {
@@ -266,6 +535,9 @@ export class CallControlWebhookService {
       console.log(`[CallControl] Agent answered! Bridging with caller ${pendingBridge.callerCallControlId}`);
       pendingBridges.delete(call_control_id);
 
+      // Stop hold music/ads for the caller since agent answered
+      await stopHoldPlayback(pendingBridge.callerCallControlId);
+
       // Cancel all other ring-all legs for this caller (this agent won the race)
       const otherLegs = ringAllLegs.get(pendingBridge.callerCallControlId);
       if (otherLegs) {
@@ -345,6 +617,9 @@ export class CallControlWebhookService {
     console.log(`[CallControl] Call hangup, cause: ${hangup_cause}`);
 
     await pbxService.removeActiveCall(call_control_id);
+
+    // Stop hold music/ads if caller was in queue
+    await stopHoldPlayback(call_control_id);
 
     // End any queue call notifications for this call
     extensionCallService.endQueueCall(call_control_id, "caller_hangup");
@@ -510,6 +785,14 @@ export class CallControlWebhookService {
     if (client_state) {
       try {
         const state = JSON.parse(Buffer.from(client_state, "base64").toString());
+        
+        // Handle hold playback ad ended - resume hold music
+        if (state.holdPlayback && state.type === 'ad') {
+          console.log(`[CallControl] Hold ad ended, resuming hold music`);
+          await handleHoldAdEnded(call_control_id);
+          return;
+        }
+        
         if (state.pendingGather) {
           console.log(`[CallControl] Starting DTMF gather after playback for company: ${state.companyId}`);
           // Include ivrId in gather state for multi-IVR support
@@ -773,6 +1056,11 @@ export class CallControlWebhookService {
       queueId,
       ringAllLegs: successfulDials
     });
+
+    // Start hold music with ads for the caller while waiting
+    if (queue.holdMusicUrl) {
+      await startHoldMusicWithAds(callControlId, companyId, queueId, queue);
+    }
   }
 
   /**

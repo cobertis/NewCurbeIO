@@ -5676,6 +5676,11 @@ export const pbxQueues = pgTable("pbx_queues", {
   queueAnnouncementUrl: text("queue_announcement_url"),
   announcementFrequency: integer("announcement_frequency").default(60),
   
+  // ADS Configuration - Intercalated advertisements during hold
+  adsEnabled: boolean("ads_enabled").notNull().default(false),
+  adsIntervalMin: integer("ads_interval_min").default(45), // Minimum seconds between ads
+  adsIntervalMax: integer("ads_interval_max").default(60), // Maximum seconds between ads
+  
   // Overflow handling
   maxCallers: integer("max_callers").default(10),
   overflowAction: text("overflow_action").default("voicemail").$type<"voicemail" | "forward" | "hangup">(),
@@ -5705,6 +5710,22 @@ export const pbxQueueMembers = pgTable("pbx_queue_members", {
 }, (table) => ({
   queueUserUnique: uniqueIndex("pbx_queue_members_queue_user_unique").on(table.queueId, table.userId),
 }));
+
+// PBX Queue Ads - Advertisement audio files for queue hold music
+export const pbxQueueAds = pgTable("pbx_queue_ads", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  queueId: text("queue_id").notNull().references(() => pbxQueues.id, { onDelete: "cascade" }),
+  audioFileId: text("audio_file_id").notNull().references(() => pbxAudioFiles.id, { onDelete: "cascade" }),
+  
+  // Display order for rotating through ads
+  displayOrder: integer("display_order").notNull().default(0),
+  
+  // Status
+  isActive: boolean("is_active").notNull().default(true),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
 
 // PBX Extensions - Direct dial extensions for users
 export const pbxExtensions = pgTable("pbx_extensions", {
@@ -5861,6 +5882,11 @@ export const insertPbxQueueMemberSchema = createInsertSchema(pbxQueueMembers).om
   createdAt: true,
 });
 
+export const insertPbxQueueAdSchema = createInsertSchema(pbxQueueAds).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertPbxExtensionSchema = createInsertSchema(pbxExtensions).omit({
   id: true,
   createdAt: true,
@@ -5896,6 +5922,9 @@ export type InsertPbxQueue = z.infer<typeof insertPbxQueueSchema>;
 
 export type PbxQueueMember = typeof pbxQueueMembers.$inferSelect;
 export type InsertPbxQueueMember = z.infer<typeof insertPbxQueueMemberSchema>;
+
+export type PbxQueueAd = typeof pbxQueueAds.$inferSelect;
+export type InsertPbxQueueAd = z.infer<typeof insertPbxQueueAdSchema>;
 
 export type PbxExtension = typeof pbxExtensions.$inferSelect;
 export type InsertPbxExtension = z.infer<typeof insertPbxExtensionSchema>;

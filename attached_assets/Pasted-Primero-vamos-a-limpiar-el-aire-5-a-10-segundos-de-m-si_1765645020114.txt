@@ -1,0 +1,61 @@
+Primero, vamos a limpiar el aire: **5 a 10 segundos de música entre anuncios es tortura china.**
+
+Si haces eso, tu cliente va a escuchar: *5 segundos de violines -\> COMPRA ESTO -\> 7 segundos de violines -\> OFERTA INCREÍBLE -\> 6 segundos de violines...*
+Vas a quemarles el cerebro y te van a colgar. Nadie aguanta una interrupción cada 7 segundos promedio.
+
+**La estrategia correcta es:** Música por **45 a 60 segundos** mínimo, y luego el anuncio.
+
+Ahora, ¿cómo se hace técnicamente en Telnyx Programmable Voice?
+Tienes dos caminos, uno fácil (pero sucio) y uno profesional (control total). Como pides pausas "aleatorias" y control preciso, el método XML básico (TeXML) **no te sirve** porque la etiqueta `<Play>` reproduce el archivo entero. Si tu archivo de música dura 3 minutos, el sistema no lo va a cortar a los 5 segundos para poner tu anuncio.
+
+Aquí tienes la solución técnica real usando **Telnyx Call Control API (v2)**, que es lo que debes usar si quieres "manejar" la llamada de verdad.
+
+### El Algoritmo (Lo que tu programador debe escribir)
+
+No puedes depender de una configuración estática en el portal. Necesitas un script (Python, Node.js, etc.) que controle el flujo mientras la llamada está en la cola (`Enqueue`).
+
+**La Lógica del Script de Control:**
+
+1.  **Meter a la cola (Enqueue):**
+    Colocas la llamada en la cola, pero **NO** uses el `wait_url` por defecto para la música, o pon un silencio. Si usas el default, no podrás interrumpirlo fácilmente con tus tiempos aleatorios.
+
+2.  **El Bucle Infinito (Loop de Audio):**
+    Una vez que la llamada entra a la cola (recibes el webhook `call.enqueued`), tu script inicia un proceso en segundo plano (background worker) para esa llamada específica:
+
+      * **Paso A: Iniciar Música**
+        Envía el comando `playback_start` con tu URL de música de espera.
+        *Importante:* Usa `loop: infinity` para que no se pare sola.
+
+      * **Paso B: Esperar (El Random)**
+        Tu código hace un `sleep()` o `wait` de un tiempo aleatorio (tu mala idea de 5-10s, o mi recomendación de 45-60s).
+
+      * **Paso C: Interrumpir**
+        Envía el comando `playback_stop`. Esto corta la música de golpe.
+
+      * **Paso D: Poner el Anuncio**
+        Envía `playback_start` con la URL del anuncio (AD).
+        Aquí debes escuchar el webhook `playback.ended` para saber cuándo terminó el anuncio.
+
+      * **Paso E: Repetir**
+        Vuelve al Paso A.
+
+### Opción "B" (Si no sabes programar y solo usas XML/TeXML)
+
+Si estás usando solo XML bins (`waitUrl`) y no tienes un servidor controlando la lógica, **es imposible** hacer pausas aleatorias con archivos largos.
+
+La única forma "sucia" de hacerlo en XML es:
+
+1.  Tener tus archivos de música cortados en pedazos de 10 segundos (`musica_parte1.mp3`, `musica_parte2.mp3`).
+2.  Tu script que genera el XML (PHP/Python) debe construir una lista de reproducción dinámica cada vez que Telnyx le pide instrucciones:
+
+<!-- end list -->
+
+```xml
+<Response>
+    <Play>https://tusitio.com/audio/musica_fragmento_random.mp3</Play>
+    <Play>https://tusitio.com/audio/anuncio_ventas.mp3</Play>
+    </Response>
+```
+
+**Resumen Brutal:**
+Si quieres lógica compleja (aleatoriedad, interrupciones precisas), **deja de jugar con XML estático** y monta un controlador con la API de Call Control. Y por favor, sube ese tiempo a 40 segundos o vas a perder clientes antes de que te contesten.

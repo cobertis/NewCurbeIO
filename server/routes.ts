@@ -32293,6 +32293,62 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // GET /api/pbx/queues/:queueId/ads - Get queue ads
+  app.get("/api/pbx/queues/:queueId/ads", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const ads = await pbxService.getQueueAds(user.companyId, req.params.queueId);
+      return res.json(ads);
+    } catch (error: any) {
+      console.error("[PBX] Error fetching queue ads:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/queues/:queueId/ads - Add queue ad
+  app.post("/api/pbx/queues/:queueId/ads", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { audioFileId, displayOrder } = req.body;
+      if (!audioFileId) {
+        return res.status(400).json({ error: "audioFileId is required" });
+      }
+      const ad = await pbxService.addQueueAd(user.companyId, req.params.queueId, audioFileId, displayOrder || 0);
+      return res.json(ad);
+    } catch (error: any) {
+      console.error("[PBX] Error adding queue ad:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/pbx/queues/:queueId/ads/:adId - Update queue ad
+  app.patch("/api/pbx/queues/:queueId/ads/:adId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { displayOrder, isActive } = req.body;
+      const ad = await pbxService.updateQueueAd(user.companyId, req.params.adId, { displayOrder, isActive });
+      if (!ad) {
+        return res.status(404).json({ error: "Ad not found" });
+      }
+      return res.json(ad);
+    } catch (error: any) {
+      console.error("[PBX] Error updating queue ad:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/queues/:queueId/ads/:adId - Delete queue ad
+  app.delete("/api/pbx/queues/:queueId/ads/:adId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.removeQueueAd(user.companyId, req.params.adId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting queue ad:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
   // GET /api/pbx/extensions/next - Get next available extension number
   app.get("/api/pbx/extensions/next", requireActiveCompany, async (req: Request, res: Response) => {
     try {
