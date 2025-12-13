@@ -5821,6 +5821,9 @@ export const pbxAudioFiles = pgTable("pbx_audio_files", {
   // Type
   audioType: text("audio_type").notNull().$type<"greeting" | "hold_music" | "announcement" | "voicemail_greeting">(),
   
+  // Telnyx Media Storage
+  telnyxMediaId: text("telnyx_media_id"),
+  
   // If generated via TTS
   ttsGenerated: boolean("tts_generated").notNull().default(false),
   ttsText: text("tts_text"),
