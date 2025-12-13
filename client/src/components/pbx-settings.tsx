@@ -1508,143 +1508,146 @@ function QueueDialog({
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>{queue ? "Edit Queue" : "Create Queue"}</DialogTitle>
         </DialogHeader>
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Queue Name</Label>
+                <Input
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  placeholder="Sales, Support, etc."
+                  data-testid="input-queue-name"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Extension</Label>
+                <Input
+                  value={extension}
+                  onChange={(e) => setExtension(e.target.value)}
+                  placeholder="2001"
+                  data-testid="input-queue-extension"
+                />
+              </div>
+            </div>
             <div className="space-y-2">
-              <Label>Queue Name</Label>
-              <Input
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                placeholder="Sales, Support, etc."
-                data-testid="input-queue-name"
+              <Label>Description</Label>
+              <Textarea
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                placeholder="Optional description"
+                rows={2}
+                data-testid="input-queue-description"
               />
             </div>
             <div className="space-y-2">
-              <Label>Extension</Label>
-              <Input
-                value={extension}
-                onChange={(e) => setExtension(e.target.value)}
-                placeholder="2001"
-                data-testid="input-queue-extension"
-              />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <Label>Description</Label>
-            <Textarea
-              value={description}
-              onChange={(e) => setDescription(e.target.value)}
-              placeholder="Optional description"
-              data-testid="input-queue-description"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label>Ring Strategy</Label>
-            <Select value={ringStrategy} onValueChange={setRingStrategy}>
-              <SelectTrigger data-testid="select-ring-strategy">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="ring_all">Ring All</SelectItem>
-                <SelectItem value="round_robin">Round Robin</SelectItem>
-                <SelectItem value="least_recent">Least Recent</SelectItem>
-                <SelectItem value="random">Random</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-          <div className="space-y-2">
-            <Label>Queue Members (Extensions)</Label>
-            {extensions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No extensions available. Create extensions first.</p>
-            ) : (
-              <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
-                {extensions.map((ext) => (
-                  <div 
-                    key={ext.id} 
-                    className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50 cursor-pointer"
-                    onClick={() => toggleMember(ext.userId)}
-                    data-testid={`checkbox-member-${ext.id}`}
-                  >
-                    <Checkbox
-                      checked={selectedMemberIds.includes(ext.userId)}
-                      onCheckedChange={() => toggleMember(ext.userId)}
-                    />
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
-                        {ext.displayName || `${ext.user.firstName} ${ext.user.lastName}`}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        Ext. {ext.extension}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {selectedMemberIds.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {selectedMemberIds.length} member{selectedMemberIds.length !== 1 ? 's' : ''} selected
-              </p>
-            )}
-          </div>
-          <div className="space-y-2">
-            <Label>Hold Music</Label>
-            {holdMusicOptions.length === 0 ? (
-              <p className="text-sm text-muted-foreground">
-                No hold music files available. Upload audio files with type "Hold Music" in the Audio tab.
-              </p>
-            ) : (
-              <div className="border rounded-md p-3 max-h-48 overflow-y-auto space-y-2">
-                {holdMusicOptions.map((audio) => (
-                  <div 
-                    key={audio.id} 
-                    className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50 cursor-pointer"
-                    onClick={() => toggleHoldMusic(audio.id)}
-                    data-testid={`checkbox-holdmusic-${audio.id}`}
-                  >
-                    <Checkbox
-                      checked={selectedHoldMusicIds.includes(audio.id)}
-                      onCheckedChange={() => toggleHoldMusic(audio.id)}
-                    />
-                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                      <Music className="w-4 h-4 text-muted-foreground" />
-                      <p className="text-sm font-medium truncate">{audio.name}</p>
-                      {audio.duration && (
-                        <span className="text-xs text-muted-foreground">
-                          ({Math.floor(audio.duration / 60)}:{String(audio.duration % 60).padStart(2, '0')})
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            {selectedHoldMusicIds.length > 0 && (
-              <p className="text-xs text-muted-foreground">
-                {selectedHoldMusicIds.length} track{selectedHoldMusicIds.length !== 1 ? 's' : ''} selected
-              </p>
-            )}
-          </div>
-          {selectedHoldMusicIds.length > 1 && (
-            <div className="space-y-2">
-              <Label>Playback Mode</Label>
-              <Select value={holdMusicPlaybackMode} onValueChange={setHoldMusicPlaybackMode}>
-                <SelectTrigger data-testid="select-holdmusic-playback-mode">
+              <Label>Ring Strategy</Label>
+              <Select value={ringStrategy} onValueChange={setRingStrategy}>
+                <SelectTrigger data-testid="select-ring-strategy">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="sequential">Sequential (play in order)</SelectItem>
-                  <SelectItem value="random">Random (shuffle)</SelectItem>
+                  <SelectItem value="ring_all">Ring All</SelectItem>
+                  <SelectItem value="round_robin">Round Robin</SelectItem>
+                  <SelectItem value="least_recent">Least Recent</SelectItem>
+                  <SelectItem value="random">Random</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-          )}
+            <div className="space-y-2">
+              <Label>Queue Members (Extensions)</Label>
+              {extensions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No extensions available. Create extensions first.</p>
+              ) : (
+                <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-1">
+                  {extensions.map((ext) => (
+                    <div 
+                      key={ext.id} 
+                      className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50 cursor-pointer"
+                      onClick={() => toggleMember(ext.userId)}
+                      data-testid={`checkbox-member-${ext.id}`}
+                    >
+                      <Checkbox
+                        checked={selectedMemberIds.includes(ext.userId)}
+                        onCheckedChange={() => toggleMember(ext.userId)}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">
+                          {ext.displayName || `${ext.user.firstName} ${ext.user.lastName}`}
+                        </p>
+                        <p className="text-xs text-muted-foreground">
+                          Ext. {ext.extension}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {selectedMemberIds.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {selectedMemberIds.length} member{selectedMemberIds.length !== 1 ? 's' : ''} selected
+                </p>
+              )}
+            </div>
           </div>
-          <div className="space-y-4 border-t pt-4">
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Hold Music</Label>
+              {holdMusicOptions.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  No hold music files available. Upload audio files with type "Hold Music" in the Audio tab.
+                </p>
+              ) : (
+                <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-1">
+                  {holdMusicOptions.map((audio) => (
+                    <div 
+                      key={audio.id} 
+                      className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50 cursor-pointer"
+                      onClick={() => toggleHoldMusic(audio.id)}
+                      data-testid={`checkbox-holdmusic-${audio.id}`}
+                    >
+                      <Checkbox
+                        checked={selectedHoldMusicIds.includes(audio.id)}
+                        onCheckedChange={() => toggleHoldMusic(audio.id)}
+                      />
+                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                        <Music className="w-4 h-4 text-muted-foreground" />
+                        <p className="text-sm font-medium truncate">{audio.name}</p>
+                        {audio.duration && (
+                          <span className="text-xs text-muted-foreground">
+                            ({Math.floor(audio.duration / 60)}:{String(audio.duration % 60).padStart(2, '0')})
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              {selectedHoldMusicIds.length > 0 && (
+                <p className="text-xs text-muted-foreground">
+                  {selectedHoldMusicIds.length} track{selectedHoldMusicIds.length !== 1 ? 's' : ''} selected
+                </p>
+              )}
+            </div>
+            {selectedHoldMusicIds.length > 1 && (
+              <div className="space-y-2">
+                <Label>Playback Mode</Label>
+                <Select value={holdMusicPlaybackMode} onValueChange={setHoldMusicPlaybackMode}>
+                  <SelectTrigger data-testid="select-holdmusic-playback-mode">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="sequential">Sequential (play in order)</SelectItem>
+                    <SelectItem value="random">Random (shuffle)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+            <div className="space-y-4 border-t pt-4">
             <div className="flex items-center justify-between">
               <div className="space-y-0.5">
                 <Label>Intercalated Advertisements</Label>
@@ -1784,7 +1787,9 @@ function QueueDialog({
               )}
               </>
             )}
+            </div>
           </div>
+        </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancel
