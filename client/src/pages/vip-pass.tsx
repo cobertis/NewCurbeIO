@@ -760,19 +760,26 @@ export default function VipPassPage() {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                  <CardTitle className="text-sm font-medium">Push Enabled</CardTitle>
+                  <CardTitle className="text-sm font-medium">Notifications</CardTitle>
                   <Bell className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold text-blue-600" data-testid="text-push-subscriptions">{stats?.pushSubscriptions || 0}</div>
-                  {stats?.platformCounts && (stats.platformCounts.android > 0 || stats.platformCounts.ios > 0) && (
-                    <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
-                      {stats.platformCounts.android > 0 && (
-                        <span data-testid="text-android-count">Android: {stats.platformCounts.android}</span>
-                      )}
-                      {stats.platformCounts.ios > 0 && (
-                        <span data-testid="text-ios-count">iOS: {stats.platformCounts.ios}</span>
-                      )}
+                  <div className="text-2xl font-bold text-blue-600" data-testid="text-notifications-sent">
+                    {stats?.notificationStats?.sent || 0}
+                  </div>
+                  <div className="flex gap-3 mt-2 text-xs text-muted-foreground">
+                    <span className="text-green-600" data-testid="text-notifications-delivered">
+                      Delivered: {stats?.notificationStats?.delivered || 0}
+                    </span>
+                    <span className="text-red-600" data-testid="text-notifications-failed">
+                      Failed: {stats?.notificationStats?.failed || 0}
+                    </span>
+                  </div>
+                  {(stats?.notificationStats?.clicked || 0) > 0 && (
+                    <div className="flex gap-3 mt-1 text-xs text-muted-foreground">
+                      <span data-testid="text-notifications-clicked">
+                        Clicked: {stats?.notificationStats?.clicked || 0}
+                      </span>
                     </div>
                   )}
                 </CardContent>

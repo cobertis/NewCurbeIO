@@ -31971,16 +31971,26 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const { webPushService } = await import("./services/web-push-service");
       
-      const [instances, deviceCount, pushSubscriptionsCount, platformCounts] = await Promise.all([
+      const [instances, deviceCount, pushSubscriptionsCount, platformCounts, notificationStats] = await Promise.all([
         vipPassService.getPassInstances(user.companyId),
         vipPassApnsService.getDevicesCount(user.companyId),
         webPushService.getSubscriptionsCountByCompany(user.companyId),
         webPushService.getSubscriptionsCountByPlatform(user.companyId),
+        // Get notification statistics
+        db.select({
+          totalSent: sql<number>`COALESCE(SUM(${vipPassNotifications.sentCount}), 0)::int`,
+          totalSuccess: sql<number>`COALESCE(SUM(${vipPassNotifications.successCount}), 0)::int`,
+          totalFailed: sql<number>`COALESCE(SUM(${vipPassNotifications.failedCount}), 0)::int`,
+          totalClicked: sql<number>`COALESCE(SUM(${vipPassNotifications.clickedCount}), 0)::int`,
+          totalLanded: sql<number>`COALESCE(SUM(${vipPassNotifications.landedCount}), 0)::int`,
+        }).from(vipPassNotifications).where(eq(vipPassNotifications.companyId, user.companyId)),
       ]);
       
       const activeCount = instances.filter(i => i.status === "active").length;
       const revokedCount = instances.filter(i => i.status === "revoked").length;
       const totalDownloads = instances.reduce((sum, i) => sum + (i.downloadCount || 0), 0);
+      
+      const nStats = notificationStats[0] || { totalSent: 0, totalSuccess: 0, totalFailed: 0, totalClicked: 0, totalLanded: 0 };
       
       return res.json({
         totalPasses: instances.length,
@@ -31990,6 +32000,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         totalDownloads,
         pushSubscriptions: pushSubscriptionsCount,
         platformCounts,
+        notificationStats: {
+          sent: nStats.totalSent,
+          delivered: nStats.totalSuccess,
+          failed: nStats.totalFailed,
+          clicked: nStats.totalClicked,
+          landed: nStats.totalLanded,
+        },
       });
     } catch (error) {
       console.error("[VIP Pass] Error getting stats:", error);
