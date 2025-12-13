@@ -1728,18 +1728,22 @@ function QueueDialog({
                   <div className="flex items-center justify-between">
                     <Label>Advertisement Audio Files</Label>
                     {announcementOptions.length > 1 && (
-                      <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground">
+                      <label 
+                        className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground"
+                        onClick={(e) => {
+                          e.preventDefault();
+                          const allSelected = queueAds.length === announcementOptions.length && announcementOptions.length > 0;
+                          if (allSelected) {
+                            queueAds.forEach(ad => removeAdMutation.mutate(ad.id));
+                          } else {
+                            announcementOptions
+                              .filter(audio => !queueAds.some(ad => ad.audioFileId === audio.id))
+                              .forEach(audio => addAdMutation.mutate(audio.id));
+                          }
+                        }}
+                      >
                         <Checkbox
                           checked={queueAds.length === announcementOptions.length && announcementOptions.length > 0}
-                          onCheckedChange={(checked) => {
-                            if (checked) {
-                              announcementOptions
-                                .filter(audio => !queueAds.some(ad => ad.audioFileId === audio.id))
-                                .forEach(audio => addAdMutation.mutate(audio.id));
-                            } else {
-                              queueAds.forEach(ad => removeAdMutation.mutate(ad.id));
-                            }
-                          }}
                           data-testid="checkbox-ads-select-all"
                         />
                         Select All
