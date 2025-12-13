@@ -704,11 +704,10 @@ export class CallControlWebhookService {
     const context = callContextMap.get(callControlId);
     const managedAccountId = context?.managedAccountId;
 
-    // Get company's caller ID and connection
+    // Get company's caller ID
     const [phoneNumber] = await db
       .select({ 
-        phoneNumber: telnyxPhoneNumbers.phoneNumber,
-        connectionId: telnyxPhoneNumbers.connectionId 
+        phoneNumber: telnyxPhoneNumbers.phoneNumber
       })
       .from(telnyxPhoneNumbers)
       .where(eq(telnyxPhoneNumbers.companyId, companyId))
@@ -716,17 +715,19 @@ export class CallControlWebhookService {
 
     const callerIdNumber = phoneNumber?.phoneNumber || "+15555555555";
 
-    // Get credential connection for the company
+    // Get Call Control App ID for the company (required for outbound calls via REST API)
     const [settings] = await db
-      .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
+      .select({ callControlAppId: telephonySettings.callControlAppId })
       .from(telephonySettings)
       .where(eq(telephonySettings.companyId, companyId));
 
-    const connectionId = settings?.credentialConnectionId || phoneNumber?.connectionId;
+    const connectionId = settings?.callControlAppId;
 
     if (!connectionId) {
-      throw new Error("No connection ID found for company");
+      throw new Error("No Call Control App ID found for company - cannot create outbound call");
     }
+    
+    console.log(`[CallControl] Using Call Control App ID: ${connectionId} for outbound call`)
 
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
