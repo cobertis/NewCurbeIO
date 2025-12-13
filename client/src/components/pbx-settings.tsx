@@ -336,7 +336,7 @@ export function PbxSettings() {
         </div>
         <div className="text-right">
           <span className="text-sm text-muted-foreground">IVR Ext:</span>
-          <span className="ml-1 font-mono font-bold text-lg">{settings?.ivrExtension || 100}</span>
+          <span className="ml-1 font-mono font-bold text-lg">{settings?.ivrExtension || 1001}</span>
         </div>
       </div>
 
@@ -498,14 +498,14 @@ export function PbxSettings() {
                 <Label>IVR Extension Number</Label>
                 <Input
                   type="number"
-                  placeholder="100"
+                  placeholder="1001"
                   value={localIvrExtension}
                   onChange={(e) => setLocalIvrExtension(e.target.value)}
                   onBlur={handleIvrExtensionBlur}
                   data-testid="input-ivr-extension"
                 />
                 <p className="text-xs text-muted-foreground">
-                  User extensions will start from {(parseInt(localIvrExtension, 10) || 100) + 1}
+                  User extensions will start from {(parseInt(localIvrExtension, 10) || 1001) + 1}
                 </p>
               </div>
 
