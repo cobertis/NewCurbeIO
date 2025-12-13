@@ -5498,12 +5498,34 @@ export const vipPassNotifications = pgTable("vip_pass_notifications", {
   targetType: text("target_type").notNull().default("single"),
   
   // Notification content
+  title: text("title"),
   message: text("message").notNull(),
+  url: text("url"),
+  eventType: text("event_type"), // DOCUMENT_AVAILABLE, PAYMENT_REMINDER, RENEWAL_ACTION, etc.
   
   // Results
   sentCount: integer("sent_count").notNull().default(0),
   successCount: integer("success_count").notNull().default(0),
   failedCount: integer("failed_count").notNull().default(0),
+  
+  // Tracking metrics (aggregated)
+  clickedCount: integer("clicked_count").notNull().default(0),
+  landedCount: integer("landed_count").notNull().default(0),
+  completedCount: integer("completed_count").notNull().default(0),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+// VIP Pass Notification Events - Granular tracking of notification lifecycle
+export const vipPassNotificationEvents = pgTable("vip_pass_notification_events", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  notificationId: text("notification_id").notNull().references(() => vipPassNotifications.id, { onDelete: "cascade" }),
+  
+  // Event type: sent, failed, clicked, landed, action_completed
+  event: text("event").notNull(),
+  
+  // Metadata (user agent, platform, referrer, etc.)
+  meta: jsonb("meta"),
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
@@ -5532,6 +5554,11 @@ export const insertVipPassNotificationSchema = createInsertSchema(vipPassNotific
   createdAt: true,
 });
 
+export const insertVipPassNotificationEventSchema = createInsertSchema(vipPassNotificationEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
 // Types for VIP Pass
 export type VipPassDesign = typeof vipPassDesigns.$inferSelect;
 export type InsertVipPassDesign = z.infer<typeof insertVipPassDesignSchema>;
@@ -5544,6 +5571,9 @@ export type InsertVipPassDevice = z.infer<typeof insertVipPassDeviceSchema>;
 
 export type VipPassNotification = typeof vipPassNotifications.$inferSelect;
 export type InsertVipPassNotification = z.infer<typeof insertVipPassNotificationSchema>;
+
+export type VipPassNotificationEvent = typeof vipPassNotificationEvents.$inferSelect;
+export type InsertVipPassNotificationEvent = z.infer<typeof insertVipPassNotificationEventSchema>;
 
 // =============================================================================
 // PBX SYSTEM - Voice API Call Control Based
