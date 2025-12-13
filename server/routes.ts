@@ -115,6 +115,7 @@ import { getCalendarHolidays } from "./services/holidays";
 import { blacklistService } from "./services/blacklist-service";
 import { evolutionApi } from "./services/evolution-api";
 import { getManagedAccountConfig, buildHeaders } from "./services/telnyx-e911-service";
+import { getTelnyxMasterApiKey } from "./services/telnyx-numbers-service";
 import { vipPassService } from "./services/vip-pass-service";
 import { vipPassApnsService } from "./services/vip-pass-apns-service";
 import { pbxService } from "./services/pbx-service";
@@ -32765,7 +32766,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ error: "No phone number configured" });
       }
       
-      const TELNYX_API_KEY = process.env.TELNYX_API_KEY || "";
+      const TELNYX_API_KEY = await getTelnyxMasterApiKey();
       const userSipUri = `sip:${credential.sipUsername}@sip.telnyx.com`;
       
       // Create client_state with routing info

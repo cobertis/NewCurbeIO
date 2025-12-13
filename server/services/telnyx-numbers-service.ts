@@ -8,7 +8,7 @@ import { getCompanyTelnyxAccountId, getCompanyTelnyxApiToken } from "./wallet-se
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
 const secretsService = new SecretsService();
 
-async function getTelnyxMasterApiKey(): Promise<string> {
+export async function getTelnyxMasterApiKey(): Promise<string> {
   let apiKey = await secretsService.getCredential("telnyx", "api_key");
   if (!apiKey) {
     throw new Error("Telnyx API key not configured. Please add it in Settings > API Keys.");
