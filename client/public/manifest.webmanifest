@@ -2,7 +2,7 @@
   "name": "VIP Card",
   "short_name": "VIP Card",
   "description": "Your VIP membership card",
-  "start_url": "/p/",
+  "start_url": "/",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#1a1a1a",

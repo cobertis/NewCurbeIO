@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import { Bell, BellOff, Download, Smartphone, Star, Calendar, CreditCard, Wallet } from "lucide-react";
+import { Bell, BellOff, Download, Smartphone, Star, Calendar, CreditCard, Wallet, Home, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CardData {
@@ -69,6 +69,7 @@ export default function PublicCard() {
   const [subscribing, setSubscribing] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
   const [downloadingWallet, setDownloadingWallet] = useState(false);
+  const [showInstallHelp, setShowInstallHelp] = useState(false);
 
   useEffect(() => {
     setPlatform(detectPlatform());
@@ -105,6 +106,13 @@ export default function PublicCard() {
 
   useEffect(() => {
     if (!token) return;
+
+    // Save last_card_token for PWA standalone redirect
+    try {
+      localStorage.setItem("last_card_token", token);
+    } catch (e) {
+      console.error("Failed to save last_card_token:", e);
+    }
 
     async function fetchCard() {
       try {
@@ -226,6 +234,9 @@ export default function PublicCard() {
         toast({ title: "App installed", description: "Open from your home screen" });
       }
       setDeferredPrompt(null);
+    } else {
+      // Show manual installation instructions
+      setShowInstallHelp(true);
     }
   }
 
@@ -367,20 +378,8 @@ export default function PublicCard() {
           </Button>
         )}
 
-        {platform === "android" && !isPwa && deferredPrompt && (
-          <Button
-            onClick={handleInstallPwa}
-            className="w-full"
-            variant="outline"
-            data-testid="button-install-pwa"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Install App
-          </Button>
-        )}
-
         {platform === "android" && pushSupported && (
-          <div className="space-y-2">
+          <div className="space-y-3">
             {!pushSubscribed ? (
               <Button
                 onClick={subscribeToPush}
@@ -393,21 +392,53 @@ export default function PublicCard() {
                 ) : (
                   <Bell className="h-4 w-4 mr-2" />
                 )}
-                Enable Notifications
+                Agregar Tarjeta
               </Button>
             ) : (
-              <div className="flex items-center justify-center gap-2 py-2 text-green-500" data-testid="notifications-enabled">
-                <Bell className="h-4 w-4" />
-                <span className="text-sm">Notifications enabled</span>
-              </div>
+              <>
+                <div className="flex items-center justify-center gap-2 py-2 text-green-500" data-testid="notifications-enabled">
+                  <Bell className="h-4 w-4" />
+                  <span className="text-sm">Tarjeta activada</span>
+                </div>
+                
+                {!isPwa && (
+                  <Button
+                    onClick={handleInstallPwa}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    variant="default"
+                    data-testid="button-add-to-home"
+                  >
+                    <Home className="h-4 w-4 mr-2" />
+                    Agregar acceso al inicio
+                  </Button>
+                )}
+                
+                {showInstallHelp && (
+                  <Card className="bg-blue-900/30 border-blue-700/50 p-4">
+                    <div className="flex items-start gap-3">
+                      <Info className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                      <div className="text-sm text-blue-200">
+                        <p className="font-medium mb-1">Para agregar al inicio:</p>
+                        <ol className="list-decimal list-inside space-y-1 text-blue-300">
+                          <li>Toca el menú <span className="font-bold">⋮</span> en Chrome</li>
+                          <li>Selecciona "Agregar a pantalla principal"</li>
+                          <li>Confirma tocando "Agregar"</li>
+                        </ol>
+                      </div>
+                    </div>
+                  </Card>
+                )}
+              </>
             )}
           </div>
         )}
 
         <p className="text-center text-xs text-gray-500 pt-4">
-          {platform === "ios" && "Use Apple Wallet for the best experience"}
-          {platform === "android" && "Install app and enable notifications for updates"}
-          {platform === "desktop" && "Open on your mobile device for the full experience"}
+          {platform === "ios" && "Usa Apple Wallet para la mejor experiencia"}
+          {platform === "android" && !pushSubscribed && "Activa tu tarjeta para recibir notificaciones"}
+          {platform === "android" && pushSubscribed && !isPwa && "Agrega al inicio para acceso rápido"}
+          {platform === "android" && pushSubscribed && isPwa && "Tu tarjeta está lista"}
+          {platform === "desktop" && "Abre en tu móvil para la experiencia completa"}
         </p>
       </div>
     </div>
