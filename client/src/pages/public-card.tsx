@@ -249,7 +249,6 @@ export default function PublicCard() {
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === "accepted") {
         toast({ title: "App installed", description: "Open from your home screen" });
-        // Save that user added to home
         try {
           localStorage.setItem("vip_added_to_home", "true");
           setAddedToHome(true);
@@ -259,14 +258,19 @@ export default function PublicCard() {
       }
       setDeferredPrompt(null);
     } else {
-      // Show manual installation instructions and mark as added
+      // Show manual installation instructions (don't hide button yet)
       setShowInstallHelp(true);
-      try {
-        localStorage.setItem("vip_added_to_home", "true");
-        setAddedToHome(true);
-      } catch (e) {
-        console.error("Failed to save addedToHome:", e);
-      }
+    }
+  }
+  
+  function confirmManualInstall() {
+    try {
+      localStorage.setItem("vip_added_to_home", "true");
+      setAddedToHome(true);
+      setShowInstallHelp(false);
+      toast({ title: "Listo", description: "Ya puedes abrir desde tu pantalla de inicio" });
+    } catch (e) {
+      console.error("Failed to save addedToHome:", e);
     }
   }
 
@@ -437,27 +441,44 @@ export default function PublicCard() {
             {/* Botón de Agregar al Inicio - solo mostrar si no está instalada ni añadida */}
             {!isPwa && !addedToHome && (
               <>
-                <Button
-                  onClick={handleInstallPwa}
-                  className="w-full bg-blue-600 hover:bg-blue-700"
-                  data-testid="button-add-to-home"
-                >
-                  <Home className="h-4 w-4 mr-2" />
-                  Agregar al Inicio
-                </Button>
-                
-                {showInstallHelp && (
+                {!showInstallHelp ? (
+                  <Button
+                    onClick={handleInstallPwa}
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    data-testid="button-add-to-home"
+                  >
+                    <Home className="h-4 w-4 mr-2" />
+                    Agregar al Inicio
+                  </Button>
+                ) : (
                   <Card className="bg-blue-900/30 border-blue-700/50 p-4">
-                    <div className="flex items-start gap-3">
-                      <Info className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" />
-                      <div className="text-sm text-blue-200">
-                        <p className="font-medium mb-1">Para agregar al inicio:</p>
-                        <ol className="list-decimal list-inside space-y-1 text-blue-300">
-                          <li>Toca el menú <span className="font-bold">⋮</span> en Chrome</li>
-                          <li>Selecciona "Agregar a pantalla principal"</li>
-                          <li>Confirma tocando "Agregar"</li>
-                        </ol>
+                    <div className="space-y-3">
+                      <div className="flex items-start gap-3">
+                        <Info className="h-5 w-5 text-blue-400 flex-shrink-0 mt-0.5" />
+                        <div className="text-sm text-blue-200">
+                          <p className="font-medium mb-2">Para agregar al inicio:</p>
+                          {platform === "ios" ? (
+                            <ol className="list-decimal list-inside space-y-1 text-blue-300">
+                              <li>Toca el icono <span className="font-bold">Compartir</span> (cuadrado con flecha)</li>
+                              <li>Desplaza y selecciona <span className="font-bold">"Agregar a Inicio"</span></li>
+                              <li>Toca <span className="font-bold">"Agregar"</span> arriba a la derecha</li>
+                            </ol>
+                          ) : (
+                            <ol className="list-decimal list-inside space-y-1 text-blue-300">
+                              <li>Toca el menu <span className="font-bold">&#8942;</span> (tres puntos)</li>
+                              <li>Selecciona <span className="font-bold">"Agregar a pantalla principal"</span></li>
+                              <li>Confirma tocando <span className="font-bold">"Agregar"</span></li>
+                            </ol>
+                          )}
+                        </div>
                       </div>
+                      <Button
+                        onClick={confirmManualInstall}
+                        className="w-full bg-green-600 hover:bg-green-700"
+                        data-testid="button-confirm-install"
+                      >
+                        Ya lo agregue
+                      </Button>
                     </div>
                   </Card>
                 )}
