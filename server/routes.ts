@@ -32520,10 +32520,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ error: "IVR not found" });
       }
 
-      const fileName = \`ivr-greeting-\${ivr.id}-\${Date.now()}.\${file.originalname.split('.').pop()}\`;
+      const fileName = `ivr-greeting-${ivr.id}-${Date.now()}.${file.originalname.split('.').pop()}`;
       const audioUrl = await storageService.uploadFile(file.buffer, fileName, file.mimetype);
       
-      const mediaName = \`ivr-greeting-\${ivr.id}\`;
+      const mediaName = `ivr-greeting-${ivr.id}`;
       const { uploadAudioToTelnyxMedia } = await import("./services/call-control-webhook-service");
       await uploadAudioToTelnyxMedia(audioUrl, mediaName, user.companyId);
       

@@ -14,6 +14,8 @@ import {
   telephonySettings,
   users,
   PbxRingStrategy,
+  pbxIvrs,
+  PbxIvr,
 } from "@shared/schema";
 import { eq, and, inArray } from "drizzle-orm";
 
@@ -210,8 +212,28 @@ export class CallControlWebhookService {
       }
     }
 
-    const settings = await pbxService.getPbxSettings(phoneNumber.companyId);
+    // Check if phone number has a specific IVR assigned (multi-IVR support)
+    if (phoneNumber.ivrId) {
+      const ivr = await pbxService.getIvr(phoneNumber.companyId, phoneNumber.ivrId);
+      if (ivr && ivr.isActive) {
+        console.log(`[CallControl] Phone number has specific IVR: ${ivr.name} (${ivr.id})`);
+        await pbxService.trackActiveCall(phoneNumber.companyId, call_control_id, from, to, "ivr");
+        await this.playIvrGreetingForIvr(call_control_id, phoneNumber.companyId, ivr);
+        return;
+      }
+    }
 
+    // Check if company has a default IVR (multi-IVR support)
+    const defaultIvr = await pbxService.getDefaultIvr(phoneNumber.companyId);
+    if (defaultIvr && defaultIvr.isActive) {
+      console.log(`[CallControl] Using company default IVR: ${defaultIvr.name} (${defaultIvr.id})`);
+      await pbxService.trackActiveCall(phoneNumber.companyId, call_control_id, from, to, "ivr");
+      await this.playIvrGreetingForIvr(call_control_id, phoneNumber.companyId, defaultIvr);
+      return;
+    }
+
+    // Fallback to legacy PBX settings IVR
+    const settings = await pbxService.getPbxSettings(phoneNumber.companyId);
     if (settings?.ivrEnabled) {
       await pbxService.trackActiveCall(phoneNumber.companyId, call_control_id, from, to, "ivr");
       await this.playIvrGreeting(call_control_id, phoneNumber.companyId, settings);
@@ -297,7 +319,7 @@ export class CallControlWebhookService {
 
     try {
       const state = JSON.parse(Buffer.from(client_state, "base64").toString());
-      const { companyId, pbxSettingsId } = state;
+      const { companyId, pbxSettingsId, ivrId } = state;
 
       // Handle call hangup - caller disconnected
       if (status === "call_hangup") {
@@ -308,6 +330,15 @@ export class CallControlWebhookService {
       // Handle timeout or no digits - replay the IVR greeting
       if (status === "timeout" || status === "cancelled" || !digits) {
         console.log(`[CallControl] No selection received, replaying IVR greeting`);
+        // Multi-IVR: replay the specific IVR greeting
+        if (ivrId) {
+          const ivr = await pbxService.getIvr(companyId, ivrId);
+          if (ivr) {
+            await this.playIvrGreetingForIvr(call_control_id, companyId, ivr);
+            return;
+          }
+        }
+        // Fallback to legacy pbxSettings
         const settings = await pbxService.getPbxSettings(companyId);
         if (settings) {
           await this.playIvrGreeting(call_control_id, companyId, settings);
@@ -317,11 +348,30 @@ export class CallControlWebhookService {
 
       // Take the first digit for menu selection
       const digit = digits.charAt(0);
-      const menuOptions = await pbxService.getMenuOptions(companyId, pbxSettingsId);
+      
+      // Multi-IVR: get menu options from specific IVR
+      let menuOptions;
+      if (ivrId) {
+        menuOptions = await pbxService.getIvrMenuOptions(companyId, ivrId);
+      } else if (pbxSettingsId) {
+        menuOptions = await pbxService.getMenuOptions(companyId, pbxSettingsId);
+      } else {
+        console.log(`[CallControl] No ivrId or pbxSettingsId in state`);
+        return;
+      }
+      
       const selectedOption = menuOptions.find((opt) => opt.digit === digit && opt.isActive);
 
       if (!selectedOption) {
         await this.speakText(call_control_id, `Invalid selection. Please try again.`);
+        // Replay appropriate IVR greeting
+        if (ivrId) {
+          const ivr = await pbxService.getIvr(companyId, ivrId);
+          if (ivr) {
+            await this.playIvrGreetingForIvr(call_control_id, companyId, ivr);
+            return;
+          }
+        }
         const settings = await pbxService.getPbxSettings(companyId);
         if (settings) {
           await this.playIvrGreeting(call_control_id, companyId, settings);
@@ -345,8 +395,13 @@ export class CallControlWebhookService {
         const state = JSON.parse(Buffer.from(client_state, "base64").toString());
         if (state.pendingGather) {
           console.log(`[CallControl] Starting DTMF gather after playback for company: ${state.companyId}`);
+          // Include ivrId in gather state for multi-IVR support
           const gatherClientState = Buffer.from(
-            JSON.stringify({ companyId: state.companyId, pbxSettingsId: state.pbxSettingsId })
+            JSON.stringify({ 
+              companyId: state.companyId, 
+              pbxSettingsId: state.pbxSettingsId,
+              ivrId: state.ivrId 
+            })
           ).toString("base64");
           await this.gatherDtmf(call_control_id, gatherClientState, state.ivrTimeout || 10);
         }
@@ -366,8 +421,13 @@ export class CallControlWebhookService {
         const state = JSON.parse(Buffer.from(client_state, "base64").toString());
         if (state.pendingGather) {
           console.log(`[CallControl] Starting DTMF gather after speak for company: ${state.companyId}`);
+          // Include ivrId in gather state for multi-IVR support
           const gatherClientState = Buffer.from(
-            JSON.stringify({ companyId: state.companyId, pbxSettingsId: state.pbxSettingsId })
+            JSON.stringify({ 
+              companyId: state.companyId, 
+              pbxSettingsId: state.pbxSettingsId,
+              ivrId: state.ivrId 
+            })
           ).toString("base64");
           await this.gatherDtmf(call_control_id, gatherClientState, state.ivrTimeout || 10);
         }
@@ -412,6 +472,18 @@ export class CallControlWebhookService {
         break;
       case "hangup":
         await this.hangupCall(callControlId, "NORMAL_CLEARING");
+        break;
+      case "ivr":
+        // Route to another IVR (multi-IVR support)
+        if (option.targetIvrId) {
+          const targetIvr = await pbxService.getIvr(companyId, option.targetIvrId);
+          if (targetIvr && targetIvr.isActive) {
+            console.log(`[CallControl] Routing to IVR: ${targetIvr.name} (${targetIvr.id})`);
+            await this.playIvrGreetingForIvr(callControlId, companyId, targetIvr);
+          } else {
+            await this.speakText(callControlId, "The requested menu is unavailable.");
+          }
+        }
         break;
       default:
         console.log(`[CallControl] Unknown action type: ${option.actionType}`);
@@ -681,6 +753,68 @@ export class CallControlWebhookService {
     } else {
       await this.gatherWithSpeak(callControlId, "Welcome. Please enter your selection.", clientState, timeoutMs);
     }
+  }
+
+  /**
+   * Play IVR greeting for a specific IVR (multi-IVR support)
+   * Uses the IVR object instead of legacy pbxSettings
+   */
+  private async playIvrGreetingForIvr(
+    callControlId: string,
+    companyId: string,
+    ivr: PbxIvr
+  ): Promise<void> {
+    const clientState = Buffer.from(
+      JSON.stringify({ 
+        companyId, 
+        ivrId: ivr.id
+      })
+    ).toString("base64");
+
+    const timeoutMs = (ivr.ivrTimeout || 10) * 1000;
+
+    console.log(`[CallControl] Playing IVR greeting for: ${ivr.name} (${ivr.id}), language: ${ivr.language || 'en-US'}`);
+
+    if (ivr.useTextToSpeech && ivr.greetingText) {
+      // For TTS, use gather with speak - allows DTMF during speech
+      await this.gatherWithSpeakLanguage(callControlId, ivr.greetingText, clientState, timeoutMs, ivr.language || "en-US");
+    } else if (ivr.greetingMediaName) {
+      // Use gather with media_name for instant playback + DTMF during audio
+      console.log(`[CallControl] Using gather with Telnyx Media Storage: ${ivr.greetingMediaName}`);
+      await this.gatherWithMedia(callControlId, ivr.greetingMediaName, clientState, timeoutMs);
+    } else if (ivr.greetingAudioUrl) {
+      // Use gather with audio_url - allows DTMF during audio
+      await this.gatherWithAudio(callControlId, ivr.greetingAudioUrl, clientState, timeoutMs);
+    } else {
+      // Default greeting based on language
+      const defaultGreeting = ivr.language === "es-ES" || ivr.language === "es-MX" 
+        ? "Bienvenido. Por favor ingrese su selección."
+        : "Welcome. Please enter your selection.";
+      await this.gatherWithSpeakLanguage(callControlId, defaultGreeting, clientState, timeoutMs, ivr.language || "en-US");
+    }
+  }
+
+  /**
+   * Gather DTMF with TTS in a specific language
+   */
+  private async gatherWithSpeakLanguage(
+    callControlId: string,
+    text: string,
+    clientState: string,
+    timeoutMs: number,
+    language: string
+  ): Promise<void> {
+    await this.makeCallControlRequest(callControlId, "gather_using_speak", {
+      payload: text,
+      voice: "female",
+      language: language,
+      minimum_digits: 1,
+      maximum_digits: 1,
+      timeout_millis: timeoutMs,
+      inter_digit_timeout_millis: 5000,
+      valid_digits: "0123456789*#",
+      client_state: clientState,
+    });
   }
 
   private async answerCall(callControlId: string): Promise<void> {
