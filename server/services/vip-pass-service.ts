@@ -1,7 +1,7 @@
 import { PKPass } from "passkit-generator";
 import { db } from "../db";
-import { vipPassDesigns, vipPassInstances, companies, contacts, pushSubscriptions } from "@shared/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { vipPassDesigns, vipPassInstances, companies, contacts, pushSubscriptions, vipPassNotifications } from "@shared/schema";
+import { eq, and, sql, desc } from "drizzle-orm";
 import crypto from "crypto";
 import path from "path";
 import fs from "fs";
@@ -203,24 +203,36 @@ export class VipPassService {
       .select()
       .from(vipPassInstances)
       .where(eq(vipPassInstances.companyId, companyId))
-      .orderBy(vipPassInstances.createdAt);
+      .orderBy(desc(vipPassInstances.createdAt));
     
-    // Get push subscription counts for each instance
-    const instancesWithPushCount = await Promise.all(
+    // Get push subscription info and notification counts for each instance
+    const instancesWithDetails = await Promise.all(
       instances.map(async (instance) => {
+        // Get push subscription count and earliest subscription date
         const subs = await db
-          .select({ count: sql<number>`count(*)::int` })
+          .select({ 
+            count: sql<number>`count(*)::int`,
+            earliestDate: sql<string>`min(created_at)::text`
+          })
           .from(pushSubscriptions)
           .where(eq(pushSubscriptions.passInstanceId, instance.id));
+        
+        // Get notification count for this pass
+        const notifications = await db
+          .select({ count: sql<number>`count(*)::int` })
+          .from(vipPassNotifications)
+          .where(eq(vipPassNotifications.passInstanceId, instance.id));
         
         return {
           ...instance,
           pushSubscriptionCount: subs[0]?.count || 0,
+          pushEnabledAt: subs[0]?.earliestDate || null,
+          notificationCount: notifications[0]?.count || 0,
         };
       })
     );
     
-    return instancesWithPushCount;
+    return instancesWithDetails;
   }
 
   async incrementDownloadCount(passInstanceId: string) {

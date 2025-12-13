@@ -31794,6 +31794,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // DELETE /api/vip-pass/instances/:id/permanent - Permanently delete a pass instance
+  app.delete("/api/vip-pass/instances/:id/permanent", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+      
+      const { id } = req.params;
+      
+      // Permanently delete pass with companyId verification
+      await vipPassService.deletePassInstance(id, user.companyId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[VIP Pass] Error deleting instance:", error);
+      if (error.message === "Pass instance not found") {
+        return res.status(404).json({ error: "Pass instance not found" });
+      }
+      return res.status(500).json({ error: "Failed to delete VIP Pass instance" });
+    }
+  });
+
   // ========================================
   // VIP PASS PUSH NOTIFICATIONS ENDPOINTS
   // ========================================

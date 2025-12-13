@@ -71,6 +71,8 @@ interface VipPassInstance {
   createdAt: string;
   authenticationToken: string;
   pushSubscriptionCount: number;
+  pushEnabledAt: string | null;
+  notificationCount: number;
 }
 
 interface NotificationHistory {
@@ -438,6 +440,16 @@ export default function VipPassPage() {
     onError: (error: Error) => { toast({ title: "Error", description: error.message, variant: "destructive" }); },
   });
 
+  const deletePassMutation = useMutation({
+    mutationFn: async (passId: string) => await apiRequest("DELETE", `/api/vip-pass/instances/${passId}/permanent`),
+    onSuccess: () => {
+      toast({ title: "Pass Deleted" });
+      queryClient.invalidateQueries({ queryKey: ["/api/vip-pass/instances"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/vip-pass/stats"] });
+    },
+    onError: (error: Error) => { toast({ title: "Error", description: error.message, variant: "destructive" }); },
+  });
+
   const sendPushMutation = useMutation({
     mutationFn: async ({ passInstanceId, message }: { passInstanceId?: string; message: string }) => {
       return await apiRequest("POST", "/api/vip-pass/notifications/send", { passInstanceId, message });
@@ -712,7 +724,8 @@ export default function VipPassPage() {
                               <TableHead>Recipient</TableHead>
                               <TableHead>Email</TableHead>
                               <TableHead>Status</TableHead>
-                              <TableHead>Push</TableHead>
+                              <TableHead>Push Enabled</TableHead>
+                              <TableHead>Notifications</TableHead>
                               <TableHead>Created</TableHead>
                               <TableHead>Public Link</TableHead>
                               <TableHead className="text-right">Actions</TableHead>
@@ -731,10 +744,22 @@ export default function VipPassPage() {
                                 </TableCell>
                                 <TableCell>
                                   {instance.pushSubscriptionCount > 0 ? (
-                                    <span className="text-green-600 font-medium">Yes</span>
+                                    <div className="text-green-600">
+                                      <span className="font-medium">Yes</span>
+                                      {instance.pushEnabledAt && (
+                                        <div className="text-xs text-muted-foreground">
+                                          {format(new Date(instance.pushEnabledAt), "MMM d, yyyy")}
+                                        </div>
+                                      )}
+                                    </div>
                                   ) : (
                                     <span className="text-muted-foreground">No</span>
                                   )}
+                                </TableCell>
+                                <TableCell>
+                                  <span className={instance.notificationCount > 0 ? "font-medium" : "text-muted-foreground"}>
+                                    {instance.notificationCount}
+                                  </span>
                                 </TableCell>
                                 <TableCell>{format(new Date(instance.createdAt), "MMM d, yyyy")}</TableCell>
                                 <TableCell>
@@ -775,15 +800,40 @@ export default function VipPassPage() {
                                 </TableCell>
                                 <TableCell className="text-right">
                                   <div className="flex justify-end gap-1">
-                                    <Button variant="outline" size="sm" onClick={() => window.open(`/api/vip-pass/instances/${instance.id}/download`, "_blank")}>
-                                      <Download className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="outline" size="sm" onClick={() => { setSelectedPassId(instance.id); setPushTarget("single"); setPushDialogOpen(true); }} disabled={instance.status !== "active"}>
-                                      <Bell className="h-4 w-4" />
-                                    </Button>
-                                    <Button variant="outline" size="sm" onClick={() => revokePassMutation.mutate(instance.id)} disabled={instance.status !== "active"} className="text-red-600">
-                                      <Trash2 className="h-4 w-4" />
-                                    </Button>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button variant="outline" size="sm" onClick={() => window.open(`/api/vip-pass/instances/${instance.id}/download`, "_blank")}>
+                                          <Download className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Download .pkpass</TooltipContent>
+                                    </Tooltip>
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button variant="outline" size="sm" onClick={() => { setSelectedPassId(instance.id); setPushTarget("single"); setPushDialogOpen(true); }} disabled={instance.status !== "active"}>
+                                          <Bell className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Send notification</TooltipContent>
+                                    </Tooltip>
+                                    {instance.status === "active" && (
+                                      <Tooltip>
+                                        <TooltipTrigger asChild>
+                                          <Button variant="outline" size="sm" onClick={() => revokePassMutation.mutate(instance.id)} className="text-orange-600">
+                                            <RefreshCw className="h-4 w-4" />
+                                          </Button>
+                                        </TooltipTrigger>
+                                        <TooltipContent>Revoke pass</TooltipContent>
+                                      </Tooltip>
+                                    )}
+                                    <Tooltip>
+                                      <TooltipTrigger asChild>
+                                        <Button variant="outline" size="sm" onClick={() => deletePassMutation.mutate(instance.id)} className="text-red-600">
+                                          <Trash2 className="h-4 w-4" />
+                                        </Button>
+                                      </TooltipTrigger>
+                                      <TooltipContent>Delete permanently</TooltipContent>
+                                    </Tooltip>
                                   </div>
                                 </TableCell>
                               </TableRow>

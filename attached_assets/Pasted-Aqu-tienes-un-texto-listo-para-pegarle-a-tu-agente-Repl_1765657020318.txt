@@ -1,0 +1,159 @@
+Aquí tienes un texto listo para pegarle a tu agente (Replit) con **todo lo que puede llevar una notificación Web Push en Android** y cómo diseñarlo en tu sistema multi-tenant. Esto es lo que quieres: que el agente construya **un “Notification Designer”** con campos correctos, defaults, validación, y soporte para acciones/imagen/agrupación.
+
+---
+
+**INSTRUCCIONES PARA IMPLEMENTAR “PUSH NOTIFICATIONS DESIGNER” (ANDROID WEB PUSH / PWA)**
+
+**Contexto**
+
+* Solo Android (Chrome/Edge) usando Web Push (VAPID) + Service Worker.
+* Multi-tenant: cada notificación debe salir con branding del tenant.
+* El origen visible será el dominio del tenant, pero el contenido grande (title/icon) debe ser el tenant.
+
+---
+
+## 1) Payload de notificación: campos soportados (lo que podemos mandar)
+
+Implementar el payload JSON que enviamos al `web-push` y que el `sw.js` usará en `showNotification()`.
+
+### Campos principales
+
+* `title` (string, requerido): título visible. Default: `tenant.display_name`
+* `body` (string, requerido): mensaje corto (ideal 40–120 caracteres)
+* `url` (string, requerido): URL a abrir al hacer click (ej: `https://{tenantDomain}/p/{token}` o una ruta interna del CRM)
+
+### Branding
+
+* `icon` (string URL): icono cuadrado (ideal 192x192 PNG). Default: tenant logo.
+* `badge` (string URL): badge pequeño (ideal 72x72 PNG). Default: tenant badge o logo.
+
+### Rich content
+
+* `image` (string URL): imagen grande (ideal 1200x600). Útil para “tarjeta lista”, “documento listo”, etc.
+  * Nota: depende del soporte del navegador; Chrome Android lo soporta.
+
+### Agrupación y control
+
+* `tag` (string): agrupa notificaciones similares para que se reemplacen en vez de apilarse.
+  * Ejemplos: `billing`, `renewal`, `documents`, `appointment`
+* `renotify` (boolean): si llega una notificación con el mismo `tag`, fuerza alertar de nuevo.
+* `requireInteraction` (boolean): si true, la notificación queda hasta que el usuario la cierre (usar SOLO para “acción requerida”).
+* `silent` (boolean): si true, sin sonido/vibración (usar con cuidado; no siempre respeta).
+
+### Acciones (botones)
+
+* `actions` (array): hasta 2–3 acciones suele ser ideal.
+  * Cada acción:
+    * `action` (string id) ej: `"view_card"`, `"call_agent"`, `"upload_docs"`
+    * `title` (string) texto del botón
+    * `icon` (string URL opcional) icono del botón
+* En `sw.js`, manejar `notificationclick` y si `event.action` existe, redirigir a URL distinta (mapa de acciones).
+
+### Metadatos internos
+
+* `data` (object): datos internos para click tracking, deep links, ids
+  * Requerido:
+    * `tenantId`, `clientId`, `notificationId`
+    * `primaryUrl` (igual que `url`)
+    * `actionUrls` (map opcional: action -> url)
+* `timestamp` (number opcional): epoch ms para ordenar.
+
+---
+
+## 2) Service Worker: soporte completo de campos
+
+Actualizar `public/sw.js` para soportar:
+
+* icon/badge/image/tag/renotify/requireInteraction/silent/actions/data.url
+* click:
+  * si `event.action` existe: abrir `data.actionUrls[event.action]`
+  * else: abrir `data.primaryUrl` o `data.url`
+
+Además: (recomendado)
+
+* Si no hay `actions`, solo abrir URL principal.
+* Si falta `icon`, usar `/icons/icon-192.png` fallback.
+
+---
+
+## 3) Diseñador en el CRM (UI + validación)
+
+Crear en el panel admin/agent una pantalla “Send Push” (por cliente) y/o “Templates”.
+
+### Campos en UI
+
+* Selección de “Tipo” (enum):
+  * `TRANSACTIONAL`, `REMINDER`, `ACTION_REQUIRED`, `INFO`
+    (Esto controla defaults: tag, requireInteraction, etc.)
+* Title (default tenant name)
+* Body (textarea con contador)
+* Destination:
+  * radio: `Card link (token)` / `CRM page` / `Custom URL`
+* Icon (default tenant logo)
+* Badge (default)
+* Image (opcional)
+* Tag (dropdown: billing/renewal/documents/appointment/custom)
+* Toggles: renotify / requireInteraction / silent
+* Actions: editor para 0–2 botones:
+  * botón label + destino (URL o acción predefinida)
+
+### Validaciones
+
+* Limitar body a ~160 caracteres recomendado.
+* Si `requireInteraction=true` solo permitir para ACTION_REQUIRED.
+* `silent=true` solo permitido para INFO.
+* Verificar que URLs sean https y pertenezcan al tenant domain (evitar phishing interno).
+* No permitir contenido PHI sensible en body (regla simple: advertencia).
+
+---
+
+## 4) Plantillas listas (para agentes)
+
+Crear templates server-side por tipo:
+
+* `CARD_READY`
+* `DOCUMENT_AVAILABLE`
+* `APPOINTMENT_REMINDER`
+* `PAYMENT_FAILED`
+* `RENEWAL_7_DAYS`
+* `ACTION_NEEDED`
+
+Cada template define defaults:
+
+* title = tenant name
+* tag según tipo
+* actions: “Ver” + “Llamar” (si aplica)
+* requireInteraction solo en ACTION_NEEDED
+
+---
+
+## 5) API para enviar (server)
+
+Endpoint interno: `POST /api/push/send`
+
+* Debe aceptar payload normalizado:
+  * `tenantId`, `clientId`, `templateId?`, `overrides?`
+* En server:
+  * resolver branding del tenant
+  * construir payload final
+  * enviar a todas las subscriptions del cliente (limpieza 404/410)
+  * guardar log en DB: `push_notifications_log` (recomendado)
+
+---
+
+## 6) Tracking (mínimo)
+
+* En `sw.js`, al click, antes de abrir url, hacer `fetch('/api/push/track-click', {notificationId,...})` si posible (o track vía querystring en url).
+* En la página destino, trackear `opened_from_push`.
+
+**Entregable final**
+
+* UI “Send Push” funcionando
+* Templates funcionando
+* Payload soporta: title/body/url/icon/badge/image/actions/tag/renotify/requireInteraction/silent/data
+* SW actualizado para actions + click routing
+* Logs + limpieza de subscriptions muertas
+
+---
+
+Si quieres que el agente lo haga “a prueba de idiotas”, dile además esto: **no puede mandar pushes genéricos**; cada push debe estar vinculado a un **evento del CRM** (documento, cita, pago, renovación) y guardado en un **log** con `tenant_id/client_id/event_type/status`. Eso te salva de spam y te da auditoría.
