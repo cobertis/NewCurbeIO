@@ -730,17 +730,19 @@ export class CallControlWebhookService {
         callerLegs.delete(call_control_id);
         console.log(`[CallControl] Remaining ring-all legs for caller: ${callerLegs.size}`);
         
-        // If no more legs are ringing, route caller to voicemail
+        // If no more legs are ringing, retry dialing the queue instead of voicemail
         if (callerLegs.size === 0) {
-          console.log(`[CallControl] All agent legs ended without answering, routing to voicemail`);
+          console.log(`[CallControl] All agent legs ended without answering, retrying queue dial`);
           ringAllLegs.delete(pendingBridge.callerCallControlId);
           
-          // Route caller to voicemail
-          try {
-            await this.speakText(pendingBridge.callerCallControlId, "All agents are currently unavailable. Please leave a message after the tone.");
-            await this.routeToVoicemail(pendingBridge.callerCallControlId, pendingBridge.companyId);
-          } catch (e) {
-            console.log(`[CallControl] Could not route to voicemail, caller may have hung up`);
+          // Retry queue dial if we have the queueId, otherwise the caller stays on hold
+          if (pendingBridge.queueId) {
+            // Small delay before retrying to avoid hammering agents
+            setTimeout(() => {
+              this.retryQueueDial(pendingBridge.callerCallControlId, pendingBridge.companyId, pendingBridge.queueId!);
+            }, 3000); // 3 second delay before retry
+          } else {
+            console.log(`[CallControl] No queueId in pendingBridge, caller stays on hold`);
           }
         }
       }
@@ -1118,6 +1120,7 @@ export class CallControlWebhookService {
             callerCallControlId: callControlId,
             clientState,
             companyId,
+            queueId,
           });
           
           successfulDials++;
@@ -1511,6 +1514,7 @@ export class CallControlWebhookService {
               callerCallControlId: callControlId,
               clientState,
               companyId,
+              queueId,
             });
             successfulDials++;
           }
