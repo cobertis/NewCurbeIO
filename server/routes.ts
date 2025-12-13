@@ -32380,6 +32380,78 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // GET /api/pbx/queues/:queueId/hold-music - Get queue hold music files
+  app.get("/api/pbx/queues/:queueId/hold-music", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const holdMusic = await pbxService.getQueueHoldMusic(user.companyId, req.params.queueId);
+      return res.json(holdMusic);
+    } catch (error: any) {
+      console.error("[PBX] Error fetching queue hold music:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/queues/:queueId/hold-music - Add hold music to queue
+  app.post("/api/pbx/queues/:queueId/hold-music", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { audioFileId, displayOrder } = req.body;
+      if (!audioFileId) {
+        return res.status(400).json({ error: "audioFileId is required" });
+      }
+      const holdMusic = await pbxService.addQueueHoldMusic(user.companyId, req.params.queueId, audioFileId, displayOrder || 0);
+      return res.json(holdMusic);
+    } catch (error: any) {
+      console.error("[PBX] Error adding queue hold music:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PUT /api/pbx/queues/:queueId/hold-music/sync - Sync hold music files for queue
+  app.put("/api/pbx/queues/:queueId/hold-music/sync", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { audioFileIds } = req.body;
+      if (!Array.isArray(audioFileIds)) {
+        return res.status(400).json({ error: "audioFileIds must be an array" });
+      }
+      await pbxService.syncQueueHoldMusic(user.companyId, req.params.queueId, audioFileIds);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error syncing queue hold music:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/pbx/queues/:queueId/hold-music/:holdMusicId - Update hold music
+  app.patch("/api/pbx/queues/:queueId/hold-music/:holdMusicId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { displayOrder, isActive } = req.body;
+      const holdMusic = await pbxService.updateQueueHoldMusic(user.companyId, req.params.holdMusicId, { displayOrder, isActive });
+      if (!holdMusic) {
+        return res.status(404).json({ error: "Hold music not found" });
+      }
+      return res.json(holdMusic);
+    } catch (error: any) {
+      console.error("[PBX] Error updating queue hold music:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/queues/:queueId/hold-music/:holdMusicId - Delete hold music from queue
+  app.delete("/api/pbx/queues/:queueId/hold-music/:holdMusicId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.removeQueueHoldMusic(user.companyId, req.params.holdMusicId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting queue hold music:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
   // GET /api/pbx/extensions/next - Get next available extension number
   app.get("/api/pbx/extensions/next", requireActiveCompany, async (req: Request, res: Response) => {
     try {

@@ -6,6 +6,7 @@ import {
   pbxQueues,
   pbxQueueMembers,
   pbxQueueAds,
+  pbxQueueHoldMusic,
   pbxExtensions,
   pbxAgentStatus,
   pbxActiveCalls,
@@ -807,6 +808,82 @@ export class PbxService {
       .delete(pbxQueueAds)
       .where(and(eq(pbxQueueAds.companyId, companyId), eq(pbxQueueAds.id, adId)));
     return true;
+  }
+
+  // Queue Hold Music Methods
+  async getQueueHoldMusic(companyId: string, queueId: string): Promise<any[]> {
+    const holdMusic = await db
+      .select({
+        id: pbxQueueHoldMusic.id,
+        companyId: pbxQueueHoldMusic.companyId,
+        queueId: pbxQueueHoldMusic.queueId,
+        audioFileId: pbxQueueHoldMusic.audioFileId,
+        displayOrder: pbxQueueHoldMusic.displayOrder,
+        isActive: pbxQueueHoldMusic.isActive,
+        createdAt: pbxQueueHoldMusic.createdAt,
+        audioFile: {
+          id: pbxAudioFiles.id,
+          name: pbxAudioFiles.name,
+          fileUrl: pbxAudioFiles.fileUrl,
+          duration: pbxAudioFiles.duration,
+        },
+      })
+      .from(pbxQueueHoldMusic)
+      .innerJoin(pbxAudioFiles, eq(pbxQueueHoldMusic.audioFileId, pbxAudioFiles.id))
+      .where(and(eq(pbxQueueHoldMusic.companyId, companyId), eq(pbxQueueHoldMusic.queueId, queueId)))
+      .orderBy(asc(pbxQueueHoldMusic.displayOrder));
+    return holdMusic;
+  }
+
+  async addQueueHoldMusic(
+    companyId: string,
+    queueId: string,
+    audioFileId: string,
+    displayOrder: number = 0
+  ): Promise<any> {
+    const [holdMusic] = await db
+      .insert(pbxQueueHoldMusic)
+      .values({ companyId, queueId, audioFileId, displayOrder } as any)
+      .returning();
+    return holdMusic;
+  }
+
+  async updateQueueHoldMusic(
+    companyId: string,
+    holdMusicId: string,
+    data: { displayOrder?: number; isActive?: boolean }
+  ): Promise<any | null> {
+    const [updated] = await db
+      .update(pbxQueueHoldMusic)
+      .set(data)
+      .where(and(eq(pbxQueueHoldMusic.companyId, companyId), eq(pbxQueueHoldMusic.id, holdMusicId)))
+      .returning();
+    return updated || null;
+  }
+
+  async removeQueueHoldMusic(companyId: string, holdMusicId: string): Promise<boolean> {
+    await db
+      .delete(pbxQueueHoldMusic)
+      .where(and(eq(pbxQueueHoldMusic.companyId, companyId), eq(pbxQueueHoldMusic.id, holdMusicId)));
+    return true;
+  }
+
+  async syncQueueHoldMusic(companyId: string, queueId: string, audioFileIds: string[]): Promise<void> {
+    // Delete all existing hold music for the queue
+    await db
+      .delete(pbxQueueHoldMusic)
+      .where(and(eq(pbxQueueHoldMusic.companyId, companyId), eq(pbxQueueHoldMusic.queueId, queueId)));
+    
+    // Insert new hold music entries with display order
+    if (audioFileIds.length > 0) {
+      const values = audioFileIds.map((audioFileId, index) => ({
+        companyId,
+        queueId,
+        audioFileId,
+        displayOrder: index,
+      }));
+      await db.insert(pbxQueueHoldMusic).values(values as any);
+    }
   }
 }
 

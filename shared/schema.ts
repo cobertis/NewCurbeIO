@@ -5680,6 +5680,7 @@ export const pbxQueues = pgTable("pbx_queues", {
   
   // Audio
   holdMusicUrl: text("hold_music_url"),
+  holdMusicPlaybackMode: text("hold_music_playback_mode").notNull().default("sequential").$type<"sequential" | "random">(),
   queueAnnouncementUrl: text("queue_announcement_url"),
   announcementFrequency: integer("announcement_frequency").default(60),
   
@@ -5733,6 +5734,24 @@ export const pbxQueueAds = pgTable("pbx_queue_ads", {
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
 });
+
+// PBX Queue Hold Music - Multiple hold music files for queues (many-to-many)
+export const pbxQueueHoldMusic = pgTable("pbx_queue_hold_music", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  queueId: text("queue_id").notNull().references(() => pbxQueues.id, { onDelete: "cascade" }),
+  audioFileId: text("audio_file_id").notNull().references(() => pbxAudioFiles.id, { onDelete: "cascade" }),
+  
+  // Display order for sequential playback (or ignored if playbackMode is random)
+  displayOrder: integer("display_order").notNull().default(0),
+  
+  // Status
+  isActive: boolean("is_active").notNull().default(true),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  queueAudioUnique: uniqueIndex("pbx_queue_hold_music_queue_audio_unique").on(table.queueId, table.audioFileId),
+}));
 
 // PBX Extensions - Direct dial extensions for users
 export const pbxExtensions = pgTable("pbx_extensions", {
