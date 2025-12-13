@@ -5622,6 +5622,9 @@ export const pbxQueues = pgTable("pbx_queues", {
   name: text("name").notNull(),
   description: text("description"),
   
+  // Queue extension number (e.g., 2001, 2002) - reachable from any extension
+  extension: text("extension"),
+  
   // Ring Strategy
   ringStrategy: text("ring_strategy").notNull().default("ring_all").$type<PbxRingStrategy>(),
   

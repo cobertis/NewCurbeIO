@@ -62,6 +62,7 @@ interface PbxQueue {
   id: string;
   name: string;
   description: string | null;
+  extension: string | null;
   ringStrategy: string;
   ringTimeout: number;
   maxWaitTime: number;
@@ -687,7 +688,7 @@ export function PbxSettings() {
                 <Users className="w-5 h-5" />
                 Call Queues
               </CardTitle>
-              <Button onClick={() => setShowQueueDialog(true)} data-testid="button-add-queue">
+              <Button onClick={() => { setEditingQueue(null); setShowQueueDialog(true); }} data-testid="button-add-queue">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Queue
               </Button>
@@ -706,9 +707,9 @@ export function PbxSettings() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Name</TableHead>
-                      <TableHead>Extensions</TableHead>
+                      <TableHead>Ext</TableHead>
+                      <TableHead>Members</TableHead>
                       <TableHead>Ring Strategy</TableHead>
-                      <TableHead>Timeout</TableHead>
                       <TableHead>Status</TableHead>
                       <TableHead className="text-right">Actions</TableHead>
                     </TableRow>
@@ -871,6 +872,7 @@ function QueueTableRow({
   return (
     <TableRow>
       <TableCell className="font-medium">{queue.name}</TableCell>
+      <TableCell className="font-mono">{queue.extension || "-"}</TableCell>
       <TableCell>
         {memberExtensions.length === 0 ? (
           <span className="text-muted-foreground text-sm">None</span>
@@ -885,7 +887,6 @@ function QueueTableRow({
         )}
       </TableCell>
       <TableCell className="capitalize">{queue.ringStrategy.replace("_", " ")}</TableCell>
-      <TableCell>{queue.ringTimeout}s</TableCell>
       <TableCell>
         <Badge variant={queue.status === "active" ? "default" : "secondary"}>
           {queue.status}
@@ -920,6 +921,7 @@ function QueueDialog({
 }) {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [extension, setExtension] = useState("");
   const [ringStrategy, setRingStrategy] = useState("ring_all");
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
 
@@ -933,10 +935,12 @@ function QueueDialog({
       if (queue) {
         setName(queue.name);
         setDescription(queue.description || "");
+        setExtension(queue.extension || "");
         setRingStrategy(queue.ringStrategy);
       } else {
         setName("");
         setDescription("");
+        setExtension("");
         setRingStrategy("ring_all");
         setSelectedMemberIds([]);
       }
@@ -953,6 +957,7 @@ function QueueDialog({
     if (!isOpen) {
       setName("");
       setDescription("");
+      setExtension("");
       setRingStrategy("ring_all");
       setSelectedMemberIds([]);
     }
@@ -974,14 +979,25 @@ function QueueDialog({
           <DialogTitle>{queue ? "Edit Queue" : "Create Queue"}</DialogTitle>
         </DialogHeader>
         <div className="space-y-4">
-          <div className="space-y-2">
-            <Label>Queue Name</Label>
-            <Input
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Sales, Support, etc."
-              data-testid="input-queue-name"
-            />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Queue Name</Label>
+              <Input
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Sales, Support, etc."
+                data-testid="input-queue-name"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Extension</Label>
+              <Input
+                value={extension}
+                onChange={(e) => setExtension(e.target.value)}
+                placeholder="2001"
+                data-testid="input-queue-extension"
+              />
+            </div>
           </div>
           <div className="space-y-2">
             <Label>Description</Label>
@@ -1047,7 +1063,7 @@ function QueueDialog({
             Cancel
           </Button>
           <Button
-            onClick={() => onSubmit({ id: queue?.id, name, description, ringStrategy, memberIds: selectedMemberIds.filter(id => id) })}
+            onClick={() => onSubmit({ id: queue?.id, name, description, extension, ringStrategy, memberIds: selectedMemberIds.filter(id => id) })}
             disabled={isPending || !name}
             data-testid="button-save-queue"
           >
