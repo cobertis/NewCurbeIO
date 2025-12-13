@@ -32364,6 +32364,212 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // =====================================================
+  // IVR (Interactive Voice Response) Management Routes
+  // =====================================================
+
+  // GET /api/pbx/ivrs - Get all IVRs for the company
+  app.get("/api/pbx/ivrs", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const ivrs = await pbxService.getIvrs(user.companyId);
+      return res.json(ivrs);
+    } catch (error: any) {
+      console.error("[PBX] Error getting IVRs:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/ivrs/next-extension - Get next available IVR extension number
+  app.get("/api/pbx/ivrs/next-extension", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const extension = await pbxService.getNextIvrExtension(user.companyId);
+      return res.json({ extension });
+    } catch (error: any) {
+      console.error("[PBX] Error getting next IVR extension:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/ivrs/:ivrId - Get single IVR
+  app.get("/api/pbx/ivrs/:ivrId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const ivr = await pbxService.getIvr(user.companyId, req.params.ivrId);
+      if (!ivr) {
+        return res.status(404).json({ error: "IVR not found" });
+      }
+      return res.json(ivr);
+    } catch (error: any) {
+      console.error("[PBX] Error getting IVR:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/ivrs - Create new IVR
+  app.post("/api/pbx/ivrs", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const ivr = await pbxService.createIvr(user.companyId, req.body);
+      return res.json(ivr);
+    } catch (error: any) {
+      console.error("[PBX] Error creating IVR:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/pbx/ivrs/:ivrId - Update IVR
+  app.patch("/api/pbx/ivrs/:ivrId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const ivr = await pbxService.updateIvr(user.companyId, req.params.ivrId, req.body);
+      if (!ivr) {
+        return res.status(404).json({ error: "IVR not found" });
+      }
+      return res.json(ivr);
+    } catch (error: any) {
+      console.error("[PBX] Error updating IVR:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/ivrs/:ivrId - Delete IVR
+  app.delete("/api/pbx/ivrs/:ivrId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.deleteIvr(user.companyId, req.params.ivrId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting IVR:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/ivrs/:ivrId/menu-options - Get menu options for specific IVR
+  app.get("/api/pbx/ivrs/:ivrId/menu-options", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const options = await pbxService.getIvrMenuOptions(user.companyId, req.params.ivrId);
+      return res.json(options);
+    } catch (error: any) {
+      console.error("[PBX] Error getting IVR menu options:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/ivrs/:ivrId/menu-options - Create menu option for IVR
+  app.post("/api/pbx/ivrs/:ivrId/menu-options", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const option = await pbxService.createIvrMenuOption(user.companyId, req.params.ivrId, req.body);
+      return res.json(option);
+    } catch (error: any) {
+      console.error("[PBX] Error creating IVR menu option:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/pbx/ivrs/:ivrId/menu-options/:optionId - Update IVR menu option
+  app.patch("/api/pbx/ivrs/:ivrId/menu-options/:optionId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const option = await pbxService.updateIvrMenuOption(user.companyId, req.params.optionId, req.body);
+      if (!option) {
+        return res.status(404).json({ error: "Menu option not found" });
+      }
+      return res.json(option);
+    } catch (error: any) {
+      console.error("[PBX] Error updating IVR menu option:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/ivrs/:ivrId/menu-options/:optionId - Delete IVR menu option
+  app.delete("/api/pbx/ivrs/:ivrId/menu-options/:optionId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.deleteIvrMenuOption(user.companyId, req.params.optionId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting IVR menu option:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/ivrs/:ivrId/upload-greeting - Upload greeting audio for IVR
+  app.post("/api/pbx/ivrs/:ivrId/upload-greeting", requireActiveCompany, (req: Request, res: Response, next: NextFunction) => {
+    uploadMiddleware.single("audio")(req, res, (err: any) => {
+      if (err) {
+        console.error("[PBX] Multer error:", err);
+        return res.status(400).json({ error: err.message });
+      }
+      next();
+    });
+  }, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const file = req.file;
+      
+      if (!file) {
+        return res.status(400).json({ error: "No audio file provided" });
+      }
+
+      const ivr = await pbxService.getIvr(user.companyId, req.params.ivrId);
+      if (!ivr) {
+        return res.status(404).json({ error: "IVR not found" });
+      }
+
+      const fileName = \`ivr-greeting-\${ivr.id}-\${Date.now()}.\${file.originalname.split('.').pop()}\`;
+      const audioUrl = await storageService.uploadFile(file.buffer, fileName, file.mimetype);
+      
+      const mediaName = \`ivr-greeting-\${ivr.id}\`;
+      const { uploadAudioToTelnyxMedia } = await import("./services/call-control-webhook-service");
+      await uploadAudioToTelnyxMedia(audioUrl, mediaName, user.companyId);
+      
+      const updatedIvr = await pbxService.updateIvr(user.companyId, req.params.ivrId, {
+        greetingAudioUrl: audioUrl,
+        greetingMediaName: mediaName,
+        useTextToSpeech: false,
+      });
+      
+      return res.json({ success: true, audioUrl, ivr: updatedIvr });
+    } catch (error: any) {
+      console.error("[PBX] Error uploading IVR greeting:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/ivrs/:ivrId/greeting - Delete IVR greeting audio
+  app.delete("/api/pbx/ivrs/:ivrId/greeting", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      const ivr = await pbxService.getIvr(user.companyId, req.params.ivrId);
+      if (!ivr) {
+        return res.status(404).json({ error: "IVR not found" });
+      }
+
+      if (ivr.greetingAudioUrl) {
+        try {
+          await storageService.deleteFile(ivr.greetingAudioUrl);
+        } catch (deleteError) {
+          console.error("[PBX] Error deleting IVR greeting file:", deleteError);
+        }
+      }
+
+      const updatedIvr = await pbxService.updateIvr(user.companyId, req.params.ivrId, {
+        greetingAudioUrl: null,
+        greetingMediaName: null,
+      });
+
+      return res.json({ success: true, ivr: updatedIvr });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting IVR greeting:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
   // GET /api/pbx/menu-options - Get menu options for the companys PBX settings
   app.get("/api/pbx/menu-options", requireActiveCompany, async (req: Request, res: Response) => {
     try {
