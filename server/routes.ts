@@ -29867,6 +29867,35 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/telnyx/provisioning/repair-hd-codecs - Configure HD codecs (G.722) on credential connection
+  app.post("/api/telnyx/provisioning/repair-hd-codecs", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const result = await telephonyProvisioningService.repairHDCodecs(user.companyId, user.id);
+
+      if (result.success) {
+        res.json({ 
+          success: true,
+          message: "HD codecs configured successfully. Voice quality will now use G.722 HD audio."
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: result.error || "Failed to configure HD codecs"
+        });
+      }
+    } catch (error: any) {
+      console.error("[Provisioning] HD codecs repair error:", error);
+      res.status(500).json({ message: "Failed to configure HD codecs" });
+    }
+  });
+
   // POST /api/telephony/migrate-to-call-control - Migrate from Credential Connection to Call Control Application
   app.post("/api/telephony/migrate-to-call-control", requireActiveCompany, async (req: Request, res: Response) => {
     try {
