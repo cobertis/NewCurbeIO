@@ -44,15 +44,6 @@ function buildHeaders(config: ManagedAccountConfig): Record<string, string> {
   };
 }
 
-function generateSipPassword(): string {
-  const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
-  let password = '';
-  for (let i = 0; i < 20; i++) {
-    password += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return password;
-}
-
 async function deleteCredentialFromTelnyx(config: ManagedAccountConfig, credentialId: string): Promise<boolean> {
   try {
     console.log(`[DELETE] Deleting credential ${credentialId} from Telnyx...`);
@@ -78,21 +69,20 @@ async function deleteCredentialFromTelnyx(config: ManagedAccountConfig, credenti
 async function createCredentialInTelnyx(
   config: ManagedAccountConfig,
   connectionId: string,
-  sipUsername: string,
-  sipPassword: string,
   displayName: string,
   extension: string
-): Promise<{ success: boolean; credentialId?: string; sipUsername?: string }> {
+): Promise<{ success: boolean; credentialId?: string; sipUsername?: string; sipPassword?: string }> {
   try {
-    console.log(`[CREATE] Creating credential ${sipUsername} in Telnyx...`);
+    const credentialName = `${displayName} (Ext ${extension})`;
+    console.log(`[CREATE] Creating credential "${credentialName}" in Telnyx...`);
+    
+    // Only send name - Telnyx will auto-generate sip_username and sip_password
     const response = await fetch(`${TELNYX_API_BASE}/telephony_credentials`, {
       method: "POST",
       headers: buildHeaders(config),
       body: JSON.stringify({
         connection_id: connectionId,
-        name: `${displayName} (Ext ${extension})`,
-        sip_username: sipUsername,
-        sip_password: sipPassword,
+        name: credentialName,
       }),
     });
 
@@ -104,10 +94,18 @@ async function createCredentialInTelnyx(
 
     const data = await response.json();
     const credentialId = data.data?.id;
-    const returnedSipUsername = data.data?.sip_username || sipUsername;
+    const sipUsername = data.data?.sip_username;
+    const sipPassword = data.data?.sip_password;
 
-    console.log(`[CREATE] Credential created: ${credentialId}, SIP: ${returnedSipUsername}@sip.telnyx.com`);
-    return { success: true, credentialId, sipUsername: returnedSipUsername };
+    console.log(`[CREATE] Credential created: ${credentialId}`);
+    console.log(`[CREATE] SIP Username: ${sipUsername}`);
+    console.log(`[CREATE] SIP Password: ${sipPassword ? '***' + sipPassword.slice(-4) : 'NOT RETURNED'}`);
+    
+    if (!sipPassword) {
+      console.error(`[CREATE] WARNING: Telnyx did not return sip_password!`);
+    }
+
+    return { success: true, credentialId, sipUsername, sipPassword };
   } catch (error) {
     console.error(`[CREATE] Error creating credential:`, error);
     return { success: false };
@@ -116,7 +114,7 @@ async function createCredentialInTelnyx(
 
 async function main() {
   console.log("=".repeat(60));
-  console.log("RECREATING SIP CREDENTIALS WITH READABLE USERNAMES");
+  console.log("RECREATING SIP CREDENTIALS (Telnyx auto-generates passwords)");
   console.log("=".repeat(60));
 
   const config = await getManagedAccountConfig();
@@ -131,14 +129,7 @@ async function main() {
     .from(companies)
     .where(eq(companies.id, COMPANY_ID));
   
-  const companyName = company?.name || "Company";
-  const sanitizedCompanyName = companyName
-    .toLowerCase()
-    .replace(/[^a-z0-9]/g, '')
-    .slice(0, 20);
-
-  console.log(`\nCompany: ${companyName}`);
-  console.log(`Sanitized name for SIP: ${sanitizedCompanyName}`);
+  console.log(`\nCompany: ${company?.name || "Unknown"}`);
 
   // Get credential connection ID
   const [settings] = await db
@@ -153,7 +144,7 @@ async function main() {
 
   console.log(`Credential Connection ID: ${settings.credentialConnectionId}`);
 
-  // Get all extensions with their current credentials
+  // Get all extensions
   const extensions = await db
     .select({
       extensionId: pbxExtensions.id,
@@ -169,9 +160,8 @@ async function main() {
   const results: Array<{
     extension: string;
     displayName: string;
-    oldUsername: string | null;
-    newUsername: string;
-    newCredentialId: string;
+    sipUsername: string;
+    credentialId: string;
     success: boolean;
   }> = [];
 
@@ -189,50 +179,39 @@ async function main() {
       .from(telephonyCredentials)
       .where(eq(telephonyCredentials.ownerUserId, ext.userId!));
 
-    const oldUsername = existingCred?.sipUsername || null;
-    console.log(`Old SIP username: ${oldUsername || "none"}`);
-
     // Delete old credential from Telnyx if exists
     if (existingCred?.telnyxCredentialId) {
+      console.log(`Old credential: ${existingCred.telnyxCredentialId}`);
       await deleteCredentialFromTelnyx(config, existingCred.telnyxCredentialId);
     }
 
-    // Generate new readable username
-    const newSipUsername = `${sanitizedCompanyName}${ext.extension}`;
-    const newSipPassword = generateSipPassword();
-
-    console.log(`New SIP username: ${newSipUsername}`);
-
-    // Create new credential in Telnyx
+    // Create new credential - Telnyx generates username and password
     const createResult = await createCredentialInTelnyx(
       config,
       settings.credentialConnectionId,
-      newSipUsername,
-      newSipPassword,
       ext.displayName!,
       ext.extension!
     );
 
-    if (!createResult.success || !createResult.credentialId) {
+    if (!createResult.success || !createResult.credentialId || !createResult.sipPassword) {
       console.error(`Failed to create credential for ${ext.displayName}`);
       results.push({
         extension: ext.extension!,
         displayName: ext.displayName!,
-        oldUsername,
-        newUsername: newSipUsername,
-        newCredentialId: "",
+        sipUsername: "",
+        credentialId: "",
         success: false,
       });
       continue;
     }
 
-    // Update database
+    // Update database with Telnyx-generated credentials
     if (existingCred) {
       await db.update(telephonyCredentials)
         .set({
           telnyxCredentialId: createResult.credentialId,
-          sipUsername: createResult.sipUsername || newSipUsername,
-          sipPassword: newSipPassword,
+          sipUsername: createResult.sipUsername!,
+          sipPassword: createResult.sipPassword,
           isActive: true,
           updatedAt: new Date(),
         })
@@ -243,20 +222,19 @@ async function main() {
         userId: ext.userId!,
         ownerUserId: ext.userId!,
         telnyxCredentialId: createResult.credentialId,
-        sipUsername: createResult.sipUsername || newSipUsername,
-        sipPassword: newSipPassword,
+        sipUsername: createResult.sipUsername!,
+        sipPassword: createResult.sipPassword,
         isActive: true,
       });
     }
 
-    console.log(`Database updated successfully`);
+    console.log(`Database updated with Telnyx credentials`);
 
     results.push({
       extension: ext.extension!,
       displayName: ext.displayName!,
-      oldUsername,
-      newUsername: createResult.sipUsername || newSipUsername,
-      newCredentialId: createResult.credentialId,
+      sipUsername: createResult.sipUsername!,
+      credentialId: createResult.credentialId,
       success: true,
     });
   }
@@ -265,13 +243,13 @@ async function main() {
   console.log("\n" + "=".repeat(60));
   console.log("SUMMARY");
   console.log("=".repeat(60));
-  console.log("\n| Ext  | Display Name      | Old Username               | New Username        | Status |");
-  console.log("|------|-------------------|----------------------------|---------------------|--------|");
+  console.log("\n| Ext  | Display Name      | SIP Username                              | Status |");
+  console.log("|------|-------------------|-------------------------------------------|--------|");
   
   for (const r of results) {
-    const oldUser = r.oldUsername?.slice(0, 26) || "-";
+    const sipUser = r.sipUsername.slice(0, 41) || "-";
     const status = r.success ? "✓" : "✗";
-    console.log(`| ${r.extension.padEnd(4)} | ${r.displayName.padEnd(17)} | ${oldUser.padEnd(26)} | ${r.newUsername.padEnd(19)} | ${status.padEnd(6)} |`);
+    console.log(`| ${r.extension.padEnd(4)} | ${r.displayName.padEnd(17)} | ${sipUser.padEnd(41)} | ${status.padEnd(6)} |`);
   }
 
   const successCount = results.filter(r => r.success).length;
