@@ -32123,7 +32123,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Upload to Telnyx Media Storage for instant playback
         const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0];
         const absoluteUrl = domain ? `https://${domain}${audioUrl}` : audioUrl;
-        const mediaName = `ivr-greeting-${user.companyId}`;
+        const mediaName = `ivr-greeting-${user.companyId}-${Date.now()}`;
         
         let greetingMediaName: string | null = null;
         try {
