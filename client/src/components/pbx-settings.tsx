@@ -913,7 +913,7 @@ function QueueTableRow({
           <div className="flex flex-wrap gap-1">
             {memberExtensions.map((ext) => (
               <Badge key={ext.id} variant="outline" className="text-xs">
-                {ext.extension} - {ext.displayName || `${ext.user.firstName} ${ext.user.lastName}`}
+                {ext.extension}
               </Badge>
             ))}
           </div>
