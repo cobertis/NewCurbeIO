@@ -49,7 +49,9 @@ const ringAllLegs = new Map<string, Set<string>>();
 interface HoldPlaybackState {
   companyId: string;
   queueId: string;
-  holdMusicUrl: string | null;
+  holdMusicTracks: { id: string; audioUrl: string }[];
+  currentTrackIndex: number;
+  playbackMode: 'sequential' | 'random';
   ads: { id: string; audioUrl: string }[];
   currentAdIndex: number;
   adsEnabled: boolean;
@@ -71,6 +73,16 @@ async function startHoldMusicWithAds(
 ): Promise<void> {
   console.log(`[HoldPlayback] Starting hold music with ads for call ${callControlId}`);
   
+  // Get hold music tracks from the pbx_queue_hold_music table (new multi-track system)
+  const queueHoldMusic = await pbxService.getQueueHoldMusic(companyId, queueId);
+  const holdMusicTracks = queueHoldMusic
+    .filter(hm => hm.isActive && hm.audioFile?.fileUrl)
+    .map(hm => ({
+      id: hm.id,
+      audioUrl: hm.audioFile?.fileUrl || ''
+    }));
+  console.log(`[HoldPlayback] Found ${holdMusicTracks.length} hold music tracks for queue ${queueId}`);
+  
   // Get active ads for this queue
   let ads: { id: string; audioUrl: string }[] = [];
   if (queue.adsEnabled) {
@@ -82,11 +94,16 @@ async function startHoldMusicWithAds(
     console.log(`[HoldPlayback] Found ${ads.length} active ads for queue ${queueId}`);
   }
   
+  // Determine playback mode (default to sequential)
+  const playbackMode = queue.holdMusicPlaybackMode || 'sequential';
+  
   // Store state
   const state: HoldPlaybackState = {
     companyId,
     queueId,
-    holdMusicUrl: queue.holdMusicUrl || null,
+    holdMusicTracks,
+    currentTrackIndex: playbackMode === 'random' ? Math.floor(Math.random() * holdMusicTracks.length) : 0,
+    playbackMode,
     ads,
     currentAdIndex: 0,
     adsEnabled: queue.adsEnabled && ads.length > 0,
@@ -110,17 +127,24 @@ async function startHoldMusicWithAds(
  * Play hold music in loop for a call
  */
 async function playHoldMusic(callControlId: string, state: HoldPlaybackState): Promise<void> {
-  if (!state.holdMusicUrl) {
-    console.log(`[HoldPlayback] No hold music URL configured for queue ${state.queueId}`);
+  if (state.holdMusicTracks.length === 0) {
+    console.log(`[HoldPlayback] No hold music tracks configured for queue ${state.queueId}`);
     return;
   }
   
-  console.log(`[HoldPlayback] Playing hold music (loop) for call ${callControlId}`);
+  // Get current track
+  const currentTrack = state.holdMusicTracks[state.currentTrackIndex];
+  if (!currentTrack) {
+    console.log(`[HoldPlayback] Invalid track index ${state.currentTrackIndex}`);
+    return;
+  }
+  
+  console.log(`[HoldPlayback] Playing hold music track ${state.currentTrackIndex + 1}/${state.holdMusicTracks.length} for call ${callControlId}`);
   state.isPlayingAd = false;
   
   try {
     // Convert relative URLs to absolute
-    let audioUrl = state.holdMusicUrl;
+    let audioUrl = currentTrack.audioUrl;
     if (audioUrl.startsWith('/')) {
       const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0];
       if (domain) {
@@ -143,16 +167,20 @@ async function playHoldMusic(callControlId: string, state: HoldPlaybackState): P
     const clientState = Buffer.from(JSON.stringify({
       holdPlayback: true,
       type: 'music',
+      trackId: currentTrack.id,
       companyId: state.companyId,
       queueId: state.queueId,
     })).toString("base64");
+    
+    // If single track, loop infinitely. If multiple tracks, play once then advance
+    const shouldLoop = state.holdMusicTracks.length === 1;
     
     await fetch(`${TELNYX_API_BASE}/calls/${callControlId}/actions/playback_start`, {
       method: "POST",
       headers,
       body: JSON.stringify({
         audio_url: audioUrl,
-        loop: "infinity",
+        loop: shouldLoop ? "infinity" : undefined,
         client_state: clientState,
       }),
     });
@@ -270,6 +298,45 @@ async function handleHoldAdEnded(callControlId: string): Promise<void> {
   if (state.adsEnabled) {
     scheduleNextAd(callControlId, state);
   }
+}
+
+/**
+ * Handle when a hold music track finishes playing - advance to next track
+ */
+async function handleHoldMusicTrackEnded(callControlId: string): Promise<void> {
+  const state = holdPlaybackMap.get(callControlId);
+  if (!state) return;
+  
+  // Don't advance if we're currently playing an ad - let the ad complete first
+  // (playNextAd stops music which triggers playback.ended, we don't want to restart music)
+  if (state.isPlayingAd) {
+    console.log(`[HoldPlayback] Ignoring track ended - ad is playing for call ${callControlId}`);
+    return;
+  }
+  
+  // Only advance if there are multiple tracks (single track loops infinitely)
+  if (state.holdMusicTracks.length <= 1) {
+    return;
+  }
+  
+  // Advance to next track based on playback mode
+  if (state.playbackMode === 'random') {
+    // Random: pick a different track
+    let newIndex = Math.floor(Math.random() * state.holdMusicTracks.length);
+    // Avoid playing the same track twice in a row if possible
+    if (state.holdMusicTracks.length > 1 && newIndex === state.currentTrackIndex) {
+      newIndex = (newIndex + 1) % state.holdMusicTracks.length;
+    }
+    state.currentTrackIndex = newIndex;
+  } else {
+    // Sequential: move to next track
+    state.currentTrackIndex = (state.currentTrackIndex + 1) % state.holdMusicTracks.length;
+  }
+  
+  console.log(`[HoldPlayback] Advancing to track ${state.currentTrackIndex + 1}/${state.holdMusicTracks.length} (${state.playbackMode} mode)`);
+  
+  // Play the next track
+  await playHoldMusic(callControlId, state);
 }
 
 /**
@@ -793,6 +860,13 @@ export class CallControlWebhookService {
           return;
         }
         
+        // Handle hold music track ended - play next track (for multi-track playlists)
+        if (state.holdPlayback && state.type === 'music') {
+          console.log(`[CallControl] Hold music track ended, advancing to next track`);
+          await handleHoldMusicTrackEnded(call_control_id);
+          return;
+        }
+        
         if (state.pendingGather) {
           console.log(`[CallControl] Starting DTMF gather after playback for company: ${state.companyId}`);
           // Include ivrId in gather state for multi-IVR support
@@ -1058,9 +1132,8 @@ export class CallControlWebhookService {
     });
 
     // Start hold music with ads for the caller while waiting
-    if (queue.holdMusicUrl) {
-      await startHoldMusicWithAds(callControlId, companyId, queueId, queue);
-    }
+    // startHoldMusicWithAds now fetches tracks from pbx_queue_hold_music table
+    await startHoldMusicWithAds(callControlId, companyId, queueId, queue);
   }
 
   /**
