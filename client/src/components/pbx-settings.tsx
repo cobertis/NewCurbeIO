@@ -1701,20 +1701,23 @@ function QueueDialog({
                     </div>
                   )}
                   {announcementOptions.length > 0 ? (
-                    <Select onValueChange={(audioFileId) => addAdMutation.mutate(audioFileId)}>
-                      <SelectTrigger data-testid="select-add-ad">
-                        <SelectValue placeholder="Add advertisement audio..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {announcementOptions
-                          .filter(audio => !queueAds.some(ad => ad.audioFileId === audio.id))
-                          .map((audio) => (
-                            <SelectItem key={audio.id} value={audio.id}>
-                              {audio.name}
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
+                    <div className="max-h-32 overflow-y-auto border rounded-md p-2 space-y-1">
+                      {announcementOptions
+                        .filter(audio => !queueAds.some(ad => ad.audioFileId === audio.id))
+                        .map((audio) => (
+                          <label key={audio.id} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1.5 rounded text-sm" data-testid={`ad-option-${audio.id}`}>
+                            <Checkbox
+                              checked={false}
+                              onCheckedChange={() => addAdMutation.mutate(audio.id)}
+                              data-testid={`checkbox-ad-${audio.id}`}
+                            />
+                            <span>{audio.name}</span>
+                          </label>
+                        ))}
+                      {announcementOptions.filter(audio => !queueAds.some(ad => ad.audioFileId === audio.id)).length === 0 && (
+                        <p className="text-xs text-muted-foreground p-1">All available ads are already added.</p>
+                      )}
+                    </div>
                   ) : (
                     <p className="text-xs text-muted-foreground">
                       No announcement audio files available. Upload audio files with type "Announcement" in the Audio tab.
