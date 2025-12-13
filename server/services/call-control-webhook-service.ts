@@ -50,10 +50,10 @@ const ringAllLegs = new Map<string, Set<string>>();
 interface HoldPlaybackState {
   companyId: string;
   queueId: string;
-  holdMusicTracks: { id: string; audioUrl: string }[];
+  holdMusicTracks: { id: string; audioUrl: string; telnyxMediaId?: string | null }[];
   currentTrackIndex: number;
   playbackMode: 'sequential' | 'random';
-  ads: { id: string; audioUrl: string }[];
+  ads: { id: string; audioUrl: string; telnyxMediaId?: string | null }[];
   currentAdIndex: number;
   adsEnabled: boolean;
   adsIntervalMin: number; // seconds
@@ -86,13 +86,14 @@ async function startHoldMusicWithAds(
   console.log(`[HoldPlayback] Found ${holdMusicTracks.length} hold music tracks for queue ${queueId}`);
   
   // Get active ads for this queue
-  let ads: { id: string; audioUrl: string }[] = [];
+  let ads: { id: string; audioUrl: string; telnyxMediaId?: string | null }[] = [];
   if (queue.adsEnabled) {
     const queueAds = await pbxService.getActiveQueueAds(companyId, queueId);
     ads = queueAds.map(ad => ({
       id: ad.id,
-      audioUrl: ad.audioFile?.fileUrl || ''
-    })).filter(ad => ad.audioUrl);
+      audioUrl: ad.audioFile?.fileUrl || '',
+      telnyxMediaId: ad.audioFile?.telnyxMediaId || null
+    })).filter(ad => ad.audioUrl || ad.telnyxMediaId);
     console.log(`[HoldPlayback] Found ${ads.length} active ads for queue ${queueId}`);
   }
   
@@ -275,15 +276,6 @@ async function playNextAd(callControlId: string, state: HoldPlaybackState): Prom
     // Wait a bit for stop to take effect
     await new Promise(resolve => setTimeout(resolve, 100));
     
-    // Convert relative URLs to absolute
-    let audioUrl = ad.audioUrl;
-    if (audioUrl.startsWith('/')) {
-      const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0];
-      if (domain) {
-        audioUrl = `https://${domain}${audioUrl}`;
-      }
-    }
-    
     // Client state to identify this as an ad
     const clientState = Buffer.from(JSON.stringify({
       holdPlayback: true,
@@ -293,15 +285,42 @@ async function playNextAd(callControlId: string, state: HoldPlaybackState): Prom
       queueId: state.queueId,
     })).toString("base64");
     
+    // Build playback body - prefer telnyxMediaId for Telnyx-stored media
+    const playbackBody: Record<string, any> = {
+      client_state: clientState,
+    };
+    
+    if (ad.telnyxMediaId) {
+      // Use media_name for Telnyx Media Storage
+      playbackBody.media_name = ad.telnyxMediaId;
+      console.log(`[HoldPlayback] Using Telnyx media_id for ad: ${ad.telnyxMediaId}`);
+    } else {
+      // Convert relative URLs to absolute
+      let audioUrl = ad.audioUrl;
+      if (audioUrl.startsWith('/')) {
+        const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0];
+        if (domain) {
+          audioUrl = `https://${domain}${audioUrl}`;
+        }
+      }
+      playbackBody.audio_url = audioUrl;
+      console.log(`[HoldPlayback] Using audio_url for ad: ${audioUrl}`);
+    }
+    
     // Play the ad (no loop - plays once)
-    await fetch(`${TELNYX_API_BASE}/calls/${callControlId}/actions/playback_start`, {
+    const playResponse = await fetch(`${TELNYX_API_BASE}/calls/${callControlId}/actions/playback_start`, {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        audio_url: audioUrl,
-        client_state: clientState,
-      }),
+      body: JSON.stringify(playbackBody),
     });
+    
+    const playResponseData = await playResponse.json();
+    if (!playResponse.ok) {
+      console.error(`[HoldPlayback] Telnyx playback_start for ad failed:`, playResponseData);
+      throw new Error("Ad playback failed");
+    } else {
+      console.log(`[HoldPlayback] Ad playback started successfully`);
+    }
   } catch (error) {
     console.error(`[HoldPlayback] Error playing ad:`, error);
     // On error, try to resume hold music

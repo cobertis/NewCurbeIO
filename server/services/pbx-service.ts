@@ -743,6 +743,7 @@ export class PbxService {
           name: pbxAudioFiles.name,
           fileUrl: pbxAudioFiles.fileUrl,
           duration: pbxAudioFiles.duration,
+          telnyxMediaId: pbxAudioFiles.telnyxMediaId,
         },
       })
       .from(pbxQueueAds)
@@ -762,6 +763,7 @@ export class PbxService {
           id: pbxAudioFiles.id,
           name: pbxAudioFiles.name,
           fileUrl: pbxAudioFiles.fileUrl,
+          telnyxMediaId: pbxAudioFiles.telnyxMediaId,
         },
       })
       .from(pbxQueueAds)
