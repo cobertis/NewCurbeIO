@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -537,17 +538,22 @@ export function PbxSettings() {
   });
 
   const deleteAudioFileMutation = useMutation({
-    mutationFn: async (audioId: string) => {
-      return apiRequest("DELETE", `/api/pbx/audio/${audioId}`);
+    mutationFn: async ({ audioId, force = false }: { audioId: string; force?: boolean }) => {
+      return apiRequest("DELETE", `/api/pbx/audio/${audioId}${force ? '?force=true' : ''}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/pbx/audio"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/pbx/queues"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/pbx/ivrs"] });
+      setAudioToDelete(null);
       toast({ title: "Audio deleted", description: "Audio file removed from library." });
     },
     onError: (error: any) => {
       toast({ title: "Delete failed", description: error.message, variant: "destructive" });
     },
   });
+
+  const [audioToDelete, setAudioToDelete] = useState<PbxAudioFile | null>(null);
 
   const toggleLibraryAudioPlayback = (audioFile: PbxAudioFile) => {
     if (playingAudioId === audioFile.id) {
@@ -1136,13 +1142,9 @@ export function PbxSettings() {
                             size="sm"
                             onClick={() => {
                               if (audio.usage.length > 0) {
-                                toast({ 
-                                  title: "Cannot delete", 
-                                  description: "This audio file is in use. Remove it from IVRs/Queues first.",
-                                  variant: "destructive"
-                                });
+                                setAudioToDelete(audio);
                               } else {
-                                deleteAudioFileMutation.mutate(audio.id);
+                                deleteAudioFileMutation.mutate({ audioId: audio.id });
                               }
                             }}
                             disabled={deleteAudioFileMutation.isPending}
@@ -1176,6 +1178,34 @@ export function PbxSettings() {
         onSubmit={(data) => updateAudioFileMutation.mutate(data)}
         isPending={updateAudioFileMutation.isPending}
       />
+
+      <AlertDialog open={!!audioToDelete} onOpenChange={(open) => !open && setAudioToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Audio File?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This audio file is currently in use:
+              <ul className="mt-2 list-disc list-inside">
+                {audioToDelete?.usage.map((u, idx) => (
+                  <li key={idx} className="text-sm">{getUsageLabel(u)}</li>
+                ))}
+              </ul>
+              <p className="mt-3 font-medium text-foreground">
+                Deleting will remove the audio from these locations. This action cannot be undone.
+              </p>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => audioToDelete && deleteAudioFileMutation.mutate({ audioId: audioToDelete.id, force: true })}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleteAudioFileMutation.isPending ? "Deleting..." : "Delete Anyway"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <QueueDialog
         open={showQueueDialog}

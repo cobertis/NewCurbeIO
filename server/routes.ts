@@ -33522,15 +33522,43 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           eq(pbxQueues.companyId, user.companyId),
           eq(pbxQueues.holdMusicUrl, existing.fileUrl)
         ));
+      // Check force parameter - if true, clear references instead of blocking
+      const forceDelete = req.query.force === 'true';
 
       if (ivrsUsingAsGreeting.length > 0 || queuesUsingAsHoldMusic.length > 0) {
-        return res.status(400).json({ 
-          message: "Cannot delete audio file that is currently in use",
-          usedBy: {
-            ivrs: ivrsUsingAsGreeting.length,
-            queues: queuesUsingAsHoldMusic.length
-          }
-        });
+        if (!forceDelete) {
+          return res.status(400).json({ 
+            message: "Cannot delete audio file that is currently in use",
+            usedBy: {
+              ivrs: ivrsUsingAsGreeting.length,
+              queues: queuesUsingAsHoldMusic.length
+            }
+          });
+        }
+
+        // Force delete: clear references in IVRs
+        if (ivrsUsingAsGreeting.length > 0) {
+          console.log(`[PBX Audio] Force delete: clearing ${ivrsUsingAsGreeting.length} IVR references`);
+          await db
+            .update(pbxIvrs)
+            .set({ greetingAudioUrl: null, telnyxMediaName: null, updatedAt: new Date() })
+            .where(and(
+              eq(pbxIvrs.companyId, user.companyId),
+              eq(pbxIvrs.greetingAudioUrl, existing.fileUrl)
+            ));
+        }
+
+        // Force delete: clear references in Queues
+        if (queuesUsingAsHoldMusic.length > 0) {
+          console.log(`[PBX Audio] Force delete: clearing ${queuesUsingAsHoldMusic.length} Queue references`);
+          await db
+            .update(pbxQueues)
+            .set({ holdMusicUrl: null, holdMusicTelnyxMediaName: null, updatedAt: new Date() })
+            .where(and(
+              eq(pbxQueues.companyId, user.companyId),
+              eq(pbxQueues.holdMusicUrl, existing.fileUrl)
+            ));
+        }
       }
 
       // Delete from storage (Telnyx or legacy Object Storage)
