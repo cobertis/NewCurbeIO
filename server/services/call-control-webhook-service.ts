@@ -1000,16 +1000,19 @@ export class CallControlWebhookService {
     const activeMembers = members.filter(m => m.isActive);
 
     if (activeMembers.length === 0) {
-      console.log(`[CallControl] No active members in queue ${queueId}`);
-      await this.speakText(callControlId, "All agents are currently unavailable. Please leave a message after the tone.");
-      await this.routeToVoicemail(callControlId, companyId);
+      // No active members - start hold music and retry in 30 seconds
+      console.log(`[CallControl] No active members in queue ${queueId}, starting hold music and will retry`);
+      await startHoldMusicWithAds(callControlId, companyId, queueId, queue);
+      setTimeout(() => {
+        this.retryQueueDial(callControlId, companyId, queueId);
+      }, 30000);
       return;
     }
 
     console.log(`[CallControl] Queue has ${activeMembers.length} active members, dialing all SIPs...`);
 
-    // Play hold message while ringing agents
-    await this.speakText(callControlId, "Please hold while we connect you to an available agent.");
+    // Start hold music immediately - no voice message
+    await startHoldMusicWithAds(callControlId, companyId, queueId, queue);
 
     // Get API key for making calls (context already obtained above)
     const apiKey = await getTelnyxApiKey();
@@ -1125,10 +1128,15 @@ export class CallControlWebhookService {
     }
 
     if (successfulDials === 0) {
-      console.log(`[CallControl] Failed to dial any agents, routing to voicemail`);
+      // No agents available - keep caller in queue with hold music
+      // They will wait until an agent becomes available or caller hangs up
+      console.log(`[CallControl] No agents could be dialed - caller stays in queue with hold music`);
       ringAllLegs.delete(callControlId);
-      await this.speakText(callControlId, "All agents are currently unavailable. Please leave a message after the tone.");
-      await this.routeToVoicemail(callControlId, companyId);
+      // Hold music is already playing - don't go to voicemail
+      // Set a retry timer to try dialing agents again
+      setTimeout(() => {
+        this.retryQueueDial(callControlId, companyId, queueId);
+      }, 30000); // Retry in 30 seconds
       return;
     }
 
@@ -1139,10 +1147,7 @@ export class CallControlWebhookService {
       queueId,
       ringAllLegs: successfulDials
     });
-
-    // Start hold music with ads for the caller while waiting
-    // startHoldMusicWithAds now fetches tracks from pbx_queue_hold_music table
-    await startHoldMusicWithAds(callControlId, companyId, queueId, queue);
+    // Hold music already started at the beginning of routeToQueue
   }
 
   /**
@@ -1348,24 +1353,181 @@ export class CallControlWebhookService {
     const result = extensionCallService.rejectQueueCall(callControlId, extensionId);
     
     if (result.remainingAgents === 0) {
-      // All agents rejected, route to voicemail
-      console.log(`[CallControl] All agents rejected queue call ${callControlId}, routing to voicemail`);
-      extensionCallService.endQueueCall(callControlId, "all_rejected");
-      await this.speakText(callControlId, "All agents are currently unavailable. Please leave a message after the tone.");
-      await this.routeToVoicemail(callControlId, companyId);
-      return { success: true, routeToVoicemail: true };
+      // All agents rejected - retry dialing all agents (queue behavior)
+      console.log(`[CallControl] All agents rejected queue call ${callControlId}, retrying dial to all agents`);
+      
+      // Get the queue ID from call context
+      const activeCall = await pbxService.getActiveCall(callControlId);
+      const metadata = activeCall?.metadata as { queueId?: string } | null;
+      const queueId = metadata?.queueId;
+      
+      if (queueId) {
+        // Wait a moment then retry dialing all agents
+        setTimeout(() => {
+          this.retryQueueDial(callControlId, companyId, queueId);
+        }, 5000); // Wait 5 seconds before retrying
+      }
+      
+      return { success: true, routeToVoicemail: false };
     }
 
     return { success: result.success, routeToVoicemail: false };
   }
 
   /**
-   * Handle queue call timeout (called from extensionCallService)
+   * Handle queue call timeout - retry dialing all agents
    */
   async handleQueueCallTimeout(callControlId: string, companyId: string): Promise<void> {
-    console.log(`[CallControl] Queue call ${callControlId} timed out, routing to voicemail`);
-    await this.speakText(callControlId, "All agents are currently unavailable. Please leave a message after the tone.");
-    await this.routeToVoicemail(callControlId, companyId);
+    console.log(`[CallControl] Queue call ${callControlId} timed out, retrying dial to all agents`);
+    
+    // Get the queue ID from call context
+    const activeCall = await pbxService.getActiveCall(callControlId);
+    const metadata = activeCall?.metadata as { queueId?: string } | null;
+    const queueId = metadata?.queueId;
+    
+    if (queueId) {
+      // Retry dialing all agents - hold music continues
+      await this.retryQueueDial(callControlId, companyId, queueId);
+    }
+  }
+
+  /**
+   * Retry dialing all queue agents - called when timeout or all agents reject
+   * Hold music continues playing, just re-dial the agents
+   */
+  private async retryQueueDial(callControlId: string, companyId: string, queueId: string): Promise<void> {
+    console.log(`[CallControl] Retrying queue dial for call ${callControlId}, queue ${queueId}`);
+
+    // First check if the caller is still connected
+    const activeCall = await pbxService.getActiveCall(callControlId);
+    if (!activeCall) {
+      console.log(`[CallControl] Caller ${callControlId} no longer active, stopping retry`);
+      await stopHoldPlayback(callControlId);
+      return;
+    }
+
+    const queue = await pbxService.getQueue(companyId, queueId);
+    if (!queue) {
+      console.log(`[CallControl] Queue ${queueId} not found for retry`);
+      return;
+    }
+
+    const ringTimeout = queue.ringTimeout || 30;
+    const context = callContextMap.get(callControlId);
+    const callerNumber = context?.callerNumber || "Unknown";
+
+    // Get all queue members
+    const members = await pbxService.getQueueMembers(companyId, queueId);
+    const activeMembers = members.filter(m => m.isActive);
+
+    if (activeMembers.length === 0) {
+      console.log(`[CallControl] No active members in queue ${queueId} for retry, will retry in 30s`);
+      setTimeout(() => {
+        this.retryQueueDial(callControlId, companyId, queueId);
+      }, 30000);
+      return;
+    }
+
+    console.log(`[CallControl] Retry: dialing ${activeMembers.length} agents...`);
+
+    const apiKey = await getTelnyxApiKey();
+    const managedAccountId = context?.managedAccountId;
+
+    const [phoneNumber] = await db
+      .select({ phoneNumber: telnyxPhoneNumbers.phoneNumber })
+      .from(telnyxPhoneNumbers)
+      .where(eq(telnyxPhoneNumbers.companyId, companyId))
+      .limit(1);
+    const callerIdNumber = phoneNumber?.phoneNumber || "+15555555555";
+
+    const [settings] = await db
+      .select({ callControlAppId: telephonySettings.callControlAppId })
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+    const connectionId = settings?.callControlAppId;
+
+    if (!connectionId) {
+      console.error(`[CallControl] No Call Control App ID for retry`);
+      return;
+    }
+
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+    if (managedAccountId) {
+      headers["X-Managed-Account-Id"] = managedAccountId;
+    }
+
+    // Initialize ring-all tracking
+    ringAllLegs.set(callControlId, new Set());
+    let successfulDials = 0;
+
+    for (const member of activeMembers) {
+      if (!member.userId) continue;
+
+      const sipCreds = await getUserSipCredentials(member.userId);
+      if (!sipCreds?.sipUsername) continue;
+
+      const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
+
+      try {
+        const clientState = Buffer.from(JSON.stringify({
+          companyId,
+          agentUserId: member.userId,
+          queueId,
+          ringAll: true,
+          originalCallerNumber: callerNumber,
+        })).toString("base64");
+
+        const queueDisplayName = `${queue.name} - ${callerNumber}`;
+        
+        const response = await fetch(`${TELNYX_API_BASE}/calls`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            connection_id: connectionId,
+            to: sipUri,
+            from: callerIdNumber,
+            from_display_name: queueDisplayName,
+            timeout_secs: ringTimeout,
+            answering_machine_detection: "disabled",
+            client_state: clientState,
+            custom_headers: [
+              { name: "X-Original-Caller", value: callerNumber },
+              { name: "X-Queue-Name", value: queue.name }
+            ],
+          }),
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const agentCallControlId = data.data?.call_control_id;
+
+          if (agentCallControlId) {
+            ringAllLegs.get(callControlId)?.add(agentCallControlId);
+            callContextMap.set(agentCallControlId, { companyId, managedAccountId });
+            pendingBridges.set(agentCallControlId, {
+              callerCallControlId: callControlId,
+              clientState,
+              companyId,
+            });
+            successfulDials++;
+          }
+        }
+      } catch (error) {
+        console.error(`[CallControl] Error retrying dial to ${sipUri}:`, error);
+      }
+    }
+
+    if (successfulDials === 0) {
+      console.log(`[CallControl] Retry failed to dial any agents, will retry in 30s`);
+      setTimeout(() => {
+        this.retryQueueDial(callControlId, companyId, queueId);
+      }, 30000);
+    } else {
+      console.log(`[CallControl] Retry: started ${successfulDials} ring-all legs`);
+    }
   }
 
   private async routeToExtension(
