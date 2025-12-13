@@ -594,6 +594,15 @@ export class PbxService {
   async createIvr(companyId: string, data: Record<string, any>): Promise<PbxIvr> {
     const { companyId: _, id: __, ...safeData } = data;
     
+    // Auto-extract media_name from Telnyx Media Storage URLs
+    if (safeData.greetingAudioUrl && safeData.greetingAudioUrl.includes('api.telnyx.com/v2/media/')) {
+      const match = safeData.greetingAudioUrl.match(/api\.telnyx\.com\/v2\/media\/([^/]+)/);
+      if (match && match[1]) {
+        safeData.greetingMediaName = match[1];
+        console.log(`[PBX] Extracted greetingMediaName from URL: ${safeData.greetingMediaName}`);
+      }
+    }
+    
     // If this is the first IVR or marked as default, ensure only one default
     if (safeData.isDefault) {
       await db
@@ -619,6 +628,15 @@ export class PbxService {
 
   async updateIvr(companyId: string, ivrId: string, data: Record<string, any>): Promise<PbxIvr | null> {
     const { companyId: _, id: __, ...safeData } = data;
+    
+    // Auto-extract media_name from Telnyx Media Storage URLs
+    if (safeData.greetingAudioUrl && safeData.greetingAudioUrl.includes('api.telnyx.com/v2/media/')) {
+      const match = safeData.greetingAudioUrl.match(/api\.telnyx\.com\/v2\/media\/([^/]+)/);
+      if (match && match[1]) {
+        safeData.greetingMediaName = match[1];
+        console.log(`[PBX] Extracted greetingMediaName from URL: ${safeData.greetingMediaName}`);
+      }
+    }
     
     // If setting as default, clear other defaults first
     if (safeData.isDefault) {
