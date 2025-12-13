@@ -32509,6 +32509,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // GET /api/pbx/menu-options - Get menu options for the companys PBX settings
+  app.get("/api/pbx/menu-options", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const settings = await pbxService.getSettings(user.companyId);
+      if (!settings) {
+        return res.json([]);
+      }
+      const options = await pbxService.getMenuOptions(user.companyId, settings.id);
+      return res.json(options);
+    } catch (error: any) {
+      console.error("[PBX] Error getting menu options:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
   // GET /api/pbx/menu-options/:settingsId - Get menu options
   app.get("/api/pbx/menu-options/:settingsId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
