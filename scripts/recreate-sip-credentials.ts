@@ -69,11 +69,11 @@ async function deleteCredentialFromTelnyx(config: ManagedAccountConfig, credenti
 async function createCredentialInTelnyx(
   config: ManagedAccountConfig,
   connectionId: string,
-  displayName: string,
+  companyName: string,
   extension: string
 ): Promise<{ success: boolean; credentialId?: string; sipUsername?: string; sipPassword?: string }> {
   try {
-    const credentialName = `${displayName} (Ext ${extension})`;
+    const credentialName = `${companyName} - ${extension}`;
     console.log(`[CREATE] Creating credential "${credentialName}" in Telnyx...`);
     
     // Only send name - Telnyx will auto-generate sip_username and sip_password
@@ -186,10 +186,11 @@ async function main() {
     }
 
     // Create new credential - Telnyx generates username and password
+    // Use company name + extension for the credential name (e.g. "Cobertis Insurance - 1001")
     const createResult = await createCredentialInTelnyx(
       config,
       settings.credentialConnectionId,
-      ext.displayName!,
+      company?.name || "Company",
       ext.extension!
     );
 
