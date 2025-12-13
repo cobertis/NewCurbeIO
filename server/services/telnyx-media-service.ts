@@ -23,20 +23,21 @@ export async function uploadMediaToTelnyx(
   try {
     const apiKey = await getTelnyxMasterApiKey();
     
+    // Create proper multipart/form-data with the file buffer
     const formData = new FormData();
     formData.append("media_name", fileName);
-    formData.append("media_url", `data:${mimeType};base64,${fileBuffer.toString("base64")}`);
+    formData.append("media", fileBuffer, {
+      filename: fileName,
+      contentType: mimeType,
+    });
     
     const response = await fetch(`${TELNYX_API_BASE}/media`, {
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
+        ...formData.getHeaders(),
       },
-      body: JSON.stringify({
-        media_name: fileName,
-        media_url: `data:${mimeType};base64,${fileBuffer.toString("base64")}`,
-      }),
+      body: formData as any,
     });
 
     if (!response.ok) {
@@ -56,10 +57,13 @@ export async function uploadMediaToTelnyx(
       mediaName: mediaData.media_name,
     });
 
+    // The download URL format for Telnyx media
+    const mediaUrl = `https://api.telnyx.com/v2/media/${mediaData.id}/download`;
+
     return {
       success: true,
       mediaId: mediaData.id,
-      mediaUrl: mediaData.media_url || `https://api.telnyx.com/v2/media/${mediaData.id}/download`,
+      mediaUrl: mediaUrl,
     };
   } catch (error: any) {
     console.error("[TelnyxMedia] Upload error:", error);

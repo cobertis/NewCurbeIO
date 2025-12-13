@@ -32976,17 +32976,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           return res.status(400).json({ message: "Valid audio type is required (greeting, hold_music, announcement, voicemail_greeting)" });
         }
 
-        // Upload to Replit Object Storage
-        const { uploadFile } = await import("./services/object-storage-service");
-        const uploadResult = await uploadFile(
+        // Upload to Telnyx Media Storage for fast playback during calls
+        const { uploadMediaToTelnyx } = await import("./services/telnyx-media-service");
+        const uploadResult = await uploadMediaToTelnyx(
           file.buffer,
           file.originalname,
-          file.mimetype,
-          `audio/company/${user.companyId}`
+          file.mimetype
         );
 
-        if (!uploadResult.success || !uploadResult.url) {
-          return res.status(500).json({ message: "Failed to upload audio file" });
+        if (!uploadResult.success || !uploadResult.mediaId) {
+          console.error("[PBX Audio] Telnyx upload failed:", uploadResult.error);
+          return res.status(500).json({ message: uploadResult.error || "Failed to upload audio file to Telnyx" });
         }
 
         // Save to database
@@ -32997,11 +32997,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             name,
             description: description || null,
             notes: notes || null,
-            fileUrl: uploadResult.url,
+            fileUrl: uploadResult.mediaUrl!,
             fileName: file.originalname,
             fileSize: file.size,
             mimeType: file.mimetype,
             audioType,
+            telnyxMediaId: uploadResult.mediaId,
           })
           .returning();
 
@@ -33108,12 +33109,23 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       }
 
-      // Delete from object storage
-      try {
-        const { deleteFile } = await import("./services/object-storage-service");
-        await deleteFile(existing.fileUrl);
-      } catch (storageError) {
-        console.error("[PBX Audio] Failed to delete from storage:", storageError);
+      // Delete from storage (Telnyx or legacy Object Storage)
+      if (existing.telnyxMediaId) {
+        // Delete from Telnyx Media Storage
+        try {
+          const { deleteMediaFromTelnyx } = await import("./services/telnyx-media-service");
+          await deleteMediaFromTelnyx(existing.telnyxMediaId);
+        } catch (telnyxError) {
+          console.error("[PBX Audio] Failed to delete from Telnyx:", telnyxError);
+        }
+      } else if (existing.fileUrl && !existing.telnyxMediaId) {
+        // Legacy: Delete from Object Storage for records without telnyxMediaId
+        try {
+          const { deleteFile } = await import("./services/object-storage-service");
+          await deleteFile(existing.fileUrl);
+        } catch (storageError) {
+          console.error("[PBX Audio] Failed to delete from Object Storage:", storageError);
+        }
       }
 
       // Delete from database
