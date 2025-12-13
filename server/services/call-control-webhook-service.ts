@@ -79,7 +79,8 @@ async function startHoldMusicWithAds(
     .filter(hm => hm.isActive && hm.audioFile?.fileUrl)
     .map(hm => ({
       id: hm.id,
-      audioUrl: hm.audioFile?.fileUrl || ''
+      audioUrl: hm.audioFile?.fileUrl || '',
+      telnyxMediaId: hm.audioFile?.telnyxMediaId || null
     }));
   console.log(`[HoldPlayback] Found ${holdMusicTracks.length} hold music tracks for queue ${queueId}`);
   
@@ -142,7 +143,11 @@ async function playHoldMusic(callControlId: string, state: HoldPlaybackState): P
   state.isPlayingAd = false;
   
   try {
-    // Convert relative URLs to absolute
+    // Check if we have a Telnyx media_id - use it instead of audio_url
+    // Telnyx Media Storage URLs require authentication that Call Control doesn't have
+    const telnyxMediaId = (currentTrack as any).telnyxMediaId;
+    
+    // Convert relative URLs to absolute (only needed for external URLs)
     let audioUrl = currentTrack.audioUrl;
     if (audioUrl.startsWith('/')) {
       const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0];
@@ -152,7 +157,11 @@ async function playHoldMusic(callControlId: string, state: HoldPlaybackState): P
     }
     
     console.log(`[HoldPlayback] Playing hold music track ${state.currentTrackIndex + 1}/${state.holdMusicTracks.length} for call ${callControlId}`);
-    console.log(`[HoldPlayback] Audio URL: ${audioUrl}`);
+    if (telnyxMediaId) {
+      console.log(`[HoldPlayback] Using Telnyx media_id: ${telnyxMediaId}`);
+    } else {
+      console.log(`[HoldPlayback] Audio URL: ${audioUrl}`);
+    }
     
     const apiKey = await getTelnyxApiKey();
     const context = callContextMap.get(callControlId);
@@ -177,14 +186,24 @@ async function playHoldMusic(callControlId: string, state: HoldPlaybackState): P
     // If single track, loop infinitely. If multiple tracks, play once then advance
     const shouldLoop = state.holdMusicTracks.length === 1;
     
+    // Build playback body - use media_id for Telnyx-stored media, audio_url for external
+    const playbackBody: Record<string, any> = {
+      loop: shouldLoop ? "infinity" : undefined,
+      client_state: clientState,
+    };
+    
+    if (telnyxMediaId) {
+      // Use media_id for Telnyx Media Storage (doesn't require auth on Call Control side)
+      playbackBody.media_id = telnyxMediaId;
+    } else {
+      // Use audio_url for external URLs
+      playbackBody.audio_url = audioUrl;
+    }
+    
     const response = await fetch(`${TELNYX_API_BASE}/calls/${callControlId}/actions/playback_start`, {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        audio_url: audioUrl,
-        loop: shouldLoop ? "infinity" : undefined,
-        client_state: clientState,
-      }),
+      body: JSON.stringify(playbackBody),
     });
     
     const responseData = await response.json();

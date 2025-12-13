@@ -826,6 +826,7 @@ export class PbxService {
           name: pbxAudioFiles.name,
           fileUrl: pbxAudioFiles.fileUrl,
           duration: pbxAudioFiles.duration,
+          telnyxMediaId: pbxAudioFiles.telnyxMediaId,
         },
       })
       .from(pbxQueueHoldMusic)
