@@ -4,7 +4,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import { Bell, BellOff, Download, Smartphone, Star, Calendar, CreditCard } from "lucide-react";
+import { Bell, BellOff, Download, Smartphone, Star, Calendar, CreditCard, Wallet } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 interface CardData {
@@ -69,6 +69,7 @@ export default function PublicCard() {
   const [pushSubscribed, setPushSubscribed] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
   const [deferredPrompt, setDeferredPrompt] = useState<any>(null);
+  const [downloadingWallet, setDownloadingWallet] = useState(false);
 
   useEffect(() => {
     setPlatform(detectPlatform());
@@ -229,6 +230,36 @@ export default function PublicCard() {
     }
   }
 
+  async function downloadAppleWallet() {
+    if (!token || downloadingWallet) return;
+    setDownloadingWallet(true);
+
+    try {
+      const res = await fetch(`/api/public/wallet/${token}`);
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.message || "Failed to download wallet pass");
+      }
+
+      const blob = await res.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `vip-pass-${token.slice(0, 8)}.pkpass`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+
+      toast({ title: "Pass downloaded", description: "Open the file to add to Apple Wallet" });
+    } catch (err: any) {
+      console.error("Download wallet error:", err);
+      toast({ title: "Error", description: err.message, variant: "destructive" });
+    } finally {
+      setDownloadingWallet(false);
+    }
+  }
+
   if (loading) {
     return <LoadingSpinner fullScreen={true} message="Loading your card..." />;
   }
@@ -308,18 +339,20 @@ export default function PublicCard() {
           </div>
         </Card>
 
-        {platform === "ios" && !isPwa && (
-          <Card className="p-4 bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800">
-            <div className="flex items-start gap-3">
-              <Smartphone className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-              <div>
-                <p className="font-medium text-sm">Add to Home Screen</p>
-                <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-                  Tap the Share button, then "Add to Home Screen" for the best experience with Apple Wallet integration.
-                </p>
-              </div>
-            </div>
-          </Card>
+        {platform === "ios" && (
+          <Button
+            onClick={downloadAppleWallet}
+            disabled={downloadingWallet}
+            className="w-full bg-black hover:bg-gray-900 text-white"
+            data-testid="button-add-apple-wallet"
+          >
+            {downloadingWallet ? (
+              <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />
+            ) : (
+              <Wallet className="h-4 w-4 mr-2" />
+            )}
+            Add to Apple Wallet
+          </Button>
         )}
 
         {platform === "android" && !isPwa && deferredPrompt && (
