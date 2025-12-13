@@ -64,6 +64,7 @@ export default function PublicCard() {
   const [error, setError] = useState<string | null>(null);
   const [platform, setPlatform] = useState<"ios" | "android" | "desktop">("desktop");
   const [isPwa, setIsPwa] = useState(false);
+  const [addedToHome, setAddedToHome] = useState(false);
   const [pushSupported, setPushSupported] = useState(false);
   const [pushSubscribed, setPushSubscribed] = useState(false);
   const [subscribing, setSubscribing] = useState(false);
@@ -75,6 +76,16 @@ export default function PublicCard() {
     setPlatform(detectPlatform());
     setIsPwa(isStandalone());
     setPushSupported("serviceWorker" in navigator && "PushManager" in window);
+    
+    // Check if user already clicked "Add to Home"
+    try {
+      const savedAddedToHome = localStorage.getItem("vip_added_to_home");
+      if (savedAddedToHome === "true") {
+        setAddedToHome(true);
+      }
+    } catch (e) {
+      console.error("Failed to read addedToHome:", e);
+    }
 
     const handleBeforeInstall = (e: Event) => {
       e.preventDefault();
@@ -238,11 +249,24 @@ export default function PublicCard() {
       const { outcome } = await deferredPrompt.userChoice;
       if (outcome === "accepted") {
         toast({ title: "App installed", description: "Open from your home screen" });
+        // Save that user added to home
+        try {
+          localStorage.setItem("vip_added_to_home", "true");
+          setAddedToHome(true);
+        } catch (e) {
+          console.error("Failed to save addedToHome:", e);
+        }
       }
       setDeferredPrompt(null);
     } else {
-      // Show manual installation instructions
+      // Show manual installation instructions and mark as added
       setShowInstallHelp(true);
+      try {
+        localStorage.setItem("vip_added_to_home", "true");
+        setAddedToHome(true);
+      } catch (e) {
+        console.error("Failed to save addedToHome:", e);
+      }
     }
   }
 
@@ -410,8 +434,8 @@ export default function PublicCard() {
               </div>
             )}
 
-            {/* Botón de Agregar al Inicio */}
-            {!isPwa && (
+            {/* Botón de Agregar al Inicio - solo mostrar si no está instalada ni añadida */}
+            {!isPwa && !addedToHome && (
               <>
                 <Button
                   onClick={handleInstallPwa}
@@ -440,7 +464,7 @@ export default function PublicCard() {
               </>
             )}
             
-            {isPwa && (
+            {(isPwa || addedToHome) && (
               <div className="flex items-center justify-center gap-2 py-1 text-green-500" data-testid="text-card-ready">
                 <Home className="h-4 w-4" />
                 <span className="text-sm">Instalada en tu pantalla</span>
@@ -449,14 +473,16 @@ export default function PublicCard() {
           </div>
         )}
 
-        <p className="text-center text-xs text-gray-500 pt-4">
-          {platform === "ios" && "Usa Apple Wallet para la mejor experiencia"}
-          {platform === "android" && !pushSubscribed && !isPwa && "Activa notificaciones y agrega al inicio"}
-          {platform === "android" && pushSubscribed && !isPwa && "Agrega al inicio para acceso rápido"}
-          {platform === "android" && !pushSubscribed && isPwa && "Activa notificaciones para estar al día"}
-          {platform === "android" && pushSubscribed && isPwa && "Tu tarjeta está lista"}
-          {platform === "desktop" && "Abre en tu móvil para la experiencia completa"}
-        </p>
+        {/* Solo mostrar texto informativo si hay algo pendiente */}
+        {!(platform === "android" && pushSubscribed && (isPwa || addedToHome)) && (
+          <p className="text-center text-xs text-gray-500 pt-4">
+            {platform === "ios" && "Usa Apple Wallet para la mejor experiencia"}
+            {platform === "android" && !pushSubscribed && !isPwa && !addedToHome && "Activa notificaciones y agrega al inicio"}
+            {platform === "android" && pushSubscribed && !isPwa && !addedToHome && "Agrega al inicio para acceso rápido"}
+            {platform === "android" && !pushSubscribed && (isPwa || addedToHome) && "Activa notificaciones para estar al día"}
+            {platform === "desktop" && "Abre en tu móvil para la experiencia completa"}
+          </p>
+        )}
       </div>
     </div>
   );
