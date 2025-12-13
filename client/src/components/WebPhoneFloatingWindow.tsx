@@ -1610,81 +1610,66 @@ export function WebPhoneFloatingWindow() {
     };
   }, [currentExtCall?.state, currentExtCall?.answerTime]);
   
-  // Ringtone generator function using Web Audio API (for incoming calls)
-  const playRingtoneBurst = useCallback(() => {
+  // Audio refs for ringtone and ringback MP3 files
+  const ringtoneAudioRef = useRef<HTMLAudioElement | null>(null);
+  const ringbackAudioRef = useRef<HTMLAudioElement | null>(null);
+  
+  // Initialize audio elements on mount
+  useEffect(() => {
+    ringtoneAudioRef.current = new Audio('/ringtone.mp3');
+    ringtoneAudioRef.current.loop = true;
+    ringbackAudioRef.current = new Audio('/ringback.mp3');
+    ringbackAudioRef.current.loop = true;
+    
+    return () => {
+      if (ringtoneAudioRef.current) {
+        ringtoneAudioRef.current.pause();
+        ringtoneAudioRef.current = null;
+      }
+      if (ringbackAudioRef.current) {
+        ringbackAudioRef.current.pause();
+        ringbackAudioRef.current = null;
+      }
+    };
+  }, []);
+  
+  // Play ringtone for incoming calls
+  const playRingtone = useCallback(() => {
     try {
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      if (ringtoneAudioRef.current) {
+        ringtoneAudioRef.current.currentTime = 0;
+        ringtoneAudioRef.current.play().catch(e => console.warn('[WebPhone] Ringtone play failed:', e));
       }
-      const ctx = audioContextRef.current;
-      if (ctx.state === 'suspended') {
-        ctx.resume();
-      }
-      
-      const now = ctx.currentTime;
-      const oscillator1 = ctx.createOscillator();
-      const oscillator2 = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-      
-      oscillator1.type = 'sine';
-      oscillator1.frequency.value = 440;
-      oscillator2.type = 'sine';
-      oscillator2.frequency.value = 480;
-      
-      oscillator1.connect(gainNode);
-      oscillator2.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      
-      gainNode.gain.setValueAtTime(0.15, now);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 0.8);
-      
-      oscillator1.start(now);
-      oscillator2.start(now);
-      oscillator1.stop(now + 0.8);
-      oscillator2.stop(now + 0.8);
     } catch (e) {
       console.warn('[WebPhone] Ringtone playback failed:', e);
     }
   }, []);
   
-  // Ringback tone generator function using Web Audio API (for outgoing calls)
-  // Standard North American ringback: 440Hz + 480Hz, 2 seconds on, 4 seconds off
-  const playRingbackBurst = useCallback(() => {
+  // Stop ringtone
+  const stopRingtone = useCallback(() => {
+    if (ringtoneAudioRef.current) {
+      ringtoneAudioRef.current.pause();
+      ringtoneAudioRef.current.currentTime = 0;
+    }
+  }, []);
+  
+  // Play ringback for outgoing calls
+  const playRingback = useCallback(() => {
     try {
-      if (!audioContextRef.current) {
-        audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      if (ringbackAudioRef.current) {
+        ringbackAudioRef.current.currentTime = 0;
+        ringbackAudioRef.current.play().catch(e => console.warn('[WebPhone] Ringback play failed:', e));
       }
-      const ctx = audioContextRef.current;
-      if (ctx.state === 'suspended') {
-        ctx.resume();
-      }
-      
-      const now = ctx.currentTime;
-      const oscillator1 = ctx.createOscillator();
-      const oscillator2 = ctx.createOscillator();
-      const gainNode = ctx.createGain();
-      
-      // Standard US ringback frequencies (same as ringtone but different pattern)
-      oscillator1.type = 'sine';
-      oscillator1.frequency.value = 440;
-      oscillator2.type = 'sine';
-      oscillator2.frequency.value = 480;
-      
-      oscillator1.connect(gainNode);
-      oscillator2.connect(gainNode);
-      gainNode.connect(ctx.destination);
-      
-      // 2 seconds of tone with fade out
-      gainNode.gain.setValueAtTime(0.12, now);
-      gainNode.gain.setValueAtTime(0.12, now + 1.8);
-      gainNode.gain.exponentialRampToValueAtTime(0.01, now + 2);
-      
-      oscillator1.start(now);
-      oscillator2.start(now);
-      oscillator1.stop(now + 2);
-      oscillator2.stop(now + 2);
     } catch (e) {
       console.warn('[WebPhone] Ringback playback failed:', e);
+    }
+  }, []);
+  
+  // Stop ringback
+  const stopRingback = useCallback(() => {
+    if (ringbackAudioRef.current) {
+      ringbackAudioRef.current.pause();
+      ringbackAudioRef.current.currentTime = 0;
     }
   }, []);
   
@@ -1696,31 +1681,19 @@ export function WebPhoneFloatingWindow() {
       if (!isVisible) {
         toggleDialpad();
       }
-      
-      playRingtoneBurst();
-      ringtoneIntervalRef.current = setInterval(() => {
-        playRingtoneBurst();
-      }, 2000);
+      playRingtone();
     } else {
-      if (ringtoneIntervalRef.current) {
-        clearInterval(ringtoneIntervalRef.current);
-        ringtoneIntervalRef.current = null;
-      }
+      stopRingtone();
     }
     
     return () => {
-      if (ringtoneIntervalRef.current) {
-        clearInterval(ringtoneIntervalRef.current);
-        ringtoneIntervalRef.current = null;
-      }
+      stopRingtone();
     };
-  }, [telnyxIncomingCall, incomingExtCall, isVisible, toggleDialpad, playRingtoneBurst]);
+  }, [telnyxIncomingCall, incomingExtCall, isVisible, toggleDialpad, playRingtone, stopRingtone]);
   
   // Ringback tone effect for outgoing calls (when dialing, before answer)
   useEffect(() => {
     // Play ringback ONLY when there's an outgoing call that hasn't been answered yet
-    // Key insight: When Telnyx call is answered, telnyxCurrentCall is set AND telnyxOutgoingCall may persist
-    // So we must check: outgoing exists AND current does NOT exist AND no incoming call
     const hasOutgoingRinging = !!telnyxOutgoingCall && !telnyxCurrentCall && !telnyxIncomingCall;
     
     // For extension calls: play ringback when calling or ringing (before connected)
@@ -1729,30 +1702,15 @@ export function WebPhoneFloatingWindow() {
     const shouldPlayRingback = hasOutgoingRinging || hasExtOutgoingRinging;
     
     if (shouldPlayRingback) {
-      // Clear any existing interval first to prevent duplicates
-      if (ringbackIntervalRef.current) {
-        clearInterval(ringbackIntervalRef.current);
-      }
-      playRingbackBurst();
-      // Standard ringback pattern: 2 seconds on, 4 seconds off = 6 second cycle
-      ringbackIntervalRef.current = setInterval(() => {
-        playRingbackBurst();
-      }, 6000);
+      playRingback();
     } else {
-      // Stop ringback immediately when call is answered or ended
-      if (ringbackIntervalRef.current) {
-        clearInterval(ringbackIntervalRef.current);
-        ringbackIntervalRef.current = null;
-      }
+      stopRingback();
     }
     
     return () => {
-      if (ringbackIntervalRef.current) {
-        clearInterval(ringbackIntervalRef.current);
-        ringbackIntervalRef.current = null;
-      }
+      stopRingback();
     };
-  }, [telnyxOutgoingCall, telnyxCurrentCall, telnyxIncomingCall, currentExtCall, playRingbackBurst]);
+  }, [telnyxOutgoingCall, telnyxCurrentCall, telnyxIncomingCall, currentExtCall, playRingback, stopRingback]);
   
   // Check if phone is available (either SIP extension, Telnyx number, or PBX extension)
   const hasPhoneCapability = !!sipExtension || hasTelnyxNumber || !!extMyExtension;
