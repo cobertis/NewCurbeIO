@@ -8,6 +8,7 @@ import {
   pbxAgentStatus,
   telnyxPhoneNumbers,
   telephonyCredentials,
+  telephonySettings,
   users,
   PbxRingStrategy,
 } from "@shared/schema";
@@ -383,28 +384,26 @@ export class CallControlWebhookService {
       return;
     }
 
-    // Get SIP credentials for all queue members
+    // Get users with phone numbers for all queue members (using Call Control API, not SIP)
     const memberUserIds = queueMembers.map(m => m.userId);
-    const memberCredentials = await db
+    const memberUsers = await db
       .select()
-      .from(telephonyCredentials)
-      .where(and(
-        eq(telephonyCredentials.companyId, companyId),
-        inArray(telephonyCredentials.userId, memberUserIds)
-      ));
+      .from(users)
+      .where(inArray(users.id, memberUserIds));
 
-    if (memberCredentials.length === 0) {
+    // Filter to only agents with phone numbers configured
+    const agentsWithPhones = memberUsers.filter(u => u.phone && u.phone.trim() !== "");
+
+    if (agentsWithPhones.length === 0) {
       await this.speakText(callControlId, "No agents are available. Please leave a message.");
       await this.routeToVoicemail(callControlId, companyId);
       return;
     }
 
-    // Build SIP URIs for all available agents
-    const sipUris = memberCredentials.map(cred => `sip:${cred.sipUsername}@sip.telnyx.com`);
     const ringTimeout = queue.ringTimeout || 20;
     const ringStrategy = queue.ringStrategy as PbxRingStrategy || "ring_all";
 
-    console.log(`[CallControl] Queue ring strategy: ${ringStrategy}, agents: ${sipUris.length}`);
+    console.log(`[CallControl] Queue ring strategy: ${ringStrategy}, agents with phones: ${agentsWithPhones.length}`);
 
     await this.speakText(callControlId, "Please hold while we connect you to an agent.");
 
@@ -412,26 +411,27 @@ export class CallControlWebhookService {
     await pbxService.trackActiveCall(companyId, callControlId, "", "", "queue", {
       queueId,
       ringStrategy,
-      agentCount: sipUris.length
+      agentCount: agentsWithPhones.length
     });
 
-    if (ringStrategy === "ring_all" && sipUris.length > 1) {
-      // Ring all agents simultaneously using dial with multiple destinations
-      await this.ringAllAgents(callControlId, companyId, queueId, sipUris, memberCredentials, ringTimeout);
+    if (ringStrategy === "ring_all" && agentsWithPhones.length > 1) {
+      // Ring all agents simultaneously by calling their phone numbers
+      await this.ringAllAgents(callControlId, companyId, queueId, agentsWithPhones, ringTimeout);
     } else {
       // For round_robin, least_recent, or single agent - dial first available
-      const firstCred = memberCredentials[0];
-      const firstUser = queueMembers.find(m => m.userId === firstCred.userId);
+      const firstAgent = agentsWithPhones[0];
       
       const clientState = Buffer.from(JSON.stringify({
         companyId,
         queueId,
-        agentUserId: firstCred.userId,
+        agentUserId: firstAgent.id,
         ringStrategy
       })).toString("base64");
 
+      console.log(`[CallControl] Transferring to agent phone: ${firstAgent.phone}`);
+
       await this.makeCallControlRequest(callControlId, "transfer", {
-        to: `sip:${firstCred.sipUsername}@sip.telnyx.com`,
+        to: firstAgent.phone,
         client_state: clientState,
         timeout_secs: ringTimeout,
       });
@@ -442,11 +442,10 @@ export class CallControlWebhookService {
     callControlId: string,
     companyId: string,
     queueId: string,
-    sipUris: string[],
-    credentials: any[],
+    agentUsers: any[],
     ringTimeout: number
   ): Promise<void> {
-    console.log(`[CallControl] Ring-all: dialing ${sipUris.length} agents simultaneously`);
+    console.log(`[CallControl] Ring-all: dialing ${agentUsers.length} agents simultaneously via phone numbers`);
 
     // Track this ring attempt
     const ringAttempt: QueueRingAttempt = {
@@ -459,24 +458,34 @@ export class CallControlWebhookService {
     };
     activeQueueRings.set(callControlId, ringAttempt);
 
-    // Get the company's outbound caller ID (main phone number)
+    // Get the company's outbound caller ID (main phone number) and Call Control App ID
     const [phoneNumber] = await db
       .select()
       .from(telnyxPhoneNumbers)
       .where(eq(telnyxPhoneNumbers.companyId, companyId));
 
     const fromNumber = phoneNumber?.phoneNumber || "";
+    
+    // Get Call Control App ID from telephony settings
+    const [telSettings] = await db
+      .select()
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+    
+    const connectionId = telSettings?.callControlAppId || phoneNumber?.connectionId || "";
 
-    // Create outbound calls to all agents simultaneously
-    for (const cred of credentials) {
+    // Create outbound calls to all agents simultaneously using their phone numbers
+    for (const agent of agentUsers) {
       try {
         const clientState = Buffer.from(JSON.stringify({
           companyId,
           queueId,
-          agentUserId: cred.userId,
+          agentUserId: agent.id,
           originalCallControlId: callControlId,
           ringAllAttempt: true
         })).toString("base64");
+
+        console.log(`[CallControl] Ring-all: dialing agent ${agent.firstName} ${agent.lastName} at ${agent.phone}`);
 
         const response = await fetch(`${TELNYX_API_BASE}/calls`, {
           method: "POST",
@@ -485,9 +494,9 @@ export class CallControlWebhookService {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            to: `sip:${cred.sipUsername}@sip.telnyx.com`,
+            to: agent.phone,
             from: fromNumber,
-            connection_id: phoneNumber?.connectionId || "",
+            connection_id: connectionId,
             timeout_secs: ringTimeout,
             client_state: clientState,
           }),
@@ -498,11 +507,14 @@ export class CallControlWebhookService {
           const agentCallControlId = data.data?.call_control_id;
           if (agentCallControlId) {
             ringAttempt.agentCallControlIds.push(agentCallControlId);
-            console.log(`[CallControl] Ring-all: initiated call to agent ${cred.userId}`);
+            console.log(`[CallControl] Ring-all: initiated call to agent ${agent.id} (${agent.phone})`);
           }
+        } else {
+          const errorText = await response.text();
+          console.error(`[CallControl] Ring-all: failed to dial agent ${agent.id}:`, response.status, errorText);
         }
       } catch (error) {
-        console.error(`[CallControl] Ring-all: failed to dial agent ${cred.userId}:`, error);
+        console.error(`[CallControl] Ring-all: failed to dial agent ${agent.id}:`, error);
       }
     }
 
@@ -511,15 +523,15 @@ export class CallControlWebhookService {
       activeQueueRings.delete(callControlId);
       console.log(`[CallControl] Ring-all: no calls initiated, falling back to transfer`);
       
-      const firstCred = credentials[0];
+      const firstAgent = agentUsers[0];
       const clientState = Buffer.from(JSON.stringify({
         companyId,
         queueId,
-        agentUserId: firstCred.userId
+        agentUserId: firstAgent.id
       })).toString("base64");
 
       await this.makeCallControlRequest(callControlId, "transfer", {
-        to: `sip:${firstCred.sipUsername}@sip.telnyx.com`,
+        to: firstAgent.phone,
         client_state: clientState,
         timeout_secs: ringTimeout,
       });
@@ -599,7 +611,7 @@ export class CallControlWebhookService {
       return;
     }
 
-    await this.dialSipUri(callControlId, companyId, user);
+    await this.dialUserPhone(callControlId, companyId, user);
   }
 
   private async routeToVoicemail(callControlId: string, companyId: string): Promise<void> {
@@ -649,31 +661,26 @@ export class CallControlWebhookService {
       return;
     }
 
-    await this.dialSipUri(callControlId, phoneNumber.companyId, user);
+    await this.dialUserPhone(callControlId, phoneNumber.companyId, user);
   }
 
-  private async dialSipUri(callControlId: string, companyId: string, user: any): Promise<void> {
-    const [credential] = await db
-      .select()
-      .from(telephonyCredentials)
-      .where(and(eq(telephonyCredentials.companyId, companyId), eq(telephonyCredentials.userId, user.id)));
-
-    if (!credential) {
-      console.log(`[CallControl] No SIP credential for user: ${user.id}`);
+  private async dialUserPhone(callControlId: string, companyId: string, user: any): Promise<void> {
+    // Use agent's phone number instead of SIP URI (Call Control API only, no SIP registration required)
+    if (!user.phone || user.phone.trim() === "") {
+      console.log(`[CallControl] No phone number configured for user: ${user.id}`);
       await this.speakText(callControlId, "The agent is not available.");
       await this.hangupCall(callControlId, "NORMAL_CLEARING");
       return;
     }
 
-    const sipUri = `sip:${credential.sipUsername}@sip.telnyx.com`;
     const clientState = Buffer.from(
       JSON.stringify({ companyId, agentUserId: user.id })
     ).toString("base64");
 
-    console.log(`[CallControl] Dialing SIP URI: ${sipUri}`);
+    console.log(`[CallControl] Dialing user phone: ${user.phone} (${user.firstName} ${user.lastName})`);
 
     await this.makeCallControlRequest(callControlId, "transfer", {
-      to: sipUri,
+      to: user.phone,
       client_state: clientState,
       timeout_secs: 30,
     });
