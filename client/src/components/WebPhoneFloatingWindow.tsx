@@ -1546,6 +1546,15 @@ export function WebPhoneFloatingWindow() {
   const voicemailUnreadCount = voicemailsData?.unreadCount || 0;
   const telnyxCallerIdNumber = telnyxNumbersData?.numbers?.[0]?.phone_number || telnyxNumbersData?.numbers?.[0]?.phoneNumber || '';
   
+  // Query for PBX special extensions (IVR and queues)
+  const { data: pbxSpecialExtensions } = useQuery<{ 
+    ivrExtension: string | null; 
+    queues: Array<{ id: string; extension: string; name: string }> 
+  }>({
+    queryKey: ['/api/pbx/special-extensions'],
+    enabled: hasTelnyxNumber,
+  });
+  
   // Telnyx WebRTC state
   const telnyxConnectionStatus = useTelnyxStore(state => state.connectionStatus);
   const telnyxCurrentCall = useTelnyxStore(state => state.currentCall);
@@ -2242,6 +2251,51 @@ export function WebPhoneFloatingWindow() {
       if (targetExt && targetExt.status === 'available') {
         console.log('[WebPhone] Making extension-to-extension call to:', digits, targetExt.displayName);
         await extStartCall(digits, targetExt.displayName);
+        setDialNumber('');
+        return;
+      }
+      
+      // Check if dialing IVR extension
+      if (pbxSpecialExtensions?.ivrExtension && digits === pbxSpecialExtensions.ivrExtension) {
+        console.log('[WebPhone] Dialing IVR extension:', digits);
+        try {
+          const response = await fetch('/api/pbx/internal-call', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ targetType: 'ivr' }),
+          });
+          if (response.ok) {
+            toast({ title: 'Calling IVR', description: 'Your phone will ring shortly...' });
+          } else {
+            toast({ title: 'Call Failed', description: 'Could not connect to IVR', variant: 'destructive' });
+          }
+        } catch (error) {
+          toast({ title: 'Call Failed', description: 'Could not connect to IVR', variant: 'destructive' });
+        }
+        setDialNumber('');
+        return;
+      }
+      
+      // Check if dialing a queue extension
+      const targetQueue = pbxSpecialExtensions?.queues?.find(q => q.extension === digits);
+      if (targetQueue) {
+        console.log('[WebPhone] Dialing queue extension:', digits, targetQueue.name);
+        try {
+          const response = await fetch('/api/pbx/internal-call', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ targetType: 'queue', queueId: targetQueue.id }),
+          });
+          if (response.ok) {
+            toast({ title: `Calling ${targetQueue.name}`, description: 'Your phone will ring shortly...' });
+          } else {
+            toast({ title: 'Call Failed', description: 'Could not connect to queue', variant: 'destructive' });
+          }
+        } catch (error) {
+          toast({ title: 'Call Failed', description: 'Could not connect to queue', variant: 'destructive' });
+        }
         setDialNumber('');
         return;
       }

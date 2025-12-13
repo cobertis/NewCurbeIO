@@ -32651,6 +32651,38 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+  // GET /api/pbx/special-extensions - Get IVR and queue extensions for WebPhone
+  app.get("/api/pbx/special-extensions", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      // Get PBX settings for IVR extension
+      const settings = await pbxService.getPbxSettings(user.companyId);
+      const ivrExtension = settings?.ivrEnabled ? settings.ivrExtension : null;
+      
+      // Get all active queues with extensions
+      const allQueues = await db
+        .select({ id: pbxQueues.id, extension: pbxQueues.extension, name: pbxQueues.name })
+        .from(pbxQueues)
+        .where(and(
+          eq(pbxQueues.companyId, user.companyId),
+          eq(pbxQueues.status, "active")
+        ));
+      
+      const queues = allQueues.filter(q => q.extension).map(q => ({
+        id: q.id,
+        extension: q.extension!,
+        name: q.name,
+      }));
+      
+      return res.json({ ivrExtension, queues });
+    } catch (error: any) {
+      console.error("[PBX] Error getting special extensions:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
   // POST /api/pbx/internal-call - Initiate internal call to IVR or Queue via Telnyx
   app.post("/api/pbx/internal-call", requireActiveCompany, async (req: Request, res: Response) => {
     try {
