@@ -223,8 +223,11 @@ export function PbxSettings() {
       
       return { queueId };
     },
-    onSuccess: () => {
+    onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["/api/pbx/queues"] });
+      if (result.queueId) {
+        queryClient.invalidateQueries({ queryKey: [`/api/pbx/queues/${result.queueId}/members`] });
+      }
       setShowQueueDialog(false);
       setEditingQueue(null);
       toast({ title: "Queue saved", description: "Call queue updated successfully." });
