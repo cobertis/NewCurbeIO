@@ -1672,7 +1672,45 @@ function QueueDialog({
               </div>
               {queue?.id && (
                 <div className="space-y-3 mt-4">
-                  <Label>Advertisement Audio Files</Label>
+                  <div className="flex items-center justify-between">
+                    <Label>Advertisement Audio Files</Label>
+                    {queueAds.length > 1 && (
+                      <div className="flex gap-1">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-xs px-2"
+                          onClick={() => {
+                            queueAds.forEach(ad => {
+                              if (!ad.isActive) {
+                                toggleAdMutation.mutate({ adId: ad.id, isActive: true });
+                              }
+                            });
+                          }}
+                          disabled={toggleAdMutation.isPending || queueAds.every(ad => ad.isActive)}
+                          data-testid="button-enable-all-ads"
+                        >
+                          Enable All
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-xs px-2"
+                          onClick={() => {
+                            queueAds.forEach(ad => {
+                              if (ad.isActive) {
+                                toggleAdMutation.mutate({ adId: ad.id, isActive: false });
+                              }
+                            });
+                          }}
+                          disabled={toggleAdMutation.isPending || queueAds.every(ad => !ad.isActive)}
+                          data-testid="button-disable-all-ads"
+                        >
+                          Disable All
+                        </Button>
+                      </div>
+                    )}
+                  </div>
                   {queueAds.length === 0 ? (
                     <p className="text-xs text-muted-foreground">No ads configured. Add audio files below.</p>
                   ) : (
