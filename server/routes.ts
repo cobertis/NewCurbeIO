@@ -32334,9 +32334,77 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       const extension = await pbxService.createExtension(user.companyId, req.body);
+      
+      // Auto-provision SIP credentials if extension has a user assigned
+      if (extension.userId && extension.extension && extension.displayName) {
+        try {
+          const { createUserSipCredentialWithExtension } = await import("./services/telnyx-e911-service");
+          const sipResult = await createUserSipCredentialWithExtension(
+            user.companyId,
+            extension.userId,
+            extension.extension,
+            extension.displayName
+          );
+          if (sipResult.success) {
+            console.log(`[PBX] Auto-provisioned SIP credentials for extension ${extension.extension}: ${sipResult.sipUsername}`);
+          } else {
+            console.warn(`[PBX] Failed to auto-provision SIP credentials: ${sipResult.error}`);
+          }
+        } catch (sipError) {
+          console.error("[PBX] Error auto-provisioning SIP credentials:", sipError);
+        }
+      }
+      
       return res.json(extension);
     } catch (error: any) {
       console.error("[PBX] Error creating extension:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/extensions/:extensionId/provision-sip - Manually provision SIP credentials for an extension
+  app.post("/api/pbx/extensions/:extensionId/provision-sip", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      // Get the extension details
+      const [extension] = await db
+        .select()
+        .from(pbxExtensions)
+        .where(eq(pbxExtensions.id, req.params.extensionId));
+      
+      if (!extension) {
+        return res.status(404).json({ error: "Extension not found" });
+      }
+      
+      if (extension.companyId !== user.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      if (!extension.userId) {
+        return res.status(400).json({ error: "Extension must have a user assigned to provision SIP credentials" });
+      }
+      
+      const { createUserSipCredentialWithExtension } = await import("./services/telnyx-e911-service");
+      const sipResult = await createUserSipCredentialWithExtension(
+        user.companyId,
+        extension.userId,
+        extension.extension,
+        extension.displayName || `Extension ${extension.extension}`
+      );
+      
+      if (!sipResult.success) {
+        return res.status(500).json({ error: sipResult.error || "Failed to provision SIP credentials" });
+      }
+      
+      console.log(`[PBX] Manually provisioned SIP credentials for extension ${extension.extension}: ${sipResult.sipUsername}`);
+      return res.json({ 
+        success: true, 
+        sipUsername: sipResult.sipUsername,
+        message: "SIP credentials provisioned successfully" 
+      });
+    } catch (error: any) {
+      console.error("[PBX] Error provisioning SIP credentials:", error);
       return res.status(500).json({ error: error.message });
     }
   });
@@ -32345,7 +32413,38 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.patch("/api/pbx/extensions/:extensionId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user as User;
+      
+      // Get current extension to check if user is being assigned
+      const [currentExtension] = await db
+        .select({ userId: pbxExtensions.userId })
+        .from(pbxExtensions)
+        .where(eq(pbxExtensions.id, req.params.extensionId));
+      
       const extension = await pbxService.updateExtension(user.companyId, req.params.extensionId, req.body);
+      
+      // Auto-provision SIP credentials if a new user was assigned to this extension
+      if (extension.userId && 
+          extension.extension && 
+          extension.displayName &&
+          currentExtension?.userId !== extension.userId) {
+        try {
+          const { createUserSipCredentialWithExtension } = await import("./services/telnyx-e911-service");
+          const sipResult = await createUserSipCredentialWithExtension(
+            user.companyId,
+            extension.userId,
+            extension.extension,
+            extension.displayName
+          );
+          if (sipResult.success) {
+            console.log(`[PBX] Auto-provisioned SIP credentials for updated extension ${extension.extension}: ${sipResult.sipUsername}`);
+          } else {
+            console.warn(`[PBX] Failed to auto-provision SIP credentials on update: ${sipResult.error}`);
+          }
+        } catch (sipError) {
+          console.error("[PBX] Error auto-provisioning SIP credentials on update:", sipError);
+        }
+      }
+      
       return res.json(extension);
     } catch (error: any) {
       console.error("[PBX] Error updating extension:", error);

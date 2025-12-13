@@ -239,6 +239,13 @@ function generateSipUsername(companyId: string): string {
   return `${prefix}${companyPart}${randomPart}`.toLowerCase();
 }
 
+function generateSipUsernameWithExtension(companyId: string, extension: string): string {
+  const prefix = "curbe";
+  const companyPart = companyId.replace(/-/g, '').slice(0, 6);
+  const extPart = extension.replace(/\D/g, '').slice(0, 4);
+  return `${prefix}${companyPart}ext${extPart}`.toLowerCase();
+}
+
 function generateSipPassword(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
   let password = '';
@@ -915,6 +922,151 @@ export async function createWebRTCCredential(
     console.error("[WebRTC] Create credential error:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to create credential" };
   }
+}
+
+/**
+ * Create SIP credentials for a user linked to their PBX extension.
+ * This creates unique credentials per user with extension-based username.
+ */
+export async function createUserSipCredentialWithExtension(
+  companyId: string,
+  userId: string,
+  extension: string,
+  displayName: string
+): Promise<{ success: boolean; credentialId?: string; sipUsername?: string; sipPassword?: string; error?: string }> {
+  console.log(`[SIP User] Creating SIP credential for user ${userId} with extension ${extension}...`);
+
+  try {
+    const config = await getManagedAccountConfig(companyId);
+    if (!config) {
+      return { success: false, error: "Managed account not configured for this company" };
+    }
+
+    // Check if user already has credentials
+    const [existingCred] = await db
+      .select()
+      .from(telephonyCredentials)
+      .where(eq(telephonyCredentials.ownerUserId, userId));
+
+    if (existingCred?.telnyxCredentialId && existingCred.isActive) {
+      console.log(`[SIP User] User ${userId} already has credentials: ${existingCred.sipUsername}`);
+      return {
+        success: true,
+        credentialId: existingCred.telnyxCredentialId,
+        sipUsername: existingCred.sipUsername,
+        sipPassword: existingCred.sipPassword,
+      };
+    }
+
+    // Get or create the credential connection for this company
+    const [settings] = await db
+      .select({ 
+        credentialConnectionId: telephonySettings.credentialConnectionId,
+        outboundVoiceProfileId: telephonySettings.outboundVoiceProfileId,
+      })
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+
+    let connectionId = settings?.credentialConnectionId;
+
+    // If no credential connection exists, create one
+    if (!connectionId) {
+      let ovpId = settings?.outboundVoiceProfileId;
+      if (!ovpId) {
+        const profileResult = await getOrCreateOutboundVoiceProfile(config, companyId);
+        if (!profileResult.success || !profileResult.profileId) {
+          return { success: false, error: "Failed to create voice profile" };
+        }
+        ovpId = profileResult.profileId;
+      }
+      const connResult = await getOrCreateCredentialConnection(config, companyId, ovpId);
+      if (!connResult.success || !connResult.connectionId) {
+        return { success: false, error: connResult.error || "Failed to create credential connection" };
+      }
+      connectionId = connResult.connectionId;
+    }
+
+    // Generate unique SIP credentials with extension
+    const sipUsername = generateSipUsernameWithExtension(companyId, extension);
+    const sipPassword = generateSipPassword();
+
+    console.log(`[SIP User] Creating Telnyx credential: ${sipUsername} for connection ${connectionId}`);
+
+    // Create the telephony credential in Telnyx
+    const response = await fetch(`${TELNYX_API_BASE}/telephony_credentials`, {
+      method: "POST",
+      headers: buildHeaders(config),
+      body: JSON.stringify({
+        connection_id: connectionId,
+        name: `${displayName} (Ext ${extension})`,
+        sip_username: sipUsername,
+        sip_password: sipPassword,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[SIP User] Failed to create credential: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to create SIP credential: ${response.status}` };
+    }
+
+    const data = await response.json();
+    const credentialId = data.data?.id;
+    const returnedSipUsername = data.data?.sip_username || sipUsername;
+
+    console.log(`[SIP User] Credential created: ${credentialId}, SIP: ${returnedSipUsername}@sip.telnyx.com`);
+
+    // Save to database with ownerUserId
+    await db.insert(telephonyCredentials).values({
+      companyId,
+      userId,
+      ownerUserId: userId,
+      telnyxCredentialId: credentialId,
+      sipUsername: returnedSipUsername,
+      sipPassword: sipPassword,
+      isActive: true,
+    }).onConflictDoUpdate({
+      target: [telephonyCredentials.ownerUserId],
+      set: {
+        telnyxCredentialId: credentialId,
+        sipUsername: returnedSipUsername,
+        sipPassword: sipPassword,
+        isActive: true,
+        updatedAt: new Date(),
+      },
+    });
+
+    return { success: true, credentialId, sipUsername: returnedSipUsername, sipPassword };
+  } catch (error) {
+    console.error("[SIP User] Create credential error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to create SIP credential" };
+  }
+}
+
+/**
+ * Get SIP credentials for a user. Returns existing credentials or null.
+ */
+export async function getUserSipCredentials(
+  userId: string
+): Promise<{ sipUsername: string; sipPassword: string; telnyxCredentialId: string } | null> {
+  const [cred] = await db
+    .select({
+      sipUsername: telephonyCredentials.sipUsername,
+      sipPassword: telephonyCredentials.sipPassword,
+      telnyxCredentialId: telephonyCredentials.telnyxCredentialId,
+    })
+    .from(telephonyCredentials)
+    .where(eq(telephonyCredentials.ownerUserId, userId));
+
+  if (!cred?.sipPassword || !cred?.telnyxCredentialId) {
+    return null;
+  }
+
+  return {
+    sipUsername: cred.sipUsername,
+    sipPassword: cred.sipPassword,
+    telnyxCredentialId: cred.telnyxCredentialId,
+  };
 }
 
 export async function getOrCreateWebRTCCredential(
