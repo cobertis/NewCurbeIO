@@ -159,15 +159,74 @@ export class CallControlWebhookService {
 
     await pbxService.removeActiveCall(call_control_id);
 
+    // Check if this is the original caller hanging up during a ring-all attempt
+    const ringAttempt = activeQueueRings.get(call_control_id);
+    if (ringAttempt && ringAttempt.status === "ringing") {
+      console.log(`[CallControl] Ring-all: original caller hung up, cancelling all agent calls`);
+      ringAttempt.status = "failed";
+      
+      // Hangup all agent legs
+      for (const agentCallId of ringAttempt.agentCallControlIds) {
+        try {
+          await this.hangupCall(agentCallId, "NORMAL_CLEARING");
+        } catch (e) {
+          // Ignore errors for already disconnected calls
+        }
+      }
+      activeQueueRings.delete(call_control_id);
+      return;
+    }
+
+    // Check if this is an agent leg in a ring-all attempt that failed/timed out
     if (client_state) {
       try {
         const state = JSON.parse(Buffer.from(client_state, "base64").toString());
+        
+        // Handle ring-all agent leg hangup (timeout, rejected, etc.)
+        if (state.ringAllAttempt && state.originalCallControlId) {
+          await this.handleRingAllAgentHangup(
+            call_control_id,
+            state.originalCallControlId,
+            state.companyId
+          );
+          return;
+        }
+        
         if (state.agentUserId) {
           await pbxService.updateAgentStatus(state.companyId, state.agentUserId, "available");
         }
       } catch (e) {
         console.log(`[CallControl] Could not parse client_state on hangup`);
       }
+    }
+  }
+
+  private async handleRingAllAgentHangup(
+    agentCallControlId: string,
+    originalCallControlId: string,
+    companyId: string
+  ): Promise<void> {
+    const ringAttempt = activeQueueRings.get(originalCallControlId);
+    if (!ringAttempt) return;
+
+    // If already answered, ignore this hangup (normal disconnect of other agents)
+    if (ringAttempt.status === "answered") return;
+
+    // Remove this agent from the list
+    ringAttempt.agentCallControlIds = ringAttempt.agentCallControlIds.filter(
+      id => id !== agentCallControlId
+    );
+
+    console.log(`[CallControl] Ring-all: agent leg hung up, remaining agents: ${ringAttempt.agentCallControlIds.length}`);
+
+    // If all agent legs have failed, route to voicemail
+    if (ringAttempt.agentCallControlIds.length === 0) {
+      console.log(`[CallControl] Ring-all: all agents failed, routing to voicemail`);
+      ringAttempt.status = "failed";
+      activeQueueRings.delete(originalCallControlId);
+      
+      await this.speakText(originalCallControlId, "All agents are unavailable. Please leave a message after the tone.");
+      await this.routeToVoicemail(originalCallControlId, companyId);
     }
   }
 
