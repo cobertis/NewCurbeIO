@@ -993,122 +993,123 @@ export default function VipPassPage() {
         </Dialog>
 
         <Dialog open={pushDialogOpen} onOpenChange={(open) => { setPushDialogOpen(open); if (!open) resetPushForm(); }}>
-          <DialogContent className="sm:max-w-2xl max-h-[90vh]">
+          <DialogContent className="sm:max-w-5xl max-h-[90vh]">
             <DialogHeader>
               <DialogTitle>Rich Push Notification Designer</DialogTitle>
               <DialogDescription>Send customized push notifications to Android devices</DialogDescription>
             </DialogHeader>
-            <ScrollArea className="max-h-[calc(90vh-180px)] pr-4">
-              <div className="space-y-6 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Target</Label>
-                    <Select value={pushTarget} onValueChange={(v: "single" | "all") => { setPushTarget(v); if (v === "all") setSelectedPassId(null); }}>
-                      <SelectTrigger data-testid="select-push-target"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">All Active Passes</SelectItem>
-                        <SelectItem value="single">Single Pass</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  {pushTarget === "single" && (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <ScrollArea className="max-h-[calc(90vh-180px)] pr-4 lg:col-span-2">
+                <div className="space-y-6 py-4">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Select Pass</Label>
-                      <Select value={selectedPassId || ""} onValueChange={setSelectedPassId}>
-                        <SelectTrigger data-testid="select-pass-instance"><SelectValue placeholder="Select pass" /></SelectTrigger>
+                      <Label>Target</Label>
+                      <Select value={pushTarget} onValueChange={(v: "single" | "all") => { setPushTarget(v); if (v === "all") setSelectedPassId(null); }}>
+                        <SelectTrigger data-testid="select-push-target"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {instances?.filter(i => i.status === "active").map(i => (
-                            <SelectItem key={i.id} value={i.id}>{i.recipientName || i.serialNumber}</SelectItem>
-                          ))}
+                          <SelectItem value="all">All Active Passes</SelectItem>
+                          <SelectItem value="single">Single Pass</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                  )}
-                </div>
+                    {pushTarget === "single" && (
+                      <div className="space-y-2">
+                        <Label>Select Pass</Label>
+                        <Select value={selectedPassId || ""} onValueChange={setSelectedPassId}>
+                          <SelectTrigger data-testid="select-pass-instance"><SelectValue placeholder="Select pass" /></SelectTrigger>
+                          <SelectContent>
+                            {instances?.filter(i => i.status === "active").map(i => (
+                              <SelectItem key={i.id} value={i.id}>{i.recipientName || i.serialNumber}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                  </div>
 
-                <Separator />
+                  <Separator />
 
-                <div className="space-y-4">
-                  <h4 className="text-sm font-medium">Content</h4>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-medium">Content</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Title <span className="text-muted-foreground text-xs">(required)</span></Label>
+                        <Input 
+                          placeholder="VIP Pass Update" 
+                          value={pushForm.title} 
+                          onChange={(e) => setPushForm({ ...pushForm, title: e.target.value })} 
+                          data-testid="input-push-title" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Notification Type</Label>
+                        <Select value={pushForm.notificationType} onValueChange={(v: "TRANSACTIONAL" | "REMINDER" | "ACTION_REQUIRED" | "INFO") => setPushForm({ ...pushForm, notificationType: v })}>
+                          <SelectTrigger data-testid="select-notification-type"><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="INFO">Info</SelectItem>
+                            <SelectItem value="TRANSACTIONAL">Transactional</SelectItem>
+                            <SelectItem value="REMINDER">Reminder</SelectItem>
+                            <SelectItem value="ACTION_REQUIRED">Action Required</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
                     <div className="space-y-2">
-                      <Label>Title <span className="text-muted-foreground text-xs">(required)</span></Label>
+                      <Label>Body <span className="text-muted-foreground text-xs">(required, 40-120 chars ideal)</span></Label>
+                      <Textarea 
+                        placeholder="Your VIP benefits have been updated. Tap to view details." 
+                        value={pushForm.body} 
+                        onChange={(e) => setPushForm({ ...pushForm, body: e.target.value })} 
+                        rows={2}
+                        data-testid="input-push-body" 
+                      />
+                      <p className="text-xs text-muted-foreground">{pushForm.body.length} characters</p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Click URL <span className="text-muted-foreground text-xs">(destination when clicked)</span></Label>
                       <Input 
-                        placeholder="VIP Pass Update" 
-                        value={pushForm.title} 
-                        onChange={(e) => setPushForm({ ...pushForm, title: e.target.value })} 
-                        data-testid="input-push-title" 
+                        placeholder="https://example.com/vip" 
+                        value={pushForm.url} 
+                        onChange={(e) => setPushForm({ ...pushForm, url: e.target.value })} 
+                        data-testid="input-push-url" 
                       />
                     </div>
-                    <div className="space-y-2">
-                      <Label>Notification Type</Label>
-                      <Select value={pushForm.notificationType} onValueChange={(v: "TRANSACTIONAL" | "REMINDER" | "ACTION_REQUIRED" | "INFO") => setPushForm({ ...pushForm, notificationType: v })}>
-                        <SelectTrigger data-testid="select-notification-type"><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="INFO">Info</SelectItem>
-                          <SelectItem value="TRANSACTIONAL">Transactional</SelectItem>
-                          <SelectItem value="REMINDER">Reminder</SelectItem>
-                          <SelectItem value="ACTION_REQUIRED">Action Required</SelectItem>
-                        </SelectContent>
-                      </Select>
+                  </div>
+
+                  <Separator />
+
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-medium">Media</h4>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Icon URL <span className="text-muted-foreground text-xs">(192x192 PNG)</span></Label>
+                        <Input 
+                          placeholder="https://..." 
+                          value={pushForm.icon} 
+                          onChange={(e) => setPushForm({ ...pushForm, icon: e.target.value })} 
+                          data-testid="input-push-icon" 
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Badge URL <span className="text-muted-foreground text-xs">(72x72 PNG)</span></Label>
+                        <Input 
+                          placeholder="https://..." 
+                          value={pushForm.badge} 
+                          onChange={(e) => setPushForm({ ...pushForm, badge: e.target.value })} 
+                          data-testid="input-push-badge" 
+                        />
+                      </div>
                     </div>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Body <span className="text-muted-foreground text-xs">(required, 40-120 chars ideal)</span></Label>
-                    <Textarea 
-                      placeholder="Your VIP benefits have been updated. Tap to view details." 
-                      value={pushForm.body} 
-                      onChange={(e) => setPushForm({ ...pushForm, body: e.target.value })} 
-                      rows={2}
-                      data-testid="input-push-body" 
-                    />
-                    <p className="text-xs text-muted-foreground">{pushForm.body.length} characters</p>
-                  </div>
-                  <div className="space-y-2">
-                    <Label>Click URL <span className="text-muted-foreground text-xs">(destination when clicked)</span></Label>
-                    <Input 
-                      placeholder="https://example.com/vip" 
-                      value={pushForm.url} 
-                      onChange={(e) => setPushForm({ ...pushForm, url: e.target.value })} 
-                      data-testid="input-push-url" 
-                    />
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div className="space-y-4">
-                  <h4 className="text-sm font-medium">Media</h4>
-                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <Label>Icon URL <span className="text-muted-foreground text-xs">(192x192 PNG)</span></Label>
+                      <Label>Large Image URL <span className="text-muted-foreground text-xs">(1200x600, optional)</span></Label>
                       <Input 
                         placeholder="https://..." 
-                        value={pushForm.icon} 
-                        onChange={(e) => setPushForm({ ...pushForm, icon: e.target.value })} 
-                        data-testid="input-push-icon" 
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label>Badge URL <span className="text-muted-foreground text-xs">(72x72 PNG)</span></Label>
-                      <Input 
-                        placeholder="https://..." 
-                        value={pushForm.badge} 
-                        onChange={(e) => setPushForm({ ...pushForm, badge: e.target.value })} 
-                        data-testid="input-push-badge" 
+                        value={pushForm.image} 
+                        onChange={(e) => setPushForm({ ...pushForm, image: e.target.value })} 
+                        data-testid="input-push-image" 
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label>Large Image URL <span className="text-muted-foreground text-xs">(1200x600, optional)</span></Label>
-                    <Input 
-                      placeholder="https://..." 
-                      value={pushForm.image} 
-                      onChange={(e) => setPushForm({ ...pushForm, image: e.target.value })} 
-                      data-testid="input-push-image" 
-                    />
-                  </div>
-                </div>
 
                 <Separator />
 
@@ -1252,6 +1253,55 @@ export default function VipPassPage() {
                 </div>
               </div>
             </ScrollArea>
+
+              <div className="lg:col-span-1">
+                <div className="sticky top-0">
+                  <h4 className="text-sm font-medium mb-3">Android Preview</h4>
+                  <div className="bg-gray-900 rounded-2xl p-3 shadow-xl" style={{ width: "280px" }}>
+                    <div className="bg-gray-800 rounded-xl p-3 space-y-2">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gray-600 flex items-center justify-center overflow-hidden flex-shrink-0">
+                          {pushForm.icon ? (
+                            <img src={pushForm.icon} alt="Icon" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                          ) : (
+                            <Bell className="h-5 w-5 text-gray-400" />
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1 text-gray-400 text-xs mb-0.5">
+                            <span>VIP Card</span>
+                            <span>·</span>
+                            <span>now</span>
+                          </div>
+                          <p className="text-white text-sm font-medium truncate">{pushForm.title || "VIP Pass Update"}</p>
+                          <p className="text-gray-300 text-xs line-clamp-2">{pushForm.body || "Notification body preview..."}</p>
+                        </div>
+                      </div>
+                      {pushForm.image && (
+                        <div className="rounded-lg overflow-hidden bg-gray-700 h-24">
+                          <img src={pushForm.image} alt="Large" className="w-full h-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                        </div>
+                      )}
+                      {pushForm.actions.length > 0 && (
+                        <div className="flex gap-2 pt-1">
+                          {pushForm.actions.slice(0, 2).map((action, i) => (
+                            <button key={i} className="flex-1 text-xs text-blue-400 font-medium py-1 px-2 bg-gray-700 rounded">
+                              {action.title || "Action"}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    <div className="text-center mt-2 text-gray-500 text-xs">
+                      Expanded notification preview
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground mt-3 text-center max-w-[280px]">
+                    Actual appearance may vary by device and Android version
+                  </p>
+                </div>
+              </div>
+            </div>
             <DialogFooter className="mt-4">
               <Button variant="outline" onClick={() => { setPushDialogOpen(false); resetPushForm(); }}>Cancel</Button>
               <Button 
