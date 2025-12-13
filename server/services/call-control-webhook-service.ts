@@ -274,11 +274,45 @@ export class CallControlWebhookService {
   }
 
   private async handlePlaybackEnded(payload: CallControlEvent["data"]["payload"]): Promise<void> {
-    console.log(`[CallControl] Playback ended for call: ${payload.call_control_id}`);
+    const { call_control_id, client_state } = payload;
+    console.log(`[CallControl] Playback ended for call: ${call_control_id}`);
+
+    // Check if we need to start DTMF gathering after playback
+    if (client_state) {
+      try {
+        const state = JSON.parse(Buffer.from(client_state, "base64").toString());
+        if (state.pendingGather) {
+          console.log(`[CallControl] Starting DTMF gather after playback for company: ${state.companyId}`);
+          const gatherClientState = Buffer.from(
+            JSON.stringify({ companyId: state.companyId, pbxSettingsId: state.pbxSettingsId })
+          ).toString("base64");
+          await this.gatherDtmf(call_control_id, gatherClientState, state.ivrTimeout || 10);
+        }
+      } catch (e) {
+        console.log(`[CallControl] Could not parse client_state in playback.ended`);
+      }
+    }
   }
 
   private async handleSpeakEnded(payload: CallControlEvent["data"]["payload"]): Promise<void> {
-    console.log(`[CallControl] Speak ended for call: ${payload.call_control_id}`);
+    const { call_control_id, client_state } = payload;
+    console.log(`[CallControl] Speak ended for call: ${call_control_id}`);
+
+    // Check if we need to start DTMF gathering after speak
+    if (client_state) {
+      try {
+        const state = JSON.parse(Buffer.from(client_state, "base64").toString());
+        if (state.pendingGather) {
+          console.log(`[CallControl] Starting DTMF gather after speak for company: ${state.companyId}`);
+          const gatherClientState = Buffer.from(
+            JSON.stringify({ companyId: state.companyId, pbxSettingsId: state.pbxSettingsId })
+          ).toString("base64");
+          await this.gatherDtmf(call_control_id, gatherClientState, state.ivrTimeout || 10);
+        }
+      } catch (e) {
+        console.log(`[CallControl] Could not parse client_state in speak.ended`);
+      }
+    }
   }
 
   private async handleCallBridged(payload: CallControlEvent["data"]["payload"]): Promise<void> {
@@ -563,19 +597,24 @@ export class CallControlWebhookService {
     companyId: string,
     settings: any
   ): Promise<void> {
+    // Create client_state with flag to start gather after playback ends
     const clientState = Buffer.from(
-      JSON.stringify({ companyId, pbxSettingsId: settings.id })
+      JSON.stringify({ 
+        companyId, 
+        pbxSettingsId: settings.id,
+        pendingGather: true,
+        ivrTimeout: settings.ivrTimeout || 10
+      })
     ).toString("base64");
 
     if (settings.useTextToSpeech && settings.greetingText) {
-      await this.speakText(callControlId, settings.greetingText);
-      await this.gatherDtmf(callControlId, clientState, settings.ivrTimeout || 10);
+      // For TTS, use speak with client_state - gather will start on speak.ended
+      await this.speakTextWithState(callControlId, settings.greetingText, clientState);
     } else if (settings.greetingAudioUrl) {
-      await this.playAudio(callControlId, settings.greetingAudioUrl);
-      await this.gatherDtmf(callControlId, clientState, settings.ivrTimeout || 10);
+      // For audio file, use playback with client_state - gather will start on playback.ended
+      await this.playAudioWithState(callControlId, settings.greetingAudioUrl, clientState);
     } else {
-      await this.speakText(callControlId, "Welcome. Please enter your selection.");
-      await this.gatherDtmf(callControlId, clientState, settings.ivrTimeout || 10);
+      await this.speakTextWithState(callControlId, "Welcome. Please enter your selection.", clientState);
     }
   }
 
@@ -597,6 +636,15 @@ export class CallControlWebhookService {
     });
   }
 
+  private async speakTextWithState(callControlId: string, text: string, clientState: string): Promise<void> {
+    await this.makeCallControlRequest(callControlId, "speak", {
+      payload: text,
+      voice: "female",
+      language: "en-US",
+      client_state: clientState,
+    });
+  }
+
   private async playAudio(callControlId: string, audioUrl: string): Promise<void> {
     // Convert relative URLs to absolute URLs for Telnyx
     let absoluteUrl = audioUrl;
@@ -610,6 +658,23 @@ export class CallControlWebhookService {
     
     await this.makeCallControlRequest(callControlId, "playback_start", {
       audio_url: absoluteUrl,
+    });
+  }
+
+  private async playAudioWithState(callControlId: string, audioUrl: string, clientState: string): Promise<void> {
+    // Convert relative URLs to absolute URLs for Telnyx
+    let absoluteUrl = audioUrl;
+    if (audioUrl.startsWith('/')) {
+      const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0];
+      if (domain) {
+        absoluteUrl = `https://${domain}${audioUrl}`;
+        console.log(`[CallControl] Converting relative audio URL to absolute: ${absoluteUrl}`);
+      }
+    }
+    
+    await this.makeCallControlRequest(callControlId, "playback_start", {
+      audio_url: absoluteUrl,
+      client_state: clientState,
     });
   }
 
