@@ -1,6 +1,7 @@
 import { db } from "../db";
 import {
   pbxSettings,
+  pbxIvrs,
   pbxMenuOptions,
   pbxQueues,
   pbxQueueMembers,
@@ -11,6 +12,7 @@ import {
   users,
   telephonySettings,
   PbxSettings,
+  PbxIvr,
   PbxMenuOption,
   PbxQueue,
   PbxQueueMember,
@@ -551,6 +553,154 @@ export class PbxService {
       .delete(pbxAudioFiles)
       .where(and(eq(pbxAudioFiles.companyId, companyId), eq(pbxAudioFiles.id, fileId)));
     return true;
+  }
+
+  // =====================================================
+  // IVR CRUD Operations - Multiple IVRs per company
+  // =====================================================
+
+  async getIvrs(companyId: string): Promise<PbxIvr[]> {
+    return db
+      .select()
+      .from(pbxIvrs)
+      .where(eq(pbxIvrs.companyId, companyId))
+      .orderBy(asc(pbxIvrs.name));
+  }
+
+  async getIvr(companyId: string, ivrId: string): Promise<PbxIvr | null> {
+    const [ivr] = await db
+      .select()
+      .from(pbxIvrs)
+      .where(and(eq(pbxIvrs.companyId, companyId), eq(pbxIvrs.id, ivrId)));
+    return ivr || null;
+  }
+
+  async getIvrByExtension(companyId: string, extension: string): Promise<PbxIvr | null> {
+    const [ivr] = await db
+      .select()
+      .from(pbxIvrs)
+      .where(and(eq(pbxIvrs.companyId, companyId), eq(pbxIvrs.extension, extension)));
+    return ivr || null;
+  }
+
+  async getDefaultIvr(companyId: string): Promise<PbxIvr | null> {
+    const [ivr] = await db
+      .select()
+      .from(pbxIvrs)
+      .where(and(eq(pbxIvrs.companyId, companyId), eq(pbxIvrs.isDefault, true)));
+    return ivr || null;
+  }
+
+  async createIvr(companyId: string, data: Record<string, any>): Promise<PbxIvr> {
+    const { companyId: _, id: __, ...safeData } = data;
+    
+    // If this is the first IVR or marked as default, ensure only one default
+    if (safeData.isDefault) {
+      await db
+        .update(pbxIvrs)
+        .set({ isDefault: false })
+        .where(eq(pbxIvrs.companyId, companyId));
+    }
+    
+    const [ivr] = await db
+      .insert(pbxIvrs)
+      .values({ ...safeData, companyId } as any)
+      .returning();
+    
+    // If this is the first IVR, make it default
+    const count = await db.select().from(pbxIvrs).where(eq(pbxIvrs.companyId, companyId));
+    if (count.length === 1) {
+      await db.update(pbxIvrs).set({ isDefault: true }).where(eq(pbxIvrs.id, ivr.id));
+      ivr.isDefault = true;
+    }
+    
+    return ivr;
+  }
+
+  async updateIvr(companyId: string, ivrId: string, data: Record<string, any>): Promise<PbxIvr | null> {
+    const { companyId: _, id: __, ...safeData } = data;
+    
+    // If setting as default, clear other defaults first
+    if (safeData.isDefault) {
+      await db
+        .update(pbxIvrs)
+        .set({ isDefault: false })
+        .where(eq(pbxIvrs.companyId, companyId));
+    }
+    
+    const [ivr] = await db
+      .update(pbxIvrs)
+      .set({ ...safeData, updatedAt: new Date() })
+      .where(and(eq(pbxIvrs.companyId, companyId), eq(pbxIvrs.id, ivrId)))
+      .returning();
+    return ivr || null;
+  }
+
+  async deleteIvr(companyId: string, ivrId: string): Promise<boolean> {
+    // Check if this IVR has menu options - we need to delete them first
+    await db
+      .delete(pbxMenuOptions)
+      .where(and(eq(pbxMenuOptions.companyId, companyId), eq(pbxMenuOptions.ivrId, ivrId)));
+    
+    await db
+      .delete(pbxIvrs)
+      .where(and(eq(pbxIvrs.companyId, companyId), eq(pbxIvrs.id, ivrId)));
+    return true;
+  }
+
+  // Get menu options for a specific IVR
+  async getIvrMenuOptions(companyId: string, ivrId: string): Promise<PbxMenuOption[]> {
+    return db
+      .select()
+      .from(pbxMenuOptions)
+      .where(and(eq(pbxMenuOptions.companyId, companyId), eq(pbxMenuOptions.ivrId, ivrId)))
+      .orderBy(asc(pbxMenuOptions.displayOrder));
+  }
+
+  // Create menu option for specific IVR
+  async createIvrMenuOption(companyId: string, ivrId: string, data: Record<string, any>): Promise<PbxMenuOption> {
+    const { companyId: _, ivrId: __, id: ___, ...safeData } = data;
+    const [option] = await db
+      .insert(pbxMenuOptions)
+      .values({ ...safeData, companyId, ivrId } as any)
+      .returning();
+    return option;
+  }
+
+  // Update menu option
+  async updateIvrMenuOption(companyId: string, optionId: string, data: Record<string, any>): Promise<PbxMenuOption | null> {
+    const { companyId: _, id: __, ...safeData } = data;
+    const [option] = await db
+      .update(pbxMenuOptions)
+      .set({ ...safeData, updatedAt: new Date() })
+      .where(and(eq(pbxMenuOptions.companyId, companyId), eq(pbxMenuOptions.id, optionId)))
+      .returning();
+    return option || null;
+  }
+
+  // Delete menu option
+  async deleteIvrMenuOption(companyId: string, optionId: string): Promise<boolean> {
+    await db
+      .delete(pbxMenuOptions)
+      .where(and(eq(pbxMenuOptions.companyId, companyId), eq(pbxMenuOptions.id, optionId)));
+    return true;
+  }
+
+  // Get next available IVR extension for a company
+  async getNextIvrExtension(companyId: string): Promise<string> {
+    const ivrs = await db
+      .select({ extension: pbxIvrs.extension })
+      .from(pbxIvrs)
+      .where(eq(pbxIvrs.companyId, companyId));
+    
+    const usedExtensions = new Set(ivrs.map(i => parseInt(i.extension, 10)).filter(n => !isNaN(n)));
+    
+    // Start from 1000 for IVR extensions
+    let nextExt = 1000;
+    while (usedExtensions.has(nextExt)) {
+      nextExt++;
+    }
+    return nextExt.toString();
   }
 }
 
