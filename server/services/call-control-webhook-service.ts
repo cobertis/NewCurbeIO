@@ -700,6 +700,7 @@ export class CallControlWebhookService {
           agentUserId: member.userId,
           queueId,
           ringAll: true,
+          originalCallerNumber: callerNumber,
         })).toString("base64");
 
         const response = await fetch(`${TELNYX_API_BASE}/calls`, {
@@ -709,9 +710,13 @@ export class CallControlWebhookService {
             connection_id: connectionId,
             to: sipUri,
             from: callerIdNumber,
+            from_display_name: callerNumber,
             timeout_secs: ringTimeout,
             answering_machine_detection: "disabled",
             client_state: clientState,
+            custom_headers: [
+              { name: "X-Original-Caller", value: callerNumber }
+            ],
           }),
         });
 
