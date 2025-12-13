@@ -1437,12 +1437,12 @@ function QueueDialog({
           </div>
           <div className="space-y-2">
             <Label>Hold Music</Label>
-            <Select value={holdMusicAudioId} onValueChange={setHoldMusicAudioId}>
+            <Select value={holdMusicAudioId || "none"} onValueChange={(val) => setHoldMusicAudioId(val === "none" ? "" : val)}>
               <SelectTrigger data-testid="select-hold-music">
                 <SelectValue placeholder="Select from library" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">None</SelectItem>
+                <SelectItem value="none">None</SelectItem>
                 {holdMusicOptions.map((audio) => (
                   <SelectItem key={audio.id} value={audio.id}>
                     <div className="flex items-center gap-2">
@@ -2009,12 +2009,12 @@ function IvrDialog({
               
               {audioSource === "library" ? (
                 <div className="space-y-2">
-                  <Select value={selectedAudioId} onValueChange={setSelectedAudioId}>
+                  <Select value={selectedAudioId || "none"} onValueChange={(val) => setSelectedAudioId(val === "none" ? "" : val)}>
                     <SelectTrigger data-testid="select-ivr-greeting-audio">
                       <SelectValue placeholder="Select from library" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">None</SelectItem>
+                      <SelectItem value="none">None</SelectItem>
                       {greetingAudioOptions.map((audio) => (
                         <SelectItem key={audio.id} value={audio.id}>
                           <div className="flex items-center gap-2">

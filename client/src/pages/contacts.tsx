@@ -1565,12 +1565,12 @@ export default function Contacts() {
 
             <div className="space-y-2">
               <label className="text-sm font-medium">Add imported contacts to a list (optional)</label>
-              <Select value={selectedListForImport} onValueChange={setSelectedListForImport}>
+              <Select value={selectedListForImport || "none"} onValueChange={(val) => setSelectedListForImport(val === "none" ? "" : val)}>
                 <SelectTrigger data-testid="select-import-list">
                   <SelectValue placeholder="Choose a list (optional)..." />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">None - Don't add to a list</SelectItem>
+                  <SelectItem value="none">None - Don't add to a list</SelectItem>
                   {lists.map((list) => (
                     <SelectItem key={list.id} value={list.id}>
                       {list.name}
