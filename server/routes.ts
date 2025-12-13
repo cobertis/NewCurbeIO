@@ -170,6 +170,7 @@ function detectStopKeyword(messageBody: string): boolean {
   const normalizedBody = messageBody.trim().toUpperCase();
   return stopKeywords.some(keyword => normalizedBody === keyword || normalizedBody.startsWith(keyword + " "));
 
+  // ============================================================
   return httpServer;
 }
 // Verify ffmpeg is available at startup
@@ -200,6 +201,7 @@ async function extractAudioDuration(audioPath: string): Promise<number> {
     return Math.floor(stats.size / 3000);
   }
 
+  // ============================================================
   return httpServer;
 }
 // Helper function to generate real waveform from audio file
@@ -276,6 +278,7 @@ async function generateAudioWaveform(audioPath: string, targetSamples: number = 
     return waveform;
   }
 
+  // ============================================================
   return httpServer;
 }
 async function convertWebMToCAF(inputPath: string, tryOpus: boolean = true): Promise<{ path: string, metadata: AudioMetadata }> {
@@ -369,6 +372,7 @@ async function convertWebMToCAF(inputPath: string, tryOpus: boolean = true): Pro
       .save(outputPath);
   });
 
+  // ============================================================
   return httpServer;
 }
 interface AudioMetadata {
@@ -379,6 +383,7 @@ interface AudioMetadata {
   codec: string;
   sampleRate: number;
 
+  // ============================================================
   return httpServer;
 }
 async function ensureUserSlug(userId: string, companyId: string): Promise<string> {
@@ -419,6 +424,7 @@ async function ensureUserSlug(userId: string, companyId: string): Promise<string
   }
   return finalSlug;
 
+  // ============================================================
   return httpServer;
 }
 export async function registerRoutes(app: Express, sessionStore?: any): Promise<Server> {
@@ -33567,6 +33573,50 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+  // ============================================================
+  // PUBLIC WALLET DOWNLOAD (for Apple Wallet .pkpass)
+  // ============================================================
+  
+  app.get("/api/public/wallet/:token", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.params;
+      
+      // Find pass instance by authentication token
+      const [passInstance] = await db
+        .select({
+          id: vipPassInstances.id,
+          companyId: vipPassInstances.companyId,
+          status: vipPassInstances.status,
+          serialNumber: vipPassInstances.serialNumber,
+        })
+        .from(vipPassInstances)
+        .where(eq(vipPassInstances.authenticationToken, token))
+        .limit(1);
+      
+      if (!passInstance) {
+        return res.status(404).json({ message: "Pass not found" });
+      }
+      
+      if (passInstance.status !== "active") {
+        return res.status(410).json({ message: "Pass is no longer active" });
+      }
+      
+      // Generate the .pkpass file
+      const { buffer, filename } = await vipPassService.generatePkpassFile(passInstance.id, passInstance.companyId);
+      
+      res.set({
+        "Content-Type": "application/vnd.apple.pkpass",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Length": buffer.length.toString(),
+      });
+      
+      return res.send(buffer);
+    } catch (error: any) {
+      console.error("[PublicWallet] Error:", error);
+      return res.status(500).json({ message: "Failed to generate wallet pass" });
+    }
+  });
 
   return httpServer;
 }
