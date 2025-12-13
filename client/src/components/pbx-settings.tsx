@@ -893,7 +893,7 @@ function QueueTableRow({
   onDelete: () => void;
 }) {
   const { data: members = [] } = useQuery<QueueMember[]>({
-    queryKey: ["/api/pbx/queues", queue.id, "members"],
+    queryKey: [`/api/pbx/queues/${queue.id}/members`],
   });
 
   const memberExtensions = members
@@ -956,7 +956,7 @@ function QueueDialog({
   const [selectedMemberIds, setSelectedMemberIds] = useState<string[]>([]);
 
   const { data: existingMembers = [] } = useQuery<QueueMember[]>({
-    queryKey: ["/api/pbx/queues", queue?.id, "members"],
+    queryKey: [`/api/pbx/queues/${queue?.id}/members`],
     enabled: !!queue?.id,
   });
 
@@ -1079,7 +1079,7 @@ function QueueDialog({
             Cancel
           </Button>
           <Button
-            onClick={() => onSubmit({ id: queue?.id, name, description, ringStrategy, memberIds: selectedMemberIds })}
+            onClick={() => onSubmit({ id: queue?.id, name, description, ringStrategy, memberIds: selectedMemberIds.filter(id => id) })}
             disabled={isPending || !name}
             data-testid="button-save-queue"
           >
