@@ -31820,7 +31820,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // VIP PASS PUSH NOTIFICATIONS ENDPOINTS
   // ========================================
 
-  // POST /api/vip-pass/notifications/send - Send push notification
+  // POST /api/vip-pass/notifications/send - Send rich push notification
   app.post("/api/vip-pass/notifications/send", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -31833,36 +31833,63 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ error: "Admin access required" });
       }
       
-      const { passInstanceId, message } = req.body;
+      const { 
+        passInstanceId, 
+        title,
+        body,
+        url,
+        icon,
+        badge,
+        image,
+        tag,
+        renotify,
+        requireInteraction,
+        silent,
+        actions,
+        notificationType,
+        message // Legacy field - use body if message provided
+      } = req.body;
       
-      if (!message) {
-        return res.status(400).json({ error: "Message is required" });
+      const notificationBody = body || message;
+      
+      if (!notificationBody) {
+        return res.status(400).json({ error: "Body/message is required" });
       }
       
       const { webPushService } = await import("./services/web-push-service");
+      
+      // Build rich push payload
+      const pushPayload = {
+        title: title || "VIP Pass Update",
+        body: notificationBody,
+        url: url || undefined,
+        icon: icon || undefined,
+        badge: badge || undefined,
+        image: image || undefined,
+        tag: tag || undefined,
+        renotify: renotify || false,
+        requireInteraction: requireInteraction || false,
+        silent: silent || false,
+        actions: actions || undefined,
+        notificationType: notificationType || 'INFO',
+      };
       
       let apnsResult = { successCount: 0, failedCount: 0 };
       let webPushResult = { sent: 0, failed: 0 };
       
       if (passInstanceId) {
         // Send to specific pass - both Apple and Web Push
-        apnsResult = await vipPassApnsService.sendPushToPass(user.companyId, passInstanceId, message);
-        webPushResult = await webPushService.sendToPassInstance(passInstanceId, {
-          title: "VIP Pass Update",
-          body: message,
-        });
+        apnsResult = await vipPassApnsService.sendPushToPass(user.companyId, passInstanceId, notificationBody);
+        webPushResult = await webPushService.sendToPassInstance(passInstanceId, pushPayload);
       } else {
         // Send to all passes - both Apple and Web Push
-        apnsResult = await vipPassApnsService.sendPushToAllPasses(user.companyId, message);
+        apnsResult = await vipPassApnsService.sendPushToAllPasses(user.companyId, notificationBody);
         
         // Get all pass instances for this company and send web push to each
         const instances = await vipPassService.getPassInstances(user.companyId);
         for (const instance of instances) {
           if (instance.status === "active") {
-            const result = await webPushService.sendToPassInstance(instance.id, {
-              title: "VIP Pass Update",
-              body: message,
-            });
+            const result = await webPushService.sendToPassInstance(instance.id, pushPayload);
             webPushResult.sent += result.sent;
             webPushResult.failed += result.failed;
           }

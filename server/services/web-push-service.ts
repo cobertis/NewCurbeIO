@@ -4,12 +4,25 @@ import { pushSubscriptions } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
 import { credentialProvider } from "./credential-provider";
 
+export interface PushAction {
+  action: string;
+  title: string;
+  icon?: string;
+}
+
 export interface PushPayload {
   title: string;
   body: string;
   url?: string;
   icon?: string;
   badge?: string;
+  image?: string;
+  tag?: string;
+  renotify?: boolean;
+  requireInteraction?: boolean;
+  silent?: boolean;
+  actions?: PushAction[];
+  notificationType?: 'TRANSACTIONAL' | 'REMINDER' | 'ACTION_REQUIRED' | 'INFO';
 }
 
 interface VapidConfig {
