@@ -35,17 +35,28 @@ async function getTelnyxApiKey(): Promise<string> {
   return apiKey.trim().replace(/[\r\n\t]/g, '');
 }
 
-export async function uploadAudioToTelnyxMedia(audioUrl: string, mediaName: string): Promise<string | null> {
+export async function uploadAudioToTelnyxMedia(audioUrl: string, mediaName: string, companyId?: string): Promise<string | null> {
   try {
     const apiKey = await getTelnyxApiKey();
-    console.log(`[TelnyxMedia] Uploading audio to Telnyx Media Storage: ${mediaName}`);
+    console.log(`[TelnyxMedia] Uploading audio to Telnyx Media Storage: ${mediaName}, URL: ${audioUrl}`);
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json"
+    };
+    
+    // Add managed account header if company has one
+    if (companyId) {
+      const managedAccountId = await getCompanyManagedAccountId(companyId);
+      if (managedAccountId) {
+        headers["X-Managed-Account-Id"] = managedAccountId;
+        console.log(`[TelnyxMedia] Using managed account: ${managedAccountId}`);
+      }
+    }
     
     const response = await fetch("https://api.telnyx.com/v2/media", {
       method: "POST",
-      headers: {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      },
+      headers,
       body: JSON.stringify({
         media_url: audioUrl,
         media_name: mediaName,

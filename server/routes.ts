@@ -32128,7 +32128,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         let greetingMediaName: string | null = null;
         try {
           const { uploadAudioToTelnyxMedia } = await import("./services/call-control-webhook-service");
-          greetingMediaName = await uploadAudioToTelnyxMedia(absoluteUrl, mediaName);
+          greetingMediaName = await uploadAudioToTelnyxMedia(absoluteUrl, mediaName, user.companyId);
           console.log(`[PBX] Audio uploaded to Telnyx Media Storage: ${greetingMediaName}`);
         } catch (telnyxError: any) {
           console.warn(`[PBX] Telnyx Media upload failed, falling back to URL: ${telnyxError.message}`);
@@ -32177,9 +32177,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
       }
       
-      // Update PBX settings to clear the audio URL
+      // Update PBX settings to clear the audio URL and media name
       const settings = await pbxService.createOrUpdatePbxSettings(user.companyId, {
-        greetingAudioUrl: null
+        greetingAudioUrl: null,
+        greetingMediaName: null
       });
       
       console.log(`[PBX] IVR greeting audio deleted for company ${user.companyId}`);
