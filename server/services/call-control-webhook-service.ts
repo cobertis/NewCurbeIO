@@ -703,6 +703,9 @@ export class CallControlWebhookService {
           originalCallerNumber: callerNumber,
         })).toString("base64");
 
+        // Format display name to show queue name and caller number
+        const queueDisplayName = `${queue.name} - ${callerNumber}`;
+        
         const response = await fetch(`${TELNYX_API_BASE}/calls`, {
           method: "POST",
           headers,
@@ -710,12 +713,13 @@ export class CallControlWebhookService {
             connection_id: connectionId,
             to: sipUri,
             from: callerIdNumber,
-            from_display_name: callerNumber,
+            from_display_name: queueDisplayName,
             timeout_secs: ringTimeout,
             answering_machine_detection: "disabled",
             client_state: clientState,
             custom_headers: [
-              { name: "X-Original-Caller", value: callerNumber }
+              { name: "X-Original-Caller", value: callerNumber },
+              { name: "X-Queue-Name", value: queue.name }
             ],
           }),
         });
