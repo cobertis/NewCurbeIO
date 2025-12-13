@@ -50,9 +50,11 @@ interface CallControlEvent {
       state?: string;
       client_state?: string;
       digit?: string;
+      digits?: string;
       hangup_cause?: string;
       hangup_source?: string;
       result?: string;
+      status?: string;
       recording_urls?: {
         wav?: string;
         mp3?: string;
@@ -225,9 +227,10 @@ export class CallControlWebhookService {
   }
 
   private async handleGatherEnded(payload: CallControlEvent["data"]["payload"]): Promise<void> {
-    const { call_control_id, digit, result, client_state } = payload;
+    // Telnyx uses 'digits' (plural) and 'status' in gather.ended event
+    const { call_control_id, digits, status, client_state } = payload;
 
-    console.log(`[CallControl] DTMF gathered: ${digit}, result: ${result}`);
+    console.log(`[CallControl] DTMF gathered: ${digits}, status: ${status}`);
 
     if (!client_state) {
       console.log(`[CallControl] No client_state in gather.ended event`);
@@ -238,17 +241,20 @@ export class CallControlWebhookService {
       const state = JSON.parse(Buffer.from(client_state, "base64").toString());
       const { companyId, pbxSettingsId } = state;
 
-      if (result === "timeout" || result === "cancelled") {
+      // Check for timeout, call_hangup, or cancelled status
+      if (status === "timeout" || status === "cancelled" || status === "call_hangup") {
         await this.speakText(call_control_id, "Sorry, we didn't receive your selection. Goodbye.");
         await this.hangupCall(call_control_id, "NORMAL_CLEARING");
         return;
       }
 
-      if (!digit) {
-        console.log(`[CallControl] No digit pressed`);
+      if (!digits) {
+        console.log(`[CallControl] No digits received`);
         return;
       }
 
+      // Take the first digit for menu selection
+      const digit = digits.charAt(0);
       const menuOptions = await pbxService.getMenuOptions(companyId, pbxSettingsId);
       const selectedOption = menuOptions.find((opt) => opt.digit === digit && opt.isActive);
 
@@ -592,8 +598,18 @@ export class CallControlWebhookService {
   }
 
   private async playAudio(callControlId: string, audioUrl: string): Promise<void> {
+    // Convert relative URLs to absolute URLs for Telnyx
+    let absoluteUrl = audioUrl;
+    if (audioUrl.startsWith('/')) {
+      const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0];
+      if (domain) {
+        absoluteUrl = `https://${domain}${audioUrl}`;
+        console.log(`[CallControl] Converting relative audio URL to absolute: ${absoluteUrl}`);
+      }
+    }
+    
     await this.makeCallControlRequest(callControlId, "playback_start", {
-      audio_url: audioUrl,
+      audio_url: absoluteUrl,
     });
   }
 
