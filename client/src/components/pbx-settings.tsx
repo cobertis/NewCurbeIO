@@ -610,7 +610,7 @@ export function PbxSettings() {
                 <ListOrdered className="w-5 h-5" />
                 IVR Menu Options
               </CardTitle>
-              <Button onClick={() => setShowMenuDialog(true)} data-testid="button-add-menu-option">
+              <Button onClick={() => { setEditingMenuOption(null); setShowMenuDialog(true); }} data-testid="button-add-menu-option">
                 <Plus className="w-4 h-4 mr-2" />
                 Add Option
               </Button>
@@ -1189,15 +1189,28 @@ function MenuOptionDialog({
   const [targetExtensionId, setTargetExtensionId] = useState("");
   const [targetExternalNumber, setTargetExternalNumber] = useState("");
 
+  useEffect(() => {
+    if (open) {
+      if (option) {
+        setDigit(option.digit);
+        setLabel(option.label);
+        setActionType(option.actionType);
+        setTargetQueueId(option.targetQueueId || "");
+        setTargetExtensionId(option.targetExtensionId || "");
+        setTargetExternalNumber(option.targetExternalNumber || "");
+      } else {
+        setDigit("");
+        setLabel("");
+        setActionType("queue");
+        setTargetQueueId("");
+        setTargetExtensionId("");
+        setTargetExternalNumber("");
+      }
+    }
+  }, [open, option]);
+
   const handleOpenChange = (isOpen: boolean) => {
-    if (isOpen && option) {
-      setDigit(option.digit);
-      setLabel(option.label);
-      setActionType(option.actionType);
-      setTargetQueueId(option.targetQueueId || "");
-      setTargetExtensionId(option.targetExtensionId || "");
-      setTargetExternalNumber(option.targetExternalNumber || "");
-    } else if (!isOpen) {
+    if (!isOpen) {
       setDigit("");
       setLabel("");
       setActionType("queue");
