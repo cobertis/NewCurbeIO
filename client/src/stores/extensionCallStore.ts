@@ -40,6 +40,7 @@ interface ExtensionCallState {
   incomingExtCall: IncomingExtCall | null;
   queueCall: QueueCall | null;
   isMuted: boolean;
+  pendingQueueCallAutoAnswer: boolean;
   
   setWsConnection: (ws: WebSocket | null) => void;
   setConnectionStatus: (status: "disconnected" | "connecting" | "connected") => void;
@@ -50,6 +51,7 @@ interface ExtensionCallState {
   setIncomingExtCall: (call: IncomingExtCall | null) => void;
   setQueueCall: (call: QueueCall | null) => void;
   setIsMuted: (muted: boolean) => void;
+  setPendingQueueCallAutoAnswer: (pending: boolean) => void;
   updateCallState: (state: "calling" | "ringing" | "connected") => void;
   reset: () => void;
 }
@@ -64,6 +66,7 @@ const initialState = {
   incomingExtCall: null,
   queueCall: null,
   isMuted: false,
+  pendingQueueCallAutoAnswer: false,
 };
 
 export const useExtensionCallStore = create<ExtensionCallState>((set) => ({
@@ -78,6 +81,7 @@ export const useExtensionCallStore = create<ExtensionCallState>((set) => ({
   setIncomingExtCall: (call) => set({ incomingExtCall: call }),
   setQueueCall: (call) => set({ queueCall: call }),
   setIsMuted: (muted) => set({ isMuted: muted }),
+  setPendingQueueCallAutoAnswer: (pending) => set({ pendingQueueCallAutoAnswer: pending }),
   updateCallState: (state) => set((s) => {
     if (!s.currentExtCall) return s;
     return {

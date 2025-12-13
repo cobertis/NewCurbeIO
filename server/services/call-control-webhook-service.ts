@@ -38,6 +38,10 @@ interface PendingBridge {
 }
 const pendingBridges = new Map<string, PendingBridge>();
 
+// Ring-All tracking: Map caller call_control_id to all agent legs
+// When one agent answers, we cancel all the other legs
+const ringAllLegs = new Map<string, Set<string>>();
+
 async function getTelnyxApiKey(): Promise<string> {
   let apiKey = await secretsService.getCredential("telnyx", "api_key");
   if (!apiKey) {
@@ -260,6 +264,27 @@ export class CallControlWebhookService {
       console.log(`[CallControl] Agent answered! Bridging with caller ${pendingBridge.callerCallControlId}`);
       pendingBridges.delete(call_control_id);
 
+      // Cancel all other ring-all legs for this caller (this agent won the race)
+      const otherLegs = ringAllLegs.get(pendingBridge.callerCallControlId);
+      if (otherLegs) {
+        console.log(`[CallControl] Cancelling ${otherLegs.size - 1} other ring-all legs`);
+        for (const otherLegId of otherLegs) {
+          if (otherLegId !== call_control_id) {
+            // Remove from pending bridges
+            pendingBridges.delete(otherLegId);
+            // Hangup the other leg
+            try {
+              await this.hangupCall(otherLegId, "NORMAL_CLEARING");
+              console.log(`[CallControl] Cancelled ring-all leg: ${otherLegId}`);
+            } catch (e) {
+              console.log(`[CallControl] Could not cancel leg ${otherLegId} (may have already ended)`);
+            }
+          }
+        }
+        // Clean up ring-all tracking
+        ringAllLegs.delete(pendingBridge.callerCallControlId);
+      }
+
       try {
         // Bridge the caller with the agent
         await this.makeCallControlRequest(pendingBridge.callerCallControlId, "bridge", {
@@ -325,10 +350,47 @@ export class CallControlWebhookService {
     // Clean up call context
     callContextMap.delete(call_control_id);
 
-    // Clean up pending bridges - agent leg hung up before answering
-    if (pendingBridges.has(call_control_id)) {
-      console.log(`[CallControl] Cleaning up pending bridge for agent call ${call_control_id}`);
+    // Clean up ring-all legs if caller hangs up during ringing
+    const ringAllForCaller = ringAllLegs.get(call_control_id);
+    if (ringAllForCaller) {
+      console.log(`[CallControl] Caller ${call_control_id} hung up, cancelling ${ringAllForCaller.size} ring-all legs`);
+      for (const agentLegId of ringAllForCaller) {
+        pendingBridges.delete(agentLegId);
+        try {
+          await this.hangupCall(agentLegId, "NORMAL_CLEARING");
+        } catch (e) {
+          console.log(`[CallControl] Could not hangup ring-all leg ${agentLegId}`);
+        }
+      }
+      ringAllLegs.delete(call_control_id);
+    }
+
+    // Clean up pending bridges - agent leg hung up before answering (timeout or rejected)
+    const pendingBridge = pendingBridges.get(call_control_id);
+    if (pendingBridge) {
+      console.log(`[CallControl] Agent leg ${call_control_id} ended without answering, caller: ${pendingBridge.callerCallControlId}`);
       pendingBridges.delete(call_control_id);
+      
+      // Remove this agent leg from the caller's ringAllLegs set
+      const callerLegs = ringAllLegs.get(pendingBridge.callerCallControlId);
+      if (callerLegs) {
+        callerLegs.delete(call_control_id);
+        console.log(`[CallControl] Remaining ring-all legs for caller: ${callerLegs.size}`);
+        
+        // If no more legs are ringing, route caller to voicemail
+        if (callerLegs.size === 0) {
+          console.log(`[CallControl] All agent legs ended without answering, routing to voicemail`);
+          ringAllLegs.delete(pendingBridge.callerCallControlId);
+          
+          // Route caller to voicemail
+          try {
+            await this.speakText(pendingBridge.callerCallControlId, "All agents are currently unavailable. Please leave a message after the tone.");
+            await this.routeToVoicemail(pendingBridge.callerCallControlId, pendingBridge.companyId);
+          } catch (e) {
+            console.log(`[CallControl] Could not route to voicemail, caller may have hung up`);
+          }
+        }
+      }
     }
 
     // Also check if this was the caller leg - clean up any pending bridges waiting for this caller
@@ -543,8 +605,13 @@ export class CallControlWebhookService {
     }
   }
 
+  /**
+   * Route call to queue using Ring-All strategy
+   * Dials all queue agents' SIP endpoints simultaneously
+   * First agent to answer gets bridged, others are cancelled
+   */
   private async routeToQueue(callControlId: string, companyId: string, queueId: string): Promise<void> {
-    console.log(`[CallControl] Routing call to queue: ${queueId} via WebSocket`);
+    console.log(`[CallControl] Routing call to queue: ${queueId} using Ring-All strategy`);
 
     const queue = await pbxService.getQueue(companyId, queueId);
     if (!queue) {
@@ -554,37 +621,144 @@ export class CallControlWebhookService {
     }
 
     const ringTimeout = queue.ringTimeout || 30;
-
-    // Use extensionCallService to notify agents via WebSocket
-    // This finds agents connected to /ws/pbx and sends them a notification
     const activeCall = await pbxService.getActiveCall(callControlId);
     const callerNumber = activeCall?.from || "Unknown";
 
-    const result = extensionCallService.startQueueCall(
-      callControlId,
-      companyId,
-      queueId,
-      callerNumber,
-      ringTimeout
-    );
+    // Get all queue members
+    const members = await pbxService.getQueueMembers(companyId, queueId);
+    const activeMembers = members.filter(m => m.isActive);
 
-    if (!result.success || result.notifiedCount === 0) {
-      console.log(`[CallControl] No agents available via WebSocket, routing to voicemail`);
+    if (activeMembers.length === 0) {
+      console.log(`[CallControl] No active members in queue ${queueId}`);
       await this.speakText(callControlId, "All agents are currently unavailable. Please leave a message after the tone.");
       await this.routeToVoicemail(callControlId, companyId);
       return;
     }
 
-    console.log(`[CallControl] Notified ${result.notifiedCount} agents via WebSocket for queue call`);
+    console.log(`[CallControl] Queue has ${activeMembers.length} active members, dialing all SIPs...`);
 
-    // Play hold message while waiting for agent to accept
+    // Play hold message while ringing agents
     await this.speakText(callControlId, "Please hold while we connect you to an available agent.");
 
-    // Update call state to queue
+    // Get API key and context for making calls
+    const apiKey = await getTelnyxApiKey();
+    const context = callContextMap.get(callControlId);
+    const managedAccountId = context?.managedAccountId;
+
+    // Get company's caller ID
+    const [phoneNumber] = await db
+      .select({ phoneNumber: telnyxPhoneNumbers.phoneNumber })
+      .from(telnyxPhoneNumbers)
+      .where(eq(telnyxPhoneNumbers.companyId, companyId))
+      .limit(1);
+    const callerIdNumber = phoneNumber?.phoneNumber || "+15555555555";
+
+    // Get Call Control App ID
+    const [settings] = await db
+      .select({ callControlAppId: telephonySettings.callControlAppId })
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+    const connectionId = settings?.callControlAppId;
+
+    if (!connectionId) {
+      console.error(`[CallControl] No Call Control App ID for company ${companyId}`);
+      await this.speakText(callControlId, "System error. Please try again later.");
+      await this.hangupCall(callControlId, "NORMAL_CLEARING");
+      return;
+    }
+
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+    if (managedAccountId) {
+      headers["X-Managed-Account-Id"] = managedAccountId;
+    }
+
+    // Initialize ring-all tracking for this caller
+    ringAllLegs.set(callControlId, new Set());
+
+    let successfulDials = 0;
+
+    // Dial all agents simultaneously
+    for (const member of activeMembers) {
+      if (!member.userId) continue;
+
+      // Get agent's SIP credentials
+      const sipCreds = await getUserSipCredentials(member.userId);
+      if (!sipCreds?.sipUsername) {
+        console.log(`[CallControl] Agent ${member.userId} has no SIP credentials, skipping`);
+        continue;
+      }
+
+      const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
+      console.log(`[CallControl] Dialing agent SIP: ${sipUri}`);
+
+      try {
+        const clientState = Buffer.from(JSON.stringify({
+          companyId,
+          agentUserId: member.userId,
+          queueId,
+          ringAll: true,
+        })).toString("base64");
+
+        const response = await fetch(`${TELNYX_API_BASE}/calls`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            connection_id: connectionId,
+            to: sipUri,
+            from: callerIdNumber,
+            timeout_secs: ringTimeout,
+            answering_machine_detection: "disabled",
+            client_state: clientState,
+          }),
+        });
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[CallControl] Failed to dial ${sipUri}: ${response.status} - ${errorText}`);
+          continue;
+        }
+
+        const data = await response.json();
+        const agentCallControlId = data.data?.call_control_id;
+
+        if (agentCallControlId) {
+          console.log(`[CallControl] Created ring-all leg: ${agentCallControlId} for ${sipUri}`);
+          
+          // Track this leg
+          ringAllLegs.get(callControlId)?.add(agentCallControlId);
+          callContextMap.set(agentCallControlId, { companyId, managedAccountId });
+          
+          // Store pending bridge info
+          pendingBridges.set(agentCallControlId, {
+            callerCallControlId: callControlId,
+            clientState,
+            companyId,
+          });
+          
+          successfulDials++;
+        }
+      } catch (error) {
+        console.error(`[CallControl] Error dialing ${sipUri}:`, error);
+      }
+    }
+
+    if (successfulDials === 0) {
+      console.log(`[CallControl] Failed to dial any agents, routing to voicemail`);
+      ringAllLegs.delete(callControlId);
+      await this.speakText(callControlId, "All agents are currently unavailable. Please leave a message after the tone.");
+      await this.routeToVoicemail(callControlId, companyId);
+      return;
+    }
+
+    console.log(`[CallControl] Successfully started ${successfulDials} ring-all legs for queue ${queueId}`);
+
+    // Update call state
     await pbxService.trackActiveCall(companyId, callControlId, callerNumber, "", "queue", {
       queueId,
-      queueCallId: result.queueCallId,
-      notifiedAgents: result.notifiedCount
+      ringAllLegs: successfulDials
     });
   }
 

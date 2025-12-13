@@ -24,6 +24,7 @@ export function useExtensionCall() {
     incomingExtCall,
     queueCall,
     isMuted,
+    pendingQueueCallAutoAnswer,
     setWsConnection,
     setConnectionStatus,
     setMyExtension,
@@ -33,6 +34,7 @@ export function useExtensionCall() {
     setIncomingExtCall,
     setQueueCall,
     setIsMuted,
+    setPendingQueueCallAutoAnswer,
     updateCallState,
     reset,
   } = useExtensionCallStore();
@@ -401,7 +403,9 @@ export function useExtensionCall() {
       callControlId: qc.callControlId,
     }));
     setQueueCall(null);
-  }, [setQueueCall]);
+    setPendingQueueCallAutoAnswer(true);
+    console.log("[useExtensionCall] Set pendingQueueCallAutoAnswer=true for auto-answer");
+  }, [setQueueCall, setPendingQueueCallAutoAnswer]);
 
   const rejectQueueCall = useCallback(() => {
     const qc = useExtensionCallStore.getState().queueCall;

@@ -987,6 +987,27 @@ class TelnyxWebRTCManager {
     
     console.log("[SIP.js WebRTC] Incoming call from:", callInfo.remoteCallerNumber, "Name:", callInfo.callerName);
     
+    // Check if this is a queue call that was already accepted via WebSocket
+    // If so, auto-answer immediately without showing incoming call UI
+    const { useExtensionCallStore } = require('@/stores/extensionCallStore');
+    const extStore = useExtensionCallStore.getState();
+    
+    if (extStore.pendingQueueCallAutoAnswer) {
+      console.log("[SIP.js WebRTC] Auto-answering queue call (already accepted via WebSocket)");
+      extStore.setPendingQueueCallAutoAnswer(false);
+      
+      // Set the invitation in store so answerCall() can use it
+      store.setIncomingCall(invitation);
+      store.setIncomingCallInfo(callInfo);
+      
+      // Setup handlers first
+      this.setupSessionHandlers(invitation, false);
+      
+      // Auto-answer the call immediately (async, don't await)
+      this.answerCall().catch(e => console.error("[SIP.js WebRTC] Auto-answer failed:", e));
+      return;
+    }
+    
     // Set both the invitation AND the call info for UI
     store.setIncomingCall(invitation);
     store.setIncomingCallInfo(callInfo);
