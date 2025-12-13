@@ -378,40 +378,18 @@ export default function PublicCard() {
           </Button>
         )}
 
-        {platform === "android" && pushSupported && (
+        {platform === "android" && (
           <div className="space-y-3">
-            {!pushSubscribed ? (
-              <Button
-                onClick={subscribeToPush}
-                disabled={subscribing}
-                className="w-full bg-green-600 hover:bg-green-700"
-                data-testid="button-enable-notifications"
-              >
-                {subscribing ? (
-                  <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />
-                ) : (
-                  <Bell className="h-4 w-4 mr-2" />
-                )}
-                Agregar Tarjeta
-              </Button>
-            ) : (
+            {!isPwa ? (
               <>
-                <div className="flex items-center justify-center gap-2 py-2 text-green-500" data-testid="notifications-enabled">
-                  <Bell className="h-4 w-4" />
-                  <span className="text-sm">Tarjeta activada</span>
-                </div>
-                
-                {!isPwa && (
-                  <Button
-                    onClick={handleInstallPwa}
-                    className="w-full bg-blue-600 hover:bg-blue-700"
-                    variant="default"
-                    data-testid="button-add-to-home"
-                  >
-                    <Home className="h-4 w-4 mr-2" />
-                    Agregar acceso al inicio
-                  </Button>
-                )}
+                <Button
+                  onClick={handleInstallPwa}
+                  className="w-full bg-blue-600 hover:bg-blue-700"
+                  data-testid="button-add-to-home"
+                >
+                  <Home className="h-4 w-4 mr-2" />
+                  Agregar al Inicio
+                </Button>
                 
                 {showInstallHelp && (
                   <Card className="bg-blue-900/30 border-blue-700/50 p-4">
@@ -429,15 +407,19 @@ export default function PublicCard() {
                   </Card>
                 )}
               </>
+            ) : (
+              <div className="flex items-center justify-center gap-2 py-2 text-green-500" data-testid="text-card-ready">
+                <Home className="h-4 w-4" />
+                <span className="text-sm">Tu tarjeta está lista</span>
+              </div>
             )}
           </div>
         )}
 
         <p className="text-center text-xs text-gray-500 pt-4">
           {platform === "ios" && "Usa Apple Wallet para la mejor experiencia"}
-          {platform === "android" && !pushSubscribed && "Activa tu tarjeta para recibir notificaciones"}
-          {platform === "android" && pushSubscribed && !isPwa && "Agrega al inicio para acceso rápido"}
-          {platform === "android" && pushSubscribed && isPwa && "Tu tarjeta está lista"}
+          {platform === "android" && !isPwa && "Un toque para acceso rápido desde tu pantalla"}
+          {platform === "android" && isPwa && "Abre desde tu pantalla de inicio"}
           {platform === "desktop" && "Abre en tu móvil para la experiencia completa"}
         </p>
       </div>
