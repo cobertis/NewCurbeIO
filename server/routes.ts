@@ -31817,16 +31817,42 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ error: "Message is required" });
       }
       
-      let result;
+      const { webPushService } = await import("./services/web-push-service");
+      
+      let apnsResult = { successCount: 0, failedCount: 0 };
+      let webPushResult = { sent: 0, failed: 0 };
+      
       if (passInstanceId) {
-        // Send to specific pass
-        result = await vipPassApnsService.sendPushToPass(user.companyId, passInstanceId, message);
+        // Send to specific pass - both Apple and Web Push
+        apnsResult = await vipPassApnsService.sendPushToPass(user.companyId, passInstanceId, message);
+        webPushResult = await webPushService.sendToPassInstance(passInstanceId, {
+          title: "VIP Pass Update",
+          body: message,
+        });
       } else {
-        // Send to all passes
-        result = await vipPassApnsService.sendPushToAllPasses(user.companyId, message);
+        // Send to all passes - both Apple and Web Push
+        apnsResult = await vipPassApnsService.sendPushToAllPasses(user.companyId, message);
+        
+        // Get all pass instances for this company and send web push to each
+        const instances = await vipPassService.getPassInstances(user.companyId);
+        for (const instance of instances) {
+          if (instance.status === "active") {
+            const result = await webPushService.sendToPassInstance(instance.id, {
+              title: "VIP Pass Update",
+              body: message,
+            });
+            webPushResult.sent += result.sent;
+            webPushResult.failed += result.failed;
+          }
+        }
       }
       
-      return res.json(result);
+      return res.json({
+        successCount: apnsResult.successCount + webPushResult.sent,
+        failedCount: apnsResult.failedCount + webPushResult.failed,
+        apns: apnsResult,
+        webPush: webPushResult,
+      });
     } catch (error) {
       console.error("[VIP Pass] Error sending notification:", error);
       return res.status(500).json({ error: "Failed to send push notification" });
