@@ -1,25 +1,8 @@
 import webpush from "web-push";
 import { db } from "../db";
-import { pushSubscriptions, vipPassInstances, contacts, companies } from "@shared/schema";
+import { pushSubscriptions } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
-
-const VAPID_PUBLIC_KEY = process.env.VAPID_PUBLIC_KEY;
-const VAPID_PRIVATE_KEY = process.env.VAPID_PRIVATE_KEY;
-const VAPID_SUBJECT = process.env.VAPID_SUBJECT || "mailto:support@curbe.io";
-
-let isConfigured = false;
-
-if (VAPID_PUBLIC_KEY && VAPID_PRIVATE_KEY) {
-  try {
-    webpush.setVapidDetails(VAPID_SUBJECT, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY);
-    isConfigured = true;
-    console.log("[WebPush] VAPID keys configured successfully");
-  } catch (error) {
-    console.error("[WebPush] Failed to configure VAPID keys:", error);
-  }
-} else {
-  console.log("[WebPush] VAPID keys not configured - push notifications disabled");
-}
+import { credentialProvider } from "./credential-provider";
 
 export interface PushPayload {
   title: string;
@@ -29,13 +12,74 @@ export interface PushPayload {
   badge?: string;
 }
 
-export class WebPushService {
-  isConfigured(): boolean {
-    return isConfigured;
+interface VapidConfig {
+  publicKey: string;
+  privateKey: string;
+  subject: string;
+  internalApiKey: string;
+  configured: boolean;
+}
+
+let vapidConfig: VapidConfig | null = null;
+
+async function getVapidConfig(): Promise<VapidConfig> {
+  if (vapidConfig) {
+    return vapidConfig;
   }
 
-  getPublicKey(): string | null {
-    return VAPID_PUBLIC_KEY || null;
+  const creds = await credentialProvider.getWebPush();
+  
+  const configured = !!(creds.publicKey && creds.privateKey);
+  
+  if (configured) {
+    try {
+      webpush.setVapidDetails(creds.subject, creds.publicKey, creds.privateKey);
+      console.log("[WebPush] VAPID keys configured successfully");
+    } catch (error) {
+      console.error("[WebPush] Failed to configure VAPID keys:", error);
+      vapidConfig = {
+        publicKey: '',
+        privateKey: '',
+        subject: '',
+        internalApiKey: '',
+        configured: false
+      };
+      return vapidConfig;
+    }
+  } else {
+    console.log("[WebPush] VAPID keys not configured - push notifications disabled");
+  }
+
+  vapidConfig = {
+    publicKey: creds.publicKey,
+    privateKey: creds.privateKey,
+    subject: creds.subject,
+    internalApiKey: creds.internalApiKey,
+    configured
+  };
+
+  return vapidConfig;
+}
+
+export function invalidateVapidCache(): void {
+  vapidConfig = null;
+  credentialProvider.invalidate('web_push');
+}
+
+export class WebPushService {
+  async isConfigured(): Promise<boolean> {
+    const config = await getVapidConfig();
+    return config.configured;
+  }
+
+  async getPublicKey(): Promise<string | null> {
+    const config = await getVapidConfig();
+    return config.publicKey || null;
+  }
+
+  async getInternalApiKey(): Promise<string | null> {
+    const config = await getVapidConfig();
+    return config.internalApiKey || null;
   }
 
   async subscribe(data: {
@@ -91,7 +135,7 @@ export class WebPushService {
   }
 
   async unsubscribe(endpoint: string): Promise<boolean> {
-    const result = await db
+    await db
       .delete(pushSubscriptions)
       .where(eq(pushSubscriptions.endpoint, endpoint));
     return true;
@@ -101,7 +145,8 @@ export class WebPushService {
     subscriptionId: string,
     payload: PushPayload
   ): Promise<{ success: boolean; error?: string }> {
-    if (!isConfigured) {
+    const config = await getVapidConfig();
+    if (!config.configured) {
       return { success: false, error: "VAPID not configured" };
     }
 
@@ -130,7 +175,8 @@ export class WebPushService {
     payload: PushPayload,
     subscriptionId?: string
   ): Promise<{ success: boolean; error?: string }> {
-    if (!isConfigured) {
+    const config = await getVapidConfig();
+    if (!config.configured) {
       return { success: false, error: "VAPID not configured" };
     }
 

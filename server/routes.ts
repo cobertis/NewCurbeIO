@@ -27310,7 +27310,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             { keyName: "identity_secret", label: "Identity Secret", required: false, hint: "Secret key for identity verification (from Security tab)" },
           ]
         },
+        { 
+          provider: "web_push", 
+          label: "Web Push (VAPID)",
+          helpText: "VAPID credentials for Web Push notifications (PWA/Android). Generate keys using web-push library or online generators.",
+          helpUrl: "https://vapidkeys.com/",
+          keys: [
+            { keyName: "public_key", label: "VAPID Public Key", required: true, hint: "Base64 encoded public key (starts with B)" },
+            { keyName: "private_key", label: "VAPID Private Key", required: true, hint: "Base64 encoded private key" },
+            { keyName: "subject", label: "Subject", required: true, hint: "mailto:email or https://domain" },
+            { keyName: "internal_api_key", label: "Internal API Key", required: false, hint: "API key for internal push endpoints (auto-generated if empty)" },
+          ]
+        },
       ];
+
 
       res.json({ providers: providerConfigs, apiProviders });
     } catch (error: any) {
@@ -33335,7 +33348,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.get("/api/push/public-key", async (_req: Request, res: Response) => {
     try {
       const { webPushService } = await import("./services/web-push-service");
-      const publicKey = webPushService.getPublicKey();
+      const publicKey = await webPushService.getPublicKey();
       
       if (!publicKey) {
         return res.status(503).json({ message: "Push notifications not configured" });
