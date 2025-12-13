@@ -655,28 +655,27 @@ export class CallControlWebhookService {
     companyId: string,
     settings: any
   ): Promise<void> {
-    // Create client_state with flag to start gather after playback ends
     const clientState = Buffer.from(
       JSON.stringify({ 
         companyId, 
-        pbxSettingsId: settings.id,
-        pendingGather: true,
-        ivrTimeout: settings.ivrTimeout || 10
+        pbxSettingsId: settings.id
       })
     ).toString("base64");
 
+    const timeoutMs = (settings.ivrTimeout || 10) * 1000;
+
     if (settings.useTextToSpeech && settings.greetingText) {
-      // For TTS, use speak with client_state - gather will start on speak.ended
-      await this.speakTextWithState(callControlId, settings.greetingText, clientState);
+      // For TTS, use gather with speak - allows DTMF during speech
+      await this.gatherWithSpeak(callControlId, settings.greetingText, clientState, timeoutMs);
     } else if (settings.greetingMediaName) {
-      // Use Telnyx Media Storage for instant playback (no 5s delay)
-      console.log(`[CallControl] Using Telnyx Media Storage: ${settings.greetingMediaName}`);
-      await this.playMediaWithState(callControlId, settings.greetingMediaName, clientState);
+      // Use gather with media_name for instant playback + DTMF during audio
+      console.log(`[CallControl] Using gather with Telnyx Media Storage: ${settings.greetingMediaName}`);
+      await this.gatherWithMedia(callControlId, settings.greetingMediaName, clientState, timeoutMs);
     } else if (settings.greetingAudioUrl) {
-      // Fallback to audio URL (has 5s delay for first playback)
-      await this.playAudioWithState(callControlId, settings.greetingAudioUrl, clientState);
+      // Use gather with audio_url - allows DTMF during audio
+      await this.gatherWithAudio(callControlId, settings.greetingAudioUrl, clientState, timeoutMs);
     } else {
-      await this.speakTextWithState(callControlId, "Welcome. Please enter your selection.", clientState);
+      await this.gatherWithSpeak(callControlId, "Welcome. Please enter your selection.", clientState, timeoutMs);
     }
   }
 
@@ -758,6 +757,73 @@ export class CallControlWebhookService {
       minimum_digits: 1,
       maximum_digits: 1,
       timeout_millis: timeoutSecs * 1000,
+      inter_digit_timeout_millis: 5000,
+      valid_digits: "0123456789*#",
+      client_state: clientState,
+    });
+  }
+
+  private async gatherWithSpeak(
+    callControlId: string,
+    text: string,
+    clientState: string,
+    timeoutMs: number
+  ): Promise<void> {
+    // Gather DTMF while speaking text - allows user to press digits during TTS
+    await this.makeCallControlRequest(callControlId, "gather_using_speak", {
+      payload: text,
+      voice: "female",
+      language: "en-US",
+      minimum_digits: 1,
+      maximum_digits: 1,
+      timeout_millis: timeoutMs,
+      inter_digit_timeout_millis: 5000,
+      valid_digits: "0123456789*#",
+      client_state: clientState,
+    });
+  }
+
+  private async gatherWithAudio(
+    callControlId: string,
+    audioUrl: string,
+    clientState: string,
+    timeoutMs: number
+  ): Promise<void> {
+    // Convert relative URLs to absolute URLs for Telnyx
+    let absoluteUrl = audioUrl;
+    if (audioUrl.startsWith('/')) {
+      const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0];
+      if (domain) {
+        absoluteUrl = `https://${domain}${audioUrl}`;
+        console.log(`[CallControl] Converting relative audio URL to absolute: ${absoluteUrl}`);
+      }
+    }
+
+    // Gather DTMF while playing audio - allows user to press digits during playback
+    await this.makeCallControlRequest(callControlId, "gather_using_audio", {
+      audio_url: absoluteUrl,
+      minimum_digits: 1,
+      maximum_digits: 1,
+      timeout_millis: timeoutMs,
+      inter_digit_timeout_millis: 5000,
+      valid_digits: "0123456789*#",
+      client_state: clientState,
+    });
+  }
+
+  private async gatherWithMedia(
+    callControlId: string,
+    mediaName: string,
+    clientState: string,
+    timeoutMs: number
+  ): Promise<void> {
+    // Gather DTMF using Telnyx Media Storage - instant playback + DTMF during audio
+    console.log(`[CallControl] Gather with Telnyx Media: ${mediaName}`);
+    await this.makeCallControlRequest(callControlId, "gather_using_audio", {
+      media_name: mediaName,
+      minimum_digits: 1,
+      maximum_digits: 1,
+      timeout_millis: timeoutMs,
       inter_digit_timeout_millis: 5000,
       valid_digits: "0123456789*#",
       client_state: clientState,
