@@ -611,6 +611,15 @@ export class CallControlWebhookService {
       }
     }
 
+    // Check if phone number has IVR explicitly disabled ("unassigned")
+    // In this case, route directly to the assigned user's extension
+    if (phoneNumber.ivrId === "unassigned") {
+      console.log(`[CallControl] IVR explicitly disabled (unassigned), routing directly to assigned user`);
+      await pbxService.trackActiveCall(phoneNumber.companyId, call_control_id, from, to, "direct");
+      await this.routeToAssignedUser(call_control_id, phoneNumber);
+      return;
+    }
+    
     // Check if phone number has a specific IVR assigned (multi-IVR support)
     if (phoneNumber.ivrId) {
       const ivr = await pbxService.getIvr(phoneNumber.companyId, phoneNumber.ivrId);
@@ -1676,6 +1685,50 @@ export class CallControlWebhookService {
     }
 
     await this.speakText(callControlId, "Please hold while we connect you to an agent.");
+  }
+
+  private async routeToAssignedUser(
+    callControlId: string,
+    phoneNumber: any
+  ): Promise<void> {
+    console.log(`[CallControl] Routing directly to assigned user for phone number`);
+
+    if (!phoneNumber.ownerUserId) {
+      console.log(`[CallControl] No assigned user, falling back to voicemail`);
+      await this.speakText(callControlId, "This number is not configured. Please leave a message.");
+      await this.routeToVoicemail(callControlId, phoneNumber.companyId);
+      return;
+    }
+
+    const companyId = phoneNumber.companyId;
+    const activeCall = await pbxService.getActiveCall(callControlId);
+    const callerNumber = activeCall?.from || callContextMap.get(callControlId)?.callerNumber || "Unknown";
+
+    // Get the assigned user's extension
+    const extension = await pbxService.getExtensionByUserId(companyId, phoneNumber.ownerUserId);
+    if (!extension) {
+      console.log(`[CallControl] Assigned user has no extension, trying via WebSocket`);
+      // Fall back to WebSocket notification
+      const result = extensionCallService.startQueueCall(
+        callControlId,
+        companyId,
+        phoneNumber.ownerUserId,
+        callerNumber,
+        30
+      );
+      if (!result.success || result.notifiedCount === 0) {
+        await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
+        await this.routeToVoicemail(callControlId, companyId);
+        return;
+      }
+      await this.speakText(callControlId, "Please hold while we connect you.");
+      return;
+    }
+
+    console.log(`[CallControl] Found extension ${extension.extensionNumber} for assigned user, routing call`);
+    
+    // Route to the extension
+    await this.routeToExtension(callControlId, companyId, extension.id);
   }
 
   private async transferToExternal(

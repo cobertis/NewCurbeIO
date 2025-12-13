@@ -269,6 +269,27 @@ export class PbxService {
     return extensions;
   }
 
+  async getExtensionByUserId(companyId: string, userId: string): Promise<any | null> {
+    const [extension] = await db
+      .select({
+        id: pbxExtensions.id,
+        companyId: pbxExtensions.companyId,
+        userId: pbxExtensions.userId,
+        extensionNumber: pbxExtensions.extension,
+        displayName: pbxExtensions.displayName,
+        ringTimeout: pbxExtensions.ringTimeout,
+        isActive: pbxExtensions.isActive,
+      })
+      .from(pbxExtensions)
+      .where(and(
+        eq(pbxExtensions.companyId, companyId),
+        eq(pbxExtensions.userId, userId),
+        eq(pbxExtensions.isActive, true)
+      ))
+      .limit(1);
+    return extension || null;
+  }
+
   async getNextExtensionNumber(companyId: string): Promise<string> {
     const settings = await this.getPbxSettings(companyId);
     const ivrExtension = parseInt(settings?.ivrExtension || "100", 10);
