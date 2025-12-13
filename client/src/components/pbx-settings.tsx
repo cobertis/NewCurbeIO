@@ -1724,110 +1724,73 @@ function QueueDialog({
                 </div>
               </div>
               {queue?.id && (
-                <div className="space-y-3 mt-4">
+                <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <Label>Advertisement Audio Files</Label>
-                    {queueAds.length > 1 && (
-                      <div className="flex gap-1">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 text-xs px-2"
-                          onClick={() => {
-                            queueAds.forEach(ad => {
-                              if (!ad.isActive) {
-                                toggleAdMutation.mutate({ adId: ad.id, isActive: true });
-                              }
-                            });
-                          }}
-                          disabled={toggleAdMutation.isPending || queueAds.every(ad => ad.isActive)}
-                          data-testid="button-enable-all-ads"
-                        >
-                          Enable All
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          className="h-6 text-xs px-2"
-                          onClick={() => {
-                            queueAds.forEach(ad => {
-                              if (ad.isActive) {
-                                toggleAdMutation.mutate({ adId: ad.id, isActive: false });
-                              }
-                            });
-                          }}
-                          disabled={toggleAdMutation.isPending || queueAds.every(ad => !ad.isActive)}
-                          data-testid="button-disable-all-ads"
-                        >
-                          Disable All
-                        </Button>
-                      </div>
-                    )}
-                  </div>
-                  {queueAds.length === 0 ? (
-                    <p className="text-xs text-muted-foreground">No ads configured. Add audio files below.</p>
-                  ) : (
-                    <div className="space-y-2 max-h-32 overflow-y-auto">
-                      {queueAds.map((ad) => (
-                        <div key={ad.id} className="flex items-center justify-between p-2 bg-muted/50 rounded-md" data-testid={`ad-item-${ad.id}`}>
-                          <div className="flex items-center gap-2 flex-1 min-w-0">
-                            <Switch
-                              checked={ad.isActive}
-                              onCheckedChange={(checked) => toggleAdMutation.mutate({ adId: ad.id, isActive: checked })}
-                              data-testid={`switch-ad-active-${ad.id}`}
-                            />
-                            <span className="text-sm truncate">{ad.audioFile.name}</span>
-                          </div>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => removeAdMutation.mutate(ad.id)}
-                            disabled={removeAdMutation.isPending}
-                            data-testid={`button-remove-ad-${ad.id}`}
-                          >
-                            <Trash2 className="w-4 h-4 text-destructive" />
-                          </Button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                  {announcementOptions.length > 0 ? (
-                    <div className="space-y-2">
-                      {announcementOptions.filter(audio => !queueAds.some(ad => ad.audioFileId === audio.id)).length > 1 && (
-                        <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground">
-                          <Checkbox
-                            checked={false}
-                            onCheckedChange={() => {
+                    {announcementOptions.length > 1 && (
+                      <label className="flex items-center gap-2 cursor-pointer text-xs text-muted-foreground">
+                        <Checkbox
+                          checked={queueAds.length === announcementOptions.length && announcementOptions.length > 0}
+                          onCheckedChange={(checked) => {
+                            if (checked) {
                               announcementOptions
                                 .filter(audio => !queueAds.some(ad => ad.audioFileId === audio.id))
                                 .forEach(audio => addAdMutation.mutate(audio.id));
-                            }}
-                            data-testid="checkbox-ads-add-all"
-                          />
-                          Add All Available
-                        </label>
-                      )}
-                      <div className="max-h-32 overflow-y-auto border rounded-md p-2 space-y-1">
-                        {announcementOptions
-                          .filter(audio => !queueAds.some(ad => ad.audioFileId === audio.id))
-                          .map((audio) => (
-                            <label key={audio.id} className="flex items-center gap-2 cursor-pointer hover:bg-muted/50 p-1.5 rounded text-sm" data-testid={`ad-option-${audio.id}`}>
-                              <Checkbox
-                                checked={false}
-                                onCheckedChange={() => addAdMutation.mutate(audio.id)}
-                                data-testid={`checkbox-ad-${audio.id}`}
-                              />
-                              <span>{audio.name}</span>
-                            </label>
-                          ))}
-                        {announcementOptions.filter(audio => !queueAds.some(ad => ad.audioFileId === audio.id)).length === 0 && (
-                          <p className="text-xs text-muted-foreground p-1">All available ads are already added.</p>
-                        )}
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
+                            } else {
+                              queueAds.forEach(ad => removeAdMutation.mutate(ad.id));
+                            }
+                          }}
+                          data-testid="checkbox-ads-select-all"
+                        />
+                        Select All
+                      </label>
+                    )}
+                  </div>
+                  {announcementOptions.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">
                       No announcement audio files available. Upload audio files with type "Announcement" in the Audio tab.
+                    </p>
+                  ) : (
+                    <div className="border rounded-md p-3 max-h-40 overflow-y-auto space-y-1">
+                      {announcementOptions.map((audio) => {
+                        const isAdded = queueAds.some(ad => ad.audioFileId === audio.id);
+                        return (
+                          <div 
+                            key={audio.id} 
+                            className="flex items-center space-x-3 p-2 rounded hover:bg-muted/50 cursor-pointer"
+                            onClick={() => {
+                              if (isAdded) {
+                                const ad = queueAds.find(ad => ad.audioFileId === audio.id);
+                                if (ad) removeAdMutation.mutate(ad.id);
+                              } else {
+                                addAdMutation.mutate(audio.id);
+                              }
+                            }}
+                            data-testid={`checkbox-ad-${audio.id}`}
+                          >
+                            <Checkbox
+                              checked={isAdded}
+                              onCheckedChange={() => {
+                                if (isAdded) {
+                                  const ad = queueAds.find(ad => ad.audioFileId === audio.id);
+                                  if (ad) removeAdMutation.mutate(ad.id);
+                                } else {
+                                  addAdMutation.mutate(audio.id);
+                                }
+                              }}
+                            />
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <Mic className="w-4 h-4 text-muted-foreground" />
+                              <p className="text-sm font-medium truncate">{audio.name}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                  {queueAds.length > 0 && (
+                    <p className="text-xs text-muted-foreground">
+                      {queueAds.length} ad{queueAds.length !== 1 ? 's' : ''} selected
                     </p>
                   )}
                 </div>
