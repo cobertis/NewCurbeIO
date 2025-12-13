@@ -1230,6 +1230,8 @@ export async function getUserPhoneNumbers(companyId: string, userId?: string): P
         noiseSuppressionEnabled: telnyxPhoneNumbers.noiseSuppressionEnabled,
         noiseSuppressionDirection: telnyxPhoneNumbers.noiseSuppressionDirection,
         voicemailEnabled: telnyxPhoneNumbers.voicemailEnabled,
+        voicemailPin: telnyxPhoneNumbers.voicemailPin,
+        ivrId: telnyxPhoneNumbers.ivrId,
         numberType: telnyxPhoneNumbers.numberType,
         retailMonthlyRate: telnyxPhoneNumbers.retailMonthlyRate,
         telnyxMonthlyCost: telnyxPhoneNumbers.telnyxMonthlyCost,

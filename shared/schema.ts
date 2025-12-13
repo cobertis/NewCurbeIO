@@ -5809,6 +5809,7 @@ export const pbxAudioFiles = pgTable("pbx_audio_files", {
   
   name: text("name").notNull(),
   description: text("description"),
+  notes: text("notes"), // User notes about this audio file
   
   // File info
   fileUrl: text("file_url").notNull(),

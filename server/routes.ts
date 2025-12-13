@@ -90,7 +90,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, or, sql, inArray, count, isNotNull, isNull } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, vipPassDevices, vipPassInstances, telnyxGlobalPricing, users, pbxExtensions, pbxQueues } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, vipPassDevices, vipPassInstances, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -32871,6 +32871,246 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("[PBX Internal Call] Error:", error);
       return res.status(500).json({ error: error.message });
+    }
+  });
+
+
+  // ============================================================
+  // PBX Audio Library
+  // ============================================================
+  
+  // GET /api/pbx/audio - List all audio files for company
+  app.get("/api/pbx/audio", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const audioFiles = await db
+        .select()
+        .from(pbxAudioFiles)
+        .where(eq(pbxAudioFiles.companyId, user.companyId))
+        .orderBy(desc(pbxAudioFiles.createdAt));
+
+      // Get usage information for each audio file
+      const audioFilesWithUsage = await Promise.all(audioFiles.map(async (audio) => {
+        const usage: { type: string; name: string; id: string }[] = [];
+        
+        // Check IVRs using this audio as greeting
+        const ivrsUsingAsGreeting = await db
+          .select({ id: pbxIvrs.id, name: pbxIvrs.name })
+          .from(pbxIvrs)
+          .where(and(
+            eq(pbxIvrs.companyId, user.companyId!),
+            eq(pbxIvrs.greetingAudioUrl, audio.fileUrl)
+          ));
+        
+        ivrsUsingAsGreeting.forEach(ivr => {
+          usage.push({ type: 'ivr_greeting', name: ivr.name, id: ivr.id });
+        });
+        
+        // Check Queues using this audio as hold music
+        const queuesUsingAsHoldMusic = await db
+          .select({ id: pbxQueues.id, name: pbxQueues.name })
+          .from(pbxQueues)
+          .where(and(
+            eq(pbxQueues.companyId, user.companyId!),
+            eq(pbxQueues.holdMusicUrl, audio.fileUrl)
+          ));
+        
+        queuesUsingAsHoldMusic.forEach(queue => {
+          usage.push({ type: 'queue_hold_music', name: queue.name, id: queue.id });
+        });
+
+        return { ...audio, usage };
+      }));
+
+      return res.json({ audioFiles: audioFilesWithUsage });
+    } catch (error: any) {
+      console.error("[PBX Audio] List error:", error);
+      return res.status(500).json({ message: "Failed to get audio files" });
+    }
+  });
+
+  // POST /api/pbx/audio - Upload new audio file
+  app.post("/api/pbx/audio", requireActiveCompany, (req: Request, res: Response, next: NextFunction) => {
+    upload.single("audio")(req, res, async (err: any) => {
+      try {
+        if (err) {
+          console.error("[PBX Audio] Multer error:", err);
+          return res.status(400).json({ message: err.message });
+        }
+
+        const user = req.user!;
+        if (!user.companyId) {
+          return res.status(400).json({ message: "No company associated with user" });
+        }
+
+        const file = req.file;
+        if (!file) {
+          return res.status(400).json({ message: "No audio file provided" });
+        }
+
+        const { name, description, notes, audioType } = req.body;
+
+        if (!name) {
+          return res.status(400).json({ message: "Audio name is required" });
+        }
+
+        if (!audioType || !['greeting', 'hold_music', 'announcement', 'voicemail_greeting'].includes(audioType)) {
+          return res.status(400).json({ message: "Valid audio type is required (greeting, hold_music, announcement, voicemail_greeting)" });
+        }
+
+        // Upload to Replit Object Storage
+        const { uploadFile } = await import("./services/object-storage-service");
+        const uploadResult = await uploadFile(
+          file.buffer,
+          file.originalname,
+          file.mimetype,
+          `audio/company/${user.companyId}`
+        );
+
+        if (!uploadResult.success || !uploadResult.url) {
+          return res.status(500).json({ message: "Failed to upload audio file" });
+        }
+
+        // Save to database
+        const [audioFile] = await db
+          .insert(pbxAudioFiles)
+          .values({
+            companyId: user.companyId,
+            name,
+            description: description || null,
+            notes: notes || null,
+            fileUrl: uploadResult.url,
+            fileName: file.originalname,
+            fileSize: file.size,
+            mimeType: file.mimetype,
+            audioType,
+          })
+          .returning();
+
+        return res.json({ success: true, audioFile });
+      } catch (error: any) {
+        console.error("[PBX Audio] Upload error:", error);
+        return res.status(500).json({ message: "Failed to upload audio file" });
+      }
+    });
+  });
+
+  // PATCH /api/pbx/audio/:audioId - Update audio file details
+  app.patch("/api/pbx/audio/:audioId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { audioId } = req.params;
+      const { name, description, notes, audioType } = req.body;
+
+      // Verify audio belongs to company
+      const [existing] = await db
+        .select()
+        .from(pbxAudioFiles)
+        .where(and(
+          eq(pbxAudioFiles.id, audioId),
+          eq(pbxAudioFiles.companyId, user.companyId)
+        ));
+
+      if (!existing) {
+        return res.status(404).json({ message: "Audio file not found" });
+      }
+
+      const updateData: Record<string, any> = {};
+      if (name !== undefined) updateData.name = name;
+      if (description !== undefined) updateData.description = description;
+      if (notes !== undefined) updateData.notes = notes;
+      if (audioType !== undefined && ['greeting', 'hold_music', 'announcement', 'voicemail_greeting'].includes(audioType)) {
+        updateData.audioType = audioType;
+      }
+
+      const [updated] = await db
+        .update(pbxAudioFiles)
+        .set(updateData)
+        .where(eq(pbxAudioFiles.id, audioId))
+        .returning();
+
+      return res.json({ success: true, audioFile: updated });
+    } catch (error: any) {
+      console.error("[PBX Audio] Update error:", error);
+      return res.status(500).json({ message: "Failed to update audio file" });
+    }
+  });
+
+  // DELETE /api/pbx/audio/:audioId - Delete audio file
+  app.delete("/api/pbx/audio/:audioId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { audioId } = req.params;
+
+      // Verify audio belongs to company
+      const [existing] = await db
+        .select()
+        .from(pbxAudioFiles)
+        .where(and(
+          eq(pbxAudioFiles.id, audioId),
+          eq(pbxAudioFiles.companyId, user.companyId)
+        ));
+
+      if (!existing) {
+        return res.status(404).json({ message: "Audio file not found" });
+      }
+
+      // Check if audio is in use
+      const ivrsUsingAsGreeting = await db
+        .select({ id: pbxIvrs.id })
+        .from(pbxIvrs)
+        .where(and(
+          eq(pbxIvrs.companyId, user.companyId),
+          eq(pbxIvrs.greetingAudioUrl, existing.fileUrl)
+        ));
+
+      const queuesUsingAsHoldMusic = await db
+        .select({ id: pbxQueues.id })
+        .from(pbxQueues)
+        .where(and(
+          eq(pbxQueues.companyId, user.companyId),
+          eq(pbxQueues.holdMusicUrl, existing.fileUrl)
+        ));
+
+      if (ivrsUsingAsGreeting.length > 0 || queuesUsingAsHoldMusic.length > 0) {
+        return res.status(400).json({ 
+          message: "Cannot delete audio file that is currently in use",
+          usedBy: {
+            ivrs: ivrsUsingAsGreeting.length,
+            queues: queuesUsingAsHoldMusic.length
+          }
+        });
+      }
+
+      // Delete from object storage
+      try {
+        const { deleteFile } = await import("./services/object-storage-service");
+        await deleteFile(existing.fileUrl);
+      } catch (storageError) {
+        console.error("[PBX Audio] Failed to delete from storage:", storageError);
+      }
+
+      // Delete from database
+      await db
+        .delete(pbxAudioFiles)
+        .where(eq(pbxAudioFiles.id, audioId));
+
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX Audio] Delete error:", error);
+      return res.status(500).json({ message: "Failed to delete audio file" });
     }
   });
 

@@ -1141,8 +1141,8 @@ export default function PhoneSystem() {
                         </div>
                       </div>
 
-                      {/* E911 + Assigned User Row */}
-                      <div className="grid grid-cols-2 gap-4">
+                      {/* E911 + Assigned User + Entry IVR Row */}
+                      <div className="grid grid-cols-3 gap-4">
                         {/* E911 Section */}
                         <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
                           <div className="flex items-center gap-3 mb-3">
