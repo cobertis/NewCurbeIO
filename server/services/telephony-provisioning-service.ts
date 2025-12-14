@@ -1136,34 +1136,59 @@ export class TelephonyProvisioningService {
       return { success: false, repairedCount: 0, errors: ["Company has no Telnyx managed account"] };
     }
 
-    // DIRECT ROUTING: Assign phone numbers directly to Credential Connection
-    // This provides ZERO latency for inbound calls (no Call Control webhook delay)
-    if (settings.credentialConnectionId) {
-      console.log(`[TelephonyProvisioning] Using DIRECT routing to Credential Connection: ${settings.credentialConnectionId}`);
-      
-      // Get all phone numbers for user
-      const phoneNumbers = await db
-        .select()
-        .from(telnyxPhoneNumbers)
-        .where(and(eq(telnyxPhoneNumbers.companyId, companyId), eq(telnyxPhoneNumbers.ownerUserId, userId)));
+    // Get all phone numbers for the company (not just user)
+    const phoneNumbers = await db
+      .select()
+      .from(telnyxPhoneNumbers)
+      .where(eq(telnyxPhoneNumbers.companyId, companyId));
 
-      if (phoneNumbers.length === 0) {
-        return { success: true, repairedCount: 0, errors: [] };
-      }
+    if (phoneNumbers.length === 0) {
+      return { success: true, repairedCount: 0, errors: [] };
+    }
 
-      const errors: string[] = [];
-      let repairedCount = 0;
+    const errors: string[] = [];
+    let repairedCount = 0;
 
-      for (const phoneNumber of phoneNumbers) {
-        try {
-          // Assign directly to Credential Connection (not Call Control App)
+    for (const phoneNumber of phoneNumbers) {
+      try {
+        // Determine routing based on phone number configuration
+        // If number has IVR assigned (including "unassigned" which means no IVR but needs call control)
+        // OR has ownerUserId, it needs Call Control App for intelligent routing
+        const needsCallControl = phoneNumber.ivrId || phoneNumber.ownerUserId;
+        
+        if (needsCallControl && settings.callControlAppId) {
+          // Use Call Control App for intelligent routing (IVR, direct user routing, queues)
+          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} needs Call Control App (ivrId=${phoneNumber.ivrId}, ownerUserId=${phoneNumber.ownerUserId})`);
+          
+          const response = await this.makeApiRequest(
+            managedAccountId,
+            `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
+            "PATCH",
+            { 
+              connection_id: settings.callControlAppId,
+              call_control_application_id: null
+            }
+          );
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            errors.push(`Failed to repair ${phoneNumber.phoneNumber}: HTTP ${response.status} - ${errorText}`);
+            continue;
+          }
+
+          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Call Control App (intelligent routing)`);
+          repairedCount++;
+        } else if (settings.credentialConnectionId) {
+          // Use Credential Connection for direct SIP routing (no special configuration)
+          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} using direct routing to Credential Connection`);
+          
           const response = await this.makeApiRequest(
             managedAccountId,
             `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
             "PATCH",
             { 
               connection_id: settings.credentialConnectionId,
-              call_control_application_id: null // Clear Call Control App for direct routing
+              call_control_application_id: null
             }
           );
 
@@ -1181,32 +1206,14 @@ export class TelephonyProvisioningService {
 
           console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Credential Connection (direct routing)`);
           repairedCount++;
-        } catch (error) {
-          errors.push(`Error repairing ${phoneNumber.phoneNumber}: ${error instanceof Error ? error.message : 'Unknown'}`);
         }
+      } catch (error) {
+        errors.push(`Error repairing ${phoneNumber.phoneNumber}: ${error instanceof Error ? error.message : 'Unknown'}`);
       }
-
-      console.log(`[TelephonyProvisioning] Repair complete (DIRECT): ${repairedCount} phones repaired`);
-      return { success: errors.length === 0, repairedCount, errors };
     }
 
-    // Fall back to Credential Connection routing
-    if (!settings.credentialConnectionId) {
-      return { success: false, repairedCount: 0, errors: ["No credential connection or Call Control App found - please re-provision telephony"] };
-    }
-
-    console.log(`[TelephonyProvisioning] Using Credential Connection routing: ${settings.credentialConnectionId}`);
-
-    // Reassign all phone numbers to the Credential Connection
-    const result = await this.updateExistingPhoneNumbers(managedAccountId, companyId, settings.credentialConnectionId);
-
-    console.log(`[TelephonyProvisioning] Repair complete (Credential Connection): ${result.updatedCount} phones repaired, ${result.failedCount} failed`);
-
-    return {
-      success: result.success,
-      repairedCount: result.updatedCount,
-      errors: result.errors,
-    };
+    console.log(`[TelephonyProvisioning] Repair complete: ${repairedCount} phones repaired`);
+    return { success: errors.length === 0, repairedCount, errors };
   }
 }
 
