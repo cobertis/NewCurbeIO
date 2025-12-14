@@ -435,7 +435,9 @@ export class TelephonyProvisioningService {
           // CRITICAL: Enable SIP URI calling so TeXML can dial to this credential connection
           // This is a ROOT level field, not inside inbound
           sip_uri_calling_preference: "unrestricted",
-          webhook_event_url: `${webhookBaseUrl}/webhooks/telnyx/voice/status`,
+          // NOTE: Do NOT set webhook_event_url here - it causes ALL calls (including outbound 
+          // from Yealink/SIP devices) to route through Call Control which breaks them.
+          // Credential connections should NOT have webhooks - only Call Control Apps need them.
         }
       );
 
