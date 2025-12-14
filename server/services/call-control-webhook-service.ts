@@ -1805,18 +1805,19 @@ export class CallControlWebhookService {
   }
 
   /**
-   * Transfer call to assigned user using SIP URI Transfer
+   * Transfer call to assigned user using SIP URI Transfer with SIP Forking
    * 
-   * NOTE: Transfer to SIP URI goes to the credential connection where the user
-   * is registered. The credential connection has simultaneous_ringing: "enabled",
-   * but this may not work with the transfer command. Further investigation needed.
+   * CRITICAL: Uses the company-specific SIP domain (e.g., curbe-company.sip.telnyx.com)
+   * instead of the generic sip.telnyx.com. This forces Telnyx to load the credential
+   * connection's rules including simultaneous_ringing, enabling both webphone and
+   * desk phones to ring simultaneously.
    */
   private async transferToAssignedUser(
     callControlId: string,
     phoneNumber: any,
     callerNumber?: string
   ): Promise<void> {
-    console.log(`[CallControl] Transfer to assigned user via SIP URI, caller: ${callerNumber}`);
+    console.log(`[CallControl] Transfer to assigned user via SIP URI with SIP Forking, caller: ${callerNumber}`);
 
     if (!phoneNumber.ownerUserId) {
       console.log(`[CallControl] No assigned user, cannot transfer`);
@@ -1837,9 +1838,17 @@ export class CallControlWebhookService {
     }
 
     const companyId = phoneNumber.companyId;
-    const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
     
-    console.log(`[CallControl] Transferring to SIP URI: ${sipUri}`);
+    // Get company-specific SIP domain for SIP Forking (enables simultaneous ringing)
+    const { TelephonyProvisioningService } = await import("./telephony-provisioning-service");
+    const provisioningService = new TelephonyProvisioningService();
+    const sipDomain = await provisioningService.getCompanySipDomain(companyId);
+    
+    // Use company-specific domain if available, fallback to generic (won't fork but will work)
+    const sipHost = sipDomain || "sip.telnyx.com";
+    const sipUri = `sip:${sipCreds.sipUsername}@${sipHost}`;
+    
+    console.log(`[CallControl] Transferring to SIP URI: ${sipUri} (SIP Forking: ${sipDomain ? 'enabled' : 'disabled - using generic domain'})`);
     
     const clientState = Buffer.from(JSON.stringify({
       companyId,
@@ -1848,7 +1857,7 @@ export class CallControlWebhookService {
     })).toString("base64");
 
     try {
-      // Use transfer to SIP URI
+      // Use transfer to SIP URI - with company-specific domain, this triggers SIP Forking
       await this.makeCallControlRequest(callControlId, "transfer", {
         to: sipUri,
         from: callerNumber || phoneNumber.phoneNumber,
@@ -1856,7 +1865,7 @@ export class CallControlWebhookService {
         client_state: clientState,
       });
       
-      console.log(`[CallControl] Transfer initiated to SIP URI`);
+      console.log(`[CallControl] Transfer initiated to SIP URI with SIP Forking`);
       
     } catch (error) {
       console.error(`[CallControl] Transfer failed:`, error);

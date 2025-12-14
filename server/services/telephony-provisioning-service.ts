@@ -567,6 +567,184 @@ export class TelephonyProvisioningService {
   }
 
   /**
+   * Configure SIP subdomain on credential connection for SIP Forking
+   * CRITICAL: This enables simultaneous_ringing to work by forcing calls
+   * to route through the connection-specific realm instead of generic sip.telnyx.com
+   * The subdomain format is: {subdomain}.sip.telnyx.com
+   */
+  async configureSipSubdomain(
+    managedAccountId: string,
+    connectionId: string,
+    subdomain: string
+  ): Promise<{ success: boolean; sipDomain?: string; error?: string }> {
+    try {
+      // Clean subdomain: lowercase, alphanumeric + hyphens only
+      const cleanSubdomain = subdomain
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 30);
+      
+      console.log(`[TelephonyProvisioning] Configuring SIP subdomain on connection: ${connectionId}, subdomain: ${cleanSubdomain}`);
+      
+      const response = await this.makeApiRequest(
+        managedAccountId,
+        `/credential_connections/${connectionId}`,
+        "PATCH",
+        {
+          sip_subdomain: cleanSubdomain,
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[TelephonyProvisioning] Failed to configure SIP subdomain: ${response.status} - ${errorText}`);
+        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      }
+
+      const data = await response.json();
+      const configuredSubdomain = data.data?.sip_subdomain;
+      const sipDomain = configuredSubdomain ? `${configuredSubdomain}.sip.telnyx.com` : null;
+      
+      console.log(`[TelephonyProvisioning] SIP subdomain configured successfully: ${sipDomain}`);
+      return { success: true, sipDomain: sipDomain || undefined };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Network error";
+      console.error(`[TelephonyProvisioning] Error configuring SIP subdomain:`, errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  /**
+   * Get SIP subdomain from credential connection
+   */
+  async getSipSubdomain(
+    managedAccountId: string,
+    connectionId: string
+  ): Promise<{ success: boolean; sipDomain?: string; error?: string }> {
+    try {
+      console.log(`[TelephonyProvisioning] Getting SIP subdomain for connection: ${connectionId}`);
+      
+      const response = await this.makeApiRequest(
+        managedAccountId,
+        `/credential_connections/${connectionId}`,
+        "GET"
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      }
+
+      const data = await response.json();
+      const subdomain = data.data?.sip_subdomain;
+      const sipDomain = subdomain ? `${subdomain}.sip.telnyx.com` : null;
+      
+      console.log(`[TelephonyProvisioning] Current SIP subdomain: ${sipDomain || 'not configured'}`);
+      return { success: true, sipDomain: sipDomain || undefined };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : "Network error" };
+    }
+  }
+
+  /**
+   * Setup SIP subdomain for a company and save to database
+   * This enables SIP forking so both webphone and desk phones ring simultaneously
+   */
+  async setupSipDomainForCompany(companyId: string): Promise<{ success: boolean; sipDomain?: string; error?: string }> {
+    console.log(`[TelephonyProvisioning] Setting up SIP domain for company: ${companyId}`);
+    
+    // Get company info
+    const [company] = await db
+      .select()
+      .from(companies)
+      .where(eq(companies.id, companyId));
+    
+    if (!company) {
+      return { success: false, error: "Company not found" };
+    }
+
+    // Get telephony settings with credential connection
+    const [settings] = await db
+      .select()
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId))
+      .limit(1);
+
+    if (!settings || !settings.credentialConnectionId) {
+      return { success: false, error: "No credential connection found for company" };
+    }
+
+    // Check if already configured
+    if (settings.sipDomain) {
+      console.log(`[TelephonyProvisioning] SIP domain already configured: ${settings.sipDomain}`);
+      return { success: true, sipDomain: settings.sipDomain };
+    }
+
+    const { getCompanyManagedAccountId } = await import("./telnyx-managed-accounts");
+    const managedAccountId = await getCompanyManagedAccountId(companyId);
+
+    if (!managedAccountId) {
+      return { success: false, error: "Company has no Telnyx managed account" };
+    }
+
+    // First check if subdomain already exists in Telnyx
+    const existingResult = await this.getSipSubdomain(managedAccountId, settings.credentialConnectionId);
+    if (existingResult.success && existingResult.sipDomain) {
+      // Save to database and return
+      await db
+        .update(telephonySettings)
+        .set({ sipDomain: existingResult.sipDomain, updatedAt: new Date() })
+        .where(eq(telephonySettings.id, settings.id));
+      
+      return { success: true, sipDomain: existingResult.sipDomain };
+    }
+
+    // Generate subdomain from company name
+    const subdomain = `curbe-${company.name || companyId.slice(0, 8)}`;
+    
+    // Configure in Telnyx
+    const result = await this.configureSipSubdomain(
+      managedAccountId,
+      settings.credentialConnectionId,
+      subdomain
+    );
+
+    if (!result.success || !result.sipDomain) {
+      return { success: false, error: result.error || "Failed to configure SIP subdomain" };
+    }
+
+    // Save to database
+    await db
+      .update(telephonySettings)
+      .set({ sipDomain: result.sipDomain, updatedAt: new Date() })
+      .where(eq(telephonySettings.id, settings.id));
+
+    console.log(`[TelephonyProvisioning] SIP domain setup complete: ${result.sipDomain}`);
+    return { success: true, sipDomain: result.sipDomain };
+  }
+
+  /**
+   * Get the SIP domain for a company (from database or configure if missing)
+   */
+  async getCompanySipDomain(companyId: string): Promise<string | null> {
+    const [settings] = await db
+      .select({ sipDomain: telephonySettings.sipDomain })
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId))
+      .limit(1);
+
+    if (settings?.sipDomain) {
+      return settings.sipDomain;
+    }
+
+    // Try to setup if not configured
+    const result = await this.setupSipDomainForCompany(companyId);
+    return result.sipDomain || null;
+  }
+
+  /**
    * Configure HD codecs on credential connection for high-quality voice
    * Sets codec priority: G.722 (HD) first, then PCMU/PCMA as fallback
    * OPUS is not included as it requires TLS/TCP transport for inbound

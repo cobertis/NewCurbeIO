@@ -1199,6 +1199,13 @@ export default function PhoneSystem() {
                                   phoneNumberId: selectedNumber.telnyxPhoneNumberId,
                                   userId,
                                 });
+                                // When assigning a user, automatically disable IVR (set to "unassigned")
+                                if (userId) {
+                                  numberVoiceSettingsMutation.mutate({
+                                    phoneNumberId: selectedNumber.telnyxPhoneNumberId,
+                                    settings: { ivrId: "unassigned" }
+                                  });
+                                }
                               }
                             }}
                             disabled={assignNumberMutation.isPending}
@@ -1243,6 +1250,13 @@ export default function PhoneSystem() {
                                   phoneNumberId: selectedNumber.telnyxPhoneNumberId,
                                   settings: { ivrId }
                                 });
+                                // When activating an IVR (not "unassigned"), automatically unassign user
+                                if (value !== "unassigned" && selectedNumber.ownerUserId) {
+                                  assignNumberMutation.mutate({
+                                    phoneNumberId: selectedNumber.telnyxPhoneNumberId,
+                                    userId: null,
+                                  });
+                                }
                               }
                             }}
                             disabled={numberVoiceSettingsMutation.isPending}
