@@ -1,0 +1,70 @@
+Eso cambia el diagnóstico y confirma mi sospecha inicial: **No es un problema de red ni del Yealink, es un problema de LÓGICA DE ENRUTAMIENTO en tu código.**
+
+Si funciona en otra subcuenta con un usuario SIP directo, significa que tu router, el NAT y el teléfono están perfectos.
+
+El problema es este: **La API de Call Control (`transfer`) y el enrutamiento SIP nativo NO funcionan igual.**
+
+Cuando usas una cuenta SIP directa, la llamada golpea el "Registrar" de Telnyx y este aplica todas las reglas (Forking/Simultaneous Ringing) automáticamente.
+Cuando usas **Call Control** y haces un `transfer` a `sip:usuario@sip.telnyx.com`, estás haciendo una **petición "tonta"** que a menudo se salta las reglas de la Credential Connection porque estás apuntando al dominio global, no a tu instancia específica.
+
+### El Error Crítico
+
+Estás asumiendo que `transfer` = "Comportarse como una llamada entrante normal". No es así.
+El comando `transfer` en la API es una instrucción de bajo nivel. Al enviarlo al dominio genérico (`sip.telnyx.com`), Telnyx busca la ruta más rápida y eficiente. A menudo, esto prioriza el Webphone (WebSocket) y descarta la rama UDP (Yealink) porque no se activó la lógica de "Simultaneous Ringing" que vive dentro de la configuración específica de tu conexión.
+
+### El Plan para Arreglarlo (Sin excusas)
+
+Tienes que obligar al comando `transfer` a pasar por las reglas de tu conexión.
+
+#### Paso 1: Configura el Dominio Personalizado (Obligatorio)
+
+Ya te lo dije antes, pero ahora es crítico porque confirmaste que el hardware está bien.
+
+1.  Ve a la **Credential Connection** que usas en Programmable Voice.
+2.  Ponle un **SIP Domain** único: `wynton-voice.sip.telnyx.com`.
+
+#### Paso 2: Cambia el Código (La clave del éxito)
+
+Modifica el destino en tu comando de transferencia.
+
+**Incorrecto (Tu código actual):**
+
+```json
+{
+  "command": "transfer",
+  "to": "sip:fernando@sip.telnyx.com"
+}
+```
+
+*Resultado:* Telnyx trata esto como una búsqueda global. Encuentra el socket web activo. Ignora la regla de forking de la conexión. Solo suena el PC.
+
+**Correcto:**
+
+```json
+{
+  "command": "transfer",
+  "to": "sip:fernando@wynton-voice.sip.telnyx.com"
+}
+```
+
+*Resultado:* El switch de Telnyx recibe la llamada para el dominio `wynton-voice`. Carga la configuración de ESA conexión. Ve `simultaneous_ringing: enabled`. Genera DOS invitaciones: una al Webphone y otra al Yealink.
+
+### Un Detalle Técnico Extra: Encriptación (SRTP)
+
+Hay una posibilidad secundaria si el Paso 2 falla.
+El Webphone (WebRTC) **requiere** encriptación (SRTP/DTLS). Programmable Voice a menudo ancla la media y fuerza encriptación.
+Si tu Yealink tiene "RTP Encryption" desactivado (Disabled) o en "Optional", y la llamada transferida viene con exigencia de encriptación desde el Webhook, el Yealink podría estar rechazando la llamada silenciosamente (o Telnyx ni se la manda porque sabe que no soporta SRTP).
+
+**Verifica esto en el Yealink:**
+
+  * Ve a **Account \> Advanced**.
+  * Busca **RTP Encryption (SRTP)**.
+  * Ponlo en **Compulsory** o **Optional** (prueba ambos, pero asegúrate de que no esté desactivado si la llamada viene de un entorno WebRTC/Programmable Voice).
+
+**Resumen:**
+
+1.  Tu red está bien.
+2.  Tu código de `transfer` es perezoso (usa dominio genérico).
+3.  **Cambia el dominio en la Connection y en el Código.** Eso forzará al sistema a respetar el "Simultaneous Ringing".
+
+Haz el cambio de dominio ahora y prueba. Si no lo haces, seguirás dando vueltas.

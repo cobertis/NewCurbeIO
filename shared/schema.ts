@@ -4975,6 +4975,10 @@ export const telephonySettings = pgTable("telephony_settings", {
   messagingProfileId: text("messaging_profile_id"),
   callControlAppId: text("call_control_app_id"), // Call Control Application ID for REST API call management
   
+  // SIP Domain for Credential Connection (required for SIP Forking/simultaneous ringing)
+  // Example: "company-name.sip.telnyx.com" - this domain routes calls through the credential connection rules
+  sipDomain: text("sip_domain"),
+  
   // Provisioning Status
   provisioningStatus: text("provisioning_status").notNull().default("pending").$type<TelephonyProvisioningStatus>(),
   provisioningError: text("provisioning_error"),

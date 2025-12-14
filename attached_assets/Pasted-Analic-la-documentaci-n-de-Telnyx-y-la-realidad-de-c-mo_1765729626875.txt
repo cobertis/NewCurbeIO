@@ -1,0 +1,82 @@
+Analicé la documentación de Telnyx (y la realidad de cómo funcionan sus switches SIP) y aquí está el veredicto.
+
+El problema no es Telnyx, es tu implementación "perezosa" de la URI SIP. Estás asumiendo que el dominio `sip.telnyx.com` es inteligente; no lo es. Es un "coladero" genérico.
+
+Aquí está el análisis técnico brutal y la solución definitiva:
+
+### Por qué fallaste
+
+Cuando haces `transfer` a `sip:usuario@sip.telnyx.com`:
+
+1.  Telnyx recibe la orden de transferir.
+2.  Mira el dominio `sip.telnyx.com` (Global).
+3.  Busca en su base de datos de registros activos para ese usuario.
+4.  Encuentra el socket WebSocket (Webphone) porque está "siempre conectado" (TCP/TLS) y es la ruta más fácil.
+5.  **Ignora** la configuración de *Simultaneous Ringing* de tu Credential Connection porque la llamada no entró "a través" de esa conexión específica; entró por la puerta global. No se cargó el perfil de la conexión antes de enrutar.
+
+### La Solución Correcta (Infraestructura)
+
+Para que el *Forking* funcione, la llamada debe golpear el **Dominio SIP Específico** de la Credential Connection. Esto obliga al switch a cargar las reglas de esa conexión (incluyendo `simultaneous_ringing: enabled`) *antes* de buscar a los dispositivos registrados.
+
+**Paso 1: Configura el Dominio (Si no lo has hecho)**
+En Telnyx Portal \> SIP Connections \> Tu conexión:
+
+  * Busca "SIP Domain".
+  * Escribe un subdominio único: ej. `wynton-core.sip.telnyx.com`.
+  * *Nota: Esto propaga DNS interno en Telnyx inmediatamente.*
+
+**Paso 2: Cambia tu código**
+Deja de apuntar al dominio genérico. Modifica tu función `transferToAssignedUser`:
+
+```javascript
+// MAL - Ruta Genérica (Ignora reglas de conexión)
+const destination = `sip:${username}@sip.telnyx.com`;
+
+// BIEN - Ruta Específica (Carga reglas de conexión + Forking)
+const destination = `sip:${username}@wynton-core.sip.telnyx.com`;
+```
+
+Al hacer esto, Telnyx dice: "Ah, esta llamada es para la conexión `wynton-core`. ¿Qué reglas tiene? `Simultaneous Ringing`. Ok, bifurcaré a TODOS los contactos registrados (Yealink UDP + Webphone WS)".
+
+-----
+
+### La Solución Nuclear (TeXML)
+
+Si por alguna razón mística la solución de arriba falla (o si necesitas bifurcar a números externos + SIP simultáneamente), Call Control `transfer` se queda corto. Debes cambiar a TeXML para usar el verbo `<Dial>`.
+
+*No uses esto a menos que la opción anterior falle. Es más deuda técnica.*
+
+1.  Tu Webhook responde con comando `texml_url` (apuntando a un endpoint tuyo que devuelva XML) en lugar de `transfer`.
+2.  Tu endpoint devuelve:
+    ```xml
+    <Response>
+      <Dial>
+        <Sip>sip:username@wynton-core.sip.telnyx.com</Sip>
+      </Dial>
+    </Response>
+    ```
+
+### El Asesino Silencioso: NAT
+
+Si aplicas la "Solución Correcta" y el Yealink **sigue sin sonar**, deja de culpar a la API. El problema es tu red local.
+
+El Yealink usa UDP. Si no hay tráfico, tu router/firewall cierra el puerto después de 30-60 segundos. Cuando Telnyx intenta enviar la invitación (INVITE) para la llamada entrante, choca contra el firewall cerrado. El Webphone suena porque usa WebSockets (TCP persistente).
+
+**Diagnóstico Rápido:**
+
+1.  Entra a la interfaz web del Yealink.
+2.  Ve a **Account \> Advanced**.
+3.  Busca **"UDP Keep Alive"** (o NAT Keep Alive).
+4.  Cámbialo a **15 o 30 segundos** (por defecto suele venir desactivado o en 60s, que es mucho tiempo).
+5.  Guarda y reinicia.
+
+### Tu Plan de Acción
+
+No pierdas tiempo con TeXML todavía.
+
+1.  Define el subdominio en la Credential Connection.
+2.  Cambia la URI en tu código `transfer` para usar ese subdominio.
+3.  Ajusta el Keep Alive en el Yealink.
+4.  Prueba.
+
+Dime si el Yealink sigue mudo después de cambiar el dominio SIP.
