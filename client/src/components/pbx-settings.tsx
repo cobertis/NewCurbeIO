@@ -1474,6 +1474,13 @@ function QueueDialog({
     }
   }, [queueHoldMusic, open, queue?.id]);
 
+  // Refetch ads when dialog opens to ensure checkboxes show correctly
+  useEffect(() => {
+    if (open && queue?.id) {
+      refetchAds();
+    }
+  }, [open, queue?.id, refetchAds]);
+
   const handleOpenChange = (isOpen: boolean) => {
     if (!isOpen) {
       setName("");
