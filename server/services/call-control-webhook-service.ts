@@ -24,32 +24,6 @@ import { eq, and, inArray } from "drizzle-orm";
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
 const secretsService = new SecretsService();
 
-// Default fallback SIP domain
-const DEFAULT_SIP_DOMAIN = "sip.telnyx.com";
-
-/**
- * Get the SIP domain for a company. Uses company-specific domain if configured,
- * otherwise falls back to generic sip.telnyx.com.
- * 
- * IMPORTANT: Using company-specific SIP domain (e.g. curbe.sip.telnyx.com) forces
- * Telnyx to load the credential connection rules INCLUDING simultaneous_ringing,
- * which enables SIP forking to all registered devices (webphone + physical phones).
- */
-async function getCompanySipDomain(companyId: string): Promise<string> {
-  try {
-    const [settings] = await db
-      .select({ sipDomain: telephonySettings.sipDomain })
-      .from(telephonySettings)
-      .where(eq(telephonySettings.companyId, companyId))
-      .limit(1);
-    
-    return settings?.sipDomain || DEFAULT_SIP_DOMAIN;
-  } catch (error) {
-    console.error(`[SipDomain] Error getting SIP domain for company ${companyId}:`, error);
-    return DEFAULT_SIP_DOMAIN;
-  }
-}
-
 // Track call context for managed account routing
 interface CallContext {
   companyId: string;
@@ -530,7 +504,6 @@ interface CallControlEvent {
       call_control_id: string;
       call_session_id?: string;
       call_leg_id?: string;
-      connection_id?: string;
       from: string;
       to: string;
       direction: "incoming" | "outgoing";
@@ -594,50 +567,16 @@ export class CallControlWebhookService {
   }
 
   private async handleCallInitiated(payload: CallControlEvent["data"]["payload"]): Promise<void> {
-    const { call_control_id, from, to, direction, client_state, state } = payload;
-
-    console.log(`[CallControl] call.initiated - direction: ${direction}, state: ${state}, from: ${from}, to: ${to}`);
-
-    // Handle OUTBOUND parked calls (from SIP devices like Yealink or WebRTC)
-    // When call_parking_enabled is true on Credential Connection, outbound calls
-    // arrive with direction: "outgoing" and state: "parked"
-    if (direction === "outgoing" && state === "parked") {
-      console.log(`[CallControl] Outbound PARKED call detected from ${from} to ${to}`);
-      await this.handleOutboundParkedCall(call_control_id, from, to, payload);
-      return;
-    }
+    const { call_control_id, from, to, direction, client_state } = payload;
 
     if (direction !== "incoming") {
-      console.log(`[CallControl] Ignoring non-incoming call event (direction: ${direction})`);
+      console.log(`[CallControl] Ignoring outgoing call initiated event`);
       return;
     }
 
-    // Check if "to" is one of our phone numbers (incoming call)
     const phoneNumber = await this.findPhoneNumberByE164(to);
     if (!phoneNumber) {
-      // Not found by "to" - this might be an OUTBOUND call from WebRTC or Yealink
-      // With call_parking_enabled, these should come as direction: "outgoing"
-      // But for backward compatibility, also check for SIP device format
-      const fromPhoneNumber = await this.findPhoneNumberByE164(from);
-      
-      // Detect Yealink/SIP device calls - they come as "user@IP" or "nobody@IP"
-      const isSipDeviceCall = from.includes('@') && !from.startsWith('+') && !from.startsWith('sip:');
-      
-      if (fromPhoneNumber) {
-        // This is an OUTGOING call from our WebRTC client
-        console.log(`[CallControl] Outbound WebRTC call detected from ${from} to ${to} - handling as parked`);
-        await this.handleOutboundParkedCall(call_control_id, from, to, payload);
-        return;
-      }
-      
-      if (isSipDeviceCall) {
-        // This is an OUTGOING call from a SIP device (Yealink, etc)
-        console.log(`[CallControl] Outbound SIP device call detected from ${from} to ${to} - handling as parked`);
-        await this.handleOutboundParkedCall(call_control_id, from, to, payload);
-        return;
-      }
-      
-      console.log(`[CallControl] Phone number not found for: ${to} (and ${from}=${from} is not recognized)`);
+      console.log(`[CallControl] Phone number not found for: ${to}`);
       await this.hangupCall(call_control_id, "USER_NOT_FOUND");
       return;
     }
@@ -711,147 +650,6 @@ export class CallControlWebhookService {
       await this.playIvrGreeting(call_control_id, phoneNumber.companyId, settings);
     } else {
       await this.routeToDefaultAgent(call_control_id, phoneNumber);
-    }
-  }
-
-  /**
-   * Handle outbound parked calls from SIP devices (Yealink) or WebRTC
-   * When call_parking_enabled is true on Credential Connection, outbound calls
-   * are "parked" and we receive a webhook to handle them.
-   * 
-   * Flow:
-   * 1. Identify company by connection_id
-   * 2. Find the caller's assigned phone number for Caller ID
-   * 3. Verify company has sufficient balance (future: implement balance check)
-   * 4. Execute dial command to connect the call to the destination
-   * 5. Track the call for billing
-   */
-  private async handleOutboundParkedCall(
-    callControlId: string,
-    from: string,
-    to: string,
-    payload: CallControlEvent["data"]["payload"]
-  ): Promise<void> {
-    const connectionId = payload.connection_id;
-    console.log(`[CallControl] Processing outbound parked call: from=${from}, to=${to}, connection_id=${connectionId}`);
-
-    try {
-      // Find company by credential connection ID
-      let companyId: string | null = null;
-      let callerPhoneNumber: string | null = null;
-
-      if (connectionId) {
-        // Look up the company by credential connection ID
-        const [settings] = await db
-          .select({ companyId: telephonySettings.companyId })
-          .from(telephonySettings)
-          .where(eq(telephonySettings.credentialConnectionId, connectionId))
-          .limit(1);
-        
-        if (settings) {
-          companyId = settings.companyId;
-          console.log(`[CallControl] Found company ${companyId} by connection_id ${connectionId}`);
-        }
-      }
-
-      if (!companyId) {
-        // Fallback: try to find by SIP username in the "from" field
-        // Format might be "username@IP" or "sip:username@domain"
-        const sipUsername = from.includes('@') ? from.split('@')[0].replace('sip:', '') : null;
-        if (sipUsername) {
-          const [creds] = await db
-            .select({ companyId: telephonyCredentials.companyId })
-            .from(telephonyCredentials)
-            .where(eq(telephonyCredentials.sipUsername, sipUsername))
-            .limit(1);
-          
-          if (creds) {
-            companyId = creds.companyId;
-            console.log(`[CallControl] Found company ${companyId} by SIP username ${sipUsername}`);
-          }
-        }
-      }
-
-      if (!companyId) {
-        console.error(`[CallControl] Could not identify company for outbound call from ${from}`);
-        await this.hangupCall(callControlId, "USER_NOT_FOUND");
-        return;
-      }
-
-      // Get the managed account ID for API calls
-      const managedAccountId = await getCompanyManagedAccountId(companyId);
-      
-      // Store call context
-      callContextMap.set(callControlId, {
-        companyId,
-        managedAccountId,
-        callerNumber: to // For outbound, "to" is the destination being called
-      });
-
-      // Find a phone number to use as Caller ID
-      // Priority: assigned to user making the call, or company default
-      const [assignedNumber] = await db
-        .select({ phoneNumber: telnyxPhoneNumbers.phoneNumber })
-        .from(telnyxPhoneNumbers)
-        .where(eq(telnyxPhoneNumbers.companyId, companyId))
-        .limit(1);
-
-      if (assignedNumber) {
-        callerPhoneNumber = assignedNumber.phoneNumber;
-      }
-
-      if (!callerPhoneNumber) {
-        console.error(`[CallControl] No phone number available for outbound Caller ID`);
-        await this.hangupCall(callControlId, "NO_ROUTE_DESTINATION");
-        return;
-      }
-
-      console.log(`[CallControl] Using Caller ID: ${callerPhoneNumber} for outbound call to ${to}`);
-
-      // TODO: Verify company balance before allowing call
-      // For now, we allow all calls (billing is handled post-call via CDRs)
-      // Future: const hasBalance = await billingService.checkBalance(companyId);
-      // if (!hasBalance) { await this.hangupCall(callControlId, "INSUFFICIENT_FUNDS"); return; }
-
-      // Track the outbound call
-      await pbxService.trackActiveCall(companyId, callControlId, callerPhoneNumber, to, "outbound");
-
-      // Execute the dial command to connect the parked call to the destination
-      // Per Telnyx docs, we need to dial the destination number
-      const apiKey = await getTelnyxApiKey();
-      const headers: Record<string, string> = {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      };
-      if (managedAccountId) {
-        headers["X-Managed-Account-Id"] = managedAccountId;
-      }
-
-      // Use the dial action to connect to the destination
-      const dialResponse = await fetch(`${TELNYX_API_BASE}/calls/${callControlId}/actions/dial`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          to: to,
-          from: callerPhoneNumber,
-        }),
-      });
-
-      if (!dialResponse.ok) {
-        const errorText = await dialResponse.text();
-        console.error(`[CallControl] Dial command failed: ${dialResponse.status} - ${errorText}`);
-        await this.hangupCall(callControlId, "NORMAL_CLEARING");
-        return;
-      }
-
-      const dialData = await dialResponse.json();
-      console.log(`[CallControl] Dial command successful, destination call_leg_id: ${dialData.data?.call_leg_id}`);
-
-    } catch (error) {
-      console.error(`[CallControl] Error handling outbound parked call:`, error);
-      try {
-        await this.hangupCall(callControlId, "NORMAL_CLEARING");
-      } catch (e) { /* ignore */ }
     }
   }
 
@@ -1340,9 +1138,7 @@ export class CallControlWebhookService {
         continue;
       }
 
-      // Use company-specific SIP domain for simultaneous ringing
-      const sipDomain = await getCompanySipDomain(companyId);
-      const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
+      const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
       console.log(`[CallControl] Dialing agent SIP: ${sipUri}`);
 
       try {
@@ -1467,9 +1263,8 @@ export class CallControlWebhookService {
     const sipCreds = await getUserSipCredentials(extension.userId);
     
     if (sipCreds?.sipUsername) {
-      // Dial the agent's personal SIP URI with company-specific domain
-      const sipDomain = await getCompanySipDomain(companyId);
-      const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
+      // Dial the agent's personal SIP URI
+      const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
       console.log(`[CallControl] Dialing agent's SIP URI: ${sipUri}`);
 
       try {
@@ -1531,8 +1326,8 @@ export class CallControlWebhookService {
   }
 
   /**
-   * Dial SIP URI from existing call using Call Control "dial" command
-   * This creates a new leg and Telnyx automatically bridges when the agent answers
+   * Create outbound call to SIP URI and bridge it to existing call
+   * Uses POST /calls to create new leg, then bridges both calls
    */
   private async dialAndBridgeToSip(
     callControlId: string,
@@ -1540,7 +1335,7 @@ export class CallControlWebhookService {
     clientState: string,
     companyId: string
   ): Promise<void> {
-    console.log(`[CallControl] Dialing SIP ${sipUri} from call ${callControlId} using Call Control dial command`);
+    console.log(`[CallControl] Creating outbound call to SIP: ${sipUri} for bridging with ${callControlId}`);
 
     const apiKey = await getTelnyxApiKey();
     const context = callContextMap.get(callControlId);
@@ -1557,6 +1352,20 @@ export class CallControlWebhookService {
 
     const callerIdNumber = phoneNumber?.phoneNumber || "+15555555555";
 
+    // Get Call Control App ID for the company (required for outbound calls via REST API)
+    const [settings] = await db
+      .select({ callControlAppId: telephonySettings.callControlAppId })
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+
+    const connectionId = settings?.callControlAppId;
+
+    if (!connectionId) {
+      throw new Error("No Call Control App ID found for company - cannot create outbound call");
+    }
+    
+    console.log(`[CallControl] Using Call Control App ID: ${connectionId} for outbound call`)
+
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
@@ -1566,48 +1375,46 @@ export class CallControlWebhookService {
       headers["X-Managed-Account-Id"] = managedAccountId;
     }
 
-    // Use the Call Control "dial" command to dial the SIP URI from the existing call
-    // This is the correct approach because:
-    // 1. POST /calls only accepts Call Control App IDs, NOT Credential Connection IDs
-    // 2. The "dial" command creates a new leg from the existing call
-    // 3. When the agent answers, Telnyx automatically bridges both legs
-    const response = await fetch(`${TELNYX_API_BASE}/calls/${callControlId}/actions/dial`, {
+    // Create outbound call to the agent's SIP endpoint
+    const response = await fetch(`${TELNYX_API_BASE}/calls`, {
       method: "POST",
       headers,
       body: JSON.stringify({
+        connection_id: connectionId,
         to: sipUri,
         from: callerIdNumber,
         timeout_secs: 30,
+        answering_machine_detection: "disabled",
         client_state: clientState,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[CallControl] Failed to dial SIP: ${response.status} - ${errorText}`);
+      console.error(`[CallControl] Failed to create outbound call: ${response.status} - ${errorText}`);
       throw new Error(`Failed to dial agent: ${response.status}`);
     }
 
     const data = await response.json();
-    console.log(`[CallControl] Dial command sent successfully:`, JSON.stringify(data));
-
-    // The dial command returns the call_control_id of the new leg
     const agentCallControlId = data.data?.call_control_id;
-    if (agentCallControlId) {
-      console.log(`[CallControl] New agent leg created: ${agentCallControlId}`);
-      
-      // Store context for the new call leg
-      callContextMap.set(agentCallControlId, { companyId, managedAccountId });
-      
-      // Store pending bridge info - will be processed when agent answers (call.answered event)
-      pendingBridges.set(agentCallControlId, {
-        callerCallControlId: callControlId,
-        clientState,
-        companyId,
-      });
+
+    if (!agentCallControlId) {
+      throw new Error("No call_control_id returned from dial");
     }
 
-    console.log(`[CallControl] Waiting for agent to answer, will auto-bridge with caller ${callControlId}`);
+    console.log(`[CallControl] Created outbound call to agent: ${agentCallControlId}`);
+
+    // Store context for the new call leg with pending bridge info
+    callContextMap.set(agentCallControlId, { companyId, managedAccountId });
+    
+    // Store pending bridge info - will be processed when agent answers (call.answered event)
+    pendingBridges.set(agentCallControlId, {
+      callerCallControlId: callControlId,
+      clientState,
+      companyId,
+    });
+
+    console.log(`[CallControl] Waiting for agent to answer call ${agentCallControlId}, will bridge with ${callControlId}`);
   }
 
   /**
@@ -1737,9 +1544,7 @@ export class CallControlWebhookService {
       const sipCreds = await getUserSipCredentials(member.userId);
       if (!sipCreds?.sipUsername) continue;
 
-      // Use company-specific SIP domain for simultaneous ringing
-      const sipDomain = await getCompanySipDomain(companyId);
-      const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
+      const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
 
       try {
         const clientState = Buffer.from(JSON.stringify({
@@ -1851,9 +1656,8 @@ export class CallControlWebhookService {
       originalCallControlId: callControlId,
     })).toString("base64");
 
-    // Dial the agent's SIP URI directly with company-specific domain
-    const sipDomain = await getCompanySipDomain(companyId);
-    const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
+    // Dial the agent's SIP URI directly
+    const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
     console.log(`[CallControl] Dialing agent's SIP URI directly: ${sipUri}`);
 
     try {
@@ -1973,9 +1777,8 @@ export class CallControlWebhookService {
         originalCallControlId: callControlId,
       })).toString("base64");
 
-      // Dial the agent's SIP URI directly with company-specific domain
-      const sipDomain = await getCompanySipDomain(companyId);
-      const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
+      // Dial the agent's SIP URI directly
+      const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
       console.log(`[CallControl] Dialing assigned user's SIP URI directly: ${sipUri}`);
 
       try {
@@ -2004,10 +1807,9 @@ export class CallControlWebhookService {
   /**
    * Transfer call to assigned user using SIP URI Transfer
    * 
-   * CRITICAL: Uses company-specific SIP domain (e.g. curbe.sip.telnyx.com) instead of
-   * generic sip.telnyx.com. This forces Telnyx to load the credential connection rules
-   * INCLUDING simultaneous_ringing, which enables SIP forking to all registered devices
-   * (webphone + physical phones like Yealink).
+   * NOTE: Transfer to SIP URI goes to the credential connection where the user
+   * is registered. The credential connection has simultaneous_ringing: "enabled",
+   * but this may not work with the transfer command. Further investigation needed.
    */
   private async transferToAssignedUser(
     callControlId: string,
@@ -2035,12 +1837,9 @@ export class CallControlWebhookService {
     }
 
     const companyId = phoneNumber.companyId;
+    const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
     
-    // Use company-specific SIP domain to enable simultaneous ringing/SIP forking
-    const sipDomain = await getCompanySipDomain(companyId);
-    const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
-    
-    console.log(`[CallControl] Dialing SIP URI: ${sipUri} (domain: ${sipDomain})`);
+    console.log(`[CallControl] Transferring to SIP URI: ${sipUri}`);
     
     const clientState = Buffer.from(JSON.stringify({
       companyId,
@@ -2049,19 +1848,19 @@ export class CallControlWebhookService {
     })).toString("base64");
 
     try {
-      // CRITICAL: First answer the inbound call so caller hears ringback
-      // Then dial the agent - when they answer, bridge the calls
-      await this.answerCall(callControlId);
+      // Use transfer to SIP URI
+      await this.makeCallControlRequest(callControlId, "transfer", {
+        to: sipUri,
+        from: callerNumber || phoneNumber.phoneNumber,
+        timeout_secs: 30,
+        client_state: clientState,
+      });
       
-      // Use dialAndBridgeToSip to create outbound call to agent
-      // This creates a new call leg that rings the agent's devices
-      // When agent answers, handleCallAnswered will bridge the calls
-      await this.dialAndBridgeToSip(callControlId, sipUri, clientState, companyId);
-      
-      console.log(`[CallControl] Dial initiated to SIP URI, waiting for agent to answer`);
+      console.log(`[CallControl] Transfer initiated to SIP URI`);
       
     } catch (error) {
-      console.error(`[CallControl] Dial to agent failed:`, error);
+      console.error(`[CallControl] Transfer failed:`, error);
+      await this.answerCall(callControlId);
       await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
       await this.routeToVoicemail(callControlId, companyId);
     }

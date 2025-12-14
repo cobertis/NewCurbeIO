@@ -198,12 +198,11 @@ export class TelephonyProvisioningService {
       await this.updateProvisioningStatus(companyId, userId, "provisioning", null);
 
       const [company] = await db
-        .select({ name: companies.name, slug: companies.slug })
+        .select({ name: companies.name })
         .from(companies)
         .where(eq(companies.id, companyId));
 
       const companyName = company?.name || "Company";
-      const companySlug = company?.slug || companyId.substring(0, 8);
       const webhookBaseUrl = await getWebhookBaseUrl();
 
       console.log(`[TelephonyProvisioning] Step 1/5: Creating Outbound Voice Profile...`);
@@ -234,8 +233,7 @@ export class TelephonyProvisioningService {
         managedAccountId,
         companyName,
         webhookBaseUrl,
-        outboundVoiceProfileId,
-        companyId
+        outboundVoiceProfileId
       );
       if (!connResult.success || !connResult.connectionId) {
         await this.rollbackTexmlApp(managedAccountId, texmlAppId);
@@ -244,21 +242,6 @@ export class TelephonyProvisioningService {
       }
       credentialConnectionId = connResult.connectionId;
       console.log(`[TelephonyProvisioning] Credential Connection created: ${credentialConnectionId}`);
-
-      // Configure SIP subdomain for SIP Forking support (non-blocking, log warning on failure)
-      let sipDomain: string | null = null;
-      console.log(`[TelephonyProvisioning] Step 3.5: Configuring SIP subdomain...`);
-      const sipSubdomainResult = await this.configureSipSubdomain(
-        managedAccountId,
-        credentialConnectionId,
-        companySlug
-      );
-      if (sipSubdomainResult.success && sipSubdomainResult.sipDomain) {
-        sipDomain = sipSubdomainResult.sipDomain;
-        console.log(`[TelephonyProvisioning] SIP subdomain configured: ${sipDomain}`);
-      } else {
-        console.warn(`[TelephonyProvisioning] SIP subdomain configuration failed (non-blocking): ${sipSubdomainResult.error}`);
-      }
 
       console.log(`[TelephonyProvisioning] Step 4/5: Creating SIP Credentials...`);
       const sipResult = await this.createSipCredential(
@@ -299,7 +282,6 @@ export class TelephonyProvisioningService {
           texmlAppId,
           credentialConnectionId,
           webhookBaseUrl,
-          sipDomain,
           provisioningStatus: "completed" as TelephonyProvisioningStatus,
           provisioningError: null,
           provisionedAt: new Date(),
@@ -411,13 +393,9 @@ export class TelephonyProvisioningService {
     managedAccountId: string,
     businessName: string,
     webhookBaseUrl: string,
-    outboundVoiceProfileId: string,
-    companyId: string
+    outboundVoiceProfileId: string
   ): Promise<{ success: boolean; connectionId?: string; error?: string }> {
     try {
-      // Per Telnyx docs: call_parking_enabled "parks" outbound SIP device calls
-      // and sends webhook with direction: outbound, state: parked
-      // This allows us to verify balance before dialing and track calls for billing
       const response = await this.makeApiRequest(
         managedAccountId,
         "/credential_connections",
@@ -429,9 +407,6 @@ export class TelephonyProvisioningService {
           outbound: {
             outbound_voice_profile_id: outboundVoiceProfileId,
             channel_limit: 10,
-            // CRITICAL: Enable call parking for outbound calls from SIP devices (Yealink, WebRTC)
-            // This allows us to intercept outbound calls, verify balance, and then dial
-            call_parking_enabled: true,
           },
           inbound: {
             channel_limit: 10,
@@ -443,12 +418,7 @@ export class TelephonyProvisioningService {
           // CRITICAL: Enable SIP URI calling so TeXML can dial to this credential connection
           // This is a ROOT level field, not inside inbound
           sip_uri_calling_preference: "unrestricted",
-          // Webhook URL to receive call events (including parked outbound calls)
-          // Using company-specific endpoint for proper routing
-          webhook_event_url: `${webhookBaseUrl}/webhooks/telnyx/call-control/${companyId}`,
-          webhook_event_failover_url: `${webhookBaseUrl}/webhooks/telnyx/call-control/${companyId}/fallback`,
-          webhook_api_version: "2",
-          webhook_timeout_secs: 25,
+          webhook_event_url: `${webhookBaseUrl}/webhooks/telnyx/voice/status`,
         }
       );
 
@@ -461,49 +431,6 @@ export class TelephonyProvisioningService {
       return { success: true, connectionId: data.data?.id };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : "Network error" };
-    }
-  }
-
-  /**
-   * Configure SIP subdomain on a Credential Connection
-   * This creates a company-specific SIP domain (e.g., companyslug.sip.telnyx.com)
-   * Required for SIP Forking to work with multiple devices (WebRTC + physical phones)
-   */
-  async configureSipSubdomain(
-    managedAccountId: string,
-    connectionId: string,
-    sipSubdomain: string
-  ): Promise<{ success: boolean; sipDomain?: string; error?: string }> {
-    try {
-      console.log(`[TelephonyProvisioning] Configuring SIP subdomain: ${sipSubdomain} on connection: ${connectionId}`);
-      
-      const response = await this.makeApiRequest(
-        managedAccountId,
-        `/credential_connections/${connectionId}`,
-        "PATCH",
-        {
-          inbound: {
-            sip_subdomain: sipSubdomain,
-          },
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[TelephonyProvisioning] Failed to configure SIP subdomain: ${response.status} - ${errorText}`);
-        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
-      }
-
-      const data = await response.json();
-      const configuredSubdomain = data.data?.inbound?.sip_subdomain;
-      const sipDomain = configuredSubdomain ? `${configuredSubdomain}.sip.telnyx.com` : null;
-      
-      console.log(`[TelephonyProvisioning] SIP subdomain configured successfully. Domain: ${sipDomain}`);
-      return { success: true, sipDomain: sipDomain || undefined };
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Network error";
-      console.error(`[TelephonyProvisioning] Error configuring SIP subdomain:`, errorMsg);
-      return { success: false, error: errorMsg };
     }
   }
 
@@ -703,80 +630,6 @@ export class TelephonyProvisioningService {
     }
 
     return this.configureHDCodecs(managedAccountId, settings.credentialConnectionId);
-  }
-
-  /**
-   * Enable Call Parking for outbound calls on credential connection
-   * When enabled, outbound calls from SIP devices (Yealink, WebRTC) are "parked"
-   * and a webhook is sent with direction: outbound, state: parked
-   * This allows us to verify balance before dialing and track calls for billing
-   */
-  async enableCallParking(
-    managedAccountId: string,
-    connectionId: string,
-    webhookBaseUrl: string,
-    companyId: string
-  ): Promise<{ success: boolean; error?: string }> {
-    try {
-      console.log(`[TelephonyProvisioning] Enabling Call Parking on connection: ${connectionId}`);
-      
-      const response = await this.makeApiRequest(
-        managedAccountId,
-        `/credential_connections/${connectionId}`,
-        "PATCH",
-        {
-          outbound: {
-            call_parking_enabled: true,
-          },
-          webhook_event_url: `${webhookBaseUrl}/webhooks/telnyx/call-control/${companyId}`,
-          webhook_event_failover_url: `${webhookBaseUrl}/webhooks/telnyx/call-control/${companyId}/fallback`,
-          webhook_api_version: "2",
-          webhook_timeout_secs: 25,
-        }
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[TelephonyProvisioning] Failed to enable Call Parking: ${response.status} - ${errorText}`);
-        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
-      }
-
-      const data = await response.json();
-      console.log(`[TelephonyProvisioning] Call Parking enabled successfully. call_parking_enabled:`, data.data?.outbound?.call_parking_enabled);
-      return { success: true };
-    } catch (error) {
-      const errorMsg = error instanceof Error ? error.message : "Network error";
-      console.error(`[TelephonyProvisioning] Error enabling Call Parking:`, errorMsg);
-      return { success: false, error: errorMsg };
-    }
-  }
-
-  /**
-   * Repair existing credential connection to enable Call Parking for outbound calls
-   * Call this to fix companies that can't make outbound calls from Yealink/SIP devices
-   */
-  async repairCallParking(companyId: string): Promise<{ success: boolean; error?: string }> {
-    console.log(`[TelephonyProvisioning] Repairing Call Parking for company: ${companyId}`);
-    
-    const [settings] = await db
-      .select()
-      .from(telephonySettings)
-      .where(eq(telephonySettings.companyId, companyId))
-      .limit(1);
-
-    if (!settings || !settings.credentialConnectionId) {
-      return { success: false, error: "No credential connection found for company" };
-    }
-
-    const { getCompanyManagedAccountId } = await import("./telnyx-managed-accounts");
-    const managedAccountId = await getCompanyManagedAccountId(companyId);
-
-    if (!managedAccountId) {
-      return { success: false, error: "Company has no Telnyx managed account" };
-    }
-
-    const webhookBaseUrl = await getWebhookBaseUrl();
-    return this.enableCallParking(managedAccountId, settings.credentialConnectionId, webhookBaseUrl, companyId);
   }
 
   /**
@@ -1359,20 +1212,9 @@ export class TelephonyProvisioningService {
   }
 
   /**
-   * REPAIR FUNCTION: Fix phone numbers routing - ALL phones go to Call Control App
-   * 
-   * CRITICAL ROUTING LOGIC (UPDATED Dec 2024):
-   * - ALL phone numbers -> Call Control App (for full call orchestration)
-   * 
-   * WHY: When phones are assigned to Credential Connection with simultaneous_ringing,
-   * Telnyx tries to bridge directly to SIP devices BEFORE sending Call Control webhooks.
-   * This causes calls to arrive with state: "bridging" which cannot be orchestrated.
-   * 
-   * By routing ALL calls through Call Control App:
-   * 1. We receive call.initiated webhooks with state: "ringing" (controllable)
-   * 2. We can apply IVR, queues, routing rules, etc.
-   * 3. When ready to ring devices, we dial to the Credential Connection via SIP URI
-   * 4. The Credential Connection's simultaneous_ringing then works for that outbound leg
+   * REPAIR FUNCTION: Fix phone numbers routing
+   * If Call Control App is configured, assign numbers to it
+   * Otherwise, assign to Credential Connection for backward compatibility
    */
   async repairPhoneNumberRouting(companyId: string, userId: string): Promise<{
     success: boolean;
@@ -1389,11 +1231,6 @@ export class TelephonyProvisioningService {
 
     if (!settings) {
       return { success: false, repairedCount: 0, errors: ["Telephony settings not found for user"] };
-    }
-
-    // CRITICAL: Must have Call Control App ID to route calls
-    if (!settings.callControlAppId) {
-      return { success: false, repairedCount: 0, errors: ["No Call Control App ID found - please run migration first"] };
     }
 
     // Get managed account from company
@@ -1419,70 +1256,62 @@ export class TelephonyProvisioningService {
 
     for (const phoneNumber of phoneNumbers) {
       try {
-        // UPDATED LOGIC: ALL phone numbers go to Call Control App
-        // This enables full call orchestration (IVR, queues, transfers, etc.)
-        // SIP Forking happens when we dial OUT to the Credential Connection
-        console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Call Control App (full orchestration)`);
+        // Determine routing based on phone number configuration
+        // Always use Call Control App for any phone with ivrId or ownerUserId
+        // This ensures we can control routing, play voicemails, handle queues, etc.
+        const needsCallControl = phoneNumber.ivrId || phoneNumber.ownerUserId;
         
-        // DIAGNOSTIC: GET current state before PATCH
-        console.log(`[TelephonyProvisioning] Fetching current config for phone ${phoneNumber.telnyxPhoneNumberId}...`);
-        const getResponse = await this.makeApiRequest(
-          managedAccountId,
-          `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
-          "GET"
-        );
-        
-        if (getResponse.ok) {
-          const currentData = await getResponse.json();
-          const currentConnectionId = currentData.data?.connection_id;
-          console.log(`[TelephonyProvisioning] BEFORE: connection_id=${currentConnectionId}`);
-          console.log(`[TelephonyProvisioning] TARGET: connection_id=${settings.callControlAppId} (Call Control App)`);
+        if (needsCallControl && settings.callControlAppId) {
+          // Use Call Control App for intelligent routing (IVR, direct user routing, queues)
+          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} needs Call Control App (ivrId=${phoneNumber.ivrId}, ownerUserId=${phoneNumber.ownerUserId})`);
           
-          // Check if already correctly configured
-          if (currentConnectionId === settings.callControlAppId) {
-            console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} already correctly routed to Call Control App`);
-            repairedCount++;
+          const response = await this.makeApiRequest(
+            managedAccountId,
+            `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
+            "PATCH",
+            { 
+              connection_id: settings.callControlAppId,
+              call_control_application_id: null
+            }
+          );
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            errors.push(`Failed to repair ${phoneNumber.phoneNumber}: HTTP ${response.status} - ${errorText}`);
             continue;
           }
-        } else {
-          console.log(`[TelephonyProvisioning] Warning: Could not fetch current state: ${getResponse.status}`);
-        }
-        
-        // Execute PATCH to assign to Call Control App
-        console.log(`[TelephonyProvisioning] Sending PATCH to route ${phoneNumber.phoneNumber} to Call Control App ${settings.callControlAppId}`);
-        const response = await this.makeApiRequest(
-          managedAccountId,
-          `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
-          "PATCH",
-          { 
-            connection_id: settings.callControlAppId
+
+          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Call Control App (intelligent routing)`);
+          repairedCount++;
+        } else if (settings.credentialConnectionId) {
+          // Use Credential Connection for direct SIP routing - enables simultaneous_ringing to all registered devices
+          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} using Credential Connection (simultaneous ring to all devices)`);
+          
+          const response = await this.makeApiRequest(
+            managedAccountId,
+            `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
+            "PATCH",
+            { 
+              connection_id: settings.credentialConnectionId,
+              call_control_application_id: null
+            }
+          );
+
+          if (!response.ok) {
+            const errorText = await response.text();
+            errors.push(`Failed to repair ${phoneNumber.phoneNumber}: HTTP ${response.status} - ${errorText}`);
+            continue;
           }
-        );
 
-        if (!response.ok) {
-          const errorText = await response.text();
-          console.error(`[TelephonyProvisioning] PATCH FAILED: ${response.status} - ${errorText}`);
-          errors.push(`Failed to repair ${phoneNumber.phoneNumber}: HTTP ${response.status} - ${errorText}`);
-          continue;
+          // Update database
+          await db
+            .update(telnyxPhoneNumbers)
+            .set({ connectionId: settings.credentialConnectionId, updatedAt: new Date() })
+            .where(eq(telnyxPhoneNumbers.id, phoneNumber.id));
+
+          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Credential Connection (direct routing)`);
+          repairedCount++;
         }
-        
-        // DIAGNOSTIC: Verify PATCH result
-        const patchResult = await response.json();
-        const newConnectionId = patchResult.data?.connection_id;
-        console.log(`[TelephonyProvisioning] AFTER PATCH: connection_id=${newConnectionId}`);
-        
-        if (newConnectionId !== settings.callControlAppId) {
-          console.error(`[TelephonyProvisioning] WARNING: PATCH succeeded but connection_id mismatch! Expected: ${settings.callControlAppId}, Got: ${newConnectionId}`);
-        }
-
-        // Update database to reflect Call Control App routing
-        await db
-          .update(telnyxPhoneNumbers)
-          .set({ connectionId: settings.callControlAppId, updatedAt: new Date() })
-          .where(eq(telnyxPhoneNumbers.id, phoneNumber.id));
-
-        console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Call Control App (routing updated)`);
-        repairedCount++;
       } catch (error) {
         errors.push(`Error repairing ${phoneNumber.phoneNumber}: ${error instanceof Error ? error.message : 'Unknown'}`);
       }

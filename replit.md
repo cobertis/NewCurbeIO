@@ -127,48 +127,36 @@ Admin assigns number → DB update → WebSocket broadcast to assignee → Query
 ### SIP Forking Configuration (Dec 2024)
 **GOAL:** Enable simultaneous ringing on all registered SIP devices (webphone + physical phones)
 
-**THE PROBLEM (SOLVED):**
-Using generic `sip.telnyx.com` domain ignores credential connection rules (simultaneous_ringing).
-Telnyx's switch finds the fastest route (WebSocket) and ignores UDP-registered devices (Yealink).
-
-**THE SOLUTION:**
-Use company-specific SIP domain (e.g., `curbe.sip.telnyx.com`) instead of generic `sip.telnyx.com`.
-This forces Telnyx to load the credential connection configuration INCLUDING `simultaneous_ringing: "enabled"`.
-
-**CONFIGURATION:**
-1. **Telnyx Portal:** Voice API Applications → Inbound → SIP subdomain → Set unique name (e.g., `curbe`)
-2. **Database:** Store domain in `telephony_settings.sip_domain` (e.g., `curbe.sip.telnyx.com`)
-3. **Credential Connection:** Enable `simultaneous_ringing: "enabled"` in Inbound settings
+**TELNYX API PROPERTY:**
+- The correct property is `simultaneous_ringing: "enabled"` (NOT `sip_forking_enabled`)
+- This is set in the `inbound` object of the credential connection configuration
+- The PATCH/POST request to `/credential_connections` uses this property
 
 **IMPLEMENTATION:**
-- Helper function `getCompanySipDomain(companyId)` retrieves SIP domain from `telephony_settings`
-- All SIP URI constructions use: `sip:${username}@${sipDomain}` (NOT `sip:${username}@sip.telnyx.com`)
-- Falls back to `sip.telnyx.com` if company has no custom domain configured
+1. `telephony-provisioning-service.ts` patches credential connections with `simultaneous_ringing: "enabled"`
+2. Verification reads `inbound.simultaneous_ringing` from GET response
+3. Value must be `"enabled"` (string), not `true` (boolean)
 
-**AFFECTED FUNCTIONS in `call-control-webhook-service.ts`:**
-- `transferToAssignedUser()` - Direct calls to assigned user
-- `routeToQueue()` - Ring-all queue routing
-- `routeToExtension()` - Extension-based routing
-- `handleAgentAcceptQueueCall()` - Queue accept via WebSocket
-- `retryQueueDial()` - Queue retry logic
-- `routeToAssignedUser()` - Alternative assigned user routing
+**CRITICAL: Dial+Bridge Pattern (NOT Transfer)**
+The `transfer` command does NOT support simultaneous ringing. To enable SIP Forking:
+1. Use `POST /v2/calls` (Dial API) with `connection_id` = `credentialConnectionId`
+2. The `credentialConnectionId` routes through the credential connection with `simultaneous_ringing: "enabled"`
+3. When agent answers, use Bridge API to connect caller and agent legs
+
+**CALL FLOW:**
+1. Incoming call triggers `call.initiated` webhook
+2. If IVR disabled (`ivrId: "unassigned"`), `transferToAssignedUser` is called
+3. Answer the caller's call first (billing starts)
+4. Use Dial API with `credentialConnectionId` to dial the SIP URI
+5. Store pending bridge with caller's `call_control_id`
+6. All registered devices (webphone + physical phones) ring simultaneously
+7. When agent answers, bridge the two call legs
+8. First device to answer wins, others are cancelled via hangup
 
 **KEY FILES:**
-- `server/services/call-control-webhook-service.ts` - All transfer/dial functions use `getCompanySipDomain()`
-- `shared/schema.ts` - `telephony_settings.sipDomain` field
+- `server/services/call-control-webhook-service.ts` - `transferToAssignedUser()` function implements Dial+Bridge
 - Credential connection ID stored in `telephony_settings.credential_connection_id`
 
-**YEALINK CONFIGURATION:**
-- SIP Server: Use company-specific domain (e.g., `curbe.sip.telnyx.com`)
-- UDP Keep Alive: Set to 15-30 seconds to prevent NAT timeout
-- RTP Encryption (SRTP): Set to Optional or Compulsory for WebRTC compatibility
-
-**CRITICAL ROUTING FIX (Dec 2024):**
-SIP Forking ONLY works for INBOUND calls directly to Credential Connection.
-Calls routed through Call Control App are OUTBOUND transfers which bypass simultaneous_ringing.
-
-**Routing Logic in `repairPhoneNumberRouting()`:**
-- Numbers WITH IVR (`ivrId !== 'unassigned'`) → Call Control App (for IVR menu)
-- Numbers WITHOUT IVR (including `ownerUserId`) → Credential Connection (SIP Forking enabled)
-
-This ensures both WebRTC and physical phones (Yealink) ring simultaneously for direct user calls.
+**ADDITIONAL NOTES:**
+- Company-scoped isolation ensures extensions only see their organization
+- Busy status tracking prevents concurrent calls
