@@ -364,6 +364,8 @@ async function getOrCreateCredentialConnection(
           generate_ringback_tone: true,
           // Enable SHAKEN/STIR for caller ID verification
           shaken_stir_enabled: true,
+          // Enable simultaneous ring - all devices with same credentials ring at once
+          sip_subdomain_receive_settings: "from_anyone",
         },
       }),
     });
