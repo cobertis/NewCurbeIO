@@ -1832,13 +1832,10 @@ export class CallControlWebhookService {
         client_state: clientState,
       };
 
-      // Pass original caller info via SIP headers so WebRTC client can display it
+      // Note: sip_headers removed - was causing 422 error
+      // Caller info is passed via client_state instead
       if (callerNumber) {
-        transferParams.sip_headers = [
-          { name: "X-Original-Caller", value: callerNumber },
-          { name: "X-Direct-Transfer", value: "true" }
-        ];
-        console.log(`[CallControl] Adding SIP headers with caller info: ${callerNumber}`);
+        console.log(`[CallControl] Caller info: ${callerNumber} (passed via client_state)`);
       }
 
       await this.makeCallControlRequest(callControlId, "transfer", transferParams);
