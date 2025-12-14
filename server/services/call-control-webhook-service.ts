@@ -601,7 +601,7 @@ export class CallControlWebhookService {
     // This ensures billing only starts when the agent answers, not when the call is received
     if (phoneNumber.ivrId === "unassigned") {
       console.log(`[CallControl] IVR disabled (unassigned), transferring directly to assigned user (no answer = no billing until agent picks up)`);
-      await pbxService.trackActiveCall(phoneNumber.companyId, call_control_id, from, to, "ringing");
+      await pbxService.trackActiveCall(phoneNumber.companyId, call_control_id, from, to, "direct");
       await this.transferToAssignedUser(call_control_id, phoneNumber, from);
       return;
     }
@@ -675,7 +675,7 @@ export class CallControlWebhookService {
       const otherLegs = ringAllLegs.get(pendingBridge.callerCallControlId);
       if (otherLegs) {
         console.log(`[CallControl] Cancelling ${otherLegs.size - 1} other ring-all legs`);
-        for (const otherLegId of Array.from(otherLegs)) {
+        for (const otherLegId of otherLegs) {
           if (otherLegId !== call_control_id) {
             // Remove from pending bridges
             pendingBridges.delete(otherLegId);
@@ -772,7 +772,7 @@ export class CallControlWebhookService {
     const ringAllForCaller = ringAllLegs.get(call_control_id);
     if (ringAllForCaller) {
       console.log(`[CallControl] Caller ${call_control_id} hung up, cancelling ${ringAllForCaller.size} ring-all legs`);
-      for (const agentLegId of Array.from(ringAllForCaller)) {
+      for (const agentLegId of ringAllForCaller) {
         pendingBridges.delete(agentLegId);
         try {
           await this.hangupCall(agentLegId, "NORMAL_CLEARING");
@@ -1199,7 +1199,7 @@ export class CallControlWebhookService {
           
           // Track this leg
           ringAllLegs.get(callControlId)?.add(agentCallControlId);
-          callContextMap.set(agentCallControlId, { companyId, managedAccountId: managedAccountId ?? null });
+          callContextMap.set(agentCallControlId, { companyId, managedAccountId });
           
           // Store pending bridge info
           pendingBridges.set(agentCallControlId, {
@@ -1423,7 +1423,7 @@ export class CallControlWebhookService {
     console.log(`[CallControl] Created outbound call to agent: ${agentCallControlId}`);
 
     // Store context for the new call leg with pending bridge info
-    callContextMap.set(agentCallControlId, { companyId, managedAccountId: managedAccountId ?? null });
+    callContextMap.set(agentCallControlId, { companyId, managedAccountId });
     
     // Store pending bridge info - will be processed when agent answers (call.answered event)
     pendingBridges.set(agentCallControlId, {
@@ -1599,7 +1599,7 @@ export class CallControlWebhookService {
 
           if (agentCallControlId) {
             ringAllLegs.get(callControlId)?.add(agentCallControlId);
-            callContextMap.set(agentCallControlId, { companyId, managedAccountId: managedAccountId ?? null });
+            callContextMap.set(agentCallControlId, { companyId, managedAccountId });
             pendingBridges.set(agentCallControlId, {
               callerCallControlId: callControlId,
               clientState,
@@ -1663,7 +1663,7 @@ export class CallControlWebhookService {
     }
 
     const activeCall = await pbxService.getActiveCall(callControlId);
-    const callerNumber = activeCall?.fromNumber || callContextMap.get(callControlId)?.callerNumber || "Unknown";
+    const callerNumber = activeCall?.from || callContextMap.get(callControlId)?.callerNumber || "Unknown";
 
     // Create client state for the bridged call
     const clientState = Buffer.from(JSON.stringify({
@@ -1735,7 +1735,7 @@ export class CallControlWebhookService {
 
     const companyId = phoneNumber.companyId;
     const activeCall = await pbxService.getActiveCall(callControlId);
-    const callerNumber = activeCall?.fromNumber || "Unknown";
+    const callerNumber = activeCall?.from || "Unknown";
 
     // Use WebSocket to notify available agents
     const result = extensionCallService.startQueueCall(
@@ -1770,7 +1770,7 @@ export class CallControlWebhookService {
 
     const companyId = phoneNumber.companyId;
     const activeCall = await pbxService.getActiveCall(callControlId);
-    const callerNumber = activeCall?.fromNumber || callContextMap.get(callControlId)?.callerNumber || "Unknown";
+    const callerNumber = activeCall?.from || callContextMap.get(callControlId)?.callerNumber || "Unknown";
 
     // Get the assigned user's extension
     const extension = await pbxService.getExtensionByUserId(companyId, phoneNumber.ownerUserId);

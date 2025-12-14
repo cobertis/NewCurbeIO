@@ -1,4 +1,4 @@
-import type { Express, Request, Response } from "express";
+import type { Express, Request, Response, NextFunction } from "express";
 import fs from "fs";
 import path from "path";
 import { createServer, type Server } from "http";
@@ -9,7 +9,8 @@ import { storage } from "./storage";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
-import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppMessage, broadcastWhatsAppChatUpdate, broadcastWhatsAppConnection, broadcastWhatsAppQrCode, broadcastWhatsAppTyping, broadcastWhatsAppMessageStatus, broadcastWhatsAppEvent } from "./websocket";
+import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppMessage, broadcastWhatsAppChatUpdate, broadcastWhatsAppConnection, broadcastWhatsAppQrCode, broadcastWhatsAppTyping, broadcastWhatsAppMessageStatus, broadcastWhatsAppEvent, broadcastWalletUpdate, broadcastNewCallLog } from "./websocket";
+import { chargeCallToWallet } from "./services/pricing-service";
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
 import { notificationService } from "./notification-service";
@@ -88,8 +89,8 @@ import {
   createCampaignWithDetailsSchema
 } from "@shared/schema";
 import { db } from "./db";
-import { and, eq, ne, gte, desc, or, sql, inArray, count, isNotNull } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, vipPassDevices, vipPassInstances } from "@shared/schema";
+import { and, eq, ne, gte, lte, desc, or, sql, inArray, count, isNotNull, isNull } from "drizzle-orm";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, vipPassDevices, vipPassInstances, vipPassNotifications, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -114,8 +115,11 @@ import { getCalendarHolidays } from "./services/holidays";
 import { blacklistService } from "./services/blacklist-service";
 import { evolutionApi } from "./services/evolution-api";
 import { getManagedAccountConfig, buildHeaders } from "./services/telnyx-e911-service";
+import { getTelnyxMasterApiKey } from "./services/telnyx-numbers-service";
 import { vipPassService } from "./services/vip-pass-service";
 import { vipPassApnsService } from "./services/vip-pass-apns-service";
+import { pbxService } from "./services/pbx-service";
+import { objectStorage, objectStorageClient } from "./objectStorage";
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
 const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
@@ -165,6 +169,9 @@ function detectStopKeyword(messageBody: string): boolean {
   const stopKeywords = ["STOP", "STOPALL", "UNSUBSCRIBE", "CANCEL", "END", "QUIT"];
   const normalizedBody = messageBody.trim().toUpperCase();
   return stopKeywords.some(keyword => normalizedBody === keyword || normalizedBody.startsWith(keyword + " "));
+
+  // ============================================================
+  return httpServer;
 }
 // Verify ffmpeg is available at startup
 (async () => {
@@ -193,6 +200,9 @@ async function extractAudioDuration(audioPath: string): Promise<number> {
     const stats = await fsPromises.stat(audioPath);
     return Math.floor(stats.size / 3000);
   }
+
+  // ============================================================
+  return httpServer;
 }
 // Helper function to generate real waveform from audio file
 // Returns 40-64 amplitude samples normalized to 0-255
@@ -267,6 +277,9 @@ async function generateAudioWaveform(audioPath: string, targetSamples: number = 
     console.log(`[Waveform] Generated ${waveform.length} fallback samples`);
     return waveform;
   }
+
+  // ============================================================
+  return httpServer;
 }
 async function convertWebMToCAF(inputPath: string, tryOpus: boolean = true): Promise<{ path: string, metadata: AudioMetadata }> {
   const parsed = path.parse(inputPath);
@@ -358,6 +371,9 @@ async function convertWebMToCAF(inputPath: string, tryOpus: boolean = true): Pro
       })
       .save(outputPath);
   });
+
+  // ============================================================
+  return httpServer;
 }
 interface AudioMetadata {
   duration: number; // milliseconds
@@ -366,6 +382,9 @@ interface AudioMetadata {
   uti: string;
   codec: string;
   sampleRate: number;
+
+  // ============================================================
+  return httpServer;
 }
 async function ensureUserSlug(userId: string, companyId: string): Promise<string> {
   const user = await storage.getUser(userId);
@@ -404,6 +423,9 @@ async function ensureUserSlug(userId: string, companyId: string): Promise<string
     }
   }
   return finalSlug;
+
+  // ============================================================
+  return httpServer;
 }
 export async function registerRoutes(app: Express, sessionStore?: any): Promise<Server> {
   // Initialize Stripe for type safety
@@ -5122,6 +5144,73 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to fetch user" });
     }
   });
+
+  // Update user by ID (admins can update users in their company)
+  app.patch("/api/users/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user!;
+      const targetUserId = req.params.id;
+      
+      // Only admins and superadmins can update other users
+      if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
+        return res.status(403).json({ message: "Only administrators can update users" });
+      }
+      
+      // Get the target user
+      const targetUser = await storage.getUser(targetUserId);
+      if (!targetUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      // Admins can only update users in their company
+      if (currentUser.role === "admin" && targetUser.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Cannot update users from other companies" });
+      }
+      
+      // Build allowed fields for update
+      const allowedFields: any = {};
+      if (req.body.firstName !== undefined) allowedFields.firstName = req.body.firstName;
+      if (req.body.lastName !== undefined) allowedFields.lastName = req.body.lastName;
+      if (req.body.phone !== undefined) allowedFields.phone = req.body.phone?.trim() || "";
+      if (req.body.role !== undefined) {
+        // Validate role is one of the allowed values
+        const validRoles = ["superadmin", "admin", "agent"];
+        if (!validRoles.includes(req.body.role)) {
+          return res.status(400).json({ message: "Invalid role" });
+        }
+        // Only superadmins can assign superadmin role
+        if (req.body.role === "superadmin" && currentUser.role !== "superadmin") {
+          return res.status(403).json({ message: "Only superadmins can assign superadmin role" });
+        }
+        allowedFields.role = req.body.role;
+      }
+      if (req.body.timezone !== undefined) allowedFields.timezone = req.body.timezone;
+      if (req.body.agentInternalCode !== undefined) allowedFields.agentInternalCode = req.body.agentInternalCode?.trim() || "";
+      if (req.body.instructionLevel !== undefined) allowedFields.instructionLevel = req.body.instructionLevel;
+      if (req.body.nationalProducerNumber !== undefined) allowedFields.nationalProducerNumber = req.body.nationalProducerNumber?.trim() || "";
+      if (req.body.federallyFacilitatedMarketplace !== undefined) allowedFields.federallyFacilitatedMarketplace = req.body.federallyFacilitatedMarketplace;
+      if (req.body.referredBy !== undefined) allowedFields.referredBy = req.body.referredBy?.trim() || "";
+      if (req.body.viewAllCompanyData !== undefined) allowedFields.viewAllCompanyData = req.body.viewAllCompanyData;
+      
+      // Check if there's anything to update
+      if (Object.keys(allowedFields).length === 0) {
+        return res.status(400).json({ message: "No valid fields to update" });
+      }
+      
+      const updatedUser = await storage.updateUser(targetUserId, allowedFields);
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const { password, ...sanitizedUser } = updatedUser;
+      console.log(`[User Update] Admin ${currentUser.email} updated user ${targetUser.email}:`, Object.keys(allowedFields));
+      res.json({ user: sanitizedUser });
+    } catch (error: any) {
+      console.error("Error updating user:", error);
+      res.status(500).json({ message: error.message || "Failed to update user" });
+    }
+  });
+
   // Get company agents for dropdowns (policies, quotes, etc.)
   app.get("/api/company/agents", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -7327,8 +7416,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
 
       }
-      // Get invoices from database
-      const allInvoices = await storage.getInvoicesByCompany(companyId);
+      // Get invoices from database - user-scoped for admins
+      const userId = currentUser.role === 'admin' ? currentUser.id : undefined;
+      const allInvoices = await storage.getInvoicesByCompany(companyId, userId);
       // Filter out $0.00 invoices (trial invoices) from billing history
       const filteredInvoices = allInvoices.filter(invoice => invoice.total > 0);
       // Sort by date descending (most recent first)
@@ -7401,7 +7491,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(403).json({ message: "Unauthorized access to company payments" });
     }
     try {
-      const payments = await storage.getPaymentsByCompany(companyId);
+      // User-scoped: admins see only their own payments
+      const userId = currentUser.role === 'admin' ? currentUser.id : undefined;
+      const payments = await storage.getPaymentsByCompany(companyId, userId);
       res.json({ payments });
     } catch (error: any) {
       res.status(500).json({ message: error.message });
@@ -8033,210 +8125,270 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: error.message });
     }
   });
-  // Get payment methods
+  // =====================================================
+  // USER-SCOPED BILLING PAYMENT METHODS
+  // Each admin has isolated payment methods with their own Stripe customer
+  // =====================================================
+
+  // Helper function to get or create Stripe customer for a user
+  async function getOrCreateUserStripeCustomer(userId: string, companyId: string, userEmail: string, userName: string): Promise<string> {
+    // First check if user already has a Stripe customer ID in their profile
+    const user = await storage.getUser(userId);
+    if (user?.stripeCustomerId) {
+      return user.stripeCustomerId;
+    }
+    
+    // Fallback: check existing payment methods (for backward compatibility)
+    const existingMethods = await storage.getUserPaymentMethods(companyId, userId);
+    if (existingMethods.length > 0 && existingMethods[0].stripeCustomerId) {
+      // Save to user profile for future use
+      await storage.updateUser(userId, { stripeCustomerId: existingMethods[0].stripeCustomerId });
+      return existingMethods[0].stripeCustomerId;
+    }
+    
+    // Create a new Stripe customer for this user
+    const stripeClient = await getStripeClient();
+    const company = await storage.getCompany(companyId);
+    
+    const customer = await stripeClient.customers.create({
+      email: userEmail,
+      name: userName,
+      metadata: {
+        userId: userId,
+        companyId: companyId,
+        companyName: company?.name || 'Unknown',
+        type: 'user_billing'
+      }
+    });
+    
+    // Save the Stripe customer ID to the user's profile
+    await storage.updateUser(userId, { stripeCustomerId: customer.id });
+    
+    console.log(`[STRIPE] Created new customer ${customer.id} for user ${userId}`);
+    return customer.id;
+  }
+
+  // Get payment methods (USER-SCOPED: each admin sees only their own)
   app.get("/api/billing/payment-methods", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
-    // Only admin or superadmin can view payment methods
     if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden" });
     }
-    const companyId = currentUser.role === "superadmin" 
-      ? req.query.companyId as string
-      : currentUser.companyId;
+    const companyId = currentUser.companyId;
     if (!companyId) {
       return res.status(400).json({ message: "Company ID required" });
     }
-    // SECURITY: For non-superadmins, verify the company matches the user's company
-    if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
-      return res.status(403).json({ message: "Unauthorized access to company payment methods" });
-    }
     try {
-      const subscription = await storage.getSubscriptionByCompany(companyId);
-      if (!subscription || !subscription.stripeCustomerId) {
-        return res.json({ paymentMethods: [] });
-      }
-      const { getPaymentMethods } = await import("./stripe");
-      const stripePaymentMethods = await getPaymentMethods(subscription.stripeCustomerId);
-      // Get customer to find default payment method
-      const { getStripeClient: getAsyncStripeClient } = await import("./stripe");
-      const stripeClientPM = await getAsyncStripeClient();
-      if (!stripeClientPM) {
-        return res.status(500).json({ message: "Stripe is not configured" });
-      }
-      const customer = await stripeClientPM.customers.retrieve(subscription.stripeCustomerId) as any;
-      const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method;
-      // Transform Stripe payment methods to match frontend interface
-      const paymentMethods = stripePaymentMethods.map((pm: any) => ({
+      // USER-SCOPED: Get payment methods from user_payment_methods table
+      const userMethods = await storage.getUserPaymentMethods(companyId, currentUser.id);
+      
+      const paymentMethods = userMethods.map((pm) => ({
         id: pm.id,
-        brand: pm.card?.brand || '',
-        last4: pm.card?.last4 || '',
-        expMonth: pm.card?.exp_month || 0,
-        expYear: pm.card?.exp_year || 0,
-        isDefault: pm.id === defaultPaymentMethodId
+        stripePaymentMethodId: pm.stripePaymentMethodId,
+        brand: pm.brand || '',
+        last4: pm.last4 || '',
+        expMonth: pm.expMonth || 0,
+        expYear: pm.expYear || 0,
+        isDefault: pm.isDefault
       }));
       res.json({ paymentMethods });
     } catch (error: any) {
+      console.error('[BILLING] Error fetching payment methods:', error);
       res.status(500).json({ message: error.message });
     }
   });
-  // Create SetupIntent for adding a new payment method
+
+  // Create SetupIntent for adding a new payment method (USER-SCOPED)
   app.post("/api/billing/create-setup-intent", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
-    // Only admin or superadmin can add payment methods
     if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden" });
     }
-    const companyId = currentUser.role === "superadmin" 
-      ? req.body.companyId as string
-      : currentUser.companyId;
+    const companyId = currentUser.companyId;
     if (!companyId) {
       return res.status(400).json({ message: "Company ID required" });
     }
     try {
-      const subscription = await storage.getSubscriptionByCompany(companyId);
-      if (!subscription || !subscription.stripeCustomerId) {
-        return res.status(400).json({ message: "No active subscription found" });
-      }
-      // Create a SetupIntent for this customer
-      const { getStripeClient: getStripeClientAsync } = await import("./stripe");
-      const stripeClient = await getStripeClientAsync();
+      const stripeClient = await getStripeClient();
       if (!stripeClient) {
         return res.status(500).json({ message: "Stripe is not configured" });
       }
+      
+      // Get or create user's own Stripe customer
+      const userStripeCustomerId = await getOrCreateUserStripeCustomer(
+        currentUser.id,
+        companyId,
+        currentUser.email,
+        `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || currentUser.email
+      );
+      
       const setupIntent = await stripeClient.setupIntents.create({
-        customer: subscription.stripeCustomerId,
+        customer: userStripeCustomerId,
         payment_method_types: ['card'],
-        usage: 'off_session', // Save for future use
+        usage: 'off_session',
         metadata: {
           companyId,
-          userId: currentUser.id
+          userId: currentUser.id,
+          userEmail: currentUser.email
         }
-
       });
+      
       res.json({ 
         clientSecret: setupIntent.client_secret,
-        customerId: subscription.stripeCustomerId
+        customerId: userStripeCustomerId
       });
     } catch (error: any) {
       console.error('[STRIPE] Error creating setup intent:', error);
       res.status(500).json({ message: error.message });
     }
   });
-  // Attach payment method and set as default
+
+  // Attach payment method (USER-SCOPED: saves to user_payment_methods table)
   app.post("/api/billing/attach-payment-method", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { paymentMethodId } = req.body;
-    // Only admin or superadmin can manage payment methods
     if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden" });
     }
-    const companyId = currentUser.role === "superadmin" 
-      ? req.body.companyId as string
-      : currentUser.companyId;
-    if (!companyId) {
-      return res.status(400).json({ message: "Company ID required" });
-    }
-    if (!paymentMethodId) {
-      return res.status(400).json({ message: "Payment method ID required" });
+    const companyId = currentUser.companyId;
+    if (!companyId || !paymentMethodId) {
+      return res.status(400).json({ message: "Company ID and payment method ID required" });
     }
     try {
-      const subscription = await storage.getSubscriptionByCompany(companyId);
-      if (!subscription || !subscription.stripeCustomerId) {
-        return res.status(400).json({ message: "No active subscription found" });
-      }
-      // Set this payment method as the default for the customer
-      const { getStripeClient: getStripeClientAsync2 } = await import("./stripe");
-      const stripeClient2 = await getStripeClientAsync2();
-      if (!stripeClient2) {
+      const stripeClient = await getStripeClient();
+      if (!stripeClient) {
         return res.status(500).json({ message: "Stripe is not configured" });
       }
-      await stripeClient2.customers.update(subscription.stripeCustomerId, {
-        invoice_settings: {
-          default_payment_method: paymentMethodId,
-        },
+      
+      // Get or create user's Stripe customer
+      const userStripeCustomerId = await getOrCreateUserStripeCustomer(
+        currentUser.id,
+        companyId,
+        currentUser.email,
+        `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || currentUser.email
+      );
+      
+      // Retrieve the payment method from Stripe to get card details
+      const pm = await stripeClient.paymentMethods.retrieve(paymentMethodId);
+      
+      // Check if this is the first payment method (make it default)
+      const existingMethods = await storage.getUserPaymentMethods(companyId, currentUser.id);
+      const isFirst = existingMethods.length === 0;
+      
+      // Save to user_payment_methods table
+      await storage.createUserPaymentMethod({
+        companyId,
+        ownerUserId: currentUser.id,
+        stripePaymentMethodId: paymentMethodId,
+        stripeCustomerId: userStripeCustomerId,
+        type: pm.type || 'card',
+        brand: pm.card?.brand || null,
+        last4: pm.card?.last4 || null,
+        expMonth: pm.card?.exp_month || null,
+        expYear: pm.card?.exp_year || null,
+        isDefault: isFirst,
+        status: 'active'
       });
-      // If the subscription exists, update its default payment method
-      if (subscription.stripeSubscriptionId) {
-        await stripeClient2.subscriptions.update(subscription.stripeSubscriptionId, {
-          default_payment_method: paymentMethodId,
+      
+      // Set as default in Stripe if first card
+      if (isFirst) {
+        await stripeClient.customers.update(userStripeCustomerId, {
+          invoice_settings: { default_payment_method: paymentMethodId }
         });
       }
+      
+      console.log(`[BILLING] Added payment method ${paymentMethodId} for user ${currentUser.id}`);
       res.json({ success: true, message: "Payment method added successfully" });
     } catch (error: any) {
       console.error('[STRIPE] Error attaching payment method:', error);
       res.status(500).json({ message: error.message });
     }
   });
-  // Set default payment method (for existing payment methods)
+
+  // Set default payment method (USER-SCOPED)
   app.post("/api/billing/set-default-payment-method", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { paymentMethodId } = req.body;
-    // Only admin or superadmin can manage payment methods
     if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden" });
     }
-    const companyId = currentUser.role === "superadmin" 
-      ? req.body.companyId as string
-      : currentUser.companyId;
-    if (!companyId) {
-      return res.status(400).json({ message: "Company ID required" });
-    }
-    if (!paymentMethodId) {
-      return res.status(400).json({ message: "Payment method ID required" });
+    const companyId = currentUser.companyId;
+    if (!companyId || !paymentMethodId) {
+      return res.status(400).json({ message: "Company ID and payment method ID required" });
     }
     try {
-      const subscription = await storage.getSubscriptionByCompany(companyId);
-      if (!subscription || !subscription.stripeCustomerId) {
-        return res.status(400).json({ message: "No active subscription found" });
+      // Get the payment method record (paymentMethodId is our internal ID)
+      const pmRecord = await storage.getUserPaymentMethod(paymentMethodId);
+      if (!pmRecord) {
+        return res.status(404).json({ message: "Payment method not found" });
       }
-      // Set this payment method as the default for the customer
-      await getStripeClient().customers.update(subscription.stripeCustomerId, {
-        invoice_settings: {
-          default_payment_method: paymentMethodId,
-        },
-      });
-      // If the subscription exists, update its default payment method
-      if (subscription.stripeSubscriptionId) {
-        await getStripeClient().subscriptions.update(subscription.stripeSubscriptionId, {
-          default_payment_method: paymentMethodId,
+      
+      // Security check: verify ownership
+      if (pmRecord.ownerUserId !== currentUser.id) {
+        return res.status(403).json({ message: "Not authorized to modify this payment method" });
+      }
+      
+      // Update in our database
+      await storage.setDefaultUserPaymentMethod(currentUser.id, paymentMethodId);
+      
+      // Update in Stripe if we have a Stripe customer
+      if (pmRecord.stripeCustomerId && pmRecord.stripePaymentMethodId) {
+        const stripeClient = await getStripeClient();
+        await stripeClient.customers.update(pmRecord.stripeCustomerId, {
+          invoice_settings: { default_payment_method: pmRecord.stripePaymentMethodId }
         });
       }
+      
       res.json({ success: true, message: "Default payment method updated successfully" });
     } catch (error: any) {
       console.error('[STRIPE] Error setting default payment method:', error);
       res.status(500).json({ message: error.message });
     }
   });
-  // Delete payment method
+
+  // Delete payment method (USER-SCOPED)
   app.delete("/api/billing/payment-method/:paymentMethodId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     const { paymentMethodId } = req.params;
-    // Only admin or superadmin can manage payment methods
     if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden" });
     }
-    const companyId = currentUser.role === "superadmin" 
-      ? req.body.companyId as string
-      : currentUser.companyId;
-    if (!companyId) {
-      return res.status(400).json({ message: "Company ID required" });
-    }
-    if (!paymentMethodId) {
-      return res.status(400).json({ message: "Payment method ID required" });
+    const companyId = currentUser.companyId;
+    if (!companyId || !paymentMethodId) {
+      return res.status(400).json({ message: "Company ID and payment method ID required" });
     }
     try {
-      const subscription = await storage.getSubscriptionByCompany(companyId);
-      if (!subscription || !subscription.stripeCustomerId) {
-        return res.status(400).json({ message: "No active subscription found" });
+      // Get the payment method record (paymentMethodId is our internal ID)
+      const pmRecord = await storage.getUserPaymentMethod(paymentMethodId);
+      if (!pmRecord) {
+        return res.status(404).json({ message: "Payment method not found" });
       }
-      // First, check if this is the default payment method
-      const customer = await getStripeClient().customers.retrieve(subscription.stripeCustomerId) as any;
-      const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method;
-      if (defaultPaymentMethodId === paymentMethodId) {
+      
+      // Security check: verify ownership
+      if (pmRecord.ownerUserId !== currentUser.id) {
+        return res.status(403).json({ message: "Not authorized to delete this payment method" });
+      }
+      
+      // Check if this is the default payment method
+      if (pmRecord.isDefault) {
         return res.status(400).json({ message: "Cannot delete the default payment method. Please set another card as default first." });
       }
-      // Detach the payment method from the customer
-      await getStripeClient().paymentMethods.detach(paymentMethodId);
+      
+      // Detach from Stripe
+      if (pmRecord.stripePaymentMethodId) {
+        try {
+          const stripeClient = await getStripeClient();
+          await stripeClient.paymentMethods.detach(pmRecord.stripePaymentMethodId);
+        } catch (stripeError: any) {
+          // Log but don't fail if Stripe detach fails (might already be detached)
+          console.warn('[STRIPE] Warning detaching payment method:', stripeError.message);
+        }
+      }
+      
+      // Soft delete in our database
+      await storage.deleteUserPaymentMethod(paymentMethodId);
+      
+      console.log(`[BILLING] Deleted payment method ${paymentMethodId} for user ${currentUser.id}`);
       res.json({ success: true, message: "Payment method deleted successfully" });
     } catch (error: any) {
       console.error('[STRIPE] Error deleting payment method:', error);
@@ -8261,7 +8413,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(403).json({ message: "Unauthorized access to company billing address" });
     }
     try {
-      const billingAddress = await storage.getBillingAddress(companyId);
+      // User-scoped: admins see only their own billing address, superadmins can see all
+      const userId = currentUser.role === 'admin' ? currentUser.id : undefined;
+      const billingAddress = await storage.getBillingAddress(companyId, userId);
       res.json({ billingAddress });
     } catch (error: any) {
       console.error('[BILLING] Error fetching billing address:', error);
@@ -8285,11 +8439,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(400).json({ message: "Missing required billing address fields" });
     }
     try {
-      // Check if billing address already exists
-      const existingAddress = await storage.getBillingAddress(companyId);
+      // User-scoped: each admin has their own billing address
+      const userId = currentUser.id;
+      const existingAddress = await storage.getBillingAddress(companyId, userId);
       let billingAddress;
       if (existingAddress) {
-        // Update existing address
+        // Update existing address for this user
         billingAddress = await storage.updateBillingAddress(companyId, {
           fullName,
           addressLine1,
@@ -8297,11 +8452,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           city,
           state,
           postalCode,
-        });
+        }, userId);
       } else {
-        // Create new address
+        // Create new address for this user
         billingAddress = await storage.createBillingAddress({
           companyId,
+          ownerUserId: userId,
           fullName,
           addressLine1,
           addressLine2: addressLine2 || null,
@@ -22172,6 +22328,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           return res.status(200).json({ message: "Delivery receipt acknowledged" });
         }
 
+        console.log(`[Telnyx Sync] Recording ${rec.id}: checking for match...`);
         // Normalize phone numbers to 11-digit format for consistency
         const from = formatForStorage(rawFrom);
         const to = formatForStorage(rawTo);
@@ -25992,6 +26149,186 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+  // POST /webhooks/telnyx/voicemail - Handle voicemail completed events
+  app.post("/webhooks/telnyx/voicemail", async (req: Request, res: Response) => {
+    try {
+      const eventType = req.body?.data?.event_type;
+      console.log("[Telnyx Voicemail] Received webhook:", eventType);
+      
+      if (eventType === 'calls.voicemail.completed') {
+        const payload = req.body.data.payload;
+        const fromNumber = payload.from;
+        const toNumber = payload.to;
+        const recordingUrl = payload.recording_url;
+        const callSessionId = payload.call_session_id;
+        const connectionId = payload.connection_id;
+        const occurredAt = req.body.data.occurred_at;
+        
+        console.log("[Telnyx Voicemail] New voicemail from", fromNumber, "to", toNumber);
+        
+        // Find the phone number and its owner
+        const [phoneNumber] = await db
+          .select()
+          .from(telnyxPhoneNumbers)
+          .where(eq(telnyxPhoneNumbers.phoneNumber, toNumber));
+        
+        if (phoneNumber) {
+          // Try to match caller with a contact
+          let contactId: string | null = null;
+          let callerName: string | null = null;
+          
+          const [contact] = await db
+            .select()
+            .from(contacts)
+            .where(and(
+              eq(contacts.companyId, phoneNumber.companyId),
+              or(
+                eq(contacts.phone, fromNumber),
+                eq(contacts.mobilePhone, fromNumber)
+              )
+            ))
+            .limit(1);
+          
+          if (contact) {
+            contactId = contact.id;
+            callerName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || null;
+          }
+          
+          // Store voicemail in database
+          await db.insert(voicemails).values({
+            companyId: phoneNumber.companyId,
+            userId: phoneNumber.ownerUserId,
+            telnyxCallSessionId: callSessionId,
+            telnyxConnectionId: connectionId,
+            fromNumber,
+            toNumber,
+            callerName,
+            contactId,
+            recordingUrl,
+            status: 'new',
+            receivedAt: new Date(occurredAt),
+          });
+          
+          console.log("[Telnyx Voicemail] Stored voicemail for company", phoneNumber.companyId);
+          
+          // Notify user via WebSocket if they have one assigned
+          if (phoneNumber.ownerUserId) {
+            const { broadcastNewVoicemailToUser } = await import('./websocket');
+            broadcastNewVoicemailToUser(phoneNumber.ownerUserId, fromNumber, callerName);
+          }
+        } else {
+          console.warn("[Telnyx Voicemail] No phone number found for", toNumber);
+        }
+      }
+      
+      res.status(200).json({ received: true });
+    } catch (error: any) {
+      console.error("[Telnyx Voicemail] Error:", error);
+      res.status(500).json({ error: "Voicemail processing failed" });
+    }
+  });
+
+  // ==================== VOICEMAIL API ====================
+  
+  // GET /api/voicemails - List voicemails for current user
+  app.get("/api/voicemails", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      // Get voicemails for this user (or all for admin)
+      const whereConditions = [eq(voicemails.companyId, user.companyId)];
+      
+      // If not admin, only show voicemails for numbers assigned to this user
+      if (user.role === 'agent') {
+        whereConditions.push(eq(voicemails.userId, user.id));
+      }
+      
+      const userVoicemails = await db
+        .select({
+          id: voicemails.id,
+          fromNumber: voicemails.fromNumber,
+          toNumber: voicemails.toNumber,
+          callerName: voicemails.callerName,
+          recordingUrl: voicemails.recordingUrl,
+          duration: voicemails.duration,
+          status: voicemails.status,
+          receivedAt: voicemails.receivedAt,
+          readAt: voicemails.readAt,
+          contactId: voicemails.contactId,
+        })
+        .from(voicemails)
+        .where(and(...whereConditions))
+        .orderBy(desc(voicemails.receivedAt))
+        .limit(50);
+      
+      res.json({ voicemails: userVoicemails });
+    } catch (error: any) {
+      console.error("[Voicemails] List error:", error);
+      res.status(500).json({ message: "Failed to fetch voicemails" });
+    }
+  });
+  
+  // PATCH /api/voicemails/:id/read - Mark voicemail as read
+  app.patch("/api/voicemails/:id/read", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      await db
+        .update(voicemails)
+        .set({ 
+          status: 'read',
+          readAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(voicemails.id, id),
+          eq(voicemails.companyId, user.companyId)
+        ));
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Voicemails] Mark read error:", error);
+      res.status(500).json({ message: "Failed to mark voicemail as read" });
+    }
+  });
+  
+  // DELETE /api/voicemails/:id - Delete voicemail
+  app.delete("/api/voicemails/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      await db
+        .update(voicemails)
+        .set({ 
+          status: 'deleted',
+          updatedAt: new Date()
+        })
+        .where(and(
+          eq(voicemails.id, id),
+          eq(voicemails.companyId, user.companyId)
+        ));
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Voicemails] Delete error:", error);
+      res.status(500).json({ message: "Failed to delete voicemail" });
+    }
+  });
   // ==================== WALLET API ====================
   
   // GET /api/wallet - Get company wallet
@@ -26003,7 +26340,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getOrCreateWallet } = await import("./services/wallet-service");
-      const wallet = await getOrCreateWallet(user.companyId);
+      const wallet = await getOrCreateWallet(user.companyId, user.id);
       res.json({ wallet });
     } catch (error: any) {
       console.error("[Wallet] Error getting wallet:", error);
@@ -26022,8 +26359,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const limit = parseInt(req.query.limit as string) || 50;
       const offset = parseInt(req.query.offset as string) || 0;
 
-      const { getWalletByCompany, getWalletTransactions } = await import("./services/wallet-service");
-      const wallet = await getWalletByCompany(user.companyId);
+      const { getWalletByUser, getWalletTransactions } = await import("./services/wallet-service");
+      const wallet = await getWalletByUser(user.companyId, user.id);
       
       if (!wallet) {
         return res.json({ transactions: [], total: 0 });
@@ -26072,7 +26409,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getOrCreateWallet, deposit } = await import("./services/wallet-service");
-      const wallet = await getOrCreateWallet(user.companyId);
+      const wallet = await getOrCreateWallet(user.companyId, user.id);
       const result = await deposit(wallet.id, amount, description, externalReferenceId);
 
       if (!result.success) {
@@ -26109,7 +26446,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getOrCreateWallet, charge } = await import("./services/wallet-service");
-      const wallet = await getOrCreateWallet(user.companyId);
+      const wallet = await getOrCreateWallet(user.companyId, user.id);
       const result = await charge(wallet.id, amount, type, description, externalReferenceId);
 
       if (!result.success) {
@@ -26136,7 +26473,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getWalletByCompany } = await import("./services/wallet-service");
-      const wallet = await getWalletByCompany(user.companyId);
+      const wallet = await getWalletByUser(user.companyId, user.id);
       
       if (!wallet) {
         return res.json({ balance: "0.0000", currency: "USD" });
@@ -26218,7 +26555,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       // Add funds to wallet
       const { getOrCreateWallet, deposit } = await import("./services/wallet-service");
-      const wallet = await getOrCreateWallet(user.companyId);
+      const wallet = await getOrCreateWallet(user.companyId, user.id);
       const depositResult = await deposit(
         wallet.id, 
         amount, 
@@ -26276,7 +26613,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       // Update wallet auto-recharge settings
       const { getOrCreateWallet } = await import("./services/wallet-service");
-      const wallet = await getOrCreateWallet(user.companyId);
+      const wallet = await getOrCreateWallet(user.companyId, user.id);
       
       await db
         .update(wallets)
@@ -26344,7 +26681,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getWalletByCompany } = await import("./services/wallet-service");
-      const wallet = await getWalletByCompany(user.companyId);
+      const wallet = await getWalletByUser(user.companyId, user.id);
 
       if (!wallet) {
         return res.json({
@@ -26618,199 +26955,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     res.set("Content-Type", "application/xml");
     res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
   });
-
-  // ==== CALL CONTROL API WEBHOOKS (proper hangup support) ====
-  // These handle inbound calls via Call Control Application (not TeXML)
-  // This allows server-side hangup with NORMAL_CLEARING instead of SDK's 486 USER_BUSY
+  // ==== CALL CONTROL API WEBHOOKS (WebSocket-based routing) ====
+  // These handle inbound calls via Call Control Application
+  // Delegates to CallControlWebhookService which uses WebSocket to notify agents
   
   app.post("/webhooks/telnyx/call-control/:companyId", async (req: Request, res: Response) => {
-    // LATENCY DIAGNOSTIC
-    const T0 = Date.now();
-    console.log(`[LATENCY] T0: Webhook received at ${T0} (${new Date(T0).toISOString()})`);
-
     // CRITICAL: Respond immediately to meet 200ms webhook requirement
     res.status(200).json({ received: true });
     
     try {
       const { companyId } = req.params;
-      const payload = req.body.data?.payload || req.body;
-      const eventType = req.body.data?.event_type || req.body.event_type;
-      const callControlId = payload.call_control_id;
-      const from = payload.from;
-      const to = payload.to;
-      const direction = payload.direction;
+      console.log("[Telnyx Call Control] Webhook received for company:", companyId);
       
-      console.log("[Telnyx Call Control] Event received:", {
-        eventType,
-        callControlId,
-        direction,
-        from,
-        to,
-        companyId
-      });
+      // Delegate to CallControlWebhookService which uses WebSocket-based routing
+      const { callControlWebhookService } = await import("./services/call-control-webhook-service");
+      await callControlWebhookService.handleWebhook(req.body);
       
-      // Get Telnyx API key for API calls
-      const { SecretsService } = await import("./services/secrets-service");
-      const secretsService = new SecretsService();
-      let telnyxApiKey = await secretsService.getCredential("telnyx", "api_key");
-      if (!telnyxApiKey) {
-        console.error("[Telnyx Call Control] API key not configured");
-        return;
-      }
-      telnyxApiKey = telnyxApiKey.trim().replace(/[\r\n\t]/g, "");
-      
-      // Get managed account ID for this company
-      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
-      const managedAccountId = await getCompanyManagedAccountId(companyId);
-      const T2 = Date.now();
-      console.log(`[LATENCY] T2: Managed account fetched (+${T2-T0}ms)`);
-      
-      switch (eventType) {
-        case "call.initiated": {
-          if (direction === "incoming") {
-            // INBOUND CALL: Use TRANSFER to route directly to SIP credential
-            // Per Telnyx docs: transfer does NOT require answer first
-            console.log("[Telnyx Call Control] Incoming call - transferring to WebRTC");
-            
-            const T3 = Date.now();
-            console.log(`[LATENCY] T3: Starting SIP lookup (+${T3-T0}ms)`);
-            // Get SIP username from cache or DB
-            const cached = sipUsernameCache.get(companyId);
-            let sipUsername: string | null = null;
-            
-            if (cached && Date.now() - cached.timestamp < SIP_CACHE_TTL) {
-              sipUsername = cached.username;
-            } else {
-              const [credential] = await db
-                .select({ sipUsername: telephonyCredentials.sipUsername })
-                .from(telephonyCredentials)
-                .where(
-                  and(
-                    eq(telephonyCredentials.companyId, companyId),
-                    eq(telephonyCredentials.isActive, true)
-                  )
-                )
-                .orderBy(desc(telephonyCredentials.lastUsedAt))
-                .limit(1);
-              
-              if (credential?.sipUsername) {
-                sipUsername = credential.sipUsername;
-                sipUsernameCache.set(companyId, { 
-                  username: sipUsername, 
-                  timestamp: Date.now()
-                } as any);
-              }
-            }
-            
-            if (!sipUsername) {
-              console.error("[Telnyx Call Control] No SIP credential for company:", companyId);
-              // Reject the call with busy signal
-              await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/hangup`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": `Bearer ${telnyxApiKey}`,
-                  ...(managedAccountId && { "X-Managed-Account-Id": managedAccountId })
-                },
-                body: JSON.stringify({ cause: "USER_BUSY" })
-              });
-              return;
-            }
-            
-            // Store mapping for tracking
-            callControlToSipMap.set(callControlId, { sipUsername, companyId, from, to });
-            activeCallsMap.set(sipUsername, {
-              callSid: callControlId,
-              from,
-              to,
-              companyId,
-              startTime: new Date(),
-              callControlId: callControlId
-            });
-            
-            // Use TRANSFER command - per Telnyx docs this transfers the call
-            // directly to the SIP URI without needing to answer first
-            const sipUri = `sip:${sipUsername}@sip.telnyx.com`;
-            console.log("[Telnyx Call Control] Transferring to:", sipUri);
-            
-            const T4 = Date.now();
-            console.log(`[LATENCY] T4: Starting Telnyx transfer API call (+${T4-T0}ms)`);
-            const transferRes = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/transfer`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${telnyxApiKey}`,
-                ...(managedAccountId && { "X-Managed-Account-Id": managedAccountId })
-              },
-              body: JSON.stringify({
-                to: sipUri,
-                from: to, // Use DID as caller ID (Telnyx requirement)
-                sip_headers: [
-                  { name: "X-Original-Caller", value: from },
-                  { name: "X-Called-Number", value: to }
-                ],
-                timeout_secs: 30
-              })
-            });
-            
-            if (!transferRes.ok) {
-              const errText = await transferRes.text();
-              console.error("[Telnyx Call Control] Transfer failed:", transferRes.status, errText);
-              // Hang up since transfer failed
-              await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/hangup`, {
-                method: "POST",
-                headers: {
-                  "Content-Type": "application/json",
-                  "Authorization": `Bearer ${telnyxApiKey}`,
-                  ...(managedAccountId && { "X-Managed-Account-Id": managedAccountId })
-                },
-                body: JSON.stringify({ cause: "NORMAL_CLEARING" })
-              });
-              return;
-            }
-            
-            const T5 = Date.now();
-            console.log(`[LATENCY] T5: Transfer API complete (+${T5-T0}ms, API took ${T5-T4}ms)`);
-            console.log("[Telnyx Call Control] Transfer initiated successfully");
-          }
-          break;
-        }
-        
-        case "call.answered": {
-          // With transfer, bridging is automatic when the SIP endpoint answers
-          const mapping = callControlToSipMap.get(callControlId);
-          if (mapping) {
-            console.log("[Telnyx Call Control] Call answered - transfer auto-bridged:", mapping.sipUsername);
-          }
-          break;
-        }
-        
-        case "call.bridged": {
-          // Calls are now connected
-          console.log("[Telnyx Call Control] Calls bridged successfully");
-          break;
-        }
-        
-        case "call.hangup": {
-          // Clean up tracking maps
-          const mapping = callControlToSipMap.get(callControlId);
-          if (mapping) {
-            console.log("[Telnyx Call Control] Call hangup - cleaning up:", mapping.sipUsername);
-            activeCallsMap.delete(mapping.sipUsername);
-            callControlToSipMap.delete(callControlId);
-            
-            // Also clean up the other leg if exists
-            const call = activeCallsMap.get(mapping.sipUsername);
-            if (call?.dialedLegControlId) {
-              callControlToSipMap.delete(call.dialedLegControlId);
-            }
-          }
-          break;
-        }
-        
-        default:
-          console.log("[Telnyx Call Control] Unhandled event:", eventType);
-      }
     } catch (error: any) {
       console.error("[Telnyx Call Control] Webhook error:", error);
     }
@@ -26821,7 +26981,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     console.error("[Telnyx Call Control Fallback] Fallback triggered:", req.body);
     res.status(200).json({ received: true });
   });
-
     // POST /webhooks/telnyx/status/:companyId - Handle status callbacks per company
   app.post("/webhooks/telnyx/status/:companyId", async (req: Request, res: Response) => {
     try {
@@ -26846,7 +27005,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getOrCreateWallet } = await import("./services/wallet-service");
-      const wallet = await getOrCreateWallet(user.companyId);
+      const wallet = await getOrCreateWallet(user.companyId, user.id);
       res.json({ wallet });
     } catch (error: any) {
       console.error("[Wallet] Error getting wallet:", error);
@@ -26865,8 +27024,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const limit = parseInt(req.query.limit as string) || 50;
       const offset = parseInt(req.query.offset as string) || 0;
 
-      const { getWalletByCompany, getWalletTransactions } = await import("./services/wallet-service");
-      const wallet = await getWalletByCompany(user.companyId);
+      const { getWalletByUser, getWalletTransactions } = await import("./services/wallet-service");
+      const wallet = await getWalletByUser(user.companyId, user.id);
       
       if (!wallet) {
         return res.json({ transactions: [], total: 0 });
@@ -26915,7 +27074,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getOrCreateWallet, deposit } = await import("./services/wallet-service");
-      const wallet = await getOrCreateWallet(user.companyId);
+      const wallet = await getOrCreateWallet(user.companyId, user.id);
       const result = await deposit(wallet.id, amount, description, externalReferenceId);
 
       if (!result.success) {
@@ -26952,7 +27111,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getOrCreateWallet, charge } = await import("./services/wallet-service");
-      const wallet = await getOrCreateWallet(user.companyId);
+      const wallet = await getOrCreateWallet(user.companyId, user.id);
       const result = await charge(wallet.id, amount, type, description, externalReferenceId);
 
       if (!result.success) {
@@ -26979,7 +27138,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getWalletByCompany } = await import("./services/wallet-service");
-      const wallet = await getWalletByCompany(user.companyId);
+      const wallet = await getWalletByUser(user.companyId, user.id);
       
       if (!wallet) {
         return res.json({ balance: "0.0000", currency: "USD" });
@@ -27157,7 +27316,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             { keyName: "identity_secret", label: "Identity Secret", required: false, hint: "Secret key for identity verification (from Security tab)" },
           ]
         },
+        { 
+          provider: "web_push", 
+          label: "Web Push (VAPID)",
+          helpText: "VAPID credentials for Web Push notifications (PWA/Android). Generate keys using web-push library or online generators.",
+          helpUrl: "https://vapidkeys.com/",
+          keys: [
+            { keyName: "public_key", label: "VAPID Public Key", required: true, hint: "Base64 encoded public key (starts with B)" },
+            { keyName: "private_key", label: "VAPID Private Key", required: true, hint: "Base64 encoded private key" },
+            { keyName: "subject", label: "Subject", required: true, hint: "mailto:email or https://domain" },
+            { keyName: "internal_api_key", label: "Internal API Key", required: false, hint: "API key for internal push endpoints (auto-generated if empty)" },
+          ]
+        },
       ];
+
 
       res.json({ providers: providerConfigs, apiProviders });
     } catch (error: any) {
@@ -27849,99 +28021,204 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // GET /api/telnyx/phone-system-access - Check if user can access Phone System menu
+
+  // GET /api/telnyx/phone-system-access - Check if current user has access to Phone System tab
   app.get("/api/telnyx/phone-system-access", requireAuth, async (req: Request, res: Response) => {
     try {
-      const user = req.user!;
-      if (!user.companyId) {
-        return res.json({ hasAccess: false, isOwner: false, reason: "No company associated" });
-      }
-
-      // Check if user is admin or owner - they can access Phone System
-      const isOwner = user.role === "admin" || user.role === "super_admin";
+      const currentUser = req.user as User;
       
-      if (!isOwner) {
-        return res.json({ hasAccess: false, isOwner: false, reason: "Only admins can access Phone System" });
+      // Superadmin always has access
+      if (currentUser.role === 'superadmin') {
+        return res.json({ hasAccess: true, isOwner: true, reason: 'superadmin' });
       }
-
-      // Check if company has phone system setup (has wallet or telnyx account)
-      const { getWalletByCompany } = await import("./services/wallet-service");
-      const wallet = await getWalletByCompany(user.companyId);
       
-      // Even if not fully setup, admins should be able to see Phone System to set it up
-      return res.json({ 
-        hasAccess: true, 
-        isOwner: true, 
-        reason: wallet ? "Phone system is configured" : "Phone system available for setup"
+      // Get the telephony settings for user's company
+      const settings = await db.query.telephonySettings.findFirst({
+        where: eq(telephonySettings.companyId, currentUser.companyId || ''),
+      });
+      
+      // No phone system configured - only admins can activate (and become owner)
+      if (!settings) {
+        return res.json({ 
+          hasAccess: currentUser.role === 'admin',
+          isOwner: false, 
+          reason: currentUser.role === 'admin' ? 'admin_can_activate' : 'not_activated' 
+        });
+      }
+      
+      // Check if user is the owner
+      const isOwner = settings.ownerUserId === currentUser.id;
+      
+      res.json({ 
+        hasAccess: isOwner, 
+        isOwner,
+        reason: isOwner ? 'owner' : 'not_owner',
+        ownerUserId: settings.ownerUserId 
       });
     } catch (error: any) {
-      console.error("Error checking phone system access:", error);
-      res.status(500).json({ hasAccess: false, isOwner: false, reason: "Error checking access" });
+      console.error("[Phone System Access] Error:", error);
+      res.status(500).json({ message: "Failed to check access" });
     }
   });
 
-  // GET /api/telnyx/user-phone-status - Check if user can make calls
+  // GET /api/telnyx/user-phone-status - Check if current user has an assigned phone number for calling
   app.get("/api/telnyx/user-phone-status", requireAuth, async (req: Request, res: Response) => {
     try {
-      const user = req.user!;
-      if (!user.companyId) {
+      const currentUser = req.user as User;
+      
+      if (!currentUser.companyId) {
         return res.json({ 
           hasAssignedNumber: false, 
-          canMakeCalls: false, 
-          reason: "No company associated",
-          message: "Contact your account manager to get started."
-        });
-      }
-
-      // Check if user has a Telnyx number assigned
-      const assignedNumber = await db.query.telnyxPhoneNumbers.findFirst({
-        where: (numbers, { eq, and }) => and(
-          eq(numbers.companyId, user.companyId),
-          eq(numbers.assignedUserId, user.id)
-        ),
-      });
-
-      // Check if user has a PBX extension
-      const pbxExtension = await db.query.pbxExtensions.findFirst({
-        where: (extensions, { eq, and }) => and(
-          eq(extensions.companyId, user.companyId),
-          eq(extensions.assignedUserId, user.id)
-        ),
-      });
-
-      const hasAssignedNumber = !!assignedNumber;
-      const hasPbxExtension = !!pbxExtension;
-      const canMakeCalls = hasAssignedNumber || hasPbxExtension;
-
-      if (!canMakeCalls) {
-        return res.json({
-          hasAssignedNumber: false,
           canMakeCalls: false,
           hasPbxExtension: false,
-          reason: "No phone number or extension assigned",
-          message: "Contact your account manager to get a phone number assigned."
+          reason: 'no_company' 
         });
       }
-
-      return res.json({
-        hasAssignedNumber,
-        canMakeCalls: true,
-        hasPbxExtension,
-        phoneNumber: assignedNumber?.phoneNumber || null,
-        pbxExtension: pbxExtension?.extensionNumber || null,
-        reason: hasAssignedNumber ? "Has assigned number" : "Has PBX extension",
-        message: "Ready to make calls"
+      
+      // Check if user has a PBX extension assigned
+      const userExtension = await db.query.pbxExtensions.findFirst({
+        where: and(
+          eq(pbxExtensions.companyId, currentUser.companyId),
+          eq(pbxExtensions.userId, currentUser.id)
+        ),
+      });
+      
+      // Check if user has a phone number assigned to them
+      const assignedNumber = await db.query.telnyxPhoneNumbers.findFirst({
+        where: and(
+          eq(telnyxPhoneNumbers.companyId, currentUser.companyId),
+          eq(telnyxPhoneNumbers.ownerUserId, currentUser.id),
+          eq(telnyxPhoneNumbers.status, 'active')
+        ),
+      });
+      
+      // Only the Phone System owner (activating admin) can use any company number
+      if (!assignedNumber) {
+        // Check if user is the phone system owner
+        const settings = await db.query.telephonySettings.findFirst({
+          where: eq(telephonySettings.companyId, currentUser.companyId),
+        });
+        
+        const isPhoneSystemOwner = settings?.ownerUserId === currentUser.id;
+        const isSuperadmin = currentUser.role === 'superadmin';
+        
+        if (isPhoneSystemOwner || isSuperadmin) {
+          const anyCompanyNumber = await db.query.telnyxPhoneNumbers.findFirst({
+            where: and(
+              eq(telnyxPhoneNumbers.companyId, currentUser.companyId),
+              eq(telnyxPhoneNumbers.status, 'active')
+            ),
+          });
+          
+          if (anyCompanyNumber) {
+            return res.json({ 
+              hasAssignedNumber: true, 
+              canMakeCalls: true,
+              phoneNumber: anyCompanyNumber.phoneNumber,
+              hasPbxExtension: !!userExtension,
+              pbxExtension: userExtension?.extension || null,
+              reason: isPhoneSystemOwner ? 'phone_system_owner' : 'superadmin_access' 
+            });
+          }
+        }
+      }
+      
+      if (assignedNumber) {
+        return res.json({ 
+          hasAssignedNumber: true, 
+          canMakeCalls: true,
+          phoneNumber: assignedNumber.phoneNumber,
+          hasPbxExtension: !!userExtension,
+          pbxExtension: userExtension?.extension || null,
+          reason: 'assigned' 
+        });
+      }
+      
+      // Check if user has only a PBX extension (no Telnyx number)
+      if (userExtension) {
+        return res.json({ 
+          hasAssignedNumber: false, 
+          canMakeCalls: true,
+          hasPbxExtension: true,
+          pbxExtension: userExtension.extension,
+          reason: 'pbx_extension_only'
+        });
+      }
+      
+      // User has no assigned number or extension
+      res.json({ 
+        hasAssignedNumber: false, 
+        canMakeCalls: false,
+        hasPbxExtension: false,
+        reason: 'no_number_assigned',
+        message: 'Please contact your account manager to have a phone number assigned to you.'
       });
     } catch (error: any) {
-      console.error("Error checking user phone status:", error);
-      res.status(500).json({ 
-        hasAssignedNumber: false, 
-        canMakeCalls: false, 
-        reason: "Error checking status",
-        message: "Unable to verify phone status."
-      });
+      console.error("[User Phone Status] Error:", error);
+      res.status(500).json({ message: "Failed to check phone status" });
     }
   });
+  // GET /api/telnyx/number-pricing - Get client pricing for phone numbers
+  app.get("/api/telnyx/number-pricing", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { loadGlobalPricing } = await import("./services/pricing-config");
+      const pricing = await loadGlobalPricing();
+      
+      res.json({
+        localMonthly: pricing.monthly.local_did,
+        tollfreeMonthly: pricing.monthly.tollfree_did,
+      });
+    } catch (error: any) {
+      console.error("[Telnyx Number Pricing] Error:", error);
+      res.status(500).json({ message: "Failed to get pricing" });
+    }
+  });
+
+  // GET /api/telnyx/pricing - Get all telephony pricing for clients
+  app.get("/api/telnyx/pricing", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const { loadGlobalPricing } = await import("./services/pricing-config");
+      const pricing = await loadGlobalPricing();
+      
+      res.json({
+        voice: {
+          local: {
+            outbound: pricing.usage.local_outbound_minute,
+            inbound: pricing.usage.local_inbound_minute,
+          },
+          tollfree: {
+            outbound: pricing.usage.tollfree_outbound_minute,
+            inbound: pricing.usage.tollfree_inbound_minute,
+          },
+          recording: pricing.usage.recording_minute,
+          cnamLookup: pricing.usage.cnam_lookup_per_call,
+        },
+        sms: {
+          local: {
+            outbound: pricing.sms.longcode_outbound,
+            inbound: pricing.sms.longcode_inbound,
+          },
+          tollfree: {
+            outbound: pricing.sms.tollfree_outbound,
+            inbound: pricing.sms.tollfree_inbound,
+          },
+        },
+        monthly: {
+          localNumber: pricing.monthly.local_did,
+          tollfreeNumber: pricing.monthly.tollfree_did,
+        },
+        billing: {
+          minimumSeconds: pricing.billing.min_billable_seconds,
+          incrementSeconds: pricing.billing.billing_increment,
+        },
+        lastUpdated: new Date().toISOString(),
+      });
+    } catch (error: any) {
+      console.error("[Telnyx Pricing] Error:", error);
+      res.status(500).json({ message: "Failed to get pricing" });
+    }
+  });
+
   // GET /api/telnyx/available-numbers - Search available phone numbers
   app.get("/api/telnyx/available-numbers", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -27988,6 +28265,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/telnyx/purchase-number", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      // Only admins can modify phone system settings
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
+      }
       const { phoneNumber } = req.body;
 
       if (!phoneNumber) {
@@ -27998,11 +28279,53 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated with user" });
       }
 
+      // Check wallet balance BEFORE purchasing from Telnyx
+      const { getOrCreateWallet } = await import("./services/wallet-service");
+      const { loadGlobalPricing } = await import("./services/pricing-config");
+      
+      const wallet = await getOrCreateWallet(user.companyId, user.id);
+      const pricing = await loadGlobalPricing();
+      
+      // Determine number type and required balance
+      const isTollFree = phoneNumber.startsWith("+1800") || 
+                         phoneNumber.startsWith("+1888") ||
+                         phoneNumber.startsWith("+1877") ||
+                         phoneNumber.startsWith("+1866") ||
+                         phoneNumber.startsWith("+1855") ||
+                         phoneNumber.startsWith("+1844") ||
+                         phoneNumber.startsWith("+1833");
+      const requiredBalance = isTollFree ? pricing.monthly.tollfree_did : pricing.monthly.local_did;
+      const currentBalance = parseFloat(wallet.balance);
+      
+      if (currentBalance < requiredBalance) {
+        return res.status(402).json({ 
+          message: `Insufficient wallet balance. Need $${requiredBalance.toFixed(2)}, have $${currentBalance.toFixed(2)}`,
+          insufficientFunds: true,
+          requiredAmount: requiredBalance,
+          currentBalance: currentBalance
+        });
+      }
+
       const { purchasePhoneNumber, updateCnamListing, truncateForCnam } = await import("./services/telnyx-numbers-service");
       const result = await purchasePhoneNumber(phoneNumber, user.companyId);
 
       if (!result.success) {
         return res.status(500).json({ message: result.error });
+      }
+
+      // Bill the wallet immediately for the first month and save to local DB
+      const { purchaseAndBillPhoneNumber } = await import("./services/telephony-billing-service");
+      const billingResult = await purchaseAndBillPhoneNumber(phoneNumber, user.companyId, {
+        orderId: result.orderId || "",
+        phoneNumberId: result.phoneNumberId || "",
+      }, user.id);
+
+      if (!billingResult.success) {
+        console.error(`[Billing] Failed to bill for number purchase: ${billingResult.error}`);
+        // Don't fail the purchase, but log the error - number is already purchased from Telnyx
+        // The monthly billing job will pick it up later if local record is missing
+      } else {
+        console.log(`[Billing] Successfully charged $${billingResult.amountCharged?.toFixed(2)} for ${phoneNumber}`);
       }
 
 
@@ -28030,7 +28353,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       // Auto-trigger WebRTC provisioning if not already completed
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
-      const existingStatus = await telephonyProvisioningService.getProvisioningStatus(user.companyId);
+      const existingStatus = await telephonyProvisioningService.getProvisioningStatus(user.companyId, user.id);
       
       // Only trigger provisioning for new or failed states
       // Skip if: completed (already done), pending (job dispatched), in_progress (actively running)
@@ -28046,7 +28369,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (managedAccountId) {
           console.log("[Provisioning] Auto-triggering WebRTC provisioning for company:", user.companyId, "current status:", existingStatus?.status || "none");
           // Trigger provisioning in background (don't wait)
-          telephonyProvisioningService.provisionClientInfrastructure(user.companyId, managedAccountId)
+          telephonyProvisioningService.provisionClientInfrastructure(user.companyId, managedAccountId, user.id)
             .then(provResult => {
               if (provResult.success) {
                 console.log("[Provisioning] WebRTC infrastructure auto-provisioned for company:", user.companyId);
@@ -28078,25 +28401,37 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // GET /api/telnyx/my-numbers - Get company's purchased phone numbers
+  // GET /api/telnyx/my-numbers - Get user's purchased phone numbers (user-scoped)
   app.get("/api/telnyx/my-numbers", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
       
-      // Superadmin can query any company by passing companyId param
-      let targetCompanyId = user.companyId;
-      if (user.role === "superadmin" && req.query.companyId) {
-        targetCompanyId = req.query.companyId as string;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
       }
       
-      const { getCompanyPhoneNumbers } = await import("./services/telnyx-numbers-service");
-      const result = await getCompanyPhoneNumbers(targetCompanyId);
+      // Superadmin can query any company's numbers (all numbers in that company)
+      if (user.role === "superadmin" && req.query.companyId) {
+        const targetCompanyId = req.query.companyId as string;
+        const { getCompanyPhoneNumbers } = await import("./services/telnyx-numbers-service");
+        const result = await getCompanyPhoneNumbers(targetCompanyId);
+        if (!result.success) {
+          return res.status(500).json({ message: result.error });
+        }
+        return res.json({ numbers: result.numbers, totalCount: result.totalCount, currentPage: result.currentPage, totalPages: result.totalPages, pageSize: result.pageSize });
+      }
+      
+      // Agents only see their own numbers, admins see all company numbers
+      // This ensures all admins in a company can manage all phone numbers
+      const userId = (user.role === 'superadmin' || user.role === 'admin') ? undefined : user.id;
+      const { getUserPhoneNumbers } = await import("./services/telnyx-numbers-service");
+      const result = await getUserPhoneNumbers(user.companyId, userId);
 
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
 
-      res.json({ numbers: result.numbers, totalCount: result.totalCount, currentPage: result.currentPage, totalPages: result.totalPages, pageSize: result.pageSize });
+      res.json({ numbers: result.numbers, totalCount: result.numbers?.length || 0 });
     } catch (error: any) {
       console.error("[Telnyx Numbers] Get numbers error:", error);
       res.status(500).json({ message: "Failed to get phone numbers" });
@@ -28172,6 +28507,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/telnyx/cnam/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      // Only admins can modify phone system settings
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
+      }
       const { phoneNumberId } = req.params;
       const { enabled, cnamName } = req.body;
 
@@ -28214,6 +28553,92 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/telnyx/assign-number/:phoneNumberId - Assign a phone number to a specific user
+  app.post("/api/telnyx/assign-number/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      // Only admins can assign phone numbers to users
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can assign phone numbers" });
+      }
+
+      const { phoneNumberId } = req.params;
+      const { userId } = req.body;
+
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      // Find the phone number
+      const [phoneNumber] = await db
+        .select()
+        .from(telnyxPhoneNumbers)
+        .where(and(
+          eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId),
+          eq(telnyxPhoneNumbers.companyId, user.companyId)
+        ));
+
+      if (!phoneNumber) {
+        return res.status(404).json({ message: "Phone number not found" });
+      }
+
+      // If userId is provided, verify the user exists and belongs to the same company
+      if (userId) {
+        const [targetUser] = await db
+          .select()
+          .from(users)
+          .where(and(
+            eq(users.id, userId),
+            eq(users.companyId, user.companyId)
+          ));
+
+        if (!targetUser) {
+          return res.status(404).json({ message: "Target user not found or not in the same company" });
+        }
+      }
+
+      // Capture previous owner before update for unassignment notification
+      const previousOwnerId = phoneNumber.ownerUserId;
+
+      // Update the phone number's ownerUserId
+      await db
+        .update(telnyxPhoneNumbers)
+        .set({ 
+          ownerUserId: userId || null,
+          updatedAt: new Date()
+        })
+        .where(eq(telnyxPhoneNumbers.id, phoneNumber.id));
+
+      console.log(`[Telnyx Assign] Phone ${phoneNumber.phoneNumber} assigned to user ${userId || "unassigned"} by admin ${user.id}`);
+
+      // Notify previous owner to disconnect their WebRTC
+      if (previousOwnerId && previousOwnerId !== userId) {
+        const { broadcastTelnyxNumberUnassigned } = await import("./websocket");
+        broadcastTelnyxNumberUnassigned(previousOwnerId, phoneNumber.phoneNumber);
+      }
+
+      // Broadcast real-time notification to the assigned user so their WebRTC auto-connects
+      if (userId) {
+        const { broadcastTelnyxNumberAssigned } = await import('./websocket');
+        broadcastTelnyxNumberAssigned(userId, phoneNumber.phoneNumber, phoneNumberId);
+      }
+
+      res.json({
+        success: true,
+        phoneNumberId,
+        assignedToUserId: userId || null,
+      });
+    } catch (error: any) {
+      console.error("[Telnyx Assign] Error:", error);
+      res.status(500).json({ message: "Failed to assign phone number" });
+    }
+  });
+
+
 
   // GET /api/telnyx/voice-settings/:phoneNumberId - Get all voice settings (CNAM, Recording, Spam, etc.)
   app.get("/api/telnyx/voice-settings/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
@@ -28243,10 +28668,42 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+  // POST /api/telnyx/sync-voice-settings/:phoneNumberId - Sync voice settings from Telnyx to local DB
+  app.post("/api/telnyx/sync-voice-settings/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumberId } = req.params;
+
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { syncVoiceSettingsFromTelnyx } = await import("./services/telnyx-numbers-service");
+      const result = await syncVoiceSettingsFromTelnyx(phoneNumberId, user.companyId);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Telnyx Sync Voice Settings] Error:", error);
+      res.status(500).json({ message: "Failed to sync voice settings" });
+    }
+  });
   // POST /api/telnyx/call-recording/:phoneNumberId - Update call recording settings
   app.post("/api/telnyx/call-recording/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      // Only admins can modify phone system settings
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
+      }
       const { phoneNumberId } = req.params;
       const { enabled, format = "mp3", channels = "single" } = req.body;
 
@@ -28280,6 +28737,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/telnyx/spam-protection/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      // Only admins can modify phone system settings
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
+      }
       const { phoneNumberId } = req.params;
       const { mode } = req.body;
 
@@ -28313,6 +28774,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/telnyx/caller-id-lookup/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      // Only admins can modify phone system settings
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
+      }
       const { phoneNumberId } = req.params;
       const { enabled } = req.body;
 
@@ -28381,6 +28846,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/telnyx/call-forwarding/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      // Only admins can modify phone system settings
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
+      }
       const { phoneNumberId } = req.params;
       const { enabled, destination, keepCallerId = true } = req.body;
 
@@ -28401,7 +28870,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { updateCallForwarding } = await import("./services/telnyx-numbers-service");
-      const result = await updateCallForwarding(phoneNumberId, user.companyId, enabled, destination, keepCallerId);
+      const result = await updateCallForwarding(phoneNumberId, user.companyId, enabled, destination, keepCallerId, user.id);
 
       if (!result.success) {
         return res.status(500).json({ message: result.error });
@@ -28446,6 +28915,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/telnyx/voicemail/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      // Only admins can modify phone system settings
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
+      }
       const { phoneNumberId } = req.params;
       const { enabled, pin } = req.body;
 
@@ -28476,6 +28949,46 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("[Telnyx Voicemail] Update error:", error);
       res.status(500).json({ message: "Failed to update voicemail settings" });
+    }
+  });
+
+  // POST /api/telnyx/number-voice-settings/:phoneNumberId - Update per-number voice settings
+  app.post("/api/telnyx/number-voice-settings/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
+      }
+      const { phoneNumberId } = req.params;
+      const { recordingEnabled, cnamLookupEnabled, noiseSuppressionEnabled, noiseSuppressionDirection, voicemailEnabled, voicemailPin, ivrId } = req.body;
+
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { updateNumberVoiceSettings } = await import("./services/telnyx-numbers-service");
+      const result = await updateNumberVoiceSettings(phoneNumberId, user.companyId, {
+        recordingEnabled,
+        cnamLookupEnabled,
+        noiseSuppressionEnabled,
+        noiseSuppressionDirection,
+        voicemailEnabled,
+        voicemailPin,
+        ivrId,
+      });
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Number Voice Settings] Update error:", error);
+      res.status(500).json({ message: "Failed to update voice settings" });
     }
   });
 
@@ -28512,6 +29025,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/telnyx/noise-suppression", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
+      // Only admins can modify phone system settings
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
+      }
       
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
@@ -28604,6 +29121,116 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("[Noise Suppression] Update error:", error);
       res.status(500).json({ message: "Failed to update noise suppression settings" });
+    }
+  });
+
+
+  // GET /api/telnyx/billing-features - Get current billing features settings (recording, CNAM)
+  app.get("/api/telnyx/billing-features", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      const [settings] = await db
+        .select({
+          recordingEnabled: telephonySettings.recordingEnabled,
+          cnamEnabled: telephonySettings.cnamEnabled,
+        })
+        .from(telephonySettings)
+        .where(eq(telephonySettings.companyId, user.companyId));
+      
+      res.json({
+        recordingEnabled: settings?.recordingEnabled || false,
+        cnamEnabled: settings?.cnamEnabled || false,
+      });
+    } catch (error: any) {
+      console.error("[Billing Features] Get settings error:", error);
+      res.status(500).json({ message: "Failed to get billing features settings" });
+    }
+  });
+
+  // POST /api/telnyx/billing-features - Update billing features (recording, CNAM)
+  app.post("/api/telnyx/billing-features", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { recordingEnabled, cnamEnabled } = req.body;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      
+      // Only admins can change billing features
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Only administrators can change billing features" });
+      }
+      
+      // Build update object for only provided fields
+      const updateData: { recordingEnabled?: boolean; cnamEnabled?: boolean; updatedAt: Date } = {
+        updatedAt: new Date(),
+      };
+      
+      if (typeof recordingEnabled === 'boolean') {
+        updateData.recordingEnabled = recordingEnabled;
+      }
+      if (typeof cnamEnabled === 'boolean') {
+        updateData.cnamEnabled = cnamEnabled;
+      }
+      
+      // Check if settings exist, if not create them (upsert)
+      const [existingSettings] = await db
+        .select()
+        .from(telephonySettings)
+        .where(eq(telephonySettings.companyId, user.companyId));
+      
+      let updatedSettings;
+      if (existingSettings) {
+        // Update existing settings
+        [updatedSettings] = await db.update(telephonySettings)
+          .set(updateData)
+          .where(eq(telephonySettings.companyId, user.companyId))
+          .returning();
+      } else {
+        // Insert new settings with billing features
+        [updatedSettings] = await db.insert(telephonySettings)
+          .values({
+            companyId: user.companyId,
+            recordingEnabled: typeof recordingEnabled === 'boolean' ? recordingEnabled : false,
+            cnamEnabled: typeof cnamEnabled === 'boolean' ? cnamEnabled : false,
+          })
+          .returning();
+        console.log(`[Billing Features] Created new settings for company ${user.companyId}`);
+      }
+      
+      console.log(`[Billing Features] Updated for company ${user.companyId}: recording=${updatedSettings?.recordingEnabled}, cnam=${updatedSettings?.cnamEnabled}`);
+      
+      // Sync to Telnyx API for all company phone numbers
+      const { syncBillingFeaturesToTelnyx } = await import("./services/telnyx-numbers-service");
+      const syncResult = await syncBillingFeaturesToTelnyx(
+        user.companyId,
+        typeof recordingEnabled === "boolean" ? recordingEnabled : undefined,
+        typeof cnamEnabled === "boolean" ? cnamEnabled : undefined
+      );
+      
+      if (!syncResult.success) {
+        console.warn(`[Billing Features] Sync to Telnyx had errors: ${syncResult.errors.join(", ")}`);
+      } else {
+        console.log(`[Billing Features] Synced ${syncResult.syncedCount} phone numbers to Telnyx`);
+      }
+      
+      res.json({
+        success: true,
+        recordingEnabled: updatedSettings?.recordingEnabled || false,
+        cnamEnabled: updatedSettings?.cnamEnabled || false,
+        syncedCount: syncResult.syncedCount,
+        syncErrors: syncResult.errors.length > 0 ? syncResult.errors : undefined,
+        syncWarning: syncResult.errors.length > 0 ? `Some phone numbers could not be updated: ${syncResult.errors.join(", ")}` : undefined,
+      });
+    } catch (error: any) {
+      console.error("[Billing Features] Update error:", error);
+      res.status(500).json({ message: "Failed to update billing features settings" });
     }
   });
 
@@ -28769,6 +29396,217 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // =====================================================
+  // TELNYX GLOBAL PRICING ENDPOINTS (Super Admin Only)
+  // =====================================================
+  
+  // GET /api/telnyx/global-pricing - Get global pricing configuration
+  app.get("/api/telnyx/global-pricing", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Super Admin access required" });
+      }
+
+      const [pricing] = await db.select().from(telnyxGlobalPricing).limit(1);
+      
+      if (!pricing) {
+        // Return default pricing with flat field names
+        return res.json({
+          pricing: {
+            // Voice Cost
+            voiceLocalOutboundCost: "0.0047",
+            voiceLocalInboundCost: "0.0035",
+            voiceTollfreeOutboundCost: "0.0047",
+            voiceTollfreeInboundCost: "0.0060",
+            // Voice Price
+            voiceLocalOutbound: "0.0100",
+            voiceLocalInbound: "0.0080",
+            voiceTollfreeOutbound: "0.0180",
+            voiceTollfreeInbound: "0.0130",
+            // SMS Cost
+            smsLongcodeOutboundCost: "0.0040",
+            smsLongcodeInboundCost: "0.0040",
+            smsTollfreeOutboundCost: "0.0040",
+            smsTollfreeInboundCost: "0.0040",
+            // SMS Price
+            smsLongcodeOutbound: "0.0060",
+            smsLongcodeInbound: "0.0060",
+            smsTollfreeOutbound: "0.0070",
+            smsTollfreeInbound: "0.0070",
+            // Add-ons Cost
+            callControlInboundCost: "0.0010",
+            callControlOutboundCost: "0.0010",
+            recordingPerMinuteCost: "0.0010",
+            cnamLookupCost: "0.0025",
+            e911AddressCost: "1.50",
+            portOutFeeCost: "6.00",
+            unregisteredE911Cost: "100.00",
+            // Add-ons Price
+            callControlInbound: "0.0020",
+            callControlOutbound: "0.0020",
+            recordingPerMinute: "0.0020",
+            cnamLookup: "0.0045",
+            e911Address: "2.00",
+            portOutFee: "10.00",
+            unregisteredE911: "100.00",
+            // DIDs Cost
+            didLocalCost: "0.50",
+            didTollfreeCost: "0.75",
+            // DIDs Price
+            didLocal: "1.00",
+            didTollfree: "1.50",
+            // Billing
+            billingIncrement: 60,
+            minBillableSeconds: 60,
+          }
+        });
+      }
+
+      // Return flat field names directly from database
+      res.json({
+        pricing: {
+          id: pricing.id,
+          // Voice Cost
+          voiceLocalOutboundCost: pricing.voiceLocalOutboundCost,
+          voiceLocalInboundCost: pricing.voiceLocalInboundCost,
+          voiceTollfreeOutboundCost: pricing.voiceTollfreeOutboundCost,
+          voiceTollfreeInboundCost: pricing.voiceTollfreeInboundCost,
+          // Voice Price
+          voiceLocalOutbound: pricing.voiceLocalOutbound,
+          voiceLocalInbound: pricing.voiceLocalInbound,
+          voiceTollfreeOutbound: pricing.voiceTollfreeOutbound,
+          voiceTollfreeInbound: pricing.voiceTollfreeInbound,
+          // SMS Cost
+          smsLongcodeOutboundCost: pricing.smsLongcodeOutboundCost,
+          smsLongcodeInboundCost: pricing.smsLongcodeInboundCost,
+          smsTollfreeOutboundCost: pricing.smsTollfreeOutboundCost,
+          smsTollfreeInboundCost: pricing.smsTollfreeInboundCost,
+          // SMS Price
+          smsLongcodeOutbound: pricing.smsLongcodeOutbound,
+          smsLongcodeInbound: pricing.smsLongcodeInbound,
+          smsTollfreeOutbound: pricing.smsTollfreeOutbound,
+          smsTollfreeInbound: pricing.smsTollfreeInbound,
+          // Add-ons Cost
+          callControlInboundCost: pricing.callControlInboundCost,
+          callControlOutboundCost: pricing.callControlOutboundCost,
+          recordingPerMinuteCost: pricing.recordingPerMinuteCost,
+          cnamLookupCost: pricing.cnamLookupCost,
+          e911AddressCost: pricing.e911AddressCost,
+          portOutFeeCost: pricing.portOutFeeCost,
+          unregisteredE911Cost: pricing.unregisteredE911Cost,
+          // Add-ons Price
+          callControlInbound: pricing.callControlInbound,
+          callControlOutbound: pricing.callControlOutbound,
+          recordingPerMinute: pricing.recordingPerMinute,
+          cnamLookup: pricing.cnamLookup,
+          e911Address: pricing.e911Address,
+          portOutFee: pricing.portOutFee,
+          unregisteredE911: pricing.unregisteredE911,
+          // DIDs Cost
+          didLocalCost: pricing.didLocalCost,
+          didTollfreeCost: pricing.didTollfreeCost,
+          // DIDs Price
+          didLocal: pricing.didLocal,
+          didTollfree: pricing.didTollfree,
+          // Billing
+          billingIncrement: pricing.billingIncrement,
+          minBillableSeconds: pricing.minBillableSeconds,
+          // Metadata
+          updatedAt: pricing.updatedAt,
+          updatedBy: pricing.updatedBy,
+        }
+      });
+    } catch (error: any) {
+      console.error("[Global Pricing] GET error:", error);
+      res.status(500).json({ message: "Failed to get pricing configuration" });
+    }
+  });
+  // PUT /api/telnyx/global-pricing - Update global pricing configuration
+  app.put("/api/telnyx/global-pricing", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (user.role !== "superadmin") {
+        return res.status(403).json({ message: "Super Admin access required" });
+      }
+
+      const data = req.body;
+      console.log("[Global Pricing] Received data:", JSON.stringify(data, null, 2));
+
+      // Get existing pricing or create new
+      const [existing] = await db.select().from(telnyxGlobalPricing).limit(1);
+
+      // Accept flat field names directly from frontend
+      const pricingData = {
+        // Voice Cost (what Telnyx charges us)
+        voiceLocalOutboundCost: data.voiceLocalOutboundCost?.toString() || existing?.voiceLocalOutboundCost || "0.0047",
+        voiceLocalInboundCost: data.voiceLocalInboundCost?.toString() || existing?.voiceLocalInboundCost || "0.0035",
+        voiceTollfreeOutboundCost: data.voiceTollfreeOutboundCost?.toString() || existing?.voiceTollfreeOutboundCost || "0.0047",
+        voiceTollfreeInboundCost: data.voiceTollfreeInboundCost?.toString() || existing?.voiceTollfreeInboundCost || "0.0060",
+        // Voice Price (what we charge clients)
+        voiceLocalOutbound: data.voiceLocalOutbound?.toString() || existing?.voiceLocalOutbound || "0.0100",
+        voiceLocalInbound: data.voiceLocalInbound?.toString() || existing?.voiceLocalInbound || "0.0080",
+        voiceTollfreeOutbound: data.voiceTollfreeOutbound?.toString() || existing?.voiceTollfreeOutbound || "0.0180",
+        voiceTollfreeInbound: data.voiceTollfreeInbound?.toString() || existing?.voiceTollfreeInbound || "0.0130",
+        // SMS Cost
+        smsLongcodeOutboundCost: data.smsLongcodeOutboundCost?.toString() || existing?.smsLongcodeOutboundCost || "0.0040",
+        smsLongcodeInboundCost: data.smsLongcodeInboundCost?.toString() || existing?.smsLongcodeInboundCost || "0.0040",
+        smsTollfreeOutboundCost: data.smsTollfreeOutboundCost?.toString() || existing?.smsTollfreeOutboundCost || "0.0040",
+        smsTollfreeInboundCost: data.smsTollfreeInboundCost?.toString() || existing?.smsTollfreeInboundCost || "0.0040",
+        // SMS Price
+        smsLongcodeOutbound: data.smsLongcodeOutbound?.toString() || existing?.smsLongcodeOutbound || "0.0060",
+        smsLongcodeInbound: data.smsLongcodeInbound?.toString() || existing?.smsLongcodeInbound || "0.0060",
+        smsTollfreeOutbound: data.smsTollfreeOutbound?.toString() || existing?.smsTollfreeOutbound || "0.0070",
+        smsTollfreeInbound: data.smsTollfreeInbound?.toString() || existing?.smsTollfreeInbound || "0.0070",
+        // Add-ons Cost
+        callControlInboundCost: data.callControlInboundCost?.toString() || existing?.callControlInboundCost || "0.0010",
+        callControlOutboundCost: data.callControlOutboundCost?.toString() || existing?.callControlOutboundCost || "0.0010",
+        recordingPerMinuteCost: data.recordingPerMinuteCost?.toString() || existing?.recordingPerMinuteCost || "0.0010",
+        cnamLookupCost: data.cnamLookupCost?.toString() || existing?.cnamLookupCost || "0.0025",
+        e911AddressCost: data.e911AddressCost?.toString() || existing?.e911AddressCost || "1.50",
+        portOutFeeCost: data.portOutFeeCost?.toString() || existing?.portOutFeeCost || "6.00",
+        unregisteredE911Cost: data.unregisteredE911Cost?.toString() || existing?.unregisteredE911Cost || "100.00",
+        // Add-ons Price
+        callControlInbound: data.callControlInbound?.toString() || existing?.callControlInbound || "0.0020",
+        callControlOutbound: data.callControlOutbound?.toString() || existing?.callControlOutbound || "0.0020",
+        recordingPerMinute: data.recordingPerMinute?.toString() || existing?.recordingPerMinute || "0.0020",
+        cnamLookup: data.cnamLookup?.toString() || existing?.cnamLookup || "0.0045",
+        e911Address: data.e911Address?.toString() || existing?.e911Address || "2.00",
+        portOutFee: data.portOutFee?.toString() || existing?.portOutFee || "10.00",
+        unregisteredE911: data.unregisteredE911?.toString() || existing?.unregisteredE911 || "100.00",
+        // DIDs Cost
+        didLocalCost: data.didLocalCost?.toString() || existing?.didLocalCost || "0.50",
+        didTollfreeCost: data.didTollfreeCost?.toString() || existing?.didTollfreeCost || "0.75",
+        // DIDs Price
+        didLocal: data.didLocal?.toString() || existing?.didLocal || "1.00",
+        didTollfree: data.didTollfree?.toString() || existing?.didTollfree || "1.50",
+        // Billing config
+        billingIncrement: parseInt(data.billingIncrement) || existing?.billingIncrement || 60,
+        minBillableSeconds: parseInt(data.minBillableSeconds) || existing?.minBillableSeconds || 60,
+        updatedAt: new Date(),
+        updatedBy: user.id,
+      };
+
+      if (existing) {
+        await db.update(telnyxGlobalPricing)
+          .set(pricingData)
+          .where(eq(telnyxGlobalPricing.id, existing.id));
+      } else {
+        await db.insert(telnyxGlobalPricing).values(pricingData);
+      }
+
+      // Invalidate pricing cache
+      const { invalidatePricingCache } = await import('./services/pricing-config');
+      invalidatePricingCache();
+      console.log("[Global Pricing] Updated by user:", user.id);
+      res.json({ success: true, message: "Pricing configuration updated successfully" });
+    } catch (error: any) {
+      console.error("[Global Pricing] PUT error:", error);
+      res.status(500).json({ message: "Failed to update pricing configuration" });
+    }
+  });
+
+
   // POST /api/telnyx/provisioning/trigger - Trigger WebRTC infrastructure provisioning
   app.post("/api/telnyx/provisioning/trigger", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -28791,7 +29629,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
       
       // Check if already provisioned
-      const existingStatus = await telephonyProvisioningService.getProvisioningStatus(user.companyId);
+      const existingStatus = await telephonyProvisioningService.getProvisioningStatus(user.companyId, user.id);
       if (existingStatus?.status === "completed") {
         return res.json({ 
           success: true, 
@@ -28801,7 +29639,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // Trigger provisioning (async - don't wait)
-      telephonyProvisioningService.provisionClientInfrastructure(user.companyId, managedAccountId)
+      telephonyProvisioningService.provisionClientInfrastructure(user.companyId, managedAccountId, user.id)
         .then(result => {
           if (result.success) {
             console.log("[Provisioning] WebRTC infrastructure provisioned for company:", user.companyId);
@@ -28833,7 +29671,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
-      const status = await telephonyProvisioningService.getProvisioningStatus(user.companyId);
+      // Superadmins can see all company telephony resources, admins only see their own
+      const userId = (user.role === 'superadmin' || user.role === 'admin') ? undefined : user.id;
+      const status = await telephonyProvisioningService.getProvisioningStatus(user.companyId, userId);
 
       if (!status) {
         return res.json({ 
@@ -28877,7 +29717,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
       
       // Check current status
-      const currentStatus = await telephonyProvisioningService.getProvisioningStatus(user.companyId);
+      const currentStatus = await telephonyProvisioningService.getProvisioningStatus(user.companyId, user.id);
       if (currentStatus?.status === "provisioning") {
         return res.status(409).json({ 
           message: "Provisioning is already in progress. Please wait." 
@@ -28885,7 +29725,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // Trigger provisioning
-      const result = await telephonyProvisioningService.provisionClientInfrastructure(user.companyId, managedAccountId);
+      const result = await telephonyProvisioningService.provisionClientInfrastructure(user.companyId, managedAccountId, user.id);
 
       if (result.success) {
         res.json({ 
@@ -28919,7 +29759,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
-      const result = await telephonyProvisioningService.repairPhoneNumberRouting(user.companyId);
+      const result = await telephonyProvisioningService.repairPhoneNumberRouting(user.companyId, user.id);
 
       if (result.success) {
         res.json({ 
@@ -28949,7 +29789,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
-      const result = await telephonyProvisioningService.fixTexmlWebhooks(user.companyId);
+      const result = await telephonyProvisioningService.fixTexmlWebhooks(user.companyId, user.id);
 
       if (result.success) {
         res.json({ 
@@ -28978,8 +29818,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated with user" });
       }
 
+
+      // Also repair SIP connection settings (ANI override + simultaneous ringing)
+      const { repairSipConnectionSettings } = await import("./services/telnyx-e911-service");
+      const sipRepairResult = await repairSipConnectionSettings(user.companyId);
+      
+      if (sipRepairResult.success) {
+        console.log("[Provisioning] SIP connection settings repaired (ANI override + simultaneous ringing)");
+      } else {
+        console.warn("[Provisioning] SIP connection repair warning:", sipRepairResult.error);
+      }
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
-      const result = await telephonyProvisioningService.repairSipUriCalling(user.companyId);
+      const result = await telephonyProvisioningService.repairSipUriCalling(user.companyId, user.id);
 
       if (result.success) {
         res.json({ 
@@ -29008,7 +29858,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
-      const result = await telephonyProvisioningService.repairSrtpSettings(user.companyId);
+      const result = await telephonyProvisioningService.repairSrtpSettings(user.companyId, user.id);
 
       if (result.success) {
         res.json({ 
@@ -29027,6 +29877,35 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/telnyx/provisioning/repair-hd-codecs - Configure HD codecs (G.722) on credential connection
+  app.post("/api/telnyx/provisioning/repair-hd-codecs", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const result = await telephonyProvisioningService.repairHDCodecs(user.companyId, user.id);
+
+      if (result.success) {
+        res.json({ 
+          success: true,
+          message: "HD codecs configured successfully. Voice quality will now use G.722 HD audio."
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: result.error || "Failed to configure HD codecs"
+        });
+      }
+    } catch (error: any) {
+      console.error("[Provisioning] HD codecs repair error:", error);
+      res.status(500).json({ message: "Failed to configure HD codecs" });
+    }
+  });
+
   // POST /api/telephony/migrate-to-call-control - Migrate from Credential Connection to Call Control Application
   app.post("/api/telephony/migrate-to-call-control", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -29036,7 +29915,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log(`[Migration] Starting Call Control migration for company: ${companyId}`);
 
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
-      const result = await telephonyProvisioningService.migrateToCallControl(companyId);
+      const result = await telephonyProvisioningService.migrateToCallControl(companyId, user.id);
 
       if (result.success) {
         res.json({
@@ -29058,7 +29937,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to migrate to Call Control Application" });
     }
   });
-  // GET /api/telnyx/sip-credentials - Get SIP credentials for WebRTC client
+  // GET /api/telnyx/sip-credentials - Get SIP credentials for WebRTC client or Desk Phone
+  // Accepts optional ?userId= parameter for admins to get credentials for specific users
   app.get("/api/telnyx/sip-credentials", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -29068,7 +29948,24 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
-      const credentials = await telephonyProvisioningService.getSipCredentials(user.companyId);
+      
+      // Allow admins/superadmins to query credentials for a specific user (e.g., for desk phone setup)
+      // Regular users can only get their own credentials
+      let targetUserId: string | undefined;
+      const queryUserId = req.query.userId as string | undefined;
+      
+      if (queryUserId && (user.role === "superadmin" || user.role === "admin")) {
+        // Admin requesting credentials for specific user
+        targetUserId = queryUserId;
+      } else if (user.role === "superadmin" || user.role === "admin") {
+        // Admin without specific user - get any company credentials
+        targetUserId = undefined;
+      } else {
+        // Regular user - only their own credentials
+        targetUserId = user.id;
+      }
+      
+      const credentials = await telephonyProvisioningService.getSipCredentials(user.companyId, targetUserId);
 
       if (!credentials) {
         return res.status(404).json({ 
@@ -29086,7 +29983,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to get SIP credentials" });
     }
   });
-
   // GET /api/telnyx/turn-credentials - Generate TURN server credentials for WebRTC ICE
   // Per Telnyx docs: SIP credentials authenticate with TURN servers
   // This enables manual ICE server injection for faster call connection (<1 second vs 4+ seconds)
@@ -29099,7 +29995,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated with user" });
       }
 
-      // Use the SAME method as /api/webrtc/token - query telephonyCredentials table directly
+      // Use the SAME method as /api/webrtc/token - query telephonyCredentials table directly (user-scoped)
       const [credential] = await db
         .select({ 
           sipUsername: telephonyCredentials.sipUsername,
@@ -29109,6 +30005,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .where(
           and(
             eq(telephonyCredentials.companyId, user.companyId),
+            eq(telephonyCredentials.userId, user.id),
             eq(telephonyCredentials.isActive, true)
           )
         )
@@ -29181,7 +30078,368 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/telnyx/sync-recordings - Sync recordings from Telnyx to call logs
+  app.post("/api/telnyx/sync-recordings", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (user.role !== 'admin') {
+        return res.status(403).json({ error: "Admin access required" });
+      }
 
+      // Get Telnyx API key from secrets service (same as other Telnyx endpoints)
+      const { SecretsService } = await import("./services/secrets-service");
+      const secretsService = new SecretsService();
+      let apiKey = await secretsService.getCredential("telnyx", "api_key");
+      if (!apiKey) {
+        return res.status(500).json({ error: "Telnyx API key not configured" });
+      }
+      apiKey = apiKey.trim().replace(/[\r\n\t]/g, "");
+      // Get the company's managed account ID from wallet
+      const [wallet] = await db.select().from(wallets).where(eq(wallets.companyId, user.companyId)).limit(1);
+      const managedAccountId = wallet?.telnyxAccountId;
+      
+      console.log(`[Telnyx Sync] Fetching recordings for company ${user.companyId}, managed account: ${managedAccountId || "none"}`);
+
+      // Build headers with managed account if available
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'application/json'
+      };
+      if (managedAccountId) {
+        headers['x-managed-account-id'] = managedAccountId;
+      }
+
+      // Fetch recent recordings from Telnyx
+      const response = await fetch('https://api.telnyx.com/v2/recordings?page[size]=50', { headers });
+
+      const data = await response.json();
+      
+      if (!response.ok || data.errors) {
+        console.error('[Telnyx Sync] API error:', data.errors);
+        return res.status(500).json({ error: "Failed to fetch recordings", details: data.errors });
+      }
+
+      const recordings = data.data || [];
+      console.log(`[Telnyx Sync] Processing ${recordings.length} recordings from Telnyx API`);
+      let synced = 0;
+      let skipped = 0;
+
+      for (const rec of recordings) {
+        const mp3Url = rec.download_urls?.mp3;
+        if (!mp3Url) {
+          skipped++;
+          continue;
+        }
+
+        console.log(`[Telnyx Sync] Recording ${rec.id}: checking for match...`);
+        // Normalize phone numbers
+        const fromNumber = (rec.from || '').replace(/[^\d+]/g, '');
+        const toNumber = (rec.to || '').replace(/[^\d+]/g, '');
+        const recordingDate = new Date(rec.created_at);
+        console.log(`[Telnyx Sync] Recording: from=${fromNumber}, to=${toNumber}, date=${recordingDate.toISOString()}`);
+        
+        // Search time window: 2 HOURS before recording (recordings can be created hours after call ends)
+        const searchStart = new Date(recordingDate.getTime() - 2 * 60 * 60 * 1000);
+        const searchEnd = new Date(recordingDate.getTime() + 5 * 60 * 1000);
+
+        // Find matching call log without recording
+        const matchingCalls = await db
+          .select()
+          .from(callLogs)
+          .where(
+            and(
+              eq(callLogs.companyId, user.companyId),
+              isNull(callLogs.recordingUrl),
+              gte(callLogs.startedAt, searchStart),
+              lte(callLogs.startedAt, searchEnd),
+              or(
+                and(eq(callLogs.fromNumber, fromNumber), eq(callLogs.toNumber, toNumber)),
+                and(eq(callLogs.fromNumber, toNumber), eq(callLogs.toNumber, fromNumber))
+              )
+            )
+          )
+          .limit(1);
+
+        if (matchingCalls.length > 0) {
+          await db
+            .update(callLogs)
+            .set({ recordingUrl: mp3Url })
+            .where(eq(callLogs.id, matchingCalls[0].id));
+          
+          console.log(`[Telnyx Sync] Updated call ${matchingCalls[0].id} with recording`);
+          synced++;
+        } else {
+          skipped++;
+        }
+      }
+
+      res.json({ 
+        success: true, 
+        message: `Synced ${synced} recordings, skipped ${skipped}`,
+        totalRecordings: recordings.length,
+        synced,
+        skipped
+      });
+    } catch (error: any) {
+      console.error('[Telnyx Sync] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/telnyx/cdr - Get Call Detail Records from Telnyx for billing analysis
+  app.get("/api/telnyx/cdr", requireAuth, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    if (user.role !== "admin" && user.role !== "super_admin" && user.role !== "superadmin") {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    try {
+      const { SecretsService } = await import("./services/secrets-service");
+      const secretsService = new SecretsService();
+      let apiKey = await secretsService.getCredential("telnyx", "api_key");
+      if (!apiKey) {
+        return res.status(500).json({ error: "Telnyx API key not configured" });
+      }
+      apiKey = apiKey.trim().replace(/[\r\n\t]/g, "");
+
+      const { companyId, fromNumber, toNumber, startDate, endDate } = req.query;
+      
+      // Get managed account ID if company specified
+      let managedAccountId: string | undefined;
+      if (companyId) {
+        const [wallet] = await db.select().from(wallets).where(eq(wallets.companyId, String(companyId))).limit(1);
+        managedAccountId = wallet?.telnyxAccountId || undefined;
+      }
+
+      const headers: Record<string, string> = {
+        'Authorization': `Bearer ${apiKey}`,
+        'Accept': 'application/json'
+      };
+      if (managedAccountId) {
+        headers['x-managed-account-id'] = managedAccountId;
+      }
+
+      // Build query params for Telnyx API
+      const params = new URLSearchParams();
+      params.set('filter[record_type]', 'call');
+      params.set('filter[date_range]', 'last_7_days');
+      params.set('page[size]', '100');
+      
+      if (startDate) params.set('filter[created_at][gte]', String(startDate));
+      if (endDate) params.set('filter[created_at][lte]', String(endDate));
+
+      const url = `https://api.telnyx.com/v2/detail_records?${params.toString()}`;
+      console.log(`[Telnyx CDR] Fetching: ${url}, managed account: ${managedAccountId || 'none'}`);
+
+      const response = await fetch(url, { headers });
+      const data = await response.json();
+
+      if (!response.ok) {
+        console.error('[Telnyx CDR] Error:', data);
+        return res.status(response.status).json({ error: data.errors?.[0]?.detail || 'Failed to fetch CDR' });
+      }
+
+      // Filter by phone numbers if specified
+      let records = data.data || [];
+      if (fromNumber || toNumber) {
+        records = records.filter((r: any) => {
+          if (fromNumber && r.from !== fromNumber && r.caller_id !== fromNumber) return false;
+          if (toNumber && r.to !== toNumber && r.destination !== toNumber) return false;
+          return true;
+        });
+      }
+
+      res.json({
+        success: true,
+        managedAccountId,
+        totalRecords: records.length,
+        records: records.map((r: any) => ({
+          id: r.id,
+          createdAt: r.created_at,
+          from: r.from || r.caller_id,
+          to: r.to || r.destination,
+          direction: r.direction,
+          duration: r.duration,
+          billedDuration: r.billed_duration,
+          rate: r.rate,
+          cost: r.cost,
+          currency: r.currency,
+          recordType: r.record_type,
+          status: r.status,
+          carrierFees: r.carrier_fees,
+          features: r.features
+        }))
+      });
+    } catch (error: any) {
+      console.error('[Telnyx CDR] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+
+  // GET /api/telnyx/call-billing - Get call billing analytics (client cost vs Telnyx cost)
+  app.get("/api/telnyx/call-billing", requireAuth, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    if (user.role !== "admin" && user.role !== "super_admin" && user.role !== "superadmin") {
+      return res.status(403).json({ error: "Admin access required" });
+    }
+    try {
+      const { companyId, limit = "50" } = req.query;
+      
+      if (!companyId) {
+        return res.status(400).json({ error: "companyId is required" });
+      }
+
+      // 1. Get call logs from our database (client billing)
+      const dbCalls = await db.select()
+        .from(callLogs)
+        .where(eq(callLogs.companyId, String(companyId)))
+        .orderBy(desc(callLogs.startedAt))
+        .limit(Number(limit));
+
+      // 2. Get Telnyx CDR for cost comparison
+      const { SecretsService } = await import("./services/secrets-service");
+      const secretsService = new SecretsService();
+      let apiKey = await secretsService.getCredential("telnyx", "api_key");
+      
+      let telnyxCdrMap: Map<string, any> = new Map();
+      
+      if (apiKey && dbCalls.length > 0) {
+        apiKey = apiKey.trim().replace(/[\r\n\t]/g, "");
+        
+        // Get managed account ID
+        const [wallet] = await db.select().from(wallets).where(eq(wallets.companyId, String(companyId))).limit(1);
+        const managedAccountId = wallet?.telnyxAccountId;
+        
+        if (managedAccountId) {
+          const headers: Record<string, string> = {
+            'Authorization': `Bearer ${apiKey}`,
+            'Accept': 'application/json',
+            'x-managed-account-id': managedAccountId
+          };
+          
+          // Determine date range from call logs (oldest call to now)
+          const oldestCallDate = dbCalls[dbCalls.length - 1]?.startedAt;
+          const daysSinceOldest = oldestCallDate 
+            ? Math.ceil((Date.now() - new Date(oldestCallDate).getTime()) / (1000 * 60 * 60 * 24))
+            : 7;
+          // Use appropriate date range filter
+          const dateRange = daysSinceOldest <= 1 ? 'today' 
+            : daysSinceOldest <= 7 ? 'last_7_days' 
+            : 'last_30_days';
+          
+          // Fetch CDRs from both call-control and webrtc record types
+          const recordTypes = ['call-control', 'webrtc'];
+          
+          for (const recordType of recordTypes) {
+            try {
+              const params = new URLSearchParams();
+              params.set('filter[record_type]', recordType);
+              params.set('filter[date_range]', dateRange);
+              params.set('page[size]', '200');
+              
+              const url = `https://api.telnyx.com/v2/detail_records?${params.toString()}`;
+              
+              const response = await fetch(url, { headers });
+              const data = await response.json();
+              
+              if (response.ok && data.data) {
+                // Map CDR records by telnyx_session_id for lookup
+                for (const record of data.data) {
+                  if (record.telnyx_session_id) {
+                    // Only add if not already present (avoid duplicates)
+                    if (!telnyxCdrMap.has(record.telnyx_session_id)) {
+                      telnyxCdrMap.set(record.telnyx_session_id, {
+                        call_sec: record.call_sec,
+                        billed_sec: record.billed_sec,
+                        rate: parseFloat(record.rate || '0'),
+                        cost: parseFloat(record.cost || '0'),
+                        currency: record.currency,
+                        started_at: record.started_at,
+                        finished_at: record.finished_at,
+                        record_type: recordType
+                      });
+                    }
+                  }
+                }
+              }
+            } catch (cdrError) {
+              console.error(`[Call Billing] CDR fetch error (${recordType}):`, cdrError);
+            }
+          }
+        }
+      }
+
+      // 3. Combine data
+      const billingRecords = dbCalls.map((call) => {
+        const clientCost = parseFloat(call.cost || '0');
+        
+        // Try to match with Telnyx CDR by session ID
+        const telnyxData = call.telnyxSessionId ? telnyxCdrMap.get(call.telnyxSessionId) : null;
+        const telnyxCost = telnyxData?.cost || 0;
+        
+        // Calculate profit
+        const profit = clientCost - telnyxCost;
+        const profitMargin = clientCost > 0 ? ((profit / clientCost) * 100) : 0;
+        
+        return {
+          id: call.id,
+          direction: call.direction,
+          status: call.status,
+          fromNumber: call.fromNumber,
+          toNumber: call.toNumber,
+          callerName: call.callerName,
+          duration: call.duration || 0,
+          billedDuration: call.billedDuration || 0,
+          startedAt: call.startedAt,
+          endedAt: call.endedAt,
+          // Billing comparison
+          clientCost: clientCost,
+          clientCostFormatted: `$${clientCost.toFixed(4)}`,
+          telnyxCost: telnyxCost,
+          telnyxCostFormatted: telnyxData ? `$${telnyxCost.toFixed(4)}` : 'Pending',
+          profit: profit,
+          profitFormatted: telnyxData ? `$${profit.toFixed(4)}` : 'Pending',
+          profitMargin: profitMargin.toFixed(1) + '%',
+          hasTelnyxData: !!telnyxData,
+          // Additional info
+          recordingUrl: call.recordingUrl,
+          telnyxSessionId: call.telnyxSessionId
+        };
+      });
+
+      // 4. Calculate totals
+      const totalClientCost = billingRecords.reduce((sum, r) => sum + r.clientCost, 0);
+      const totalTelnyxCost = billingRecords.filter(r => r.hasTelnyxData).reduce((sum, r) => sum + r.telnyxCost, 0);
+      const totalProfit = billingRecords.filter(r => r.hasTelnyxData).reduce((sum, r) => sum + r.profit, 0);
+      const callsWithCdr = billingRecords.filter(r => r.hasTelnyxData).length;
+
+      res.json({
+        success: true,
+        records: billingRecords,
+        summary: {
+          totalCalls: billingRecords.length,
+          callsWithCdrData: callsWithCdr,
+          totalClientCost: totalClientCost,
+          totalClientCostFormatted: `$${totalClientCost.toFixed(4)}`,
+          totalTelnyxCost: totalTelnyxCost,
+          totalTelnyxCostFormatted: `$${totalTelnyxCost.toFixed(4)}`,
+          totalProfit: totalProfit,
+          totalProfitFormatted: `$${totalProfit.toFixed(4)}`,
+          overallProfitMargin: totalClientCost > 0 ? ((totalProfit / totalClientCost) * 100).toFixed(1) + '%' : 'N/A',
+          cdrNote: callsWithCdr < billingRecords.length 
+            ? `${billingRecords.length - callsWithCdr} calls pending CDR (Telnyx has ~3hr processing delay)`
+            : 'All calls have CDR data'
+        }
+      });
+    } catch (error: any) {
+      console.error('[Call Billing] Error:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+
+  // =====================================================
+  // E911 EMERGENCY ADDRESS ENDPOINTS
   // =====================================================
   // E911 EMERGENCY ADDRESS ENDPOINTS
   // =====================================================
@@ -29346,7 +30604,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getWalletByCompany } = await import("./services/wallet-service");
-      const wallet = await getWalletByCompany(user.companyId);
+      const wallet = await getWalletByUser(user.companyId, user.id);
       
       const MINIMUM_BALANCE_FOR_CALLS = 0.50;
       const currentBalance = wallet ? parseFloat(wallet.balance) : 0;
@@ -29839,7 +31097,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.json({ found: false });
     }
   });
-  // GET /api/call-logs - Get call history for company
+  // GET /api/call-logs - Get call history for user (user-scoped)
   app.get("/api/call-logs", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -29851,10 +31109,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { filter, limit = "50" } = req.query;
       const parsedLimit = Math.min(parseInt(limit as string) || 50, 100);
 
+      // Superadmin can see all call logs for a company
+      if (user.role === "superadmin") {
+        const logs = await db
+          .select()
+          .from(callLogs)
+          .where(eq(callLogs.companyId, user.companyId))
+          .orderBy(desc(callLogs.startedAt))
+          .limit(parsedLimit);
+        return res.json({ logs });
+      }
+
+      // Regular users only see their own call logs (user-scoped)
       const logs = await db
         .select()
         .from(callLogs)
-        .where(eq(callLogs.companyId, user.companyId))
+        .where(and(
+          eq(callLogs.companyId, user.companyId),
+          eq(callLogs.userId, user.id)
+        ))
         .orderBy(desc(callLogs.startedAt))
         .limit(parsedLimit);
 
@@ -29883,6 +31156,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         callerName,
         telnyxCallId,
         telnyxSessionId,
+        sipCallId,
+        hangupCause,
         startedAt,
         answeredAt,
         endedAt
@@ -29905,16 +31180,125 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           callerName,
           telnyxCallId,
           telnyxSessionId,
+        sipCallId,
+        hangupCause,
           startedAt: startedAt ? new Date(startedAt) : new Date(),
           answeredAt: answeredAt ? new Date(answeredAt) : null,
           endedAt: endedAt ? new Date(endedAt) : null,
         })
         .returning();
 
-      res.json({ success: true, log });
+      res.json({ success: true, id: log.id, log });
     } catch (error: any) {
       console.error("[Call Logs] Create error:", error);
       res.status(500).json({ message: "Failed to create call log" });
+    }
+  });
+
+
+  // PATCH /api/call-logs/:id - Update a call log entry
+  app.patch("/api/call-logs/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { id } = req.params;
+      
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { status, duration, answeredAt, endedAt, hangupCause, recordingUrl, fromNumber, toNumber, direction, sipCallId, startedAt, contactId, callerName } = req.body;
+
+      // First, get the existing call log to check current state
+      const [existingLog] = await db
+        .select()
+        .from(callLogs)
+        .where(and(eq(callLogs.id, id), eq(callLogs.companyId, user.companyId)));
+
+      if (!existingLog) {
+        return res.status(404).json({ message: "Call log not found" });
+      }
+
+      const updateData: any = {};
+      if (status !== undefined) updateData.status = status;
+      if (duration !== undefined) updateData.duration = duration;
+      if (answeredAt !== undefined) updateData.answeredAt = new Date(answeredAt);
+      if (endedAt !== undefined) updateData.endedAt = new Date(endedAt);
+      if (hangupCause !== undefined) updateData.hangupCause = hangupCause;
+      if (recordingUrl !== undefined) updateData.recordingUrl = recordingUrl;
+
+      if (Object.keys(updateData).length === 0) {
+        return res.status(400).json({ message: "No fields to update" });
+      }
+
+      // Check if this is a call ending and needs billing
+      // Conditions: status is "ended" or "completed", duration > 0, cost not already set
+      const isCallEnding = (status === "ended" || status === "completed");
+      const hasDuration = (duration !== undefined && duration > 0) || (existingLog.duration && existingLog.duration > 0);
+      const notAlreadyBilled = !existingLog.cost || existingLog.cost === "0" || existingLog.cost === "0.0000";
+      
+      if (isCallEnding && hasDuration && notAlreadyBilled) {
+        console.log(`[Call Logs] WebRTC call ended - charging to wallet. ID: ${id}, Duration: ${duration || existingLog.duration}s`);
+        
+        // Use provided values or fall back to existing log values
+        const callDuration = duration !== undefined ? duration : (existingLog.duration || 0);
+        const callFromNumber = fromNumber || existingLog.fromNumber;
+        const callToNumber = toNumber || existingLog.toNumber;
+        const callDirection = direction || existingLog.direction;
+        const callStartedAt = startedAt ? new Date(startedAt) : (existingLog.startedAt || new Date());
+        const callEndedAt = endedAt ? new Date(endedAt) : new Date();
+        
+        // Charge the call to the wallet
+        const chargeResult = await chargeCallToWallet(user.companyId, {
+          telnyxCallId: existingLog.telnyxCallId || existingLog.sipCallId || id,
+          fromNumber: callFromNumber,
+          toNumber: callToNumber,
+          direction: callDirection as "inbound" | "outbound",
+          durationSeconds: callDuration,
+          status: status,
+          startedAt: callStartedAt,
+          endedAt: callEndedAt,
+          userId: existingLog.userId || user.id,
+          contactId: contactId || existingLog.contactId || undefined,
+          callerName: callerName || existingLog.callerName || undefined,
+        });
+
+        if (chargeResult.success) {
+          console.log(`[Call Logs] WebRTC call charged successfully: $${chargeResult.amountCharged}, new balance: $${chargeResult.newBalance}`);
+          
+          // Update the call log with the cost from charging
+          updateData.cost = chargeResult.amountCharged;
+          updateData.costCurrency = "USD";
+          updateData.billedDuration = callDuration;
+          
+          // Broadcast wallet update to clients
+          broadcastWalletUpdate(user.companyId, {
+            balance: chargeResult.newBalance!,
+            transactionType: "CALL_COST",
+            description: `Call to ${callToNumber}`
+          });
+        } else if (chargeResult.insufficientFunds) {
+          console.error(`[Call Logs] Insufficient funds for WebRTC call: ${chargeResult.error}`);
+          // Still update the call log but mark as failed billing
+          updateData.cost = "0.0000";
+          updateData.costCurrency = "USD";
+        } else {
+          console.error(`[Call Logs] Failed to charge WebRTC call: ${chargeResult.error}`);
+        }
+      }
+
+      const [updated] = await db
+        .update(callLogs)
+        .set(updateData)
+        .where(and(eq(callLogs.id, id), eq(callLogs.companyId, user.companyId)))
+        .returning();
+
+      // Broadcast the updated call log
+      broadcastNewCallLog(user.companyId, updated as any);
+
+      res.json({ success: true, log: updated });
+    } catch (error: any) {
+      console.error("[Call Logs] Update error:", error);
+      res.status(500).json({ message: "Failed to update call log" });
     }
   });
 
@@ -29942,7 +31326,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // DELETE /api/call-logs - Clear all call logs for company
+  // DELETE /api/call-logs - Clear all call logs for user (user-scoped)
   app.delete("/api/call-logs", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -29951,9 +31335,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated with user" });
       }
 
-      await db
-        .delete(callLogs)
-        .where(eq(callLogs.companyId, user.companyId));
+      // Superadmin can clear all company call logs
+      if (user.role === "superadmin") {
+        await db
+          .delete(callLogs)
+          .where(eq(callLogs.companyId, user.companyId));
+      } else {
+        // Regular users can only clear their own call logs (user-scoped)
+        await db
+          .delete(callLogs)
+          .where(and(
+            eq(callLogs.companyId, user.companyId),
+            eq(callLogs.userId, user.id)
+          ));
+      }
 
       res.json({ success: true });
     } catch (error: any) {
@@ -30453,11 +31848,33 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // DELETE /api/vip-pass/instances/:id/permanent - Permanently delete a pass instance
+  app.delete("/api/vip-pass/instances/:id/permanent", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+      
+      const { id } = req.params;
+      
+      // Permanently delete pass with companyId verification
+      await vipPassService.deletePassInstance(id, user.companyId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[VIP Pass] Error deleting instance:", error);
+      if (error.message === "Pass instance not found") {
+        return res.status(404).json({ error: "Pass instance not found" });
+      }
+      return res.status(500).json({ error: "Failed to delete VIP Pass instance" });
+    }
+  });
+
   // ========================================
   // VIP PASS PUSH NOTIFICATIONS ENDPOINTS
   // ========================================
 
-  // POST /api/vip-pass/notifications/send - Send push notification
+  // POST /api/vip-pass/notifications/send - Send rich push notification
   app.post("/api/vip-pass/notifications/send", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -30470,22 +31887,112 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ error: "Admin access required" });
       }
       
-      const { passInstanceId, message } = req.body;
+      const { 
+        passInstanceId, 
+        title,
+        body,
+        url,
+        icon,
+        badge,
+        image,
+        tag,
+        renotify,
+        requireInteraction,
+        silent,
+        actions,
+        notificationType,
+        message // Legacy field - use body if message provided
+      } = req.body;
       
-      if (!message) {
-        return res.status(400).json({ error: "Message is required" });
+      const notificationBody = body || message;
+      
+      if (!notificationBody) {
+        return res.status(400).json({ error: "Body/message is required" });
       }
       
-      let result;
+      const { webPushService } = await import("./services/web-push-service");
+      
+      // Create notification record FIRST to get the notificationId for tracking
+      const [notificationRecord] = await db.insert(vipPassNotifications).values({
+        companyId: user.companyId,
+        passInstanceId: passInstanceId || null,
+        targetType: passInstanceId ? "single" : "all",
+        title: title || "VIP Pass Update",
+        message: notificationBody,
+        url: url || null,
+        eventType: notificationType || null,
+        sentCount: 0,
+        successCount: 0,
+        failedCount: 0,
+      }).returning();
+      
+      const notificationId = notificationRecord.id;
+      
+      // Build URL with tracking parameters
+      let trackingUrl = url;
+      if (url) {
+        const urlObj = new URL(url, 'https://placeholder.com');
+        urlObj.searchParams.set('nid', notificationId);
+        urlObj.searchParams.set('src', 'push');
+        trackingUrl = url.startsWith('http') ? urlObj.toString() : urlObj.pathname + urlObj.search;
+      }
+      
+      // Build rich push payload with notificationId for click tracking
+      const pushPayload = {
+        title: title || "VIP Pass Update",
+        body: notificationBody,
+        url: trackingUrl || undefined,
+        icon: icon || undefined,
+        badge: badge || undefined,
+        image: image || undefined,
+        tag: tag || undefined,
+        renotify: renotify || false,
+        requireInteraction: requireInteraction || false,
+        silent: silent || false,
+        actions: actions || undefined,
+        notificationType: notificationType || 'INFO',
+        notificationId: notificationId,
+      };
+      
+      let apnsResult = { successCount: 0, failedCount: 0 };
+      let webPushResult = { sent: 0, failed: 0 };
+      
       if (passInstanceId) {
-        // Send to specific pass
-        result = await vipPassApnsService.sendPushToPass(user.companyId, passInstanceId, message);
+        // Send to specific pass - both Apple and Web Push
+        apnsResult = await vipPassApnsService.sendPushToPass(user.companyId, passInstanceId, notificationBody);
+        webPushResult = await webPushService.sendToPassInstance(passInstanceId, pushPayload);
       } else {
-        // Send to all passes
-        result = await vipPassApnsService.sendPushToAllPasses(user.companyId, message);
+        // Send to all passes - both Apple and Web Push
+        apnsResult = await vipPassApnsService.sendPushToAllPasses(user.companyId, notificationBody);
+        
+        // Get all pass instances for this company and send web push to each
+        const instances = await vipPassService.getPassInstances(user.companyId);
+        for (const instance of instances) {
+          if (instance.status === "active") {
+            const result = await webPushService.sendToPassInstance(instance.id, pushPayload);
+            webPushResult.sent += result.sent;
+            webPushResult.failed += result.failed;
+          }
+        }
       }
       
-      return res.json(result);
+      // Update notification record with actual results
+      const totalSent = apnsResult.successCount + webPushResult.sent;
+      await db.update(vipPassNotifications)
+        .set({
+          sentCount: apnsResult.successCount + apnsResult.failedCount + webPushResult.sent + webPushResult.failed,
+          successCount: totalSent,
+          failedCount: apnsResult.failedCount + webPushResult.failed,
+        })
+        .where(eq(vipPassNotifications.id, notificationId));
+      
+      return res.json({
+        notificationId: notificationId,
+        successCount: apnsResult.successCount + webPushResult.sent,
+        failedCount: apnsResult.failedCount + webPushResult.failed,
+        apns: apnsResult,
+        webPush: webPushResult,
+      });
     } catch (error) {
       console.error("[VIP Pass] Error sending notification:", error);
       return res.status(500).json({ error: "Failed to send push notification" });
@@ -30516,14 +32023,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ error: "No company associated with user" });
       }
       
-      const [instances, deviceCount] = await Promise.all([
+      const { webPushService } = await import("./services/web-push-service");
+      
+      const [instances, deviceCount, pushSubscriptionsCount, platformCounts, notificationStats] = await Promise.all([
         vipPassService.getPassInstances(user.companyId),
         vipPassApnsService.getDevicesCount(user.companyId),
+        webPushService.getSubscriptionsCountByCompany(user.companyId),
+        webPushService.getSubscriptionsCountByPlatform(user.companyId),
+        // Get notification statistics
+        db.select({
+          totalSent: sql<number>`COALESCE(SUM(${vipPassNotifications.sentCount}), 0)::int`,
+          totalSuccess: sql<number>`COALESCE(SUM(${vipPassNotifications.successCount}), 0)::int`,
+          totalFailed: sql<number>`COALESCE(SUM(${vipPassNotifications.failedCount}), 0)::int`,
+          totalClicked: sql<number>`COALESCE(SUM(${vipPassNotifications.clickedCount}), 0)::int`,
+          totalLanded: sql<number>`COALESCE(SUM(${vipPassNotifications.landedCount}), 0)::int`,
+        }).from(vipPassNotifications).where(eq(vipPassNotifications.companyId, user.companyId)),
       ]);
       
       const activeCount = instances.filter(i => i.status === "active").length;
       const revokedCount = instances.filter(i => i.status === "revoked").length;
       const totalDownloads = instances.reduce((sum, i) => sum + (i.downloadCount || 0), 0);
+      
+      const nStats = notificationStats[0] || { totalSent: 0, totalSuccess: 0, totalFailed: 0, totalClicked: 0, totalLanded: 0 };
       
       return res.json({
         totalPasses: instances.length,
@@ -30531,6 +32052,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         revokedPasses: revokedCount,
         registeredDevices: deviceCount,
         totalDownloads,
+        pushSubscriptions: pushSubscriptionsCount,
+        platformCounts,
+        notificationStats: {
+          sent: nStats.totalSent,
+          delivered: nStats.totalSuccess,
+          failed: nStats.totalFailed,
+          clicked: nStats.totalClicked,
+          landed: nStats.totalLanded,
+        },
       });
     } catch (error) {
       console.error("[VIP Pass] Error getting stats:", error);
@@ -30731,6 +32261,1788 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     return res.status(200).send();
   });
 
+
+
+  // ============================================================
+  // PBX (Phone System) API Routes
+  // ============================================================
+
+  // GET /api/pbx/settings - Get PBX settings for company
+  app.get("/api/pbx/settings", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const settings = await pbxService.getPbxSettings(user.companyId);
+      return res.json(settings);
+    } catch (error: any) {
+      console.error("[PBX] Error getting settings:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/settings - Create or update PBX settings
+  app.post("/api/pbx/settings", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const settings = await pbxService.createOrUpdatePbxSettings(user.companyId, req.body);
+      return res.json(settings);
+    } catch (error: any) {
+      console.error("[PBX] Error updating settings:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+
+  // POST /api/pbx/ivr-greeting - Upload IVR greeting audio
+  const ivrGreetingUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ['audio/mpeg', 'audio/mp3', 'audio/wav', 'audio/x-wav', 'audio/wave'];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error('Only MP3 and WAV audio files are allowed'));
+      }
+    }
+  });
+  
+  app.post("/api/pbx/ivr-greeting", requireActiveCompany, (req: Request, res: Response, next: NextFunction) => {
+    // Wrap multer to handle its errors properly
+    ivrGreetingUpload.single('audio')(req, res, async (multerError: any) => {
+      try {
+        if (multerError) {
+          console.error("[PBX] Multer error uploading IVR greeting:", multerError);
+          if (multerError.code === 'LIMIT_FILE_SIZE') {
+            return res.status(400).json({ error: "File too large. Maximum size is 5MB.", code: "FILE_TOO_LARGE" });
+          }
+          return res.status(400).json({ error: multerError.message || "Upload failed", code: multerError.code || "UPLOAD_ERROR" });
+        }
+        
+        const user = req.user as User;
+        const file = req.file;
+        
+        if (!file) {
+          return res.status(400).json({ error: "No audio file provided", code: "NO_FILE" });
+        }
+        
+        // Generate unique filename
+        const extension = file.mimetype.includes('wav') ? 'wav' : 'mp3';
+        const filename = `ivr-greeting-${user.companyId}-${Date.now()}.${extension}`;
+        
+        // Save to local uploads directory
+        const uploadDir = path.join(process.cwd(), 'uploads', 'pbx-audio');
+        const filePath = path.join(uploadDir, filename);
+        
+        // Ensure directory exists
+        const fsPromises = await import('fs/promises');
+        await fsPromises.mkdir(uploadDir, { recursive: true });
+        await fsPromises.writeFile(filePath, file.buffer);
+        
+        // Generate URL for serving the file
+        const audioUrl = `/uploads/pbx-audio/${filename}`;
+        
+        // Upload to Telnyx Media Storage for instant playback
+        const domain = process.env.REPLIT_DEV_DOMAIN || process.env.REPLIT_DOMAINS?.split(',')[0];
+        const absoluteUrl = domain ? `https://${domain}${audioUrl}` : audioUrl;
+        const mediaName = `ivr-greeting-${user.companyId}-${Date.now()}`;
+        
+        let greetingMediaName: string | null = null;
+        try {
+          const { uploadAudioToTelnyxMedia } = await import("./services/call-control-webhook-service");
+          greetingMediaName = await uploadAudioToTelnyxMedia(absoluteUrl, mediaName, user.companyId);
+          console.log(`[PBX] Audio uploaded to Telnyx Media Storage: ${greetingMediaName}`);
+        } catch (telnyxError: any) {
+          console.warn(`[PBX] Telnyx Media upload failed, falling back to URL: ${telnyxError.message}`);
+        }
+        
+        // Update PBX settings with the new audio URL and media name
+        const settings = await pbxService.createOrUpdatePbxSettings(user.companyId, {
+          greetingAudioUrl: audioUrl,
+          greetingMediaName: greetingMediaName,
+          useTextToSpeech: false
+        });
+        
+        console.log(`[PBX] IVR greeting audio uploaded for company ${user.companyId}: ${filename}`);
+        
+        return res.json({ 
+          success: true, 
+          settings 
+        });
+      } catch (error: any) {
+        console.error("[PBX] Error uploading IVR greeting:", error);
+        return res.status(500).json({ error: error.message || "Upload failed", code: "SERVER_ERROR" });
+      }
+    });
+  });
+
+  
+  // DELETE /api/pbx/ivr-greeting - Delete IVR greeting audio
+  app.delete("/api/pbx/ivr-greeting", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      // Get current settings to find the file URL before deleting
+      const currentSettings = await pbxService.getPbxSettings(user.companyId);
+      
+      // If there's an existing greeting audio, delete it from Object Storage
+      if (currentSettings?.greetingAudioUrl) {
+        try {
+          // Normalize the signed URL to internal path format
+          const normalizedPath = objectStorage.normalizeObjectEntityPath(currentSettings.greetingAudioUrl);
+          const objectFile = await objectStorage.getObjectEntityFile(normalizedPath);
+          await objectFile.delete();
+          console.log(`[PBX] Deleted IVR greeting file from storage: ${normalizedPath}`);
+        } catch (deleteError: any) {
+          // Log but don't fail if file doesn't exist or can't be deleted
+          console.warn(`[PBX] Could not delete greeting file from storage: ${deleteError.message}`);
+        }
+      }
+      
+      // Update PBX settings to clear the audio URL and media name
+      const settings = await pbxService.createOrUpdatePbxSettings(user.companyId, {
+        greetingAudioUrl: null,
+        greetingMediaName: null
+      });
+      
+      console.log(`[PBX] IVR greeting audio deleted for company ${user.companyId}`);
+      
+      return res.json({ success: true, settings });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting IVR greeting:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // GET /api/pbx/queues - Get all queues
+  app.get("/api/pbx/queues", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const queues = await pbxService.getQueues(user.companyId);
+      return res.json(queues);
+    } catch (error: any) {
+      console.error("[PBX] Error getting queues:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/queues - Create queue
+  app.post("/api/pbx/queues", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const queue = await pbxService.createQueue(user.companyId, req.body);
+      return res.json(queue);
+    } catch (error: any) {
+      console.error("[PBX] Error creating queue:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/pbx/queues/:queueId - Update queue
+  app.patch("/api/pbx/queues/:queueId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const queue = await pbxService.updateQueue(user.companyId, req.params.queueId, req.body);
+      return res.json(queue);
+    } catch (error: any) {
+      console.error("[PBX] Error updating queue:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/queues/:queueId - Delete queue
+  app.delete("/api/pbx/queues/:queueId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.deleteQueue(user.companyId, req.params.queueId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting queue:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/queues/:queueId/members - Get queue members
+  app.get("/api/pbx/queues/:queueId/members", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const members = await pbxService.getQueueMembers(user.companyId, req.params.queueId);
+      return res.json(members);
+    } catch (error: any) {
+      console.error("[PBX] Error getting queue members:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/queues/:queueId/members - Add queue member
+  app.post("/api/pbx/queues/:queueId/members", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { userId, priority } = req.body;
+      const member = await pbxService.addQueueMember(user.companyId, req.params.queueId, userId, priority);
+      return res.json(member);
+    } catch (error: any) {
+      console.error("[PBX] Error adding queue member:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/queues/:queueId/members/:userId - Remove queue member
+  app.delete("/api/pbx/queues/:queueId/members/:userId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.removeQueueMember(user.companyId, req.params.queueId, req.params.userId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error removing queue member:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PUT /api/pbx/queues/:queueId/members/sync - Sync queue members
+  app.put("/api/pbx/queues/:queueId/members/sync", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { memberIds } = req.body;
+      if (!Array.isArray(memberIds)) {
+        return res.status(400).json({ error: "memberIds must be an array" });
+      }
+      await pbxService.syncQueueMembers(user.companyId, req.params.queueId, memberIds);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error syncing queue members:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/queues/:queueId/ads - Get queue ads
+  app.get("/api/pbx/queues/:queueId/ads", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const ads = await pbxService.getQueueAds(user.companyId, req.params.queueId);
+      return res.json(ads);
+    } catch (error: any) {
+      console.error("[PBX] Error fetching queue ads:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/queues/:queueId/ads - Add queue ad
+  app.post("/api/pbx/queues/:queueId/ads", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { audioFileId, displayOrder } = req.body;
+      if (!audioFileId) {
+        return res.status(400).json({ error: "audioFileId is required" });
+      }
+      const ad = await pbxService.addQueueAd(user.companyId, req.params.queueId, audioFileId, displayOrder || 0);
+      return res.json(ad);
+    } catch (error: any) {
+      console.error("[PBX] Error adding queue ad:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/pbx/queues/:queueId/ads/:adId - Update queue ad
+  app.patch("/api/pbx/queues/:queueId/ads/:adId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { displayOrder, isActive } = req.body;
+      const ad = await pbxService.updateQueueAd(user.companyId, req.params.adId, { displayOrder, isActive });
+      if (!ad) {
+        return res.status(404).json({ error: "Ad not found" });
+      }
+      return res.json(ad);
+    } catch (error: any) {
+      console.error("[PBX] Error updating queue ad:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/queues/:queueId/ads/:adId - Delete queue ad
+  app.delete("/api/pbx/queues/:queueId/ads/:adId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.removeQueueAd(user.companyId, req.params.adId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting queue ad:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/queues/:queueId/hold-music - Get queue hold music files
+  app.get("/api/pbx/queues/:queueId/hold-music", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const holdMusic = await pbxService.getQueueHoldMusic(user.companyId, req.params.queueId);
+      return res.json(holdMusic);
+    } catch (error: any) {
+      console.error("[PBX] Error fetching queue hold music:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/queues/:queueId/hold-music - Add hold music to queue
+  app.post("/api/pbx/queues/:queueId/hold-music", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { audioFileId, displayOrder } = req.body;
+      if (!audioFileId) {
+        return res.status(400).json({ error: "audioFileId is required" });
+      }
+      const holdMusic = await pbxService.addQueueHoldMusic(user.companyId, req.params.queueId, audioFileId, displayOrder || 0);
+      return res.json(holdMusic);
+    } catch (error: any) {
+      console.error("[PBX] Error adding queue hold music:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PUT /api/pbx/queues/:queueId/hold-music/sync - Sync hold music files for queue
+  app.put("/api/pbx/queues/:queueId/hold-music/sync", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { audioFileIds } = req.body;
+      if (!Array.isArray(audioFileIds)) {
+        return res.status(400).json({ error: "audioFileIds must be an array" });
+      }
+      await pbxService.syncQueueHoldMusic(user.companyId, req.params.queueId, audioFileIds);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error syncing queue hold music:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/pbx/queues/:queueId/hold-music/:holdMusicId - Update hold music
+  app.patch("/api/pbx/queues/:queueId/hold-music/:holdMusicId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { displayOrder, isActive } = req.body;
+      const holdMusic = await pbxService.updateQueueHoldMusic(user.companyId, req.params.holdMusicId, { displayOrder, isActive });
+      if (!holdMusic) {
+        return res.status(404).json({ error: "Hold music not found" });
+      }
+      return res.json(holdMusic);
+    } catch (error: any) {
+      console.error("[PBX] Error updating queue hold music:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/queues/:queueId/hold-music/:holdMusicId - Delete hold music from queue
+  app.delete("/api/pbx/queues/:queueId/hold-music/:holdMusicId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.removeQueueHoldMusic(user.companyId, req.params.holdMusicId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting queue hold music:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/calls/:callControlId/hold - Start hold music on a call
+  app.post("/api/pbx/calls/:callControlId/hold", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { callControlId } = req.params;
+      const { callControlWebhookService } = await import("./services/call-control-webhook-service");
+      const result = await callControlWebhookService.startHoldMusic(callControlId, user.companyId);
+      return res.json(result);
+    } catch (error: any) {
+      console.error("[PBX] Error starting hold music:", error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/calls/:callControlId/hold - Stop hold music on a call
+  app.delete("/api/pbx/calls/:callControlId/hold", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const { callControlId } = req.params;
+      const { callControlWebhookService } = await import("./services/call-control-webhook-service");
+      const result = await callControlWebhookService.stopHoldMusic(callControlId);
+      return res.json(result);
+    } catch (error: any) {
+      console.error("[PBX] Error stopping hold music:", error);
+      return res.status(500).json({ success: false, error: error.message });
+    }
+  });
+
+  // GET /api/pbx/extensions/next - Get next available extension number
+  app.get("/api/pbx/extensions/next", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const nextExtension = await pbxService.getNextExtensionNumber(user.companyId);
+      return res.json({ nextExtension });
+    } catch (error: any) {
+      console.error("[PBX] Error getting next extension:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/extensions - Get all extensions
+  app.get("/api/pbx/extensions", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const extensions = await pbxService.getExtensions(user.companyId);
+      return res.json(extensions);
+    } catch (error: any) {
+      console.error("[PBX] Error getting extensions:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/extensions - Create extension
+  app.post("/api/pbx/extensions", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      // Validate extension number if provided
+      if (req.body.extension) {
+        const validation = await pbxService.validateExtensionNumber(user.companyId, req.body.extension);
+        if (!validation.valid) {
+          return res.status(400).json({ error: validation.error });
+        }
+      } else {
+        // Auto-assign next available extension
+        req.body.extension = await pbxService.getNextExtensionNumber(user.companyId);
+      }
+      
+      const extension = await pbxService.createExtension(user.companyId, req.body);
+      
+      // Auto-provision SIP credentials if extension has a user assigned
+      if (extension.userId && extension.extension && extension.displayName) {
+        try {
+          const { createUserSipCredentialWithExtension } = await import("./services/telnyx-e911-service");
+          const sipResult = await createUserSipCredentialWithExtension(
+            user.companyId,
+            extension.userId,
+            extension.extension,
+            extension.displayName
+          );
+          if (sipResult.success) {
+            console.log(`[PBX] Auto-provisioned SIP credentials for extension ${extension.extension}: ${sipResult.sipUsername}`);
+          } else {
+            console.warn(`[PBX] Failed to auto-provision SIP credentials: ${sipResult.error}`);
+          }
+        } catch (sipError) {
+          console.error("[PBX] Error auto-provisioning SIP credentials:", sipError);
+        }
+      }
+      
+      return res.json(extension);
+    } catch (error: any) {
+      console.error("[PBX] Error creating extension:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/extensions/:extensionId/provision-sip - Manually provision SIP credentials for an extension
+  app.post("/api/pbx/extensions/:extensionId/provision-sip", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      // Get the extension details
+      const [extension] = await db
+        .select()
+        .from(pbxExtensions)
+        .where(eq(pbxExtensions.id, req.params.extensionId));
+      
+      if (!extension) {
+        return res.status(404).json({ error: "Extension not found" });
+      }
+      
+      if (extension.companyId !== user.companyId) {
+        return res.status(403).json({ error: "Access denied" });
+      }
+      
+      if (!extension.userId) {
+        return res.status(400).json({ error: "Extension must have a user assigned to provision SIP credentials" });
+      }
+      
+      const { createUserSipCredentialWithExtension } = await import("./services/telnyx-e911-service");
+      const sipResult = await createUserSipCredentialWithExtension(
+        user.companyId,
+        extension.userId,
+        extension.extension,
+        extension.displayName || `Extension ${extension.extension}`
+      );
+      
+      if (!sipResult.success) {
+        return res.status(500).json({ error: sipResult.error || "Failed to provision SIP credentials" });
+      }
+      
+      console.log(`[PBX] Manually provisioned SIP credentials for extension ${extension.extension}: ${sipResult.sipUsername}`);
+      return res.json({ 
+        success: true, 
+        sipUsername: sipResult.sipUsername,
+        message: "SIP credentials provisioned successfully" 
+      });
+    } catch (error: any) {
+      console.error("[PBX] Error provisioning SIP credentials:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/pbx/extensions/:extensionId - Update extension
+  app.patch("/api/pbx/extensions/:extensionId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      // Get current extension to check if user is being assigned
+      const [currentExtension] = await db
+        .select({ userId: pbxExtensions.userId })
+        .from(pbxExtensions)
+        .where(eq(pbxExtensions.id, req.params.extensionId));
+      
+      const extension = await pbxService.updateExtension(user.companyId, req.params.extensionId, req.body);
+      
+      // Auto-provision SIP credentials if a new user was assigned to this extension
+      if (extension.userId && 
+          extension.extension && 
+          extension.displayName &&
+          currentExtension?.userId !== extension.userId) {
+        try {
+          const { createUserSipCredentialWithExtension } = await import("./services/telnyx-e911-service");
+          const sipResult = await createUserSipCredentialWithExtension(
+            user.companyId,
+            extension.userId,
+            extension.extension,
+            extension.displayName
+          );
+          if (sipResult.success) {
+            console.log(`[PBX] Auto-provisioned SIP credentials for updated extension ${extension.extension}: ${sipResult.sipUsername}`);
+          } else {
+            console.warn(`[PBX] Failed to auto-provision SIP credentials on update: ${sipResult.error}`);
+          }
+        } catch (sipError) {
+          console.error("[PBX] Error auto-provisioning SIP credentials on update:", sipError);
+        }
+      }
+      
+      return res.json(extension);
+    } catch (error: any) {
+      console.error("[PBX] Error updating extension:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/extensions/:extensionId - Delete extension
+  app.delete("/api/pbx/extensions/:extensionId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.deleteExtension(user.companyId, req.params.extensionId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting extension:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // =====================================================
+  // IVR (Interactive Voice Response) Management Routes
+  // =====================================================
+
+  // GET /api/pbx/ivrs - Get all IVRs for the company
+  app.get("/api/pbx/ivrs", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const ivrs = await pbxService.getIvrs(user.companyId);
+      return res.json(ivrs);
+    } catch (error: any) {
+      console.error("[PBX] Error getting IVRs:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/ivrs/next-extension - Get next available IVR extension number
+  app.get("/api/pbx/ivrs/next-extension", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const extension = await pbxService.getNextIvrExtension(user.companyId);
+      return res.json({ extension });
+    } catch (error: any) {
+      console.error("[PBX] Error getting next IVR extension:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/ivrs/:ivrId - Get single IVR
+  app.get("/api/pbx/ivrs/:ivrId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const ivr = await pbxService.getIvr(user.companyId, req.params.ivrId);
+      if (!ivr) {
+        return res.status(404).json({ error: "IVR not found" });
+      }
+      return res.json(ivr);
+    } catch (error: any) {
+      console.error("[PBX] Error getting IVR:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/ivrs - Create new IVR
+  app.post("/api/pbx/ivrs", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const ivr = await pbxService.createIvr(user.companyId, req.body);
+      return res.json(ivr);
+    } catch (error: any) {
+      console.error("[PBX] Error creating IVR:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/pbx/ivrs/:ivrId - Update IVR
+  app.patch("/api/pbx/ivrs/:ivrId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const ivr = await pbxService.updateIvr(user.companyId, req.params.ivrId, req.body);
+      if (!ivr) {
+        return res.status(404).json({ error: "IVR not found" });
+      }
+      return res.json(ivr);
+    } catch (error: any) {
+      console.error("[PBX] Error updating IVR:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/ivrs/:ivrId - Delete IVR
+  app.delete("/api/pbx/ivrs/:ivrId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.deleteIvr(user.companyId, req.params.ivrId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting IVR:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/ivrs/:ivrId/menu-options - Get menu options for specific IVR
+  app.get("/api/pbx/ivrs/:ivrId/menu-options", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const options = await pbxService.getIvrMenuOptions(user.companyId, req.params.ivrId);
+      return res.json(options);
+    } catch (error: any) {
+      console.error("[PBX] Error getting IVR menu options:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/ivrs/:ivrId/menu-options - Create menu option for IVR
+  app.post("/api/pbx/ivrs/:ivrId/menu-options", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const option = await pbxService.createIvrMenuOption(user.companyId, req.params.ivrId, req.body);
+      return res.json(option);
+    } catch (error: any) {
+      console.error("[PBX] Error creating IVR menu option:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/pbx/ivrs/:ivrId/menu-options/:optionId - Update IVR menu option
+  app.patch("/api/pbx/ivrs/:ivrId/menu-options/:optionId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const option = await pbxService.updateIvrMenuOption(user.companyId, req.params.optionId, req.body);
+      if (!option) {
+        return res.status(404).json({ error: "Menu option not found" });
+      }
+      return res.json(option);
+    } catch (error: any) {
+      console.error("[PBX] Error updating IVR menu option:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/ivrs/:ivrId/menu-options/:optionId - Delete IVR menu option
+  app.delete("/api/pbx/ivrs/:ivrId/menu-options/:optionId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.deleteIvrMenuOption(user.companyId, req.params.optionId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting IVR menu option:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/ivrs/:ivrId/upload-greeting - Upload greeting audio for IVR
+  app.post("/api/pbx/ivrs/:ivrId/upload-greeting", requireActiveCompany, (req: Request, res: Response, next: NextFunction) => {
+    uploadMiddleware.single("audio")(req, res, (err: any) => {
+      if (err) {
+        console.error("[PBX] Multer error:", err);
+        return res.status(400).json({ error: err.message });
+      }
+      next();
+    });
+  }, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const file = req.file;
+      
+      if (!file) {
+        return res.status(400).json({ error: "No audio file provided" });
+      }
+
+      const ivr = await pbxService.getIvr(user.companyId, req.params.ivrId);
+      if (!ivr) {
+        return res.status(404).json({ error: "IVR not found" });
+      }
+
+      const fileName = `ivr-greeting-${ivr.id}-${Date.now()}.${file.originalname.split('.').pop()}`;
+      const audioUrl = await storageService.uploadFile(file.buffer, fileName, file.mimetype);
+      
+      const mediaName = `ivr-greeting-${ivr.id}`;
+      const { uploadAudioToTelnyxMedia } = await import("./services/call-control-webhook-service");
+      await uploadAudioToTelnyxMedia(audioUrl, mediaName, user.companyId);
+      
+      const updatedIvr = await pbxService.updateIvr(user.companyId, req.params.ivrId, {
+        greetingAudioUrl: audioUrl,
+        greetingMediaName: mediaName,
+        useTextToSpeech: false,
+      });
+      
+      return res.json({ success: true, audioUrl, ivr: updatedIvr });
+    } catch (error: any) {
+      console.error("[PBX] Error uploading IVR greeting:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/ivrs/:ivrId/greeting - Delete IVR greeting audio
+  app.delete("/api/pbx/ivrs/:ivrId/greeting", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      const ivr = await pbxService.getIvr(user.companyId, req.params.ivrId);
+      if (!ivr) {
+        return res.status(404).json({ error: "IVR not found" });
+      }
+
+      if (ivr.greetingAudioUrl) {
+        try {
+          await storageService.deleteFile(ivr.greetingAudioUrl);
+        } catch (deleteError) {
+          console.error("[PBX] Error deleting IVR greeting file:", deleteError);
+        }
+      }
+
+      const updatedIvr = await pbxService.updateIvr(user.companyId, req.params.ivrId, {
+        greetingAudioUrl: null,
+        greetingMediaName: null,
+      });
+
+      return res.json({ success: true, ivr: updatedIvr });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting IVR greeting:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/menu-options - Get menu options for the companys PBX settings
+  app.get("/api/pbx/menu-options", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const settings = await pbxService.getPbxSettings(user.companyId);
+      if (!settings) {
+        return res.json([]);
+      }
+      const options = await pbxService.getMenuOptions(user.companyId, settings.id);
+      return res.json(options);
+    } catch (error: any) {
+      console.error("[PBX] Error getting menu options:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/menu-options/:settingsId - Get menu options
+  app.get("/api/pbx/menu-options/:settingsId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const options = await pbxService.getMenuOptions(user.companyId, req.params.settingsId);
+      return res.json(options);
+    } catch (error: any) {
+      console.error("[PBX] Error getting menu options:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/menu-options - Create menu option
+  app.post("/api/pbx/menu-options", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const option = await pbxService.createMenuOption(user.companyId, req.body);
+      return res.json(option);
+    } catch (error: any) {
+      console.error("[PBX] Error creating menu option:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // PATCH /api/pbx/menu-options/:optionId - Update menu option
+  app.patch("/api/pbx/menu-options/:optionId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const option = await pbxService.updateMenuOption(user.companyId, req.params.optionId, req.body);
+      return res.json(option);
+    } catch (error: any) {
+      console.error("[PBX] Error updating menu option:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/menu-options/:optionId - Delete menu option
+  app.delete("/api/pbx/menu-options/:optionId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.deleteMenuOption(user.companyId, req.params.optionId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting menu option:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/audio-files - Get audio files
+  app.get("/api/pbx/audio-files", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const audioType = req.query.type as string | undefined;
+      const files = await pbxService.getAudioFiles(user.companyId, audioType);
+      return res.json(files);
+    } catch (error: any) {
+      console.error("[PBX] Error getting audio files:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/audio-files - Create audio file record
+  app.post("/api/pbx/audio-files", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const file = await pbxService.createAudioFile(user.companyId, req.body);
+      return res.json(file);
+    } catch (error: any) {
+      console.error("[PBX] Error creating audio file:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DELETE /api/pbx/audio-files/:fileId - Delete audio file
+  app.delete("/api/pbx/audio-files/:fileId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.deleteAudioFile(user.companyId, req.params.fileId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting audio file:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/agent-status - Get current agent status
+  app.get("/api/pbx/agent-status", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const status = await pbxService.getAgentStatus(user.companyId, user.id);
+      return res.json(status);
+    } catch (error: any) {
+      console.error("[PBX] Error getting agent status:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/agent-status - Update agent status
+  app.post("/api/pbx/agent-status", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { status, callId } = req.body;
+      const result = await pbxService.updateAgentStatus(user.companyId, user.id, status, callId);
+      return res.json(result);
+    } catch (error: any) {
+      console.error("[PBX] Error updating agent status:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+
+
+  // POST /api/pbx/check-extension - Check what type an extension is
+  app.post("/api/pbx/check-extension", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { extension } = req.body;
+      
+      if (!extension) {
+        return res.status(400).json({ error: "Extension required" });
+      }
+      
+      // Check if it's the IVR extension
+      const settings = await pbxService.getPbxSettings(user.companyId);
+      if (settings?.ivrEnabled && settings.ivrExtension === extension) {
+        return res.json({ type: "ivr", extension });
+      }
+      
+      // Check if it's a queue extension
+      const [queue] = await db
+        .select({ id: pbxQueues.id, name: pbxQueues.name, extension: pbxQueues.extension })
+        .from(pbxQueues)
+        .where(and(
+          eq(pbxQueues.companyId, user.companyId),
+          eq(pbxQueues.extension, extension),
+          eq(pbxQueues.status, "active")
+        ));
+      
+      if (queue) {
+        return res.json({ type: "queue", extension, queueId: queue.id, name: queue.name });
+      }
+      
+      // Check if it's a user extension
+      const [userExt] = await db
+        .select()
+        .from(pbxExtensions)
+        .where(and(
+          eq(pbxExtensions.companyId, user.companyId),
+          eq(pbxExtensions.extension, extension),
+          eq(pbxExtensions.isActive, true)
+        ));
+      
+      if (userExt) {
+        return res.json({ type: "user", extension, userId: userExt.userId, online: false });
+      }
+      
+      // Extension not found
+      return res.json({ type: "unknown", extension });
+    } catch (error: any) {
+      console.error("[PBX] Error checking extension:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // GET /api/pbx/special-extensions - Get IVR and queue extensions for WebPhone
+  app.get("/api/pbx/special-extensions", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      // Get PBX settings for IVR extension
+      const settings = await pbxService.getPbxSettings(user.companyId);
+      const ivrExtension = settings?.ivrEnabled ? settings.ivrExtension : null;
+      
+      // Get all active queues with extensions
+      const allQueues = await db
+        .select({ id: pbxQueues.id, extension: pbxQueues.extension, name: pbxQueues.name })
+        .from(pbxQueues)
+        .where(and(
+          eq(pbxQueues.companyId, user.companyId),
+          eq(pbxQueues.status, "active")
+        ));
+      
+      const queues = allQueues.filter(q => q.extension).map(q => ({
+        id: q.id,
+        extension: q.extension!,
+        name: q.name,
+      }));
+      
+      return res.json({ ivrExtension, queues });
+    } catch (error: any) {
+      console.error("[PBX] Error getting special extensions:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // POST /api/pbx/internal-call - Initiate internal call to IVR or Queue via Telnyx
+  app.post("/api/pbx/internal-call", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { targetType, queueId } = req.body; // targetType: 'ivr' | 'queue'
+      
+      // Get user's SIP credentials
+      const [credential] = await db
+        .select()
+        .from(telephonyCredentials)
+        .where(and(
+          eq(telephonyCredentials.companyId, user.companyId),
+          eq(telephonyCredentials.userId, user.id)
+        ));
+      
+      if (!credential) {
+        return res.status(400).json({ error: "No SIP credentials configured" });
+      }
+      
+      // Get company's main phone number for outbound caller ID
+      const [phoneNumber] = await db
+        .select()
+        .from(telnyxPhoneNumbers)
+        .where(eq(telnyxPhoneNumbers.companyId, user.companyId));
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ error: "No phone number configured" });
+      }
+      
+      // Get Call Control App ID from telephony settings
+      const [settings] = await db
+        .select({ callControlAppId: telephonySettings.callControlAppId })
+        .from(telephonySettings)
+        .where(eq(telephonySettings.companyId, user.companyId));
+      
+      if (!settings?.callControlAppId) {
+        return res.status(400).json({ error: "Call Control App not configured. Please set up phone system first." });
+      }
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ error: "No phone number configured" });
+      }
+      
+      const TELNYX_API_KEY = await getTelnyxMasterApiKey();
+      const userSipUri = `sip:${credential.sipUsername}@sip.telnyx.com`;
+      
+      // Create client_state with routing info
+      const clientState = Buffer.from(JSON.stringify({
+        companyId: user.companyId,
+        userId: user.id,
+        targetType,
+        queueId: queueId || null,
+        internalCall: true
+      })).toString("base64");
+      
+      // Initiate call from user's SIP to company number (triggers IVR/queue routing)
+      const response = await fetch("https://api.telnyx.com/v2/calls", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${TELNYX_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          to: userSipUri,  // Call TO the user
+          from: phoneNumber.phoneNumber,  // FROM company number
+          connection_id: settings?.callControlAppId || "",
+          timeout_secs: 60,
+          client_state: clientState,
+          webhook_url: `${process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : ""}/api/webhooks/telnyx/call-control`,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("[PBX Internal Call] Telnyx API error:", errorData);
+        return res.status(500).json({ error: "Failed to initiate call" });
+      }
+      
+      const data = await response.json();
+      console.log(`[PBX Internal Call] Initiated ${targetType} call for user ${user.id}:`, data.data?.call_control_id);
+      
+      return res.json({ 
+        success: true, 
+        callControlId: data.data?.call_control_id,
+        targetType
+      });
+    } catch (error: any) {
+      console.error("[PBX Internal Call] Error:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+
+  // ============================================================
+  // PBX Audio Library
+  // ============================================================
+  
+  // GET /api/pbx/audio - List all audio files for company
+  app.get("/api/pbx/audio", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const audioFiles = await db
+        .select()
+        .from(pbxAudioFiles)
+        .where(eq(pbxAudioFiles.companyId, user.companyId))
+        .orderBy(desc(pbxAudioFiles.createdAt));
+
+      // Get usage information for each audio file
+      const audioFilesWithUsage = await Promise.all(audioFiles.map(async (audio) => {
+        const usage: { type: string; name: string; id: string }[] = [];
+        
+        // Check IVRs using this audio as greeting
+        const ivrsUsingAsGreeting = await db
+          .select({ id: pbxIvrs.id, name: pbxIvrs.name })
+          .from(pbxIvrs)
+          .where(and(
+            eq(pbxIvrs.companyId, user.companyId!),
+            eq(pbxIvrs.greetingAudioUrl, audio.fileUrl)
+          ));
+        
+        ivrsUsingAsGreeting.forEach(ivr => {
+          usage.push({ type: 'ivr_greeting', name: ivr.name, id: ivr.id });
+        });
+        
+        // Check Queues using this audio as hold music
+        const queuesUsingAsHoldMusic = await db
+          .select({ id: pbxQueues.id, name: pbxQueues.name })
+          .from(pbxQueues)
+          .where(and(
+            eq(pbxQueues.companyId, user.companyId!),
+            eq(pbxQueues.holdMusicUrl, audio.fileUrl)
+          ));
+        
+        queuesUsingAsHoldMusic.forEach(queue => {
+          usage.push({ type: 'queue_hold_music', name: queue.name, id: queue.id });
+        });
+
+        // Check Queue Ads (announcements) using this audio
+        const queueAdsUsingAudio = await db
+          .select({ 
+            adId: pbxQueueAds.id,
+            queueId: pbxQueueAds.queueId,
+            queueName: pbxQueues.name 
+          })
+          .from(pbxQueueAds)
+          .innerJoin(pbxQueues, eq(pbxQueueAds.queueId, pbxQueues.id))
+          .where(and(
+            eq(pbxQueueAds.companyId, user.companyId!),
+            eq(pbxQueueAds.audioFileId, audio.id)
+          ));
+        
+        queueAdsUsingAudio.forEach(ad => {
+          usage.push({ type: 'queue_announcement', name: ad.queueName, id: ad.queueId });
+        });
+
+        return { ...audio, usage };
+      }));
+
+      return res.json({ audioFiles: audioFilesWithUsage });
+    } catch (error: any) {
+      console.error("[PBX Audio] List error:", error);
+      return res.status(500).json({ message: "Failed to get audio files" });
+    }
+  });
+
+  // Multer configuration for PBX audio library uploads
+  const pbxAudioUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit for audio files
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ["audio/mpeg", "audio/wav", "audio/mp3", "audio/ogg", "audio/aac", "audio/x-wav"];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error("Invalid file type. Only audio files (mp3, wav, ogg, aac) are allowed."));
+      }
+    },
+  });
+
+  // POST /api/pbx/audio - Upload new audio file
+  app.post("/api/pbx/audio", requireActiveCompany, (req: Request, res: Response, next: NextFunction) => {
+    pbxAudioUpload.single("audio")(req, res, async (err: any) => {
+      try {
+        if (err) {
+          console.error("[PBX Audio] Multer error:", err);
+          return res.status(400).json({ message: err.message });
+        }
+
+        const user = req.user!;
+        if (!user.companyId) {
+          return res.status(400).json({ message: "No company associated with user" });
+        }
+
+        const file = req.file;
+        if (!file) {
+          return res.status(400).json({ message: "No audio file provided" });
+        }
+
+        const { name, description, notes, audioType } = req.body;
+
+        if (!name) {
+          return res.status(400).json({ message: "Audio name is required" });
+        }
+
+        if (!audioType || !['greeting', 'hold_music', 'announcement', 'voicemail_greeting'].includes(audioType)) {
+          return res.status(400).json({ message: "Valid audio type is required (greeting, hold_music, announcement, voicemail_greeting)" });
+        }
+
+        // Upload to Telnyx Media Storage for fast playback during calls
+        // CRITICAL: Pass companyId to upload to the managed account (not master account)
+        const { uploadMediaToTelnyx } = await import("./services/telnyx-media-service");
+        const uploadResult = await uploadMediaToTelnyx(
+          file.buffer,
+          file.originalname,
+          file.mimetype,
+          user.companyId
+        );
+
+        if (!uploadResult.success || !uploadResult.mediaId) {
+          console.error("[PBX Audio] Telnyx upload failed:", uploadResult.error);
+          return res.status(500).json({ message: uploadResult.error || "Failed to upload audio file to Telnyx" });
+        }
+
+        // Save to database
+        const [audioFile] = await db
+          .insert(pbxAudioFiles)
+          .values({
+            companyId: user.companyId,
+            name,
+            description: description || null,
+            notes: notes || null,
+            fileUrl: uploadResult.mediaUrl!,
+            fileName: file.originalname,
+            fileSize: file.size,
+            mimeType: file.mimetype,
+            audioType,
+            telnyxMediaId: uploadResult.mediaId,
+          })
+          .returning();
+
+        return res.json({ success: true, audioFile });
+      } catch (error: any) {
+        console.error("[PBX Audio] Upload error:", error);
+        return res.status(500).json({ message: "Failed to upload audio file" });
+      }
+    });
+  });
+
+  // PATCH /api/pbx/audio/:audioId - Update audio file details
+  app.patch("/api/pbx/audio/:audioId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { audioId } = req.params;
+      const { name, description, notes, audioType } = req.body;
+
+      // Verify audio belongs to company
+      const [existing] = await db
+        .select()
+        .from(pbxAudioFiles)
+        .where(and(
+          eq(pbxAudioFiles.id, audioId),
+          eq(pbxAudioFiles.companyId, user.companyId)
+        ));
+
+      if (!existing) {
+        return res.status(404).json({ message: "Audio file not found" });
+      }
+
+      const updateData: Record<string, any> = {};
+      if (name !== undefined) updateData.name = name;
+      if (description !== undefined) updateData.description = description;
+      if (notes !== undefined) updateData.notes = notes;
+      if (audioType !== undefined && ['greeting', 'hold_music', 'announcement', 'voicemail_greeting'].includes(audioType)) {
+        updateData.audioType = audioType;
+      }
+
+      const [updated] = await db
+        .update(pbxAudioFiles)
+        .set(updateData)
+        .where(eq(pbxAudioFiles.id, audioId))
+        .returning();
+
+      return res.json({ success: true, audioFile: updated });
+    } catch (error: any) {
+      console.error("[PBX Audio] Update error:", error);
+      return res.status(500).json({ message: "Failed to update audio file" });
+    }
+  });
+
+  // DELETE /api/pbx/audio/:audioId - Delete audio file
+  app.delete("/api/pbx/audio/:audioId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { audioId } = req.params;
+
+      // Verify audio belongs to company
+      const [existing] = await db
+        .select()
+        .from(pbxAudioFiles)
+        .where(and(
+          eq(pbxAudioFiles.id, audioId),
+          eq(pbxAudioFiles.companyId, user.companyId)
+        ));
+
+      if (!existing) {
+        return res.status(404).json({ message: "Audio file not found" });
+      }
+
+      // Check if audio is in use
+      const ivrsUsingAsGreeting = await db
+        .select({ id: pbxIvrs.id })
+        .from(pbxIvrs)
+        .where(and(
+          eq(pbxIvrs.companyId, user.companyId),
+          eq(pbxIvrs.greetingAudioUrl, existing.fileUrl)
+        ));
+
+      const queuesUsingAsHoldMusic = await db
+        .select({ id: pbxQueues.id })
+        .from(pbxQueues)
+        .where(and(
+          eq(pbxQueues.companyId, user.companyId),
+          eq(pbxQueues.holdMusicUrl, existing.fileUrl)
+        ));
+      // Check force parameter - if true, clear references instead of blocking
+      const forceDelete = req.query.force === 'true';
+
+      if (ivrsUsingAsGreeting.length > 0 || queuesUsingAsHoldMusic.length > 0) {
+        if (!forceDelete) {
+          return res.status(400).json({ 
+            message: "Cannot delete audio file that is currently in use",
+            usedBy: {
+              ivrs: ivrsUsingAsGreeting.length,
+              queues: queuesUsingAsHoldMusic.length
+            }
+          });
+        }
+
+        // Force delete: clear references in IVRs
+        if (ivrsUsingAsGreeting.length > 0) {
+          console.log(`[PBX Audio] Force delete: clearing ${ivrsUsingAsGreeting.length} IVR references`);
+          await db
+            .update(pbxIvrs)
+            .set({ greetingAudioUrl: null, telnyxMediaName: null, updatedAt: new Date() })
+            .where(and(
+              eq(pbxIvrs.companyId, user.companyId),
+              eq(pbxIvrs.greetingAudioUrl, existing.fileUrl)
+            ));
+        }
+
+        // Force delete: clear references in Queues
+        if (queuesUsingAsHoldMusic.length > 0) {
+          console.log(`[PBX Audio] Force delete: clearing ${queuesUsingAsHoldMusic.length} Queue references`);
+          await db
+            .update(pbxQueues)
+            .set({ holdMusicUrl: null, holdMusicTelnyxMediaName: null, updatedAt: new Date() })
+            .where(and(
+              eq(pbxQueues.companyId, user.companyId),
+              eq(pbxQueues.holdMusicUrl, existing.fileUrl)
+            ));
+        }
+      }
+
+      // Delete from storage (Telnyx or legacy Object Storage)
+      if (existing.telnyxMediaId) {
+        // Delete from Telnyx Media Storage
+        try {
+          const { deleteMediaFromTelnyx } = await import("./services/telnyx-media-service");
+          await deleteMediaFromTelnyx(existing.telnyxMediaId, user.companyId);
+        } catch (telnyxError) {
+          console.error("[PBX Audio] Failed to delete from Telnyx:", telnyxError);
+        }
+      } else if (existing.fileUrl && !existing.telnyxMediaId) {
+        // Legacy: Delete from Object Storage for records without telnyxMediaId
+        try {
+          const { deleteFile } = await import("./services/object-storage-service");
+          await deleteFile(existing.fileUrl);
+        } catch (storageError) {
+          console.error("[PBX Audio] Failed to delete from Object Storage:", storageError);
+        }
+      }
+
+      // Delete from database
+      await db
+        .delete(pbxAudioFiles)
+        .where(eq(pbxAudioFiles.id, audioId));
+
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX Audio] Delete error:", error);
+      return res.status(500).json({ message: "Failed to delete audio file" });
+    }
+  });
+
+
+  // ============================================================
+  // Telnyx Call Control Webhook (PBX/IVR)
+  // ============================================================
+  app.post("/api/webhooks/telnyx/call-control", async (req: Request, res: Response) => {
+    try {
+      console.log(`[CallControl Webhook] Received event:`, JSON.stringify(req.body, null, 2));
+      
+      const { callControlWebhookService } = await import("./services/call-control-webhook-service");
+      await callControlWebhookService.handleWebhook(req.body);
+      
+      return res.status(200).json({ success: true });
+    } catch (error: any) {
+      console.error("[CallControl Webhook] Error:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================
+  // WEB PUSH ENDPOINTS (Android PWA)
+  // ============================================================
+  
+  // Get VAPID public key
+  app.get("/api/push/public-key", async (_req: Request, res: Response) => {
+    try {
+      const { webPushService } = await import("./services/web-push-service");
+      const publicKey = await webPushService.getPublicKey();
+      
+      if (!publicKey) {
+        return res.status(503).json({ message: "Push notifications not configured" });
+      }
+      
+      return res.json({ publicKey });
+    } catch (error: any) {
+      console.error("[WebPush] Error getting public key:", error);
+      return res.status(500).json({ message: "Failed to get public key" });
+    }
+  });
+  
+  // Subscribe to push notifications (public - uses token)
+  app.post("/api/push/subscribe", async (req: Request, res: Response) => {
+    try {
+      const { token, subscription, userAgent, platform } = req.body;
+      
+      if (!token || !subscription?.endpoint || !subscription?.keys?.p256dh || !subscription?.keys?.auth) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      
+      // Find pass instance by token
+      const [passInstance] = await db
+        .select()
+        .from(vipPassInstances)
+        .where(eq(vipPassInstances.authenticationToken, token))
+        .limit(1);
+      
+      if (!passInstance) {
+        return res.status(404).json({ message: "Invalid token" });
+      }
+      
+      const { webPushService } = await import("./services/web-push-service");
+      const result = await webPushService.subscribe({
+        companyId: passInstance.companyId,
+        contactId: passInstance.contactId,
+        passInstanceId: passInstance.id,
+        endpoint: subscription.endpoint,
+        p256dh: subscription.keys.p256dh,
+        auth: subscription.keys.auth,
+        userAgent: userAgent || null,
+        platform: platform || null,
+      });
+      
+      // Create notification for company users about new push subscription
+      try {
+        // Get contact info for the notification message
+        const [contact] = await db
+          .select()
+          .from(contacts)
+          .where(eq(contacts.id, passInstance.contactId!))
+          .limit(1);
+        
+        const contactName = contact 
+          ? `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || contact.email || 'Un contacto'
+          : 'Un contacto';
+        
+        // Get all users from the company to notify them
+        const companyUsers = await storage.getUsersByCompany(passInstance.companyId);
+        
+        // Create notifications for each user
+        for (const user of companyUsers) {
+          await storage.createNotification({
+            userId: user.id,
+            type: 'vip_pass',
+            title: 'Nueva suscripción push VIP Pass',
+            message: `${contactName} activó notificaciones push en su tarjeta VIP`,
+            isRead: false,
+          });
+        }
+        
+        // Broadcast notification update to the company
+        broadcastNotificationUpdate(passInstance.companyId);
+      } catch (notifError) {
+        console.error("[WebPush] Failed to create bell notification:", notifError);
+        // Don't fail the request if notification creation fails
+      }
+      
+      return res.json({ success: true, subscriptionId: result.id });
+    } catch (error: any) {
+      console.error("[WebPush] Subscribe error:", error);
+      return res.status(500).json({ message: "Failed to subscribe" });
+    }
+  });
+  
+  // Unsubscribe from push notifications
+  app.post("/api/push/unsubscribe", async (req: Request, res: Response) => {
+    try {
+      const { endpoint } = req.body;
+      
+      if (!endpoint) {
+        return res.status(400).json({ message: "Endpoint required" });
+      }
+      
+      const { webPushService } = await import("./services/web-push-service");
+      await webPushService.unsubscribe(endpoint);
+      
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[WebPush] Unsubscribe error:", error);
+      return res.status(500).json({ message: "Failed to unsubscribe" });
+    }
+  });
+  
+  // Test push notification (requires token)
+  app.post("/api/push/test", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.body;
+      
+      if (!token) {
+        return res.status(400).json({ message: "Token required" });
+      }
+      
+      // Find pass instance by token
+      const [passInstance] = await db
+        .select()
+        .from(vipPassInstances)
+        .where(eq(vipPassInstances.authenticationToken, token))
+        .limit(1);
+      
+      if (!passInstance) {
+        return res.status(404).json({ message: "Invalid token" });
+      }
+      
+      const { webPushService } = await import("./services/web-push-service");
+      const result = await webPushService.sendToPassInstance(passInstance.id, {
+        title: "VIP Card Active",
+        body: "Push notifications are working!",
+        icon: "/icons/icon-192.png",
+      });
+      
+      return res.json({ success: true, ...result });
+    } catch (error: any) {
+      console.error("[WebPush] Test error:", error);
+      return res.status(500).json({ message: "Failed to send test notification" });
+    }
+  });
+  
+  // Internal push send (protected by API key)
+  app.post("/api/push/send", async (req: Request, res: Response) => {
+    try {
+      const apiKey = req.headers["x-internal-key"];
+      const expectedKey = process.env.PUSH_INTERNAL_API_KEY;
+      
+      if (!expectedKey || apiKey !== expectedKey) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { passInstanceId, contactId, companyId, title, body, url, icon } = req.body;
+      
+      if (!title || !body) {
+        return res.status(400).json({ message: "Title and body required" });
+      }
+      
+      const { webPushService } = await import("./services/web-push-service");
+      
+      let result;
+      if (passInstanceId) {
+        result = await webPushService.sendToPassInstance(passInstanceId, { title, body, url, icon });
+      } else if (contactId && companyId) {
+        result = await webPushService.sendToContact(companyId, contactId, { title, body, url, icon });
+      } else {
+        return res.status(400).json({ message: "passInstanceId or (contactId + companyId) required" });
+      }
+      
+      return res.json({ success: true, ...result });
+    } catch (error: any) {
+      console.error("[WebPush] Send error:", error);
+      return res.status(500).json({ message: "Failed to send notification" });
+    }
+  });
+
+  // Track push notification events (clicked, landed, action_completed)
+  app.post("/api/push/track", async (req: Request, res: Response) => {
+    try {
+      const e = req.query.e as string;
+      const nid = req.query.nid as string;
+      
+      if (!e || !nid) {
+        return res.status(400).json({ message: "Missing e (event) or nid (notification id)" });
+      }
+      
+      const validEvents = ['clicked', 'landed', 'action_completed'];
+      if (!validEvents.includes(e)) {
+        return res.status(400).json({ message: "Invalid event type" });
+      }
+      
+      // Verify notification exists
+      const [notification] = await db
+        .select()
+        .from(vipPassNotifications)
+        .where(eq(vipPassNotifications.id, nid))
+        .limit(1);
+      
+      if (!notification) {
+        return res.status(404).json({ message: "Notification not found" });
+      }
+      
+      // Insert event record
+      await db.insert(vipPassNotificationEvents).values({
+        notificationId: nid,
+        event: e,
+        meta: {
+          userAgent: req.headers['user-agent'] || null,
+          referer: req.headers['referer'] || null,
+          timestamp: new Date().toISOString(),
+        },
+      });
+      
+      // Update aggregated counter on notification record
+      if (e === 'clicked') {
+        await db.update(vipPassNotifications)
+          .set({ clickedCount: sql`${vipPassNotifications.clickedCount} + 1` })
+          .where(eq(vipPassNotifications.id, nid));
+      } else if (e === 'landed') {
+        await db.update(vipPassNotifications)
+          .set({ landedCount: sql`${vipPassNotifications.landedCount} + 1` })
+          .where(eq(vipPassNotifications.id, nid));
+      } else if (e === 'action_completed') {
+        await db.update(vipPassNotifications)
+          .set({ completedCount: sql`${vipPassNotifications.completedCount} + 1` })
+          .where(eq(vipPassNotifications.id, nid));
+      }
+      
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PushTrack] Error:", error);
+      return res.status(500).json({ message: "Failed to track event" });
+    }
+  });
+
+  // ============================================================
+  // PUBLIC CARD ENDPOINT (for /p/:token page)
+  // ============================================================
+  
+  app.get("/api/public/card/:token", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.params;
+      
+      // Find pass instance by authentication token
+      const [passInstance] = await db
+        .select({
+          id: vipPassInstances.id,
+          companyId: vipPassInstances.companyId,
+          contactId: vipPassInstances.contactId,
+          serialNumber: vipPassInstances.serialNumber,
+          status: vipPassInstances.status,
+          recipientName: vipPassInstances.recipientName,
+          recipientEmail: vipPassInstances.recipientEmail,
+          tierLevel: vipPassInstances.tierLevel,
+          memberId: vipPassInstances.memberId,
+          createdAt: vipPassInstances.createdAt,
+        })
+        .from(vipPassInstances)
+        .where(eq(vipPassInstances.authenticationToken, token))
+        .limit(1);
+      
+      if (!passInstance) {
+        return res.status(404).json({ message: "Card not found" });
+      }
+      
+      if (passInstance.status !== "active") {
+        return res.status(410).json({ message: "Card is no longer active" });
+      }
+      
+      // Get company info for branding
+      const [company] = await db
+        .select({
+          id: companies.id,
+          name: companies.name,
+          logo: companies.logo,
+        })
+        .from(companies)
+        .where(eq(companies.id, passInstance.companyId))
+        .limit(1);
+      
+      // Get contact info if available
+      let contact = null;
+      if (passInstance.contactId) {
+        const [contactData] = await db
+          .select({
+            id: contacts.id,
+            firstName: contacts.firstName,
+            lastName: contacts.lastName,
+            email: contacts.email,
+            phone: contacts.phone,
+          })
+          .from(contacts)
+          .where(eq(contacts.id, passInstance.contactId))
+          .limit(1);
+        contact = contactData || null;
+      }
+      
+      return res.json({
+        card: {
+          serialNumber: passInstance.serialNumber,
+          memberName: passInstance.recipientName,
+          memberSince: passInstance.createdAt,
+          tierLevel: passInstance.tierLevel,
+          memberId: passInstance.memberId,
+        },
+        company: company || null,
+        contact,
+      });
+    } catch (error: any) {
+      console.error("[PublicCard] Error:", error);
+      return res.status(500).json({ message: "Failed to load card" });
+    }
+  });
+
+
+  // ============================================================
+  // PUBLIC WALLET DOWNLOAD (for Apple Wallet .pkpass)
+  // ============================================================
+  
+  app.get("/api/public/wallet/:token", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.params;
+      
+      // Find pass instance by authentication token
+      const [passInstance] = await db
+        .select({
+          id: vipPassInstances.id,
+          companyId: vipPassInstances.companyId,
+          status: vipPassInstances.status,
+          serialNumber: vipPassInstances.serialNumber,
+        })
+        .from(vipPassInstances)
+        .where(eq(vipPassInstances.authenticationToken, token))
+        .limit(1);
+      
+      if (!passInstance) {
+        return res.status(404).json({ message: "Pass not found" });
+      }
+      
+      if (passInstance.status !== "active") {
+        return res.status(410).json({ message: "Pass is no longer active" });
+      }
+      
+      // Generate the .pkpass file
+      const { buffer, filename } = await vipPassService.generatePkpassFile(passInstance.id, passInstance.companyId);
+      
+      res.set({
+        "Content-Type": "application/vnd.apple.pkpass",
+        "Content-Disposition": `attachment; filename="${filename}"`,
+        "Content-Length": buffer.length.toString(),
+      });
+      
+      return res.send(buffer);
+    } catch (error: any) {
+      console.error("[PublicWallet] Error:", error);
+      return res.status(500).json({ message: "Failed to generate wallet pass" });
+    }
+  });
 
   return httpServer;
 }

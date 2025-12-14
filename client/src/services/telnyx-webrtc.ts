@@ -331,7 +331,7 @@ class TelnyxWebRTCManager {
   private turnServers: RTCIceServer[] = [];
   
   // Auto-reconnect state
-  private savedCredentials: { sipUser: string; sipPass: string; callerId?: string; sipDomain?: string } | null = null;
+  private savedCredentials: { sipUser: string; sipPass: string; callerId?: string } | null = null;
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 10;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -1038,12 +1038,12 @@ class TelnyxWebRTCManager {
   /**
    * Initialize SIP.js UserAgent and connect to Telnyx
    */
-  public async initialize(sipUser: string, sipPass: string, callerId?: string, iceServers?: RTCIceServer[], sipDomain?: string): Promise<void> {
+  public async initialize(sipUser: string, sipPass: string, callerId?: string, iceServers?: RTCIceServer[]): Promise<void> {
     const store = useTelnyxStore.getState();
     store.setConnectionStatus("connecting");
 
     // Save credentials for auto-reconnect
-    this.savedCredentials = { sipUser, sipPass, callerId, sipDomain };
+    this.savedCredentials = { sipUser, sipPass, callerId };
     this.cancelReconnect();
 
     if (callerId) store.setCallerIdNumber(callerId);
@@ -1069,9 +1069,7 @@ class TelnyxWebRTCManager {
     this.audioElement = audioElements.remote;
 
     // Build SIP URI - must use credential username for registration
-    const effectiveSipDomain = sipDomain || 'sip.telnyx.com';
-    console.log('[SIP.js WebRTC] Using SIP domain:', effectiveSipDomain);
-    const uri = UserAgent.makeURI(`sip:${sipUser}@${effectiveSipDomain}`);
+    const uri = UserAgent.makeURI(`sip:${sipUser}@sip.telnyx.com`);
     if (!uri) {
       store.setConnectionStatus("error", "Invalid SIP URI");
       return;
@@ -1093,7 +1091,7 @@ class TelnyxWebRTCManager {
         authorizationUsername: sipUser,
         authorizationPassword: sipPass,
         transportOptions: {
-          server: `wss://${effectiveSipDomain}:7443`,
+          server: TELNYX_WSS_SERVER,
           // Enable SIP trace for debugging 401/403 auth errors
           traceSip: true
         },
