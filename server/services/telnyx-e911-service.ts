@@ -365,7 +365,7 @@ async function getOrCreateCredentialConnection(
           // Enable SHAKEN/STIR for caller ID verification
           shaken_stir_enabled: true,
           // Enable simultaneous ring - all devices with same credentials ring at once
-          enable_simultaneous_ringing: true,
+          simultaneous_ringing_enabled: true,
         },
       }),
     });
@@ -602,7 +602,7 @@ async function updateCredentialConnectionAni(
         },
         inbound: {
           // Enable simultaneous ring - all devices with same credentials ring at once
-          enable_simultaneous_ringing: true,
+          simultaneous_ringing_enabled: true,
         },
       }),
     });
