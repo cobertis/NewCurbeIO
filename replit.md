@@ -137,12 +137,25 @@ Admin assigns number → DB update → WebSocket broadcast to assignee → Query
 2. Verification reads `inbound.simultaneous_ringing` from GET response
 3. Value must be `"enabled"` (string), not `true` (boolean)
 
+**CRITICAL: Dial+Bridge Pattern (NOT Transfer)**
+The `transfer` command does NOT support simultaneous ringing. To enable SIP Forking:
+1. Use `POST /v2/calls` (Dial API) with `connection_id` = `credentialConnectionId`
+2. The `credentialConnectionId` routes through the credential connection with `simultaneous_ringing: "enabled"`
+3. When agent answers, use Bridge API to connect caller and agent legs
+
 **CALL FLOW:**
 1. Incoming call triggers `call.initiated` webhook
-2. If IVR disabled (`ivrId: "unassigned"`), `transferToAssignedUser` uses Dial API with `connection_id`
-3. The `connection_id` routes through credential connection which has `simultaneous_ringing` enabled
-4. All registered devices ring simultaneously
-5. First device to answer wins, others are cancelled
+2. If IVR disabled (`ivrId: "unassigned"`), `transferToAssignedUser` is called
+3. Answer the caller's call first (billing starts)
+4. Use Dial API with `credentialConnectionId` to dial the SIP URI
+5. Store pending bridge with caller's `call_control_id`
+6. All registered devices (webphone + physical phones) ring simultaneously
+7. When agent answers, bridge the two call legs
+8. First device to answer wins, others are cancelled via hangup
+
+**KEY FILES:**
+- `server/services/call-control-webhook-service.ts` - `transferToAssignedUser()` function implements Dial+Bridge
+- Credential connection ID stored in `telephony_settings.credential_connection_id`
 
 **ADDITIONAL NOTES:**
 - Company-scoped isolation ensures extensions only see their organization
