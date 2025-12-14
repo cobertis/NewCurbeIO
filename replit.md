@@ -123,5 +123,27 @@ Admin assigns number → DB update → WebSocket broadcast to assignee → Query
 **KEY IMPLEMENTATION DETAILS:**
 - Uses callIdRef to track call ID in ICE candidate handler (avoids stale closure)
 - STUN servers: stun.l.google.com, stun.telnyx.com
+
+### SIP Forking Configuration (Dec 2024)
+**GOAL:** Enable simultaneous ringing on all registered SIP devices (webphone + physical phones)
+
+**TELNYX API PROPERTY:**
+- The correct property is `simultaneous_ringing: "enabled"` (NOT `sip_forking_enabled`)
+- This is set in the `inbound` object of the credential connection configuration
+- The PATCH/POST request to `/credential_connections` uses this property
+
+**IMPLEMENTATION:**
+1. `telephony-provisioning-service.ts` patches credential connections with `simultaneous_ringing: "enabled"`
+2. Verification reads `inbound.simultaneous_ringing` from GET response
+3. Value must be `"enabled"` (string), not `true` (boolean)
+
+**CALL FLOW:**
+1. Incoming call triggers `call.initiated` webhook
+2. If IVR disabled (`ivrId: "unassigned"`), `transferToAssignedUser` uses Dial API with `connection_id`
+3. The `connection_id` routes through credential connection which has `simultaneous_ringing` enabled
+4. All registered devices ring simultaneously
+5. First device to answer wins, others are cancelled
+
+**ADDITIONAL NOTES:**
 - Company-scoped isolation ensures extensions only see their organization
 - Busy status tracking prevents concurrent calls

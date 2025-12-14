@@ -412,7 +412,8 @@ export class TelephonyProvisioningService {
             channel_limit: 10,
             codecs: ["G722", "PCMU", "PCMA"],
             // Enable SIP Forking so all registered devices (webphone + physical phones) ring simultaneously
-            sip_forking_enabled: true,
+            // Telnyx uses "simultaneous_ringing" property (not sip_forking_enabled)
+            simultaneous_ringing: "enabled",
           },
           // CRITICAL: Enable SIP URI calling so TeXML can dial to this credential connection
           // This is a ROOT level field, not inside inbound
@@ -649,7 +650,8 @@ export class TelephonyProvisioningService {
         "PATCH",
         {
           inbound: {
-            sip_forking_enabled: true,
+            // Telnyx uses "simultaneous_ringing" property (not sip_forking_enabled)
+            simultaneous_ringing: "enabled",
           },
         }
       );
@@ -672,10 +674,11 @@ export class TelephonyProvisioningService {
       
       if (verifyResponse.ok) {
         const verifyData = await verifyResponse.json();
-        const sipForkingStatus = verifyData.data?.inbound?.sip_forking_enabled;
-        console.log(`[TelephonyProvisioning] GET verification - sip_forking_enabled: ${sipForkingStatus}`);
+        // Telnyx uses "simultaneous_ringing" property with value "enabled"
+        const sipForkingStatus = verifyData.data?.inbound?.simultaneous_ringing;
+        console.log(`[TelephonyProvisioning] GET verification - simultaneous_ringing: ${sipForkingStatus}`);
         
-        if (sipForkingStatus !== true) {
+        if (sipForkingStatus !== "enabled") {
           console.error(`[TelephonyProvisioning] SIP Forking NOT enabled after PATCH! Current value: ${sipForkingStatus}`);
           return { success: false, error: `SIP Forking not applied. Value: ${sipForkingStatus}` };
         }
