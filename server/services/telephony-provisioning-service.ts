@@ -1359,15 +1359,20 @@ export class TelephonyProvisioningService {
   }
 
   /**
-   * REPAIR FUNCTION: Fix phone numbers routing for SIP Forking support
+   * REPAIR FUNCTION: Fix phone numbers routing - ALL phones go to Call Control App
    * 
-   * CRITICAL ROUTING LOGIC:
-   * - Numbers WITH IVR (ivrId !== 'unassigned') -> Call Control App (for IVR menu routing)
-   * - Numbers WITHOUT IVR (including ownerUserId) -> Credential Connection (enables SIP Forking)
+   * CRITICAL ROUTING LOGIC (UPDATED Dec 2024):
+   * - ALL phone numbers -> Call Control App (for full call orchestration)
    * 
-   * WHY: SIP Forking (simultaneous_ringing) ONLY works for INBOUND calls directly to 
-   * Credential Connection. Calls routed through Call Control App are OUTBOUND transfers,
-   * which bypass the simultaneous_ringing feature and only ring one device.
+   * WHY: When phones are assigned to Credential Connection with simultaneous_ringing,
+   * Telnyx tries to bridge directly to SIP devices BEFORE sending Call Control webhooks.
+   * This causes calls to arrive with state: "bridging" which cannot be orchestrated.
+   * 
+   * By routing ALL calls through Call Control App:
+   * 1. We receive call.initiated webhooks with state: "ringing" (controllable)
+   * 2. We can apply IVR, queues, routing rules, etc.
+   * 3. When ready to ring devices, we dial to the Credential Connection via SIP URI
+   * 4. The Credential Connection's simultaneous_ringing then works for that outbound leg
    */
   async repairPhoneNumberRouting(companyId: string, userId: string): Promise<{
     success: boolean;
@@ -1384,6 +1389,11 @@ export class TelephonyProvisioningService {
 
     if (!settings) {
       return { success: false, repairedCount: 0, errors: ["Telephony settings not found for user"] };
+    }
+
+    // CRITICAL: Must have Call Control App ID to route calls
+    if (!settings.callControlAppId) {
+      return { success: false, repairedCount: 0, errors: ["No Call Control App ID found - please run migration first"] };
     }
 
     // Get managed account from company
@@ -1409,102 +1419,70 @@ export class TelephonyProvisioningService {
 
     for (const phoneNumber of phoneNumbers) {
       try {
-        // Determine routing based on phone number configuration
-        // CRITICAL FIX: Use Call Control App ONLY for IVR routing
-        // Numbers assigned to users (ownerUserId) go to Credential Connection for SIP Forking
-        // SIP Forking (simultaneous_ringing) ONLY works for INBOUND calls to Credential Connection
-        // Call Control transfers create OUTBOUND calls which bypass SIP Forking
-        const hasRealIvr = phoneNumber.ivrId && phoneNumber.ivrId !== 'unassigned';
+        // UPDATED LOGIC: ALL phone numbers go to Call Control App
+        // This enables full call orchestration (IVR, queues, transfers, etc.)
+        // SIP Forking happens when we dial OUT to the Credential Connection
+        console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Call Control App (full orchestration)`);
         
-        if (hasRealIvr && settings.callControlAppId) {
-          // Use Call Control App for IVR routing only
-          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} has IVR (ivrId=${phoneNumber.ivrId}) -> Call Control App`);
+        // DIAGNOSTIC: GET current state before PATCH
+        console.log(`[TelephonyProvisioning] Fetching current config for phone ${phoneNumber.telnyxPhoneNumberId}...`);
+        const getResponse = await this.makeApiRequest(
+          managedAccountId,
+          `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
+          "GET"
+        );
+        
+        if (getResponse.ok) {
+          const currentData = await getResponse.json();
+          const currentConnectionId = currentData.data?.connection_id;
+          console.log(`[TelephonyProvisioning] BEFORE: connection_id=${currentConnectionId}`);
+          console.log(`[TelephonyProvisioning] TARGET: connection_id=${settings.callControlAppId} (Call Control App)`);
           
-          const response = await this.makeApiRequest(
-            managedAccountId,
-            `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
-            "PATCH",
-            { 
-              connection_id: settings.callControlAppId,
-              call_control_application_id: null
-            }
-          );
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            errors.push(`Failed to repair ${phoneNumber.phoneNumber}: HTTP ${response.status} - ${errorText}`);
+          // Check if already correctly configured
+          if (currentConnectionId === settings.callControlAppId) {
+            console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} already correctly routed to Call Control App`);
+            repairedCount++;
             continue;
           }
-
-          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Call Control App (IVR routing)`);
-          repairedCount++;
-        } else if (settings.credentialConnectionId) {
-          // Use Credential Connection for direct SIP routing
-          // This enables simultaneous_ringing to ALL registered devices (WebRTC + Yealink)
-          // Numbers with ownerUserId but no IVR go here for SIP Forking support
-          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Credential Connection (SIP Forking enabled, ownerUserId=${phoneNumber.ownerUserId})`);
-          
-          // DIAGNOSTIC: GET current state before PATCH
-          console.log(`[TelephonyProvisioning] Fetching current config for phone ${phoneNumber.telnyxPhoneNumberId}...`);
-          const getResponse = await this.makeApiRequest(
-            managedAccountId,
-            `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
-            "GET"
-          );
-          
-          if (getResponse.ok) {
-            const currentData = await getResponse.json();
-            const currentConnectionId = currentData.data?.connection_id;
-            const currentCallControlAppId = currentData.data?.call_control_application_id;
-            console.log(`[TelephonyProvisioning] BEFORE: connection_id=${currentConnectionId}, call_control_application_id=${currentCallControlAppId}`);
-            console.log(`[TelephonyProvisioning] TARGET: connection_id=${settings.credentialConnectionId}`);
-            
-            // Check if already correctly configured
-            if (currentConnectionId === settings.credentialConnectionId && !currentCallControlAppId) {
-              console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} already correctly routed to Credential Connection`);
-              repairedCount++;
-              continue;
-            }
-          } else {
-            console.log(`[TelephonyProvisioning] Warning: Could not fetch current state: ${getResponse.status}`);
-          }
-          
-          // Execute PATCH
-          console.log(`[TelephonyProvisioning] Sending PATCH to route ${phoneNumber.phoneNumber} to connection_id=${settings.credentialConnectionId}`);
-          const response = await this.makeApiRequest(
-            managedAccountId,
-            `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
-            "PATCH",
-            { 
-              connection_id: settings.credentialConnectionId
-            }
-          );
-
-          if (!response.ok) {
-            const errorText = await response.text();
-            console.error(`[TelephonyProvisioning] PATCH FAILED: ${response.status} - ${errorText}`);
-            errors.push(`Failed to repair ${phoneNumber.phoneNumber}: HTTP ${response.status} - ${errorText}`);
-            continue;
-          }
-          
-          // DIAGNOSTIC: Verify PATCH result
-          const patchResult = await response.json();
-          const newConnectionId = patchResult.data?.connection_id;
-          console.log(`[TelephonyProvisioning] AFTER PATCH: connection_id=${newConnectionId}`);
-          
-          if (newConnectionId !== settings.credentialConnectionId) {
-            console.error(`[TelephonyProvisioning] WARNING: PATCH succeeded but connection_id mismatch! Expected: ${settings.credentialConnectionId}, Got: ${newConnectionId}`);
-          }
-
-          // Update database
-          await db
-            .update(telnyxPhoneNumbers)
-            .set({ connectionId: settings.credentialConnectionId, updatedAt: new Date() })
-            .where(eq(telnyxPhoneNumbers.id, phoneNumber.id));
-
-          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Credential Connection (direct routing with SIP Forking)`);
-          repairedCount++;
+        } else {
+          console.log(`[TelephonyProvisioning] Warning: Could not fetch current state: ${getResponse.status}`);
         }
+        
+        // Execute PATCH to assign to Call Control App
+        console.log(`[TelephonyProvisioning] Sending PATCH to route ${phoneNumber.phoneNumber} to Call Control App ${settings.callControlAppId}`);
+        const response = await this.makeApiRequest(
+          managedAccountId,
+          `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
+          "PATCH",
+          { 
+            connection_id: settings.callControlAppId
+          }
+        );
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error(`[TelephonyProvisioning] PATCH FAILED: ${response.status} - ${errorText}`);
+          errors.push(`Failed to repair ${phoneNumber.phoneNumber}: HTTP ${response.status} - ${errorText}`);
+          continue;
+        }
+        
+        // DIAGNOSTIC: Verify PATCH result
+        const patchResult = await response.json();
+        const newConnectionId = patchResult.data?.connection_id;
+        console.log(`[TelephonyProvisioning] AFTER PATCH: connection_id=${newConnectionId}`);
+        
+        if (newConnectionId !== settings.callControlAppId) {
+          console.error(`[TelephonyProvisioning] WARNING: PATCH succeeded but connection_id mismatch! Expected: ${settings.callControlAppId}, Got: ${newConnectionId}`);
+        }
+
+        // Update database to reflect Call Control App routing
+        await db
+          .update(telnyxPhoneNumbers)
+          .set({ connectionId: settings.callControlAppId, updatedAt: new Date() })
+          .where(eq(telnyxPhoneNumbers.id, phoneNumber.id));
+
+        console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Call Control App (routing updated)`);
+        repairedCount++;
       } catch (error) {
         errors.push(`Error repairing ${phoneNumber.phoneNumber}: ${error instanceof Error ? error.message : 'Unknown'}`);
       }
