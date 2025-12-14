@@ -595,14 +595,24 @@ export class CallControlWebhookService {
   private async handleCallInitiated(payload: CallControlEvent["data"]["payload"]): Promise<void> {
     const { call_control_id, from, to, direction, client_state } = payload;
 
+    console.log(`[CallControl] call.initiated - direction: ${direction}, from: ${from}, to: ${to}`);
+
     if (direction !== "incoming") {
       console.log(`[CallControl] Ignoring outgoing call initiated event`);
       return;
     }
 
+    // Check if "to" is one of our phone numbers (incoming call)
     const phoneNumber = await this.findPhoneNumberByE164(to);
     if (!phoneNumber) {
-      console.log(`[CallControl] Phone number not found for: ${to}`);
+      // Not found by "to" - check if "from" is our number (outgoing call from WebRTC)
+      const fromPhoneNumber = await this.findPhoneNumberByE164(from);
+      if (fromPhoneNumber) {
+        // This is an OUTGOING call from our WebRTC client - let it proceed, don't hang up!
+        console.log(`[CallControl] Outbound WebRTC call detected from ${from} to ${to} - allowing`);
+        return;
+      }
+      console.log(`[CallControl] Phone number not found for: ${to} (and ${from} is not ours either)`);
       await this.hangupCall(call_control_id, "USER_NOT_FOUND");
       return;
     }
