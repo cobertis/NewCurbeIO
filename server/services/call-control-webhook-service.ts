@@ -1826,20 +1826,17 @@ export class CallControlWebhookService {
   }
 
   /**
-   * Transfer call to assigned user using Dial API with SIP Forking
+   * Transfer call to assigned user using SIP URI Transfer
    * 
-   * CRITICAL: Uses Dial API with connection_id = credentialConnectionId to enable SIP Forking
-   * - When connection_id is the Credential Connection, Telnyx sends INVITE to ALL registered devices
-   * - This makes webphone + desk phones ring simultaneously
-   * - First device to answer wins, others get CANCEL
-   * - Caller stays in "ringing" state until agent answers, then we bridge
+   * NOTE: Dial API only accepts Call Control App IDs (error 10015 with Credential Connection IDs)
+   * Transfer API sends call directly to SIP URI - the SIP domain must have simultaneous_ringing enabled
    */
   private async transferToAssignedUser(
     callControlId: string,
     phoneNumber: any,
     callerNumber?: string
   ): Promise<void> {
-    console.log(`[CallControl] Transfer to assigned user via Dial API (SIP Forking), caller: ${callerNumber}`);
+    console.log(`[CallControl] Transfer to assigned user via Transfer API, caller: ${callerNumber}`);
 
     if (!phoneNumber.ownerUserId) {
       console.log(`[CallControl] No assigned user, cannot transfer`);
@@ -1861,7 +1858,7 @@ export class CallControlWebhookService {
 
     const companyId = phoneNumber.companyId;
     
-    // Get company-specific SIP domain for SIP Forking
+    // Get company-specific SIP domain for simultaneous ringing
     const { TelephonyProvisioningService } = await import("./telephony-provisioning-service");
     const provisioningService = new TelephonyProvisioningService();
     const sipDomain = await provisioningService.getCompanySipDomain(companyId);
@@ -1869,103 +1866,30 @@ export class CallControlWebhookService {
     const sipHost = sipDomain || "sip.telnyx.com";
     const sipUri = `sip:${sipCreds.sipUsername}@${sipHost}`;
     
-    // Get Credential Connection ID - REQUIRED for SIP Forking
-    const [settings] = await db
-      .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
-      .from(telephonySettings)
-      .where(eq(telephonySettings.companyId, companyId));
-    
-    const connectionId = settings?.credentialConnectionId;
-    
-    if (!connectionId) {
-      console.error(`[CallControl] No Credential Connection ID for company ${companyId} - SIP Forking unavailable`);
-      await this.answerCall(callControlId);
-      await this.speakText(callControlId, "System error. Please try again later.");
-      await this.routeToVoicemail(callControlId, companyId);
-      return;
-    }
-    
-    console.log(`[CallControl] Using Dial API with Credential Connection ID: ${connectionId} for SIP Forking to: ${sipUri}`);
+    console.log(`[CallControl] Using Transfer API to SIP URI: ${sipUri}`);
     
     const clientState = Buffer.from(JSON.stringify({
       companyId,
       agentUserId: phoneNumber.ownerUserId,
       isDirectCall: true,
-      originalCallControlId: callControlId,
     })).toString("base64");
 
     try {
-      const apiKey = await getTelnyxApiKey();
-      const context = callContextMap.get(callControlId);
-      const managedAccountId = context?.managedAccountId;
-      
-      // Get caller ID
-      const [callerIdPhone] = await db
-        .select({ phoneNumber: telnyxPhoneNumbers.phoneNumber })
-        .from(telnyxPhoneNumbers)
-        .where(eq(telnyxPhoneNumbers.companyId, companyId))
-        .limit(1);
-      const callerIdNumber = callerIdPhone?.phoneNumber || "+15555555555";
-      
-      const headers: Record<string, string> = {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      };
-      if (managedAccountId) {
-        headers["X-Managed-Account-Id"] = managedAccountId;
-      }
-      
-      // Use Dial API with connection_id = credentialConnectionId
-      // This triggers SIP Forking - ALL registered devices will ring
-      const response = await fetch(`${TELNYX_API_BASE}/calls`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          connection_id: connectionId,
-          to: sipUri,
-          from: callerIdNumber,
-          from_display_name: `Call from ${callerNumber || 'Unknown'}`,
-          timeout_secs: 30,
-          answering_machine_detection: "disabled",
-          client_state: clientState,
-        }),
+      await this.makeCallControlRequest(callControlId, "transfer", {
+        to: sipUri,
+        timeout_secs: 30,
+        client_state: clientState,
       });
       
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error(`[CallControl] Dial API failed: ${response.status} - ${errorText}`);
-        throw new Error(`Dial failed: ${response.status}`);
-      }
+      console.log(`[CallControl] Transfer initiated - waiting for agent to answer`);
       
-      const data = await response.json();
-      const agentCallControlId = data.data?.call_control_id;
-      
-      if (!agentCallControlId) {
-        throw new Error("No call_control_id returned from Dial API");
-      }
-      
-      console.log(`[CallControl] Dial API success - agent leg: ${agentCallControlId}, waiting for agent to answer`);
-      
-      // Store context for the agent leg
-      callContextMap.set(agentCallControlId, { companyId, managedAccountId: managedAccountId ?? null });
-      
-      // Store pending bridge - when agent answers, we'll bridge with caller
-      pendingBridges.set(agentCallControlId, {
-        callerCallControlId: callControlId,
-        clientState,
-        companyId,
-        isDirectCall: true,
-      });
-      
-      // Track the call
-      await pbxService.trackActiveCall(companyId, callControlId, callerNumber || "", sipUri, "ringing", {
+      await pbxService.trackActiveCall(companyId, callControlId, callerNumber || "", sipUri, "transferring", {
         agentUserId: phoneNumber.ownerUserId,
         agentSipUri: sipUri,
-        agentCallControlId,
       });
       
     } catch (error) {
-      console.error(`[CallControl] Dial API to SIP failed:`, error);
+      console.error(`[CallControl] Transfer to SIP failed:`, error);
       await this.answerCall(callControlId);
       await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
       await this.routeToVoicemail(callControlId, companyId);
