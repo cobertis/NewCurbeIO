@@ -1166,13 +1166,14 @@ export class TelephonyProvisioningService {
     for (const phoneNumber of phoneNumbers) {
       try {
         // Determine routing based on phone number configuration
-        // If number has IVR assigned (including "unassigned" which means no IVR but needs call control)
-        // OR has ownerUserId, it needs Call Control App for intelligent routing
-        const needsCallControl = phoneNumber.ivrId || phoneNumber.ownerUserId;
+        // Use Call Control App ONLY when there's a real IVR (not "unassigned")
+        // "unassigned" means no IVR - route directly to Credential Connection for simultaneous_ringing
+        const hasRealIvr = phoneNumber.ivrId && phoneNumber.ivrId !== "unassigned";
+        const needsCallControl = hasRealIvr;
         
         if (needsCallControl && settings.callControlAppId) {
-          // Use Call Control App for intelligent routing (IVR, direct user routing, queues)
-          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} needs Call Control App (ivrId=${phoneNumber.ivrId}, ownerUserId=${phoneNumber.ownerUserId})`);
+          // Use Call Control App for intelligent routing (IVR, queues)
+          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} needs Call Control App (ivrId=${phoneNumber.ivrId})`);
           
           const response = await this.makeApiRequest(
             managedAccountId,
@@ -1193,8 +1194,8 @@ export class TelephonyProvisioningService {
           console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Call Control App (intelligent routing)`);
           repairedCount++;
         } else if (settings.credentialConnectionId) {
-          // Use Credential Connection for direct SIP routing (no special configuration)
-          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} using direct routing to Credential Connection`);
+          // Use Credential Connection for direct SIP routing - enables simultaneous_ringing to all registered devices
+          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} using Credential Connection (simultaneous ring to all devices)`);
           
           const response = await this.makeApiRequest(
             managedAccountId,
