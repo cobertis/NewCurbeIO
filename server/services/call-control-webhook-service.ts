@@ -605,14 +605,26 @@ export class CallControlWebhookService {
     // Check if "to" is one of our phone numbers (incoming call)
     const phoneNumber = await this.findPhoneNumberByE164(to);
     if (!phoneNumber) {
-      // Not found by "to" - check if "from" is our number (outgoing call from WebRTC)
+      // Not found by "to" - this might be an OUTBOUND call from WebRTC or Yealink
+      // Check if "from" is our number OR if it's a SIP device (like Yealink)
       const fromPhoneNumber = await this.findPhoneNumberByE164(from);
+      
+      // Detect Yealink/SIP device calls - they come as "user@IP" or "nobody@IP"
+      const isSipDeviceCall = from.includes('@') && !from.startsWith('+') && !from.startsWith('sip:');
+      
       if (fromPhoneNumber) {
-        // This is an OUTGOING call from our WebRTC client - let it proceed, don't hang up!
+        // This is an OUTGOING call from our WebRTC client - let it proceed!
         console.log(`[CallControl] Outbound WebRTC call detected from ${from} to ${to} - allowing`);
         return;
       }
-      console.log(`[CallControl] Phone number not found for: ${to} (and ${from} is not ours either)`);
+      
+      if (isSipDeviceCall) {
+        // This is an OUTGOING call from a SIP device (Yealink, etc) - let it proceed!
+        console.log(`[CallControl] Outbound SIP device call detected from ${from} to ${to} - allowing`);
+        return;
+      }
+      
+      console.log(`[CallControl] Phone number not found for: ${to} (and ${from}=${from} is not recognized)`);
       await this.hangupCall(call_control_id, "USER_NOT_FOUND");
       return;
     }
