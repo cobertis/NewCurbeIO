@@ -37,6 +37,8 @@ interface PendingBridge {
   callerCallControlId: string;
   clientState: string;
   companyId: string;
+  queueId?: string;
+  isDirectCall?: boolean; // true when it's a direct call to assigned user (not queue)
 }
 const pendingBridges = new Map<string, PendingBridge>();
 
@@ -784,16 +786,37 @@ export class CallControlWebhookService {
           console.log(`[CallControl] All agent legs ended without answering, retrying queue dial`);
           ringAllLegs.delete(pendingBridge.callerCallControlId);
           
-          // Retry queue dial if we have the queueId, otherwise the caller stays on hold
+          // Retry queue dial if we have the queueId, otherwise route to voicemail for direct calls
           if (pendingBridge.queueId) {
             // Small delay before retrying to avoid hammering agents
             setTimeout(() => {
               this.retryQueueDial(pendingBridge.callerCallControlId, pendingBridge.companyId, pendingBridge.queueId!);
             }, 3000); // 3 second delay before retry
+          } else if (pendingBridge.isDirectCall) {
+            // Direct call timeout - route to voicemail
+            console.log(`[CallControl] Direct call timeout, routing caller ${pendingBridge.callerCallControlId} to voicemail`);
+            // Answer the call first if not already answered, then route to voicemail
+            this.answerCall(pendingBridge.callerCallControlId).then(() => {
+              this.speakText(pendingBridge.callerCallControlId, "The agent is currently unavailable. Please leave a message after the tone.").then(() => {
+                this.routeToVoicemail(pendingBridge.callerCallControlId, pendingBridge.companyId);
+              });
+            }).catch((err) => {
+              console.error(`[CallControl] Error routing to voicemail after timeout:`, err);
+            });
           } else {
             console.log(`[CallControl] No queueId in pendingBridge, caller stays on hold`);
           }
         }
+      } else if (pendingBridge.isDirectCall) {
+        // Direct call with single agent leg (no ringAllLegs) - route to voicemail on timeout
+        console.log(`[CallControl] Direct call single-leg timeout, routing caller ${pendingBridge.callerCallControlId} to voicemail`);
+        this.answerCall(pendingBridge.callerCallControlId).then(() => {
+          this.speakText(pendingBridge.callerCallControlId, "The agent is currently unavailable. Please leave a message after the tone.").then(() => {
+            this.routeToVoicemail(pendingBridge.callerCallControlId, pendingBridge.companyId);
+          });
+        }).catch((err) => {
+          console.error(`[CallControl] Error routing to voicemail after direct call timeout:`, err);
+        });
       }
     }
 
@@ -1897,10 +1920,12 @@ export class CallControlWebhookService {
       console.log(`[CallControl] Dial successful, agent call_control_id: ${agentCallControlId}, leg_id: ${agentCallLegId}`);
       
       // Store pending bridge info - when agent answers, we'll bridge the calls
+      // Mark as direct call so we know to route to voicemail on timeout
       pendingBridges.set(agentCallControlId, {
         callerCallControlId: callControlId,
         clientState,
         companyId,
+        isDirectCall: true,
       });
       
       // Also store context for the agent leg
