@@ -27848,6 +27848,100 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Webhook processing failed" });
     }
   });
+
+  // GET /api/telnyx/phone-system-access - Check if user can access Phone System menu
+  app.get("/api/telnyx/phone-system-access", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.json({ hasAccess: false, isOwner: false, reason: "No company associated" });
+      }
+
+      // Check if user is admin or owner - they can access Phone System
+      const isOwner = user.role === "admin" || user.role === "super_admin";
+      
+      if (!isOwner) {
+        return res.json({ hasAccess: false, isOwner: false, reason: "Only admins can access Phone System" });
+      }
+
+      // Check if company has phone system setup (has wallet or telnyx account)
+      const { getWalletByCompany } = await import("./services/wallet-service");
+      const wallet = await getWalletByCompany(user.companyId);
+      
+      // Even if not fully setup, admins should be able to see Phone System to set it up
+      return res.json({ 
+        hasAccess: true, 
+        isOwner: true, 
+        reason: wallet ? "Phone system is configured" : "Phone system available for setup"
+      });
+    } catch (error: any) {
+      console.error("Error checking phone system access:", error);
+      res.status(500).json({ hasAccess: false, isOwner: false, reason: "Error checking access" });
+    }
+  });
+
+  // GET /api/telnyx/user-phone-status - Check if user can make calls
+  app.get("/api/telnyx/user-phone-status", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.json({ 
+          hasAssignedNumber: false, 
+          canMakeCalls: false, 
+          reason: "No company associated",
+          message: "Contact your account manager to get started."
+        });
+      }
+
+      // Check if user has a Telnyx number assigned
+      const assignedNumber = await db.query.telnyxPhoneNumbers.findFirst({
+        where: (numbers, { eq, and }) => and(
+          eq(numbers.companyId, user.companyId),
+          eq(numbers.assignedUserId, user.id)
+        ),
+      });
+
+      // Check if user has a PBX extension
+      const pbxExtension = await db.query.pbxExtensions.findFirst({
+        where: (extensions, { eq, and }) => and(
+          eq(extensions.companyId, user.companyId),
+          eq(extensions.assignedUserId, user.id)
+        ),
+      });
+
+      const hasAssignedNumber = !!assignedNumber;
+      const hasPbxExtension = !!pbxExtension;
+      const canMakeCalls = hasAssignedNumber || hasPbxExtension;
+
+      if (!canMakeCalls) {
+        return res.json({
+          hasAssignedNumber: false,
+          canMakeCalls: false,
+          hasPbxExtension: false,
+          reason: "No phone number or extension assigned",
+          message: "Contact your account manager to get a phone number assigned."
+        });
+      }
+
+      return res.json({
+        hasAssignedNumber,
+        canMakeCalls: true,
+        hasPbxExtension,
+        phoneNumber: assignedNumber?.phoneNumber || null,
+        pbxExtension: pbxExtension?.extensionNumber || null,
+        reason: hasAssignedNumber ? "Has assigned number" : "Has PBX extension",
+        message: "Ready to make calls"
+      });
+    } catch (error: any) {
+      console.error("Error checking user phone status:", error);
+      res.status(500).json({ 
+        hasAssignedNumber: false, 
+        canMakeCalls: false, 
+        reason: "Error checking status",
+        message: "Unable to verify phone status."
+      });
+    }
+  });
   // GET /api/telnyx/available-numbers - Search available phone numbers
   app.get("/api/telnyx/available-numbers", requireAuth, async (req: Request, res: Response) => {
     try {
