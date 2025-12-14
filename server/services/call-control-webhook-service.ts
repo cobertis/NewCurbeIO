@@ -1587,7 +1587,7 @@ export class CallControlWebhookService {
     companyId: string,
     extensionId: string
   ): Promise<void> {
-    console.log(`[CallControl] Routing call to extension: ${extensionId} via WebSocket`);
+    console.log(`[CallControl] Routing call to extension: ${extensionId} directly via SIP`);
 
     const extensions = await pbxService.getExtensions(companyId);
     const extension = extensions.find((ext) => ext.id === extensionId);
@@ -1597,33 +1597,59 @@ export class CallControlWebhookService {
       return;
     }
 
-    // Check if the agent is connected via WebSocket
-    const agent = extensionCallService.getClientByExtensionId(extensionId);
-    if (!agent) {
-      await this.speakText(callControlId, "The extension is currently offline. Please leave a message.");
+    // Get the userId from the extension
+    const [extData] = await db
+      .select({ userId: pbxExtensions.userId })
+      .from(pbxExtensions)
+      .where(eq(pbxExtensions.id, extensionId));
+
+    if (!extData?.userId) {
+      console.log(`[CallControl] Extension ${extensionId} has no assigned user, routing to voicemail`);
+      await this.speakText(callControlId, "This extension is not configured. Please leave a message.");
       await this.routeToVoicemail(callControlId, companyId);
       return;
     }
 
-    const activeCall = await pbxService.getActiveCall(callControlId);
-    const callerNumber = activeCall?.from || "Unknown";
-
-    // Create a queue call for this single extension
-    const result = extensionCallService.startQueueCall(
-      callControlId,
-      companyId,
-      "direct-extension",
-      callerNumber,
-      30 // 30 second timeout
-    );
-
-    if (!result.success) {
+    // Get the agent's SIP credentials
+    const sipCreds = await getUserSipCredentials(extData.userId);
+    
+    if (!sipCreds?.sipUsername) {
+      console.log(`[CallControl] User ${extData.userId} has no SIP credentials, routing to voicemail`);
       await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
       await this.routeToVoicemail(callControlId, companyId);
       return;
     }
 
-    await this.speakText(callControlId, "Please hold while we connect you.");
+    const activeCall = await pbxService.getActiveCall(callControlId);
+    const callerNumber = activeCall?.from || callContextMap.get(callControlId)?.callerNumber || "Unknown";
+
+    // Create client state for the bridged call
+    const clientState = Buffer.from(JSON.stringify({
+      companyId,
+      agentUserId: extData.userId,
+      extensionId,
+      directCall: true,
+      originalCallControlId: callControlId,
+    })).toString("base64");
+
+    // Dial the agent's SIP URI directly
+    const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
+    console.log(`[CallControl] Dialing agent's SIP URI directly: ${sipUri}`);
+
+    try {
+      await this.speakText(callControlId, "Please hold while we connect you.");
+      await this.dialAndBridgeToSip(callControlId, sipUri, clientState, companyId);
+      
+      // Update call state to connected
+      await pbxService.trackActiveCall(companyId, callControlId, callerNumber, sipUri, "connected", {
+        extensionId,
+        agentSipUri: sipUri
+      });
+    } catch (error) {
+      console.error(`[CallControl] Failed to dial agent SIP:`, error);
+      await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
+      await this.routeToVoicemail(callControlId, companyId);
+    }
   }
 
   private async routeToVoicemail(callControlId: string, companyId: string): Promise<void> {
@@ -1707,21 +1733,44 @@ export class CallControlWebhookService {
     // Get the assigned user's extension
     const extension = await pbxService.getExtensionByUserId(companyId, phoneNumber.ownerUserId);
     if (!extension) {
-      console.log(`[CallControl] Assigned user has no extension, trying via WebSocket`);
-      // Fall back to WebSocket notification
-      const result = extensionCallService.startQueueCall(
-        callControlId,
-        companyId,
-        phoneNumber.ownerUserId,
-        callerNumber,
-        30
-      );
-      if (!result.success || result.notifiedCount === 0) {
+      console.log(`[CallControl] Assigned user has no extension, trying direct SIP dial`);
+      
+      // Get the assigned user's SIP credentials directly
+      const sipCreds = await getUserSipCredentials(phoneNumber.ownerUserId);
+      
+      if (!sipCreds?.sipUsername) {
+        console.log(`[CallControl] User ${phoneNumber.ownerUserId} has no SIP credentials, routing to voicemail`);
         await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
         await this.routeToVoicemail(callControlId, companyId);
         return;
       }
-      await this.speakText(callControlId, "Please hold while we connect you.");
+
+      // Create client state for the bridged call
+      const clientState = Buffer.from(JSON.stringify({
+        companyId,
+        agentUserId: phoneNumber.ownerUserId,
+        directCall: true,
+        originalCallControlId: callControlId,
+      })).toString("base64");
+
+      // Dial the agent's SIP URI directly
+      const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
+      console.log(`[CallControl] Dialing assigned user's SIP URI directly: ${sipUri}`);
+
+      try {
+        await this.speakText(callControlId, "Please hold while we connect you.");
+        await this.dialAndBridgeToSip(callControlId, sipUri, clientState, companyId);
+        
+        // Update call state to connected
+        await pbxService.trackActiveCall(companyId, callControlId, callerNumber, sipUri, "connected", {
+          agentUserId: phoneNumber.ownerUserId,
+          agentSipUri: sipUri
+        });
+      } catch (error) {
+        console.error(`[CallControl] Failed to dial assigned user SIP:`, error);
+        await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
+        await this.routeToVoicemail(callControlId, companyId);
+      }
       return;
     }
 
