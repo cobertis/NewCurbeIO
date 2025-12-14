@@ -588,6 +588,16 @@ export class CallControlWebhookService {
     });
     console.log(`[CallControl] Stored call context: companyId=${phoneNumber.companyId}, managedAccountId=${managedAccountId}, callerNumber=${from}`);
 
+    // Check if phone number has IVR explicitly disabled ("unassigned")
+    // In this case, transfer directly to the assigned user WITHOUT answering first
+    // This ensures billing only starts when the agent answers, not when the call is received
+    if (phoneNumber.ivrId === "unassigned") {
+      console.log(`[CallControl] IVR disabled (unassigned), transferring directly to assigned user (no answer = no billing until agent picks up)`);
+      await pbxService.trackActiveCall(phoneNumber.companyId, call_control_id, from, to, "direct");
+      await this.transferToAssignedUser(call_control_id, phoneNumber);
+      return;
+    }
+
     await this.answerCall(call_control_id);
 
     // Check for internal call with specific target (IVR or Queue)
@@ -609,15 +619,6 @@ export class CallControlWebhookService {
       } catch (e) {
         console.log(`[CallControl] Could not parse client_state in handleCallInitiated`);
       }
-    }
-
-    // Check if phone number has IVR explicitly disabled ("unassigned")
-    // In this case, route directly to the assigned user's extension
-    if (phoneNumber.ivrId === "unassigned") {
-      console.log(`[CallControl] IVR explicitly disabled (unassigned), routing directly to assigned user`);
-      await pbxService.trackActiveCall(phoneNumber.companyId, call_control_id, from, to, "direct");
-      await this.routeToAssignedUser(call_control_id, phoneNumber);
-      return;
     }
     
     // Check if phone number has a specific IVR assigned (multi-IVR support)
@@ -1778,6 +1779,64 @@ export class CallControlWebhookService {
     
     // Route to the extension
     await this.routeToExtension(callControlId, companyId, extension.id);
+  }
+
+  /**
+   * Transfer call directly to assigned user WITHOUT answering first
+   * This ensures billing only starts when the agent actually answers
+   * Uses Telnyx "transfer" action which rings the destination without answering the inbound leg
+   */
+  private async transferToAssignedUser(
+    callControlId: string,
+    phoneNumber: any
+  ): Promise<void> {
+    console.log(`[CallControl] Transferring directly to assigned user (no answer = no billing until agent picks up)`);
+
+    if (!phoneNumber.ownerUserId) {
+      console.log(`[CallControl] No assigned user, cannot transfer`);
+      // Must answer to play voicemail message
+      await this.answerCall(callControlId);
+      await this.speakText(callControlId, "This number is not configured. Please leave a message.");
+      await this.routeToVoicemail(callControlId, phoneNumber.companyId);
+      return;
+    }
+
+    // Get the assigned user's SIP credentials
+    const sipCreds = await getUserSipCredentials(phoneNumber.ownerUserId);
+    
+    if (!sipCreds?.sipUsername) {
+      console.log(`[CallControl] User ${phoneNumber.ownerUserId} has no SIP credentials`);
+      await this.answerCall(callControlId);
+      await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
+      await this.routeToVoicemail(callControlId, phoneNumber.companyId);
+      return;
+    }
+
+    const companyId = phoneNumber.companyId;
+    const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
+    console.log(`[CallControl] Transferring to agent SIP URI: ${sipUri} (billing starts only when agent answers)`);
+
+    const clientState = Buffer.from(JSON.stringify({
+      companyId,
+      agentUserId: phoneNumber.ownerUserId,
+      directTransfer: true,
+    })).toString("base64");
+
+    try {
+      // Use transfer action - this rings the agent WITHOUT answering the inbound call
+      // Billing only starts when the agent picks up
+      await this.makeCallControlRequest(callControlId, "transfer", {
+        to: sipUri,
+        client_state: clientState,
+      });
+      console.log(`[CallControl] Transfer initiated to ${sipUri}`);
+    } catch (error) {
+      console.error(`[CallControl] Transfer failed:`, error);
+      // Fallback: answer and route to voicemail
+      await this.answerCall(callControlId);
+      await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
+      await this.routeToVoicemail(callControlId, phoneNumber.companyId);
+    }
   }
 
   private async transferToExternal(
