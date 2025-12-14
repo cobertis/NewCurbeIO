@@ -198,11 +198,12 @@ export class TelephonyProvisioningService {
       await this.updateProvisioningStatus(companyId, userId, "provisioning", null);
 
       const [company] = await db
-        .select({ name: companies.name })
+        .select({ name: companies.name, slug: companies.slug })
         .from(companies)
         .where(eq(companies.id, companyId));
 
       const companyName = company?.name || "Company";
+      const companySlug = company?.slug || companyId.substring(0, 8);
       const webhookBaseUrl = await getWebhookBaseUrl();
 
       console.log(`[TelephonyProvisioning] Step 1/5: Creating Outbound Voice Profile...`);
@@ -243,6 +244,21 @@ export class TelephonyProvisioningService {
       credentialConnectionId = connResult.connectionId;
       console.log(`[TelephonyProvisioning] Credential Connection created: ${credentialConnectionId}`);
 
+      // Configure SIP subdomain for SIP Forking support (non-blocking, log warning on failure)
+      let sipDomain: string | null = null;
+      console.log(`[TelephonyProvisioning] Step 3.5: Configuring SIP subdomain...`);
+      const sipSubdomainResult = await this.configureSipSubdomain(
+        managedAccountId,
+        credentialConnectionId,
+        companySlug
+      );
+      if (sipSubdomainResult.success && sipSubdomainResult.sipDomain) {
+        sipDomain = sipSubdomainResult.sipDomain;
+        console.log(`[TelephonyProvisioning] SIP subdomain configured: ${sipDomain}`);
+      } else {
+        console.warn(`[TelephonyProvisioning] SIP subdomain configuration failed (non-blocking): ${sipSubdomainResult.error}`);
+      }
+
       console.log(`[TelephonyProvisioning] Step 4/5: Creating SIP Credentials...`);
       const sipResult = await this.createSipCredential(
         managedAccountId,
@@ -282,6 +298,7 @@ export class TelephonyProvisioningService {
           texmlAppId,
           credentialConnectionId,
           webhookBaseUrl,
+          sipDomain,
           provisioningStatus: "completed" as TelephonyProvisioningStatus,
           provisioningError: null,
           provisionedAt: new Date(),
@@ -431,6 +448,49 @@ export class TelephonyProvisioningService {
       return { success: true, connectionId: data.data?.id };
     } catch (error) {
       return { success: false, error: error instanceof Error ? error.message : "Network error" };
+    }
+  }
+
+  /**
+   * Configure SIP subdomain on a Credential Connection
+   * This creates a company-specific SIP domain (e.g., companyslug.sip.telnyx.com)
+   * Required for SIP Forking to work with multiple devices (WebRTC + physical phones)
+   */
+  async configureSipSubdomain(
+    managedAccountId: string,
+    connectionId: string,
+    sipSubdomain: string
+  ): Promise<{ success: boolean; sipDomain?: string; error?: string }> {
+    try {
+      console.log(`[TelephonyProvisioning] Configuring SIP subdomain: ${sipSubdomain} on connection: ${connectionId}`);
+      
+      const response = await this.makeApiRequest(
+        managedAccountId,
+        `/credential_connections/${connectionId}`,
+        "PATCH",
+        {
+          inbound: {
+            sip_subdomain: sipSubdomain,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[TelephonyProvisioning] Failed to configure SIP subdomain: ${response.status} - ${errorText}`);
+        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      }
+
+      const data = await response.json();
+      const configuredSubdomain = data.data?.inbound?.sip_subdomain;
+      const sipDomain = configuredSubdomain ? `${configuredSubdomain}.sip.telnyx.com` : null;
+      
+      console.log(`[TelephonyProvisioning] SIP subdomain configured successfully. Domain: ${sipDomain}`);
+      return { success: true, sipDomain: sipDomain || undefined };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Network error";
+      console.error(`[TelephonyProvisioning] Error configuring SIP subdomain:`, errorMsg);
+      return { success: false, error: errorMsg };
     }
   }
 
