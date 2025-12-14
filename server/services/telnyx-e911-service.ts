@@ -406,33 +406,20 @@ async function getOrCreateCredentialConnection(
 async function assignConnectionToPhoneNumber(
   config: ManagedAccountConfig,
   phoneNumberId: string,
-  connectionId: string,
-  outboundVoiceProfileId?: string
+  connectionId: string
 ): Promise<{ success: boolean; error?: string }> {
   console.log(`[E911] Assigning credential connection ${connectionId} to phone number ${phoneNumberId}...`);
-  if (outboundVoiceProfileId) {
-    console.log(`[E911] Also assigning outbound_voice_profile_id: ${outboundVoiceProfileId} (required for SIP desk phone caller ID authorization)`);
-  }
 
   try {
     // CRITICAL FIX: Clear texml_application_id to route calls directly to WebRTC
     // Per Telnyx docs, TeXML routing creates second SIP leg causing 4-6s audio delay
-    // CRITICAL: Also set outbound_voice_profile_id to authorize caller ID for SIP desk phones
-    // Without this, SIP phones get "caller origination is invalid" error
-    const patchBody: Record<string, any> = { 
-      connection_id: connectionId,
-      texml_application_id: null  // Clear TeXML to enable direct WebRTC routing
-    };
-    
-    // Add outbound voice profile for caller ID authorization on outbound calls
-    if (outboundVoiceProfileId) {
-      patchBody.outbound_voice_profile_id = outboundVoiceProfileId;
-    }
-    
     const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
       method: "PATCH",
       headers: buildHeaders(config),
-      body: JSON.stringify(patchBody),
+      body: JSON.stringify({ 
+        connection_id: connectionId,
+        texml_application_id: null  // Clear TeXML to enable direct WebRTC routing
+      }),
     });
 
     if (!response.ok) {
@@ -441,7 +428,7 @@ async function assignConnectionToPhoneNumber(
       return { success: false, error: `Failed to assign connection: ${response.status}` };
     }
 
-    console.log(`[E911] Credential connection assigned successfully (TeXML cleared for direct WebRTC routing, OVP: ${outboundVoiceProfileId || 'not set'})`);
+    console.log(`[E911] Credential connection assigned successfully (TeXML cleared for direct WebRTC routing)`);
     return { success: true };
   } catch (error) {
     console.error("[E911] Assign connection error:", error);
@@ -478,8 +465,7 @@ async function ensurePhoneNumberHasCredentialConnection(
 
   console.log(`[E911] Phone number has connection ${phoneDetails.connectionId || 'NONE'}, replacing with credential connection ${connResult.connectionId}...`);
 
-  // Pass the OVP ID to authorize caller ID for SIP desk phone outbound calls
-  const assignResult = await assignConnectionToPhoneNumber(config, phoneNumberId, connResult.connectionId, ovpResult.profileId);
+  const assignResult = await assignConnectionToPhoneNumber(config, phoneNumberId, connResult.connectionId);
   if (!assignResult.success) {
     return { success: false, error: assignResult.error };
   }
@@ -533,104 +519,6 @@ export async function assignPhoneNumberToCredentialConnection(
   } catch (error) {
     console.error("[Phone Assignment] Error:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to assign phone number" };
-  }
-}
-
-/**
- * Repair a phone number's outbound voice profile assignment.
- * This fixes "caller origination is invalid" errors on SIP desk phones.
- * Call this for phone numbers that were purchased before this fix was applied.
- */
-export async function repairPhoneNumberOutboundProfile(
-  companyId: string,
-  phoneNumberId: string
-): Promise<{ success: boolean; error?: string }> {
-  console.log(`[Phone Repair] Assigning outbound voice profile to phone ${phoneNumberId} for company ${companyId}...`);
-  
-  try {
-    const config = await getManagedAccountConfig(companyId);
-    if (!config) {
-      return { success: false, error: "Company has no managed account configured" };
-    }
-    
-    // Get the OVP for this company
-    const ovpResult = await getOrCreateOutboundVoiceProfile(config, companyId);
-    if (!ovpResult.success || !ovpResult.profileId) {
-      return { success: false, error: ovpResult.error || "Failed to get outbound voice profile" };
-    }
-    
-    console.log(`[Phone Repair] Assigning outbound_voice_profile_id: ${ovpResult.profileId} to phone ${phoneNumberId}...`);
-    
-    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
-      method: "PATCH",
-      headers: buildHeaders(config),
-      body: JSON.stringify({
-        outbound_voice_profile_id: ovpResult.profileId,
-      }),
-    });
-    
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error(`[Phone Repair] Failed to assign OVP: ${response.status} - ${errorText}`);
-      return { success: false, error: `Failed to assign OVP: ${response.status}` };
-    }
-    
-    console.log(`[Phone Repair] Successfully assigned outbound voice profile ${ovpResult.profileId} to phone ${phoneNumberId}`);
-    return { success: true };
-  } catch (error) {
-    console.error("[Phone Repair] Error:", error);
-    return { success: false, error: error instanceof Error ? error.message : "Failed to repair phone number" };
-  }
-}
-
-/**
- * Repair all phone numbers for a company to have the correct outbound voice profile.
- * This fixes "caller origination is invalid" errors on SIP desk phones.
- */
-export async function repairAllPhoneNumbersOutboundProfile(
-  companyId: string
-): Promise<{ success: boolean; repairedCount: number; failedCount: number; errors: string[] }> {
-  console.log(`[Phone Repair] Repairing all phone numbers for company ${companyId}...`);
-  
-  const errors: string[] = [];
-  let repairedCount = 0;
-  let failedCount = 0;
-  
-  try {
-    const phoneNumbers = await db
-      .select()
-      .from(telnyxPhoneNumbers)
-      .where(eq(telnyxPhoneNumbers.companyId, companyId));
-    
-    if (phoneNumbers.length === 0) {
-      console.log(`[Phone Repair] No phone numbers found for company ${companyId}`);
-      return { success: true, repairedCount: 0, failedCount: 0, errors: [] };
-    }
-    
-    console.log(`[Phone Repair] Found ${phoneNumbers.length} phone numbers to repair`);
-    
-    for (const phoneNumber of phoneNumbers) {
-      const result = await repairPhoneNumberOutboundProfile(companyId, phoneNumber.telnyxPhoneNumberId);
-      if (result.success) {
-        repairedCount++;
-        console.log(`[Phone Repair] Repaired ${phoneNumber.phoneNumber}`);
-      } else {
-        failedCount++;
-        errors.push(`${phoneNumber.phoneNumber}: ${result.error}`);
-        console.error(`[Phone Repair] Failed to repair ${phoneNumber.phoneNumber}: ${result.error}`);
-      }
-    }
-    
-    console.log(`[Phone Repair] Completed: ${repairedCount} repaired, ${failedCount} failed`);
-    return { success: failedCount === 0, repairedCount, failedCount, errors };
-  } catch (error) {
-    console.error("[Phone Repair] Error:", error);
-    return { 
-      success: false, 
-      repairedCount, 
-      failedCount: failedCount + 1, 
-      errors: [...errors, error instanceof Error ? error.message : "Unknown error"] 
-    };
   }
 }
 
