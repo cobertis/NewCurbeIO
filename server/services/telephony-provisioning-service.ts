@@ -234,7 +234,8 @@ export class TelephonyProvisioningService {
         managedAccountId,
         companyName,
         webhookBaseUrl,
-        outboundVoiceProfileId
+        outboundVoiceProfileId,
+        companyId
       );
       if (!connResult.success || !connResult.connectionId) {
         await this.rollbackTexmlApp(managedAccountId, texmlAppId);
@@ -410,9 +411,13 @@ export class TelephonyProvisioningService {
     managedAccountId: string,
     businessName: string,
     webhookBaseUrl: string,
-    outboundVoiceProfileId: string
+    outboundVoiceProfileId: string,
+    companyId: string
   ): Promise<{ success: boolean; connectionId?: string; error?: string }> {
     try {
+      // Per Telnyx docs: call_parking_enabled "parks" outbound SIP device calls
+      // and sends webhook with direction: outbound, state: parked
+      // This allows us to verify balance before dialing and track calls for billing
       const response = await this.makeApiRequest(
         managedAccountId,
         "/credential_connections",
@@ -424,6 +429,9 @@ export class TelephonyProvisioningService {
           outbound: {
             outbound_voice_profile_id: outboundVoiceProfileId,
             channel_limit: 10,
+            // CRITICAL: Enable call parking for outbound calls from SIP devices (Yealink, WebRTC)
+            // This allows us to intercept outbound calls, verify balance, and then dial
+            call_parking_enabled: true,
           },
           inbound: {
             channel_limit: 10,
@@ -435,9 +443,12 @@ export class TelephonyProvisioningService {
           // CRITICAL: Enable SIP URI calling so TeXML can dial to this credential connection
           // This is a ROOT level field, not inside inbound
           sip_uri_calling_preference: "unrestricted",
-          // NOTE: Do NOT set webhook_event_url here - it causes ALL calls (including outbound 
-          // from Yealink/SIP devices) to route through Call Control which breaks them.
-          // Credential connections should NOT have webhooks - only Call Control Apps need them.
+          // Webhook URL to receive call events (including parked outbound calls)
+          // Using company-specific endpoint for proper routing
+          webhook_event_url: `${webhookBaseUrl}/webhooks/telnyx/call-control/${companyId}`,
+          webhook_event_failover_url: `${webhookBaseUrl}/webhooks/telnyx/call-control/${companyId}/fallback`,
+          webhook_api_version: "2",
+          webhook_timeout_secs: 25,
         }
       );
 
@@ -692,6 +703,80 @@ export class TelephonyProvisioningService {
     }
 
     return this.configureHDCodecs(managedAccountId, settings.credentialConnectionId);
+  }
+
+  /**
+   * Enable Call Parking for outbound calls on credential connection
+   * When enabled, outbound calls from SIP devices (Yealink, WebRTC) are "parked"
+   * and a webhook is sent with direction: outbound, state: parked
+   * This allows us to verify balance before dialing and track calls for billing
+   */
+  async enableCallParking(
+    managedAccountId: string,
+    connectionId: string,
+    webhookBaseUrl: string,
+    companyId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log(`[TelephonyProvisioning] Enabling Call Parking on connection: ${connectionId}`);
+      
+      const response = await this.makeApiRequest(
+        managedAccountId,
+        `/credential_connections/${connectionId}`,
+        "PATCH",
+        {
+          outbound: {
+            call_parking_enabled: true,
+          },
+          webhook_event_url: `${webhookBaseUrl}/webhooks/telnyx/call-control/${companyId}`,
+          webhook_event_failover_url: `${webhookBaseUrl}/webhooks/telnyx/call-control/${companyId}/fallback`,
+          webhook_api_version: "2",
+          webhook_timeout_secs: 25,
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[TelephonyProvisioning] Failed to enable Call Parking: ${response.status} - ${errorText}`);
+        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      }
+
+      const data = await response.json();
+      console.log(`[TelephonyProvisioning] Call Parking enabled successfully. call_parking_enabled:`, data.data?.outbound?.call_parking_enabled);
+      return { success: true };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Network error";
+      console.error(`[TelephonyProvisioning] Error enabling Call Parking:`, errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  /**
+   * Repair existing credential connection to enable Call Parking for outbound calls
+   * Call this to fix companies that can't make outbound calls from Yealink/SIP devices
+   */
+  async repairCallParking(companyId: string): Promise<{ success: boolean; error?: string }> {
+    console.log(`[TelephonyProvisioning] Repairing Call Parking for company: ${companyId}`);
+    
+    const [settings] = await db
+      .select()
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId))
+      .limit(1);
+
+    if (!settings || !settings.credentialConnectionId) {
+      return { success: false, error: "No credential connection found for company" };
+    }
+
+    const { getCompanyManagedAccountId } = await import("./telnyx-managed-accounts");
+    const managedAccountId = await getCompanyManagedAccountId(companyId);
+
+    if (!managedAccountId) {
+      return { success: false, error: "Company has no Telnyx managed account" };
+    }
+
+    const webhookBaseUrl = await getWebhookBaseUrl();
+    return this.enableCallParking(managedAccountId, settings.credentialConnectionId, webhookBaseUrl, companyId);
   }
 
   /**
