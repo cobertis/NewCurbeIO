@@ -874,6 +874,7 @@ export class TelephonyProvisioningService {
   /**
    * Repair existing credential connection to enable SIP Forking
    * Call this to enable ring-all (webphone + physical phone) on existing connections
+   * This also configures the SIP subdomain which is REQUIRED for SIP Forking to work
    */
   async repairSipForking(companyId: string, userId: string): Promise<{ success: boolean; error?: string }> {
     console.log(`[TelephonyProvisioning] Repairing SIP Forking for company: ${companyId}, userId: ${userId}`);
@@ -895,7 +896,24 @@ export class TelephonyProvisioningService {
       return { success: false, error: "Company has no Telnyx managed account" };
     }
 
-    return this.enableSipForking(managedAccountId, settings.credentialConnectionId);
+    // Step 1: Enable simultaneous_ringing
+    const forkingResult = await this.enableSipForking(managedAccountId, settings.credentialConnectionId);
+    if (!forkingResult.success) {
+      return forkingResult;
+    }
+
+    // Step 2: Configure SIP subdomain - CRITICAL for SIP Forking to actually work
+    // Without subdomain, calls go to generic sip.telnyx.com which doesn't fork
+    console.log(`[TelephonyProvisioning] Configuring SIP subdomain for company: ${companyId}`);
+    const subdomainResult = await this.setupSipDomainForCompany(companyId);
+    if (subdomainResult.success && subdomainResult.sipDomain) {
+      console.log(`[TelephonyProvisioning] SIP subdomain configured: ${subdomainResult.sipDomain}`);
+    } else {
+      console.warn(`[TelephonyProvisioning] Could not configure SIP subdomain: ${subdomainResult.error}`);
+      // Don't fail the whole repair - simultaneous_ringing is still enabled
+    }
+
+    return { success: true };
   }
 
   private async createSipCredential(
