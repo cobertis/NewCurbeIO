@@ -1803,7 +1803,7 @@ export class CallControlWebhookService {
 
     const sipCreds = await getUserSipCredentials(phoneNumber.ownerUserId);
     
-    if (!sipCreds?.sipUsername || !sipCreds?.telnyxCredentialId) {
+    if (!sipCreds?.sipUsername) {
       console.log(`[CallControl] User ${phoneNumber.ownerUserId} has no SIP credentials`);
       await this.answerCall(callControlId);
       await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
@@ -1812,7 +1812,30 @@ export class CallControlWebhookService {
     }
 
     const companyId = phoneNumber.companyId;
-    const credentialConnectionId = sipCreds.telnyxCredentialId;
+    
+    // Get the REAL credential connection ID from telephony_settings (numeric Telnyx ID)
+    // NOT from telephony_credentials.telnyxCredentialId (which is an internal UUID)
+    const [telSettings] = await db
+      .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+    
+    const credentialConnectionId = telSettings?.credentialConnectionId;
+    
+    if (!credentialConnectionId) {
+      console.log(`[CallControl] No credential connection ID found for company, using simple transfer`);
+      // Fallback to simple transfer
+      const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
+      const clientState = Buffer.from(JSON.stringify({
+        companyId,
+        agentUserId: phoneNumber.ownerUserId,
+        directTransfer: true,
+      })).toString("base64");
+      const transferParams: any = { to: sipUri, client_state: clientState };
+      if (callerNumber) transferParams.from = callerNumber;
+      await this.makeCallControlRequest(callControlId, "transfer", transferParams);
+      return;
+    }
     
     console.log(`[CallControl] Getting registered endpoints for credential connection: ${credentialConnectionId}`);
     
