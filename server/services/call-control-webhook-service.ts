@@ -1367,10 +1367,14 @@ export class CallControlWebhookService {
     const callerIdNumber = phoneNumber?.phoneNumber || "+15555555555";
 
     // Get Call Control App ID for the company (required for outbound calls via REST API)
-    // NOTE: We use callControlAppId (NOT credentialConnectionId) because:
-    // - Credential connections don't emit Call Control webhooks
-    // - SIP Forking works through the SIP domain in the URI (e.g. cobertis-insurance.sip.telnyx.com)
-    // - The Call Control App provides webhooks for call.answered which we need for bridging
+    // 
+    // NOTE: SIP Forking works through the SIP domain in the URI (e.g. cobertis-insurance.sip.telnyx.com)
+    // NOT through the connection_id. The connection_id must be a Call Control App ID.
+    // Telnyx does not accept Credential Connection IDs as connection_id in the Dial API.
+    // 
+    // The SIP Forking behavior is determined by:
+    // 1. The SIP URI pointing to the company-specific domain (cobertis-insurance.sip.telnyx.com)
+    // 2. The credential connection having simultaneous_ringing: "enabled"
     const [settings] = await db
       .select({ callControlAppId: telephonySettings.callControlAppId })
       .from(telephonySettings)
@@ -1382,7 +1386,7 @@ export class CallControlWebhookService {
       throw new Error("No Call Control App ID found for company - cannot create outbound call");
     }
     
-    console.log(`[CallControl] Using Call Control App ID: ${connectionId} for outbound call (SIP Forking via SIP domain in URI)`)
+    console.log(`[CallControl] Using Call Control App ID: ${connectionId} for outbound call (SIP Forking via SIP domain in URI: ${sipUri})`)
 
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
@@ -1394,6 +1398,8 @@ export class CallControlWebhookService {
     }
 
     // Create outbound call to the agent's SIP endpoint
+    // connection_id = Call Control App ID (required for webhooks)
+    // SIP Forking is enabled via the SIP domain in sipUri (e.g. cobertis-insurance.sip.telnyx.com)
     const response = await fetch(`${TELNYX_API_BASE}/calls`, {
       method: "POST",
       headers,
