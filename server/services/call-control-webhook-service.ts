@@ -1114,19 +1114,25 @@ export class CallControlWebhookService {
       .limit(1);
     const callerIdNumber = phoneNumber?.phoneNumber || "+15555555555";
 
-    // Get Call Control App ID
+    // Get Credential Connection ID for SIP Forking (enables simultaneous ringing on all devices)
     const [settings] = await db
-      .select({ callControlAppId: telephonySettings.callControlAppId })
+      .select({ 
+        credentialConnectionId: telephonySettings.credentialConnectionId,
+        callControlAppId: telephonySettings.callControlAppId 
+      })
       .from(telephonySettings)
       .where(eq(telephonySettings.companyId, companyId));
-    const connectionId = settings?.callControlAppId;
+    // Use Credential Connection ID for SIP Forking, fallback to Call Control App ID
+    const connectionId = settings?.credentialConnectionId || settings?.callControlAppId;
 
     if (!connectionId) {
-      console.error(`[CallControl] No Call Control App ID for company ${companyId}`);
+      console.error(`[CallControl] No Credential Connection ID or Call Control App ID for company ${companyId}`);
       await this.speakText(callControlId, "System error. Please try again later.");
       await this.hangupCall(callControlId, "NORMAL_CLEARING");
       return;
     }
+    
+    console.log(`[CallControl] Using ${settings?.credentialConnectionId ? 'Credential Connection' : 'Call Control App'} ID: ${connectionId} for queue dial`);
 
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
@@ -1366,27 +1372,31 @@ export class CallControlWebhookService {
 
     const callerIdNumber = phoneNumber?.phoneNumber || "+15555555555";
 
-    // Get Call Control App ID for the company (required for outbound calls via REST API)
+    // Get Credential Connection ID for the company (required for SIP Forking)
     // 
-    // NOTE: SIP Forking works through the SIP domain in the URI (e.g. cobertis-insurance.sip.telnyx.com)
-    // NOT through the connection_id. The connection_id must be a Call Control App ID.
-    // Telnyx does not accept Credential Connection IDs as connection_id in the Dial API.
+    // IMPORTANT: For SIP Forking to work correctly, we MUST use the Credential Connection ID
+    // as the connection_id in the Dial API. This ensures the call goes through the 
+    // credential connection which has simultaneous_ringing: "enabled" configured.
     // 
-    // The SIP Forking behavior is determined by:
-    // 1. The SIP URI pointing to the company-specific domain (cobertis-insurance.sip.telnyx.com)
-    // 2. The credential connection having simultaneous_ringing: "enabled"
+    // Using Call Control App ID here would NOT trigger SIP Forking because the call
+    // would go through Call Control instead of the Credential Connection.
     const [settings] = await db
-      .select({ callControlAppId: telephonySettings.callControlAppId })
+      .select({ 
+        credentialConnectionId: telephonySettings.credentialConnectionId,
+        callControlAppId: telephonySettings.callControlAppId 
+      })
       .from(telephonySettings)
       .where(eq(telephonySettings.companyId, companyId));
 
-    const connectionId = settings?.callControlAppId;
+    // Use Credential Connection ID for SIP Forking, fallback to Call Control App ID
+    const connectionId = settings?.credentialConnectionId || settings?.callControlAppId;
 
     if (!connectionId) {
-      throw new Error("No Call Control App ID found for company - cannot create outbound call");
+      throw new Error("No Credential Connection ID or Call Control App ID found for company - cannot create outbound call");
     }
     
-    console.log(`[CallControl] Using Call Control App ID: ${connectionId} for outbound call (SIP Forking via SIP domain in URI: ${sipUri})`)
+    const usingCredential = settings?.credentialConnectionId === connectionId;
+    console.log(`[CallControl] Using ${usingCredential ? 'Credential Connection' : 'Call Control App'} ID: ${connectionId} for outbound call to SIP URI: ${sipUri}`)
 
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
@@ -1398,8 +1408,7 @@ export class CallControlWebhookService {
     }
 
     // Create outbound call to the agent's SIP endpoint
-    // connection_id = Call Control App ID (required for webhooks)
-    // SIP Forking is enabled via the SIP domain in sipUri (e.g. cobertis-insurance.sip.telnyx.com)
+    // connection_id = Credential Connection ID (enables SIP Forking to ring all registered devices)
     const response = await fetch(`${TELNYX_API_BASE}/calls`, {
       method: "POST",
       headers,
@@ -1539,16 +1548,23 @@ export class CallControlWebhookService {
       .limit(1);
     const callerIdNumber = phoneNumber?.phoneNumber || "+15555555555";
 
+    // Get Credential Connection ID for SIP Forking (enables simultaneous ringing on all devices)
     const [settings] = await db
-      .select({ callControlAppId: telephonySettings.callControlAppId })
+      .select({ 
+        credentialConnectionId: telephonySettings.credentialConnectionId,
+        callControlAppId: telephonySettings.callControlAppId 
+      })
       .from(telephonySettings)
       .where(eq(telephonySettings.companyId, companyId));
-    const connectionId = settings?.callControlAppId;
+    // Use Credential Connection ID for SIP Forking, fallback to Call Control App ID
+    const connectionId = settings?.credentialConnectionId || settings?.callControlAppId;
 
     if (!connectionId) {
-      console.error(`[CallControl] No Call Control App ID for retry`);
+      console.error(`[CallControl] No Credential Connection ID or Call Control App ID for retry`);
       return;
     }
+    
+    console.log(`[CallControl] Retry: Using ${settings?.credentialConnectionId ? 'Credential Connection' : 'Call Control App'} ID: ${connectionId}`);
 
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,

@@ -92,9 +92,24 @@ class SipWebSocketInterceptor {
           this.readyState = this.ws.readyState;
           let data = ev.data;
           
-          // Only intercept SIP messages for Telnyx
-          if (this.url.includes("telnyx.com") && typeof data === "string" && data.startsWith("INVITE")) {
-            data = interceptor.rewriteInviteRequestUri(data);
+          // DEBUG: Log all SIP messages for Telnyx to detect incoming calls
+          if (this.url.includes("telnyx.com") && typeof data === "string") {
+            // Check if this is a SIP message (starts with method or SIP/2.0)
+            const firstLine = data.split("\r\n")[0] || data.split("\n")[0] || "";
+            if (firstLine.includes("SIP/2.0") || /^[A-Z]+\s+sip:/.test(firstLine)) {
+              console.log("[SIP.js WS] <<< Received SIP message:", firstLine);
+              
+              // Specifically check for INVITE
+              if (data.includes("INVITE sip:") || firstLine.startsWith("INVITE")) {
+                console.log("[SIP.js WS] *** INCOMING INVITE DETECTED ***");
+                console.log("[SIP.js WS] Full INVITE message (first 500 chars):", data.substring(0, 500));
+              }
+            }
+            
+            // Rewrite Request-URI for INVITE messages directed at DID instead of SIP username
+            if (data.startsWith("INVITE")) {
+              data = interceptor.rewriteInviteRequestUri(data);
+            }
           }
           
           const newEvent = new MessageEvent("message", { data });
