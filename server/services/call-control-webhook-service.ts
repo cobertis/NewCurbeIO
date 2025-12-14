@@ -1114,19 +1114,21 @@ export class CallControlWebhookService {
       .limit(1);
     const callerIdNumber = phoneNumber?.phoneNumber || "+15555555555";
 
-    // Get Call Control App ID (required by Telnyx Dial API)
+    // Get Credential Connection ID - REQUIRED for SIP Forking (simultaneous ringing)
+    // When connection_id = credentialConnectionId, Telnyx sends the call to ALL registered devices
     const [settings] = await db
-      .select({ callControlAppId: telephonySettings.callControlAppId })
+      .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
       .from(telephonySettings)
       .where(eq(telephonySettings.companyId, companyId));
-    const connectionId = settings?.callControlAppId;
+    const connectionId = settings?.credentialConnectionId;
 
     if (!connectionId) {
-      console.error(`[CallControl] No Call Control App ID for company ${companyId}`);
+      console.error(`[CallControl] No Credential Connection ID for company ${companyId} - SIP Forking unavailable`);
       await this.speakText(callControlId, "System error. Please try again later.");
       await this.hangupCall(callControlId, "NORMAL_CLEARING");
       return;
     }
+    console.log(`[CallControl] Using Credential Connection ID: ${connectionId} for SIP Forking`);
 
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
@@ -1366,20 +1368,21 @@ export class CallControlWebhookService {
 
     const callerIdNumber = phoneNumber?.phoneNumber || "+15555555555";
 
-    // Get Call Control App ID (required by Telnyx Dial API - does NOT accept Credential Connection IDs)
-    // SIP Forking works via the SIP URI pointing to the Credential Connection's domain
+    // Get Credential Connection ID - REQUIRED for SIP Forking (simultaneous ringing)
+    // When connection_id = credentialConnectionId, Telnyx sends the call to ALL registered devices
+    // This enables webphone + deskphone to ring simultaneously
     const [settings] = await db
-      .select({ callControlAppId: telephonySettings.callControlAppId })
+      .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
       .from(telephonySettings)
       .where(eq(telephonySettings.companyId, companyId));
 
-    const connectionId = settings?.callControlAppId;
+    const connectionId = settings?.credentialConnectionId;
 
     if (!connectionId) {
-      throw new Error("No Call Control App ID found for company - cannot create outbound call");
+      throw new Error("No Credential Connection ID found for company - cannot create outbound call with SIP Forking");
     }
     
-    console.log(`[CallControl] Using Call Control App ID: ${connectionId} for dial to SIP URI: ${sipUri}`)
+    console.log(`[CallControl] Using Credential Connection ID: ${connectionId} for dial to SIP URI: ${sipUri} (SIP Forking enabled)`)
 
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
@@ -1531,17 +1534,18 @@ export class CallControlWebhookService {
       .limit(1);
     const callerIdNumber = phoneNumber?.phoneNumber || "+15555555555";
 
-    // Get Call Control App ID (required by Telnyx Dial API)
+    // Get Credential Connection ID - REQUIRED for SIP Forking (simultaneous ringing)
     const [settings] = await db
-      .select({ callControlAppId: telephonySettings.callControlAppId })
+      .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
       .from(telephonySettings)
       .where(eq(telephonySettings.companyId, companyId));
-    const connectionId = settings?.callControlAppId;
+    const connectionId = settings?.credentialConnectionId;
 
     if (!connectionId) {
-      console.error(`[CallControl] No Call Control App ID for retry`);
+      console.error(`[CallControl] No Credential Connection ID for retry - SIP Forking unavailable`);
       return;
     }
+    console.log(`[CallControl] Retry: Using Credential Connection ID: ${connectionId} for SIP Forking`);
 
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
