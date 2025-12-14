@@ -1260,9 +1260,6 @@ export default function PhoneSystem() {
                               ))}
                             </SelectContent>
                           </Select>
-                          <p className="text-xs text-slate-500 mt-2">
-                            Select which IVR handles incoming calls to this number
-                          </p>
                         </div>
                       </div>
 
