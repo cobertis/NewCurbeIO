@@ -29970,6 +29970,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const { repairPhoneNumberOutboundProfile } = await import("./services/telnyx-e911-service");
       
       // Allow admins/superadmins to query credentials for a specific user (e.g., for desk phone setup)
       // Regular users can only get their own credentials
@@ -29993,6 +29994,30 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(404).json({ 
           message: "No SIP credentials found. Please provision WebRTC infrastructure first." 
         });
+      }
+
+      // Auto-repair: Find the phone number for the target user and assign OVP
+      // This fixes "caller origination is invalid" errors on SIP desk phones
+      const repairUserId = targetUserId || user.id;
+      const [userPhoneNumber] = await db
+        .select({ telnyxPhoneNumberId: telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumber: telnyxPhoneNumbers.phoneNumber })
+        .from(telnyxPhoneNumbers)
+        .where(
+          and(
+            eq(telnyxPhoneNumbers.companyId, user.companyId),
+            eq(telnyxPhoneNumbers.assignedUserId, repairUserId)
+          )
+        )
+        .limit(1);
+      
+      if (userPhoneNumber?.telnyxPhoneNumberId) {
+        console.log(`[SIP Credentials] Auto-repairing OVP for phone ${userPhoneNumber.phoneNumber} (user: ${repairUserId})...`);
+        const repairResult = await repairPhoneNumberOutboundProfile(user.companyId, userPhoneNumber.telnyxPhoneNumberId);
+        if (repairResult.success) {
+          console.log(`[SIP Credentials] OVP auto-repair successful for ${userPhoneNumber.phoneNumber}`);
+        } else {
+          console.warn(`[SIP Credentials] OVP auto-repair failed (non-fatal): ${repairResult.error}`);
+        }
       }
 
       res.json({
