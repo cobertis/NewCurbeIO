@@ -46,7 +46,10 @@ import {
   Filter,
   Search,
   ChevronRight,
-  Hash
+  Hash,
+  Eye,
+  EyeOff,
+  Monitor
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { format, subDays, startOfDay, isSameDay } from "date-fns";
@@ -177,6 +180,8 @@ export default function PhoneSystem() {
   const [editingCnam, setEditingCnam] = useState(false);
   const [cnamInput, setCnamInput] = useState("");
   const [voicemailPinInput, setVoicemailPinInput] = useState("");
+  const [showDeskPhoneCredentials, setShowDeskPhoneCredentials] = useState(false);
+  const [deskPhoneCredentials, setDeskPhoneCredentials] = useState<{ sipUsername: string; sipPassword: string; loading: boolean } | null>(null);
 
   const { data: statusData, isLoading: isLoadingStatus, refetch } = useQuery<StatusResponse>({
     queryKey: ["/api/telnyx/managed-accounts/status"],
@@ -1260,6 +1265,137 @@ export default function PhoneSystem() {
                           </p>
                         </div>
                       </div>
+
+                      {/* Desk Phone Credentials - Only show when user is assigned */}
+                      {selectedNumber.ownerUserId && (
+                        <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-purple-50 dark:bg-purple-900/20">
+                                <Monitor className="h-5 w-5 text-purple-600" />
+                              </div>
+                              <div>
+                                <p className="font-medium text-sm text-slate-700 dark:text-foreground">Desk Phone Credentials</p>
+                                <p className="text-xs text-slate-500">
+                                  SIP credentials to configure a physical desk phone
+                                </p>
+                              </div>
+                            </div>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={async () => {
+                                if (showDeskPhoneCredentials) {
+                                  setShowDeskPhoneCredentials(false);
+                                  setDeskPhoneCredentials(null);
+                                } else {
+                                  setDeskPhoneCredentials({ sipUsername: '', sipPassword: '', loading: true });
+                                  setShowDeskPhoneCredentials(true);
+                                  try {
+                                    const response = await fetch('/api/telnyx/sip-credentials', { credentials: 'include' });
+                                    const data = await response.json();
+                                    if (data.username && data.password) {
+                                      setDeskPhoneCredentials({ 
+                                        sipUsername: data.username, 
+                                        sipPassword: data.password, 
+                                        loading: false 
+                                      });
+                                    } else {
+                                      toast({ title: "No Credentials", description: "No SIP credentials found for this user." });
+                                      setShowDeskPhoneCredentials(false);
+                                      setDeskPhoneCredentials(null);
+                                    }
+                                  } catch (error) {
+                                    toast({ title: "Error", description: "Failed to fetch SIP credentials." });
+                                    setShowDeskPhoneCredentials(false);
+                                    setDeskPhoneCredentials(null);
+                                  }
+                                }
+                              }}
+                              data-testid="button-show-sip-credentials"
+                            >
+                              {showDeskPhoneCredentials ? 'Hide' : 'Show Credentials'}
+                            </Button>
+                          </div>
+                          {showDeskPhoneCredentials && deskPhoneCredentials && (
+                            <div className="space-y-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                              {deskPhoneCredentials.loading ? (
+                                <div className="flex items-center justify-center py-4">
+                                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                                </div>
+                              ) : (
+                                <>
+                                  <div className="grid grid-cols-3 gap-3">
+                                    <div className="space-y-1">
+                                      <Label className="text-xs text-slate-500">SIP Server</Label>
+                                      <div className="flex items-center gap-2">
+                                        <code className="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded font-mono">
+                                          sip.telnyx.com
+                                        </code>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 w-6 p-0"
+                                          onClick={() => {
+                                            navigator.clipboard.writeText('sip.telnyx.com');
+                                            toast({ title: "Copied", description: "SIP Server copied to clipboard." });
+                                          }}
+                                          data-testid="button-copy-sip-server"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-xs text-slate-500">Username</Label>
+                                      <div className="flex items-center gap-2">
+                                        <code className="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded font-mono truncate max-w-[150px]">
+                                          {deskPhoneCredentials.sipUsername}
+                                        </code>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 w-6 p-0"
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(deskPhoneCredentials.sipUsername);
+                                            toast({ title: "Copied", description: "Username copied to clipboard." });
+                                          }}
+                                          data-testid="button-copy-sip-username"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                    <div className="space-y-1">
+                                      <Label className="text-xs text-slate-500">Password</Label>
+                                      <div className="flex items-center gap-2">
+                                        <code className="text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded font-mono">
+                                          ••••••••
+                                        </code>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          className="h-6 w-6 p-0"
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(deskPhoneCredentials.sipPassword);
+                                            toast({ title: "Copied", description: "Password copied to clipboard." });
+                                          }}
+                                          data-testid="button-copy-sip-password"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </Button>
+                                      </div>
+                                    </div>
+                                  </div>
+                                  <p className="text-xs text-slate-500">
+                                    Use these credentials to configure your desk phone or SIP client. Port: 5060 (UDP) or 5061 (TLS).
+                                  </p>
+                                </>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* Voice Settings - Per Number */}
                       <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
