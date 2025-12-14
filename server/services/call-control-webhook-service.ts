@@ -1824,18 +1824,17 @@ export class CallControlWebhookService {
     })).toString("base64");
 
     try {
-      // Use transfer action with SIP headers to pass original caller info
-      // This rings the agent WITHOUT answering the inbound call
+      // Use transfer action - this rings the agent WITHOUT answering the inbound call
       // Billing only starts when the agent picks up
       const transferParams: any = {
         to: sipUri,
         client_state: clientState,
       };
 
-      // Note: sip_headers removed - was causing 422 error
-      // Caller info is passed via client_state instead
+      // Pass the original caller number as "from" so agent sees correct caller ID
       if (callerNumber) {
-        console.log(`[CallControl] Caller info: ${callerNumber} (passed via client_state)`);
+        transferParams.from = callerNumber;
+        console.log(`[CallControl] Setting caller ID (from): ${callerNumber}`);
       }
 
       await this.makeCallControlRequest(callControlId, "transfer", transferParams);
