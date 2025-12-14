@@ -356,8 +356,6 @@ async function getOrCreateCredentialConnection(
           outbound_voice_profile_id: outboundVoiceProfileId,
           channel_limit: 10,
         },
-        // Enable simultaneous ring - all devices with same credentials ring at once (root-level parameter)
-        simultaneous_ring: true,
         inbound: {
           channel_limit: 10,
           // Codec priority: G.711 first for PSTN compatibility, OPUS last for SIP-to-SIP
@@ -366,6 +364,8 @@ async function getOrCreateCredentialConnection(
           generate_ringback_tone: true,
           // Enable SHAKEN/STIR for caller ID verification
           shaken_stir_enabled: true,
+          // Enable simultaneous ring - all devices with same credentials ring at once
+          simultaneous_ringing: "enabled",
         },
       }),
     });
@@ -596,11 +596,13 @@ async function updateCredentialConnectionAni(
       method: "PATCH",
       headers: buildHeaders(config),
       body: JSON.stringify({
-        // Enable simultaneous ring - all devices with same credentials ring at once (root-level parameter)
-        simultaneous_ring: true,
         outbound: {
           ani_override: phoneNumber,
           ani_override_type: "always",
+        },
+        inbound: {
+          // Enable simultaneous ring - all devices with same credentials ring at once
+          simultaneous_ringing: "enabled",
         },
       }),
     });
