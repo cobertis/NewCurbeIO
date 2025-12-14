@@ -1002,7 +1002,7 @@ export class TelephonyProvisioningService {
         .from(companies)
         .where(eq(companies.id, companyId));
       
-      const subdomain = `curbe-${company?.name || companyId.slice(0, 8)}`;
+      const subdomain = company?.name || companyId.slice(0, 8);
       
       const subdomainResult = await this.configureCallControlAppSipSubdomain(
         managedAccountId,
