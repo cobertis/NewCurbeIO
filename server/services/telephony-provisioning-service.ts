@@ -1357,20 +1357,56 @@ export class TelephonyProvisioningService {
           // Numbers with ownerUserId but no IVR go here for SIP Forking support
           console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Credential Connection (SIP Forking enabled, ownerUserId=${phoneNumber.ownerUserId})`);
           
+          // DIAGNOSTIC: GET current state before PATCH
+          console.log(`[TelephonyProvisioning] Fetching current config for phone ${phoneNumber.telnyxPhoneNumberId}...`);
+          const getResponse = await this.makeApiRequest(
+            managedAccountId,
+            `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
+            "GET"
+          );
+          
+          if (getResponse.ok) {
+            const currentData = await getResponse.json();
+            const currentConnectionId = currentData.data?.connection_id;
+            const currentCallControlAppId = currentData.data?.call_control_application_id;
+            console.log(`[TelephonyProvisioning] BEFORE: connection_id=${currentConnectionId}, call_control_application_id=${currentCallControlAppId}`);
+            console.log(`[TelephonyProvisioning] TARGET: connection_id=${settings.credentialConnectionId}`);
+            
+            // Check if already correctly configured
+            if (currentConnectionId === settings.credentialConnectionId && !currentCallControlAppId) {
+              console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} already correctly routed to Credential Connection`);
+              repairedCount++;
+              continue;
+            }
+          } else {
+            console.log(`[TelephonyProvisioning] Warning: Could not fetch current state: ${getResponse.status}`);
+          }
+          
+          // Execute PATCH
+          console.log(`[TelephonyProvisioning] Sending PATCH to route ${phoneNumber.phoneNumber} to connection_id=${settings.credentialConnectionId}`);
           const response = await this.makeApiRequest(
             managedAccountId,
             `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
             "PATCH",
             { 
-              connection_id: settings.credentialConnectionId,
-              call_control_application_id: null
+              connection_id: settings.credentialConnectionId
             }
           );
 
           if (!response.ok) {
             const errorText = await response.text();
+            console.error(`[TelephonyProvisioning] PATCH FAILED: ${response.status} - ${errorText}`);
             errors.push(`Failed to repair ${phoneNumber.phoneNumber}: HTTP ${response.status} - ${errorText}`);
             continue;
+          }
+          
+          // DIAGNOSTIC: Verify PATCH result
+          const patchResult = await response.json();
+          const newConnectionId = patchResult.data?.connection_id;
+          console.log(`[TelephonyProvisioning] AFTER PATCH: connection_id=${newConnectionId}`);
+          
+          if (newConnectionId !== settings.credentialConnectionId) {
+            console.error(`[TelephonyProvisioning] WARNING: PATCH succeeded but connection_id mismatch! Expected: ${settings.credentialConnectionId}, Got: ${newConnectionId}`);
           }
 
           // Update database
