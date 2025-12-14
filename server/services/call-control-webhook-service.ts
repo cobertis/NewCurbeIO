@@ -2052,7 +2052,7 @@ export class CallControlWebhookService {
     const sipDomain = await getCompanySipDomain(companyId);
     const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
     
-    console.log(`[CallControl] Transferring to SIP URI: ${sipUri} (domain: ${sipDomain})`);
+    console.log(`[CallControl] Dialing SIP URI: ${sipUri} (domain: ${sipDomain})`);
     
     const clientState = Buffer.from(JSON.stringify({
       companyId,
@@ -2061,19 +2061,19 @@ export class CallControlWebhookService {
     })).toString("base64");
 
     try {
-      // Use transfer to SIP URI
-      await this.makeCallControlRequest(callControlId, "transfer", {
-        to: sipUri,
-        from: callerNumber || phoneNumber.phoneNumber,
-        timeout_secs: 30,
-        client_state: clientState,
-      });
+      // CRITICAL: First answer the inbound call so caller hears ringback
+      // Then dial the agent - when they answer, bridge the calls
+      await this.answerCall(callControlId);
       
-      console.log(`[CallControl] Transfer initiated to SIP URI`);
+      // Use dialAndBridgeToSip to create outbound call to agent
+      // This creates a new call leg that rings the agent's devices
+      // When agent answers, handleCallAnswered will bridge the calls
+      await this.dialAndBridgeToSip(callControlId, sipUri, clientState, companyId);
+      
+      console.log(`[CallControl] Dial initiated to SIP URI, waiting for agent to answer`);
       
     } catch (error) {
-      console.error(`[CallControl] Transfer failed:`, error);
-      await this.answerCall(callControlId);
+      console.error(`[CallControl] Dial to agent failed:`, error);
       await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
       await this.routeToVoicemail(callControlId, companyId);
     }
