@@ -660,8 +660,28 @@ export class TelephonyProvisioningService {
         return { success: false, error: `HTTP ${response.status}: ${errorText}` };
       }
 
-      const data = await response.json();
-      console.log(`[TelephonyProvisioning] SIP Forking enabled successfully. sip_forking_enabled:`, data.data?.inbound?.sip_forking_enabled);
+      const patchData = await response.json();
+      console.log(`[TelephonyProvisioning] PATCH response inbound:`, JSON.stringify(patchData.data?.inbound));
+      
+      // Verify by doing a GET to confirm the setting was applied
+      const verifyResponse = await this.makeApiRequest(
+        managedAccountId,
+        `/credential_connections/${connectionId}`,
+        "GET"
+      );
+      
+      if (verifyResponse.ok) {
+        const verifyData = await verifyResponse.json();
+        const sipForkingStatus = verifyData.data?.inbound?.sip_forking_enabled;
+        console.log(`[TelephonyProvisioning] GET verification - sip_forking_enabled: ${sipForkingStatus}`);
+        
+        if (sipForkingStatus !== true) {
+          console.error(`[TelephonyProvisioning] SIP Forking NOT enabled after PATCH! Current value: ${sipForkingStatus}`);
+          return { success: false, error: `SIP Forking not applied. Value: ${sipForkingStatus}` };
+        }
+      }
+      
+      console.log(`[TelephonyProvisioning] SIP Forking enabled and verified successfully`);
       return { success: true };
     } catch (error) {
       const errorMsg = error instanceof Error ? error.message : "Network error";
