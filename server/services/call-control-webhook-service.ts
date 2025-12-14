@@ -1782,16 +1782,17 @@ export class CallControlWebhookService {
   }
 
   /**
-   * Transfer call to assigned user with RING-ALL to multiple devices
-   * This dials ALL registered endpoints (webphone + physical phone) simultaneously
-   * When one answers, the others are cancelled and call is bridged
+   * Transfer call to assigned user using SIP Forking
+   * With SIP Forking enabled on the credential connection, Telnyx automatically
+   * rings ALL registered devices (webphone + physical phones) simultaneously.
+   * First device to answer wins - others are automatically cancelled by Telnyx.
    */
   private async transferToAssignedUser(
     callControlId: string,
     phoneNumber: any,
     callerNumber?: string
   ): Promise<void> {
-    console.log(`[CallControl] Ring-all transfer to assigned user, caller: ${callerNumber}`);
+    console.log(`[CallControl] Transfer to assigned user with SIP Forking, caller: ${callerNumber}`);
 
     if (!phoneNumber.ownerUserId) {
       console.log(`[CallControl] No assigned user, cannot transfer`);
@@ -1813,124 +1814,58 @@ export class CallControlWebhookService {
 
     const companyId = phoneNumber.companyId;
     
-    // Get the REAL credential connection ID from telephony_settings (numeric Telnyx ID)
-    // NOT from telephony_credentials.telnyxCredentialId (which is an internal UUID)
-    const [telSettings] = await db
-      .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
-      .from(telephonySettings)
-      .where(eq(telephonySettings.companyId, companyId));
+    // With SIP Forking enabled on the credential connection, we simply transfer to
+    // sip:username@sip.telnyx.com and Telnyx automatically forks the call to ALL
+    // registered devices (webphone, physical phones, softphones, etc.)
+    const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
+    console.log(`[CallControl] Transferring to SIP URI (with forking): ${sipUri}`);
     
-    const credentialConnectionId = telSettings?.credentialConnectionId;
+    const clientState = Buffer.from(JSON.stringify({
+      companyId,
+      agentUserId: phoneNumber.ownerUserId,
+      directTransfer: true,
+    })).toString("base64");
+
+    const transferParams: any = {
+      to: sipUri,
+      client_state: clientState,
+    };
     
-    if (!credentialConnectionId) {
-      console.log(`[CallControl] No credential connection ID found for company, using simple transfer`);
-      // Fallback to simple transfer
-      const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
-      const clientState = Buffer.from(JSON.stringify({
-        companyId,
-        agentUserId: phoneNumber.ownerUserId,
-        directTransfer: true,
-      })).toString("base64");
-      const transferParams: any = { to: sipUri, client_state: clientState };
-      if (callerNumber) transferParams.from = callerNumber;
-      await this.makeCallControlRequest(callControlId, "transfer", transferParams);
-      return;
+    // Pass caller number so agent sees who is calling
+    if (callerNumber) {
+      transferParams.from = callerNumber;
     }
     
-    console.log(`[CallControl] Getting registered endpoints for credential connection: ${credentialConnectionId}`);
-    
     try {
-      const apiKey = await getTelnyxApiKey();
-      const managedAccountId = await getCompanyManagedAccountId(companyId);
-      
-      const headers: Record<string, string> = {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json",
-      };
-      if (managedAccountId) {
-        headers["X-Managed-Account-Id"] = managedAccountId;
-      }
-
-      // Get all registered endpoints for this credential connection
-      const registrationsResponse = await fetch(
-        `${TELNYX_API_BASE}/credential_connections/${credentialConnectionId}/registrations`,
-        { method: "GET", headers }
-      );
-
-      let sipEndpoints: string[] = [];
-      
-      if (registrationsResponse.ok) {
-        const registrationsData = await registrationsResponse.json();
-        const registrations = registrationsData.data || [];
-        console.log(`[CallControl] Found ${registrations.length} registered endpoints:`, registrations);
-        
-        // Extract SIP URIs from registrations - each registration has a contact with the device's address
-        for (const reg of registrations) {
-          // The registration should have contact info with the device's IP:port
-          // Format varies but we need to extract the SIP address
-          if (reg.contact) {
-            // Contact might be like: sip:username@IP:port or <sip:username@IP:port>
-            const contactMatch = reg.contact.match(/<?(sip:[^>]+)>?/i);
-            if (contactMatch) {
-              sipEndpoints.push(contactMatch[1]);
-              console.log(`[CallControl] Found registered endpoint: ${contactMatch[1]}`);
-            }
-          }
-          // Also check for address field
-          if (reg.address && !sipEndpoints.includes(`sip:${sipCreds.sipUsername}@${reg.address}`)) {
-            const endpoint = `sip:${sipCreds.sipUsername}@${reg.address}`;
-            sipEndpoints.push(endpoint);
-            console.log(`[CallControl] Found registered endpoint from address: ${endpoint}`);
-          }
-        }
-      } else {
-        console.log(`[CallControl] Could not fetch registrations (${registrationsResponse.status}), using default SIP URI`);
-      }
-
-      // Always include the default Telnyx SIP URI as fallback (this is what webphone uses)
-      const defaultSipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
-      if (!sipEndpoints.some(e => e.includes('sip.telnyx.com'))) {
-        sipEndpoints.push(defaultSipUri);
-      }
-
-      // If no endpoints found, just use the default
-      if (sipEndpoints.length === 0) {
-        sipEndpoints = [defaultSipUri];
-      }
-
-      console.log(`[CallControl] Will dial ${sipEndpoints.length} endpoints: ${sipEndpoints.join(', ')}`);
-
-      // If only one endpoint, use simple transfer (no billing until answer)
-      if (sipEndpoints.length === 1) {
-        console.log(`[CallControl] Single endpoint, using simple transfer`);
-        const clientState = Buffer.from(JSON.stringify({
-          companyId,
-          agentUserId: phoneNumber.ownerUserId,
-          directTransfer: true,
-        })).toString("base64");
-
-        const transferParams: any = {
-          to: sipEndpoints[0],
-          client_state: clientState,
-        };
-        if (callerNumber) {
-          transferParams.from = callerNumber;
-        }
-        await this.makeCallControlRequest(callControlId, "transfer", transferParams);
-        return;
-      }
-
-      // Multiple endpoints: answer and dial all in parallel (ring-all)
-      console.log(`[CallControl] Multiple endpoints detected, using ring-all strategy`);
+      await this.makeCallControlRequest(callControlId, "transfer", transferParams);
+      console.log(`[CallControl] Transfer initiated successfully to ${sipUri}`);
+    } catch (error) {
+      console.error(`[CallControl] Transfer failed:`, error);
       await this.answerCall(callControlId);
+      await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
+      await this.routeToVoicemail(callControlId, companyId);
+    }
+  }
 
-      // Get Call Control App ID for dialing
-      const [settings] = await db
-        .select({ callControlAppId: telephonySettings.callControlAppId })
-        .from(telephonySettings)
-        .where(eq(telephonySettings.companyId, companyId));
+  /**
+   * Legacy ring-all implementation (deprecated - kept for reference)
+   * This was used before SIP Forking was enabled on the credential connection.
+   * With SIP Forking, Telnyx handles ring-all automatically.
+   */
+  private async legacyRingAllTransfer(
+    callControlId: string,
+    phoneNumber: any,
+    companyId: string,
+    sipCreds: any,
+    callerNumber?: string
+  ): Promise<void> {
+    // Get Call Control App ID for dialing
+    const [settings] = await db
+      .select({ callControlAppId: telephonySettings.callControlAppId })
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
       
-      if (!settings?.callControlAppId) {
+    if (!settings?.callControlAppId) {
         console.error(`[CallControl] No Call Control App ID for company ${companyId}`);
         await this.speakText(callControlId, "System error. Please try again later.");
         await this.routeToVoicemail(callControlId, companyId);

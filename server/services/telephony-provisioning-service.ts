@@ -411,6 +411,8 @@ export class TelephonyProvisioningService {
           inbound: {
             channel_limit: 10,
             codecs: ["G722", "PCMU", "PCMA"],
+            // Enable SIP Forking so all registered devices (webphone + physical phones) ring simultaneously
+            sip_forking_enabled: true,
           },
           // CRITICAL: Enable SIP URI calling so TeXML can dial to this credential connection
           // This is a ROOT level field, not inside inbound
@@ -627,6 +629,72 @@ export class TelephonyProvisioningService {
     }
 
     return this.configureHDCodecs(managedAccountId, settings.credentialConnectionId);
+  }
+
+  /**
+   * Enable SIP Forking on credential connection
+   * When enabled, all registered devices (webphone + physical phones) ring simultaneously
+   * First device to answer wins - others are cancelled
+   */
+  async enableSipForking(
+    managedAccountId: string,
+    connectionId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log(`[TelephonyProvisioning] Enabling SIP Forking on connection: ${connectionId}`);
+      
+      const response = await this.makeApiRequest(
+        managedAccountId,
+        `/credential_connections/${connectionId}`,
+        "PATCH",
+        {
+          inbound: {
+            sip_forking_enabled: true,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[TelephonyProvisioning] Failed to enable SIP Forking: ${response.status} - ${errorText}`);
+        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      }
+
+      const data = await response.json();
+      console.log(`[TelephonyProvisioning] SIP Forking enabled successfully. sip_forking_enabled:`, data.data?.inbound?.sip_forking_enabled);
+      return { success: true };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Network error";
+      console.error(`[TelephonyProvisioning] Error enabling SIP Forking:`, errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  /**
+   * Repair existing credential connection to enable SIP Forking
+   * Call this to enable ring-all (webphone + physical phone) on existing connections
+   */
+  async repairSipForking(companyId: string, userId: string): Promise<{ success: boolean; error?: string }> {
+    console.log(`[TelephonyProvisioning] Repairing SIP Forking for company: ${companyId}, userId: ${userId}`);
+    
+    const [settings] = await db
+      .select()
+      .from(telephonySettings)
+      .where(and(eq(telephonySettings.companyId, companyId), eq(telephonySettings.ownerUserId, userId)))
+      .limit(1);
+
+    if (!settings || !settings.credentialConnectionId) {
+      return { success: false, error: "No credential connection found for company" };
+    }
+
+    const { getCompanyManagedAccountId } = await import("./telnyx-managed-accounts");
+    const managedAccountId = await getCompanyManagedAccountId(companyId);
+
+    if (!managedAccountId) {
+      return { success: false, error: "Company has no Telnyx managed account" };
+    }
+
+    return this.enableSipForking(managedAccountId, settings.credentialConnectionId);
   }
 
   private async createSipCredential(

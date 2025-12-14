@@ -240,6 +240,16 @@ app.use((req, res, next) => {
               }
             }).catch((err) => console.error(`[SRTP Repair] Error:`, err));
             
+            // SIP Forking Repair - enables ring-all for webphone + physical phones
+            console.log(`[SIP Forking Repair] Enabling SIP Forking for company ${setting.companyId}...`);
+            telephonyProvisioningService.repairSipForking(setting.companyId, userId).then((result) => {
+              if (result.success) {
+                console.log(`[SIP Forking Repair] Successfully enabled SIP Forking for company ${setting.companyId}`);
+              } else {
+                console.log(`[SIP Forking Repair] Could not enable for ${setting.companyId}: ${result.error}`);
+              }
+            }).catch((err) => console.error(`[SIP Forking Repair] Error:`, err));
+            
             // CRITICAL: Auto-migrate to Call Control Application if not already done
             // This fixes USER_BUSY hangup issue by enabling Call Control API for proper call termination
             if (!setting.callControlAppId) {
