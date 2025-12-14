@@ -1368,21 +1368,25 @@ export class CallControlWebhookService {
 
     const callerIdNumber = phoneNumber?.phoneNumber || "+15555555555";
 
-    // Get Credential Connection ID - REQUIRED for SIP Forking (simultaneous ringing)
-    // When connection_id = credentialConnectionId, Telnyx sends the call to ALL registered devices
-    // This enables webphone + deskphone to ring simultaneously
+    // Get Call Control App ID - REQUIRED for Dial API (Telnyx only accepts Call Control App IDs)
+    // The SIP Forking happens automatically when the SIP URI is registered on a Credential Connection
+    // with simultaneous_ringing: "enabled" - Telnyx routes the call through that connection
     const [settings] = await db
-      .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
+      .select({ 
+        callControlAppId: telephonySettings.callControlAppId,
+        credentialConnectionId: telephonySettings.credentialConnectionId 
+      })
       .from(telephonySettings)
       .where(eq(telephonySettings.companyId, companyId));
 
-    const connectionId = settings?.credentialConnectionId;
+    const connectionId = settings?.callControlAppId;
 
     if (!connectionId) {
-      throw new Error("No Credential Connection ID found for company - cannot create outbound call with SIP Forking");
+      throw new Error("No Call Control App ID found for company - cannot create outbound call");
     }
     
-    console.log(`[CallControl] Using Credential Connection ID: ${connectionId} for dial to SIP URI: ${sipUri} (SIP Forking enabled)`)
+    console.log(`[CallControl] Using Call Control App ID: ${connectionId} for dial to SIP URI: ${sipUri}`);
+    console.log(`[CallControl] SIP Forking configured on Credential Connection: ${settings?.credentialConnectionId}`)
 
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
@@ -1394,7 +1398,8 @@ export class CallControlWebhookService {
     }
 
     // Create outbound call to the agent's SIP endpoint
-    // connection_id = Credential Connection ID (enables SIP Forking to ring all registered devices)
+    // connection_id = Call Control App ID (required by Dial API)
+    // SIP Forking happens automatically because the SIP URI is registered on the Credential Connection
     const response = await fetch(`${TELNYX_API_BASE}/calls`, {
       method: "POST",
       headers,
