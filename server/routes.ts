@@ -30005,7 +30005,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .where(
           and(
             eq(telnyxPhoneNumbers.companyId, user.companyId),
-            eq(telnyxPhoneNumbers.assignedUserId, repairUserId)
+            eq(telnyxPhoneNumbers.ownerUserId, repairUserId)
           )
         )
         .limit(1);
