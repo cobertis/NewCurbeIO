@@ -90,7 +90,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, or, sql, inArray, count, isNotNull, isNull } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, vipPassDevices, vipPassInstances, vipPassNotifications, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, vipPassDevices, vipPassInstances, vipPassNotifications, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, referralPrograms, referrers, referrals, referralRewards, insertReferralProgramSchema, insertReferrerSchema, insertReferralSchema, insertReferralRewardSchema, ReferralRewardType, ReferralStatus, RewardStatus } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -34071,6 +34071,436 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("[PublicWallet] Error:", error);
       return res.status(500).json({ message: "Failed to generate wallet pass" });
+    }
+  });
+
+
+  // ============================================================
+  // REFERRAL SYSTEM ROUTES
+  // ============================================================
+
+  // Get all referral programs for company
+  app.get("/api/referral-programs", async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const companyId = req.session.user.companyId;
+      
+      const programs = await db
+        .select()
+        .from(referralPrograms)
+        .where(eq(referralPrograms.companyId, companyId))
+        .orderBy(desc(referralPrograms.createdAt));
+      
+      return res.json(programs);
+    } catch (error: any) {
+      console.error("[ReferralPrograms] Error fetching:", error);
+      return res.status(500).json({ message: "Failed to fetch referral programs" });
+    }
+  });
+
+  // Create referral program
+  app.post("/api/referral-programs", async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const companyId = req.session.user.companyId;
+      
+      const data = insertReferralProgramSchema.parse({
+        ...req.body,
+        companyId,
+      });
+      
+      const [program] = await db.insert(referralPrograms).values(data).returning();
+      return res.status(201).json(program);
+    } catch (error: any) {
+      console.error("[ReferralPrograms] Error creating:", error);
+      return res.status(500).json({ message: "Failed to create referral program" });
+    }
+  });
+
+  // Update referral program
+  app.patch("/api/referral-programs/:id", async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const companyId = req.session.user.companyId;
+      const { id } = req.params;
+      
+      const [updated] = await db
+        .update(referralPrograms)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(and(eq(referralPrograms.id, id), eq(referralPrograms.companyId, companyId)))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Program not found" });
+      }
+      return res.json(updated);
+    } catch (error: any) {
+      console.error("[ReferralPrograms] Error updating:", error);
+      return res.status(500).json({ message: "Failed to update referral program" });
+    }
+  });
+
+  // Delete referral program
+  app.delete("/api/referral-programs/:id", async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const companyId = req.session.user.companyId;
+      const { id } = req.params;
+      
+      await db.delete(referralPrograms).where(and(eq(referralPrograms.id, id), eq(referralPrograms.companyId, companyId)));
+      return res.status(204).send();
+    } catch (error: any) {
+      console.error("[ReferralPrograms] Error deleting:", error);
+      return res.status(500).json({ message: "Failed to delete referral program" });
+    }
+  });
+
+  // Get all referrers for company
+  app.get("/api/referrers", async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const companyId = req.session.user.companyId;
+      const { programId } = req.query;
+      
+      let query = db.select().from(referrers).where(eq(referrers.companyId, companyId));
+      if (programId && typeof programId === 'string') {
+        query = db.select().from(referrers).where(and(eq(referrers.companyId, companyId), eq(referrers.programId, programId)));
+      }
+      
+      const result = await query.orderBy(desc(referrers.createdAt));
+      return res.json(result);
+    } catch (error: any) {
+      console.error("[Referrers] Error fetching:", error);
+      return res.status(500).json({ message: "Failed to fetch referrers" });
+    }
+  });
+
+  // Create referrer
+  app.post("/api/referrers", async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const companyId = req.session.user.companyId;
+      
+      // Generate unique referral code
+      const referralCode = `REF-${randomBytes(4).toString('hex').toUpperCase()}`;
+      
+      const data = insertReferrerSchema.parse({
+        ...req.body,
+        companyId,
+        referralCode,
+      });
+      
+      const [referrer] = await db.insert(referrers).values(data).returning();
+      return res.status(201).json(referrer);
+    } catch (error: any) {
+      console.error("[Referrers] Error creating:", error);
+      return res.status(500).json({ message: "Failed to create referrer" });
+    }
+  });
+
+  // Update referrer
+  app.patch("/api/referrers/:id", async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const companyId = req.session.user.companyId;
+      const { id } = req.params;
+      
+      const [updated] = await db
+        .update(referrers)
+        .set({ ...req.body, updatedAt: new Date() })
+        .where(and(eq(referrers.id, id), eq(referrers.companyId, companyId)))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Referrer not found" });
+      }
+      return res.json(updated);
+    } catch (error: any) {
+      console.error("[Referrers] Error updating:", error);
+      return res.status(500).json({ message: "Failed to update referrer" });
+    }
+  });
+
+  // Get all referrals for company
+  app.get("/api/referrals", async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const companyId = req.session.user.companyId;
+      const { programId, referrerId, status } = req.query;
+      
+      let conditions = [eq(referrals.companyId, companyId)];
+      if (programId && typeof programId === 'string') {
+        conditions.push(eq(referrals.programId, programId));
+      }
+      if (referrerId && typeof referrerId === 'string') {
+        conditions.push(eq(referrals.referrerId, referrerId));
+      }
+      if (status && typeof status === 'string') {
+        conditions.push(eq(referrals.status, status));
+      }
+      
+      const result = await db
+        .select()
+        .from(referrals)
+        .where(and(...conditions))
+        .orderBy(desc(referrals.createdAt));
+      
+      return res.json(result);
+    } catch (error: any) {
+      console.error("[Referrals] Error fetching:", error);
+      return res.status(500).json({ message: "Failed to fetch referrals" });
+    }
+  });
+
+  // Create referral
+  app.post("/api/referrals", async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const companyId = req.session.user.companyId;
+      
+      const data = insertReferralSchema.parse({
+        ...req.body,
+        companyId,
+      });
+      
+      const [referral] = await db.insert(referrals).values(data).returning();
+      
+      // Update referrer stats
+      await db
+        .update(referrers)
+        .set({ totalReferrals: sql`${referrers.totalReferrals} + 1`, updatedAt: new Date() })
+        .where(eq(referrers.id, data.referrerId));
+      
+      return res.status(201).json(referral);
+    } catch (error: any) {
+      console.error("[Referrals] Error creating:", error);
+      return res.status(500).json({ message: "Failed to create referral" });
+    }
+  });
+
+  // Update referral status
+  app.patch("/api/referrals/:id", async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const companyId = req.session.user.companyId;
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      const updateData: any = { ...req.body, updatedAt: new Date() };
+      
+      // Set timestamps based on status
+      if (status === 'qualified') updateData.qualifiedAt = new Date();
+      if (status === 'converted') updateData.convertedAt = new Date();
+      if (status === 'rewarded') updateData.rewardedAt = new Date();
+      
+      const [updated] = await db
+        .update(referrals)
+        .set(updateData)
+        .where(and(eq(referrals.id, id), eq(referrals.companyId, companyId)))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Referral not found" });
+      }
+      
+      // Update referrer stats if converted
+      if (status === 'converted') {
+        await db
+          .update(referrers)
+          .set({ successfulReferrals: sql`${referrers.successfulReferrals} + 1`, updatedAt: new Date() })
+          .where(eq(referrers.id, updated.referrerId));
+      }
+      
+      return res.json(updated);
+    } catch (error: any) {
+      console.error("[Referrals] Error updating:", error);
+      return res.status(500).json({ message: "Failed to update referral" });
+    }
+  });
+
+  // Get all referral rewards for company
+  app.get("/api/referral-rewards", async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const companyId = req.session.user.companyId;
+      const { referrerId, status } = req.query;
+      
+      let conditions = [eq(referralRewards.companyId, companyId)];
+      if (referrerId && typeof referrerId === 'string') {
+        conditions.push(eq(referralRewards.referrerId, referrerId));
+      }
+      if (status && typeof status === 'string') {
+        conditions.push(eq(referralRewards.status, status));
+      }
+      
+      const result = await db
+        .select()
+        .from(referralRewards)
+        .where(and(...conditions))
+        .orderBy(desc(referralRewards.createdAt));
+      
+      return res.json(result);
+    } catch (error: any) {
+      console.error("[ReferralRewards] Error fetching:", error);
+      return res.status(500).json({ message: "Failed to fetch referral rewards" });
+    }
+  });
+
+  // Create referral reward
+  app.post("/api/referral-rewards", async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const companyId = req.session.user.companyId;
+      
+      const data = insertReferralRewardSchema.parse({
+        ...req.body,
+        companyId,
+      });
+      
+      const [reward] = await db.insert(referralRewards).values(data).returning();
+      
+      // Update referrer pending earnings
+      await db
+        .update(referrers)
+        .set({ pendingEarnings: sql`${referrers.pendingEarnings} + ${data.rewardValue}`, updatedAt: new Date() })
+        .where(eq(referrers.id, data.referrerId));
+      
+      return res.status(201).json(reward);
+    } catch (error: any) {
+      console.error("[ReferralRewards] Error creating:", error);
+      return res.status(500).json({ message: "Failed to create referral reward" });
+    }
+  });
+
+  // Update referral reward status (approve/pay/reject)
+  app.patch("/api/referral-rewards/:id", async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const companyId = req.session.user.companyId;
+      const userId = req.session.user.id;
+      const { id } = req.params;
+      const { status } = req.body;
+      
+      // Get current reward
+      const [currentReward] = await db
+        .select()
+        .from(referralRewards)
+        .where(and(eq(referralRewards.id, id), eq(referralRewards.companyId, companyId)));
+      
+      if (!currentReward) {
+        return res.status(404).json({ message: "Reward not found" });
+      }
+      
+      const updateData: any = { ...req.body, updatedAt: new Date() };
+      
+      // Set timestamps based on status
+      if (status === 'approved') {
+        updateData.approvedAt = new Date();
+        updateData.approvedBy = userId;
+      }
+      if (status === 'processing') updateData.processedAt = new Date();
+      if (status === 'paid') updateData.paidAt = new Date();
+      
+      const [updated] = await db
+        .update(referralRewards)
+        .set(updateData)
+        .where(and(eq(referralRewards.id, id), eq(referralRewards.companyId, companyId)))
+        .returning();
+      
+      // Update referrer earnings if paid
+      if (status === 'paid') {
+        await db
+          .update(referrers)
+          .set({ 
+            pendingEarnings: sql`${referrers.pendingEarnings} - ${currentReward.rewardValue}`,
+            totalEarnings: sql`${referrers.totalEarnings} + ${currentReward.rewardValue}`,
+            updatedAt: new Date() 
+          })
+          .where(eq(referrers.id, currentReward.referrerId));
+      }
+      
+      return res.json(updated);
+    } catch (error: any) {
+      console.error("[ReferralRewards] Error updating:", error);
+      return res.status(500).json({ message: "Failed to update referral reward" });
+    }
+  });
+
+  // Get referral dashboard stats
+  app.get("/api/referral-stats", async (req: Request, res: Response) => {
+    try {
+      if (!req.session?.user?.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const companyId = req.session.user.companyId;
+      
+      // Get program count
+      const [programCount] = await db
+        .select({ count: count() })
+        .from(referralPrograms)
+        .where(eq(referralPrograms.companyId, companyId));
+      
+      // Get active referrers count
+      const [referrerCount] = await db
+        .select({ count: count() })
+        .from(referrers)
+        .where(and(eq(referrers.companyId, companyId), eq(referrers.isActive, true)));
+      
+      // Get referral counts by status
+      const referralCounts = await db
+        .select({ status: referrals.status, count: count() })
+        .from(referrals)
+        .where(eq(referrals.companyId, companyId))
+        .groupBy(referrals.status);
+      
+      // Get pending rewards total
+      const [pendingRewards] = await db
+        .select({ total: sql<string>`COALESCE(SUM(${referralRewards.rewardValue}), 0)` })
+        .from(referralRewards)
+        .where(and(eq(referralRewards.companyId, companyId), eq(referralRewards.status, 'pending')));
+      
+      // Get paid rewards total
+      const [paidRewards] = await db
+        .select({ total: sql<string>`COALESCE(SUM(${referralRewards.rewardValue}), 0)` })
+        .from(referralRewards)
+        .where(and(eq(referralRewards.companyId, companyId), eq(referralRewards.status, 'paid')));
+      
+      return res.json({
+        programs: programCount?.count || 0,
+        activeReferrers: referrerCount?.count || 0,
+        referralsByStatus: referralCounts.reduce((acc, { status, count }) => ({ ...acc, [status]: count }), {}),
+        pendingRewardsTotal: parseFloat(pendingRewards?.total || '0'),
+        paidRewardsTotal: parseFloat(paidRewards?.total || '0'),
+      });
+    } catch (error: any) {
+      console.error("[ReferralStats] Error:", error);
+      return res.status(500).json({ message: "Failed to fetch referral stats" });
     }
   });
 
