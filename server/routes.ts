@@ -30566,6 +30566,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       }
 
+      // Get the company's SIP domain for proper WebRTC registration
+      const { TelephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const provisioningService = new TelephonyProvisioningService();
+      const sipDomain = await provisioningService.getCompanySipDomain(user.companyId);
+
       // Include TURN server credentials for manual ICE configuration
       // Per Telnyx: SIP credentials work for TURN authentication
       res.json({
@@ -30574,6 +30579,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         sipUsername: result.sipUsername,
         sipPassword: result.sipPassword,
         callerIdNumber: result.callerIdNumber,
+        sipDomain: sipDomain || "sip.telnyx.com",
         // ICE servers for manual injection - eliminates prefetch delay
         iceServers: [
           {

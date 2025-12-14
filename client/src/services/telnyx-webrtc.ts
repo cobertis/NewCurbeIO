@@ -329,9 +329,10 @@ class TelnyxWebRTCManager {
   private ringtone: HTMLAudioElement;
   private ringback: HTMLAudioElement;
   private turnServers: RTCIceServer[] = [];
+  private currentSipDomain: string = "sip.telnyx.com";
   
   // Auto-reconnect state
-  private savedCredentials: { sipUser: string; sipPass: string; callerId?: string } | null = null;
+  private savedCredentials: { sipUser: string; sipPass: string; callerId?: string; sipDomain?: string } | null = null;
   private reconnectAttempts: number = 0;
   private maxReconnectAttempts: number = 10;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
@@ -661,7 +662,9 @@ class TelnyxWebRTCManager {
           await this.initialize(
             this.savedCredentials.sipUser,
             this.savedCredentials.sipPass,
-            this.savedCredentials.callerId
+            this.savedCredentials.callerId,
+            undefined,
+            this.savedCredentials.sipDomain
           );
         } catch (error) {
           console.error("[SIP.js WebRTC] Auto-reconnect failed:", error);
@@ -1038,12 +1041,13 @@ class TelnyxWebRTCManager {
   /**
    * Initialize SIP.js UserAgent and connect to Telnyx
    */
-  public async initialize(sipUser: string, sipPass: string, callerId?: string, iceServers?: RTCIceServer[]): Promise<void> {
+  public async initialize(sipUser: string, sipPass: string, callerId?: string, iceServers?: RTCIceServer[], sipDomain?: string): Promise<void> {
     const store = useTelnyxStore.getState();
     store.setConnectionStatus("connecting");
 
     // Save credentials for auto-reconnect
-    this.savedCredentials = { sipUser, sipPass, callerId };
+    this.savedCredentials = { sipUser, sipPass, callerId, sipDomain };
+    this.currentSipDomain = sipDomain || "sip.telnyx.com";
     this.cancelReconnect();
 
     if (callerId) store.setCallerIdNumber(callerId);
@@ -1069,7 +1073,7 @@ class TelnyxWebRTCManager {
     this.audioElement = audioElements.remote;
 
     // Build SIP URI - must use credential username for registration
-    const uri = UserAgent.makeURI(`sip:${sipUser}@sip.telnyx.com`);
+    const uri = UserAgent.makeURI(`sip:${sipUser}@${this.currentSipDomain}`);
     if (!uri) {
       store.setConnectionStatus("error", "Invalid SIP URI");
       return;
@@ -1192,7 +1196,7 @@ class TelnyxWebRTCManager {
     console.log("[SIP.js WebRTC] Calling:", formattedDest);
 
     // Build target URI
-    const targetUri = UserAgent.makeURI(`sip:${formattedDest}@sip.telnyx.com`);
+    const targetUri = UserAgent.makeURI(`sip:${formattedDest}@${this.currentSipDomain}`);
     if (!targetUri) {
       console.error("[SIP.js WebRTC] Invalid target URI");
       return null;
@@ -1215,7 +1219,7 @@ class TelnyxWebRTCManager {
         }
       },
       extraHeaders: [
-        `P-Asserted-Identity: <sip:${store.callerIdNumber || store.sipUsername}@sip.telnyx.com>`
+        `P-Asserted-Identity: <sip:${store.callerIdNumber || store.sipUsername}@${this.currentSipDomain}>`
       ]
     });
 
@@ -1589,7 +1593,7 @@ class TelnyxWebRTCManager {
 
     try {
       console.log("[SIP.js WebRTC] Blind transfer to:", destinationNumber);
-      const targetUri = UserAgent.makeURI(`sip:${destinationNumber}@sip.telnyx.com`);
+      const targetUri = UserAgent.makeURI(`sip:${destinationNumber}@${this.currentSipDomain}`);
       if (targetUri) {
         session.refer(targetUri);
         store.setCurrentCall(undefined);

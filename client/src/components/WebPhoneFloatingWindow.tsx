@@ -2091,7 +2091,8 @@ export function WebPhoneFloatingWindow() {
           data.sipUsername,
           data.sipPassword,
           data.callerIdNumber || telnyxCallerIdNumber,
-          iceServers // Pass pre-fetched ICE servers for instant connection
+          iceServers, // Pass pre-fetched ICE servers for instant connection
+          data.sipDomain // Use company-specific SIP domain for registration
         );
         
         setTelnyxInitialized(true);
