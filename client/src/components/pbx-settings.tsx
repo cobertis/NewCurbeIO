@@ -1596,10 +1596,12 @@ function QueueDialog({
                       onClick={() => toggleMember(ext.userId)}
                       data-testid={`checkbox-member-${ext.id}`}
                     >
-                      <Checkbox
-                        checked={selectedMemberIds.includes(ext.userId)}
-                        onCheckedChange={() => toggleMember(ext.userId)}
-                      />
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedMemberIds.includes(ext.userId)}
+                          onCheckedChange={() => toggleMember(ext.userId)}
+                        />
+                      </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-medium truncate">
                           {ext.displayName || `${ext.user.firstName} ${ext.user.lastName}`}
@@ -1653,10 +1655,12 @@ function QueueDialog({
                       onClick={() => toggleHoldMusic(audio.id)}
                       data-testid={`checkbox-holdmusic-${audio.id}`}
                     >
-                      <Checkbox
-                        checked={selectedHoldMusicIds.includes(audio.id)}
-                        onCheckedChange={() => toggleHoldMusic(audio.id)}
-                      />
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <Checkbox
+                          checked={selectedHoldMusicIds.includes(audio.id)}
+                          onCheckedChange={() => toggleHoldMusic(audio.id)}
+                        />
+                      </div>
                       <div className="flex items-center gap-2 flex-1 min-w-0">
                         <Music className="w-4 h-4 text-muted-foreground" />
                         <p className="text-sm font-medium truncate">{audio.name}</p>
@@ -1779,17 +1783,19 @@ function QueueDialog({
                             }}
                             data-testid={`checkbox-ad-${audio.id}`}
                           >
-                            <Checkbox
-                              checked={isAdded}
-                              onCheckedChange={() => {
-                                if (isAdded) {
-                                  const ad = queueAds.find(ad => ad.audioFileId === audio.id);
-                                  if (ad) removeAdMutation.mutate(ad.id);
-                                } else {
-                                  addAdMutation.mutate(audio.id);
-                                }
-                              }}
-                            />
+                            <div onClick={(e) => e.stopPropagation()}>
+                              <Checkbox
+                                checked={isAdded}
+                                onCheckedChange={() => {
+                                  if (isAdded) {
+                                    const ad = queueAds.find(ad => ad.audioFileId === audio.id);
+                                    if (ad) removeAdMutation.mutate(ad.id);
+                                  } else {
+                                    addAdMutation.mutate(audio.id);
+                                  }
+                                }}
+                              />
+                            </div>
                             <div className="flex items-center gap-2 flex-1 min-w-0">
                               <Mic className="w-4 h-4 text-muted-foreground" />
                               <p className="text-sm font-medium truncate">{audio.name}</p>
