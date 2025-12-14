@@ -1166,14 +1166,13 @@ export class TelephonyProvisioningService {
     for (const phoneNumber of phoneNumbers) {
       try {
         // Determine routing based on phone number configuration
-        // Use Call Control App ONLY when there's a real IVR (not "unassigned")
-        // "unassigned" means no IVR - route directly to Credential Connection for simultaneous_ringing
-        const hasRealIvr = phoneNumber.ivrId && phoneNumber.ivrId !== "unassigned";
-        const needsCallControl = hasRealIvr;
+        // Always use Call Control App for any phone with ivrId or ownerUserId
+        // This ensures we can control routing, play voicemails, handle queues, etc.
+        const needsCallControl = phoneNumber.ivrId || phoneNumber.ownerUserId;
         
         if (needsCallControl && settings.callControlAppId) {
-          // Use Call Control App for intelligent routing (IVR, queues)
-          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} needs Call Control App (ivrId=${phoneNumber.ivrId})`);
+          // Use Call Control App for intelligent routing (IVR, direct user routing, queues)
+          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} needs Call Control App (ivrId=${phoneNumber.ivrId}, ownerUserId=${phoneNumber.ownerUserId})`);
           
           const response = await this.makeApiRequest(
             managedAccountId,
