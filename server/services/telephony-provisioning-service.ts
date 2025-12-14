@@ -1272,9 +1272,15 @@ export class TelephonyProvisioningService {
   }
 
   /**
-   * REPAIR FUNCTION: Fix phone numbers routing
-   * If Call Control App is configured, assign numbers to it
-   * Otherwise, assign to Credential Connection for backward compatibility
+   * REPAIR FUNCTION: Fix phone numbers routing for SIP Forking support
+   * 
+   * CRITICAL ROUTING LOGIC:
+   * - Numbers WITH IVR (ivrId !== 'unassigned') -> Call Control App (for IVR menu routing)
+   * - Numbers WITHOUT IVR (including ownerUserId) -> Credential Connection (enables SIP Forking)
+   * 
+   * WHY: SIP Forking (simultaneous_ringing) ONLY works for INBOUND calls directly to 
+   * Credential Connection. Calls routed through Call Control App are OUTBOUND transfers,
+   * which bypass the simultaneous_ringing feature and only ring one device.
    */
   async repairPhoneNumberRouting(companyId: string, userId: string): Promise<{
     success: boolean;
@@ -1317,13 +1323,15 @@ export class TelephonyProvisioningService {
     for (const phoneNumber of phoneNumbers) {
       try {
         // Determine routing based on phone number configuration
-        // Always use Call Control App for any phone with ivrId or ownerUserId
-        // This ensures we can control routing, play voicemails, handle queues, etc.
-        const needsCallControl = phoneNumber.ivrId || phoneNumber.ownerUserId;
+        // CRITICAL FIX: Use Call Control App ONLY for IVR routing
+        // Numbers assigned to users (ownerUserId) go to Credential Connection for SIP Forking
+        // SIP Forking (simultaneous_ringing) ONLY works for INBOUND calls to Credential Connection
+        // Call Control transfers create OUTBOUND calls which bypass SIP Forking
+        const hasRealIvr = phoneNumber.ivrId && phoneNumber.ivrId !== 'unassigned';
         
-        if (needsCallControl && settings.callControlAppId) {
-          // Use Call Control App for intelligent routing (IVR, direct user routing, queues)
-          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} needs Call Control App (ivrId=${phoneNumber.ivrId}, ownerUserId=${phoneNumber.ownerUserId})`);
+        if (hasRealIvr && settings.callControlAppId) {
+          // Use Call Control App for IVR routing only
+          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} has IVR (ivrId=${phoneNumber.ivrId}) -> Call Control App`);
           
           const response = await this.makeApiRequest(
             managedAccountId,
@@ -1341,11 +1349,13 @@ export class TelephonyProvisioningService {
             continue;
           }
 
-          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Call Control App (intelligent routing)`);
+          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Call Control App (IVR routing)`);
           repairedCount++;
         } else if (settings.credentialConnectionId) {
-          // Use Credential Connection for direct SIP routing - enables simultaneous_ringing to all registered devices
-          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} using Credential Connection (simultaneous ring to all devices)`);
+          // Use Credential Connection for direct SIP routing
+          // This enables simultaneous_ringing to ALL registered devices (WebRTC + Yealink)
+          // Numbers with ownerUserId but no IVR go here for SIP Forking support
+          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Credential Connection (SIP Forking enabled, ownerUserId=${phoneNumber.ownerUserId})`);
           
           const response = await this.makeApiRequest(
             managedAccountId,
@@ -1369,7 +1379,7 @@ export class TelephonyProvisioningService {
             .set({ connectionId: settings.credentialConnectionId, updatedAt: new Date() })
             .where(eq(telnyxPhoneNumbers.id, phoneNumber.id));
 
-          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Credential Connection (direct routing)`);
+          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Credential Connection (direct routing with SIP Forking)`);
           repairedCount++;
         }
       } catch (error) {
