@@ -24,6 +24,32 @@ import { eq, and, inArray } from "drizzle-orm";
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
 const secretsService = new SecretsService();
 
+// Default fallback SIP domain
+const DEFAULT_SIP_DOMAIN = "sip.telnyx.com";
+
+/**
+ * Get the SIP domain for a company. Uses company-specific domain if configured,
+ * otherwise falls back to generic sip.telnyx.com.
+ * 
+ * IMPORTANT: Using company-specific SIP domain (e.g. curbe.sip.telnyx.com) forces
+ * Telnyx to load the credential connection rules INCLUDING simultaneous_ringing,
+ * which enables SIP forking to all registered devices (webphone + physical phones).
+ */
+async function getCompanySipDomain(companyId: string): Promise<string> {
+  try {
+    const [settings] = await db
+      .select({ sipDomain: telephonySettings.sipDomain })
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId))
+      .limit(1);
+    
+    return settings?.sipDomain || DEFAULT_SIP_DOMAIN;
+  } catch (error) {
+    console.error(`[SipDomain] Error getting SIP domain for company ${companyId}:`, error);
+    return DEFAULT_SIP_DOMAIN;
+  }
+}
+
 // Track call context for managed account routing
 interface CallContext {
   companyId: string;
@@ -1138,7 +1164,9 @@ export class CallControlWebhookService {
         continue;
       }
 
-      const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
+      // Use company-specific SIP domain for simultaneous ringing
+      const sipDomain = await getCompanySipDomain(companyId);
+      const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
       console.log(`[CallControl] Dialing agent SIP: ${sipUri}`);
 
       try {
@@ -1263,8 +1291,9 @@ export class CallControlWebhookService {
     const sipCreds = await getUserSipCredentials(extension.userId);
     
     if (sipCreds?.sipUsername) {
-      // Dial the agent's personal SIP URI
-      const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
+      // Dial the agent's personal SIP URI with company-specific domain
+      const sipDomain = await getCompanySipDomain(companyId);
+      const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
       console.log(`[CallControl] Dialing agent's SIP URI: ${sipUri}`);
 
       try {
@@ -1544,7 +1573,9 @@ export class CallControlWebhookService {
       const sipCreds = await getUserSipCredentials(member.userId);
       if (!sipCreds?.sipUsername) continue;
 
-      const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
+      // Use company-specific SIP domain for simultaneous ringing
+      const sipDomain = await getCompanySipDomain(companyId);
+      const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
 
       try {
         const clientState = Buffer.from(JSON.stringify({
@@ -1656,8 +1687,9 @@ export class CallControlWebhookService {
       originalCallControlId: callControlId,
     })).toString("base64");
 
-    // Dial the agent's SIP URI directly
-    const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
+    // Dial the agent's SIP URI directly with company-specific domain
+    const sipDomain = await getCompanySipDomain(companyId);
+    const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
     console.log(`[CallControl] Dialing agent's SIP URI directly: ${sipUri}`);
 
     try {
@@ -1777,8 +1809,9 @@ export class CallControlWebhookService {
         originalCallControlId: callControlId,
       })).toString("base64");
 
-      // Dial the agent's SIP URI directly
-      const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
+      // Dial the agent's SIP URI directly with company-specific domain
+      const sipDomain = await getCompanySipDomain(companyId);
+      const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
       console.log(`[CallControl] Dialing assigned user's SIP URI directly: ${sipUri}`);
 
       try {
@@ -1807,9 +1840,10 @@ export class CallControlWebhookService {
   /**
    * Transfer call to assigned user using SIP URI Transfer
    * 
-   * NOTE: Transfer to SIP URI goes to the credential connection where the user
-   * is registered. The credential connection has simultaneous_ringing: "enabled",
-   * but this may not work with the transfer command. Further investigation needed.
+   * CRITICAL: Uses company-specific SIP domain (e.g. curbe.sip.telnyx.com) instead of
+   * generic sip.telnyx.com. This forces Telnyx to load the credential connection rules
+   * INCLUDING simultaneous_ringing, which enables SIP forking to all registered devices
+   * (webphone + physical phones like Yealink).
    */
   private async transferToAssignedUser(
     callControlId: string,
@@ -1837,9 +1871,12 @@ export class CallControlWebhookService {
     }
 
     const companyId = phoneNumber.companyId;
-    const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
     
-    console.log(`[CallControl] Transferring to SIP URI: ${sipUri}`);
+    // Use company-specific SIP domain to enable simultaneous ringing/SIP forking
+    const sipDomain = await getCompanySipDomain(companyId);
+    const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
+    
+    console.log(`[CallControl] Transferring to SIP URI: ${sipUri} (domain: ${sipDomain})`);
     
     const clientState = Buffer.from(JSON.stringify({
       companyId,
