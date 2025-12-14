@@ -853,9 +853,23 @@ export class TelephonyProvisioningService {
       .from(telephonyCredentials)
       .where(whereConditions);
 
-    if (!cred) return null;
+    if (!cred || !cred.username) return null;
 
-    const password = secretsService.decryptValue(cred.encryptedPassword);
+    let password: string;
+    
+    try {
+      // Try to decrypt if it has the proper encrypted format (iv:encryptedValue)
+      if (cred.encryptedPassword && cred.encryptedPassword.includes(':')) {
+        password = secretsService.decryptValue(cred.encryptedPassword);
+      } else {
+        // Legacy unencrypted password - use as-is
+        password = cred.encryptedPassword || '';
+      }
+    } catch (error) {
+      console.error(`[SIP Credentials] Decryption failed for user, treating as plain text:`, error);
+      // Fallback: treat as plain text password (legacy data)
+      password = cred.encryptedPassword || '';
+    }
 
     return {
       username: cred.username,
