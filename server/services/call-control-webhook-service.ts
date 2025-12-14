@@ -1857,19 +1857,16 @@ export class CallControlWebhookService {
     })).toString("base64");
 
     try {
-      // Use transfer to SIP URI - with company-specific domain, this triggers SIP Forking
-      await this.makeCallControlRequest(callControlId, "transfer", {
-        to: sipUri,
-        from: callerNumber || phoneNumber.phoneNumber,
-        timeout_secs: 30,
-        client_state: clientState,
-      });
+      // CRITICAL: Use Dial+Bridge pattern instead of Transfer for SIP Forking support
+      // The `transfer` command does NOT support simultaneous_ringing
+      // We must: 1) Answer the caller, 2) Dial the SIP URI, 3) Bridge when agent answers
+      await this.answerCall(callControlId);
+      await this.dialAndBridgeToSip(callControlId, sipUri, clientState, companyId);
       
-      console.log(`[CallControl] Transfer initiated to SIP URI with SIP Forking`);
+      console.log(`[CallControl] Dial+Bridge initiated to SIP URI with SIP Forking`);
       
     } catch (error) {
-      console.error(`[CallControl] Transfer failed:`, error);
-      await this.answerCall(callControlId);
+      console.error(`[CallControl] Dial+Bridge failed:`, error);
       await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
       await this.routeToVoicemail(callControlId, companyId);
     }
