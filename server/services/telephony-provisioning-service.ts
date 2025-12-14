@@ -263,7 +263,8 @@ export class TelephonyProvisioningService {
       // CRITICAL FIX: Assign phone numbers to Credential Connection DIRECTLY
       // Per Telnyx docs, this routes inbound calls directly to WebRTC client
       // without TeXML intermediate leg that causes 4-6 second audio delay
-      const phoneUpdateResult = await this.updateExistingPhoneNumbers(managedAccountId, companyId, credentialConnectionId);
+      // Also pass OVP ID to authorize caller ID for SIP desk phone outbound calls
+      const phoneUpdateResult = await this.updateExistingPhoneNumbers(managedAccountId, companyId, credentialConnectionId, outboundVoiceProfileId);
       
       if (!phoneUpdateResult.success && phoneUpdateResult.failedCount > 0) {
         console.error(`[TelephonyProvisioning] Phone number updates failed: ${phoneUpdateResult.errors.join(", ")}`);
@@ -686,7 +687,8 @@ export class TelephonyProvisioningService {
   private async updateExistingPhoneNumbers(
     managedAccountId: string,
     companyId: string,
-    credentialConnectionId: string
+    credentialConnectionId: string,
+    outboundVoiceProfileId?: string
   ): Promise<{ success: boolean; updatedCount: number; failedCount: number; errors: string[] }> {
     const phoneNumbers = await db
       .select()
@@ -704,19 +706,30 @@ export class TelephonyProvisioningService {
     for (const phoneNumber of phoneNumbers) {
       try {
         console.log(`[TelephonyProvisioning] Assigning phone number ${phoneNumber.phoneNumber} to Credential Connection ${credentialConnectionId}`);
+        if (outboundVoiceProfileId) {
+          console.log(`[TelephonyProvisioning] Also setting outbound_voice_profile_id: ${outboundVoiceProfileId} (required for SIP desk phone caller ID)`);
+        }
         
         // CRITICAL FIX: Assign to Credential Connection DIRECTLY (not TeXML app)
         // Per Telnyx docs, this routes inbound calls directly to WebRTC client
         // without TeXML intermediate leg that causes 4-6 second audio delay
         // TeXML routing creates a second SIP leg that anchors media at the TeXML app
+        // CRITICAL: Also set outbound_voice_profile_id to authorize caller ID for SIP desk phones
+        const patchBody: Record<string, any> = { 
+          connection_id: credentialConnectionId,
+          texml_application_id: null  // Clear TeXML app to prevent dual routing
+        };
+        
+        // Add OVP for caller ID authorization on outbound calls from SIP desk phones
+        if (outboundVoiceProfileId) {
+          patchBody.outbound_voice_profile_id = outboundVoiceProfileId;
+        }
+        
         const response = await this.makeApiRequest(
           managedAccountId,
           `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
           "PATCH",
-          { 
-            connection_id: credentialConnectionId,
-            texml_application_id: null  // Clear TeXML app to prevent dual routing
-          }
+          patchBody
         );
 
         if (!response.ok) {
