@@ -6031,3 +6031,250 @@ export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions
 
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
+
+// =============================================================================
+// REFERRAL SYSTEM - Affiliate/Referral Marketing Platform
+// =============================================================================
+
+// Reward types for referral programs
+export const ReferralRewardType = {
+  CASH: "cash",
+  CREDIT: "credit",
+  DISCOUNT_PERCENT: "discount_percent",
+  DISCOUNT_FIXED: "discount_fixed",
+  PRODUCT: "product",
+  CUSTOM: "custom",
+} as const;
+
+// Referral status
+export const ReferralStatus = {
+  PENDING: "pending",
+  QUALIFIED: "qualified",
+  CONVERTED: "converted",
+  REWARDED: "rewarded",
+  REJECTED: "rejected",
+  EXPIRED: "expired",
+} as const;
+
+// Reward status
+export const RewardStatus = {
+  PENDING: "pending",
+  APPROVED: "approved",
+  PROCESSING: "processing",
+  PAID: "paid",
+  REJECTED: "rejected",
+} as const;
+
+// Referral Programs - Each company can have multiple referral programs
+export const referralPrograms = pgTable("referral_programs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Program details
+  name: text("name").notNull(),
+  description: text("description"),
+  slug: text("slug").notNull(), // Unique URL slug for the program
+  isActive: boolean("is_active").notNull().default(true),
+  
+  // Reward configuration for referrer (person who refers)
+  referrerRewardType: text("referrer_reward_type").notNull().default("cash"), // cash, credit, discount_percent, etc.
+  referrerRewardValue: numeric("referrer_reward_value", { precision: 10, scale: 2 }).notNull().default("0"),
+  referrerRewardDescription: text("referrer_reward_description"), // Human-readable reward description
+  
+  // Reward configuration for referee (person being referred)
+  refereeRewardType: text("referee_reward_type").default("discount_percent"),
+  refereeRewardValue: numeric("referee_reward_value", { precision: 10, scale: 2 }),
+  refereeRewardDescription: text("referee_reward_description"),
+  
+  // Program settings
+  requireApproval: boolean("require_approval").notNull().default(true), // Manual approval for rewards
+  minPurchaseAmount: numeric("min_purchase_amount", { precision: 10, scale: 2 }), // Minimum purchase to qualify
+  maxRewardsPerReferrer: integer("max_rewards_per_referrer"), // Limit rewards per referrer (null = unlimited)
+  expirationDays: integer("expiration_days"), // Days before referral link expires (null = never)
+  
+  // Tracking settings
+  cookieDuration: integer("cookie_duration").default(30), // Days to track cookie
+  attributionModel: text("attribution_model").default("first_touch"), // first_touch, last_touch
+  
+  // Customization
+  landingPageUrl: text("landing_page_url"), // Custom landing page URL
+  termsAndConditions: text("terms_and_conditions"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companySlugIdx: uniqueIndex("referral_programs_company_slug_idx").on(table.companyId, table.slug),
+}));
+
+// Referrers - Users who participate in referral programs (affiliates)
+export const referrers = pgTable("referrers", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  programId: varchar("program_id").notNull().references(() => referralPrograms.id, { onDelete: "cascade" }),
+  
+  // Referrer identity - can be a user, contact, or external
+  userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }), // Internal user
+  contactId: varchar("contact_id").references(() => contacts.id, { onDelete: "set null" }), // Existing contact
+  
+  // External referrer info (if not a user or contact)
+  email: text("email").notNull(),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  phone: text("phone"),
+  
+  // Referral link
+  referralCode: text("referral_code").notNull().unique(), // Unique code for tracking
+  referralLink: text("referral_link"), // Full referral URL
+  
+  // Status
+  isActive: boolean("is_active").notNull().default(true),
+  isApproved: boolean("is_approved").notNull().default(true), // Approved to participate
+  
+  // Payment info for cash rewards
+  paypalEmail: text("paypal_email"),
+  bankAccountInfo: text("bank_account_info"), // Encrypted or tokenized
+  preferredPaymentMethod: text("preferred_payment_method"), // paypal, bank_transfer, credit
+  
+  // Stats (denormalized for quick access)
+  totalReferrals: integer("total_referrals").notNull().default(0),
+  successfulReferrals: integer("successful_referrals").notNull().default(0),
+  totalEarnings: numeric("total_earnings", { precision: 10, scale: 2 }).notNull().default("0"),
+  pendingEarnings: numeric("pending_earnings", { precision: 10, scale: 2 }).notNull().default("0"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companyProgramIdx: index("referrers_company_program_idx").on(table.companyId, table.programId),
+  emailProgramIdx: index("referrers_email_program_idx").on(table.email, table.programId),
+}));
+
+// Referrals - Individual referral events
+export const referrals = pgTable("referrals", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  programId: varchar("program_id").notNull().references(() => referralPrograms.id, { onDelete: "cascade" }),
+  referrerId: varchar("referrer_id").notNull().references(() => referrers.id, { onDelete: "cascade" }),
+  
+  // Referee (person being referred)
+  refereeEmail: text("referee_email"),
+  refereeName: text("referee_name"),
+  refereePhone: text("referee_phone"),
+  refereeContactId: varchar("referee_contact_id").references(() => contacts.id, { onDelete: "set null" }),
+  
+  // Status tracking
+  status: text("status").notNull().default("pending"), // pending, qualified, converted, rewarded, rejected, expired
+  
+  // Tracking data
+  referralCode: text("referral_code").notNull(), // Code used for this referral
+  sourceUrl: text("source_url"), // URL where referral was initiated
+  landingUrl: text("landing_url"), // Landing page URL
+  ipAddress: text("ip_address"),
+  userAgent: text("user_agent"),
+  
+  // Attribution timestamps
+  clickedAt: timestamp("clicked_at"), // When link was clicked
+  signedUpAt: timestamp("signed_up_at"), // When referee signed up
+  qualifiedAt: timestamp("qualified_at"), // When referral qualified
+  convertedAt: timestamp("converted_at"), // When conversion happened
+  rewardedAt: timestamp("rewarded_at"), // When reward was issued
+  
+  // Conversion data
+  conversionValue: numeric("conversion_value", { precision: 10, scale: 2 }), // Value of the conversion
+  conversionType: text("conversion_type"), // signup, purchase, subscription, etc.
+  orderId: text("order_id"), // Associated order/transaction ID
+  
+  // Notes
+  notes: text("notes"),
+  rejectionReason: text("rejection_reason"),
+  
+  // Expiration
+  expiresAt: timestamp("expires_at"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companyProgramIdx: index("referrals_company_program_idx").on(table.companyId, table.programId),
+  referrerIdx: index("referrals_referrer_idx").on(table.referrerId),
+  statusIdx: index("referrals_status_idx").on(table.status),
+  refereeEmailIdx: index("referrals_referee_email_idx").on(table.refereeEmail),
+}));
+
+// Referral Rewards - Rewards issued for successful referrals
+export const referralRewards = pgTable("referral_rewards", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  programId: varchar("program_id").notNull().references(() => referralPrograms.id, { onDelete: "cascade" }),
+  referralId: varchar("referral_id").notNull().references(() => referrals.id, { onDelete: "cascade" }),
+  referrerId: varchar("referrer_id").notNull().references(() => referrers.id, { onDelete: "cascade" }),
+  
+  // Reward details
+  rewardType: text("reward_type").notNull(), // cash, credit, discount_percent, etc.
+  rewardValue: numeric("reward_value", { precision: 10, scale: 2 }).notNull(),
+  rewardDescription: text("reward_description"),
+  
+  // Status
+  status: text("status").notNull().default("pending"), // pending, approved, processing, paid, rejected
+  
+  // Processing info
+  approvedAt: timestamp("approved_at"),
+  approvedBy: varchar("approved_by").references(() => users.id, { onDelete: "set null" }),
+  processedAt: timestamp("processed_at"),
+  paidAt: timestamp("paid_at"),
+  
+  // Payment info
+  paymentMethod: text("payment_method"), // paypal, bank_transfer, credit
+  paymentReference: text("payment_reference"), // Transaction ID, check number, etc.
+  
+  // Notes
+  notes: text("notes"),
+  rejectionReason: text("rejection_reason"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companyProgramIdx: index("referral_rewards_company_program_idx").on(table.companyId, table.programId),
+  referrerIdx: index("referral_rewards_referrer_idx").on(table.referrerId),
+  statusIdx: index("referral_rewards_status_idx").on(table.status),
+}));
+
+// Insert schemas for referral system
+export const insertReferralProgramSchema = createInsertSchema(referralPrograms).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertReferrerSchema = createInsertSchema(referrers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  totalReferrals: true,
+  successfulReferrals: true,
+  totalEarnings: true,
+  pendingEarnings: true,
+});
+
+export const insertReferralSchema = createInsertSchema(referrals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertReferralRewardSchema = createInsertSchema(referralRewards).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+// Types for referral system
+export type ReferralProgram = typeof referralPrograms.$inferSelect;
+export type InsertReferralProgram = z.infer<typeof insertReferralProgramSchema>;
+
+export type Referrer = typeof referrers.$inferSelect;
+export type InsertReferrer = z.infer<typeof insertReferrerSchema>;
+
+export type Referral = typeof referrals.$inferSelect;
+export type InsertReferral = z.infer<typeof insertReferralSchema>;
+
+export type ReferralReward = typeof referralRewards.$inferSelect;
+export type InsertReferralReward = z.infer<typeof insertReferralRewardSchema>;
