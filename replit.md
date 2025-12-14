@@ -162,3 +162,13 @@ This forces Telnyx to load the credential connection configuration INCLUDING `si
 - SIP Server: Use company-specific domain (e.g., `curbe.sip.telnyx.com`)
 - UDP Keep Alive: Set to 15-30 seconds to prevent NAT timeout
 - RTP Encryption (SRTP): Set to Optional or Compulsory for WebRTC compatibility
+
+**CRITICAL ROUTING FIX (Dec 2024):**
+SIP Forking ONLY works for INBOUND calls directly to Credential Connection.
+Calls routed through Call Control App are OUTBOUND transfers which bypass simultaneous_ringing.
+
+**Routing Logic in `repairPhoneNumberRouting()`:**
+- Numbers WITH IVR (`ivrId !== 'unassigned'`) → Call Control App (for IVR menu)
+- Numbers WITHOUT IVR (including `ownerUserId`) → Credential Connection (SIP Forking enabled)
+
+This ensures both WebRTC and physical phones (Yealink) ring simultaneously for direct user calls.
