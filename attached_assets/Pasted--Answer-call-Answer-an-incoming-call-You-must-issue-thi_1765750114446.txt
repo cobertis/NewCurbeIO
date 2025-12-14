@@ -1,0 +1,1385 @@
+# Answer call
+
+> Answer an incoming call. You must issue this command before executing subsequent commands on an incoming call.
+
+**Expected Webhooks:**
+
+- `call.answered`
+- `streaming.started`, `streaming.stopped` or `streaming.failed` if `stream_url` was set
+
+When the `record` parameter is set to `record-from-answer`, the response will include a `recording_id` field.
+
+
+## OpenAPI
+
+````yaml https://telnyx-openapi-ng.s3.us-east-1.amazonaws.com/real-time-communications/programmable-voice.yml post /calls/{call_control_id}/actions/answer
+openapi: 3.1.0
+info:
+  title: Telnyx Programmable Voice API
+  version: 2.0.0
+  description: API for Programmable voice.
+  contact:
+    email: support@telnyx.com
+servers:
+  - url: https://api.telnyx.com/v2
+security:
+  - bearerAuth: []
+paths:
+  /calls/{call_control_id}/actions/answer:
+    post:
+      tags:
+        - Call Commands
+      summary: Answer call
+      description: >
+        Answer an incoming call. You must issue this command before executing
+        subsequent commands on an incoming call.
+
+
+        **Expected Webhooks:**
+
+
+        - `call.answered`
+
+        - `streaming.started`, `streaming.stopped` or `streaming.failed` if
+        `stream_url` was set
+
+
+        When the `record` parameter is set to `record-from-answer`, the response
+        will include a `recording_id` field.
+      operationId: AnswerCall
+      parameters:
+        - $ref: '#/components/parameters/CallControlId'
+      requestBody:
+        description: Answer call request
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AnswerRequest'
+      responses:
+        '200':
+          $ref: '#/components/responses/CallControlCommandResponseWithRecordingId'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntityResponse'
+        default:
+          $ref: '#/components/responses/call-control_GenericErrorResponse'
+components:
+  parameters:
+    CallControlId:
+      name: call_control_id
+      description: Unique identifier and token for controlling the call
+      in: path
+      required: true
+      schema:
+        type: string
+  schemas:
+    AnswerRequest:
+      type: object
+      title: Answer Request
+      properties:
+        billing_group_id:
+          description: >-
+            Use this field to set the Billing Group ID for the call. Must be a
+            valid and existing Billing Group ID.
+          type: string
+          format: uuid
+          example: f5586561-8ff0-4291-a0ac-84fe544797bd
+        client_state:
+          description: >-
+            Use this field to add state to every subsequent webhook. It must be
+            a valid Base-64 encoded string.
+          type: string
+          example: aGF2ZSBhIG5pY2UgZGF5ID1d
+        command_id:
+          description: >-
+            Use this field to avoid duplicate commands. Telnyx will ignore any
+            command with the same `command_id` for the same `call_control_id`.
+          type: string
+          example: 891510ac-f3e4-11e8-af5b-de00688a4901
+        custom_headers:
+          description: Custom headers to be added to the SIP INVITE response.
+          type: array
+          example:
+            - name: head_1
+              value: val_1
+            - name: head_2
+              value: val_2
+          items:
+            $ref: '#/components/schemas/CustomSipHeader'
+        preferred_codecs:
+          type: string
+          description: >-
+            The list of comma-separated codecs in a preferred order for the
+            forked media to be received.
+          enum:
+            - G722,PCMU,PCMA,G729,OPUS,VP8,H264
+          example: G722,PCMU,PCMA,G729,OPUS,VP8,H264
+        sip_headers:
+          description: >-
+            SIP headers to be added to the SIP INVITE response. Currently only
+            User-to-User header is supported.
+          type: array
+          example:
+            - name: User-to-User
+              value: value
+          items:
+            $ref: '#/components/schemas/SipHeader'
+        sound_modifications:
+          $ref: '#/components/schemas/SoundModifications'
+        stream_url:
+          description: >-
+            The destination WebSocket address where the stream is going to be
+            delivered.
+          type: string
+          example: wss://www.example.com/websocket
+        stream_track:
+          description: Specifies which track should be streamed.
+          type: string
+          enum:
+            - inbound_track
+            - outbound_track
+            - both_tracks
+          default: inbound_track
+          example: both_tracks
+        stream_codec:
+          $ref: '#/components/schemas/StreamCodec'
+        stream_bidirectional_mode:
+          $ref: '#/components/schemas/StreamBidirectionalMode'
+        stream_bidirectional_codec:
+          $ref: '#/components/schemas/StreamBidirectionalCodec'
+        stream_bidirectional_target_legs:
+          $ref: '#/components/schemas/StreamBidirectionalTargetLegs'
+        send_silence_when_idle:
+          description: Generate silence RTP packets when no transmission available.
+          type: boolean
+          default: false
+          example: true
+        webhook_url:
+          description: >-
+            Use this field to override the URL for which Telnyx will send
+            subsequent webhooks to for this call.
+          type: string
+          example: https://www.example.com/server-b/
+        webhook_url_method:
+          description: HTTP request type used for `webhook_url`.
+          default: POST
+          type: string
+          enum:
+            - POST
+            - GET
+          example: GET
+        transcription:
+          description: Enable transcription upon call answer. The default value is false.
+          type: boolean
+          default: false
+          example: true
+        transcription_config:
+          $ref: '#/components/schemas/TranscriptionStartRequest'
+        record:
+          description: Start recording automatically after an event. Disabled by default.
+          type: string
+          enum:
+            - record-from-answer
+          example: record-from-answer
+        record_channels:
+          description: >-
+            Defines which channel should be recorded ('single' or 'dual') when
+            `record` is specified.
+          type: string
+          enum:
+            - single
+            - dual
+          default: dual
+          example: single
+        record_format:
+          description: >-
+            Defines the format of the recording ('wav' or 'mp3') when `record`
+            is specified.
+          type: string
+          enum:
+            - wav
+            - mp3
+          default: mp3
+          example: wav
+        record_max_length:
+          description: >-
+            Defines the maximum length for the recording in seconds when
+            `record` is specified. The minimum value is 0. The maximum value is
+            43200. The default value is 0 (infinite).
+          type: integer
+          format: int32
+          default: 0
+          example: 1000
+        record_timeout_secs:
+          description: >-
+            The number of seconds that Telnyx will wait for the recording to be
+            stopped if silence is detected when `record` is specified. The timer
+            only starts when the speech is detected. Please note that call
+            transcription is used to detect silence and the related charge will
+            be applied. The minimum value is 0. The default value is 0
+            (infinite).
+          type: integer
+          format: int32
+          default: 0
+          example: 100
+        record_track:
+          description: >-
+            The audio track to be recorded. Can be either `both`, `inbound` or
+            `outbound`. If only single track is specified (`inbound`,
+            `outbound`), `channels` configuration is ignored and it will be
+            recorded as mono (single channel).
+          type: string
+          example: outbound
+          default: both
+          enum:
+            - both
+            - inbound
+            - outbound
+        record_trim:
+          description: >-
+            When set to `trim-silence`, silence will be removed from the
+            beginning and end of the recording.
+          enum:
+            - trim-silence
+          type: string
+          example: trim-silence
+        record_custom_file_name:
+          description: >-
+            The custom recording file name to be used instead of the default
+            `call_leg_id`. Telnyx will still add a Unix timestamp suffix.
+          type: string
+          minLength: 1
+          maxLength: 40
+          example: my_recording_file_name
+      example:
+        client_state: aGF2ZSBhIG5pY2UgZGF5ID1d
+        command_id: 891510ac-f3e4-11e8-af5b-de00688a4901
+        webhook_url: https://www.example.com/server-b/
+        webhook_url_method: POST
+        send_silence_when_idle: true
+    CustomSipHeader:
+      type: object
+      title: Custom SIP Header
+      required:
+        - name
+        - value
+      properties:
+        name:
+          description: The name of the header to add.
+          type: string
+          example: head_1
+        value:
+          description: The value of the header.
+          type: string
+          example: val_1
+      example:
+        name: head_1
+        value: val_1
+    SipHeader:
+      type: object
+      title: SIP Header
+      required:
+        - name
+        - value
+      properties:
+        name:
+          description: The name of the header to add.
+          type: string
+          enum:
+            - User-to-User
+          example: User-to-User
+        value:
+          description: The value of the header.
+          type: string
+          example: value
+      example:
+        name: User-to-User
+        value: value
+    SoundModifications:
+      type: object
+      title: Sound modifications
+      description: Use this field to modify sound effects, for example adjust the pitch.
+      properties:
+        pitch:
+          description: >-
+            Set the pitch directly, value should be > 0, default 1 (lower =
+            lower tone)
+          type: number
+          format: double
+          example: 0.8
+        semitone:
+          description: >-
+            Adjust the pitch in semitones, values should be between -14 and 14,
+            default 0
+          type: number
+          format: double
+          example: -10
+        octaves:
+          description: >-
+            Adjust the pitch in octaves, values should be between -1 and 1,
+            default 0
+          type: number
+          format: double
+          example: -0.5
+        track:
+          description: >-
+            The track to which the sound modifications will be applied. Accepted
+            values are `inbound` or `outbound`
+          type: string
+          example: inbound
+          default: outbound
+      example:
+        pitch: 0.8
+        semitone: -2
+        octaves: 0.1
+        track: both
+    StreamCodec:
+      description: >-
+        Specifies the codec to be used for the streamed audio. When set to
+        'default' or when transcoding is not possible, the codec from the call
+        will be used.
+      title: Stream Codec
+      type: string
+      enum:
+        - PCMU
+        - PCMA
+        - G722
+        - OPUS
+        - AMR-WB
+        - L16
+        - default
+      default: default
+      example: PCMA
+    StreamBidirectionalMode:
+      type: string
+      title: Bidirectional Stream Mode
+      description: Configures method of bidirectional streaming (mp3, rtp).
+      enum:
+        - mp3
+        - rtp
+      default: mp3
+      example: rtp
+    StreamBidirectionalCodec:
+      type: string
+      title: Bidirectional Stream Codec
+      description: >-
+        Indicates codec for bidirectional streaming RTP payloads. Used only with
+        stream_bidirectional_mode=rtp. Case sensitive.
+      enum:
+        - PCMU
+        - PCMA
+        - G722
+        - OPUS
+        - AMR-WB
+        - L16
+      default: PCMU
+      example: G722
+    StreamBidirectionalTargetLegs:
+      type: string
+      title: Bidirectional Stream Target Legs
+      description: Specifies which call legs should receive the bidirectional stream audio.
+      enum:
+        - both
+        - self
+        - opposite
+      default: opposite
+      example: both
+    TranscriptionStartRequest:
+      type: object
+      title: Transcription start request
+      properties:
+        transcription_engine:
+          description: >-
+            Engine to use for speech recognition. Legacy values `A` - `Google`,
+            `B` - `Telnyx` are supported for backward compatibility.
+          type: string
+          enum:
+            - Google
+            - Telnyx
+            - Deepgram
+            - Azure
+            - A
+            - B
+          default: Google
+          example: Google
+        transcription_engine_config:
+          oneOf:
+            - $ref: '#/components/schemas/TranscriptionEngineGoogleConfig'
+            - $ref: '#/components/schemas/TranscriptionEngineTelnyxConfig'
+            - $ref: '#/components/schemas/TranscriptionEngineDeepgramConfig'
+            - $ref: '#/components/schemas/TranscriptionEngineAzureConfig'
+            - $ref: '#/components/schemas/TranscriptionEngineAConfig'
+            - $ref: '#/components/schemas/TranscriptionEngineBConfig'
+          discriminator:
+            propertyName: transcription_engine
+            mapping:
+              Google: '#/components/schemas/TranscriptionEngineGoogleConfig'
+              Telnyx: '#/components/schemas/TranscriptionEngineTelnyxConfig'
+              Deepgram: '#/components/schemas/TranscriptionEngineDeepgramConfig'
+              Azure: '#/components/schemas/TranscriptionEngineAzureConfig'
+              A: '#/components/schemas/TranscriptionEngineAConfig'
+              B: '#/components/schemas/TranscriptionEngineBConfig'
+        client_state:
+          description: >-
+            Use this field to add state to every subsequent webhook. It must be
+            a valid Base-64 encoded string.
+          type: string
+          example: aGF2ZSBhIG5pY2UgZGF5ID1d
+        transcription_tracks:
+          description: >-
+            Indicates which leg of the call will be transcribed. Use `inbound`
+            for the leg that requested the transcription, `outbound` for the
+            other leg, and `both` for both legs of the call. Will default to
+            `inbound`.
+          type: string
+          example: both
+          default: inbound
+        command_id:
+          description: >-
+            Use this field to avoid duplicate commands. Telnyx will ignore any
+            command with the same `command_id` for the same `call_control_id`.
+          type: string
+          example: 891510ac-f3e4-11e8-af5b-de00688a4901
+      example:
+        language: en
+        client_state: aGF2ZSBhIG5pY2UgZGF5ID1d
+        command_id: 891510ac-f3e4-11e8-af5b-de00688a4901
+    CallControlCommandResultWithRecordingId:
+      type: object
+      title: Call Control Command Result With Recording ID
+      example:
+        result: ok
+        recording_id: d7e9c1d4-8b2a-4b8f-b3a7-9a671c9e9b0a
+      properties:
+        result:
+          type: string
+          example: ok
+        recording_id:
+          type: string
+          format: uuid
+          example: d7e9c1d4-8b2a-4b8f-b3a7-9a671c9e9b0a
+          description: >-
+            The ID of the recording. Only present when the record parameter is
+            set to record-from-answer.
+    call-control_Errors:
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/call-control_Error'
+    TranscriptionEngineGoogleConfig:
+      type: object
+      title: Transcription engine Google config
+      properties:
+        transcription_engine:
+          type: string
+          enum:
+            - Google
+          description: Engine identifier for Google transcription service
+        language:
+          $ref: '#/components/schemas/GoogleTranscriptionLanguage'
+        interim_results:
+          type: boolean
+          description: >-
+            Whether to send also interim results. If set to false, only final
+            results will be sent.
+          default: false
+          example: true
+        enable_speaker_diarization:
+          type: boolean
+          description: Enables speaker diarization.
+          default: false
+          example: true
+        min_speaker_count:
+          description: Defines minimum number of speakers in the conversation.
+          type: integer
+          example: 4
+          default: 2
+          format: int32
+        max_speaker_count:
+          description: Defines maximum number of speakers in the conversation.
+          type: integer
+          example: 4
+          default: 6
+          format: int32
+        profanity_filter:
+          description: Enables profanity_filter.
+          type: boolean
+          default: false
+          example: true
+        use_enhanced:
+          description: >-
+            Enables enhanced transcription, this works for models `phone_call`
+            and `video`.
+          type: boolean
+          default: false
+          example: true
+        model:
+          description: The model to use for transcription.
+          type: string
+          enum:
+            - latest_long
+            - latest_short
+            - command_and_search
+            - phone_call
+            - video
+            - default
+            - medical_conversation
+            - medical_dictation
+        hints:
+          description: Hints to improve transcription accuracy.
+          type: array
+          items:
+            type: string
+          default: []
+          example: []
+        speech_context:
+          description: Speech context to improve transcription accuracy.
+          type: array
+          items:
+            type: object
+            properties:
+              phrases:
+                type: array
+                items:
+                  type: string
+                default: []
+                example: []
+              boost:
+                type: number
+                description: Boost factor for the speech context.
+                default: 1
+                minimum: 0
+                maximum: 20
+                example: 1
+    TranscriptionEngineTelnyxConfig:
+      type: object
+      title: Transcription engine Telnyx config
+      properties:
+        transcription_engine:
+          type: string
+          enum:
+            - Telnyx
+          description: Engine identifier for Telnyx transcription service
+        language:
+          $ref: '#/components/schemas/TelnyxTranscriptionLanguage'
+        transcription_model:
+          description: The model to use for transcription.
+          type: string
+          enum:
+            - openai/whisper-tiny
+            - openai/whisper-large-v3-turbo
+          default: openai/whisper-tiny
+    TranscriptionEngineDeepgramConfig:
+      oneOf:
+        - type: object
+          title: Deepgram Nova-2 config
+          properties:
+            transcription_engine:
+              type: string
+              enum:
+                - Deepgram
+            transcription_model:
+              type: string
+              enum:
+                - deepgram/nova-2
+            language:
+              $ref: '#/components/schemas/DeepgramNova2TranscriptionLanguage'
+            keywords_boosting:
+              type: object
+              description: >-
+                Keywords and their respective intensifiers (boosting values) to
+                improve transcription accuracy for specific words or phrases.
+                The intensifier should be a numeric value. Example:
+                `{"snuffleupagus": 5, "systrom": 2, "krieger": 1}`.
+              additionalProperties:
+                type: number
+                description: >-
+                  Boost intensifier for the keyword. Higher values increase
+                  recognition confidence.
+              default: null
+              example:
+                snuffleupagus: 5
+                systrom: 2
+                krieger: 1
+          required:
+            - transcription_engine
+            - transcription_model
+          example:
+            transcription_engine: Deepgram
+            transcription_model: deepgram/nova-2
+            language: en
+            keywords_boosting:
+              snuffleupagus: 5
+              systrom: 2
+              krieger: 1
+        - type: object
+          title: Deepgram Nova-3 config
+          properties:
+            transcription_engine:
+              type: string
+              enum:
+                - Deepgram
+            transcription_model:
+              type: string
+              enum:
+                - deepgram/nova-3
+            language:
+              $ref: '#/components/schemas/DeepgramNova3TranscriptionLanguage'
+            keywords_boosting:
+              type: object
+              description: >-
+                Keywords and their respective intensifiers (boosting values) to
+                improve transcription accuracy for specific words or phrases.
+                The intensifier should be a numeric value. Example:
+                `{"snuffleupagus": 5, "systrom": 2, "krieger": 1}`.
+              additionalProperties:
+                type: number
+                description: >-
+                  Boost intensifier for the keyword. Higher values increase
+                  recognition confidence.
+              default: null
+              example:
+                snuffleupagus: 5
+                systrom: 2
+                krieger: 1
+          required:
+            - transcription_engine
+            - transcription_model
+          example:
+            transcription_engine: Deepgram
+            transcription_model: deepgram/nova-3
+            language: en
+            keywords_boosting:
+              snuffleupagus: 5
+              systrom: 2
+              krieger: 1
+    TranscriptionEngineAzureConfig:
+      type: object
+      title: Transcription engine Azure config
+      properties:
+        transcription_engine:
+          type: string
+          enum:
+            - Azure
+          description: Engine identifier for Azure transcription service
+        language:
+          $ref: '#/components/schemas/AzureTranscriptionLanguage'
+        region:
+          $ref: '#/components/schemas/AzureTranscriptionRegion'
+        api_key_ref:
+          type: string
+          description: >-
+            Reference to the API key for authentication. See [integration
+            secrets
+            documentation](https://developers.telnyx.com/api/secrets-manager/integration-secrets/create-integration-secret)
+            for details. The parameter is optional as defaults are available for
+            some regions.
+      required:
+        - transcription_engine
+        - region
+    TranscriptionEngineAConfig:
+      type: object
+      title: Transcription engine A config
+      properties:
+        transcription_engine:
+          type: string
+          enum:
+            - A
+          description: Engine identifier for Google transcription service
+        language:
+          $ref: '#/components/schemas/GoogleTranscriptionLanguage'
+        interim_results:
+          type: boolean
+          description: >-
+            Whether to send also interim results. If set to false, only final
+            results will be sent.
+          default: false
+          example: true
+        enable_speaker_diarization:
+          type: boolean
+          description: Enables speaker diarization.
+          default: false
+          example: true
+        min_speaker_count:
+          description: Defines minimum number of speakers in the conversation.
+          type: integer
+          example: 4
+          default: 2
+          format: int32
+        max_speaker_count:
+          description: Defines maximum number of speakers in the conversation.
+          type: integer
+          example: 4
+          default: 6
+          format: int32
+        profanity_filter:
+          description: Enables profanity_filter.
+          type: boolean
+          default: false
+          example: true
+        use_enhanced:
+          description: >-
+            Enables enhanced transcription, this works for models `phone_call`
+            and `video`.
+          type: boolean
+          default: false
+          example: true
+        model:
+          description: The model to use for transcription.
+          type: string
+          enum:
+            - latest_long
+            - latest_short
+            - command_and_search
+            - phone_call
+            - video
+            - default
+            - medical_conversation
+            - medical_dictation
+        hints:
+          description: Hints to improve transcription accuracy.
+          type: array
+          items:
+            type: string
+          default: []
+          example:
+            - Telnyx
+        speech_context:
+          description: Speech context to improve transcription accuracy.
+          type: array
+          items:
+            type: object
+            properties:
+              phrases:
+                type: array
+                items:
+                  type: string
+                default: []
+                example:
+                  - Telnyx
+              boost:
+                type: number
+                description: Boost factor for the speech context.
+                default: 1
+                minimum: 0
+                maximum: 20
+                example: 1
+    TranscriptionEngineBConfig:
+      type: object
+      title: Transcription engine B config
+      properties:
+        transcription_engine:
+          type: string
+          enum:
+            - B
+          description: Engine identifier for Telnyx transcription service
+        language:
+          $ref: '#/components/schemas/TelnyxTranscriptionLanguage'
+        transcription_model:
+          description: The model to use for transcription.
+          type: string
+          enum:
+            - openai/whisper-tiny
+            - openai/whisper-large-v3-turbo
+          default: openai/whisper-tiny
+    call-control_Error:
+      required:
+        - code
+        - title
+      properties:
+        code:
+          type: string
+          format: integer
+        title:
+          type: string
+        detail:
+          type: string
+        source:
+          type: object
+          properties:
+            pointer:
+              description: JSON pointer (RFC6901) to the offending entity.
+              type: string
+              format: json-pointer
+            parameter:
+              description: Indicates which query parameter caused the error.
+              type: string
+        meta:
+          type: object
+    GoogleTranscriptionLanguage:
+      title: Google transcription engine list of languages
+      type: string
+      description: Language to use for speech recognition
+      example: en
+      default: en
+      enum:
+        - af
+        - sq
+        - am
+        - ar
+        - hy
+        - az
+        - eu
+        - bn
+        - bs
+        - bg
+        - my
+        - ca
+        - yue
+        - zh
+        - hr
+        - cs
+        - da
+        - nl
+        - en
+        - et
+        - fil
+        - fi
+        - fr
+        - gl
+        - ka
+        - de
+        - el
+        - gu
+        - iw
+        - hi
+        - hu
+        - is
+        - id
+        - it
+        - ja
+        - jv
+        - kn
+        - kk
+        - km
+        - ko
+        - lo
+        - lv
+        - lt
+        - mk
+        - ms
+        - ml
+        - mr
+        - mn
+        - ne
+        - 'no'
+        - fa
+        - pl
+        - pt
+        - pa
+        - ro
+        - ru
+        - rw
+        - sr
+        - si
+        - sk
+        - sl
+        - ss
+        - st
+        - es
+        - su
+        - sw
+        - sv
+        - ta
+        - te
+        - th
+        - tn
+        - tr
+        - ts
+        - uk
+        - ur
+        - uz
+        - ve
+        - vi
+        - xh
+        - zu
+    TelnyxTranscriptionLanguage:
+      title: Telnyx transcription engine list of languages
+      type: string
+      description: Language to use for speech recognition
+      example: en
+      default: en
+      enum:
+        - en
+        - zh
+        - de
+        - es
+        - ru
+        - ko
+        - fr
+        - ja
+        - pt
+        - tr
+        - pl
+        - ca
+        - nl
+        - ar
+        - sv
+        - it
+        - id
+        - hi
+        - fi
+        - vi
+        - he
+        - uk
+        - el
+        - ms
+        - cs
+        - ro
+        - da
+        - hu
+        - ta
+        - 'no'
+        - th
+        - ur
+        - hr
+        - bg
+        - lt
+        - la
+        - mi
+        - ml
+        - cy
+        - sk
+        - te
+        - fa
+        - lv
+        - bn
+        - sr
+        - az
+        - sl
+        - kn
+        - et
+        - mk
+        - br
+        - eu
+        - is
+        - hy
+        - ne
+        - mn
+        - bs
+        - kk
+        - sq
+        - sw
+        - gl
+        - mr
+        - pa
+        - si
+        - km
+        - sn
+        - yo
+        - so
+        - af
+        - oc
+        - ka
+        - be
+        - tg
+        - sd
+        - gu
+        - am
+        - yi
+        - lo
+        - uz
+        - fo
+        - ht
+        - ps
+        - tk
+        - nn
+        - mt
+        - sa
+        - lb
+        - my
+        - bo
+        - tl
+        - mg
+        - as
+        - tt
+        - haw
+        - ln
+        - ha
+        - ba
+        - jw
+        - su
+        - auto_detect
+    DeepgramNova2TranscriptionLanguage:
+      title: Deepgram nova-2 transcription engine list of languages
+      type: string
+      description: Language to use for speech recognition with nova-2 model
+      example: en
+      default: en
+      enum:
+        - bg
+        - ca
+        - zh
+        - zh-CN
+        - zh-Hans
+        - zh-TW
+        - zh-Hant
+        - zh-HK
+        - cs
+        - da
+        - da-DK
+        - nl
+        - en
+        - en-US
+        - en-AU
+        - en-GB
+        - en-NZ
+        - en-IN
+        - et
+        - fi
+        - nl-BE
+        - fr
+        - fr-CA
+        - de
+        - de-CH
+        - el
+        - hi
+        - hu
+        - id
+        - it
+        - ja
+        - ko
+        - ko-KR
+        - lv
+        - lt
+        - ms
+        - 'no'
+        - pl
+        - pt
+        - pt-BR
+        - pt-PT
+        - ro
+        - ru
+        - sk
+        - es
+        - es-419
+        - sv
+        - sv-SE
+        - th
+        - th-TH
+        - tr
+        - uk
+        - vi
+        - auto_detect
+    DeepgramNova3TranscriptionLanguage:
+      title: Deepgram nova-3 transcription engine list of languages
+      type: string
+      description: Language to use for speech recognition with nova-3 model
+      example: en
+      default: en
+      enum:
+        - en
+        - en-US
+        - en-AU
+        - en-GB
+        - en-IN
+        - en-NZ
+        - de
+        - nl
+        - sv
+        - sv-SE
+        - da
+        - da-DK
+        - es
+        - es-419
+        - fr
+        - fr-CA
+        - pt
+        - pt-BR
+        - pt-PT
+        - auto_detect
+    AzureTranscriptionLanguage:
+      title: Azure transcription engine list of languages
+      type: string
+      description: Language to use for speech recognition
+      example: en
+      default: en
+      enum:
+        - af
+        - am
+        - ar
+        - bg
+        - bn
+        - bs
+        - ca
+        - cs
+        - cy
+        - da
+        - de
+        - el
+        - en
+        - es
+        - et
+        - eu
+        - fa
+        - fi
+        - fr
+        - ga
+        - gl
+        - gu
+        - he
+        - hi
+        - hr
+        - hu
+        - hy
+        - id
+        - is
+        - it
+        - ja
+        - ka
+        - kk
+        - km
+        - kn
+        - ko
+        - lo
+        - lt
+        - lv
+        - mk
+        - ml
+        - mn
+        - mr
+        - ms
+        - mt
+        - my
+        - nb
+        - ne
+        - nl
+        - pl
+        - ps
+        - pt
+        - ro
+        - ru
+        - si
+        - sk
+        - sl
+        - so
+        - sq
+        - sr
+        - sv
+        - sw
+        - ta
+        - te
+        - th
+        - tr
+        - uk
+        - ur
+        - uz
+        - vi
+        - wuu
+        - yue
+        - zh
+        - zu
+        - auto
+    AzureTranscriptionRegion:
+      title: Azure transcription engine list of regions
+      type: string
+      description: Azure region to use for speech recognition
+      example: eastus
+      enum:
+        - australiaeast
+        - centralindia
+        - eastus
+        - northcentralus
+        - westeurope
+        - westus2
+  responses:
+    CallControlCommandResponseWithRecordingId:
+      description: >-
+        Successful response upon making a call control command that includes
+        recording_id.
+      content:
+        application/json:
+          schema:
+            type: object
+            title: Call Control Command Response With Recording ID
+            properties:
+              data:
+                $ref: '#/components/schemas/CallControlCommandResultWithRecordingId'
+    UnprocessableEntityResponse:
+      description: >-
+        Unprocessable entity. The request was well-formed but could not be
+        processed due to semantic errors. This includes validation errors,
+        invalid parameter values, call state errors, conference errors, queue
+        errors, recording/transcription errors, and business logic violations.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/call-control_Errors'
+          examples:
+            missing_required_parameter:
+              summary: Missing required parameter
+              value:
+                errors:
+                  - code: '10004'
+                    title: Missing required parameter
+                    detail: The 'to' parameter is required and cannot be blank.
+                    source:
+                      pointer: /to
+            invalid_call_control_id:
+              summary: Invalid call control ID
+              value:
+                errors:
+                  - code: '90015'
+                    title: Invalid Call Control ID
+                    detail: The call_control_id provided was not valid.
+                    source:
+                      pointer: /call_control_id
+            call_already_ended:
+              summary: Call has already ended
+              value:
+                errors:
+                  - code: '90018'
+                    title: Call has already ended
+                    detail: This call is no longer active and can't receive commands.
+            call_not_answered:
+              summary: Call not answered yet
+              value:
+                errors:
+                  - code: '90034'
+                    title: Call not answered yet
+                    detail: >-
+                      This call can't receive this command because it has not
+                      been answered yet.
+            cannot_record_before_audio_started:
+              summary: Cannot record before audio started
+              value:
+                errors:
+                  - code: '90020'
+                    title: Call recording triggered before audio started
+                    detail: >-
+                      Call recording cannot be started until audio has commenced
+                      on the call.
+            transcription_already_active:
+              summary: Transcription already active
+              value:
+                errors:
+                  - code: '90054'
+                    title: Call transcription is already in progress
+                    detail: Call transcription can not be started more than once.
+            ai_assistant_already_active:
+              summary: AI Assistant already active
+              value:
+                errors:
+                  - code: '90061'
+                    title: AI Assistant is already in progress
+                    detail: AI Assistant cannot be started more than once.
+            conference_already_ended:
+              summary: Conference has already ended
+              value:
+                errors:
+                  - code: '90019'
+                    title: Conference has already ended
+                    detail: >-
+                      This conference is no longer active and can't receive
+                      commands.
+            conference_name_conflict:
+              summary: Conference name conflict
+              value:
+                errors:
+                  - code: '90033'
+                    title: Unable to execute command
+                    detail: Conference with given name already exists and it's active.
+            max_participants_reached:
+              summary: Maximum participants reached
+              value:
+                errors:
+                  - code: '90032'
+                    title: Maximum number of participants reached
+                    detail: >-
+                      The maximum allowed value of `max_participants` has been
+                      reached at 100.
+            queue_full:
+              summary: Queue is full
+              value:
+                errors:
+                  - code: '90036'
+                    title: Queue full
+                    detail: The 'support' queue is full and can't accept more calls.
+            call_already_in_queue:
+              summary: Call already in queue
+              value:
+                errors:
+                  - code: '90038'
+                    title: Call already in queue
+                    detail: Call can't be added to a queue it's already in.
+            invalid_connection_id:
+              summary: Invalid connection ID
+              value:
+                errors:
+                  - code: '10015'
+                    title: Invalid value for connection_id (Call Control App ID)
+                    detail: >-
+                      The requested connection_id (Call Control App ID) is
+                      either invalid or does not exist. Only Call Control Apps
+                      with valid webhook URL are accepted.
+                    source:
+                      pointer: /connection_id
+            invalid_phone_number_format:
+              summary: Invalid phone number format
+              value:
+                errors:
+                  - code: '10016'
+                    title: Phone number must be in +E164 format
+                    detail: The 'to' parameter must be in E164 format.
+                    source:
+                      pointer: /to
+            srtp_not_supported_for_pstn:
+              summary: SRTP not supported for PSTN calls
+              value:
+                errors:
+                  - source:
+                      pointer: /media_encryption
+                    title: Media encryption not supported for PSTN calls
+                    detail: SRTP media encryption is not supported for PSTN calls.
+                    code: '10011'
+            fork_not_found:
+              summary: Call is not forked
+              value:
+                errors:
+                  - code: '90031'
+                    title: Call is not currently forked
+                    detail: >-
+                      Can't stop forking, because the call isn't currently
+                      forked.
+            media_streaming_used:
+              summary: Media streaming in use
+              value:
+                errors:
+                  - code: '90045'
+                    title: Media Streaming is used
+                    detail: This command can't be issued when media streaming is used.
+            invalid_enumerated_value:
+              summary: Invalid enumerated value
+              value:
+                errors:
+                  - code: '10032'
+                    title: Invalid enumerated value
+                    detail: 'The value must be one of: dual, single.'
+                    source:
+                      pointer: /record_channels
+            value_outside_range:
+              summary: Value outside of range
+              value:
+                errors:
+                  - code: '10033'
+                    title: Value outside of range
+                    detail: The value is outside of allowed range 1 to 5000
+                    source:
+                      pointer: /max_participants
+    call-control_GenericErrorResponse:
+      description: Unexpected error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/call-control_Errors'
+  securitySchemes:
+    bearerAuth:
+      scheme: bearer
+      type: http
+
+````
+
+---
+
+> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://developers.telnyx.com/llms.txt

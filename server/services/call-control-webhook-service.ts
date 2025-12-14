@@ -1822,19 +1822,20 @@ export class CallControlWebhookService {
   }
 
   /**
-   * Transfer call to assigned user using SIP URI Transfer with SIP Forking
+   * Transfer call to assigned user using SIP URI Transfer
    * 
-   * CRITICAL: Uses the company-specific SIP domain (e.g., curbe-company.sip.telnyx.com)
-   * instead of the generic sip.telnyx.com. This forces Telnyx to load the credential
-   * connection's rules including simultaneous_ringing, enabling both webphone and
-   * desk phones to ring simultaneously.
+   * CRITICAL: Uses the Transfer API (not Dial API) because:
+   * - Dial API only accepts Call Control App IDs, NOT Credential Connection SIP URIs
+   * - Transfer API directly transfers the call to a SIP URI
+   * - The SIP URI points to the Credential Connection's domain where webphones are registered
+   * - This triggers SIP Forking to ring all registered devices (webphone + desk phones)
    */
   private async transferToAssignedUser(
     callControlId: string,
     phoneNumber: any,
     callerNumber?: string
   ): Promise<void> {
-    console.log(`[CallControl] Transfer to assigned user via SIP URI with SIP Forking, caller: ${callerNumber}`);
+    console.log(`[CallControl] Transfer to assigned user via SIP URI Transfer API, caller: ${callerNumber}`);
 
     if (!phoneNumber.ownerUserId) {
       console.log(`[CallControl] No assigned user, cannot transfer`);
@@ -1861,11 +1862,11 @@ export class CallControlWebhookService {
     const provisioningService = new TelephonyProvisioningService();
     const sipDomain = await provisioningService.getCompanySipDomain(companyId);
     
-    // Use company-specific domain if available, fallback to generic (won't fork but will work)
+    // Use company-specific domain if available, fallback to generic
     const sipHost = sipDomain || "sip.telnyx.com";
     const sipUri = `sip:${sipCreds.sipUsername}@${sipHost}`;
     
-    console.log(`[CallControl] Transferring to SIP URI: ${sipUri} (SIP Forking: ${sipDomain ? 'enabled' : 'disabled - using generic domain'})`);
+    console.log(`[CallControl] Using TRANSFER API to SIP URI: ${sipUri} (SIP Forking: ${sipDomain ? 'enabled' : 'disabled'})`);
     
     const clientState = Buffer.from(JSON.stringify({
       companyId,
@@ -1874,25 +1875,31 @@ export class CallControlWebhookService {
     })).toString("base64");
 
     try {
-      // CRITICAL FIX: Do NOT answer the caller's call yet!
-      // Answering starts billing immediately and removes ringback tone for caller.
-      // 
-      // Correct flow for SIP Forking:
-      // 1. Caller calls in → keep in "ringing" state (do NOT answer)
-      // 2. Create outbound call to agent's SIP URI using credentialConnectionId
-      // 3. When agent answers (call.answered webhook) → THEN answer caller + bridge
-      // 4. If agent doesn't answer → voicemail
-      //
-      // This way, billing only starts when an agent actually picks up.
+      // Use Transfer API instead of Dial API
+      // Transfer sends the call directly to the SIP URI without needing to answer first
+      // The caller hears ringback tone while the agent's phone rings
+      // When the agent answers, the call is automatically connected
       
-      console.log(`[CallControl] Initiating dial to agent WITHOUT answering caller first (billing starts when agent answers)`);
-      await this.dialAndBridgeToSip(callControlId, sipUri, clientState, companyId);
+      console.log(`[CallControl] Executing transfer to SIP URI: ${sipUri}`);
       
-      console.log(`[CallControl] Dial+Bridge initiated - caller in ringing state, waiting for agent to answer`);
+      await this.makeCallControlRequest(callControlId, "transfer", {
+        to: sipUri,
+        timeout_secs: 30,
+        client_state: clientState,
+      });
+      
+      console.log(`[CallControl] Transfer initiated - caller hearing ringback, waiting for agent to answer`);
+      
+      // Track the call
+      await pbxService.trackActiveCall(companyId, callControlId, callerNumber || "", sipUri, "transferring", {
+        agentUserId: phoneNumber.ownerUserId,
+        agentSipUri: sipUri,
+        transferType: "sip_direct"
+      });
       
     } catch (error) {
-      console.error(`[CallControl] Dial+Bridge failed:`, error);
-      // Only answer and speak if dial fails - need to notify caller
+      console.error(`[CallControl] Transfer to SIP failed:`, error);
+      // Only answer and speak if transfer fails - need to notify caller
       await this.answerCall(callControlId);
       await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
       await this.routeToVoicemail(callControlId, companyId);
