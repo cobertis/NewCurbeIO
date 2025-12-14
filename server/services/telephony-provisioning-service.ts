@@ -155,6 +155,90 @@ export class TelephonyProvisioningService {
     }
   }
 
+  /**
+   * Configure SIP subdomain on Call Control Application for SIP Forking
+   * CRITICAL: The SIP subdomain must be set on the Call Control Application (Voice API app),
+   * NOT on the Credential Connection. This is what enables calls to ring on all registered devices.
+   * The subdomain format in Telnyx is: {subdomain}.sip.telnyx.com
+   */
+  async configureCallControlAppSipSubdomain(
+    managedAccountId: string,
+    appId: string,
+    subdomain: string
+  ): Promise<{ success: boolean; sipDomain?: string; error?: string }> {
+    try {
+      // Clean subdomain: lowercase, alphanumeric + hyphens only
+      const cleanSubdomain = subdomain
+        .toLowerCase()
+        .replace(/[^a-z0-9-]/g, '-')
+        .replace(/-+/g, '-')
+        .replace(/^-|-$/g, '')
+        .slice(0, 30);
+      
+      console.log(`[TelephonyProvisioning] Configuring SIP subdomain on Call Control App: ${appId}, subdomain: ${cleanSubdomain}`);
+      
+      const response = await this.makeApiRequest(
+        managedAccountId,
+        `/call_control_applications/${appId}`,
+        "PATCH",
+        {
+          inbound: {
+            sip_subdomain: cleanSubdomain,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[TelephonyProvisioning] Failed to configure Call Control App SIP subdomain: ${response.status} - ${errorText}`);
+        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      }
+
+      const data = await response.json();
+      const configuredSubdomain = data.data?.inbound?.sip_subdomain;
+      const sipDomain = configuredSubdomain ? `${configuredSubdomain}.sip.telnyx.com` : null;
+      
+      console.log(`[TelephonyProvisioning] Call Control App SIP subdomain configured successfully: ${sipDomain}`);
+      return { success: true, sipDomain: sipDomain || undefined };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Network error";
+      console.error(`[TelephonyProvisioning] Error configuring Call Control App SIP subdomain:`, errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  /**
+   * Get SIP subdomain from Call Control Application
+   */
+  async getCallControlAppSipSubdomain(
+    managedAccountId: string,
+    appId: string
+  ): Promise<{ success: boolean; sipDomain?: string; error?: string }> {
+    try {
+      console.log(`[TelephonyProvisioning] Getting SIP subdomain from Call Control App: ${appId}`);
+      
+      const response = await this.makeApiRequest(
+        managedAccountId,
+        `/call_control_applications/${appId}`,
+        "GET"
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      }
+
+      const data = await response.json();
+      const subdomain = data.data?.inbound?.sip_subdomain;
+      const sipDomain = subdomain ? `${subdomain}.sip.telnyx.com` : null;
+      
+      console.log(`[TelephonyProvisioning] Call Control App SIP subdomain: ${sipDomain || 'not configured'}`);
+      return { success: true, sipDomain: sipDomain || undefined };
+    } catch (error) {
+      return { success: false, error: error instanceof Error ? error.message : "Network error" };
+    }
+  }
+
   private async makeApiRequest(
     managedAccountId: string,
     endpoint: string,
@@ -874,7 +958,11 @@ export class TelephonyProvisioningService {
   /**
    * Repair existing credential connection to enable SIP Forking
    * Call this to enable ring-all (webphone + physical phone) on existing connections
-   * This also configures the SIP subdomain which is REQUIRED for SIP Forking to work
+   * This also configures the SIP subdomain on the CALL CONTROL APPLICATION which is REQUIRED for SIP Forking to work
+   * 
+   * CRITICAL: The SIP subdomain must be configured on the Call Control Application (Voice API app),
+   * NOT on the Credential Connection. The user verified this in the Telnyx portal:
+   * "Edit Voice API application" -> "Inbound" -> "SIP subdomain"
    */
   async repairSipForking(companyId: string, userId: string): Promise<{ success: boolean; error?: string }> {
     console.log(`[TelephonyProvisioning] Repairing SIP Forking for company: ${companyId}, userId: ${userId}`);
@@ -896,21 +984,53 @@ export class TelephonyProvisioningService {
       return { success: false, error: "Company has no Telnyx managed account" };
     }
 
-    // Step 1: Enable simultaneous_ringing
+    // Step 1: Enable simultaneous_ringing on Credential Connection
     const forkingResult = await this.enableSipForking(managedAccountId, settings.credentialConnectionId);
     if (!forkingResult.success) {
       return forkingResult;
     }
 
-    // Step 2: Configure SIP subdomain - CRITICAL for SIP Forking to actually work
-    // Without subdomain, calls go to generic sip.telnyx.com which doesn't fork
-    console.log(`[TelephonyProvisioning] Configuring SIP subdomain for company: ${companyId}`);
-    const subdomainResult = await this.setupSipDomainForCompany(companyId);
-    if (subdomainResult.success && subdomainResult.sipDomain) {
-      console.log(`[TelephonyProvisioning] SIP subdomain configured: ${subdomainResult.sipDomain}`);
+    // Step 2: Configure SIP subdomain on CALL CONTROL APPLICATION - CRITICAL for SIP Forking to actually work
+    // The subdomain MUST be set on the Call Control App (Voice API app), not on Credential Connection
+    // User verified this in Telnyx portal: "Edit Voice API application" -> "Inbound" -> "SIP subdomain"
+    if (settings.callControlAppId) {
+      console.log(`[TelephonyProvisioning] Configuring SIP subdomain on Call Control App: ${settings.callControlAppId}`);
+      
+      // Get company name for subdomain
+      const [company] = await db
+        .select({ name: companies.name })
+        .from(companies)
+        .where(eq(companies.id, companyId));
+      
+      const subdomain = `curbe-${company?.name || companyId.slice(0, 8)}`;
+      
+      const subdomainResult = await this.configureCallControlAppSipSubdomain(
+        managedAccountId,
+        settings.callControlAppId,
+        subdomain
+      );
+      
+      if (subdomainResult.success && subdomainResult.sipDomain) {
+        console.log(`[TelephonyProvisioning] Call Control App SIP subdomain configured: ${subdomainResult.sipDomain}`);
+        
+        // Save to database
+        await db
+          .update(telephonySettings)
+          .set({ sipDomain: subdomainResult.sipDomain, updatedAt: new Date() })
+          .where(eq(telephonySettings.id, settings.id));
+      } else {
+        console.warn(`[TelephonyProvisioning] Could not configure Call Control App SIP subdomain: ${subdomainResult.error}`);
+        // Don't fail the whole repair - simultaneous_ringing is still enabled on credential connection
+      }
     } else {
-      console.warn(`[TelephonyProvisioning] Could not configure SIP subdomain: ${subdomainResult.error}`);
-      // Don't fail the whole repair - simultaneous_ringing is still enabled
+      // Fallback: Configure on Credential Connection if no Call Control App
+      console.log(`[TelephonyProvisioning] No Call Control App, configuring SIP subdomain on Credential Connection`);
+      const subdomainResult = await this.setupSipDomainForCompany(companyId);
+      if (subdomainResult.success && subdomainResult.sipDomain) {
+        console.log(`[TelephonyProvisioning] SIP subdomain configured on Credential Connection: ${subdomainResult.sipDomain}`);
+      } else {
+        console.warn(`[TelephonyProvisioning] Could not configure SIP subdomain: ${subdomainResult.error}`);
+      }
     }
 
     return { success: true };
