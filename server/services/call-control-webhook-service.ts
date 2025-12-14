@@ -1557,19 +1557,21 @@ export class CallControlWebhookService {
 
     const callerIdNumber = phoneNumber?.phoneNumber || "+15555555555";
 
-    // Get Call Control App ID for the company (required for outbound calls via REST API)
+    // CRITICAL: Use Credential Connection for outbound calls to SIP agents
+    // Using Call Control App would intercept the call and cause it to be hung up
+    // Credential Connection has simultaneous_ringing enabled for SIP forking
     const [settings] = await db
-      .select({ callControlAppId: telephonySettings.callControlAppId })
+      .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
       .from(telephonySettings)
       .where(eq(telephonySettings.companyId, companyId));
 
-    const connectionId = settings?.callControlAppId;
+    const connectionId = settings?.credentialConnectionId;
 
     if (!connectionId) {
-      throw new Error("No Call Control App ID found for company - cannot create outbound call");
+      throw new Error("No Credential Connection ID found for company - cannot dial agent");
     }
     
-    console.log(`[CallControl] Using Call Control App ID: ${connectionId} for outbound call`)
+    console.log(`[CallControl] Using Credential Connection ID: ${connectionId} for outbound call to agent`)
 
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
