@@ -594,7 +594,7 @@ export class CallControlWebhookService {
     if (phoneNumber.ivrId === "unassigned") {
       console.log(`[CallControl] IVR disabled (unassigned), transferring directly to assigned user (no answer = no billing until agent picks up)`);
       await pbxService.trackActiveCall(phoneNumber.companyId, call_control_id, from, to, "direct");
-      await this.transferToAssignedUser(call_control_id, phoneNumber);
+      await this.transferToAssignedUser(call_control_id, phoneNumber, from);
       return;
     }
 
@@ -1788,9 +1788,10 @@ export class CallControlWebhookService {
    */
   private async transferToAssignedUser(
     callControlId: string,
-    phoneNumber: any
+    phoneNumber: any,
+    callerNumber?: string
   ): Promise<void> {
-    console.log(`[CallControl] Transferring directly to assigned user (no answer = no billing until agent picks up)`);
+    console.log(`[CallControl] Transferring directly to assigned user (no answer = no billing until agent picks up), caller: ${callerNumber}`);
 
     if (!phoneNumber.ownerUserId) {
       console.log(`[CallControl] No assigned user, cannot transfer`);
@@ -1823,12 +1824,24 @@ export class CallControlWebhookService {
     })).toString("base64");
 
     try {
-      // Use transfer action - this rings the agent WITHOUT answering the inbound call
+      // Use transfer action with SIP headers to pass original caller info
+      // This rings the agent WITHOUT answering the inbound call
       // Billing only starts when the agent picks up
-      await this.makeCallControlRequest(callControlId, "transfer", {
+      const transferParams: any = {
         to: sipUri,
         client_state: clientState,
-      });
+      };
+
+      // Pass original caller info via SIP headers so WebRTC client can display it
+      if (callerNumber) {
+        transferParams.sip_headers = [
+          { name: "X-Original-Caller", value: callerNumber },
+          { name: "X-Direct-Transfer", value: "true" }
+        ];
+        console.log(`[CallControl] Adding SIP headers with caller info: ${callerNumber}`);
+      }
+
+      await this.makeCallControlRequest(callControlId, "transfer", transferParams);
       console.log(`[CallControl] Transfer initiated to ${sipUri}`);
     } catch (error) {
       console.error(`[CallControl] Transfer failed:`, error);
