@@ -29927,7 +29927,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to migrate to Call Control Application" });
     }
   });
-  // GET /api/telnyx/sip-credentials - Get SIP credentials for WebRTC client
+  // GET /api/telnyx/sip-credentials - Get SIP credentials for WebRTC client or Desk Phone
+  // Accepts optional ?userId= parameter for admins to get credentials for specific users
   app.get("/api/telnyx/sip-credentials", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -29937,9 +29938,24 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
-      // Superadmins can see all company telephony resources, admins only see their own
-      const userId = (user.role === 'superadmin' || user.role === 'admin') ? undefined : user.id;
-      const credentials = await telephonyProvisioningService.getSipCredentials(user.companyId, userId);
+      
+      // Allow admins/superadmins to query credentials for a specific user (e.g., for desk phone setup)
+      // Regular users can only get their own credentials
+      let targetUserId: string | undefined;
+      const queryUserId = req.query.userId as string | undefined;
+      
+      if (queryUserId && (user.role === "superadmin" || user.role === "admin")) {
+        // Admin requesting credentials for specific user
+        targetUserId = queryUserId;
+      } else if (user.role === "superadmin" || user.role === "admin") {
+        // Admin without specific user - get any company credentials
+        targetUserId = undefined;
+      } else {
+        // Regular user - only their own credentials
+        targetUserId = user.id;
+      }
+      
+      const credentials = await telephonyProvisioningService.getSipCredentials(user.companyId, targetUserId);
 
       if (!credentials) {
         return res.status(404).json({ 
@@ -29957,7 +29973,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to get SIP credentials" });
     }
   });
-
   // GET /api/telnyx/turn-credentials - Generate TURN server credentials for WebRTC ICE
   // Per Telnyx docs: SIP credentials authenticate with TURN servers
   // This enables manual ICE server injection for faster call connection (<1 second vs 4+ seconds)

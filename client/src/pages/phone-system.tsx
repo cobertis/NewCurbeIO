@@ -1292,7 +1292,7 @@ export default function PhoneSystem() {
                                   setDeskPhoneCredentials({ sipUsername: '', sipPassword: '', loading: true });
                                   setShowDeskPhoneCredentials(true);
                                   try {
-                                    const response = await fetch('/api/telnyx/sip-credentials', { credentials: 'include' });
+                                    const response = await fetch(`/api/telnyx/sip-credentials?userId=${selectedNumber.ownerUserId}`, { credentials: 'include' });
                                     const data = await response.json();
                                     if (data.username && data.password) {
                                       setDeskPhoneCredentials({ 
