@@ -1531,8 +1531,8 @@ export class CallControlWebhookService {
   }
 
   /**
-   * Create outbound call to SIP URI and bridge it to existing call
-   * Uses POST /calls to create new leg, then bridges both calls
+   * Dial SIP URI from existing call using Call Control "dial" command
+   * This creates a new leg and Telnyx automatically bridges when the agent answers
    */
   private async dialAndBridgeToSip(
     callControlId: string,
@@ -1540,7 +1540,7 @@ export class CallControlWebhookService {
     clientState: string,
     companyId: string
   ): Promise<void> {
-    console.log(`[CallControl] Creating outbound call to SIP: ${sipUri} for bridging with ${callControlId}`);
+    console.log(`[CallControl] Dialing SIP ${sipUri} from call ${callControlId} using Call Control dial command`);
 
     const apiKey = await getTelnyxApiKey();
     const context = callContextMap.get(callControlId);
@@ -1557,22 +1557,6 @@ export class CallControlWebhookService {
 
     const callerIdNumber = phoneNumber?.phoneNumber || "+15555555555";
 
-    // CRITICAL: Use Credential Connection for outbound calls to SIP agents
-    // Using Call Control App would intercept the call and cause it to be hung up
-    // Credential Connection has simultaneous_ringing enabled for SIP forking
-    const [settings] = await db
-      .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
-      .from(telephonySettings)
-      .where(eq(telephonySettings.companyId, companyId));
-
-    const connectionId = settings?.credentialConnectionId;
-
-    if (!connectionId) {
-      throw new Error("No Credential Connection ID found for company - cannot dial agent");
-    }
-    
-    console.log(`[CallControl] Using Credential Connection ID: ${connectionId} for outbound call to agent`)
-
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
@@ -1582,46 +1566,48 @@ export class CallControlWebhookService {
       headers["X-Managed-Account-Id"] = managedAccountId;
     }
 
-    // Create outbound call to the agent's SIP endpoint
-    const response = await fetch(`${TELNYX_API_BASE}/calls`, {
+    // Use the Call Control "dial" command to dial the SIP URI from the existing call
+    // This is the correct approach because:
+    // 1. POST /calls only accepts Call Control App IDs, NOT Credential Connection IDs
+    // 2. The "dial" command creates a new leg from the existing call
+    // 3. When the agent answers, Telnyx automatically bridges both legs
+    const response = await fetch(`${TELNYX_API_BASE}/calls/${callControlId}/actions/dial`, {
       method: "POST",
       headers,
       body: JSON.stringify({
-        connection_id: connectionId,
         to: sipUri,
         from: callerIdNumber,
         timeout_secs: 30,
-        answering_machine_detection: "disabled",
         client_state: clientState,
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[CallControl] Failed to create outbound call: ${response.status} - ${errorText}`);
+      console.error(`[CallControl] Failed to dial SIP: ${response.status} - ${errorText}`);
       throw new Error(`Failed to dial agent: ${response.status}`);
     }
 
     const data = await response.json();
-    const agentCallControlId = data.data?.call_control_id;
+    console.log(`[CallControl] Dial command sent successfully:`, JSON.stringify(data));
 
-    if (!agentCallControlId) {
-      throw new Error("No call_control_id returned from dial");
+    // The dial command returns the call_control_id of the new leg
+    const agentCallControlId = data.data?.call_control_id;
+    if (agentCallControlId) {
+      console.log(`[CallControl] New agent leg created: ${agentCallControlId}`);
+      
+      // Store context for the new call leg
+      callContextMap.set(agentCallControlId, { companyId, managedAccountId });
+      
+      // Store pending bridge info - will be processed when agent answers (call.answered event)
+      pendingBridges.set(agentCallControlId, {
+        callerCallControlId: callControlId,
+        clientState,
+        companyId,
+      });
     }
 
-    console.log(`[CallControl] Created outbound call to agent: ${agentCallControlId}`);
-
-    // Store context for the new call leg with pending bridge info
-    callContextMap.set(agentCallControlId, { companyId, managedAccountId });
-    
-    // Store pending bridge info - will be processed when agent answers (call.answered event)
-    pendingBridges.set(agentCallControlId, {
-      callerCallControlId: callControlId,
-      clientState,
-      companyId,
-    });
-
-    console.log(`[CallControl] Waiting for agent to answer call ${agentCallControlId}, will bridge with ${callControlId}`);
+    console.log(`[CallControl] Waiting for agent to answer, will auto-bridge with caller ${callControlId}`);
   }
 
   /**
