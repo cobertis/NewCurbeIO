@@ -693,6 +693,14 @@ export class CallControlWebhookService {
       }
 
       try {
+        // CRITICAL: Answer the caller's call FIRST (it was in ringing state until agent answered)
+        // This is when billing starts - only after an agent actually picks up
+        console.log(`[CallControl] Answering caller ${pendingBridge.callerCallControlId} now that agent answered`);
+        await this.answerCall(pendingBridge.callerCallControlId);
+        
+        // Small delay to ensure answer is processed before bridge
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         // Bridge the caller with the agent
         await this.makeCallControlRequest(pendingBridge.callerCallControlId, "bridge", {
           call_control_id: call_control_id,
@@ -700,7 +708,7 @@ export class CallControlWebhookService {
         });
         console.log(`[CallControl] Successfully bridged caller with agent`);
       } catch (bridgeError) {
-        console.error(`[CallControl] Failed to bridge calls:`, bridgeError);
+        console.error(`[CallControl] Failed to answer/bridge calls:`, bridgeError);
         // Hangup agent call if bridge fails
         try {
           await this.hangupCall(call_control_id, "NORMAL_CLEARING");
@@ -1359,6 +1367,10 @@ export class CallControlWebhookService {
     const callerIdNumber = phoneNumber?.phoneNumber || "+15555555555";
 
     // Get Call Control App ID for the company (required for outbound calls via REST API)
+    // NOTE: We use callControlAppId (NOT credentialConnectionId) because:
+    // - Credential connections don't emit Call Control webhooks
+    // - SIP Forking works through the SIP domain in the URI (e.g. cobertis-insurance.sip.telnyx.com)
+    // - The Call Control App provides webhooks for call.answered which we need for bridging
     const [settings] = await db
       .select({ callControlAppId: telephonySettings.callControlAppId })
       .from(telephonySettings)
@@ -1370,7 +1382,7 @@ export class CallControlWebhookService {
       throw new Error("No Call Control App ID found for company - cannot create outbound call");
     }
     
-    console.log(`[CallControl] Using Call Control App ID: ${connectionId} for outbound call`)
+    console.log(`[CallControl] Using Call Control App ID: ${connectionId} for outbound call (SIP Forking via SIP domain in URI)`)
 
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
@@ -1863,16 +1875,26 @@ export class CallControlWebhookService {
     })).toString("base64");
 
     try {
-      // CRITICAL: Use Dial+Bridge pattern instead of Transfer for SIP Forking support
-      // The `transfer` command does NOT support simultaneous_ringing
-      // We must: 1) Answer the caller, 2) Dial the SIP URI, 3) Bridge when agent answers
-      await this.answerCall(callControlId);
+      // CRITICAL FIX: Do NOT answer the caller's call yet!
+      // Answering starts billing immediately and removes ringback tone for caller.
+      // 
+      // Correct flow for SIP Forking:
+      // 1. Caller calls in → keep in "ringing" state (do NOT answer)
+      // 2. Create outbound call to agent's SIP URI using credentialConnectionId
+      // 3. When agent answers (call.answered webhook) → THEN answer caller + bridge
+      // 4. If agent doesn't answer → voicemail
+      //
+      // This way, billing only starts when an agent actually picks up.
+      
+      console.log(`[CallControl] Initiating dial to agent WITHOUT answering caller first (billing starts when agent answers)`);
       await this.dialAndBridgeToSip(callControlId, sipUri, clientState, companyId);
       
-      console.log(`[CallControl] Dial+Bridge initiated to SIP URI with SIP Forking`);
+      console.log(`[CallControl] Dial+Bridge initiated - caller in ringing state, waiting for agent to answer`);
       
     } catch (error) {
       console.error(`[CallControl] Dial+Bridge failed:`, error);
+      // Only answer and speak if dial fails - need to notify caller
+      await this.answerCall(callControlId);
       await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
       await this.routeToVoicemail(callControlId, companyId);
     }
