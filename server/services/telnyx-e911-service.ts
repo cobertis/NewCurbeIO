@@ -365,7 +365,7 @@ async function getOrCreateCredentialConnection(
           // Enable SHAKEN/STIR for caller ID verification
           shaken_stir_enabled: true,
           // Enable simultaneous ring - all devices with same credentials ring at once
-          sip_subdomain_receive_settings: "from_anyone",
+          enable_simultaneous_ringing: true,
         },
       }),
     });
@@ -525,15 +525,71 @@ export async function assignPhoneNumberToCredentialConnection(
 }
 
 /**
- * Update a credential connection's ANI override (outbound caller ID)
- * This is required for outbound calls to work properly
+ * Public function to repair/update a SIP connection with the company's phone number
+ * This configures: 1) ANI override for outbound caller ID, 2) Enable simultaneous ringing
+ * Call this to fix existing connections that are missing these settings
+ */
+export async function repairSipConnectionSettings(
+  companyId: string
+): Promise<{ success: boolean; error?: string }> {
+  console.log(`[SIP Repair] Repairing SIP connection settings for company ${companyId}...`);
+  
+  try {
+    const config = await getManagedAccountConfig(companyId);
+    if (!config) {
+      return { success: false, error: "Company has no managed account configured" };
+    }
+    
+    // Get the company's credential connection ID
+    const [settings] = await db
+      .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+    
+    if (!settings?.credentialConnectionId) {
+      return { success: false, error: "No SIP connection found for this company" };
+    }
+    
+    // Get the company's primary phone number
+    const [phoneNumber] = await db
+      .select({ phoneNumber: telnyxPhoneNumbers.phoneNumber })
+      .from(telnyxPhoneNumbers)
+      .where(eq(telnyxPhoneNumbers.companyId, companyId));
+    
+    if (!phoneNumber?.phoneNumber) {
+      return { success: false, error: "No phone number found for this company" };
+    }
+    
+    console.log(`[SIP Repair] Found connection ${settings.credentialConnectionId} and phone ${phoneNumber.phoneNumber}`);
+    
+    // Update the connection with ANI override and simultaneous ringing
+    const result = await updateCredentialConnectionAni(
+      config,
+      settings.credentialConnectionId,
+      phoneNumber.phoneNumber
+    );
+    
+    if (result.success) {
+      console.log(`[SIP Repair] Successfully repaired SIP connection settings`);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error("[SIP Repair] Error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to repair SIP connection" };
+  }
+}
+
+/**
+ * Update a credential connection's ANI override (outbound caller ID) and enable simultaneous ringing
+ * This is required for outbound calls to work properly and for multiple devices to ring at once
  */
 async function updateCredentialConnectionAni(
   config: ManagedAccountConfig,
   connectionId: string,
   phoneNumber: string
 ): Promise<{ success: boolean; error?: string }> {
-  console.log(`[ANI Override] Setting outbound caller ID to ${phoneNumber} on connection ${connectionId}...`);
+  console.log(`[Connection Update] Setting outbound caller ID to ${phoneNumber} and enabling simultaneous ringing on connection ${connectionId}...`);
   
   try {
     const response = await fetch(`${TELNYX_API_BASE}/credential_connections/${connectionId}`, {
@@ -544,20 +600,24 @@ async function updateCredentialConnectionAni(
           ani_override: phoneNumber,
           ani_override_type: "always",
         },
+        inbound: {
+          // Enable simultaneous ring - all devices with same credentials ring at once
+          enable_simultaneous_ringing: true,
+        },
       }),
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[ANI Override] Failed to update: ${response.status} - ${errorText}`);
-      return { success: false, error: `Failed to set ANI override: ${response.status}` };
+      console.error(`[Connection Update] Failed to update: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to update connection: ${response.status}` };
     }
 
-    console.log(`[ANI Override] Successfully set outbound caller ID to ${phoneNumber}`);
+    console.log(`[Connection Update] Successfully set outbound caller ID to ${phoneNumber} and enabled simultaneous ringing`);
     return { success: true };
   } catch (error) {
-    console.error("[ANI Override] Error:", error);
-    return { success: false, error: error instanceof Error ? error.message : "Failed to set ANI override" };
+    console.error("[Connection Update] Error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to update connection" };
   }
 }
 

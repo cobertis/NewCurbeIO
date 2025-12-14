@@ -29818,6 +29818,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated with user" });
       }
 
+
+      // Also repair SIP connection settings (ANI override + simultaneous ringing)
+      const { repairSipConnectionSettings } = await import("./services/telnyx-e911-service");
+      const sipRepairResult = await repairSipConnectionSettings(user.companyId);
+      
+      if (sipRepairResult.success) {
+        console.log("[Provisioning] SIP connection settings repaired (ANI override + simultaneous ringing)");
+      } else {
+        console.warn("[Provisioning] SIP connection repair warning:", sipRepairResult.error);
+      }
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
       const result = await telephonyProvisioningService.repairSipUriCalling(user.companyId, user.id);
 
