@@ -29906,7 +29906,37 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // POST /api/telephony/migrate-to-call-control - Migrate from Credential Connection to Call Control Application
+  // POST /api/telnyx/provisioning/repair-call-parking - Enable Call Parking for outbound calls from SIP devices
+  app.post("/api/telnyx/provisioning/repair-call-parking", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { TelephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const telephonyProvisioningService = new TelephonyProvisioningService();
+      const result = await telephonyProvisioningService.repairCallParking(user.companyId);
+
+      if (result.success) {
+        res.json({ 
+          success: true,
+          message: "Call Parking enabled successfully. Outbound calls from Yealink/SIP devices will now work."
+        });
+      } else {
+        res.status(500).json({ 
+          success: false, 
+          message: result.error || "Failed to enable Call Parking"
+        });
+      }
+    } catch (error: any) {
+      console.error("[Provisioning] Call Parking repair error:", error);
+      res.status(500).json({ message: "Failed to enable Call Parking" });
+    }
+  });
+
+  // POST /api/telephony/migrate-to-call-control
   app.post("/api/telephony/migrate-to-call-control", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
