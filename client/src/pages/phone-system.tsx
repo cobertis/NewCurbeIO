@@ -243,10 +243,21 @@ export default function PhoneSystem() {
     }
   }, [numbersData]);
 
-  // Sync voicemail PIN input when selected number changes
+  // Reset all number-specific states when selected number changes
   useEffect(() => {
     setVoicemailPinInput(selectedNumber?.voicemailPin || "");
-  }, [selectedNumber?.phoneNumber, selectedNumber?.voicemailPin]);
+    setShowDeskPhoneCredentials(false);
+    setDeskPhoneCredentials(null);
+    setEditingCnam(false);
+    setCnamInput("");
+  }, [selectedNumber?.phoneNumber]);
+
+  // Sync voicemail PIN when it changes on the server
+  useEffect(() => {
+    if (selectedNumber?.voicemailPin) {
+      setVoicemailPinInput(selectedNumber.voicemailPin);
+    }
+  }, [selectedNumber?.voicemailPin]);
 
   const handleAutoRechargeToggle = (enabled: boolean) => {
     setAutoRechargeEnabled(enabled);
