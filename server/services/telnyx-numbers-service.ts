@@ -1553,6 +1553,78 @@ export async function updateNumberVoiceSettings(
       }
     }
     
+    // CRITICAL: If ivrId changed, automatically sync routing to Telnyx
+    // IVR enabled (real UUID) -> route to Call Control App (for webhooks)
+    // IVR disabled ("unassigned" or null) -> route to Credential Connection (for direct SIP with simultaneous_ringing)
+    if (settings.ivrId !== undefined) {
+      try {
+        const apiKey = await getTelnyxMasterApiKey();
+        
+        const [telSettings] = await db
+          .select()
+          .from(telephonySettings)
+          .where(eq(telephonySettings.companyId, companyId));
+        
+        const [wallet] = await db
+          .select()
+          .from(wallets)
+          .where(eq(wallets.companyId, companyId));
+        
+        if (wallet?.telnyxAccountId && telSettings) {
+          const hasActiveIvr = settings.ivrId && settings.ivrId !== "unassigned";
+          
+          // Determine which connection to use
+          let targetConnectionId: string | null = null;
+          let routingType = "";
+          
+          if (hasActiveIvr && telSettings.callControlAppId) {
+            // IVR is enabled - use Call Control App for webhook-based IVR routing
+            targetConnectionId = telSettings.callControlAppId;
+            routingType = "Call Control App (IVR enabled)";
+          } else if (telSettings.credentialConnectionId) {
+            // IVR disabled - use Credential Connection for direct SIP routing with simultaneous_ringing
+            targetConnectionId = telSettings.credentialConnectionId;
+            routingType = "Credential Connection (direct SIP, simultaneous ring)";
+          }
+          
+          if (targetConnectionId) {
+            const headers: Record<string, string> = {
+              "Authorization": `Bearer ${apiKey}`,
+              "Content-Type": "application/json",
+              "x-managed-account-id": wallet.telnyxAccountId,
+            };
+            
+            const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`, {
+              method: "PATCH",
+              headers,
+              body: JSON.stringify({ 
+                connection_id: targetConnectionId,
+                call_control_application_id: null
+              }),
+            });
+            
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`[Voice Settings] Telnyx routing sync failed for ${phoneNumber.phoneNumber}: ${response.status} - ${errorText}`);
+            } else {
+              console.log(`[Voice Settings] Synced ${phoneNumber.phoneNumber} routing to ${routingType}`);
+              
+              // Update connectionId in database
+              await db
+                .update(telnyxPhoneNumbers)
+                .set({ connectionId: targetConnectionId, updatedAt: new Date() })
+                .where(eq(telnyxPhoneNumbers.id, phoneNumber.id));
+            }
+          } else {
+            console.warn(`[Voice Settings] No connection available for ${phoneNumber.phoneNumber} - cannot sync routing`);
+          }
+        }
+      } catch (routingError) {
+        console.error(`[Voice Settings] Error syncing routing for ${phoneNumber.phoneNumber}:`, routingError);
+        // Don't fail the whole operation, just log the routing sync error
+      }
+    }
+    
     console.log(`[Voice Settings] Updated ${phoneNumber.phoneNumber}: ${JSON.stringify(settings)}`);
     return { success: true };
   } catch (error) {
