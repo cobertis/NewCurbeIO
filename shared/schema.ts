@@ -5815,6 +5815,16 @@ export const pbxExtensions = pgTable("pbx_extensions", {
   // Do Not Disturb
   dndEnabled: boolean("dnd_enabled").notNull().default(false),
   
+  // Telnyx SIP Connection - Each extension has its own independent SIP connection
+  telnyxCredentialConnectionId: text("telnyx_credential_connection_id"),
+  sipCredentialId: text("sip_credential_id"),
+  sipUsername: text("sip_username"),
+  sipPassword: text("sip_password"),
+  sipDomain: text("sip_domain"),
+  
+  // Direct phone number assigned to this extension
+  directPhoneNumberId: text("direct_phone_number_id").references(() => telnyxPhoneNumbers.id, { onDelete: "set null" }),
+  
   isActive: boolean("is_active").notNull().default(true),
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
