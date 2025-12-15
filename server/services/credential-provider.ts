@@ -25,17 +25,19 @@ function setCache<T>(key: string, value: T): void {
 }
 
 export const credentialProvider = {
-  async getStripe(): Promise<{ secretKey: string; webhookSecret: string }> {
+  async getStripe(): Promise<{ secretKey: string; webhookSecret: string; publishableKey: string }> {
     const cacheKey = getCacheKey('stripe');
-    const cached = getFromCache<{ secretKey: string; webhookSecret: string }>(cacheKey);
+    const cached = getFromCache<{ secretKey: string; webhookSecret: string; publishableKey: string }>(cacheKey);
     if (cached) return cached;
 
     const secretKey = await secretsService.getCredential("stripe" as ApiProvider, "secret_key") || 
                       process.env.STRIPE_SECRET_KEY || '';
     const webhookSecret = await secretsService.getCredential("stripe" as ApiProvider, "webhook_secret") || 
                           process.env.STRIPE_WEBHOOK_SECRET || '';
+    const publishableKey = await secretsService.getCredential("stripe" as ApiProvider, "publishable_key") || 
+                           process.env.STRIPE_PUBLISHABLE_KEY || '';
     
-    const result = { secretKey, webhookSecret };
+    const result = { secretKey, webhookSecret, publishableKey };
     setCache(cacheKey, result);
     return result;
   },
