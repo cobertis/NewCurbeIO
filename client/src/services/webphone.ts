@@ -11,6 +11,7 @@ interface Call {
   phoneNumber: string;
   displayName?: string;
   queueName?: string;
+  ivrLanguage?: string;
   startTime: Date;
   endTime?: Date;
   duration?: number;

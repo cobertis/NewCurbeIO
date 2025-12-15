@@ -1785,6 +1785,7 @@ export function WebPhoneFloatingWindow() {
         phoneNumber: telnyxCurrentCallInfo.remoteCallerNumber || 'Unknown',
         displayName,
         queueName: telnyxCurrentCallInfo.queueName,
+        ivrLanguage: telnyxCurrentCallInfo.ivrLanguage,
         status: 'answered', // currentCall means call is ACTIVE
         direction: telnyxCurrentCallInfo.direction || 'outbound',
         isTelnyx: true,
@@ -1821,6 +1822,7 @@ export function WebPhoneFloatingWindow() {
         phoneNumber: telnyxIncomingCallInfo.remoteCallerNumber || 'Unknown',
         displayName,
         queueName: telnyxIncomingCallInfo.queueName,
+        ivrLanguage: telnyxIncomingCallInfo.ivrLanguage,
         status: 'ringing',
         direction: 'inbound',
         isTelnyx: true,
@@ -2680,6 +2682,11 @@ export function WebPhoneFloatingWindow() {
                         <Badge variant="secondary" className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                           <Users className="h-3 w-3 mr-1" />
                           {effectiveCall.queueName}
+                          {effectiveCall.ivrLanguage && (
+                            <span className="ml-1.5 pl-1.5 border-l border-blue-300 dark:border-blue-600">
+                              {effectiveCall.ivrLanguage === 'es-MX' ? 'Spanish' : 'English'}
+                            </span>
+                          )}
                         </Badge>
                       </div>
                     )}

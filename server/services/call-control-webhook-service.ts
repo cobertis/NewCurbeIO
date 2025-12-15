@@ -941,7 +941,16 @@ export class CallControlWebhookService {
         return;
       }
 
-      await this.handleMenuOption(call_control_id, companyId, selectedOption);
+      // Get IVR language for queue calls
+      let ivrLanguage: string | undefined;
+      if (ivrId) {
+        const ivr = await pbxService.getIvr(companyId, ivrId);
+        if (ivr?.language) {
+          ivrLanguage = ivr.language;
+        }
+      }
+      
+      await this.handleMenuOption(call_control_id, companyId, selectedOption, ivrLanguage);
     } catch (e) {
       console.error(`[CallControl] Error in handleGatherEnded:`, e);
     }
@@ -1026,12 +1035,13 @@ export class CallControlWebhookService {
   private async handleMenuOption(
     callControlId: string,
     companyId: string,
-    option: any
+    option: any,
+    ivrLanguage?: string
   ): Promise<void> {
     switch (option.actionType) {
       case "queue":
         if (option.targetQueueId) {
-          await this.routeToQueue(callControlId, companyId, option.targetQueueId);
+          await this.routeToQueue(callControlId, companyId, option.targetQueueId, ivrLanguage);
         }
         break;
       case "extension":
@@ -1072,8 +1082,8 @@ export class CallControlWebhookService {
    * Dials all queue agents' SIP endpoints simultaneously
    * First agent to answer gets bridged, others are cancelled
    */
-  private async routeToQueue(callControlId: string, companyId: string, queueId: string): Promise<void> {
-    console.log(`[CallControl] Routing call to queue: ${queueId} using Ring-All strategy`);
+  private async routeToQueue(callControlId: string, companyId: string, queueId: string, ivrLanguage?: string): Promise<void> {
+    console.log(`[CallControl] Routing call to queue: ${queueId} using Ring-All strategy${ivrLanguage ? `, IVR language: ${ivrLanguage}` : ''}`);
 
     const queue = await pbxService.getQueue(companyId, queueId);
     if (!queue) {
@@ -1208,7 +1218,8 @@ export class CallControlWebhookService {
             client_state: clientState,
             custom_headers: [
               { name: "X-Original-Caller", value: callerNumber },
-              { name: "X-Queue-Name", value: queue.name }
+              { name: "X-Queue-Name", value: queue.name },
+              ...(ivrLanguage ? [{ name: "X-IVR-Language", value: ivrLanguage }] : [])
             ],
           }),
         });

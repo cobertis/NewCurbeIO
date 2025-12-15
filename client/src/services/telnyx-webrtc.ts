@@ -236,6 +236,7 @@ export interface SipCallInfo {
   remoteCallerNumber: string;
   callerName?: string;
   queueName?: string;
+  ivrLanguage?: string;
   direction: "inbound" | "outbound";
   state: "ringing" | "establishing" | "active" | "terminated";
   destinationNumber?: string;
@@ -782,6 +783,7 @@ class TelnyxWebRTCManager {
     let callerNumber = "Unknown";
     let callerName: string | undefined;
     let queueName: string | undefined;
+    let ivrLanguage: string | undefined;
     let telnyxCallLegId: string | undefined;
     
     if (session instanceof Invitation) {
@@ -801,6 +803,13 @@ class TelnyxWebRTCManager {
         if (xQueueName) {
           queueName = xQueueName;
           console.log("[SIP.js WebRTC] Found X-Queue-Name header:", xQueueName);
+        }
+        
+        // Check for X-IVR-Language header (language of the IVR the caller used)
+        const xIvrLanguage = request.getHeader("X-IVR-Language");
+        if (xIvrLanguage) {
+          ivrLanguage = xIvrLanguage;
+          console.log("[SIP.js WebRTC] Found X-IVR-Language header:", xIvrLanguage);
         }
       } catch (e) {
         console.warn("[SIP.js WebRTC] Error reading custom headers:", e);
@@ -886,6 +895,7 @@ class TelnyxWebRTCManager {
       callerNumber: formattedNumber, 
       callerName,
       queueName,
+      ivrLanguage,
       isOutgoing, 
       telnyxCallLegId: telnyxCallLegId || "not found" 
     });
@@ -894,6 +904,7 @@ class TelnyxWebRTCManager {
       remoteCallerNumber: formattedNumber,
       callerName,
       queueName,
+      ivrLanguage,
       direction: isOutgoing ? "outbound" : "inbound",
       state: "ringing",
       destinationNumber: isOutgoing ? destination : undefined,
