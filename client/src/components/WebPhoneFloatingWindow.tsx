@@ -1444,8 +1444,9 @@ export function WebPhoneFloatingWindow() {
   const [dialNumber, setDialNumber] = useState('');
   const [position, setPosition] = useState(() => {
     const dims = calculateDimensions();
+    // Leave 80px on right side for floating buttons (phone + intercom)
     return clampPosition(
-      { x: window.innerWidth - dims.width - 20, y: window.innerHeight - dims.height - 20 },
+      { x: window.innerWidth - dims.width - 80, y: window.innerHeight - dims.height - 20 },
       dims
     );
   });
