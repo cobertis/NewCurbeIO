@@ -3267,14 +3267,14 @@ export function WebPhoneFloatingWindow() {
                                     )}
                                   </div>
                                   
-                                  {/* Call Info - Name and Number */}
+                                  {/* Call Info - Number on top, Name below */}
                                   <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-1">
                                       <span className={cn(
                                         "text-sm font-medium truncate",
                                         isMissed ? "text-red-500" : "text-foreground"
                                       )}>
-                                        {call.callerName || "Unknown Caller"}
+                                        {formatCallerNumber((call.direction === 'inbound' ? call.fromNumber : call.toNumber))}
                                       </span>
                                       {/* Customer Info Icon - links to profile */}
                                       {call.isCustomer && (call.contactId || call.policyId) && (
@@ -3295,8 +3295,8 @@ export function WebPhoneFloatingWindow() {
                                         </button>
                                       )}
                                     </div>
-                                    <span className="text-[10px] text-muted-foreground">
-                                      {formatCallerNumber((call.direction === 'inbound' ? call.fromNumber : call.toNumber))}
+                                    <span className="text-[10px] text-muted-foreground truncate">
+                                      {call.callerName || "Unknown Caller"}
                                     </span>
                                   </div>
                                   
