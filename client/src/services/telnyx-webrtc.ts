@@ -699,56 +699,12 @@ class TelnyxWebRTCManager {
 
   /**
    * Connect remote audio stream to audio element
+   * Called when session is Established - delegates to setupAudioOnPeerConnection
    */
   private setupRemoteAudio(session: Session): void {
-    const sessionDescriptionHandler = session.sessionDescriptionHandler;
-    if (!sessionDescriptionHandler) {
-      console.warn("[SIP.js WebRTC] No sessionDescriptionHandler available");
-      return;
-    }
-
-    const peerConnection = (sessionDescriptionHandler as any).peerConnection as RTCPeerConnection | undefined;
-    if (!peerConnection) {
-      console.warn("[SIP.js WebRTC] No peerConnection available");
-      return;
-    }
-
-    // Get remote stream from the peer connection
-    const remoteStream = new MediaStream();
-    peerConnection.getReceivers().forEach((receiver) => {
-      if (receiver.track) {
-        remoteStream.addTrack(receiver.track);
-      }
-    });
-
-    if (remoteStream.getTracks().length === 0) {
-      console.warn("[SIP.js WebRTC] No remote tracks found");
-      return;
-    }
-
-    // Ensure audio element exists
-    const audioElements = ensureTelnyxAudioElements();
-    this.audioElement = audioElements.remote;
-
-    // Connect stream to audio element
-    this.audioElement.srcObject = remoteStream;
-    this.audioElement.muted = false;
-    this.audioElement.volume = 1.0;
-
-    this.audioElement.play().then(() => {
-      console.log("[SIP.js WebRTC] Remote audio playing");
-    }).catch((e) => {
-      console.error("[SIP.js WebRTC] Audio play error:", e.message);
-    });
-
-    // Also listen for track events on the peer connection
-    peerConnection.ontrack = (event) => {
-      console.log("[SIP.js WebRTC] ontrack event, adding track to audio element");
-      if (event.streams && event.streams[0]) {
-        this.audioElement!.srcObject = event.streams[0];
-        this.audioElement!.play().catch(console.error);
-      }
-    };
+    console.log("[SIP.js WebRTC] setupRemoteAudio called");
+    // Use the improved method that handles ontrack properly
+    this.setupAudioOnPeerConnection(session);
   }
 
   /**
@@ -1253,8 +1209,28 @@ class TelnyxWebRTCManager {
     store.setOutgoingCallInfo(callInfo);
     this.startRingback();
 
+    // CRITICAL: Ensure audio element exists BEFORE making the call
+    if (!this.audioElement) {
+      const audioElements = ensureTelnyxAudioElements();
+      this.audioElement = audioElements.remote;
+    }
+
     try {
-      await inviter.invite();
+      await inviter.invite({
+        // Pass delegate to hook into sessionDescriptionHandler creation
+        requestDelegate: {
+          onAccept: (response) => {
+            console.log("[SIP.js WebRTC] INVITE accepted (200 OK received)");
+            // Setup audio IMMEDIATELY when we get 200 OK
+            this.setupAudioOnPeerConnection(inviter);
+          },
+          onProgress: (response) => {
+            console.log("[SIP.js WebRTC] INVITE progress (18x received):", response.message.statusCode);
+            // Also try to setup audio on provisional responses (early media)
+            this.setupAudioOnPeerConnection(inviter);
+          }
+        }
+      });
       console.log("[SIP.js WebRTC] INVITE sent");
       return inviter;
     } catch (error) {
@@ -1262,6 +1238,81 @@ class TelnyxWebRTCManager {
       this.stopRingback();
       store.setOutgoingCall(undefined);
       return null;
+    }
+  }
+
+  /**
+   * Setup audio on peer connection - called early to catch ontrack events
+   */
+  private setupAudioOnPeerConnection(session: Session): void {
+    const sdh = session.sessionDescriptionHandler as any;
+    if (!sdh || !sdh.peerConnection) {
+      console.log("[SIP.js WebRTC] setupAudioOnPeerConnection: No peer connection yet, will retry");
+      return;
+    }
+
+    const pc = sdh.peerConnection as RTCPeerConnection;
+    
+    // Ensure audio element exists
+    if (!this.audioElement) {
+      const audioElements = ensureTelnyxAudioElements();
+      this.audioElement = audioElements.remote;
+    }
+    
+    const remoteAudio = this.audioElement;
+    if (!remoteAudio) {
+      console.error("[SIP.js WebRTC] setupAudioOnPeerConnection: No audio element!");
+      return;
+    }
+
+    console.log("[SIP.js WebRTC] setupAudioOnPeerConnection: Setting up ontrack listener");
+
+    // Helper to safely set stream and play
+    const setStreamAndPlay = (stream: MediaStream, source: string) => {
+      if (remoteAudio.srcObject === stream) {
+        console.log(`[SIP.js WebRTC] Stream already set from ${source}, skipping`);
+        return;
+      }
+      
+      console.log(`[SIP.js WebRTC] Attaching audio stream from ${source}, tracks:`, stream.getAudioTracks().length);
+      remoteAudio.srcObject = stream;
+      remoteAudio.muted = false;
+      remoteAudio.volume = 1.0;
+      
+      remoteAudio.play().then(() => {
+        console.log(`[SIP.js WebRTC] Remote audio playing via ${source}`);
+      }).catch(e => {
+        if (e.name !== 'AbortError') {
+          console.error("[SIP.js WebRTC] Audio play failed:", e);
+        }
+      });
+    };
+
+    // Setup ontrack listener for new tracks (this is the KEY fix)
+    pc.ontrack = (event: RTCTrackEvent) => {
+      console.log("[SIP.js WebRTC] ontrack event - kind:", event.track.kind, "streams:", event.streams.length);
+      if (event.track.kind === 'audio') {
+        if (event.streams && event.streams[0]) {
+          setStreamAndPlay(event.streams[0], "ontrack-stream");
+        } else {
+          // Create stream from track if no streams available
+          const stream = new MediaStream([event.track]);
+          setStreamAndPlay(stream, "ontrack-track");
+        }
+      }
+    };
+
+    // Also check existing receivers (in case tracks already arrived)
+    const receivers = pc.getReceivers();
+    console.log("[SIP.js WebRTC] setupAudioOnPeerConnection: Checking", receivers.length, "existing receivers");
+    
+    for (const receiver of receivers) {
+      if (receiver.track && receiver.track.kind === 'audio') {
+        console.log("[SIP.js WebRTC] Found existing audio track from receiver");
+        const stream = new MediaStream([receiver.track]);
+        setStreamAndPlay(stream, "existing-receiver");
+        break;
+      }
     }
   }
 
