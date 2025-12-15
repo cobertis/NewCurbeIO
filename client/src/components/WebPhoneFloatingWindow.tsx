@@ -1486,6 +1486,7 @@ export function WebPhoneFloatingWindow() {
   const sipExtension = useWebPhoneStore(state => state.sipExtension);
   const callHistory = useWebPhoneStore(state => state.callHistory);
   const toggleDialpad = useWebPhoneStore(state => state.toggleDialpad);
+  const setDialpadVisible = useWebPhoneStore(state => state.setDialpadVisible);
   const setAudioElements = useWebPhoneStore(state => state.setAudioElements);
   const clearCallHistory = useWebPhoneStore(state => state.clearCallHistory);
   const deleteCallsFromHistory = useWebPhoneStore(state => state.deleteCallsFromHistory);
@@ -2147,28 +2148,26 @@ export function WebPhoneFloatingWindow() {
   useEffect(() => {
     if (currentCall && currentCall.status === 'ringing' && currentCall.direction === 'inbound') {
       if (!isVisible) {
-        toggleDialpad();
+        setDialpadVisible(true);
       }
     }
-  }, [currentCall, isVisible, toggleDialpad]);
+  }, [currentCall, isVisible, setDialpadVisible]);
   
   // Auto-open window when Telnyx incoming call arrives
   useEffect(() => {
     if (telnyxIncomingCall) {
       console.log('[WebPhone] Telnyx incoming call detected - opening phone panel');
-      if (!isVisible) {
-        toggleDialpad();
-      }
+      setDialpadVisible(true);
     }
-  }, [telnyxIncomingCall, isVisible, toggleDialpad]);
+  }, [telnyxIncomingCall, setDialpadVisible]);
   
   // Auto-open window when there's an active Telnyx call (for auto-answered queue calls)
   useEffect(() => {
     if (telnyxCurrentCall && !isVisible) {
       console.log('[WebPhone] Active Telnyx call detected - opening phone panel');
-      toggleDialpad();
+      setDialpadVisible(true);
     }
-  }, [telnyxCurrentCall, isVisible, toggleDialpad]);
+  }, [telnyxCurrentCall, isVisible, setDialpadVisible]);
   
   // Call timer
   useEffect(() => {

@@ -82,6 +82,7 @@ interface WebPhoneState {
   setCallWaitingEnabled: (enabled: boolean) => void;
   addCallToHistory: (call: CallLog) => void;
   toggleDialpad: () => void;
+  setDialpadVisible: (visible: boolean) => void;
   setIncomingCallVisible: (visible: boolean) => void;
   setAudioElements: (local: HTMLAudioElement, remote: HTMLAudioElement) => void;
   clearCallHistory: () => void;
@@ -158,6 +159,7 @@ export const useWebPhoneStore = create<WebPhoneState>((set, get) => ({
   }),
   
   toggleDialpad: () => set(state => ({ dialpadVisible: !state.dialpadVisible })),
+  setDialpadVisible: (visible) => set({ dialpadVisible: visible }),
   setIncomingCallVisible: (visible) => set({ incomingCallVisible: visible }),
   
   setAudioElements: (local, remote) => set({ 
