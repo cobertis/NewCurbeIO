@@ -1055,6 +1055,44 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
+      {/* Floating Phone Button - Bottom Right, next to Intercom chat */}
+      {(user?.role === 'admin' || user?.role === 'superadmin' || hasPbxExtension) && !dialpadVisible && (
+        <button
+          onClick={() => {
+            if (!canMakeCalls) {
+              toast({
+                title: "Phone Not Available",
+                description: noPhoneMessage,
+                variant: "destructive",
+                duration: 5000,
+              });
+              return;
+            }
+            toggleDialpad();
+          }}
+          data-testid="floating-button-phone"
+          className={cn(
+            "fixed bottom-6 right-24 z-50 w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:scale-105",
+            effectiveCall 
+              ? "bg-green-500 hover:bg-green-600 text-white ring-4 ring-green-300/50 animate-pulse" 
+              : effectiveConnectionStatus === 'connected'
+                ? "bg-green-500 hover:bg-green-600 text-white"
+                : effectiveConnectionStatus === 'connecting'
+                  ? "bg-yellow-500 hover:bg-yellow-600 text-white"
+                  : "bg-gray-400 hover:bg-gray-500 text-white"
+          )}
+        >
+          <Phone className="h-6 w-6" />
+          {/* Connection status indicator */}
+          <span className={cn(
+            "absolute top-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white",
+            effectiveConnectionStatus === 'connected' ? "bg-green-500" : 
+            effectiveConnectionStatus === 'connecting' ? "bg-yellow-400 animate-pulse" : 
+            "bg-red-400"
+          )} />
+        </button>
+      )}
+
       {/* WebPhone Floating Window - Visible to admins, superadmins, or users with extensions */}
       {(user?.role === 'admin' || user?.role === 'superadmin' || hasPbxExtension) && <WebPhoneFloatingWindow />}
 
