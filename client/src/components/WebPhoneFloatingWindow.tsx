@@ -2575,22 +2575,21 @@ export function WebPhoneFloatingWindow() {
   
   return (
     <>
-      {/* iPhone-style Floating Window */}
+      {/* iPhone-style Floating Window - Fixed bottom-right like Intercom */}
       <div
         ref={windowRef}
-        className="fixed z-50 bg-background border-2 border-border rounded-[1.5rem] sm:rounded-[2.5rem] shadow-2xl overflow-hidden flex flex-col"
+        className="fixed z-50 bg-background border border-border rounded-2xl shadow-2xl overflow-hidden flex flex-col animate-in slide-in-from-bottom-5 fade-in duration-200"
         style={{
-          left: `${position.x}px`,
-          top: `${position.y}px`,
-          width: `${dimensions.width}px`,
-          height: `${dimensions.height}px`,
-          cursor: isDragging ? 'grabbing' : 'default'
+          bottom: '84px',
+          right: '20px',
+          width: '375px',
+          height: '600px',
+          maxHeight: 'calc(100vh - 120px)',
         }}
       >
-        {/* iPhone Notch/Header */}
+        {/* Header */}
         <div
-          className="bg-background px-2 sm:px-4 py-2 sm:py-3 flex items-center justify-between cursor-grab active:cursor-grabbing h-[44px] sm:h-[52px] flex-shrink-0"
-          onMouseDown={handleMouseDown}
+          className="bg-background px-4 py-3 flex items-center justify-between h-[52px] flex-shrink-0 border-b border-border"
         >
           <div className="flex flex-col">
             {hasPhoneCapability ? (
