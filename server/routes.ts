@@ -30634,7 +30634,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       const { getWalletByCompany } = await import("./services/wallet-service");
-      const wallet = await getWalletByUser(user.companyId, user.id);
+      const wallet = await getWalletByCompany(user.companyId);
       
       const MINIMUM_BALANCE_FOR_CALLS = 0.50;
       const currentBalance = wallet ? parseFloat(wallet.balance) : 0;
