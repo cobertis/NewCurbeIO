@@ -1120,13 +1120,17 @@ export class CallControlWebhookService {
       .limit(1);
     const callerIdNumber = phoneNumber?.phoneNumber || "+15555555555";
 
-    // Get Call Control App ID - REQUIRED for outbound calls via Call Control API
+    // Get Call Control App ID and SIP Domain - REQUIRED for outbound calls via Call Control API
     // The connection_id in POST /calls MUST be a Call Control App ID, NOT a Credential Connection
     const [settings] = await db
-      .select({ callControlAppId: telephonySettings.callControlAppId })
+      .select({ 
+        callControlAppId: telephonySettings.callControlAppId,
+        sipDomain: telephonySettings.sipDomain
+      })
       .from(telephonySettings)
       .where(eq(telephonySettings.companyId, companyId));
     const connectionId = settings?.callControlAppId;
+    const sipDomain = settings?.sipDomain || "sip.telnyx.com";
 
     if (!connectionId) {
       console.error(`[CallControl] No Call Control App ID for company ${companyId} - cannot dial agents`);
@@ -1134,7 +1138,7 @@ export class CallControlWebhookService {
       await this.hangupCall(callControlId, "NORMAL_CLEARING");
       return;
     }
-    console.log(`[CallControl] Using Call Control App ID: ${connectionId} for dialing agents`);
+    console.log(`[CallControl] Using Call Control App ID: ${connectionId}, SIP Domain: ${sipDomain} for dialing agents`);
 
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
@@ -1160,7 +1164,7 @@ export class CallControlWebhookService {
         continue;
       }
 
-      const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
+      const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
       console.log(`[CallControl] Dialing agent SIP: ${sipUri}`);
 
       try {
@@ -1284,9 +1288,16 @@ export class CallControlWebhookService {
     // Get the agent's personal SIP credentials
     const sipCreds = await getUserSipCredentials(extension.userId);
     
+    // Get SIP domain for the company
+    const [sipSettings] = await db
+      .select({ sipDomain: telephonySettings.sipDomain })
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+    const sipDomain = sipSettings?.sipDomain || "sip.telnyx.com";
+    
     if (sipCreds?.sipUsername) {
       // Dial the agent's personal SIP URI
-      const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
+      const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
       console.log(`[CallControl] Dialing agent's SIP URI: ${sipUri}`);
 
       try {
@@ -1545,18 +1556,22 @@ export class CallControlWebhookService {
       .limit(1);
     const callerIdNumber = phoneNumber?.phoneNumber || "+15555555555";
 
-    // Get Call Control App ID - REQUIRED for outbound calls via Call Control API
+    // Get Call Control App ID and SIP Domain - REQUIRED for outbound calls via Call Control API
     const [settings] = await db
-      .select({ callControlAppId: telephonySettings.callControlAppId })
+      .select({ 
+        callControlAppId: telephonySettings.callControlAppId,
+        sipDomain: telephonySettings.sipDomain
+      })
       .from(telephonySettings)
       .where(eq(telephonySettings.companyId, companyId));
     const connectionId = settings?.callControlAppId;
+    const sipDomain = settings?.sipDomain || "sip.telnyx.com";
 
     if (!connectionId) {
       console.error(`[CallControl] No Call Control App ID for retry - cannot dial agents`);
       return;
     }
-    console.log(`[CallControl] Retry: Using Call Control App ID: ${connectionId} for dialing agents`);
+    console.log(`[CallControl] Retry: Using Call Control App ID: ${connectionId}, SIP Domain: ${sipDomain}`);
 
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
@@ -1576,7 +1591,8 @@ export class CallControlWebhookService {
       const sipCreds = await getUserSipCredentials(member.userId);
       if (!sipCreds?.sipUsername) continue;
 
-      const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
+      const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
+      console.log(`[CallControl] Retry: Dialing agent SIP: ${sipUri}`);
 
       try {
         const clientState = Buffer.from(JSON.stringify({
@@ -1679,6 +1695,13 @@ export class CallControlWebhookService {
     const activeCall = await pbxService.getActiveCall(callControlId);
     const callerNumber = activeCall?.fromNumber || callContextMap.get(callControlId)?.callerNumber || "Unknown";
 
+    // Get SIP domain for the company
+    const [sipSettings] = await db
+      .select({ sipDomain: telephonySettings.sipDomain })
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+    const sipDomain = sipSettings?.sipDomain || "sip.telnyx.com";
+
     // Create client state for the bridged call
     const clientState = Buffer.from(JSON.stringify({
       companyId,
@@ -1689,7 +1712,7 @@ export class CallControlWebhookService {
     })).toString("base64");
 
     // Dial the agent's SIP URI directly
-    const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
+    const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
     console.log(`[CallControl] Dialing agent's SIP URI directly: ${sipUri}`);
 
     try {
@@ -1801,6 +1824,13 @@ export class CallControlWebhookService {
         return;
       }
 
+      // Get SIP domain for the company
+      const [sipSettings] = await db
+        .select({ sipDomain: telephonySettings.sipDomain })
+        .from(telephonySettings)
+        .where(eq(telephonySettings.companyId, companyId));
+      const sipDomain = sipSettings?.sipDomain || "sip.telnyx.com";
+
       // Create client state for the bridged call
       const clientState = Buffer.from(JSON.stringify({
         companyId,
@@ -1810,7 +1840,7 @@ export class CallControlWebhookService {
       })).toString("base64");
 
       // Dial the agent's SIP URI directly
-      const sipUri = `sip:${sipCreds.sipUsername}@sip.telnyx.com`;
+      const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
       console.log(`[CallControl] Dialing assigned user's SIP URI directly: ${sipUri}`);
 
       try {
