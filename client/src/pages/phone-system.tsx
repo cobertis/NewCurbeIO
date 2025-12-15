@@ -113,6 +113,11 @@ interface NumberInfo {
   voicemailEnabled?: boolean;
   voicemailPin?: string;
   ivrId?: string | null;
+  e911StreetAddress?: string | null;
+  e911ExtendedAddress?: string | null;
+  e911Locality?: string | null;
+  e911AdminArea?: string | null;
+  e911PostalCode?: string | null;
 }
 
 interface PbxIvr {
@@ -1215,6 +1220,17 @@ export default function PhoneSystem() {
                           >
                             {selectedNumber.e911AddressId || selectedNumber.e911Enabled ? 'Update' : 'Configure'}
                           </Button>
+                          {selectedNumber.e911StreetAddress && (
+                            <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700">
+                              <p className="text-xs text-slate-600 dark:text-slate-400">
+                                {selectedNumber.e911StreetAddress}
+                                {selectedNumber.e911ExtendedAddress && `, ${selectedNumber.e911ExtendedAddress}`}
+                              </p>
+                              <p className="text-xs text-slate-600 dark:text-slate-400">
+                                {selectedNumber.e911Locality}, {selectedNumber.e911AdminArea} {selectedNumber.e911PostalCode}
+                              </p>
+                            </div>
+                          )}
                         </div>
 
                         {/* Call Routing Section - Combined User & IVR */}

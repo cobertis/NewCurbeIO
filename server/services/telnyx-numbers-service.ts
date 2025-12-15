@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { wallets, companies, telnyxPhoneNumbers, telephonySettings, users } from "@shared/schema";
+import { wallets, companies, telnyxPhoneNumbers, telephonySettings, users, telnyxE911Addresses } from "@shared/schema";
 import { eq, and, or } from "drizzle-orm";
 import { SecretsService } from "./secrets-service";
 import { assignPhoneNumberToCredentialConnection } from "./telnyx-e911-service";
@@ -1244,9 +1244,15 @@ export async function getUserPhoneNumbers(companyId: string, userId?: string): P
         ownerLastName: users.lastName,
         ownerEmail: users.email,
         ownerAvatar: users.avatar,
+        e911StreetAddress: telnyxE911Addresses.streetAddress,
+        e911ExtendedAddress: telnyxE911Addresses.extendedAddress,
+        e911Locality: telnyxE911Addresses.locality,
+        e911AdminArea: telnyxE911Addresses.administrativeArea,
+        e911PostalCode: telnyxE911Addresses.postalCode,
       })
       .from(telnyxPhoneNumbers)
       .leftJoin(users, eq(telnyxPhoneNumbers.ownerUserId, users.id))
+      .leftJoin(telnyxE911Addresses, eq(telnyxPhoneNumbers.e911AddressId, telnyxE911Addresses.telnyxAddressId))
       .where(whereConditions);
 
     // Transform results to include ownerUser object
