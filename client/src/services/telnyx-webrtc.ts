@@ -644,7 +644,7 @@ class TelnyxWebRTCManager {
       iceTransportPolicy: "all", // Allow all candidate types for reliability
       iceServers,
       bundlePolicy: "balanced",
-      rtcpMuxPolicy: "require"
+      rtcpMuxPolicy: "negotiate" as RTCRtcpMuxPolicy // CRITICAL: Must be "negotiate" to accept SDPs without a=rtcp-mux
     };
     
     console.log("[SIP.js WebRTC] ICE config:", JSON.stringify({
