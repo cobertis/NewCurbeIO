@@ -124,7 +124,7 @@ export const credentialProvider = {
     const cached = getFromCache<{ apiKey: string }>(cacheKey);
     if (cached) return cached;
 
-    const apiKey = await secretsService.getCredential("google" as ApiProvider, "places_api_key") || 
+    const apiKey = await secretsService.getCredential("google_places" as ApiProvider, "api_key") || 
                    process.env.GOOGLE_PLACES_API_KEY || '';
     
     const result = { apiKey };

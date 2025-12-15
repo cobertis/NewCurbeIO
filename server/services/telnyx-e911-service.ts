@@ -310,8 +310,28 @@ async function getOrCreateCredentialConnection(
     .where(eq(telephonySettings.companyId, companyId));
 
   if (settings?.credentialConnectionId) {
-    console.log(`[E911] Using existing credential connection: ${settings.credentialConnectionId}`);
-    return { success: true, connectionId: settings.credentialConnectionId };
+    // Verify the credential connection still exists in Telnyx before using it
+    try {
+      const verifyResponse = await fetch(`${TELNYX_API_BASE}/credential_connections/${settings.credentialConnectionId}`, {
+        method: "GET",
+        headers: buildHeaders(config),
+      });
+      
+      if (verifyResponse.ok) {
+        console.log(`[E911] Verified credential connection exists: ${settings.credentialConnectionId}`);
+        return { success: true, connectionId: settings.credentialConnectionId };
+      } else {
+        console.log(`[E911] Credential connection ${settings.credentialConnectionId} no longer exists in Telnyx (${verifyResponse.status}), will create new...`);
+        // Clear the invalid ID from database
+        await db.update(telephonySettings)
+          .set({ credentialConnectionId: null })
+          .where(eq(telephonySettings.companyId, companyId));
+        // Continue to create new connection below
+      }
+    } catch (verifyError) {
+      console.error(`[E911] Error verifying credential connection:`, verifyError);
+      // Continue to create new connection below
+    }
   }
 
   const [company] = await db
