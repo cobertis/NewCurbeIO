@@ -31180,7 +31180,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           .limit(parsedLimit);
       }
 
-      // Enrich logs with policy holder names if phone matches
+      // Enrich logs with customer/policy holder names if phone matches
       const enrichedLogs = await Promise.all(logs.map(async (log) => {
         // Get the phone number to match (inbound = fromNumber, outbound = toNumber)
         const phoneToMatch = log.direction === 'inbound' ? log.fromNumber : log.toNumber;
@@ -31192,12 +31192,41 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const normalizedPhone = phoneToMatch.replace(/\D/g, '').replace(/^1/, '');
         
         try {
-          // Look up policy by client phone number
+          // First, look up in contacts table (unified customer directory)
+          const [matchingContact] = await db
+            .select({
+              id: contacts.id,
+              firstName: contacts.firstName,
+              lastName: contacts.lastName,
+            })
+            .from(contacts)
+            .where(
+              and(
+                eq(contacts.companyId, user.companyId!),
+                or(
+                  eq(contacts.phoneNormalized, normalizedPhone),
+                  eq(contacts.phone, phoneToMatch),
+                  eq(contacts.phone, `+1${normalizedPhone}`)
+                )
+              )
+            )
+            .limit(1);
+          
+          if (matchingContact) {
+            return {
+              ...log,
+              callerName: `${matchingContact.firstName || ''} ${matchingContact.lastName || ''}`.trim() || null,
+              contactId: matchingContact.id,
+              isCustomer: true,
+            };
+          }
+          
+          // Fallback: look up policy by client phone number
           const [matchingPolicy] = await db
             .select({
+              id: policies.id,
               clientFirstName: policies.clientFirstName,
               clientLastName: policies.clientLastName,
-              clientPhone: policies.clientPhone,
             })
             .from(policies)
             .where(
@@ -31217,6 +31246,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             return {
               ...log,
               callerName: `${matchingPolicy.clientFirstName} ${matchingPolicy.clientLastName}`.trim(),
+              policyId: matchingPolicy.id,
+              isCustomer: true,
             };
           }
         } catch (e) {

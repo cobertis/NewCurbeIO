@@ -3267,15 +3267,42 @@ export function WebPhoneFloatingWindow() {
                                   
                                   {/* Call Info - Name and Number */}
                                   <div className="flex-1 min-w-0">
-                                    <span className={cn(
-                                      "text-sm sm:text-base font-medium truncate block",
-                                      isMissed ? "text-red-500" : "text-foreground"
-                                    )}>
-                                      {call.callerName || "Unknown Caller"}
-                                    </span>
-                                    <span className="text-[11px] sm:text-xs text-muted-foreground">
-                                      {formatCallerNumber((call.direction === 'inbound' ? call.fromNumber : call.toNumber))}
-                                    </span>
+                                    <div className="flex items-center gap-1">
+                                      <span className={cn(
+                                        "text-sm sm:text-base font-medium truncate",
+                                        isMissed ? "text-red-500" : "text-foreground"
+                                      )}>
+                                        {call.callerName || "Unknown Caller"}
+                                      </span>
+                                      {/* Customer Info Icon - links to profile */}
+                                      {call.isCustomer && (call.contactId || call.policyId) && (
+                                        <button
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (call.contactId) {
+                                              window.location.href = `/contacts?id=${call.contactId}`;
+                                            } else if (call.policyId) {
+                                              window.location.href = `/policies?id=${call.policyId}`;
+                                            }
+                                          }}
+                                          className="flex-shrink-0 w-4 h-4 rounded-full bg-blue-500 hover:bg-blue-600 flex items-center justify-center transition-colors"
+                                          title="View customer profile"
+                                          data-testid={`button-customer-info-${call.id}`}
+                                        >
+                                          <Info className="h-2.5 w-2.5 text-white" />
+                                        </button>
+                                      )}
+                                    </div>
+                                    <div className="flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground">
+                                      {/* Direction arrow before phone number */}
+                                      <span className={cn(
+                                        "font-medium",
+                                        isMissed ? "text-red-500" : ""
+                                      )}>
+                                        {isMissed ? "↙" : (call.direction === 'inbound' ? "↙" : "↗")}
+                                      </span>
+                                      <span>{formatCallerNumber((call.direction === 'inbound' ? call.fromNumber : call.toNumber))}</span>
+                                    </div>
                                   </div>
                                   
                                   {/* Time and Date */}
