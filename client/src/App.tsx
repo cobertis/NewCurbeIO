@@ -1055,7 +1055,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
 
-      {/* Floating Phone Button - Bottom Right, next to Intercom chat */}
+      {/* Floating Phone Button - Bottom Right, above Intercom chat */}
       {(user?.role === 'admin' || user?.role === 'superadmin' || hasPbxExtension) && !dialpadVisible && (
         <button
           onClick={() => {
@@ -1072,7 +1072,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           }}
           data-testid="floating-button-phone"
           className={cn(
-            "fixed bottom-6 right-24 z-50 w-14 h-14 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:scale-105",
+            "fixed bottom-24 right-5 z-40 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:scale-110",
             effectiveCall 
               ? "bg-green-500 hover:bg-green-600 text-white ring-4 ring-green-300/50 animate-pulse" 
               : effectiveConnectionStatus === 'connected'
@@ -1082,10 +1082,10 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   : "bg-gray-400 hover:bg-gray-500 text-white"
           )}
         >
-          <Phone className="h-6 w-6" />
+          <Phone className="h-5 w-5" />
           {/* Connection status indicator */}
           <span className={cn(
-            "absolute top-0 right-0 w-3.5 h-3.5 rounded-full border-2 border-white",
+            "absolute -top-0.5 -right-0.5 w-3 h-3 rounded-full border-2 border-white",
             effectiveConnectionStatus === 'connected' ? "bg-green-500" : 
             effectiveConnectionStatus === 'connecting' ? "bg-yellow-400 animate-pulse" : 
             "bg-red-400"
