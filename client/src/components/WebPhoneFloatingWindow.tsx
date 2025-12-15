@@ -2049,34 +2049,40 @@ export function WebPhoneFloatingWindow() {
           console.warn('[WebPhone] Failed to fetch TURN credentials:', turnError);
         }
 
-        // STEP 2: Fetch WebRTC SIP credentials
-        console.log('[WebPhone] Step 2: Fetching WebRTC SIP credentials...');
-        const response = await fetch('/api/webrtc/token', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+        // STEP 2: Fetch WebRTC SIP credentials from extension
+        console.log('[WebPhone] Step 2: Fetching extension SIP credentials...');
+        const response = await fetch('/api/webrtc/extension-credentials', {
+          method: 'GET',
           credentials: 'include',
         });
         
         const data = await response.json();
         
-        // CRITICAL: Handle insufficient balance error
+        // Handle errors
         if (!response.ok) {
           if (data.error === 'INSUFFICIENT_BALANCE') {
             console.error('[WebPhone] BLOCKED - Insufficient wallet balance:', data.message);
             telnyxInitRef.current = false; // Allow retry after adding funds
             return;
           }
+          if (data.needsProvisioning) {
+            console.warn('[WebPhone] Extension needs SIP provisioning:', data.extensionId);
+            telnyxInitRef.current = false;
+            return;
+          }
           telnyxInitRef.current = false;
-          throw new Error(`Failed to fetch WebRTC credentials: ${response.status} ${JSON.stringify(data)}`);
+          throw new Error(`Failed to fetch extension credentials: ${response.status} ${JSON.stringify(data)}`);
         }
         
-        if (!data.success || !data.sipUsername || !data.sipPassword) {
-          throw new Error(data.error || 'Invalid WebRTC credentials');
+        if (!data.sipUsername || !data.sipPassword) {
+          throw new Error(data.error || 'Invalid extension SIP credentials');
         }
         
-        console.log('[WebPhone] Got Telnyx SIP credentials:', { 
+        console.log('[WebPhone] Got extension SIP credentials:', { 
+          extension: data.extension,
           sipUsername: data.sipUsername,
-          callerIdNumber: data.callerIdNumber,
+          sipDomain: data.sipDomain,
+          callerIdNumber: telnyxCallerIdNumber,
           iceServersProvided: !!iceServers
         });
         
@@ -2085,14 +2091,14 @@ export function WebPhoneFloatingWindow() {
           telnyxWebRTC.setAudioElement(remoteAudioRef.current);
         }
         
-        // STEP 3: Initialize Telnyx WebRTC with manual ICE servers
-        // This is the CRITICAL optimization - pre-loaded TURN credentials
+        // STEP 3: Initialize Telnyx WebRTC with extension SIP credentials
+        // This uses the per-extension credential connection for proper SIP forking
         await telnyxWebRTC.initialize(
           data.sipUsername,
           data.sipPassword,
-          data.callerIdNumber || telnyxCallerIdNumber,
+          telnyxCallerIdNumber, // Use assigned phone number as caller ID
           iceServers, // Pass pre-fetched ICE servers for instant connection
-          data.sipDomain // Use company-specific SIP domain for registration
+          data.sipDomain // Use extension's SIP domain
         );
         
         setTelnyxInitialized(true);
