@@ -10,6 +10,7 @@ interface Call {
   direction: 'inbound' | 'outbound';
   phoneNumber: string;
   displayName?: string;
+  queueName?: string;
   startTime: Date;
   endTime?: Date;
   duration?: number;

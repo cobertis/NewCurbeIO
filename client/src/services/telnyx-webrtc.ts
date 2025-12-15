@@ -235,6 +235,7 @@ interface NetworkQualityMetrics {
 export interface SipCallInfo {
   remoteCallerNumber: string;
   callerName?: string;
+  queueName?: string;
   direction: "inbound" | "outbound";
   state: "ringing" | "establishing" | "active" | "terminated";
   destinationNumber?: string;
@@ -780,6 +781,7 @@ class TelnyxWebRTCManager {
   private extractCallerInfo(session: Session, isOutgoing: boolean, destination?: string): SipCallInfo {
     let callerNumber = "Unknown";
     let callerName: string | undefined;
+    let queueName: string | undefined;
     let telnyxCallLegId: string | undefined;
     
     if (session instanceof Invitation) {
@@ -795,10 +797,10 @@ class TelnyxWebRTCManager {
         }
         
         // Check for X-Queue-Name header (the queue this call came from)
-        const queueName = request.getHeader("X-Queue-Name");
-        if (queueName) {
-          callerName = `${queueName}`;
-          console.log("[SIP.js WebRTC] Found X-Queue-Name header:", queueName);
+        const xQueueName = request.getHeader("X-Queue-Name");
+        if (xQueueName) {
+          queueName = xQueueName;
+          console.log("[SIP.js WebRTC] Found X-Queue-Name header:", xQueueName);
         }
       } catch (e) {
         console.warn("[SIP.js WebRTC] Error reading custom headers:", e);
@@ -882,7 +884,8 @@ class TelnyxWebRTCManager {
     
     console.log("[SIP.js WebRTC] Extracted caller info:", { 
       callerNumber: formattedNumber, 
-      callerName, 
+      callerName,
+      queueName,
       isOutgoing, 
       telnyxCallLegId: telnyxCallLegId || "not found" 
     });
@@ -890,6 +893,7 @@ class TelnyxWebRTCManager {
     return {
       remoteCallerNumber: formattedNumber,
       callerName,
+      queueName,
       direction: isOutgoing ? "outbound" : "inbound",
       state: "ringing",
       destinationNumber: isOutgoing ? destination : undefined,

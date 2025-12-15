@@ -1784,6 +1784,7 @@ export function WebPhoneFloatingWindow() {
       return {
         phoneNumber: telnyxCurrentCallInfo.remoteCallerNumber || 'Unknown',
         displayName,
+        queueName: telnyxCurrentCallInfo.queueName,
         status: 'answered', // currentCall means call is ACTIVE
         direction: telnyxCurrentCallInfo.direction || 'outbound',
         isTelnyx: true,
@@ -1819,6 +1820,7 @@ export function WebPhoneFloatingWindow() {
       return {
         phoneNumber: telnyxIncomingCallInfo.remoteCallerNumber || 'Unknown',
         displayName,
+        queueName: telnyxIncomingCallInfo.queueName,
         status: 'ringing',
         direction: 'inbound',
         isTelnyx: true,
@@ -2672,6 +2674,15 @@ export function WebPhoneFloatingWindow() {
                 <div className="flex flex-col justify-between p-3 sm:p-6 min-h-full">
                   {/* Contact Info */}
                   <div className="text-center pt-4 sm:pt-8">
+                    {/* Queue Badge - Only shown for queue calls */}
+                    {effectiveCall.queueName && (
+                      <div className="flex items-center justify-center gap-1.5 mb-3" data-testid="queue-badge">
+                        <Badge variant="secondary" className="text-xs px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                          <Users className="h-3 w-3 mr-1" />
+                          {effectiveCall.queueName}
+                        </Badge>
+                      </div>
+                    )}
                     <div className="mx-auto w-16 h-16 sm:w-24 sm:h-24 rounded-full bg-muted flex items-center justify-center mb-3 sm:mb-4">
                       <User className="h-8 w-8 sm:h-12 sm:w-12 text-muted-foreground" />
                     </div>
