@@ -5,6 +5,7 @@ import crypto from "crypto";
 import Decimal from "decimal.js";
 import { chargeCallToWallet, findRateByPrefix, calculateCallCost } from "./pricing-service";
 import { broadcastWalletUpdate, broadcastNewCallLog } from "../websocket";
+import { credentialProvider } from "./credential-provider";
 
 Decimal.set({ precision: 10, rounding: Decimal.ROUND_HALF_UP });
 
@@ -200,7 +201,7 @@ export async function handleCallAnswered(event: TelnyxWebhookEvent): Promise<{ s
         
         // Start recording via Telnyx Call Control API
         try {
-          const telnyxApiKey = process.env.TELNYX_API_KEY;
+          const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
           if (telnyxApiKey) {
             const response = await fetch(`https://api.telnyx.com/v2/calls/${callControlId}/actions/record_start`, {
               method: 'POST',

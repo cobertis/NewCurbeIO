@@ -102,6 +102,7 @@ import ffmpeg from "fluent-ffmpeg";
 import "./types";
 import { type AuditAction } from "./types";
 import { cloudflareService } from "./services/cloudflare";
+import { credentialProvider } from "./services/credential-provider";
 import type Stripe from "stripe";
 import { stripe } from "./stripe";
 import { fetchMarketplacePlans, buildCMSPayloadFromPolicy } from "./cms-marketplace";
@@ -779,8 +780,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // they are accessible without authentication
   // ==================== TWILIO WEBHOOKS ====================
   // Helper function to validate Twilio signature
-  function validateTwilioSignature(req: Request): boolean {
-    const authToken = process.env.TWILIO_AUTH_TOKEN;
+  async function validateTwilioSignature(req: Request): Promise<boolean> {
+    const { authToken } = await credentialProvider.getTwilio();
     if (!authToken) {
       console.error("[TWILIO WEBHOOK] TWILIO_AUTH_TOKEN not configured");
       return false;
@@ -814,7 +815,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/webhooks/twilio/status", async (req: Request, res: Response) => {
     try {
       // Validate Twilio signature
-      if (!validateTwilioSignature(req)) {
+      if (!(await validateTwilioSignature(req))) {
         console.warn("[TWILIO STATUS] Rejected unauthorized webhook request");
         return res.status(403).send("Forbidden");
       }
@@ -904,7 +905,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log("[TWILIO INCOMING] Webhook URL:", `${req.protocol}://${req.get('host')}${req.originalUrl}`);
       console.log("[TWILIO INCOMING] Headers:", JSON.stringify(req.headers));
       // Validate Twilio signature
-      if (!validateTwilioSignature(req)) {
+      if (!(await validateTwilioSignature(req))) {
         console.warn("[TWILIO INCOMING] Rejected unauthorized webhook request");
         return res.status(403).send("Forbidden");
       }
@@ -11048,7 +11049,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Find user by phone number
       const recipientUser = await storage.getUserByPhone(toPhone);
       // Get Twilio phone number
-      const fromPhone = process.env.TWILIO_PHONE_NUMBER || "";
+      const { phoneNumber: fromPhone } = await credentialProvider.getTwilio();
       // Determine companyId: use currentUser's companyId or recipient's if available
       const companyId = currentUser.companyId || recipientUser?.companyId || null;
       // Create outgoing message record
@@ -23128,10 +23129,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Import from birthday-scheduler
       const { format: formatDate } = await import('date-fns-tz');
       const { formatInTimeZone } = await import('date-fns-tz');
-      // Get Twilio credentials
-      const twilioAccountSid = process.env.TWILIO_ACCOUNT_SID;
-      const twilioAuthToken = process.env.TWILIO_AUTH_TOKEN;
-      const twilioPhoneNumber = process.env.TWILIO_PHONE_NUMBER;
+      // Get Twilio credentials from database
+      const { accountSid: twilioAccountSid, authToken: twilioAuthToken, phoneNumber: twilioPhoneNumber } = await credentialProvider.getTwilio();
       if (!twilioAccountSid || !twilioAuthToken || !twilioPhoneNumber) {
         return res.status(400).json({ message: "Twilio credentials not configured" });
       }
@@ -25715,11 +25714,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 console.log(`[WhatsApp Webhook] LID ${presenceData.id} not found in DB, querying Evolution API...`);
                 
                 // The whatsappNumbers endpoint returns both jid and lid
-                const response = await fetch(`${process.env.EVOLUTION_API_URL}/chat/whatsappNumbers/${instance.instanceName}`, {
+                const evolutionCreds = await credentialProvider.getEvolutionAPI();
+                const response = await fetch(`${evolutionCreds.baseUrl}/chat/whatsappNumbers/${instance.instanceName}`, {
                   method: 'POST',
                   headers: {
                     'Content-Type': 'application/json',
-                    'apikey': process.env.EVOLUTION_API_KEY || '',
+                    'apikey': evolutionCreds.globalApiKey,
                   },
                   body: JSON.stringify({ numbers: [remoteJid.replace('@lid', '')] }),
                 });
@@ -26710,7 +26710,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     try {
       const signature = req.headers["telnyx-signature-ed25519"] as string;
       const timestamp = req.headers["telnyx-timestamp"] as string;
-      const publicKey = process.env.TELNYX_PUBLIC_KEY;
+      const { publicKey } = await credentialProvider.getTelnyx();
 
       if (!signature || !timestamp) {
         console.error("[Telnyx Webhook] Missing signature or timestamp headers");
@@ -26718,7 +26718,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       if (!publicKey) {
-        console.error("[Telnyx Webhook] TELNYX_PUBLIC_KEY not configured");
+        console.error("[Telnyx Webhook] Telnyx public key not configured in database");
         return res.status(500).json({ error: "Webhook verification not configured" });
       }
 

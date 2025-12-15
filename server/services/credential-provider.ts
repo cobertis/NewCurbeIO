@@ -103,16 +103,16 @@ export const credentialProvider = {
     const cached = getFromCache<{ host: string; port: number; user: string; password: string; tls: boolean }>(cacheKey);
     if (cached) return cached;
 
-    const host = await secretsService.getCredential("nodemailer" as ApiProvider, "bounce_imap_host") || 
+    const host = await secretsService.getCredential("imap_bounce" as ApiProvider, "host") || 
                  process.env.BOUNCE_IMAP_HOST || '';
-    const portStr = await secretsService.getCredential("nodemailer" as ApiProvider, "bounce_imap_port") || 
+    const portStr = await secretsService.getCredential("imap_bounce" as ApiProvider, "port") || 
                     process.env.BOUNCE_IMAP_PORT || '993';
     const port = parseInt(portStr, 10);
-    const user = await secretsService.getCredential("nodemailer" as ApiProvider, "bounce_imap_user") || 
+    const user = await secretsService.getCredential("imap_bounce" as ApiProvider, "user") || 
                  process.env.BOUNCE_IMAP_USER || '';
-    const password = await secretsService.getCredential("nodemailer" as ApiProvider, "bounce_imap_password") || 
+    const password = await secretsService.getCredential("imap_bounce" as ApiProvider, "password") || 
                      process.env.BOUNCE_IMAP_PASSWORD || '';
-    const tlsStr = await secretsService.getCredential("nodemailer" as ApiProvider, "bounce_imap_tls") || 
+    const tlsStr = await secretsService.getCredential("imap_bounce" as ApiProvider, "tls") || 
                    process.env.BOUNCE_IMAP_TLS || 'true';
     const tls = tlsStr !== 'false';
     
@@ -154,12 +154,55 @@ export const credentialProvider = {
     const cached = getFromCache<{ baseUrl: string; globalApiKey: string }>(cacheKey);
     if (cached) return cached;
 
-    const baseUrl = await secretsService.getCredential("evolution" as ApiProvider, "base_url") || 
+    const baseUrl = await secretsService.getCredential("evolution_api" as ApiProvider, "base_url") || 
                     process.env.EVOLUTION_API_URL || '';
-    const globalApiKey = await secretsService.getCredential("evolution" as ApiProvider, "api_key") || 
+    const globalApiKey = await secretsService.getCredential("evolution_api" as ApiProvider, "global_api_key") || 
                          process.env.EVOLUTION_API_KEY || '';
     
     const result = { baseUrl, globalApiKey };
+    setCache(cacheKey, result);
+    return result;
+  },
+
+  async getIntercom(): Promise<{ appId: string; identitySecret: string }> {
+    const cacheKey = getCacheKey('intercom');
+    const cached = getFromCache<{ appId: string; identitySecret: string }>(cacheKey);
+    if (cached) return cached;
+
+    const appId = await secretsService.getCredential("intercom" as ApiProvider, "app_id") || 
+                  process.env.INTERCOM_APP_ID || '';
+    const identitySecret = await secretsService.getCredential("intercom" as ApiProvider, "identity_secret") || 
+                           process.env.INTERCOM_IDENTITY_SECRET || '';
+    
+    const result = { appId, identitySecret };
+    setCache(cacheKey, result);
+    return result;
+  },
+
+  async getCmsApi(): Promise<{ apiKey: string }> {
+    const cacheKey = getCacheKey('cms_api');
+    const cached = getFromCache<{ apiKey: string }>(cacheKey);
+    if (cached) return cached;
+
+    const apiKey = await secretsService.getCredential("cms_api" as ApiProvider, "api_key") || 
+                   process.env.CMS_API_KEY || '';
+    
+    const result = { apiKey };
+    setCache(cacheKey, result);
+    return result;
+  },
+
+  async getTelnyx(): Promise<{ apiKey: string; publicKey: string }> {
+    const cacheKey = getCacheKey('telnyx');
+    const cached = getFromCache<{ apiKey: string; publicKey: string }>(cacheKey);
+    if (cached) return cached;
+
+    const apiKey = await secretsService.getCredential("telnyx" as ApiProvider, "api_key") || 
+                   process.env.TELNYX_API_KEY || '';
+    const publicKey = await secretsService.getCredential("telnyx" as ApiProvider, "public_key") || 
+                      process.env.TELNYX_PUBLIC_KEY || '';
+    
+    const result = { apiKey, publicKey };
     setCache(cacheKey, result);
     return result;
   },

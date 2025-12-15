@@ -5,6 +5,8 @@
  * to fetch real-time health insurance plan quotations based on client data.
  */
 
+import { credentialProvider } from "./services/credential-provider";
+
 // Interface matching the official CMS Marketplace API format
 interface MarketplaceQuoteRequest {
   household: {
@@ -150,10 +152,10 @@ export async function fetchHouseholdEligibility(
   },
   yearOverride?: number
 ): Promise<{ aptc: number; csr: string; is_medicaid_chip?: boolean } | null> {
-  const apiKey = process.env.CMS_MARKETPLACE_API_KEY;
+  const { apiKey } = await credentialProvider.getCmsApi();
   
   if (!apiKey) {
-    throw new Error('CMS_MARKETPLACE_API_KEY is not configured');
+    throw new Error('CMS Marketplace API key not configured in database');
   }
 
   const year = yearOverride || new Date().getFullYear();
@@ -542,10 +544,10 @@ async function fetchSinglePage(
   },
   aptcOverride?: number
 ): Promise<MarketplaceApiResponse> {
-  const apiKey = process.env.CMS_MARKETPLACE_API_KEY;
+  const { apiKey } = await credentialProvider.getCmsApi();
   
   if (!apiKey) {
-    throw new Error('CMS_MARKETPLACE_API_KEY is not configured');
+    throw new Error('CMS Marketplace API key not configured in database');
   }
 
   const year = yearOverride || new Date().getFullYear();
@@ -830,10 +832,10 @@ export function buildCMSPayloadFromPolicy(policyData: {
  * Get county FIPS code from zip code and county name
  */
 export async function getCountyFips(zipCode: string, countyName: string, state: string): Promise<string | null> {
-  const apiKey = process.env.CMS_MARKETPLACE_API_KEY;
+  const { apiKey } = await credentialProvider.getCmsApi();
   
   if (!apiKey) {
-    throw new Error('CMS_MARKETPLACE_API_KEY is not configured');
+    throw new Error('CMS Marketplace API key not configured in database');
   }
 
   try {

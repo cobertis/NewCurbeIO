@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { wallets, companies } from "@shared/schema";
 import { eq } from "drizzle-orm";
+import { credentialProvider } from "./credential-provider";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
 
@@ -51,10 +52,10 @@ interface CreateSubAccountResult {
   error?: string;
 }
 
-function getTelnyxMasterApiKey(): string {
-  const apiKey = process.env.TELNYX_API_KEY;
+async function getTelnyxMasterApiKey(): Promise<string> {
+  const { apiKey } = await credentialProvider.getTelnyx();
   if (!apiKey) {
-    throw new Error("TELNYX_API_KEY environment variable is not set");
+    throw new Error("Telnyx API key not configured in database");
   }
   return apiKey;
 }
@@ -254,7 +255,7 @@ export async function createSubAccount(
   companyId: string
 ): Promise<CreateSubAccountResult> {
   try {
-    const apiKey = getTelnyxMasterApiKey();
+    const apiKey = await getTelnyxMasterApiKey();
 
     // Generate masked email using company ID for white-label privacy
     // All emails go to hello@curbe.io but appear as unique users to Telnyx
@@ -355,7 +356,7 @@ export async function createSubAccount(
 
 export async function getManagedAccount(accountId: string): Promise<TelnyxManagedAccountResponse["data"] | null> {
   try {
-    const apiKey = getTelnyxMasterApiKey();
+    const apiKey = await getTelnyxMasterApiKey();
 
     const response = await fetch(`${TELNYX_API_BASE}/managed_accounts/${accountId}`, {
       method: "GET",
@@ -380,7 +381,7 @@ export async function getManagedAccount(accountId: string): Promise<TelnyxManage
 
 export async function listManagedAccounts(): Promise<TelnyxManagedAccountResponse["data"][]> {
   try {
-    const apiKey = getTelnyxMasterApiKey();
+    const apiKey = await getTelnyxMasterApiKey();
 
     const response = await fetch(`${TELNYX_API_BASE}/managed_accounts`, {
       method: "GET",
