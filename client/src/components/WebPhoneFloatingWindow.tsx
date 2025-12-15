@@ -3293,14 +3293,27 @@ export function WebPhoneFloatingWindow() {
                                         </button>
                                       )}
                                     </div>
-                                    <div className="flex items-center gap-1 text-[11px] sm:text-xs text-muted-foreground">
-                                      {/* Direction arrow before phone number */}
-                                      <span className={cn(
-                                        "font-medium",
-                                        isMissed ? "text-red-500" : ""
-                                      )}>
-                                        {isMissed ? "↙" : (call.direction === 'inbound' ? "↙" : "↗")}
-                                      </span>
+                                    <div className="flex items-center gap-1.5 text-[11px] sm:text-xs text-muted-foreground">
+                                      {/* Direction arrow icon before phone number */}
+                                      {isMissed ? (
+                                        /* Missed call - broken arrow (red) */
+                                        <svg className="w-3 h-3 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M5 19L19 5" className="text-red-500" stroke="currentColor" />
+                                          <path d="M5 9V19H15" className="text-red-500" stroke="currentColor" />
+                                        </svg>
+                                      ) : call.direction === 'inbound' ? (
+                                        /* Incoming call - down-left arrow (green) */
+                                        <svg className="w-3 h-3 flex-shrink-0 text-green-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M17 7L7 17" />
+                                          <path d="M7 7V17H17" />
+                                        </svg>
+                                      ) : (
+                                        /* Outgoing call - up-right arrow (blue) */
+                                        <svg className="w-3 h-3 flex-shrink-0 text-blue-500" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                                          <path d="M7 17L17 7" />
+                                          <path d="M7 7H17V17" />
+                                        </svg>
+                                      )}
                                       <span>{formatCallerNumber((call.direction === 'inbound' ? call.fromNumber : call.toNumber))}</span>
                                     </div>
                                   </div>
