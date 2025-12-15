@@ -1305,12 +1305,31 @@ class TelnyxWebRTCManager {
     store.setOutgoingCallInfo(callInfo);
     this.startRingback();
 
+    // CRITICAL FIX: Set up audio handler BEFORE invite() by polling for peer connection
+    // This ensures we don't miss ontrack events that fire during SDP negotiation
+    let audioSetupAttempts = 0;
+    const maxAudioSetupAttempts = 50; // 5 seconds max
+    const audioSetupInterval = setInterval(() => {
+      audioSetupAttempts++;
+      const sdh = inviter.sessionDescriptionHandler as any;
+      if (sdh?.peerConnection) {
+        console.log("[SIP.js WebRTC] Peer connection available, setting up audio (attempt", audioSetupAttempts, ")");
+        clearInterval(audioSetupInterval);
+        this.addLocalTracksToConnection(inviter, localStream);
+        this.setupAudioOnPeerConnection(inviter);
+      } else if (audioSetupAttempts >= maxAudioSetupAttempts) {
+        console.warn("[SIP.js WebRTC] Max audio setup attempts reached");
+        clearInterval(audioSetupInterval);
+      }
+    }, 100);
+
     try {
       await inviter.invite({
         // Pass delegate to hook into sessionDescriptionHandler creation
         requestDelegate: {
           onAccept: (response) => {
             console.log("[SIP.js WebRTC] INVITE accepted (200 OK received)");
+            clearInterval(audioSetupInterval); // Stop polling if still running
             // Add local audio tracks to the peer connection
             this.addLocalTracksToConnection(inviter, localStream);
             // Setup remote audio IMMEDIATELY when we get 200 OK
@@ -1329,6 +1348,7 @@ class TelnyxWebRTCManager {
       return inviter;
     } catch (error) {
       console.error("[SIP.js WebRTC] Call failed:", error);
+      clearInterval(audioSetupInterval);
       this.stopRingback();
       this.stopLocalAudio();
       store.setOutgoingCall(undefined);
@@ -1431,11 +1451,46 @@ class TelnyxWebRTCManager {
     
     for (const receiver of receivers) {
       if (receiver.track && receiver.track.kind === 'audio') {
-        console.log("[SIP.js WebRTC] Found existing audio track from receiver");
+        console.log("[SIP.js WebRTC] Found existing audio track from receiver, readyState:", receiver.track.readyState);
         const stream = new MediaStream([receiver.track]);
         setStreamAndPlay(stream, "existing-receiver");
         break;
       }
+    }
+
+    // ADDITIONAL CHECK: Look at remote streams directly (some browsers populate this)
+    const remoteStreams = (pc as any).getRemoteStreams?.();
+    if (remoteStreams && remoteStreams.length > 0) {
+      console.log("[SIP.js WebRTC] Found", remoteStreams.length, "remote streams via getRemoteStreams()");
+      for (const stream of remoteStreams) {
+        if (stream.getAudioTracks().length > 0) {
+          setStreamAndPlay(stream, "getRemoteStreams");
+          break;
+        }
+      }
+    }
+
+    // RETRY MECHANISM: If no audio found yet, schedule retries
+    if (!remoteAudio.srcObject) {
+      let retryCount = 0;
+      const maxRetries = 20;
+      const retryInterval = setInterval(() => {
+        retryCount++;
+        const currentReceivers = pc.getReceivers();
+        for (const receiver of currentReceivers) {
+          if (receiver.track && receiver.track.kind === 'audio' && receiver.track.readyState === 'live') {
+            console.log("[SIP.js WebRTC] Retry", retryCount, "- Found live audio track");
+            const stream = new MediaStream([receiver.track]);
+            setStreamAndPlay(stream, "retry-receiver");
+            clearInterval(retryInterval);
+            return;
+          }
+        }
+        if (retryCount >= maxRetries) {
+          console.warn("[SIP.js WebRTC] Max retries reached for audio setup");
+          clearInterval(retryInterval);
+        }
+      }, 200);
     }
   }
 
