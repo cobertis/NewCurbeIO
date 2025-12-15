@@ -1085,8 +1085,22 @@ export default function PhoneSystem() {
                 {/* Left Column: Numbers List */}
                 <div className="lg:col-span-1 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 overflow-auto">
                   <div className="p-4 border-b border-slate-200 dark:border-slate-800">
-                    <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Phone Numbers</h2>
-                    <p className="text-xs text-slate-400 mt-1">{numbersData.numbers.length} number{numbersData.numbers.length !== 1 ? 's' : ''}</p>
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">Phone Numbers</h2>
+                        <p className="text-xs text-slate-400 mt-1">{numbersData.numbers.length} number{numbersData.numbers.length !== 1 ? 's' : ''}</p>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setShowBuyNumber(true)}
+                        className="h-8"
+                        data-testid="button-buy-number"
+                      >
+                        <Plus className="h-4 w-4 mr-1" />
+                        Buy
+                      </Button>
+                    </div>
                   </div>
                   <div className="divide-y divide-slate-100 dark:divide-slate-800">
                     {numbersData.numbers.map((number, idx) => {
