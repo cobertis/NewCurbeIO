@@ -1117,6 +1117,12 @@ export default function PhoneSystem() {
                     {numbersData.numbers.map((number, idx) => {
                       const hasE911 = number.e911AddressId || number.e911Enabled;
                       const isSelected = selectedNumber?.phoneNumber === number.phoneNumber;
+                      const assignedUserName = number.ownerUser 
+                        ? `${number.ownerUser.firstName || ''} ${number.ownerUser.lastName || ''}`.trim() || number.ownerUser.email
+                        : null;
+                      const assignedIvrName = number.ivrId && number.ivrId !== 'unassigned'
+                        ? ivrs.find(i => i.id === number.ivrId)?.name
+                        : null;
                       return (
                         <div
                           key={number.id || idx}
@@ -1127,10 +1133,21 @@ export default function PhoneSystem() {
                           <div className="flex items-center justify-between">
                             <div>
                               <p className="font-medium text-slate-900 dark:text-white">{formatPhoneDisplay(number.phoneNumber)}</p>
-                              <div className="flex items-center gap-2 mt-1">
+                              <div className="flex items-center gap-2 mt-1 flex-wrap">
                                 <Badge variant="outline" className={`text-xs ${number.status === 'active' ? 'text-green-600 border-green-300' : 'text-slate-500'}`}>
                                   {number.status}
                                 </Badge>
+                                {assignedUserName && (
+                                  <Badge variant="outline" className="text-xs text-blue-600 border-blue-300 dark:text-blue-400 dark:border-blue-700">
+                                    <User className="h-3 w-3 mr-1" />
+                                    {assignedUserName}
+                                  </Badge>
+                                )}
+                                {assignedIvrName && (
+                                  <Badge variant="outline" className="text-xs text-indigo-600 border-indigo-300 dark:text-indigo-400 dark:border-indigo-700">
+                                    IVR: {assignedIvrName}
+                                  </Badge>
+                                )}
                                 {!hasE911 && <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">No E911</Badge>}
                               </div>
                             </div>
@@ -1171,8 +1188,8 @@ export default function PhoneSystem() {
                         </div>
                       </div>
 
-                      {/* E911 + Assigned User + Entry IVR Row */}
-                      <div className="grid grid-cols-3 gap-4">
+                      {/* E911 + Call Routing Row */}
+                      <div className="grid grid-cols-2 gap-4">
                         {/* E911 Section */}
                         <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
                           <div className="flex items-center gap-3 mb-3">
@@ -1200,105 +1217,101 @@ export default function PhoneSystem() {
                           </Button>
                         </div>
 
-                        {/* Assigned User Section */}
+                        {/* Call Routing Section - Combined User & IVR */}
                         <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedNumber.ownerUserId ? 'bg-green-50 dark:bg-green-900/20' : 'bg-slate-50 dark:bg-slate-800'}`}>
-                              <User className={`h-5 w-5 ${selectedNumber.ownerUserId ? 'text-green-600' : 'text-slate-400'}`} />
+                          <div className="flex items-center gap-3 mb-4">
+                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedNumber.ownerUserId || selectedNumber.ivrId ? 'bg-blue-50 dark:bg-blue-900/20' : 'bg-slate-50 dark:bg-slate-800'}`}>
+                              <PhoneIncoming className={`h-5 w-5 ${selectedNumber.ownerUserId || selectedNumber.ivrId ? 'text-blue-600' : 'text-slate-400'}`} />
                             </div>
                             <div>
-                              <p className="font-medium text-sm text-slate-700 dark:text-foreground">Assigned User</p>
+                              <p className="font-medium text-sm text-slate-700 dark:text-foreground">Call Routing</p>
                               <p className="text-xs text-slate-500">
-                                {selectedNumber.ownerUser 
-                                  ? `${selectedNumber.ownerUser.firstName || ''} ${selectedNumber.ownerUser.lastName || ''}`.trim() || selectedNumber.ownerUser.email
-                                  : 'Not assigned'}
+                                {selectedNumber.ownerUserId 
+                                  ? `Direct to ${selectedNumber.ownerUser?.firstName || 'User'}` 
+                                  : selectedNumber.ivrId && selectedNumber.ivrId !== 'unassigned'
+                                    ? `IVR: ${ivrs.find(i => i.id === selectedNumber.ivrId)?.name || 'Selected'}`
+                                    : 'Using default IVR'}
                               </p>
                             </div>
                           </div>
-                          <Select
-                            value={selectedNumber.ownerUserId || "unassigned"}
-                            onValueChange={(value) => {
-                              const userId = value === "unassigned" ? null : value;
-                              if (selectedNumber.telnyxPhoneNumberId) {
-                                assignNumberMutation.mutate({
-                                  phoneNumberId: selectedNumber.telnyxPhoneNumberId,
-                                  userId,
-                                });
-                                // When assigning a user, automatically disable IVR (set to "unassigned")
-                                if (userId) {
-                                  numberVoiceSettingsMutation.mutate({
-                                    phoneNumberId: selectedNumber.telnyxPhoneNumberId,
-                                    settings: { ivrId: "unassigned" }
-                                  });
-                                }
-                              }
-                            }}
-                            disabled={assignNumberMutation.isPending}
-                          >
-                            <SelectTrigger className="w-full" data-testid="select-assigned-user">
-                              <SelectValue placeholder="Select user" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="unassigned">Unassigned</SelectItem>
-                              {agentsData?.agents?.map((agent) => (
-                                <SelectItem key={agent.id} value={agent.id}>
-                                  {agent.firstName && agent.lastName 
-                                    ? `${agent.firstName} ${agent.lastName}` 
-                                    : agent.email}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-
-                        {/* Entry IVR Section */}
-                        <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-4">
-                          <div className="flex items-center gap-3 mb-3">
-                            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${selectedNumber.ivrId ? 'bg-indigo-50 dark:bg-indigo-900/20' : 'bg-slate-50 dark:bg-slate-800'}`}>
-                              <PhoneIncoming className={`h-5 w-5 ${selectedNumber.ivrId ? 'text-indigo-600' : 'text-slate-400'}`} />
-                            </div>
+                          <div className="space-y-3">
+                            {/* Assigned User */}
                             <div>
-                              <p className="font-medium text-sm text-slate-700 dark:text-foreground">Entry IVR</p>
-                              <p className="text-xs text-slate-500">
-                                {selectedNumber.ivrId 
-                                  ? ivrs.find(i => i.id === selectedNumber.ivrId)?.name || 'IVR Selected'
-                                  : 'Using default IVR'}
-                              </p>
+                              <Label className="text-xs text-slate-500 mb-1.5 block">Direct to User</Label>
+                              <Select
+                                value={selectedNumber.ownerUserId || "unassigned"}
+                                onValueChange={(value) => {
+                                  const userId = value === "unassigned" ? null : value;
+                                  if (selectedNumber.telnyxPhoneNumberId) {
+                                    assignNumberMutation.mutate({
+                                      phoneNumberId: selectedNumber.telnyxPhoneNumberId,
+                                      userId,
+                                    });
+                                    if (userId) {
+                                      numberVoiceSettingsMutation.mutate({
+                                        phoneNumberId: selectedNumber.telnyxPhoneNumberId,
+                                        settings: { ivrId: "unassigned" }
+                                      });
+                                    }
+                                  }
+                                }}
+                                disabled={assignNumberMutation.isPending}
+                              >
+                                <SelectTrigger className="w-full" data-testid="select-assigned-user">
+                                  <SelectValue placeholder="Select user" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="unassigned">No direct user</SelectItem>
+                                  {agentsData?.agents?.map((agent) => (
+                                    <SelectItem key={agent.id} value={agent.id}>
+                                      {agent.firstName && agent.lastName 
+                                        ? `${agent.firstName} ${agent.lastName}` 
+                                        : agent.email}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            {/* Entry IVR */}
+                            <div>
+                              <Label className="text-xs text-slate-500 mb-1.5 block">Entry IVR</Label>
+                              <Select
+                                value={selectedNumber.ivrId === null ? "default" : (selectedNumber.ivrId || "default")}
+                                onValueChange={(value) => {
+                                  const ivrId = value === "default" ? null : (value === "unassigned" ? "unassigned" : value);
+                                  if (selectedNumber.telnyxPhoneNumberId) {
+                                    numberVoiceSettingsMutation.mutate({
+                                      phoneNumberId: selectedNumber.telnyxPhoneNumberId,
+                                      settings: { ivrId }
+                                    });
+                                    if (value !== "unassigned" && selectedNumber.ownerUserId) {
+                                      assignNumberMutation.mutate({
+                                        phoneNumberId: selectedNumber.telnyxPhoneNumberId,
+                                        userId: null,
+                                      });
+                                    }
+                                  }
+                                }}
+                                disabled={numberVoiceSettingsMutation.isPending || !!selectedNumber.ownerUserId}
+                              >
+                                <SelectTrigger className={`w-full ${selectedNumber.ownerUserId ? 'opacity-50' : ''}`} data-testid="select-entry-ivr">
+                                  <SelectValue placeholder="Select IVR" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="default">Use Default IVR</SelectItem>
+                                  <SelectItem value="unassigned">No IVR (Direct)</SelectItem>
+                                  {ivrs.map((ivr) => (
+                                    <SelectItem key={ivr.id} value={ivr.id}>
+                                      {ivr.name} {ivr.isDefault && '(Default)'} - Ext. {ivr.extension}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              {selectedNumber.ownerUserId && (
+                                <p className="text-xs text-slate-400 mt-1">IVR disabled when user is assigned</p>
+                              )}
                             </div>
                           </div>
-                          <Select
-                            value={selectedNumber.ivrId === null ? "unassigned" : (selectedNumber.ivrId || "default")}
-                            onValueChange={(value) => {
-                              const ivrId = value === "default" ? null : (value === "unassigned" ? "unassigned" : value);
-                              if (selectedNumber.telnyxPhoneNumberId) {
-                                numberVoiceSettingsMutation.mutate({
-                                  phoneNumberId: selectedNumber.telnyxPhoneNumberId,
-                                  settings: { ivrId }
-                                });
-                                // When activating an IVR (not "unassigned"), automatically unassign user
-                                if (value !== "unassigned" && selectedNumber.ownerUserId) {
-                                  assignNumberMutation.mutate({
-                                    phoneNumberId: selectedNumber.telnyxPhoneNumberId,
-                                    userId: null,
-                                  });
-                                }
-                              }
-                            }}
-                            disabled={numberVoiceSettingsMutation.isPending}
-                          >
-                            <SelectTrigger className="w-full" data-testid="select-entry-ivr">
-                              <SelectValue placeholder="Select IVR" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="default">Use Default IVR</SelectItem>
-                              <SelectItem value="unassigned">Unassigned (No IVR)</SelectItem>
-                              {ivrs.map((ivr) => (
-                                <SelectItem key={ivr.id} value={ivr.id}>
-                                  {ivr.name} {ivr.isDefault && '(Default)'} - Ext. {ivr.extension}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
                         </div>
                       </div>
 
