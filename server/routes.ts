@@ -32868,7 +32868,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           displayName: pbxExtensions.displayName,
           sipUsername: pbxExtensions.sipUsername,
           sipPassword: pbxExtensions.sipPassword,
-          sipDomain: pbxExtensions.sipDomain,
           telnyxCredentialConnectionId: pbxExtensions.telnyxCredentialConnectionId,
         })
         .from(pbxExtensions)
@@ -32890,13 +32889,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       }
       
+      // Get company SIP domain from telephonySettings (must match what Call Control uses for dialing)
+      const [settings] = await db
+        .select({ sipDomain: telephonySettings.sipDomain })
+        .from(telephonySettings)
+        .where(eq(telephonySettings.companyId, user.companyId));
+      
+      // Use company SIP subdomain so WebRTC registers on same domain that queue dials
+      const sipDomain = settings?.sipDomain || "sip.telnyx.com";
+      
       return res.json({
         extensionId: extension.id,
         extension: extension.extension,
         displayName: extension.displayName,
         sipUsername: extension.sipUsername,
         sipPassword: extension.sipPassword,
-        sipDomain: extension.sipDomain,
+        sipDomain: sipDomain,
         credentialConnectionId: extension.telnyxCredentialConnectionId,
       });
     } catch (error: any) {
