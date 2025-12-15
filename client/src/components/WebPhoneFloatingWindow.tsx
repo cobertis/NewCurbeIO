@@ -3258,12 +3258,15 @@ export function WebPhoneFloatingWindow() {
                                   {/* Avatar with Direction Icon */}
                                   <div className={cn(
                                     "w-9 h-9 sm:w-11 sm:h-11 rounded-full flex items-center justify-center flex-shrink-0",
-                                    isMissed ? "bg-red-100 dark:bg-red-900/30" : "bg-muted"
+                                    isMissed ? "bg-red-100 dark:bg-red-900/30" : "bg-green-100 dark:bg-green-900/30"
                                   )}>
-                                    <DirectionIcon className={cn(
-                                      "h-4 w-4 sm:h-5 sm:w-5",
-                                      isMissed ? "text-red-500" : "text-muted-foreground"
-                                    )} />
+                                    {isMissed ? (
+                                      <img src="/attached_assets/missed-call_1765829637394.png" alt="Missed" className="h-5 w-5 sm:h-6 sm:w-6" />
+                                    ) : call.direction === 'inbound' ? (
+                                      <img src="/attached_assets/call-in_1765829828573.png" alt="Incoming" className="h-5 w-5 sm:h-6 sm:w-6" />
+                                    ) : (
+                                      <img src="/attached_assets/phone-receiver_1765829725584.png" alt="Outgoing" className="h-5 w-5 sm:h-6 sm:w-6" />
+                                    )}
                                   </div>
                                   
                                   {/* Call Info - Name and Number */}
