@@ -1533,12 +1533,52 @@ export function WebPhoneFloatingWindow() {
   });
   const callerIdNameEnabled = voiceSettingsData?.callerIdNameEnabled ?? false;
 
-  // Query for call logs from backend - auto-refresh every 30 seconds
+  // Query for call logs from backend - updated via WebSocket in real-time
   const { data: callLogsData, refetch: refetchCallLogs } = useQuery<{ logs: any[] }>({
     queryKey: ['/api/call-logs'],
-    refetchInterval: 30000,
   });
   const backendCallLogs = callLogsData?.logs || [];
+  
+  // WebSocket listener for instant call log updates
+  useEffect(() => {
+    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+    const wsUrl = `${protocol}//${window.location.host}/ws/chat`;
+    
+    let ws: WebSocket | null = null;
+    let reconnectTimeout: NodeJS.Timeout;
+    
+    const connect = () => {
+      try {
+        ws = new WebSocket(wsUrl);
+        
+        ws.onmessage = (event) => {
+          try {
+            const message = JSON.parse(event.data);
+            if (message.type === 'new_call_log') {
+              // Instantly refresh call logs when we receive a new call log event
+              queryClient.invalidateQueries({ queryKey: ['/api/call-logs'] });
+            }
+          } catch (e) {
+            // Ignore parse errors
+          }
+        };
+        
+        ws.onclose = () => {
+          // Reconnect after 3 seconds
+          reconnectTimeout = setTimeout(connect, 3000);
+        };
+      } catch (e) {
+        // Ignore connection errors
+      }
+    };
+    
+    connect();
+    
+    return () => {
+      if (reconnectTimeout) clearTimeout(reconnectTimeout);
+      if (ws) ws.close();
+    };
+  }, []);
 
   // Query for voicemails from backend
   const { data: voicemailsData, refetch: refetchVoicemails } = useQuery<{ voicemails: any[], unreadCount: number }>({
