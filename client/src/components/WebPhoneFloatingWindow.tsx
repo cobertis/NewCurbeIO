@@ -3086,18 +3086,7 @@ export function WebPhoneFloatingWindow() {
                         >
                           {isEditMode ? 'Done' : 'Edit'}
                         </button>
-                        <div className="flex items-center gap-2">
-                          <h2 className="text-base sm:text-lg font-semibold text-foreground">Recents</h2>
-                          <button
-                            onClick={() => syncCallsMutation.mutate()}
-                            disabled={syncCallsMutation.isPending}
-                            className="p-1 hover:bg-muted rounded-full transition-colors"
-                            title="Sync call history"
-                            data-testid="button-sync-calls"
-                          >
-                            <RefreshCw className={`h-4 w-4 text-muted-foreground ${syncCallsMutation.isPending ? 'animate-spin' : ''}`} />
-                          </button>
-                        </div>
+                        <h2 className="text-base sm:text-lg font-semibold text-foreground">Recents</h2>
                         {isEditMode ? (
                           <button 
                             onClick={handleClearAll}
