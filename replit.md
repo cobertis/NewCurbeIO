@@ -160,3 +160,23 @@ The `transfer` command does NOT support simultaneous ringing. To enable SIP Fork
 **ADDITIONAL NOTES:**
 - Company-scoped isolation ensures extensions only see their organization
 - Busy status tracking prevents concurrent calls
+
+### RTCP-MUX for WebRTC Compatibility (Dec 2024)
+**GOAL:** Enable RTCP-MUX on extension Credential Connections for WebRTC browser compatibility
+
+**PROBLEM:**
+Browser WebRTC requires RTCP-MUX enabled, otherwise `setRemoteDescription` fails with:
+`"The m= section with mid='0' is invalid. RTCP-MUX is not enabled when it is required."`
+
+**SOLUTION:**
+1. **New extensions:** `rtcp_mux_enabled: true` added to POST `/credential_connections` in `provisionExtensionSipConnection()`
+2. **Existing extensions:** `repairAllExtensionsRtcpMux()` method PATCHes existing connections
+3. **API endpoint:** `POST /api/pbx/extensions/repair-rtcp-mux` repairs all extensions in company
+
+**KEY FILES:**
+- `server/services/telephony-provisioning-service.ts` - `enableRtcpMux()`, `repairExtensionRtcpMux()`, `repairAllExtensionsRtcpMux()`
+- `server/routes.ts` - Repair endpoint at line ~32799
+
+**TELNYX API:**
+- PATCH `/v2/credential_connections/{id}` with `{ rtcp_mux_enabled: true }`
+- This is a root-level field, not inside `inbound` or `outbound`

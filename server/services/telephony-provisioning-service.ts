@@ -1740,6 +1740,10 @@ export class TelephonyProvisioningService {
           password: sipPassword, // Required by Telnyx API
           active: true,
           anchorsite_override: "Latency",
+          // CRITICAL: Enable RTCP-MUX for WebRTC compatibility
+          // Browser WebRTC requires RTCP-MUX or setRemoteDescription fails with:
+          // "RTCP-MUX is not enabled when it is required"
+          rtcp_mux_enabled: true,
           outbound: {
             outbound_voice_profile_id: settings.outboundVoiceProfileId,
             channel_limit: 2, // Single extension needs only a couple channels
@@ -1967,6 +1971,132 @@ export class TelephonyProvisioningService {
       console.error(`[TelephonyProvisioning] Phone assignment failed:`, errorMsg);
       return { success: false, error: errorMsg };
     }
+  }
+
+  /**
+   * Enable RTCP-MUX on an existing credential connection
+   * CRITICAL: WebRTC browsers require RTCP-MUX enabled, otherwise setRemoteDescription fails
+   * with error: "RTCP-MUX is not enabled when it is required"
+   */
+  async enableRtcpMux(
+    managedAccountId: string,
+    connectionId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log(`[TelephonyProvisioning] Enabling RTCP-MUX on connection: ${connectionId}`);
+      
+      const response = await this.makeApiRequest(
+        managedAccountId,
+        `/credential_connections/${connectionId}`,
+        "PATCH",
+        {
+          rtcp_mux_enabled: true,
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[TelephonyProvisioning] Failed to enable RTCP-MUX: ${response.status} - ${errorText}`);
+        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      }
+
+      const data = await response.json();
+      console.log(`[TelephonyProvisioning] RTCP-MUX enabled successfully. Response:`, JSON.stringify(data.data?.rtcp_mux_enabled));
+      return { success: true };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Network error";
+      console.error(`[TelephonyProvisioning] Error enabling RTCP-MUX:`, errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  /**
+   * Repair extension SIP connections to enable RTCP-MUX
+   * Required for extensions provisioned before RTCP-MUX was added
+   */
+  async repairExtensionRtcpMux(
+    companyId: string,
+    extensionId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log(`[TelephonyProvisioning] Repairing RTCP-MUX for extension: ${extensionId}`);
+
+      // Get extension
+      const [extension] = await db
+        .select({
+          telnyxCredentialConnectionId: pbxExtensions.telnyxCredentialConnectionId,
+          extension: pbxExtensions.extension,
+        })
+        .from(pbxExtensions)
+        .where(and(eq(pbxExtensions.id, extensionId), eq(pbxExtensions.companyId, companyId)));
+
+      if (!extension?.telnyxCredentialConnectionId) {
+        return { success: false, error: "Extension has no SIP connection" };
+      }
+
+      // Get managed account ID
+      const { getCompanyManagedAccountId } = await import("./telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId);
+
+      if (!managedAccountId) {
+        return { success: false, error: "Company has no Telnyx managed account" };
+      }
+
+      const result = await this.enableRtcpMux(managedAccountId, extension.telnyxCredentialConnectionId);
+      
+      if (result.success) {
+        console.log(`[TelephonyProvisioning] Extension ${extension.extension} RTCP-MUX repair complete`);
+      }
+      
+      return result;
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      console.error(`[TelephonyProvisioning] Extension RTCP-MUX repair failed:`, errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  /**
+   * Repair all extensions in a company to enable RTCP-MUX
+   */
+  async repairAllExtensionsRtcpMux(companyId: string): Promise<{
+    success: boolean;
+    repairedCount: number;
+    failedCount: number;
+    errors: string[];
+  }> {
+    console.log(`[TelephonyProvisioning] Repairing RTCP-MUX for all extensions in company: ${companyId}`);
+
+    const extensions = await db
+      .select({
+        id: pbxExtensions.id,
+        extension: pbxExtensions.extension,
+        telnyxCredentialConnectionId: pbxExtensions.telnyxCredentialConnectionId,
+      })
+      .from(pbxExtensions)
+      .where(eq(pbxExtensions.companyId, companyId));
+
+    let repairedCount = 0;
+    let failedCount = 0;
+    const errors: string[] = [];
+
+    for (const ext of extensions) {
+      if (!ext.telnyxCredentialConnectionId) {
+        console.log(`[TelephonyProvisioning] Skipping extension ${ext.extension} - no SIP connection`);
+        continue;
+      }
+
+      const result = await this.repairExtensionRtcpMux(companyId, ext.id);
+      if (result.success) {
+        repairedCount++;
+      } else {
+        failedCount++;
+        errors.push(`Ext ${ext.extension}: ${result.error}`);
+      }
+    }
+
+    console.log(`[TelephonyProvisioning] RTCP-MUX repair complete: ${repairedCount} repaired, ${failedCount} failed`);
+    return { success: failedCount === 0, repairedCount, failedCount, errors };
   }
 }
 

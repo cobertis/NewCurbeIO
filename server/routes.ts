@@ -32796,6 +32796,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/pbx/extensions/repair-rtcp-mux - Repair RTCP-MUX for all extensions (required for WebRTC)
+  app.post("/api/pbx/extensions/repair-rtcp-mux", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const result = await telephonyProvisioningService.repairAllExtensionsRtcpMux(user.companyId);
+      
+      console.log(`[PBX] RTCP-MUX repair for company ${user.companyId}: ${result.repairedCount} repaired, ${result.failedCount} failed`);
+      return res.json(result);
+    } catch (error: any) {
+      console.error("[PBX] Error repairing RTCP-MUX:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
   // GET /api/webrtc/extension-credentials - Get SIP credentials for the authenticated user's extension
   app.get("/api/webrtc/extension-credentials", requireActiveCompany, async (req: Request, res: Response) => {
     try {
