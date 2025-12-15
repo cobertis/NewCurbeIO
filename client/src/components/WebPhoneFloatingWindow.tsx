@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, ChevronLeft, ChevronRight, Check, Search, ShoppingBag, ExternalLink, RefreshCw, MessageSquare, Loader2, Shield, MapPin, Square, Trash2, type LucideIcon } from 'lucide-react';
+import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, ChevronLeft, ChevronRight, Check, Search, ShoppingBag, ExternalLink, RefreshCw, MessageSquare, Loader2, Shield, MapPin, Square, Trash2, Hash, type LucideIcon } from 'lucide-react';
 import { EmergencyAddressForm } from '@/components/EmergencyAddressForm';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
@@ -2543,9 +2543,22 @@ export function WebPhoneFloatingWindow() {
           <div className="flex flex-col">
             {hasPhoneCapability ? (
               <div className="flex items-center gap-1.5 sm:gap-2" data-testid="extension-status-indicator">
-                <span className="text-foreground font-medium text-xs sm:text-sm">
-                  {extMyExtension ? `Ext. ${extMyExtension}` : 'WebPhone'}
-                </span>
+                <div className="flex items-center gap-1 text-foreground font-medium text-[10px] sm:text-xs">
+                  {telnyxCallerIdNumber && (
+                    <>
+                      <Phone className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                      <span>{formatPhoneInput(telnyxCallerIdNumber)}</span>
+                    </>
+                  )}
+                  {extMyExtension && (
+                    <>
+                      <span className="text-muted-foreground mx-0.5">|</span>
+                      <Hash className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                      <span>{extMyExtension}</span>
+                    </>
+                  )}
+                  {!telnyxCallerIdNumber && !extMyExtension && <span>WebPhone</span>}
+                </div>
                 <div className={cn(
                   "h-2 w-2 sm:h-2.5 sm:w-2.5 rounded-full",
                   effectiveCall
