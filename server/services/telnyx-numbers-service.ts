@@ -727,6 +727,66 @@ export async function getVoiceSettings(
 }
 
 /**
+ * Get the current routing configuration for a phone number directly from Telnyx API
+ * This is useful for debugging routing issues
+ */
+export async function getPhoneNumberRoutingConfig(
+  phoneNumberId: string,
+  companyId: string
+): Promise<{
+  success: boolean;
+  error?: string;
+  phoneNumber?: string;
+  connectionId?: string | null;
+  callControlApplicationId?: string | null;
+  connectionName?: string;
+  callControlAppName?: string;
+}> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    const telnyxAccountId = await getCompanyTelnyxAccountId(companyId);
+    
+    if (!telnyxAccountId) {
+      return { success: false, error: "Company Telnyx account not found" };
+    }
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Accept": "application/json",
+      "x-managed-account-id": telnyxAccountId,
+    };
+    
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+      method: "GET",
+      headers,
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx Routing] Get phone number error: ${response.status} - ${errorText}`);
+      return { success: false, error: `Failed to get phone number: ${response.status}` };
+    }
+    
+    const result = await response.json();
+    const data = result.data;
+    
+    console.log(`[Telnyx Routing Debug] Phone ${data?.phone_number}: connection_id=${data?.connection_id}, call_control_application_id=${data?.call_control_application_id}, connection_name=${data?.connection_name}`);
+    
+    return {
+      success: true,
+      phoneNumber: data?.phone_number,
+      connectionId: data?.connection_id || null,
+      callControlApplicationId: data?.call_control_application_id || null,
+      connectionName: data?.connection_name,
+      callControlAppName: data?.call_control_application_name,
+    };
+  } catch (error) {
+    console.error("[Telnyx Routing] Get config error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to get routing config" };
+  }
+}
+
+/**
  * Update call recording settings for a phone number (inbound) and outbound voice profile (outbound)
  */
 export async function updateCallRecording(

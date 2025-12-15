@@ -273,8 +273,35 @@ app.use((req, res, next) => {
                 );
               });
             } else {
-              // Already has Call Control App - repair routing (includes webhook URL update)
+              // Already has Call Control App - repair routing AND update webhook URL
               console.log(`[Routing Repair] Company ${setting.companyId} already has Call Control App, repairing...`);
+              
+              // First update the webhook URL to point to this server (critical for dev environments)
+              const webhookBaseUrl = process.env.REPLIT_DEV_DOMAIN 
+                ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+                : 'https://api.curbe.io';
+              
+              import("./services/telnyx-managed-accounts").then(({ getCompanyManagedAccountId }) => {
+                getCompanyManagedAccountId(setting.companyId).then((managedAccountId) => {
+                  if (managedAccountId && setting.callControlAppId) {
+                    console.log(`[Webhook URL Update] Updating Call Control App ${setting.callControlAppId} webhook to: ${webhookBaseUrl}`);
+                    telephonyProvisioningService.updateCallControlAppWebhook(
+                      managedAccountId,
+                      setting.callControlAppId,
+                      webhookBaseUrl,
+                      setting.companyId
+                    ).then((webhookResult) => {
+                      if (webhookResult.success) {
+                        console.log(`[Webhook URL Update] Successfully updated for company ${setting.companyId}`);
+                      } else {
+                        console.log(`[Webhook URL Update] Failed for ${setting.companyId}: ${webhookResult.error}`);
+                      }
+                    }).catch((err) => console.error(`[Webhook URL Update] Error:`, err));
+                  }
+                }).catch((err) => console.error(`[Webhook URL Update] Failed to get managed account:`, err));
+              }).catch((err) => console.error(`[Webhook URL Update] Import error:`, err));
+              
+              // Then repair phone number routing
               telephonyProvisioningService.repairPhoneNumberRouting(setting.companyId, userId).then((result) => {
                 if (result.success && result.repairedCount > 0) {
                   console.log(`[Routing Repair] Fixed ${result.repairedCount} phone number(s) for company ${setting.companyId}`);

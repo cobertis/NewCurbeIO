@@ -28740,6 +28740,33 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to sync voice settings" });
     }
   });
+  // GET /api/telnyx/routing-debug/:phoneNumberId - Debug: Check current routing config from Telnyx
+  app.get("/api/telnyx/routing-debug/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      const { phoneNumberId } = req.params;
+
+      if (!phoneNumberId) {
+        return res.status(400).json({ message: "Phone number ID is required" });
+      }
+
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+
+      const { getPhoneNumberRoutingConfig } = await import("./services/telnyx-numbers-service");
+      const result = await getPhoneNumberRoutingConfig(phoneNumberId, user.companyId);
+
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      res.json(result);
+    } catch (error: any) {
+      console.error("[Telnyx Routing Debug] Error:", error);
+      res.status(500).json({ message: "Failed to get routing config" });
+    }
+  });
   // POST /api/telnyx/call-recording/:phoneNumberId - Update call recording settings
   app.post("/api/telnyx/call-recording/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
