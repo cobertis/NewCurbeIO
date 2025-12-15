@@ -1,10 +1,6 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, ChevronLeft, ChevronRight, Check, Search, ShoppingBag, ExternalLink, RefreshCw, MessageSquare, Loader2, Shield, MapPin, Square, Trash2, Hash, Info, type LucideIcon } from 'lucide-react';
 
-// Call direction icons
-import incomingCallIcon from '@assets/generated_images/black_phone_with_incoming_arrow.png';
-import outgoingCallIcon from '@assets/generated_images/green_phone_with_outgoing_arrow.png';
-import missedCallIcon from '@assets/generated_images/red_phone_with_x_missed_indicator.png';
 import { EmergencyAddressForm } from '@/components/EmergencyAddressForm';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
@@ -3261,20 +3257,13 @@ export function WebPhoneFloatingWindow() {
                                   )}
                                   
                                   {/* Avatar with Direction Icon */}
-                                  <div className={cn(
-                                    "w-9 h-9 sm:w-11 sm:h-11 rounded-full flex items-center justify-center flex-shrink-0",
-                                    isMissed 
-                                      ? "bg-red-100 dark:bg-red-900/30" 
-                                      : call.direction === 'inbound'
-                                        ? "bg-green-100 dark:bg-green-900/30"
-                                        : "bg-blue-100 dark:bg-blue-900/30"
-                                  )}>
+                                  <div className="w-9 h-9 sm:w-11 sm:h-11 rounded-full flex items-center justify-center flex-shrink-0 bg-muted/50">
                                     {isMissed ? (
-                                      <img src={missedCallIcon} alt="Missed" className="h-5 w-5 sm:h-6 sm:w-6" />
+                                      <PhoneMissed className="h-5 w-5 sm:h-6 sm:w-6 text-red-500" />
                                     ) : call.direction === 'inbound' ? (
-                                      <img src={incomingCallIcon} alt="Incoming" className="h-5 w-5 sm:h-6 sm:w-6" />
+                                      <PhoneIncoming className="h-5 w-5 sm:h-6 sm:w-6 text-foreground" />
                                     ) : (
-                                      <img src={outgoingCallIcon} alt="Outgoing" className="h-5 w-5 sm:h-6 sm:w-6" />
+                                      <PhoneOutgoing className="h-5 w-5 sm:h-6 sm:w-6 text-green-500" />
                                     )}
                                   </div>
                                   
