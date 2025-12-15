@@ -2,9 +2,9 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, ChevronLeft, ChevronRight, Check, Search, ShoppingBag, ExternalLink, RefreshCw, MessageSquare, Loader2, Shield, MapPin, Square, Trash2, Hash, Info, type LucideIcon } from 'lucide-react';
 
 // Call direction icons
-import missedCallIcon from '@assets/missed-call_1765829637394.png';
-import outgoingCallIcon from '@assets/phone-receiver_1765829725584.png';
-import incomingCallIcon from '@assets/call-in_1765829828573.png';
+import incomingCallIcon from '@assets/generated_images/green_incoming_call_icon.png';
+import outgoingCallIcon from '@assets/generated_images/blue_outgoing_call_icon.png';
+import missedCallIcon from '@assets/generated_images/red_missed_call_icon.png';
 import { EmergencyAddressForm } from '@/components/EmergencyAddressForm';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
@@ -3263,7 +3263,11 @@ export function WebPhoneFloatingWindow() {
                                   {/* Avatar with Direction Icon */}
                                   <div className={cn(
                                     "w-9 h-9 sm:w-11 sm:h-11 rounded-full flex items-center justify-center flex-shrink-0",
-                                    isMissed ? "bg-red-100 dark:bg-red-900/30" : "bg-green-100 dark:bg-green-900/30"
+                                    isMissed 
+                                      ? "bg-red-100 dark:bg-red-900/30" 
+                                      : call.direction === 'inbound'
+                                        ? "bg-green-100 dark:bg-green-900/30"
+                                        : "bg-blue-100 dark:bg-blue-900/30"
                                   )}>
                                     {isMissed ? (
                                       <img src={missedCallIcon} alt="Missed" className="h-5 w-5 sm:h-6 sm:w-6" />
