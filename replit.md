@@ -180,3 +180,8 @@ Browser WebRTC requires RTCP-MUX enabled, otherwise `setRemoteDescription` fails
 **TELNYX API:**
 - PATCH `/v2/credential_connections/{id}` with `{ rtcp_mux_enabled: true }`
 - This is a root-level field, not inside `inbound` or `outbound`
+
+**CLIENT-SIDE FIX (Dec 2024):**
+- `rtcpMuxPolicy: "negotiate"` in `getZeroLatencyRTCConfig()` in `client/src/services/telnyx-webrtc.ts`
+- CRITICAL: Must be `"negotiate"` (not `"require"`) to accept SDPs without `a=rtcp-mux` attribute
+- Browser default is `"require"` which rejects SDPs missing the attribute
