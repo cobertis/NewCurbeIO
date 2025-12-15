@@ -3315,20 +3315,6 @@ export function WebPhoneFloatingWindow() {
                                     </div>
                                   )}
                                   
-                                  {/* Call Button */}
-                                  {!isEditMode && (
-                                    <button
-                                      onClick={() => {
-                                        setViewMode('keypad');
-                                        setDialNumber((call.direction === 'inbound' ? call.fromNumber : call.toNumber));
-                                      }}
-                                      className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center transition-colors"
-                                      data-testid={`button-call-${call.id}`}
-                                    >
-                                      <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
-                                    </button>
-                                  )}
-                                  
                                   {/* Time Only in Edit Mode */}
                                   {isEditMode && (
                                     <span className="text-xs sm:text-sm text-muted-foreground flex-shrink-0">{timeStr}</span>
