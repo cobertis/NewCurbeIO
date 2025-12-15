@@ -3268,10 +3268,10 @@ export function WebPhoneFloatingWindow() {
                                   </div>
                                   
                                   {/* Call Info - Number on top, Name below */}
-                                  <div className="flex-1 min-w-0 leading-tight">
+                                  <div className="flex-1 min-w-0">
                                     <div className="flex items-center gap-1">
                                       <span className={cn(
-                                        "text-sm font-medium truncate leading-none",
+                                        "text-sm font-medium truncate",
                                         isMissed ? "text-red-500" : "text-foreground"
                                       )}>
                                         {formatCallerNumber((call.direction === 'inbound' ? call.fromNumber : call.toNumber))}
@@ -3295,7 +3295,7 @@ export function WebPhoneFloatingWindow() {
                                         </button>
                                       )}
                                     </div>
-                                    <span className="text-[10px] text-muted-foreground truncate leading-none block">
+                                    <span className="text-[11px] text-muted-foreground truncate block mt-0.5">
                                       {call.callerName || "Unknown Caller"}
                                     </span>
                                   </div>
