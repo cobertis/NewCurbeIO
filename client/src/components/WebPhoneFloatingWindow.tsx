@@ -2553,7 +2553,7 @@ export function WebPhoneFloatingWindow() {
                   {extMyExtension && (
                     <>
                       <span className="text-muted-foreground mx-0.5">|</span>
-                      <Hash className="h-2.5 w-2.5 sm:h-3 sm:w-3" />
+                      <span>Ext.</span>
                       <span>{extMyExtension}</span>
                     </>
                   )}

@@ -2098,6 +2098,125 @@ export class TelephonyProvisioningService {
     console.log(`[TelephonyProvisioning] RTCP-MUX repair complete: ${repairedCount} repaired, ${failedCount} failed`);
     return { success: failedCount === 0, repairedCount, failedCount, errors };
   }
+
+  /**
+   * Add outbound voice profile to an extension's credential connection
+   * CRITICAL: Extensions need outbound_voice_profile_id to make outbound calls
+   * Without this, Telnyx returns error: "You cannot enable emergency services on a number 
+   * unless it has both a connection and an active outbound profile"
+   */
+  async repairExtensionOutboundProfile(
+    companyId: string,
+    extensionId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    try {
+      console.log(`[TelephonyProvisioning] Repairing outbound profile for extension: ${extensionId}`);
+
+      // Get extension
+      const [extension] = await db
+        .select({
+          telnyxCredentialConnectionId: pbxExtensions.telnyxCredentialConnectionId,
+          extension: pbxExtensions.extension,
+        })
+        .from(pbxExtensions)
+        .where(and(eq(pbxExtensions.id, extensionId), eq(pbxExtensions.companyId, companyId)));
+
+      if (!extension?.telnyxCredentialConnectionId) {
+        return { success: false, error: "Extension has no SIP connection" };
+      }
+
+      // Get company's outbound voice profile
+      const [settings] = await db
+        .select({ outboundVoiceProfileId: telephonySettings.outboundVoiceProfileId })
+        .from(telephonySettings)
+        .where(eq(telephonySettings.companyId, companyId));
+
+      if (!settings?.outboundVoiceProfileId) {
+        return { success: false, error: "Company has no outbound voice profile" };
+      }
+
+      // Get managed account ID
+      const { getCompanyManagedAccountId } = await import("./telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId);
+
+      if (!managedAccountId) {
+        return { success: false, error: "Company has no Telnyx managed account" };
+      }
+
+      // PATCH the credential connection with outbound voice profile
+      console.log(`[TelephonyProvisioning] Adding outbound_voice_profile_id ${settings.outboundVoiceProfileId} to connection ${extension.telnyxCredentialConnectionId}`);
+      
+      const response = await this.makeApiRequest(
+        managedAccountId,
+        `/credential_connections/${extension.telnyxCredentialConnectionId}`,
+        "PATCH",
+        {
+          outbound: {
+            outbound_voice_profile_id: settings.outboundVoiceProfileId,
+            channel_limit: 2,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error(`[TelephonyProvisioning] Failed to add outbound profile: ${response.status} - ${errorText}`);
+        return { success: false, error: `HTTP ${response.status}: ${errorText}` };
+      }
+
+      const data = await response.json();
+      console.log(`[TelephonyProvisioning] Extension ${extension.extension} outbound profile repair complete. Profile ID: ${data.data?.outbound?.outbound_voice_profile_id}`);
+      return { success: true };
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      console.error(`[TelephonyProvisioning] Extension outbound profile repair failed:`, errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  /**
+   * Repair all extensions in a company to add outbound voice profile
+   * Required for extensions provisioned before outbound profile was added
+   */
+  async repairAllExtensionsOutboundProfile(companyId: string): Promise<{
+    success: boolean;
+    repairedCount: number;
+    failedCount: number;
+    errors: string[];
+  }> {
+    console.log(`[TelephonyProvisioning] Repairing outbound profile for all extensions in company: ${companyId}`);
+
+    const extensions = await db
+      .select({
+        id: pbxExtensions.id,
+        extension: pbxExtensions.extension,
+        telnyxCredentialConnectionId: pbxExtensions.telnyxCredentialConnectionId,
+      })
+      .from(pbxExtensions)
+      .where(eq(pbxExtensions.companyId, companyId));
+
+    let repairedCount = 0;
+    let failedCount = 0;
+    const errors: string[] = [];
+
+    for (const ext of extensions) {
+      if (!ext.telnyxCredentialConnectionId) {
+        console.log(`[TelephonyProvisioning] Skipping extension ${ext.extension} - no SIP connection`);
+        continue;
+      }
+
+      const result = await this.repairExtensionOutboundProfile(companyId, ext.id);
+      if (result.success) {
+        repairedCount++;
+      } else {
+        failedCount++;
+        errors.push(`Ext ${ext.extension}: ${result.error}`);
+      }
+    }
+
+    console.log(`[TelephonyProvisioning] Outbound profile repair complete: ${repairedCount} repaired, ${failedCount} failed`);
+    return { success: failedCount === 0, repairedCount, failedCount, errors };
+  }
 }
 
 export const telephonyProvisioningService = new TelephonyProvisioningService();

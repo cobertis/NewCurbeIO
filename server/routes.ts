@@ -32812,6 +32812,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/pbx/extensions/repair-outbound-profile - Repair outbound voice profile for all extensions (required for outbound calls)
+  app.post("/api/pbx/extensions/repair-outbound-profile", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const result = await telephonyProvisioningService.repairAllExtensionsOutboundProfile(user.companyId);
+      
+      console.log(`[PBX] Outbound profile repair for company ${user.companyId}: ${result.repairedCount} repaired, ${result.failedCount} failed`);
+      return res.json(result);
+    } catch (error: any) {
+      console.error("[PBX] Error repairing outbound profile:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+
   // GET /api/webrtc/extension-credentials - Get SIP credentials for the authenticated user's extension
   app.get("/api/webrtc/extension-credentials", requireActiveCompany, async (req: Request, res: Response) => {
     try {
