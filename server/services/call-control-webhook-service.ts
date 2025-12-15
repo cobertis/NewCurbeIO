@@ -1178,10 +1178,10 @@ export class CallControlWebhookService {
         continue;
       }
 
-      // Use extension's credential connection ID to deliver INVITE to registered WebRTC client
-      const extensionConnectionId = extension.credentialConnectionId || connectionId;
-      const sipUri = `sip:${extension.sipUsername}@${sipDomain}`;
-      console.log(`[CallControl] Dialing agent extension ${extension.extension} SIP: ${sipUri} via connection: ${extensionConnectionId}`);
+      // For Call Control API dial, MUST use Call Control App ID as connection_id
+      // The SIP URI must use sip.telnyx.com (not company subdomain) for Call Control routing
+      const sipUri = `sip:${extension.sipUsername}@sip.telnyx.com`;
+      console.log(`[CallControl] Dialing agent extension ${extension.extension} SIP: ${sipUri} via Call Control App: ${connectionId}`);
 
       try {
         const clientState = Buffer.from(JSON.stringify({
@@ -1199,7 +1199,7 @@ export class CallControlWebhookService {
           method: "POST",
           headers,
           body: JSON.stringify({
-            connection_id: extensionConnectionId,
+            connection_id: connectionId,
             to: sipUri,
             from: callerIdNumber,
             from_display_name: queueDisplayName,
@@ -1622,10 +1622,10 @@ export class CallControlWebhookService {
       
       if (!extension?.sipUsername) continue;
 
-      // Use extension's credential connection ID to deliver INVITE to registered WebRTC client
-      const extensionConnectionId = extension.credentialConnectionId || connectionId;
-      const sipUri = `sip:${extension.sipUsername}@${sipDomain}`;
-      console.log(`[CallControl] Retry: Dialing agent extension ${extension.extension} SIP: ${sipUri} via connection: ${extensionConnectionId}`);
+      // For Call Control API dial, MUST use Call Control App ID as connection_id
+      // The SIP URI must use sip.telnyx.com (not company subdomain) for Call Control routing
+      const sipUri = `sip:${extension.sipUsername}@sip.telnyx.com`;
+      console.log(`[CallControl] Retry: Dialing agent extension ${extension.extension} SIP: ${sipUri} via Call Control App: ${connectionId}`);
 
       try {
         const clientState = Buffer.from(JSON.stringify({
@@ -1642,7 +1642,7 @@ export class CallControlWebhookService {
           method: "POST",
           headers,
           body: JSON.stringify({
-            connection_id: extensionConnectionId,
+            connection_id: connectionId,
             to: sipUri,
             from: callerIdNumber,
             from_display_name: queueDisplayName,
