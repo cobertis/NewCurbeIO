@@ -6755,8 +6755,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const features = await storage.getAllPlanFeatures();
     res.json({ features });
   });
-
-
   // Get active plans for public pricing page (no auth required)
   app.get("/api/public/plans", async (req: Request, res: Response) => {
     // Public endpoint - returns only active plans for pricing page
@@ -25110,8 +25108,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: error.message || "Failed to send audio" });
     }
   });
-
-
   // POST /api/whatsapp/send-typing - Send typing indicator
   app.post("/api/whatsapp/send-typing", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -26095,8 +26091,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to mark messages as read" });
     }
   });
-
-
   // POST /api/whatsapp/send-reaction - Send a reaction to a message
   app.post("/api/whatsapp/send-reaction", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -26148,8 +26142,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to send reaction" });
     }
   });
-
-
   // POST /webhooks/telnyx/voicemail - Handle voicemail completed events
   app.post("/webhooks/telnyx/voicemail", async (req: Request, res: Response) => {
     try {
@@ -27329,8 +27321,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           ]
         },
       ];
-
-
       res.json({ providers: providerConfigs, apiProviders });
     } catch (error: any) {
       console.error("[System Credentials] Error getting providers:", error);
@@ -27572,8 +27562,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to delete credential" });
     }
   });
-
-
   // DELETE /api/system/credentials/provider/:provider - Delete all credentials for a provider
   app.delete("/api/system/credentials/provider/:provider", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -28020,8 +28008,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Webhook processing failed" });
     }
   });
-
-
   // GET /api/telnyx/phone-system-access - Check if current user has access to Phone System tab
   app.get("/api/telnyx/phone-system-access", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -28327,8 +28313,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } else {
         console.log(`[Billing] Successfully charged $${billingResult.amountCharged?.toFixed(2)} for ${phoneNumber}`);
       }
-
-
       // Auto-enable CNAM listing with company name (truncated to 15 chars)
       if (result.phoneNumberId) {
         try {
@@ -28437,8 +28421,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to get phone numbers" });
     }
   });
-
-
   // POST /api/telnyx/repair-phone-connection/:phoneNumberId - Repair phone number credential connection assignment
   app.post("/api/telnyx/repair-phone-connection/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -28638,8 +28620,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-
-
   // GET /api/telnyx/voice-settings/:phoneNumberId - Get all voice settings (CNAM, Recording, Spam, etc.)
   app.get("/api/telnyx/voice-settings/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -28667,8 +28647,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to get voice settings" });
     }
   });
-
-
   // POST /api/telnyx/sync-voice-settings/:phoneNumberId - Sync voice settings from Telnyx to local DB
   app.post("/api/telnyx/sync-voice-settings/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -28992,8 +28970,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-
-
   // GET /api/telnyx/noise-suppression - Get current noise suppression settings
   app.get("/api/telnyx/noise-suppression", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -29123,8 +29099,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to update noise suppression settings" });
     }
   });
-
-
   // GET /api/telnyx/billing-features - Get current billing features settings (recording, CNAM)
   app.get("/api/telnyx/billing-features", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -29233,8 +29207,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to update billing features settings" });
     }
   });
-
-
   // =====================================================
   // TELNYX MANAGED ACCOUNTS ENDPOINTS
   // =====================================================
@@ -29605,8 +29577,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to update pricing configuration" });
     }
   });
-
-
   // POST /api/telnyx/provisioning/trigger - Trigger WebRTC infrastructure provisioning
   app.post("/api/telnyx/provisioning/trigger", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -29747,8 +29717,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to retry provisioning" });
     }
   });
-
-
   // POST /api/telnyx/provisioning/repair - Repair phone number routing (fix dual routing conflicts)
   app.post("/api/telnyx/provisioning/repair", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -29807,8 +29775,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to fix TeXML webhooks" });
     }
   });
-
-
   // POST /api/telnyx/provisioning/repair-sip-uri - Enable SIP URI calling on existing credential connections
   app.post("/api/telnyx/provisioning/repair-sip-uri", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -29817,8 +29783,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-
-
       // Also repair SIP connection settings (ANI override + simultaneous ringing)
       const { repairSipConnectionSettings } = await import("./services/telnyx-e911-service");
       const sipRepairResult = await repairSipConnectionSettings(user.companyId);
@@ -30274,8 +30238,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ error: error.message });
     }
   });
-
-
   // GET /api/telnyx/call-billing - Get call billing analytics (client cost vs Telnyx cost)
   app.get("/api/telnyx/call-billing", requireAuth, async (req: Request, res: Response) => {
     const user = req.user as any;
@@ -30436,8 +30398,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ error: error.message });
     }
   });
-
-
   // =====================================================
   // E911 EMERGENCY ADDRESS ENDPOINTS
   // =====================================================
@@ -30549,8 +30509,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "No company associated with user" });
       }
 
-
-
       const { generateWebRTCToken } = await import("./services/telnyx-e911-service");
       
       const result = await generateWebRTCToken(
@@ -30627,8 +30585,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ canCall: false, message: "Failed to check balance" });
     }
   });
-
-
 
   // POST /api/webrtc/call-control-hangup - Hang up call using Call Control API with telnyxLegId
   // CRITICAL: The Telnyx WebRTC SDK has a BUG where hangup() ALWAYS sends 486 USER_BUSY
@@ -30756,8 +30712,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ success: false, message: error.message || "Hangup failed" });
     }
   });
-
-
   // POST /api/webrtc/server-hangup - Hang up PSTN call from server (avoids 486 Busy)
   // CRITICAL: This endpoint uses Telnyx Call Control API to terminate the PSTN leg cleanly
   // instead of relying on WebRTC SDK's hangup() which sends 486 Busy to the caller
@@ -30975,13 +30929,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to get emergency addresses" });
     }
   });
-
-
   // =====================================================
   // CALL LOGS (Call History for WebPhone)
   // =====================================================
-
-
   // GET /api/caller-lookup/:phoneNumber - Lookup caller by phone number in quotes/policies/contacts
   // CRITICAL: This endpoint must NEVER fail with 500 - it's called during incoming calls
   app.get("/api/caller-lookup/:phoneNumber", requireAuth, async (req: Request, res: Response) => {
@@ -31200,8 +31150,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to create call log" });
     }
   });
-
-
   // PATCH /api/call-logs/:id - Update a call log entry
   app.patch("/api/call-logs/:id", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31362,8 +31310,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to clear call history" });
     }
   });
-
-
   // =====================================================
   // VOICEMAILS
   // =====================================================
@@ -31469,8 +31415,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to delete voicemail" });
     }
   });
-
-
   // ============================================
   // DEPLOYMENT MANAGEMENT ENDPOINTS
   // ============================================
@@ -32267,8 +32211,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     return res.status(200).send();
   });
 
-
-
   // ============================================================
   // PBX (Phone System) API Routes
   // ============================================================
@@ -32296,8 +32238,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(500).json({ error: error.message });
     }
   });
-
-
   // POST /api/pbx/ivr-greeting - Upload IVR greeting audio
   const ivrGreetingUpload = multer({
     storage: multer.memoryStorage(),
@@ -32742,8 +32682,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(500).json({ error: error.message });
     }
   });
-
-  // POST /api/pbx/extensions/:extensionId/provision-sip - Manually provision SIP credentials for an extension
+  // POST /api/pbx/extensions/:extensionId/provision-sip - Provision independent SIP Connection for an extension
   app.post("/api/pbx/extensions/:extensionId/provision-sip", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user as User;
@@ -32766,23 +32705,24 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ error: "Extension must have a user assigned to provision SIP credentials" });
       }
       
-      const { createUserSipCredentialWithExtension } = await import("./services/telnyx-e911-service");
-      const sipResult = await createUserSipCredentialWithExtension(
+      // Use new per-extension SIP provisioning
+      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const sipResult = await telephonyProvisioningService.provisionExtensionSipConnection(
         user.companyId,
-        extension.userId,
-        extension.extension,
-        extension.displayName || `Extension ${extension.extension}`
+        extension.id
       );
       
       if (!sipResult.success) {
         return res.status(500).json({ error: sipResult.error || "Failed to provision SIP credentials" });
       }
       
-      console.log(`[PBX] Manually provisioned SIP credentials for extension ${extension.extension}: ${sipResult.sipUsername}`);
+      console.log(`[PBX] Provisioned independent SIP connection for extension ${extension.extension}: ${sipResult.sipUsername}`);
       return res.json({ 
         success: true, 
         sipUsername: sipResult.sipUsername,
-        message: "SIP credentials provisioned successfully" 
+        sipDomain: sipResult.sipDomain,
+        credentialConnectionId: sipResult.credentialConnectionId,
+        message: "SIP connection provisioned successfully" 
       });
     } catch (error: any) {
       console.error("[PBX] Error provisioning SIP credentials:", error);
@@ -32790,6 +32730,55 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // GET /api/webrtc/extension-credentials - Get SIP credentials for the authenticated user's extension
+  app.get("/api/webrtc/extension-credentials", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      // Get the user's extension
+      const [extension] = await db
+        .select({
+          id: pbxExtensions.id,
+          extension: pbxExtensions.extension,
+          displayName: pbxExtensions.displayName,
+          sipUsername: pbxExtensions.sipUsername,
+          sipPassword: pbxExtensions.sipPassword,
+          sipDomain: pbxExtensions.sipDomain,
+          telnyxCredentialConnectionId: pbxExtensions.telnyxCredentialConnectionId,
+        })
+        .from(pbxExtensions)
+        .where(and(
+          eq(pbxExtensions.companyId, user.companyId),
+          eq(pbxExtensions.userId, user.id),
+          eq(pbxExtensions.isActive, true)
+        ));
+      
+      if (!extension) {
+        return res.status(404).json({ error: "No extension found for this user" });
+      }
+      
+      if (!extension.sipUsername || !extension.sipPassword) {
+        return res.status(404).json({ 
+          error: "Extension has no SIP credentials", 
+          extensionId: extension.id,
+          needsProvisioning: true 
+        });
+      }
+      
+      return res.json({
+        extensionId: extension.id,
+        extension: extension.extension,
+        displayName: extension.displayName,
+        sipUsername: extension.sipUsername,
+        sipPassword: extension.sipPassword,
+        sipDomain: extension.sipDomain,
+        credentialConnectionId: extension.telnyxCredentialConnectionId,
+      });
+    } catch (error: any) {
+      console.error("[WebRTC] Error getting extension credentials:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
   // PATCH /api/pbx/extensions/:extensionId - Update extension
   app.patch("/api/pbx/extensions/:extensionId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -33177,8 +33166,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-
-
   // POST /api/pbx/check-extension - Check what type an extension is
   app.post("/api/pbx/check-extension", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -33353,8 +33340,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(500).json({ error: error.message });
     }
   });
-
-
   // ============================================================
   // PBX Audio Library
   // ============================================================
@@ -33667,8 +33652,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(500).json({ message: "Failed to delete audio file" });
     }
   });
-
-
   // ============================================================
   // Telnyx Call Control Webhook (PBX/IVR)
   // ============================================================
@@ -34004,8 +33987,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(500).json({ message: "Failed to load card" });
     }
   });
-
-
   // ============================================================
   // PUBLIC WALLET DOWNLOAD (for Apple Wallet .pkpass)
   // ============================================================

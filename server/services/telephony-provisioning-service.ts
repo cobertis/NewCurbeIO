@@ -4,6 +4,8 @@ import {
   telephonyCredentials, 
   telnyxPhoneNumbers,
   companies,
+  pbxExtensions,
+  users,
   TelephonyProvisioningStatus 
 } from "@shared/schema";
 import { eq, and } from "drizzle-orm";
@@ -1636,6 +1638,335 @@ export class TelephonyProvisioningService {
 
     console.log(`[TelephonyProvisioning] Repair complete: ${repairedCount} phones repaired`);
     return { success: errors.length === 0, repairedCount, errors };
+  }
+
+  /**
+   * Provision a dedicated SIP Connection for a PBX extension
+   * Each extension gets its own Credential Connection and SIP credentials
+   * This enables independent WebRTC registration per agent
+   */
+  async provisionExtensionSipConnection(
+    companyId: string,
+    extensionId: string
+  ): Promise<{ 
+    success: boolean; 
+    credentialConnectionId?: string;
+    sipCredentialId?: string;
+    sipUsername?: string;
+    sipPassword?: string;
+    sipDomain?: string;
+    error?: string;
+  }> {
+    console.log(`[TelephonyProvisioning] Provisioning SIP Connection for extension: ${extensionId}`);
+
+    try {
+      // Get extension details
+      const [extension] = await db
+        .select({
+          id: pbxExtensions.id,
+          companyId: pbxExtensions.companyId,
+          userId: pbxExtensions.userId,
+          extension: pbxExtensions.extension,
+          displayName: pbxExtensions.displayName,
+          telnyxCredentialConnectionId: pbxExtensions.telnyxCredentialConnectionId,
+        })
+        .from(pbxExtensions)
+        .where(and(eq(pbxExtensions.id, extensionId), eq(pbxExtensions.companyId, companyId)));
+
+      if (!extension) {
+        return { success: false, error: "Extension not found" };
+      }
+
+      // Check if already provisioned
+      if (extension.telnyxCredentialConnectionId) {
+        console.log(`[TelephonyProvisioning] Extension ${extensionId} already has SIP connection: ${extension.telnyxCredentialConnectionId}`);
+        return { success: false, error: "Extension already has a SIP connection" };
+      }
+
+      // Get user info for display name
+      const [user] = await db
+        .select({ firstName: users.firstName, lastName: users.lastName })
+        .from(users)
+        .where(eq(users.id, extension.userId));
+
+      const displayName = extension.displayName || 
+        (user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() : `Ext ${extension.extension}`);
+
+      // Get company info
+      const [company] = await db
+        .select({ name: companies.name })
+        .from(companies)
+        .where(eq(companies.id, companyId));
+
+      // Get managed account ID
+      const { getCompanyManagedAccountId } = await import("./telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId);
+
+      if (!managedAccountId) {
+        return { success: false, error: "Company has no Telnyx managed account" };
+      }
+
+      // Get company's outbound voice profile for the credential connection
+      const [settings] = await db
+        .select({ outboundVoiceProfileId: telephonySettings.outboundVoiceProfileId })
+        .from(telephonySettings)
+        .where(eq(telephonySettings.companyId, companyId));
+
+      if (!settings?.outboundVoiceProfileId) {
+        return { success: false, error: "Company has no outbound voice profile. Please complete telephony setup first." };
+      }
+
+      const webhookBaseUrl = await getWebhookBaseUrl();
+
+      // Generate unique SIP username and password for this extension
+      // Username: 4-32 chars, alphanumeric, at least one letter in first 5 chars
+      const randomSuffix = Math.random().toString(36).substring(2, 10);
+      const sipUsername = `ext${extension.extension}${randomSuffix}`.substring(0, 32);
+      // Password: 8-128 chars, secure
+      const sipPassword = `Curbe${Date.now().toString(36)}${Math.random().toString(36).substring(2, 10)}!`;
+
+      // Step 1: Create Credential Connection for this extension
+      console.log(`[TelephonyProvisioning] Creating Credential Connection for extension ${extension.extension}...`);
+      
+      const connectionName = `${company?.name || 'Company'} - Ext ${extension.extension} - ${displayName}`;
+      
+      const connResponse = await this.makeApiRequest(
+        managedAccountId,
+        "/credential_connections",
+        "POST",
+        {
+          connection_name: connectionName.substring(0, 100), // Telnyx limit
+          user_name: sipUsername, // Required by Telnyx API
+          password: sipPassword, // Required by Telnyx API
+          active: true,
+          anchorsite_override: "Latency",
+          outbound: {
+            outbound_voice_profile_id: settings.outboundVoiceProfileId,
+            channel_limit: 2, // Single extension needs only a couple channels
+          },
+          inbound: {
+            channel_limit: 2,
+            codecs: ["G722", "G711U", "G711A"],
+            simultaneous_ringing: "enabled",
+          },
+          sip_uri_calling_preference: "unrestricted",
+          webhook_event_url: `${webhookBaseUrl}/webhooks/telnyx/voice/status`,
+        }
+      );
+
+      if (!connResponse.ok) {
+        const errorText = await connResponse.text();
+        console.error(`[TelephonyProvisioning] Failed to create credential connection: ${errorText}`);
+        return { success: false, error: `Failed to create SIP connection: ${errorText}` };
+      }
+
+      const connData = await connResponse.json();
+      const credentialConnectionId = connData.data?.id;
+      // Get the SIP domain from the connection - Telnyx returns sip_uri in format "sip:user@domain"
+      const returnedSipUri = connData.data?.sip_uri;
+      const sipDomain = returnedSipUri 
+        ? returnedSipUri.replace(/^sip:[^@]+@/, '') 
+        : "sip.telnyx.com";
+
+      console.log(`[TelephonyProvisioning] Credential Connection created: ${credentialConnectionId}, domain: ${sipDomain}`);
+
+      // Step 2: Disable SRTP for WebRTC compatibility
+      await this.disableSrtpEncryption(managedAccountId, credentialConnectionId);
+
+      console.log(`[TelephonyProvisioning] SIP Credentials ready: ${sipUsername}`);
+
+      // Step 3: Update extension record with SIP connection details
+      // IMPORTANT: Store password in plain text per user requirement (see replit.md)
+      await db
+        .update(pbxExtensions)
+        .set({
+          telnyxCredentialConnectionId: credentialConnectionId,
+          sipCredentialId: credentialConnectionId, // Use connection ID as credential ID
+          sipUsername: sipUsername,
+          sipPassword: sipPassword,
+          sipDomain: sipDomain,
+          updatedAt: new Date(),
+        })
+        .where(eq(pbxExtensions.id, extensionId));
+
+      console.log(`[TelephonyProvisioning] Extension ${extension.extension} SIP provisioning complete`);
+
+      return {
+        success: true,
+        credentialConnectionId,
+        sipCredentialId: credentialConnectionId,
+        sipUsername,
+        sipPassword,
+        sipDomain,
+      };
+
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      console.error(`[TelephonyProvisioning] Extension SIP provisioning failed:`, errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  /**
+   * Delete SIP Connection for an extension (cleanup)
+   */
+  async deprovisionExtensionSipConnection(
+    companyId: string,
+    extensionId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    console.log(`[TelephonyProvisioning] Deprovisioning SIP Connection for extension: ${extensionId}`);
+
+    try {
+      const [extension] = await db
+        .select({
+          telnyxCredentialConnectionId: pbxExtensions.telnyxCredentialConnectionId,
+          sipCredentialId: pbxExtensions.sipCredentialId,
+        })
+        .from(pbxExtensions)
+        .where(and(eq(pbxExtensions.id, extensionId), eq(pbxExtensions.companyId, companyId)));
+
+      if (!extension) {
+        return { success: false, error: "Extension not found" };
+      }
+
+      if (!extension.telnyxCredentialConnectionId) {
+        return { success: true }; // Nothing to deprovision
+      }
+
+      const { getCompanyManagedAccountId } = await import("./telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId);
+
+      if (!managedAccountId) {
+        return { success: false, error: "Company has no Telnyx managed account" };
+      }
+
+      // Delete SIP credentials first
+      if (extension.sipCredentialId) {
+        try {
+          await this.makeApiRequest(
+            managedAccountId,
+            `/telephony_credentials/${extension.sipCredentialId}`,
+            "DELETE"
+          );
+          console.log(`[TelephonyProvisioning] SIP credentials deleted: ${extension.sipCredentialId}`);
+        } catch (error) {
+          console.error(`[TelephonyProvisioning] Failed to delete SIP credentials:`, error);
+        }
+      }
+
+      // Delete credential connection
+      await this.rollbackCredentialConnection(managedAccountId, extension.telnyxCredentialConnectionId);
+
+      // Clear extension SIP fields
+      await db
+        .update(pbxExtensions)
+        .set({
+          telnyxCredentialConnectionId: null,
+          sipCredentialId: null,
+          sipUsername: null,
+          sipPassword: null,
+          sipDomain: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(pbxExtensions.id, extensionId));
+
+      console.log(`[TelephonyProvisioning] Extension SIP deprovisioning complete`);
+      return { success: true };
+
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      console.error(`[TelephonyProvisioning] Extension SIP deprovisioning failed:`, errorMsg);
+      return { success: false, error: errorMsg };
+    }
+  }
+
+  /**
+   * Assign a phone number to an extension's SIP connection
+   * Routes the number to the extension's Credential Connection
+   */
+  async assignPhoneNumberToExtension(
+    companyId: string,
+    extensionId: string,
+    phoneNumberId: string
+  ): Promise<{ success: boolean; error?: string }> {
+    console.log(`[TelephonyProvisioning] Assigning phone ${phoneNumberId} to extension ${extensionId}`);
+
+    try {
+      // Get extension SIP connection
+      const [extension] = await db
+        .select({
+          telnyxCredentialConnectionId: pbxExtensions.telnyxCredentialConnectionId,
+          extension: pbxExtensions.extension,
+        })
+        .from(pbxExtensions)
+        .where(and(eq(pbxExtensions.id, extensionId), eq(pbxExtensions.companyId, companyId)));
+
+      if (!extension) {
+        return { success: false, error: "Extension not found" };
+      }
+
+      if (!extension.telnyxCredentialConnectionId) {
+        return { success: false, error: "Extension has no SIP connection. Provision it first." };
+      }
+
+      // Get phone number details
+      const [phoneNumber] = await db
+        .select()
+        .from(telnyxPhoneNumbers)
+        .where(and(eq(telnyxPhoneNumbers.id, phoneNumberId), eq(telnyxPhoneNumbers.companyId, companyId)));
+
+      if (!phoneNumber) {
+        return { success: false, error: "Phone number not found" };
+      }
+
+      const { getCompanyManagedAccountId } = await import("./telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId);
+
+      if (!managedAccountId) {
+        return { success: false, error: "Company has no Telnyx managed account" };
+      }
+
+      // Update phone number routing to extension's credential connection
+      const response = await this.makeApiRequest(
+        managedAccountId,
+        `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
+        "PATCH",
+        {
+          connection_id: extension.telnyxCredentialConnectionId,
+          call_control_application_id: null,
+        }
+      );
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        return { success: false, error: `Failed to update phone number routing: ${errorText}` };
+      }
+
+      // Update database records
+      await db
+        .update(telnyxPhoneNumbers)
+        .set({
+          connectionId: extension.telnyxCredentialConnectionId,
+          updatedAt: new Date(),
+        })
+        .where(eq(telnyxPhoneNumbers.id, phoneNumberId));
+
+      await db
+        .update(pbxExtensions)
+        .set({
+          directPhoneNumberId: phoneNumberId,
+          updatedAt: new Date(),
+        })
+        .where(eq(pbxExtensions.id, extensionId));
+
+      console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} assigned to extension ${extension.extension}`);
+      return { success: true };
+
+    } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : "Unknown error";
+      console.error(`[TelephonyProvisioning] Phone assignment failed:`, errorMsg);
+      return { success: false, error: errorMsg };
+    }
   }
 }
 
