@@ -1573,13 +1573,14 @@ export class TelephonyProvisioningService {
     for (const phoneNumber of phoneNumbers) {
       try {
         // Determine routing based on phone number configuration
-        // Always use Call Control App for any phone with ivrId or ownerUserId
-        // This ensures we can control routing, play voicemails, handle queues, etc.
-        const needsCallControl = phoneNumber.ivrId || phoneNumber.ownerUserId;
+        // CRITICAL: ivrId="unassigned" means IVR is DISABLED, so use Credential Connection for direct SIP routing
+        // Only use Call Control App when IVR is ENABLED (has a real IVR ID, not "unassigned")
+        const hasActiveIvr = phoneNumber.ivrId && phoneNumber.ivrId !== "unassigned";
+        const needsCallControl = hasActiveIvr; // Only IVR-enabled phones need Call Control App for webhooks
         
         if (needsCallControl && settings.callControlAppId) {
-          // Use Call Control App for intelligent routing (IVR, direct user routing, queues)
-          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} needs Call Control App (ivrId=${phoneNumber.ivrId}, ownerUserId=${phoneNumber.ownerUserId})`);
+          // Use Call Control App for IVR routing (webhooks handle IVR/Queue logic)
+          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} needs Call Control App (active IVR: ${phoneNumber.ivrId})`);
           
           const response = await this.makeApiRequest(
             managedAccountId,

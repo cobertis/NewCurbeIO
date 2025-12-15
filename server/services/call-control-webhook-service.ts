@@ -1837,26 +1837,21 @@ export class CallControlWebhookService {
   }
 
   /**
-   * Transfer call to assigned user using Dial+Bridge pattern
+   * Transfer call to assigned user using Transfer API
    * 
-   * CRITICAL: The Transfer API does NOT support simultaneous_ringing/SIP Forking!
-   * We must use Dial API with connection_id = credentialConnectionId to route through
-   * the Credential Connection which has simultaneous_ringing: enabled.
+   * For SIP Forking to work, the phone number must be assigned to the Credential Connection
+   * (not Call Control App). When assigned to Credential Connection with simultaneous_ringing: enabled,
+   * Transfer API will fork the call to all registered devices.
    * 
-   * Flow:
-   * 1. Receive call.initiated - Answer the incoming call (billing starts)
-   * 2. Use Dial API (POST /v2/calls) with connection_id = credentialConnectionId
-   * 3. Store pending bridge info (callerCallControlId)
-   * 4. Telnyx sends SIP INVITE to all registered devices via Credential Connection
-   * 5. When agent answers (call.answered), Bridge the two call legs
-   * 6. First device to answer wins, others get cancelled
+   * NOTE: If phones don't ring, verify the phone number is assigned to Credential Connection
+   * in Telnyx portal, NOT to a Call Control App.
    */
   private async transferToAssignedUser(
     callControlId: string,
     phoneNumber: any,
     callerNumber?: string
   ): Promise<void> {
-    console.log(`[CallControl] Transfer to assigned user via Dial+Bridge pattern (SIP Forking), caller: ${callerNumber}`);
+    console.log(`[CallControl] Transfer to assigned user via Transfer API, caller: ${callerNumber}`);
 
     if (!phoneNumber.ownerUserId) {
       console.log(`[CallControl] No assigned user, cannot transfer`);
@@ -1878,97 +1873,25 @@ export class CallControlWebhookService {
 
     const companyId = phoneNumber.companyId;
     
-    // Get company-specific SIP domain and credential connection for simultaneous ringing
+    // Get company-specific SIP domain for simultaneous ringing
     const { TelephonyProvisioningService } = await import("./telephony-provisioning-service");
     const provisioningService = new TelephonyProvisioningService();
     const sipDomain = await provisioningService.getCompanySipDomain(companyId);
     
-    // Get the credential connection ID for the assigned user
-    const [settings] = await db
-      .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
-      .from(telephonySettings)
-      .where(eq(telephonySettings.ownerUserId, phoneNumber.ownerUserId));
-    
-    if (!settings?.credentialConnectionId) {
-      console.log(`[CallControl] User ${phoneNumber.ownerUserId} has no credential connection`);
-      await this.answerCall(callControlId);
-      await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
-      await this.routeToVoicemail(callControlId, companyId);
-      return;
-    }
-    
     const sipHost = sipDomain || "sip.telnyx.com";
     const sipUri = `sip:${sipCreds.sipUsername}@${sipHost}`;
     
-    console.log(`[CallControl] Using Dial+Bridge pattern:`);
-    console.log(`[CallControl]   - SIP URI: ${sipUri}`);
-    console.log(`[CallControl]   - Credential Connection ID: ${settings.credentialConnectionId}`);
-    console.log(`[CallControl]   - This will send SIP INVITE to all registered devices`);
+    console.log(`[CallControl] Transferring to SIP URI: ${sipUri}`);
+    console.log(`[CallControl] NOTE: Phone number MUST be assigned to Credential Connection for SIP Forking to work`);
 
     try {
-      // Step 1: Answer the incoming call first (billing starts, but we need it active for bridge)
-      await this.answerCall(callControlId);
-      console.log(`[CallControl] Answered caller's call, now dialing agent via Credential Connection`);
-      
-      // Step 2: Use Dial API with connection_id = credentialConnectionId
-      // This routes through the Credential Connection which has simultaneous_ringing: enabled
-      const apiKey = await getTelnyxApiKey();
-      const context = callContextMap.get(callControlId);
-      
-      const headers: Record<string, string> = {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      };
-      if (context?.managedAccountId) {
-        headers["X-Managed-Account-Id"] = context.managedAccountId;
-      }
-      
-      // Client state to track this is a direct call pending bridge
-      const clientState = Buffer.from(JSON.stringify({
-        directCallBridge: true,
-        callerCallControlId: callControlId,
-        companyId,
-        agentUserId: phoneNumber.ownerUserId,
-      })).toString("base64");
-      
-      const dialBody = {
-        connection_id: settings.credentialConnectionId,
+      // Use Transfer API - this works when phone number is assigned to Credential Connection
+      // DO NOT answer first - let billing start only when agent answers
+      await this.makeCallControlRequest(callControlId, "transfer", {
         to: sipUri,
-        from: phoneNumber.phoneNumber, // Show the original caller's number or the company number
-        from_display_name: callerNumber || "Incoming Call",
-        timeout_secs: 60,
-        client_state: clientState,
-      };
-      
-      console.log(`[CallControl] Dial API request:`, JSON.stringify(dialBody, null, 2));
-      
-      const response = await fetch(`${TELNYX_API_BASE}/calls`, {
-        method: "POST",
-        headers,
-        body: JSON.stringify(dialBody),
       });
       
-      const responseData = await response.json();
-      
-      if (!response.ok) {
-        console.error(`[CallControl] Dial API failed:`, responseData);
-        throw new Error(`Dial API failed: ${JSON.stringify(responseData)}`);
-      }
-      
-      const agentCallControlId = responseData.data?.call_control_id;
-      console.log(`[CallControl] Dial API success - Agent call_control_id: ${agentCallControlId}`);
-      console.log(`[CallControl] SIP INVITE should now be sent to all registered devices via Credential Connection`);
-      
-      // Store pending bridge - when agent answers, we'll bridge the calls
-      if (agentCallControlId) {
-        pendingBridges.set(agentCallControlId, {
-          callerCallControlId: callControlId,
-          clientState,
-          companyId,
-          isDirectCall: true,
-        });
-        console.log(`[CallControl] Stored pending bridge: agent ${agentCallControlId} -> caller ${callControlId}`);
-      }
+      console.log(`[CallControl] Transfer initiated to SIP URI`);
       
       await pbxService.trackActiveCall(companyId, callControlId, callerNumber || "", sipUri, "ringing", {
         agentUserId: phoneNumber.ownerUserId,
@@ -1976,7 +1899,8 @@ export class CallControlWebhookService {
       });
       
     } catch (error) {
-      console.error(`[CallControl] Dial+Bridge to SIP failed:`, error);
+      console.error(`[CallControl] Transfer to SIP failed:`, error);
+      await this.answerCall(callControlId);
       await this.speakText(callControlId, "The agent is currently unavailable. Please leave a message.");
       await this.routeToVoicemail(callControlId, companyId);
     }
