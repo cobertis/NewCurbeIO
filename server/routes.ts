@@ -28397,7 +28397,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Superadmin can query any company's numbers (all numbers in that company)
       if (user.role === "superadmin" && req.query.companyId) {
         const targetCompanyId = req.query.companyId as string;
-        const { getCompanyPhoneNumbers } = await import("./services/telnyx-numbers-service");
+        const { syncPhoneNumbersFromTelnyx, getCompanyPhoneNumbers } = await import("./services/telnyx-numbers-service");
+        // Sync from Telnyx first
+        await syncPhoneNumbersFromTelnyx(targetCompanyId);
         const result = await getCompanyPhoneNumbers(targetCompanyId);
         if (!result.success) {
           return res.status(500).json({ message: result.error });
@@ -28405,10 +28407,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.json({ numbers: result.numbers, totalCount: result.totalCount, currentPage: result.currentPage, totalPages: result.totalPages, pageSize: result.pageSize });
       }
       
+      // Sync phone numbers from Telnyx to local DB before returning
+      const { syncPhoneNumbersFromTelnyx, getUserPhoneNumbers } = await import("./services/telnyx-numbers-service");
+      await syncPhoneNumbersFromTelnyx(user.companyId);
+      
       // Agents only see their own numbers, admins see all company numbers
       // This ensures all admins in a company can manage all phone numbers
       const userId = (user.role === 'superadmin' || user.role === 'admin') ? undefined : user.id;
-      const { getUserPhoneNumbers } = await import("./services/telnyx-numbers-service");
       const result = await getUserPhoneNumbers(user.companyId, userId);
 
       if (!result.success) {

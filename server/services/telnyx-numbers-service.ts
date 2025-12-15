@@ -1274,6 +1274,85 @@ export async function getUserPhoneNumbers(companyId: string, userId?: string): P
   }
 }
 
+// Sync phone numbers from Telnyx API to local database
+export async function syncPhoneNumbersFromTelnyx(companyId: string): Promise<{
+  success: boolean;
+  syncedCount: number;
+  error?: string;
+}> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.companyId, companyId));
+
+    if (!wallet?.telnyxAccountId) {
+      return { success: true, syncedCount: 0 };
+    }
+
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Accept": "application/json",
+      "x-managed-account-id": wallet.telnyxAccountId,
+    };
+
+    // Get all numbers from Telnyx
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers?page[size]=250`, {
+      method: "GET",
+      headers,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx Sync] Get numbers error: ${response.status} - ${errorText}`);
+      return { success: false, syncedCount: 0, error: `Failed to fetch from Telnyx: ${response.status}` };
+    }
+
+    const result = await response.json();
+    const telnyxNumbers = result.data || [];
+    let syncedCount = 0;
+
+    for (const tn of telnyxNumbers) {
+      const phoneNumber = tn.phone_number;
+      const telnyxId = tn.id;
+
+      // Check if number exists in our DB
+      const [existing] = await db
+        .select()
+        .from(telnyxPhoneNumbers)
+        .where(eq(telnyxPhoneNumbers.telnyxPhoneNumberId, telnyxId));
+
+      if (!existing) {
+        // Insert new number
+        const numberType = tn.phone_number_type === 'toll_free' ? 'toll_free' : 'local';
+        const monthlyRate = numberType === 'toll_free' ? '1.50' : '1.00';
+        
+        await db.insert(telnyxPhoneNumbers).values({
+          companyId,
+          phoneNumber,
+          telnyxPhoneNumberId: telnyxId,
+          displayName: phoneNumber,
+          status: tn.status || 'active',
+          numberType,
+          retailMonthlyRate: monthlyRate,
+          telnyxMonthlyCost: tn.billing?.cost_information?.monthly_cost || '0',
+          purchasedAt: tn.purchased_at ? new Date(tn.purchased_at) : new Date(),
+        });
+        syncedCount++;
+        console.log(`[Telnyx Sync] Added number ${phoneNumber} to company ${companyId}`);
+      }
+    }
+
+    console.log(`[Telnyx Sync] Synced ${syncedCount} new numbers for company ${companyId}`);
+    return { success: true, syncedCount };
+  } catch (error) {
+    console.error("[Telnyx Sync] Error:", error);
+    return { success: false, syncedCount: 0, error: error instanceof Error ? error.message : "Sync failed" };
+  }
+}
+
 // Sync all company phone numbers with billing features (recording, CNAM)
 export async function syncBillingFeaturesToTelnyx(
   companyId: string,
