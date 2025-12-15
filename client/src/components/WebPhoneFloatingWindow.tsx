@@ -1,5 +1,10 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, ChevronLeft, ChevronRight, Check, Search, ShoppingBag, ExternalLink, RefreshCw, MessageSquare, Loader2, Shield, MapPin, Square, Trash2, Hash, Info, type LucideIcon } from 'lucide-react';
+
+// Call direction icons
+import missedCallIcon from '@assets/missed-call_1765829637394.png';
+import outgoingCallIcon from '@assets/phone-receiver_1765829725584.png';
+import incomingCallIcon from '@assets/call-in_1765829828573.png';
 import { EmergencyAddressForm } from '@/components/EmergencyAddressForm';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
@@ -3261,11 +3266,11 @@ export function WebPhoneFloatingWindow() {
                                     isMissed ? "bg-red-100 dark:bg-red-900/30" : "bg-green-100 dark:bg-green-900/30"
                                   )}>
                                     {isMissed ? (
-                                      <img src="/attached_assets/missed-call_1765829637394.png" alt="Missed" className="h-5 w-5 sm:h-6 sm:w-6" />
+                                      <img src={missedCallIcon} alt="Missed" className="h-5 w-5 sm:h-6 sm:w-6" />
                                     ) : call.direction === 'inbound' ? (
-                                      <img src="/attached_assets/call-in_1765829828573.png" alt="Incoming" className="h-5 w-5 sm:h-6 sm:w-6" />
+                                      <img src={incomingCallIcon} alt="Incoming" className="h-5 w-5 sm:h-6 sm:w-6" />
                                     ) : (
-                                      <img src="/attached_assets/phone-receiver_1765829725584.png" alt="Outgoing" className="h-5 w-5 sm:h-6 sm:w-6" />
+                                      <img src={outgoingCallIcon} alt="Outgoing" className="h-5 w-5 sm:h-6 sm:w-6" />
                                     )}
                                   </div>
                                   
