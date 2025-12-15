@@ -2,9 +2,9 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { Phone, PhoneOff, Mic, MicOff, Pause, Play, X, Grid3x3, Volume2, UserPlus, User, PhoneIncoming, PhoneOutgoing, Users, Voicemail, Menu, Delete, Clock, Circle, PhoneForwarded, PhoneMissed, ChevronDown, ChevronLeft, ChevronRight, Check, Search, ShoppingBag, ExternalLink, RefreshCw, MessageSquare, Loader2, Shield, MapPin, Square, Trash2, Hash, Info, type LucideIcon } from 'lucide-react';
 
 // Call direction icons
-import incomingCallIcon from '@assets/generated_images/modern_green_incoming_call_icon.png';
-import outgoingCallIcon from '@assets/generated_images/modern_blue_outgoing_call_icon.png';
-import missedCallIcon from '@assets/generated_images/modern_red_missed_call_icon.png';
+import incomingCallIcon from '@assets/generated_images/black_phone_with_incoming_arrow.png';
+import outgoingCallIcon from '@assets/generated_images/green_phone_with_outgoing_arrow.png';
+import missedCallIcon from '@assets/generated_images/red_phone_with_x_missed_indicator.png';
 import { EmergencyAddressForm } from '@/components/EmergencyAddressForm';
 import { cn } from '@/lib/utils';
 import { useWebPhoneStore, webPhone } from '@/services/webphone';
