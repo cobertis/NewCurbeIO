@@ -2155,12 +2155,20 @@ export function WebPhoneFloatingWindow() {
   // Auto-open window when Telnyx incoming call arrives
   useEffect(() => {
     if (telnyxIncomingCall) {
-      console.log('[WebPhone] 📱 Telnyx incoming call detected - opening phone panel');
+      console.log('[WebPhone] Telnyx incoming call detected - opening phone panel');
       if (!isVisible) {
         toggleDialpad();
       }
     }
   }, [telnyxIncomingCall, isVisible, toggleDialpad]);
+  
+  // Auto-open window when there's an active Telnyx call (for auto-answered queue calls)
+  useEffect(() => {
+    if (telnyxCurrentCall && !isVisible) {
+      console.log('[WebPhone] Active Telnyx call detected - opening phone panel');
+      toggleDialpad();
+    }
+  }, [telnyxCurrentCall, isVisible, toggleDialpad]);
   
   // Call timer
   useEffect(() => {
