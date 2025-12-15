@@ -1390,14 +1390,15 @@ export class TelephonyProvisioningService {
       }
       
       // STEP 2: Assign to Call Control Application
-      // Per Telnyx API docs, use connection_id with the Call Control App ID
-      // The Call Control App ID IS a connection ID and can be used as such
+      // CRITICAL: Use call_control_application_id to route calls through webhooks
+      // connection_id must be null when using Call Control App
       const response = await this.makeApiRequest(
         managedAccountId,
         `/phone_numbers/${phoneNumberId}`,
         "PATCH",
         {
-          connection_id: callControlAppId,
+          connection_id: null,
+          call_control_application_id: callControlAppId,
         }
       );
 
@@ -1582,25 +1583,22 @@ export class TelephonyProvisioningService {
         
         if (needsCallControl && settings.callControlAppId) {
           // Use Call Control App for IVR routing (webhooks handle IVR/Queue logic)
+          // Use the assignPhoneNumberToCallControlApp method which handles E911 disable before routing change
           console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} needs Call Control App (active IVR: ${phoneNumber.ivrId})`);
           
-          const response = await this.makeApiRequest(
+          const assignResult = await this.assignPhoneNumberToCallControlApp(
             managedAccountId,
-            `/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`,
-            "PATCH",
-            { 
-              connection_id: settings.callControlAppId,
-              call_control_application_id: null
-            }
+            phoneNumber.telnyxPhoneNumberId,
+            settings.callControlAppId
           );
 
-          if (!response.ok) {
-            const errorText = await response.text();
-            errors.push(`Failed to repair ${phoneNumber.phoneNumber}: HTTP ${response.status} - ${errorText}`);
+          if (!assignResult.success) {
+            errors.push(`Failed to repair ${phoneNumber.phoneNumber}: ${assignResult.error}`);
+            console.log(`[TelephonyProvisioning] FAILED to assign Call Control App to ${phoneNumber.phoneNumber}: ${assignResult.error}`);
             continue;
           }
 
-          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Call Control App (intelligent routing)`);
+          console.log(`[TelephonyProvisioning] Phone ${phoneNumber.phoneNumber} -> Call Control App ${settings.callControlAppId} (intelligent routing)`);
           repairedCount++;
         } else if (settings.credentialConnectionId) {
           // Use Credential Connection for direct SIP routing - enables simultaneous_ringing to all registered devices

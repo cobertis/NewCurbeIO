@@ -1679,13 +1679,22 @@ export async function updateNumberVoiceSettings(
               "x-managed-account-id": wallet.telnyxAccountId,
             };
             
+            // CRITICAL: When IVR is enabled, use call_control_application_id (not connection_id)
+            // When IVR is disabled, use connection_id to route to Credential Connection
+            const routingPayload = hasActiveIvr 
+              ? { 
+                  connection_id: null, 
+                  call_control_application_id: targetConnectionId 
+                }
+              : { 
+                  connection_id: targetConnectionId, 
+                  call_control_application_id: null 
+                };
+            
             const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumber.telnyxPhoneNumberId}`, {
               method: "PATCH",
               headers,
-              body: JSON.stringify({ 
-                connection_id: targetConnectionId,
-                call_control_application_id: null
-              }),
+              body: JSON.stringify(routingPayload),
             });
             
             if (!response.ok) {
