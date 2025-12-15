@@ -1056,7 +1056,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       </div>
 
       {/* Floating Phone Button - Bottom Right, above Intercom chat */}
-      {(user?.role === 'admin' || user?.role === 'superadmin' || hasPbxExtension) && !dialpadVisible && (
+      {(user?.role === 'admin' || user?.role === 'superadmin' || hasPbxExtension) && (
         <button
           onClick={() => {
             if (!canMakeCalls) {
