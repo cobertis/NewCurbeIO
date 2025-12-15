@@ -31158,29 +31158,75 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const { filter, limit = "50" } = req.query;
       const parsedLimit = Math.min(parseInt(limit as string) || 50, 100);
 
+      let logs;
       // Superadmin can see all call logs for a company
       if (user.role === "superadmin") {
-        const logs = await db
+        logs = await db
           .select()
           .from(callLogs)
           .where(eq(callLogs.companyId, user.companyId))
           .orderBy(desc(callLogs.startedAt))
           .limit(parsedLimit);
-        return res.json({ logs });
+      } else {
+        // Regular users only see their own call logs (user-scoped)
+        logs = await db
+          .select()
+          .from(callLogs)
+          .where(and(
+            eq(callLogs.companyId, user.companyId),
+            eq(callLogs.userId, user.id)
+          ))
+          .orderBy(desc(callLogs.startedAt))
+          .limit(parsedLimit);
       }
 
-      // Regular users only see their own call logs (user-scoped)
-      const logs = await db
-        .select()
-        .from(callLogs)
-        .where(and(
-          eq(callLogs.companyId, user.companyId),
-          eq(callLogs.userId, user.id)
-        ))
-        .orderBy(desc(callLogs.startedAt))
-        .limit(parsedLimit);
+      // Enrich logs with policy holder names if phone matches
+      const enrichedLogs = await Promise.all(logs.map(async (log) => {
+        // Get the phone number to match (inbound = fromNumber, outbound = toNumber)
+        const phoneToMatch = log.direction === 'inbound' ? log.fromNumber : log.toNumber;
+        
+        // Skip if no phone to match
+        if (!phoneToMatch) return log;
+        
+        // Normalize phone number for matching (strip +1 prefix and any non-digits)
+        const normalizedPhone = phoneToMatch.replace(/\D/g, '').replace(/^1/, '');
+        
+        try {
+          // Look up policy by client phone number
+          const [matchingPolicy] = await db
+            .select({
+              clientFirstName: policies.clientFirstName,
+              clientLastName: policies.clientLastName,
+              clientPhone: policies.clientPhone,
+            })
+            .from(policies)
+            .where(
+              and(
+                eq(policies.companyId, user.companyId!),
+                or(
+                  eq(policies.clientPhone, phoneToMatch),
+                  eq(policies.clientPhone, normalizedPhone),
+                  eq(policies.clientPhone, `+1${normalizedPhone}`),
+                  sql`REPLACE(REPLACE(REPLACE(REPLACE(${policies.clientPhone}, '-', ''), '(', ''), ')', ''), ' ', '') = ${normalizedPhone}`
+                )
+              )
+            )
+            .limit(1);
+          
+          if (matchingPolicy) {
+            return {
+              ...log,
+              callerName: `${matchingPolicy.clientFirstName} ${matchingPolicy.clientLastName}`.trim(),
+            };
+          }
+        } catch (e) {
+          // Silent fail - keep original log
+        }
+        
+        return log;
+      }));
 
-      res.json({ logs });
+      res.json({ logs: enrichedLogs });
     } catch (error: any) {
       console.error("[Call Logs] Get error:", error);
       res.status(500).json({ message: "Failed to get call history" });
