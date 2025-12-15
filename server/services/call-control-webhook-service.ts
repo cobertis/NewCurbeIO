@@ -1157,15 +1157,28 @@ export class CallControlWebhookService {
     for (const member of activeMembers) {
       if (!member.userId) continue;
 
-      // Get agent's SIP credentials
-      const sipCreds = await getUserSipCredentials(member.userId);
-      if (!sipCreds?.sipUsername) {
-        console.log(`[CallControl] Agent ${member.userId} has no SIP credentials, skipping`);
+      // Get agent's extension SIP credentials (what WebPhone registers with)
+      const [extension] = await db
+        .select({
+          sipUsername: pbxExtensions.sipUsername,
+          extension: pbxExtensions.extension
+        })
+        .from(pbxExtensions)
+        .where(
+          and(
+            eq(pbxExtensions.companyId, companyId),
+            eq(pbxExtensions.userId, member.userId),
+            eq(pbxExtensions.isActive, true)
+          )
+        );
+      
+      if (!extension?.sipUsername) {
+        console.log(`[CallControl] Agent ${member.userId} has no extension SIP credentials, skipping`);
         continue;
       }
 
-      const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
-      console.log(`[CallControl] Dialing agent SIP: ${sipUri}`);
+      const sipUri = `sip:${extension.sipUsername}@${sipDomain}`;
+      console.log(`[CallControl] Dialing agent extension ${extension.extension} SIP: ${sipUri}`);
 
       try {
         const clientState = Buffer.from(JSON.stringify({
@@ -1588,11 +1601,25 @@ export class CallControlWebhookService {
     for (const member of activeMembers) {
       if (!member.userId) continue;
 
-      const sipCreds = await getUserSipCredentials(member.userId);
-      if (!sipCreds?.sipUsername) continue;
+      // Get agent's extension SIP credentials (what WebPhone registers with)
+      const [extension] = await db
+        .select({
+          sipUsername: pbxExtensions.sipUsername,
+          extension: pbxExtensions.extension
+        })
+        .from(pbxExtensions)
+        .where(
+          and(
+            eq(pbxExtensions.companyId, companyId),
+            eq(pbxExtensions.userId, member.userId),
+            eq(pbxExtensions.isActive, true)
+          )
+        );
+      
+      if (!extension?.sipUsername) continue;
 
-      const sipUri = `sip:${sipCreds.sipUsername}@${sipDomain}`;
-      console.log(`[CallControl] Retry: Dialing agent SIP: ${sipUri}`);
+      const sipUri = `sip:${extension.sipUsername}@${sipDomain}`;
+      console.log(`[CallControl] Retry: Dialing agent extension ${extension.extension} SIP: ${sipUri}`);
 
       try {
         const clientState = Buffer.from(JSON.stringify({
