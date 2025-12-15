@@ -3190,30 +3190,21 @@ export function WebPhoneFloatingWindow() {
                             </div>
                           )}
                           
-                          <div className="divide-y divide-border/50">
+                          <div className="divide-y divide-border">
                             {filteredCallHistory.map((call) => {
                               const initials = call.callerName 
                                 ? call.callerName.split(' ').map((n: string) => n[0]).join('').substring(0, 2).toUpperCase()
                                 : '';
-                              const callDate = new Date(call.startedAt);
-                              const today = new Date();
-                              const isToday = callDate.toDateString() === today.toDateString();
-                              const yesterday = new Date(today);
-                              yesterday.setDate(yesterday.getDate() - 1);
-                              const isYesterday = callDate.toDateString() === yesterday.toDateString();
-                              const timeStr = isToday 
-                                ? format(callDate, 'h:mm a')
-                                : isYesterday 
-                                  ? 'Yesterday' 
-                                  : format(callDate, 'MMM d');
+                              const timeStr = format(new Date(call.startedAt), 'h:mma');
+                              const dateStr = format(new Date(call.startedAt), 'MMM d');
                               const isSelected = selectedCallIds.has(call.id);
                               const isMissed = call.status === 'missed' || call.status === 'failed';
-                              const DirectionIcon = call.direction === 'inbound' ? PhoneIncoming : PhoneOutgoing;
+                              const DirectionIcon = isMissed ? PhoneMissed : (call.direction === 'inbound' ? PhoneIncoming : PhoneOutgoing);
                               
                               return (
                                 <div 
                                   key={call.id} 
-                                  className="flex items-center gap-3 px-4 py-2.5 hover:bg-muted/30 transition-colors"
+                                  className="flex items-center gap-2 sm:gap-3 px-2 sm:px-4 py-2 sm:py-3 hover:bg-muted/30 transition-colors"
                                   data-testid={`call-log-${call.id}`}
                                 >
                                   {/* Checkbox - Only in Edit Mode */}
@@ -3221,65 +3212,68 @@ export function WebPhoneFloatingWindow() {
                                     <div 
                                       onClick={() => handleToggleCallSelection(call.id)}
                                       className={cn(
-                                        "w-5 h-5 rounded-full border-2 flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors",
+                                        "w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors",
                                         isSelected
                                           ? "bg-blue-500 border-blue-500"
-                                          : "border-muted-foreground/50"
+                                          : "border-muted-foreground"
                                       )}
                                       data-testid={`checkbox-call-${call.id}`}
                                     >
                                       {isSelected && (
-                                        <Check className="h-3 w-3 text-white" />
+                                        <div className="w-1.5 h-1.5 rounded-full bg-white"></div>
                                       )}
                                     </div>
                                   )}
                                   
-                                  {/* Simple Avatar - iPhone style */}
-                                  <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
-                                    {initials ? (
-                                      <span className="text-sm font-medium text-muted-foreground">{initials}</span>
-                                    ) : (
-                                      <User className="h-5 w-5 text-muted-foreground" />
-                                    )}
+                                  {/* Avatar with Direction Icon */}
+                                  <div className={cn(
+                                    "w-9 h-9 sm:w-11 sm:h-11 rounded-full flex items-center justify-center flex-shrink-0",
+                                    isMissed ? "bg-red-100 dark:bg-red-900/30" : "bg-muted"
+                                  )}>
+                                    <DirectionIcon className={cn(
+                                      "h-4 w-4 sm:h-5 sm:w-5",
+                                      isMissed ? "text-red-500" : "text-muted-foreground"
+                                    )} />
                                   </div>
                                   
-                                  {/* Call Info - Simplified */}
+                                  {/* Call Info - Name and Number */}
                                   <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-1.5">
-                                      {/* Direction icon - small */}
-                                      <DirectionIcon className={cn(
-                                        "h-3 w-3 flex-shrink-0",
-                                        isMissed ? "text-red-500" : "text-muted-foreground"
-                                      )} />
-                                      <span className={cn(
-                                        "text-[15px] font-normal truncate",
-                                        isMissed ? "text-red-500" : "text-foreground"
-                                      )}>
-                                        {call.callerName || formatCallerNumber((call.direction === 'inbound' ? call.fromNumber : call.toNumber))}
-                                      </span>
-                                    </div>
-                                    {call.callerName && (
-                                      <span className="text-xs text-muted-foreground">
-                                        {call.direction === 'inbound' ? 'Incoming' : 'Outgoing'}
-                                      </span>
-                                    )}
+                                    <span className={cn(
+                                      "text-sm sm:text-base font-medium truncate block",
+                                      isMissed ? "text-red-500" : "text-foreground"
+                                    )}>
+                                      {call.callerName || "Unknown Caller"}
+                                    </span>
+                                    <span className="text-[11px] sm:text-xs text-muted-foreground">
+                                      {formatCallerNumber((call.direction === 'inbound' ? call.fromNumber : call.toNumber))}
+                                    </span>
                                   </div>
                                   
-                                  {/* Time */}
-                                  <span className="text-sm text-muted-foreground flex-shrink-0">{timeStr}</span>
+                                  {/* Time and Date */}
+                                  {!isEditMode && (
+                                    <div className="flex flex-col items-end gap-0.5 flex-shrink-0">
+                                      <span className="text-xs text-muted-foreground">{timeStr}</span>
+                                      <span className="text-[10px] text-muted-foreground/60">{dateStr}</span>
+                                    </div>
+                                  )}
                                   
-                                  {/* Info/Call Button - iPhone style */}
+                                  {/* Call Button */}
                                   {!isEditMode && (
                                     <button
                                       onClick={() => {
                                         setViewMode('keypad');
                                         setDialNumber((call.direction === 'inbound' ? call.fromNumber : call.toNumber));
                                       }}
-                                      className="flex-shrink-0 p-1.5 hover:bg-muted rounded-full transition-colors"
+                                      className="flex-shrink-0 w-8 h-8 sm:w-9 sm:h-9 rounded-full bg-green-500 hover:bg-green-600 flex items-center justify-center transition-colors"
                                       data-testid={`button-call-${call.id}`}
                                     >
-                                      <Info className="h-5 w-5 text-blue-500" />
+                                      <Phone className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
                                     </button>
+                                  )}
+                                  
+                                  {/* Time Only in Edit Mode */}
+                                  {isEditMode && (
+                                    <span className="text-xs sm:text-sm text-muted-foreground flex-shrink-0">{timeStr}</span>
                                   )}
                                 </div>
                               );
