@@ -346,6 +346,9 @@ class TelnyxWebRTCManager {
   private turnServers: RTCIceServer[] = [];
   private currentSipDomain: string = "sip.telnyx.com";
   
+  // CRITICAL: Local microphone stream - required for two-way audio
+  private localStream: MediaStream | null = null;
+  
   // Auto-reconnect state
   private savedCredentials: { sipUser: string; sipPass: string; callerId?: string; sipDomain?: string } | null = null;
   private reconnectAttempts: number = 0;
@@ -463,6 +466,70 @@ class TelnyxWebRTCManager {
   public setAudioElement(elem: HTMLAudioElement) {
     console.log("[SIP.js WebRTC] Audio element registered:", !!elem);
     this.audioElement = elem;
+  }
+
+  // ============================================================================
+  // MICROPHONE CAPTURE - CRITICAL FOR TWO-WAY AUDIO
+  // ============================================================================
+  
+  /**
+   * Capture microphone audio - REQUIRED for outbound audio to work
+   * Must be called before making or answering calls
+   */
+  private async captureLocalAudio(): Promise<MediaStream | null> {
+    // If we already have an active stream, return it
+    if (this.localStream && this.localStream.active) {
+      const audioTracks = this.localStream.getAudioTracks();
+      if (audioTracks.length > 0 && audioTracks[0].readyState === 'live') {
+        console.log("[SIP.js WebRTC] Reusing existing local audio stream");
+        return this.localStream;
+      }
+    }
+
+    try {
+      console.log("[SIP.js WebRTC] Capturing microphone audio...");
+      this.localStream = await navigator.mediaDevices.getUserMedia({
+        audio: {
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
+        },
+        video: false
+      });
+      
+      const audioTracks = this.localStream.getAudioTracks();
+      console.log("[SIP.js WebRTC] Microphone captured successfully:", {
+        tracks: audioTracks.length,
+        trackLabel: audioTracks[0]?.label,
+        trackEnabled: audioTracks[0]?.enabled,
+        trackReadyState: audioTracks[0]?.readyState
+      });
+      
+      return this.localStream;
+    } catch (error) {
+      console.error("[SIP.js WebRTC] Failed to capture microphone:", error);
+      // Show user-friendly error
+      const err = error as Error;
+      if (err.name === 'NotAllowedError') {
+        console.error("[SIP.js WebRTC] Microphone permission denied by user");
+      } else if (err.name === 'NotFoundError') {
+        console.error("[SIP.js WebRTC] No microphone found");
+      }
+      return null;
+    }
+  }
+
+  /**
+   * Stop local audio stream when call ends
+   */
+  private stopLocalAudio(): void {
+    if (this.localStream) {
+      this.localStream.getTracks().forEach(track => {
+        track.stop();
+        console.log("[SIP.js WebRTC] Stopped local audio track:", track.label);
+      });
+      this.localStream = null;
+    }
   }
 
   // ============================================================================
@@ -1173,32 +1240,46 @@ class TelnyxWebRTCManager {
       return null;
     }
 
+    // =========================================================================
+    // CRITICAL: Capture microphone BEFORE making the call
+    // Without this, SDP negotiation fails and there's no two-way audio
+    // =========================================================================
+    console.log("[SIP.js WebRTC] Capturing microphone before call...");
+    const localStream = await this.captureLocalAudio();
+    if (!localStream) {
+      console.error("[SIP.js WebRTC] Cannot make call without microphone access");
+      return null;
+    }
+    console.log("[SIP.js WebRTC] Microphone ready, proceeding with call");
+
     // CRITICAL: Zero-latency RTCConfiguration for outbound calls
     const rtcConfig = this.getZeroLatencyRTCConfig();
+
+    // CRITICAL: Ensure audio element exists BEFORE making the call
+    if (!this.audioElement) {
+      const audioElements = ensureTelnyxAudioElements();
+      this.audioElement = audioElements.remote;
+    }
 
     const inviter = new Inviter(this.userAgent, targetUri, {
       sessionDescriptionHandlerOptions: {
         constraints: {
           audio: true,
           video: false
-        }
-      },
+        },
+        peerConnectionConfiguration: rtcConfig
+      } as any,
       sessionDescriptionHandlerOptionsReInvite: {
         constraints: {
           audio: true,
           video: false
-        }
-      },
+        },
+        peerConnectionConfiguration: rtcConfig
+      } as any,
       extraHeaders: [
         `P-Asserted-Identity: <sip:${store.callerIdNumber || store.sipUsername}@${this.currentSipDomain}>`
       ]
     });
-
-    // Inject RTCConfiguration via sessionDescriptionHandlerFactory options
-    (inviter as any).sessionDescriptionHandlerOptions = {
-      ...((inviter as any).sessionDescriptionHandlerOptions || {}),
-      peerConnectionConfiguration: rtcConfig
-    };
 
     // Setup handlers with destination for caller info extraction
     this.setupSessionHandlers(inviter, true, formattedDest);
@@ -1209,24 +1290,22 @@ class TelnyxWebRTCManager {
     store.setOutgoingCallInfo(callInfo);
     this.startRingback();
 
-    // CRITICAL: Ensure audio element exists BEFORE making the call
-    if (!this.audioElement) {
-      const audioElements = ensureTelnyxAudioElements();
-      this.audioElement = audioElements.remote;
-    }
-
     try {
       await inviter.invite({
         // Pass delegate to hook into sessionDescriptionHandler creation
         requestDelegate: {
           onAccept: (response) => {
             console.log("[SIP.js WebRTC] INVITE accepted (200 OK received)");
-            // Setup audio IMMEDIATELY when we get 200 OK
+            // Add local audio tracks to the peer connection
+            this.addLocalTracksToConnection(inviter, localStream);
+            // Setup remote audio IMMEDIATELY when we get 200 OK
             this.setupAudioOnPeerConnection(inviter);
           },
           onProgress: (response) => {
             console.log("[SIP.js WebRTC] INVITE progress (18x received):", response.message.statusCode);
-            // Also try to setup audio on provisional responses (early media)
+            // Add local audio tracks on early media too
+            this.addLocalTracksToConnection(inviter, localStream);
+            // Setup remote audio on provisional responses (early media)
             this.setupAudioOnPeerConnection(inviter);
           }
         }
@@ -1236,9 +1315,38 @@ class TelnyxWebRTCManager {
     } catch (error) {
       console.error("[SIP.js WebRTC] Call failed:", error);
       this.stopRingback();
+      this.stopLocalAudio();
       store.setOutgoingCall(undefined);
       return null;
     }
+  }
+
+  /**
+   * Add local audio tracks to the peer connection
+   */
+  private addLocalTracksToConnection(session: Session, localStream: MediaStream): void {
+    const sdh = session.sessionDescriptionHandler as any;
+    if (!sdh || !sdh.peerConnection) {
+      console.log("[SIP.js WebRTC] addLocalTracksToConnection: No peer connection yet");
+      return;
+    }
+
+    const pc = sdh.peerConnection as RTCPeerConnection;
+    
+    // Check if we already have local tracks added
+    const senders = pc.getSenders();
+    const hasAudioSender = senders.some(s => s.track?.kind === 'audio');
+    
+    if (hasAudioSender) {
+      console.log("[SIP.js WebRTC] Local audio track already added");
+      return;
+    }
+
+    // Add local audio tracks to the connection
+    localStream.getAudioTracks().forEach(track => {
+      console.log("[SIP.js WebRTC] Adding local audio track to connection:", track.label);
+      pc.addTrack(track, localStream);
+    });
   }
 
   /**
@@ -1431,6 +1539,19 @@ class TelnyxWebRTCManager {
     console.log("[SIP.js WebRTC] Proceeding to answer call...");
     this.stopRingtone();
 
+    // =========================================================================
+    // CRITICAL: Capture microphone BEFORE answering the call
+    // Without this, SDP negotiation fails and there's no two-way audio
+    // =========================================================================
+    console.log("[SIP.js WebRTC] Capturing microphone before answering...");
+    const localStream = await this.captureLocalAudio();
+    if (!localStream) {
+      console.error("[SIP.js WebRTC] Cannot answer call without microphone access");
+      store.setIsAnswering(false);
+      return;
+    }
+    console.log("[SIP.js WebRTC] Microphone ready, proceeding to answer");
+
     // Wake up AudioContext for instant audio
     try {
       const AudioCtx = window.AudioContext || (window as any).webkitAudioContext;
@@ -1456,11 +1577,14 @@ class TelnyxWebRTCManager {
     const stateListener = (newState: SessionState) => {
       console.log("[SIP.js WebRTC] Answer state change:", newState);
       if (newState === SessionState.Established) {
-        console.log("[SIP.js WebRTC] Call established - setting up remote media");
+        console.log("[SIP.js WebRTC] Call established - setting up media");
+        // Add local tracks and setup remote audio
+        this.addLocalTracksToConnection(invitation, localStream);
         this.setupRemoteMedia(invitation);
         store.setIsAnswering(false);
       } else if (newState === SessionState.Terminated) {
         store.setIsAnswering(false);
+        this.stopLocalAudio();
       }
     };
     invitation.stateChange.addListener(stateListener);
@@ -1534,6 +1658,9 @@ class TelnyxWebRTCManager {
     store.setActiveTelnyxLegId(undefined);
     this.stopRingtone();
     this.stopRingback();
+    
+    // CRITICAL: Stop local audio to release microphone
+    this.stopLocalAudio();
 
     try {
       // Handle based on session state

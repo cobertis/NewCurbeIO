@@ -74,6 +74,29 @@ A multi-tenant system for creating, issuing, and managing Apple Wallet VIP Passe
 - **Utilities:** `date-fns`.
 - **Background Jobs:** `node-cron`.
 - **Apple Wallet:** `passkit-generator`.
+### WebRTC Two-Way Audio Fix (Dec 2024)
+**PROBLEM:** No audio in either direction on outbound/inbound calls
+
+**ROOT CAUSE:** The code never captured the microphone before making/answering calls. Without local audio, SDP negotiation failed and Telnyx rejected the call, resulting in no remote audio either.
+
+**SOLUTION IMPLEMENTED:**
+1. **New `captureLocalAudio()` method** - Captures microphone with `getUserMedia({ audio: true })` before calls
+2. **New `addLocalTracksToConnection()` method** - Adds local audio tracks to the RTCPeerConnection
+3. **New `stopLocalAudio()` method** - Releases microphone when call ends
+4. **Modified `makeCall()`** - Now captures microphone BEFORE creating Inviter, fails gracefully if denied
+5. **Modified `answerCall()`** - Now captures microphone BEFORE accepting Invitation
+6. **Modified `hangup()`** - Calls `stopLocalAudio()` to release microphone
+
+**KEY FILES:**
+- `client/src/services/telnyx-webrtc.ts` - Lines 482-536 (microphone capture), 1246-1353 (makeCall), 1505-1611 (answerCall)
+
+**AUDIO FLOW:**
+1. User clicks Call/Answer → `captureLocalAudio()` gets microphone
+2. Microphone stream stored in `this.localStream`
+3. On 200 OK response → `addLocalTracksToConnection()` adds tracks to PeerConnection
+4. Simultaneously → `setupAudioOnPeerConnection()` sets up `ontrack` listener for remote audio
+5. On hangup → `stopLocalAudio()` stops microphone tracks
+
 ### WebRTC ICE Optimization (Dec 2024)
 **GOAL:** Reduce call connection latency from 1.3-5s to <1s
 
