@@ -1,6 +1,5 @@
 import "express-session";
 import type { User } from "@shared/schema";
-import type Stripe from "stripe";
 
 // Session user interface with all properties used in routes
 export interface SessionUser {
@@ -38,20 +37,6 @@ declare global {
       user?: User;
     }
   }
-}
-
-// Stripe client helper
-let stripeInstance: Stripe | null = null;
-
-export function initializeStripe(stripe: Stripe | null) {
-  stripeInstance = stripe;
-}
-
-export function getStripeClient(): Stripe {
-  if (!stripeInstance) {
-    throw new Error('Stripe is not configured. Please add STRIPE_SECRET_KEY to your environment variables.');
-  }
-  return stripeInstance;
 }
 
 // Audit log action types

@@ -100,7 +100,7 @@ import crypto from "crypto";
 import multer from "multer";
 import ffmpeg from "fluent-ffmpeg";
 import "./types";
-import { initializeStripe, getStripeClient, type AuditAction } from "./types";
+import { type AuditAction } from "./types";
 import { cloudflareService } from "./services/cloudflare";
 import type Stripe from "stripe";
 import { stripe } from "./stripe";
@@ -429,8 +429,6 @@ async function ensureUserSlug(userId: string, companyId: string): Promise<string
 }
 export async function registerRoutes(app: Express, sessionStore?: any): Promise<Server> {
   // Initialize Stripe for type safety
-  initializeStripe(stripe);
-  // Initialize logging service
   const logger = new LoggingService(storage);
   // Initialize email campaign service
   const emailCampaignService = new EmailCampaignService(storage);
@@ -7826,7 +7824,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Subscription is not scheduled for cancellation" });
       }
       // Reactivate the subscription in Stripe
-      const updatedSubscription = await getStripeClient().subscriptions.update(
+      const { getStripeClient: getStripeClientAsync } = await import("./stripe");
+      const stripeClientReactivate = await getStripeClientAsync();
+      if (!stripeClientReactivate) {
+        return res.status(500).json({ message: "Stripe is not configured" });
+      }
+      const updatedSubscription = await stripeClientReactivate.subscriptions.update(
         subscription.stripeSubscriptionId,
         {
           cancel_at_period_end: false,
@@ -8145,6 +8148,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     
     // Create a new Stripe customer for this user
+    const { getStripeClient } = await import("./stripe");
     const stripeClient = await getStripeClient();
     const company = await storage.getCompany(companyId);
     
@@ -8207,6 +8211,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(400).json({ message: "Company ID required" });
     }
     try {
+      const { getStripeClient } = await import("./stripe");
       const stripeClient = await getStripeClient();
       if (!stripeClient) {
         return res.status(500).json({ message: "Stripe is not configured" });
@@ -8253,6 +8258,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(400).json({ message: "Company ID and payment method ID required" });
     }
     try {
+      const { getStripeClient } = await import("./stripe");
       const stripeClient = await getStripeClient();
       if (!stripeClient) {
         return res.status(500).json({ message: "Stripe is not configured" });
@@ -8331,6 +8337,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Update in Stripe if we have a Stripe customer
       if (pmRecord.stripeCustomerId && pmRecord.stripePaymentMethodId) {
+        const { getStripeClient } = await import("./stripe");
         const stripeClient = await getStripeClient();
         await stripeClient.customers.update(pmRecord.stripeCustomerId, {
           invoice_settings: { default_payment_method: pmRecord.stripePaymentMethodId }
@@ -8375,6 +8382,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Detach from Stripe
       if (pmRecord.stripePaymentMethodId) {
         try {
+          const { getStripeClient } = await import("./stripe");
           const stripeClient = await getStripeClient();
           await stripeClient.paymentMethods.detach(pmRecord.stripePaymentMethodId);
         } catch (stripeError: any) {
