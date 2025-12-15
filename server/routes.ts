@@ -28574,6 +28574,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
 
       // If userId is provided, verify the user exists and belongs to the same company
+      let targetConnectionId: string | null = null;
       if (userId) {
         const [targetUser] = await db
           .select()
@@ -28585,6 +28586,66 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
         if (!targetUser) {
           return res.status(404).json({ message: "Target user not found or not in the same company" });
+        }
+
+        // Get the user's extension to find their SIP connection
+        const [userExtension] = await db
+          .select({ connectionId: pbxExtensions.telnyxCredentialConnectionId })
+          .from(pbxExtensions)
+          .where(and(
+            eq(pbxExtensions.userId, userId),
+            eq(pbxExtensions.companyId, user.companyId)
+          ));
+
+        if (userExtension?.connectionId) {
+          targetConnectionId = userExtension.connectionId;
+        }
+      } else {
+        // User is being unassigned - use the company's main credential connection
+        const [settings] = await db
+          .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
+          .from(telephonySettings)
+          .where(eq(telephonySettings.companyId, user.companyId));
+
+        if (settings?.credentialConnectionId) {
+          targetConnectionId = settings.credentialConnectionId;
+        }
+      }
+
+      // Update the connection in Telnyx if we have a target connection
+      if (targetConnectionId) {
+        try {
+          const { getManagedAccountConfig } = await import("./services/telnyx-e911-service");
+          const config = await getManagedAccountConfig(user.companyId);
+          
+          if (config) {
+            const TELNYX_API_BASE = "https://api.telnyx.com/v2";
+            const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${config.apiKey}`,
+                ...(config.managedAccountId && { "X-Managed-Account-Id": config.managedAccountId }),
+              },
+              body: JSON.stringify({ connection_id: targetConnectionId }),
+            });
+
+            if (!response.ok) {
+              const errorText = await response.text();
+              console.error(`[Telnyx Assign] Failed to update connection in Telnyx: ${response.status} - ${errorText}`);
+            } else {
+              console.log(`[Telnyx Assign] Successfully updated connection in Telnyx to ${targetConnectionId}`);
+              
+              // Update local database with new connection ID
+              await db
+                .update(telnyxPhoneNumbers)
+                .set({ connectionId: targetConnectionId })
+                .where(eq(telnyxPhoneNumbers.id, phoneNumber.id));
+            }
+          }
+        } catch (telnyxError) {
+          console.error("[Telnyx Assign] Error updating Telnyx connection:", telnyxError);
+          // Continue with local update even if Telnyx update fails
         }
       }
 
@@ -28618,13 +28679,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         success: true,
         phoneNumberId,
         assignedToUserId: userId || null,
+        connectionUpdated: !!targetConnectionId,
       });
     } catch (error: any) {
       console.error("[Telnyx Assign] Error:", error);
       res.status(500).json({ message: "Failed to assign phone number" });
     }
   });
-
   // GET /api/telnyx/voice-settings/:phoneNumberId - Get all voice settings (CNAM, Recording, Spam, etc.)
   app.get("/api/telnyx/voice-settings/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
