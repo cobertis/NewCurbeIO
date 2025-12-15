@@ -2,6 +2,27 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Intercom launcher button - match phone button size (48x48px) */
+iframe.intercom-launcher-frame {
+  width: 48px !important;
+  height: 48px !important;
+  bottom: 20px !important;
+  right: 20px !important;
+}
+
+.intercom-lightweight-app-launcher {
+  width: 48px !important;
+  height: 48px !important;
+  bottom: 20px !important;
+  right: 20px !important;
+}
+
+/* Intercom notifications position */
+iframe[name='intercom-notifications-frame'] {
+  bottom: 76px !important;
+  right: 20px !important;
+}
+
 /* Animated blobs for registration page background */
 @keyframes blob {
   0% {

@@ -1072,7 +1072,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           }}
           data-testid="floating-button-phone"
           className={cn(
-            "fixed bottom-24 right-5 z-40 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:scale-110",
+            "fixed bottom-[84px] right-5 z-40 w-12 h-12 rounded-full flex items-center justify-center transition-all duration-200 shadow-lg hover:scale-110",
             effectiveCall 
               ? "bg-green-500 hover:bg-green-600 text-white ring-4 ring-green-300/50 animate-pulse" 
               : effectiveConnectionStatus === 'connected'
