@@ -36,27 +36,25 @@ The backend is an Express.js application with TypeScript, providing a RESTful AP
 - **Specialized Systems:** Landing Page Builder, Unified Contacts Directory, Tab Auto-Save, Duplicate Message Prevention, Custom Domain (White Label), Apple Wallet VIP Pass System.
 
 **Telnyx WebRTC Configuration:**
-All WebRTC implementations follow official Telnyx documentation, including programmatic audio element creation, `prefetchIceCandidates: true`, string ID for remote elements, specific call options (`audio: true`, `useStereo: true`, `preferred_codecs`), detailed audio settings, `userMediaError` handling, and `encrypted_media: null` (SRTP disabled) for compatibility.
+All WebRTC implementations follow official Telnyx documentation, including programmatic audio element creation, `prefetchIceCandidates: true`, string ID for remote elements, specific call options (`audio: true`, `useStereo: true`, `preferred_codecs`), detailed audio settings, `userMediaError` handling, and `encrypted_media: null` (SRTP disabled) for compatibility. Key optimizations include pre-warming ICE candidates on login, early initialization, and using `iceCandidatePoolSize: 8`. RTCP-MUX is enabled on credential connections for WebRTC browser compatibility.
 
 **Telnyx Call Control Architecture:**
-Phone numbers are routed via a Call Control Application for proper hangup using the Telnyx REST API. This involves webhook-driven call flow (`call.initiated` -> answer PSTN -> dial SIP -> `call.answered` -> bridge legs), and a specific hangup API call with `NORMAL_CLEARING (16)`. E911 must be disabled using a dedicated action endpoint before reassigning numbers to the Call Control Application.
+Phone numbers are routed via a Call Control Application using the `connection_id` parameter (not `call_control_application_id`) for proper hangup using the Telnyx REST API. This involves webhook-driven call flow (`call.initiated` -> answer PSTN -> dial SIP -> `call.answered` -> bridge legs), and a specific hangup API call with `NORMAL_CLEARING (16)`. E911 must be disabled using a dedicated action endpoint before reassigning numbers.
 
-**Telephony Billing Architecture (Dec 2024):**
-- **Immediate Purchase Billing:** Phone numbers are charged to company wallet immediately upon purchase (first month fee)
-- **Monthly Recurring Billing:** Runs on the 1st of each month via `node-cron` scheduler, charges active numbers + CNAM fees + E911 fees
-- **Monthly Fee Structure:**
-  - Phone Number Rental: $1.00/month per local number, $1.50/month per toll-free number
-  - CNAM Listing: $0.50/month per phone number (if enabled)
-  - E911 Service: $2.00/month per emergency address
-- **Call Billing:** 60-second increments (matches Telnyx), includes base rate + recording cost + CNAM lookup cost
-- **Transaction Types:** `NUMBER_PURCHASE`, `NUMBER_RENTAL`, `CNAM_MONTHLY`, `E911_MONTHLY`, `CALL_COST`, `MONTHLY_FEE`
-- **Billing Fields:** `telnyx_phone_numbers` table includes `numberType`, `retailMonthlyRate`, `telnyxMonthlyCost`, `lastBilledAt`, `nextBillingAt`
+**Telephony Billing Architecture:**
+Includes immediate purchase billing for phone numbers and monthly recurring billing on the 1st of each month via `node-cron` for active numbers, CNAM, and E911 fees. Call billing is in 60-second increments.
 
 **Security Architecture:**
 Session security (`SESSION_SECRET`), webhook signature validation (Twilio, BulkVS, BlueBubbles), Zod schema validation for all public endpoints, open redirect protection via allowlist, unsubscribe token enforcement, user-scoped data isolation (BulkVS), iMessage webhook secret isolation, and multi-tenant session isolation for WhatsApp integration with real-time webhooks and secure media storage.
 
-### Apple Wallet VIP Pass System:
-A multi-tenant system for creating, issuing, and managing Apple Wallet VIP Passes with per-company branding and APNs push notifications. It includes dedicated database tables for pass designs, instances, devices, and notifications, along with backend services for pass generation (`passkit-generator`) and APNs, and follows Apple's PassKit Web Service endpoints for device and pass management.
+**Apple Wallet VIP Pass System:**
+A multi-tenant system for creating, issuing, and managing Apple Wallet VIP Passes with per-company branding and APNs push notifications. It includes dedicated database tables and backend services for pass generation and APNs, following Apple's PassKit Web Service endpoints.
+
+**Extension-to-Extension Calling:**
+Enables internal calls between PBX extensions using pure WebRTC peer-to-peer over WebSocket signaling, integrated into PBX settings.
+
+**SIP Forking Configuration:**
+Implemented via `simultaneous_ringing: "enabled"` in Telnyx credential connection configuration to enable simultaneous ringing on all registered SIP devices. Uses a Dial+Bridge pattern (not transfer) for incoming calls.
 
 ## External Dependencies
 
@@ -74,137 +72,3 @@ A multi-tenant system for creating, issuing, and managing Apple Wallet VIP Passe
 - **Utilities:** `date-fns`.
 - **Background Jobs:** `node-cron`.
 - **Apple Wallet:** `passkit-generator`.
-### WebRTC Two-Way Audio Fix (Dec 2024)
-**PROBLEM:** No audio in either direction on outbound/inbound calls
-
-**ROOT CAUSE:** The code never captured the microphone before making/answering calls. Without local audio, SDP negotiation failed and Telnyx rejected the call, resulting in no remote audio either.
-
-**SOLUTION IMPLEMENTED:**
-1. **New `captureLocalAudio()` method** - Captures microphone with `getUserMedia({ audio: true })` before calls
-2. **New `addLocalTracksToConnection()` method** - Adds local audio tracks to the RTCPeerConnection
-3. **New `stopLocalAudio()` method** - Releases microphone when call ends
-4. **Modified `makeCall()`** - Now captures microphone BEFORE creating Inviter, fails gracefully if denied
-5. **Modified `answerCall()`** - Now captures microphone BEFORE accepting Invitation
-6. **Modified `hangup()`** - Calls `stopLocalAudio()` to release microphone
-
-**KEY FILES:**
-- `client/src/services/telnyx-webrtc.ts` - Lines 482-536 (microphone capture), 1246-1353 (makeCall), 1505-1611 (answerCall)
-
-**AUDIO FLOW:**
-1. User clicks Call/Answer → `captureLocalAudio()` gets microphone
-2. Microphone stream stored in `this.localStream`
-3. On 200 OK response → `addLocalTracksToConnection()` adds tracks to PeerConnection
-4. Simultaneously → `setupAudioOnPeerConnection()` sets up `ontrack` listener for remote audio
-5. On hangup → `stopLocalAudio()` stops microphone tracks
-
-### WebRTC ICE Optimization (Dec 2024)
-**GOAL:** Reduce call connection latency from 1.3-5s to <1s
-
-**CHANGES IMPLEMENTED:**
-1. **Pre-warm ICE on login** - `preWarm()` method in TelnyxWebRTCManager starts ICE gathering when agent logs in, not when call arrives
-2. **Early initialization in App.tsx** - Triggers pre-warm as soon as user has Telnyx number
-3. **iceCandidatePoolSize: 8** - Pre-allocates candidate pool for faster gathering
-4. **Prefetch ICE candidates** - SDK option `prefetchIceCandidates: true` enabled
-5. **AnchorSite: "Latency"** - Uses automatic latency-based routing to nearest Telnyx POP
-
-**ARCHITECTURE:**
-- Pre-warm runs in parallel with SDK initialization
-- Uses STUN servers (stun.telnyx.com, stun.l.google.com) for candidate gathering
-- SDK manages TURN credentials internally (no hardcoded credentials)
-- Pre-warm timeout: 3 seconds (continues if exceeded)
-
-### Real-Time Phone Number Assignment (Dec 2024)
-**GOAL:** Auto-connect assignee's WebRTC phone when admin assigns a number
-
-**IMPLEMENTATION:**
-1. `broadcastTelnyxNumberAssigned(userId, phoneNumber, telnyxPhoneNumberId)` - WebSocket broadcast to specific user only
-2. Server endpoint `POST /api/telnyx/assign-number/:phoneNumberId` calls broadcast after DB update
-3. Frontend App.tsx listens for `telnyx_number_assigned` event and invalidates queries
-4. WebPhoneFloatingWindow auto-initializes WebRTC when `hasTelnyxNumber` changes to true
-
-**FLOW:**
-Admin assigns number → DB update → WebSocket broadcast to assignee → Query invalidation → WebRTC auto-init → Toast notification
-
-### Extension-to-Extension Calling (Dec 2024)
-**GOAL:** Enable internal calls between PBX extensions without SIP costs
-
-**ARCHITECTURE:**
-- Pure WebRTC peer-to-peer calling over WebSocket signaling
-- WebSocket path: `/ws/pbx` for PBX call signaling
-- Backend service: `server/services/extension-call-service.ts`
-- Frontend component: `client/src/components/extension-phone.tsx`
-- Integrated into PBX Settings under "Calling" tab
-
-**SIGNALING FLOW:**
-1. Extension registers via WebSocket with session authentication
-2. Server sends online extensions list (company-scoped)
-3. Caller creates offer → sends to callee via WebSocket
-4. Callee answers with SDP answer → relayed back
-5. ICE candidates exchanged bidirectionally
-6. Media flows peer-to-peer (no server relay)
-
-**KEY IMPLEMENTATION DETAILS:**
-- Uses callIdRef to track call ID in ICE candidate handler (avoids stale closure)
-- STUN servers: stun.l.google.com, stun.telnyx.com
-
-### SIP Forking Configuration (Dec 2024)
-**GOAL:** Enable simultaneous ringing on all registered SIP devices (webphone + physical phones)
-
-**TELNYX API PROPERTY:**
-- The correct property is `simultaneous_ringing: "enabled"` (NOT `sip_forking_enabled`)
-- This is set in the `inbound` object of the credential connection configuration
-- The PATCH/POST request to `/credential_connections` uses this property
-
-**IMPLEMENTATION:**
-1. `telephony-provisioning-service.ts` patches credential connections with `simultaneous_ringing: "enabled"`
-2. Verification reads `inbound.simultaneous_ringing` from GET response
-3. Value must be `"enabled"` (string), not `true` (boolean)
-
-**CRITICAL: Dial+Bridge Pattern (NOT Transfer)**
-The `transfer` command does NOT support simultaneous ringing. To enable SIP Forking:
-1. Use `POST /v2/calls` (Dial API) with `connection_id` = `credentialConnectionId`
-2. The `credentialConnectionId` routes through the credential connection with `simultaneous_ringing: "enabled"`
-3. When agent answers, use Bridge API to connect caller and agent legs
-
-**CALL FLOW:**
-1. Incoming call triggers `call.initiated` webhook
-2. If IVR disabled (`ivrId: "unassigned"`), `transferToAssignedUser` is called
-3. Answer the caller's call first (billing starts)
-4. Use Dial API with `credentialConnectionId` to dial the SIP URI
-5. Store pending bridge with caller's `call_control_id`
-6. All registered devices (webphone + physical phones) ring simultaneously
-7. When agent answers, bridge the two call legs
-8. First device to answer wins, others are cancelled via hangup
-
-**KEY FILES:**
-- `server/services/call-control-webhook-service.ts` - `transferToAssignedUser()` function implements Dial+Bridge
-- Credential connection ID stored in `telephony_settings.credential_connection_id`
-
-**ADDITIONAL NOTES:**
-- Company-scoped isolation ensures extensions only see their organization
-- Busy status tracking prevents concurrent calls
-
-### RTCP-MUX for WebRTC Compatibility (Dec 2024)
-**GOAL:** Enable RTCP-MUX on extension Credential Connections for WebRTC browser compatibility
-
-**PROBLEM:**
-Browser WebRTC requires RTCP-MUX enabled, otherwise `setRemoteDescription` fails with:
-`"The m= section with mid='0' is invalid. RTCP-MUX is not enabled when it is required."`
-
-**SOLUTION:**
-1. **New extensions:** `rtcp_mux_enabled: true` added to POST `/credential_connections` in `provisionExtensionSipConnection()`
-2. **Existing extensions:** `repairAllExtensionsRtcpMux()` method PATCHes existing connections
-3. **API endpoint:** `POST /api/pbx/extensions/repair-rtcp-mux` repairs all extensions in company
-
-**KEY FILES:**
-- `server/services/telephony-provisioning-service.ts` - `enableRtcpMux()`, `repairExtensionRtcpMux()`, `repairAllExtensionsRtcpMux()`
-- `server/routes.ts` - Repair endpoint at line ~32799
-
-**TELNYX API:**
-- PATCH `/v2/credential_connections/{id}` with `{ rtcp_mux_enabled: true }`
-- This is a root-level field, not inside `inbound` or `outbound`
-
-**CLIENT-SIDE FIX (Dec 2024):**
-- `rtcpMuxPolicy: "negotiate"` in `getZeroLatencyRTCConfig()` in `client/src/services/telnyx-webrtc.ts`
-- CRITICAL: Must be `"negotiate"` (not `"require"`) to accept SDPs without `a=rtcp-mux` attribute
-- Browser default is `"require"` which rejects SDPs missing the attribute

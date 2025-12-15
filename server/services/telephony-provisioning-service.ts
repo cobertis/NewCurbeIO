@@ -1390,15 +1390,14 @@ export class TelephonyProvisioningService {
       }
       
       // STEP 2: Assign to Call Control Application
-      // CRITICAL: Use call_control_application_id to route calls through webhooks
-      // connection_id must be null when using Call Control App
+      // CRITICAL: Telnyx API requires connection_id with the Call Control App ID (NOT call_control_application_id)
+      // The Call Control App IS a type of connection in Telnyx's API
       const response = await this.makeApiRequest(
         managedAccountId,
         `/phone_numbers/${phoneNumberId}`,
         "PATCH",
         {
-          connection_id: null,
-          call_control_application_id: callControlAppId,
+          connection_id: callControlAppId,
         }
       );
 
