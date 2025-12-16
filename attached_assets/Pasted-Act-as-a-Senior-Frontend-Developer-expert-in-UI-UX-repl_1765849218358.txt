@@ -1,0 +1,63 @@
+Act as a Senior Frontend Developer expert in UI/UX replication. I need you to replicate the attached UI design EXACTLY, pixel-perfect. Do not hallucinate styles. Do not simplify.
+
+**Tech Stack:**
+- React (Vite)
+- Tailwind CSS (Use arbitrary values if needed for exact precision)
+- Lucide React (for icons)
+- Google Fonts (Use 'Poppins' or 'Inter')
+
+**Global Layout:**
+- Full screen viewport (`h-screen`, `w-full`).
+- Background: A dark, blurred background image (forest/nature theme) with a heavy dark overlay to match the reference.
+- Main Component: A centered, floating 'Login/Signup' card. Large border-radius (approx `rounded-3xl`). White background on the left, Image background on the right. Shadow-2xl.
+
+**Structure Breakdown (The Card):**
+Use a CSS Grid or Flex row. Split: Left (40% width) - Right (60% width).
+
+**LEFT PANEL (White Background):**
+1.  **Header:**
+    - Logo: "Trippel." (Blue sans-serif font). Icon: Blue gradient circle ring.
+    - Title: "This is where incredible experiences start." (Black, Bold, Large text, approx 2.5rem).
+    - Subtitle: "More than Thousand Locations for customized just for you..." (Gray-500, small text).
+2.  **Social Login:**
+    - Row of 3 circular buttons.
+    - Twitter icon (black/dark outline).
+    - Google icon (Solid Blue background #4285F4, white icon).
+    - Twitch icon (black/dark outline).
+3.  **Divider:** "Or" text with horizontal lines on both sides.
+4.  **Form:**
+    - Input: "Username" (Label inside or top, value "Jahan"). Border-gray-200, rounded-lg.
+    - Input: "Email" (value "Amirh.jahangirr@gmail.com").
+    - Input: "Password" (dots), with an "Eye" icon on the right.
+5.  **CTA:**
+    - Button: "Start Journey" (Full width, Black background, White text, rounded-lg, py-3).
+6.  **Footer:**
+    - Text: "Have an account? Login now!" ("Login now!" is blue).
+
+**RIGHT PANEL (Image Background):**
+- **Background:** High-quality image of a road going through a pine forest/mountain. Dark overlay gradient at the bottom for text readability.
+- **Top Right Element (CRITICAL DETAIL):**
+    - A white floating card positioned absolutely at the top right corner.
+    - Text: "+89% Positive respond from people".
+    - Button: "Start Now" (Black bg, white text).
+    - *Shape nuance:* It has a reverse border-radius/cutout effect where it joins the main card. Replicate this visual anchoring.
+- **Floating Watermark:** "Trippel." semi-transparent logo on the top right inside the image area.
+- **Bottom Content:**
+    - Headline: "We are a Family" (White, centered).
+    - Subtext: "In camp we have a lot people with different life story..." (White, light opacity, centered).
+- **Bottom Tags (The Pills):**
+    - A row of 4 translucent pill-shaped glassmorphism buttons.
+    - Styles: Dark/Glass background, white text, rounded-full.
+    - Content:
+        1. Orange circle icon + "# Trippel._Trip"
+        2. Green circle icon + "# Trippel."
+        3. Blue circle icon + "# Be_happy"
+        4. Pink circle icon + "# Be_happy"
+
+**Specific Constraints:**
+- Use `backdrop-blur` where appropriate.
+- Ensure inputs have proper padding (`px-4 py-3`).
+- Replicate the font weights exactly (Bold headlines, medium buttons).
+- Make sure the Right Panel image covers the full height and has `object-cover`.
+
+GENERATE THE FULL CODE NOW.
