@@ -56,7 +56,7 @@ export function AuthLayout({
           <div className="flex-1 overflow-y-auto px-8 lg:px-10 py-8">
             {/* Logo */}
             <div className="mb-6">
-              <img src={logo} alt="Curbe" className="h-7 w-auto" />
+              <img src={logo} alt="Curbe" className="h-9 w-auto" />
             </div>
 
             {/* Header */}
