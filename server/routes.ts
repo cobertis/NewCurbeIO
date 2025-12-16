@@ -7601,16 +7601,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Get the default payment method from users saved cards
       const defaultUserPayment = userPaymentMethods.find(pm => pm.isDefault) || userPaymentMethods[0];
       const userPaymentMethodId = defaultUserPayment.stripePaymentMethodId;
-      // Attach the users payment method to the subscription customer if not already attached
-      try {
+      
+      // Retrieve the payment method to check which customer it is attached to
+      const paymentMethodDetails = await stripeClient.paymentMethods.retrieve(userPaymentMethodId);
+      
+      // If payment method is attached to a different customer, detach first then attach
+      if (paymentMethodDetails.customer && paymentMethodDetails.customer !== subscription.stripeCustomerId) {
+        console.log("[SKIP-TRIAL] Detaching PM from user customer:", paymentMethodDetails.customer);
+        await stripeClient.paymentMethods.detach(userPaymentMethodId);
+      }
+      
+      // Now attach to the subscription customer
+      if (!paymentMethodDetails.customer || paymentMethodDetails.customer !== subscription.stripeCustomerId) {
+        console.log("[SKIP-TRIAL] Attaching PM to subscription customer:", subscription.stripeCustomerId);
         await stripeClient.paymentMethods.attach(userPaymentMethodId, {
           customer: subscription.stripeCustomerId,
         });
-      } catch (attachErr: any) {
-        // Ignore if already attached
-        if (attachErr.code !== "resource_already_exists") {
-          console.log("[SKIP-TRIAL] Payment method attach info:", attachErr.message);
-        }
       }
       const defaultPaymentMethodId = userPaymentMethodId;
       // Step 2: Get the subscription to find the price
