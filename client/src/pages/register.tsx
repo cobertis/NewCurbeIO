@@ -14,7 +14,6 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-import { SiGoogle, SiX, SiTwitch } from "react-icons/si";
 import logo from "@assets/logo no fondo_1760457183587.png";
 import backgroundImage from "@assets/generated_images/mountain_road_scenic_background.png";
 
@@ -101,24 +100,6 @@ export default function Register() {
           <p className="text-gray-500 text-sm mb-6">
             More than Thousand Locations for customized just for you. You can start now for start your journey.
           </p>
-
-          <div className="flex items-center justify-center gap-4 mb-5">
-            <button className="w-11 h-11 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors">
-              <SiX className="w-4 h-4 text-gray-700" />
-            </button>
-            <button className="w-11 h-11 rounded-full bg-[#4285F4] flex items-center justify-center hover:bg-[#3b78dc] transition-colors">
-              <SiGoogle className="w-4 h-4 text-white" />
-            </button>
-            <button className="w-11 h-11 rounded-full border border-gray-200 flex items-center justify-center hover:bg-gray-50 transition-colors">
-              <SiTwitch className="w-4 h-4 text-gray-700" />
-            </button>
-          </div>
-
-          <div className="flex items-center gap-4 mb-5">
-            <div className="flex-1 h-px bg-gray-200" />
-            <span className="text-gray-400 text-sm">Or</span>
-            <div className="flex-1 h-px bg-gray-200" />
-          </div>
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
