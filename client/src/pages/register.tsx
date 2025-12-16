@@ -316,10 +316,6 @@ export default function Register() {
                 <span className="text-white text-sm font-medium whitespace-nowrap"># Curbe_Trip</span>
               </div>
               <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20 shrink-0">
-                <div className="w-3 h-3 rounded-full bg-green-400" />
-                <span className="text-white text-sm font-medium whitespace-nowrap"># Curbe.</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20 shrink-0">
                 <div className="w-3 h-3 rounded-full bg-blue-400" />
                 <span className="text-white text-sm font-medium whitespace-nowrap"># Be_happy</span>
               </div>
