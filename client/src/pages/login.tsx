@@ -116,9 +116,8 @@ export default function Login() {
         <div 
           className="w-full lg:w-[42%] p-12 md:p-14 relative z-10 lg:rounded-l-[2rem] lg:rounded-r-none rounded-[2rem]"
           style={{
-            background: '#F8F9FB',
-            boxShadow: '0 50px 120px -30px rgba(0,0,0,0.15)',
-            border: '1px solid rgba(0,0,0,0.04)',
+            background: '#F6F8FB',
+            boxShadow: '0 60px 140px -40px rgba(0,0,0,0.12)',
           }}
         >
           <div className="flex items-center gap-2 mb-10">
@@ -135,9 +134,9 @@ export default function Login() {
           <button
             type="button"
             onClick={handleGoogleSSO}
-            className="w-full h-[50px] flex items-center justify-center gap-3 bg-white border border-gray-200/80 rounded-xl text-[14px] font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all duration-150 mb-5"
+            className="w-full h-[50px] flex items-center justify-center gap-3 bg-white border border-gray-200 rounded-xl text-[14px] font-medium text-gray-700 hover:bg-white hover:border-gray-300 hover:shadow-sm transition-all duration-150 mb-6"
             style={{
-              boxShadow: '0 1px 2px rgba(0,0,0,0.03)',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.04)',
             }}
             data-testid="button-google-sso"
           >
@@ -150,32 +149,31 @@ export default function Login() {
             Continue with Google
           </button>
 
-          <div className="flex items-center gap-3 mb-5">
-            <div className="flex-1 h-px bg-gray-200/70"></div>
-            <span className="text-[11px] text-gray-400 font-medium uppercase tracking-wide">or</span>
-            <div className="flex-1 h-px bg-gray-200/70"></div>
+          <div className="flex items-center gap-4 mb-6">
+            <div className="flex-1 h-px bg-gray-200/50"></div>
+            <span className="text-[10px] text-gray-400 font-medium tracking-widest">OR</span>
+            <div className="flex-1 h-px bg-gray-200/50"></div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="block text-[12px] text-gray-500 font-medium ml-0.5">Work email</label>
+            <div className="space-y-1">
+              <label className="block text-[11px] text-gray-400 font-medium ml-1 uppercase tracking-wide">Work email</label>
               <Input
                 id="email"
                 type="email"
                 placeholder="name@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-[50px] px-4 bg-white border-gray-200/80 rounded-xl text-[15px] placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400/50 transition-all duration-150"
-                style={{ boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}
+                className="h-[50px] px-4 bg-[#FFFFFF] border border-gray-200/60 rounded-xl text-[15px] text-gray-900 placeholder:text-gray-300 focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-400/40 focus:bg-white transition-all duration-200"
                 required
                 autoComplete="email"
                 data-testid="input-email"
               />
             </div>
 
-            <div className="space-y-1.5">
+            <div className="space-y-1">
               <div className="flex items-center justify-between">
-                <label className="block text-[12px] text-gray-500 font-medium ml-0.5">Password</label>
+                <label className="block text-[11px] text-gray-400 font-medium ml-1 uppercase tracking-wide">Password</label>
                 <button
                   type="button"
                   onClick={() => setLocation("/forgot-password")}
@@ -192,8 +190,7 @@ export default function Login() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-[50px] px-4 pr-12 bg-white border-gray-200/80 rounded-xl text-[15px] placeholder:text-gray-400 focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400/50 transition-all duration-150"
-                  style={{ boxShadow: 'inset 0 1px 2px rgba(0,0,0,0.02)' }}
+                  className="h-[50px] px-4 pr-12 bg-[#FFFFFF] border border-gray-200/60 rounded-xl text-[15px] text-gray-900 placeholder:text-gray-300 focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-400/40 focus:bg-white transition-all duration-200"
                   required
                   autoComplete="current-password"
                   data-testid="input-password"
@@ -201,7 +198,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors duration-150"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors duration-150"
                   data-testid="button-toggle-password"
                 >
                   {showPassword ? (
