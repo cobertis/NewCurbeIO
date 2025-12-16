@@ -653,14 +653,20 @@ export default function Billing() {
   });
 
   // Set default payment method mutation
+  // Track which specific payment method is being mutated
+  const [pendingRemoveId, setPendingRemoveId] = useState<string | null>(null);
+  const [pendingSetDefaultId, setPendingSetDefaultId] = useState<string | null>(null);
+
   const setDefaultPaymentMutation = useMutation({
     mutationFn: async (paymentMethodId: string) => {
+      setPendingSetDefaultId(paymentMethodId);
       const result = await apiRequest("POST", "/api/billing/set-default-payment-method", {
         paymentMethodId,
       });
       return result;
     },
     onSuccess: () => {
+      setPendingSetDefaultId(null);
       toast({
         title: "Success",
         description: "Default payment method updated",
@@ -668,6 +674,7 @@ export default function Billing() {
       queryClient.invalidateQueries({ queryKey: ['/api/billing/payment-methods'] });
     },
     onError: (error: Error) => {
+      setPendingSetDefaultId(null);
       toast({
         title: "Error",
         description: error.message || "Failed to set default payment method",
@@ -679,10 +686,12 @@ export default function Billing() {
   // Remove payment method mutation
   const removePaymentMutation = useMutation({
     mutationFn: async (paymentMethodId: string) => {
+      setPendingRemoveId(paymentMethodId);
       const result = await apiRequest("DELETE", `/api/billing/payment-method/${paymentMethodId}`, {});
       return result;
     },
     onSuccess: () => {
+      setPendingRemoveId(null);
       toast({
         title: "Success",
         description: "Payment method removed",
@@ -690,6 +699,7 @@ export default function Billing() {
       queryClient.invalidateQueries({ queryKey: ['/api/billing/payment-methods'] });
     },
     onError: (error: Error) => {
+      setPendingRemoveId(null);
       toast({
         title: "Error",
         description: error.message || "Failed to remove payment method",
@@ -2314,20 +2324,20 @@ export default function Billing() {
                               variant="outline" 
                               size="sm"
                               onClick={() => setDefaultPaymentMutation.mutate(method.id)}
-                              disabled={setDefaultPaymentMutation.isPending}
+                              disabled={pendingSetDefaultId === method.id}
                               data-testid={`button-set-default-${method.id}`}
                             >
-                              {setDefaultPaymentMutation.isPending ? "Setting..." : "Set Default"}
+                              {pendingSetDefaultId === method.id ? "Setting..." : "Set Default"}
                             </Button>
                           )}
                           <Button 
                             variant="outline" 
                             size="sm"
                             onClick={() => removePaymentMutation.mutate(method.id)}
-                            disabled={removePaymentMutation.isPending || method.isDefault}
+                            disabled={pendingRemoveId === method.id || method.isDefault}
                             data-testid={`button-remove-${method.id}`}
                           >
-                            {removePaymentMutation.isPending ? "Removing..." : "Remove"}
+                            {pendingRemoveId === method.id ? "Removing..." : "Remove"}
                           </Button>
                         </div>
                     </div>
