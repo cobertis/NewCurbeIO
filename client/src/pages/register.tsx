@@ -23,6 +23,10 @@ const registerSchema = z.object({
   lastName: z.string().min(1, "Last name is required"),
   companyName: z.string().min(1, "Company name is required"),
   address: z.string().min(1, "Address is required"),
+  apt: z.string().optional(),
+  city: z.string().min(1, "City is required"),
+  state: z.string().min(1, "State is required"),
+  zipCode: z.string().min(5, "Valid ZIP code is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().min(1, "Phone number is required").refine(
     (val) => {
@@ -47,6 +51,10 @@ export default function Register() {
       lastName: "",
       companyName: "",
       address: "",
+      apt: "",
+      city: "",
+      state: "",
+      zipCode: "",
       email: "",
       phone: "",
     },
@@ -178,26 +186,114 @@ export default function Register() {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs text-gray-400 mb-1 ml-1">Address</label>
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Input
-                          placeholder="123 Main St, City, State"
-                          className="h-11 px-4 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          {...field}
-                          autoComplete="street-address"
-                          data-testid="input-address"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <div className="grid grid-cols-4 gap-4">
+                <div className="col-span-3">
+                  <label className="block text-xs text-gray-400 mb-1 ml-1">Street Address</label>
+                  <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            placeholder="123 Main St"
+                            className="h-11 px-4 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            {...field}
+                            autoComplete="street-address"
+                            data-testid="input-address"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div className="col-span-1">
+                  <label className="block text-xs text-gray-400 mb-1 ml-1">Apt/Suite</label>
+                  <FormField
+                    control={form.control}
+                    name="apt"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            placeholder="Apt 4B"
+                            className="h-11 px-4 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            {...field}
+                            data-testid="input-apt"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1 ml-1">City</label>
+                  <FormField
+                    control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            placeholder="Miami"
+                            className="h-11 px-4 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            {...field}
+                            autoComplete="address-level2"
+                            data-testid="input-city"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1 ml-1">State</label>
+                  <FormField
+                    control={form.control}
+                    name="state"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            placeholder="FL"
+                            className="h-11 px-4 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            {...field}
+                            autoComplete="address-level1"
+                            data-testid="input-state"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1 ml-1">ZIP Code</label>
+                  <FormField
+                    control={form.control}
+                    name="zipCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            placeholder="33101"
+                            className="h-11 px-4 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            {...field}
+                            autoComplete="postal-code"
+                            data-testid="input-zipcode"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
 
               <div>
