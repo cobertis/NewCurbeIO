@@ -126,7 +126,7 @@ export default function Register() {
             <img src={logo} alt="Curbe" className="h-9 w-auto" />
           </div>
 
-          <h1 className="text-[2.25rem] md:text-[2.75rem] font-semibold text-gray-900 leading-[1.08] tracking-[-0.02em] mb-2">
+          <h1 className="md:text-[2.75rem] font-semibold text-gray-900 tracking-[-0.02em] mb-2 text-[36px]">
             Create your workspace
           </h1>
           <p className="text-gray-500 text-[15px] mb-8">
