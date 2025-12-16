@@ -449,18 +449,12 @@ export default function Register() {
             <div 
               className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent"
             />
-            <div 
-              className="absolute top-0 right-0 w-[200px] h-[180px] bg-[#f5f5f5]"
-              style={{
-                borderBottomLeftRadius: '50px',
-              }}
-            />
           </div>
           
           <div 
-            className="absolute top-4 right-6 w-[170px] p-5 z-20 bg-white rounded-2xl"
+            className="absolute top-6 -right-4 w-[170px] p-5 z-20 bg-white rounded-2xl"
             style={{
-              boxShadow: '-4px 4px 16px rgba(0,0,0,0.12)',
+              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
             }}
           >
             <div className="text-2xl font-bold text-gray-900">+89%</div>
