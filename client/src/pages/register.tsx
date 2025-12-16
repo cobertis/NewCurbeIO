@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { formatPhoneInput } from "@shared/phone";
 import logo from "@assets/logo no fondo_1760457183587.png";
-import backgroundImage from "@assets/generated_images/mountain_road_scenic_background.png";
+import backgroundImage from "@assets/generated_images/dark_moody_forest_road.png";
 
 const registerSchema = z.object({
   username: z.string().min(1, "Username is required"),
@@ -114,7 +114,7 @@ export default function Register() {
           </p>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
               <div>
                 <label className="block text-xs text-gray-400 mb-1 ml-1">Username</label>
                 <FormField
@@ -244,7 +244,7 @@ export default function Register() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-11 text-base font-medium bg-gray-900 hover:bg-gray-800 text-white rounded-lg mt-2"
+                className="w-full h-14 text-base font-semibold bg-gray-900 hover:bg-gray-800 text-white rounded-xl mt-3"
                 data-testid="button-register"
               >
                 {isLoading ? (
@@ -279,12 +279,12 @@ export default function Register() {
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent" />
           
-          <div className="absolute -top-0 -right-0 bg-white rounded-bl-[1.5rem] p-5 shadow-xl min-w-[170px] z-30">
-            <div className="text-2xl font-bold text-gray-900">+89%</div>
-            <div className="text-xs text-gray-500 mt-1">Positive respond from<br/>people</div>
+          <div className="absolute top-0 right-0 bg-white rounded-bl-[40px] p-6 min-w-[180px] z-30">
+            <div className="text-3xl font-bold text-gray-900">+89%</div>
+            <div className="text-sm text-gray-500 mt-1">Positive respond from<br/>people</div>
             <Button 
               size="sm" 
-              className="mt-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg w-full py-2 text-sm"
+              className="mt-4 bg-gray-900 hover:bg-gray-800 text-white rounded-lg w-full py-2.5 text-sm font-medium"
               onClick={() => setLocation("/login")}
             >
               Start Now
@@ -304,22 +304,22 @@ export default function Register() {
               In camp we have a lot people with different life story that help you feel more better in trip
             </p>
             
-            <div className="flex flex-nowrap justify-center gap-2 overflow-hidden">
-              <div className="flex items-center gap-1.5 bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shrink-0">
-                <div className="w-2.5 h-2.5 rounded-full bg-orange-400" />
-                <span className="text-white text-xs whitespace-nowrap"># Curbe_Trip</span>
+            <div className="flex flex-nowrap justify-center gap-3 overflow-hidden">
+              <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20 shrink-0">
+                <div className="w-3 h-3 rounded-full bg-orange-400" />
+                <span className="text-white text-sm font-medium whitespace-nowrap"># Curbe_Trip</span>
               </div>
-              <div className="flex items-center gap-1.5 bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shrink-0">
-                <div className="w-2.5 h-2.5 rounded-full bg-green-400" />
-                <span className="text-white text-xs whitespace-nowrap"># Curbe.</span>
+              <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20 shrink-0">
+                <div className="w-3 h-3 rounded-full bg-green-400" />
+                <span className="text-white text-sm font-medium whitespace-nowrap"># Curbe.</span>
               </div>
-              <div className="flex items-center gap-1.5 bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shrink-0">
-                <div className="w-2.5 h-2.5 rounded-full bg-blue-400" />
-                <span className="text-white text-xs whitespace-nowrap"># Be_happy</span>
+              <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20 shrink-0">
+                <div className="w-3 h-3 rounded-full bg-blue-400" />
+                <span className="text-white text-sm font-medium whitespace-nowrap"># Be_happy</span>
               </div>
-              <div className="flex items-center gap-1.5 bg-black/20 backdrop-blur-md px-3 py-1.5 rounded-full border border-white/10 shrink-0">
-                <div className="w-2.5 h-2.5 rounded-full bg-pink-400" />
-                <span className="text-white text-xs whitespace-nowrap"># Be_happy</span>
+              <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20 shrink-0">
+                <div className="w-3 h-3 rounded-full bg-pink-400" />
+                <span className="text-white text-sm font-medium whitespace-nowrap"># Be_happy</span>
               </div>
             </div>
           </div>
