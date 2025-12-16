@@ -165,7 +165,7 @@ export default function ActivateAccount() {
         footer={<div />}
       >
         <div className="flex flex-col items-center justify-center py-8">
-          <Loader2 className="w-8 h-8 text-gray-400 animate-spin" />
+          <Loader2 className="w-10 h-10 text-gray-400 animate-spin" />
         </div>
       </AuthLayout>
     );
@@ -174,8 +174,8 @@ export default function ActivateAccount() {
   if (!isValidToken) {
     return (
       <AuthLayout
-        title="Invalid link"
-        subtitle="This activation link is invalid or has expired."
+        title="Link expired"
+        subtitle="This activation link is no longer valid."
         footer={
           <div className="text-center text-[13px] text-gray-500">
             <button
@@ -191,16 +191,16 @@ export default function ActivateAccount() {
         }
       >
         <div className="flex flex-col items-center justify-center py-6">
-          <div className="w-14 h-14 rounded-full bg-red-50 flex items-center justify-center mb-5">
-            <AlertCircle className="w-7 h-7 text-red-600" />
+          <div className="w-16 h-16 rounded-full bg-red-50 flex items-center justify-center mb-5">
+            <AlertCircle className="w-8 h-8 text-red-600" />
           </div>
-          <p className="text-center text-[14px] text-gray-500 mb-4">
+          <p className="text-center text-[14px] text-gray-500 mb-4 leading-relaxed">
             Please contact your administrator for a new activation link.
           </p>
           <Button
             onClick={() => setLocation("/login")}
             variant="outline"
-            className="w-full h-[48px] text-[14px] font-medium rounded-xl"
+            className="w-full h-12 text-[14px] font-medium rounded-lg border-gray-200 hover:bg-gray-50"
             data-testid="button-back-to-login"
           >
             Back to sign in
@@ -214,8 +214,8 @@ export default function ActivateAccount() {
 
   return (
     <AuthLayout
-      title="Activate your workspace"
-      subtitle="Set your password to complete setup."
+      title="Set your password"
+      subtitle="Create a password to complete your account setup."
       footer={
         <div className="text-center text-[13px] text-gray-500">
           Already activated?{" "}
@@ -232,7 +232,9 @@ export default function ActivateAccount() {
     >
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
-          <label className="block text-[13px] text-gray-600 font-medium">Password</label>
+          <label className="block text-[12px] text-gray-500 font-medium tracking-wide">
+            Password
+          </label>
           <div className="relative">
             <Input
               id="password"
@@ -240,14 +242,14 @@ export default function ActivateAccount() {
               placeholder="Create a password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-[48px] px-4 pr-12 bg-white border border-gray-200 rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
+              className="h-12 px-4 pr-12 bg-white border border-gray-200 rounded-lg text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
               required
               data-testid="input-password"
             />
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
               data-testid="button-toggle-password"
             >
               {showPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
@@ -282,7 +284,9 @@ export default function ActivateAccount() {
         )}
 
         <div className="space-y-1.5">
-          <label className="block text-[13px] text-gray-600 font-medium">Confirm password</label>
+          <label className="block text-[12px] text-gray-500 font-medium tracking-wide">
+            Confirm password
+          </label>
           <div className="relative">
             <Input
               id="confirmPassword"
@@ -290,14 +294,14 @@ export default function ActivateAccount() {
               placeholder="Confirm your password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="h-[48px] px-4 pr-12 bg-white border border-gray-200 rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all"
+              className="h-12 px-4 pr-12 bg-white border border-gray-200 rounded-lg text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
               required
               data-testid="input-confirm-password"
             />
             <button
               type="button"
               onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
               data-testid="button-toggle-confirm-password"
             >
               {showConfirmPassword ? <EyeOff className="h-[18px] w-[18px]" /> : <Eye className="h-[18px] w-[18px]" />}
@@ -306,7 +310,7 @@ export default function ActivateAccount() {
         </div>
 
         {password && (
-          <div className="space-y-1.5 p-3 bg-gray-50 rounded-xl border border-gray-100">
+          <div className="space-y-1.5 p-3 bg-gray-50 rounded-lg border border-gray-100">
             <p className="text-[11px] font-medium text-gray-500 uppercase tracking-wide mb-2">Requirements</p>
             {Object.entries({
               minLength: "At least 8 characters",
@@ -328,11 +332,18 @@ export default function ActivateAccount() {
 
         <Button
           type="submit"
-          className="w-full h-[48px] text-[14px] font-medium bg-gray-900 hover:bg-gray-800 text-white rounded-xl"
+          className="w-full h-12 text-[14px] font-semibold bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-all duration-150 shadow-sm hover:shadow-md disabled:opacity-70"
           disabled={isLoading}
           data-testid="button-activate-account"
         >
-          {isLoading ? "Activating..." : "Continue"}
+          {isLoading ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Activating...
+            </>
+          ) : (
+            "Activate account"
+          )}
         </Button>
       </form>
     </AuthLayout>

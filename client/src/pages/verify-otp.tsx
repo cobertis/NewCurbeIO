@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { ArrowLeft, Mail, MessageSquare } from "lucide-react";
+import { ArrowLeft, Mail, MessageSquare, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { AuthLayout } from "@/components/auth-layout";
 
@@ -236,11 +236,11 @@ export default function VerifyOTP() {
 
   return (
     <AuthLayout
-      title={otpSent ? "Verify your email" : "Two-factor authentication"}
+      title={otpSent ? "Enter verification code" : "Two-factor authentication"}
       subtitle={
         otpSent 
-          ? `Enter the 6-digit code we sent to ${method === "email" ? maskedEmail : maskedPhone}.`
-          : "Choose how you'd like to receive your verification code."
+          ? `We sent a 6-digit code to ${method === "email" ? maskedEmail : maskedPhone}`
+          : "Choose how you'd like to receive your code"
       }
       footer={
         <div className="text-center text-[13px] text-gray-500">
@@ -259,8 +259,8 @@ export default function VerifyOTP() {
       {!otpSent ? (
         <div className="space-y-5">
           <div>
-            <Label className="text-[13px] font-medium text-gray-600 mb-3 block">
-              Choose verification method
+            <Label className="text-[12px] font-medium text-gray-500 tracking-wide mb-3 block">
+              Verification method
             </Label>
             <RadioGroup 
               value={method} 
@@ -269,14 +269,14 @@ export default function VerifyOTP() {
               data-testid="radio-group-method"
             >
               {email2FAEnabled && (
-                <div className={`flex items-center space-x-3 p-3.5 rounded-xl border-2 transition-all cursor-pointer ${
+                <div className={`flex items-center space-x-3 p-3.5 rounded-lg border transition-all cursor-pointer ${
                   method === "email" 
                     ? "border-gray-900 bg-gray-50" 
                     : "border-gray-200 hover:border-gray-300"
                 }`}>
                   <RadioGroupItem value="email" id="email-method" data-testid="radio-email" />
                   <Label htmlFor="email-method" className="flex items-center flex-1 cursor-pointer">
-                    <Mail className="h-5 w-5 text-gray-600 mr-3" />
+                    <Mail className="h-5 w-5 text-gray-500 mr-3" />
                     <div>
                       <div className="text-[14px] font-medium text-gray-900">Email</div>
                       <div className="text-[12px] text-gray-500">{maskedEmail}</div>
@@ -286,7 +286,7 @@ export default function VerifyOTP() {
               )}
 
               {sms2FAEnabled && (
-                <div className={`flex items-center space-x-3 p-3.5 rounded-xl border-2 transition-all ${
+                <div className={`flex items-center space-x-3 p-3.5 rounded-lg border transition-all ${
                   !hasPhone 
                     ? "opacity-50 cursor-not-allowed border-gray-200" 
                     : method === "sms" 
@@ -295,7 +295,7 @@ export default function VerifyOTP() {
                 }`}>
                   <RadioGroupItem value="sms" id="sms-method" disabled={!hasPhone} data-testid="radio-sms" />
                   <Label htmlFor="sms-method" className={`flex items-center flex-1 ${hasPhone ? "cursor-pointer" : "cursor-not-allowed"}`}>
-                    <MessageSquare className="h-5 w-5 text-gray-600 mr-3" />
+                    <MessageSquare className="h-5 w-5 text-gray-500 mr-3" />
                     <div>
                       <div className="text-[14px] font-medium text-gray-900">SMS</div>
                       <div className="text-[12px] text-gray-500">
@@ -310,15 +310,23 @@ export default function VerifyOTP() {
 
           <Button
             onClick={sendOTP}
-            className="w-full h-[48px] text-[14px] font-medium bg-gray-900 hover:bg-gray-800 text-white rounded-xl"
+            className="w-full h-12 text-[14px] font-semibold bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-all duration-150 shadow-sm hover:shadow-md disabled:opacity-70"
             disabled={isLoading}
             data-testid="button-send-code"
           >
-            {isLoading ? "Sending..." : "Send code"}
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Sending...
+              </>
+            ) : (
+              "Send code"
+            )}
           </Button>
         </div>
       ) : (
         <div className="space-y-5">
+          {/* OTP Input Grid */}
           <div className="flex gap-2.5 justify-center" onPaste={handlePaste}>
             {otp.map((digit, index) => (
               <Input
@@ -330,18 +338,19 @@ export default function VerifyOTP() {
                 value={digit}
                 onChange={(e) => handleOtpChange(index, e.target.value)}
                 onKeyDown={(e) => handleKeyDown(index, e)}
-                className="w-12 h-14 text-center text-xl font-semibold bg-white border-gray-200 rounded-xl focus:border-gray-400 focus:ring-2 focus:ring-gray-100"
+                className="w-11 h-12 text-center text-lg font-semibold bg-white border-gray-200 rounded-lg focus:border-gray-400 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0"
                 data-testid={`input-otp-${index}`}
               />
             ))}
           </div>
 
-          <div className="flex items-center space-x-2">
+          {/* Remember device */}
+          <div className="flex items-center space-x-2.5">
             <Checkbox
               id="remember"
               checked={rememberDevice}
               onCheckedChange={(checked) => setRememberDevice(checked as boolean)}
-              className="h-4 w-4 border-gray-300 data-[state=checked]:bg-gray-900"
+              className="h-4 w-4 border-gray-300 data-[state=checked]:bg-gray-900 data-[state=checked]:border-gray-900 rounded"
               data-testid="checkbox-remember-device"
             />
             <Label htmlFor="remember" className="text-[13px] text-gray-600 cursor-pointer">
@@ -351,13 +360,21 @@ export default function VerifyOTP() {
 
           <Button
             onClick={handleVerify}
-            className="w-full h-[48px] text-[14px] font-medium bg-gray-900 hover:bg-gray-800 text-white rounded-xl"
+            className="w-full h-12 text-[14px] font-semibold bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-all duration-150 shadow-sm hover:shadow-md disabled:opacity-70"
             disabled={isLoading || otp.join("").length !== 6}
             data-testid="button-verify"
           >
-            {isLoading ? "Verifying..." : "Verify"}
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Verifying...
+              </>
+            ) : (
+              "Verify"
+            )}
           </Button>
 
+          {/* Expiry and resend */}
           <div className="text-center space-y-1.5">
             <p className="text-[12px] text-gray-500">
               Code expires in <span className="font-medium text-gray-700">{formatTime(expiryTime)}</span>
@@ -365,7 +382,7 @@ export default function VerifyOTP() {
             <button
               onClick={handleResend}
               disabled={resendCooldown > 0}
-              className={`text-[13px] font-medium ${
+              className={`text-[13px] font-medium transition-colors ${
                 resendCooldown > 0
                   ? "text-gray-400 cursor-not-allowed"
                   : "text-gray-900 hover:text-gray-700"

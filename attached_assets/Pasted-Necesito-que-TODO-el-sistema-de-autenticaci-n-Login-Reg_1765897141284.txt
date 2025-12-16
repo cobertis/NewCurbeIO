@@ -1,0 +1,80 @@
+Necesito que TODO el sistema de autenticación (Login, Register/Create workspace, Forgot password, OTP/2FA, Activation/Verify email) tenga el MISMO “AuthShell” premium y consistente. No cambies lógica, solo UI/UX. Basarte en el diseño actual del screenshot pero elevarlo a nivel Stripe/Linear.
+
+OBJETIVO PRINCIPAL:
+
+* Que ninguna pantalla “se vea template”.
+* Que nada brinque o cambie de tamaño entre Login/Register/OTP/Forgot (solo cambia el contenido del panel izquierdo).
+* Que el layout se sienta más alto/presente y menos “hoja blanca flotando”.
+
+1. CREAR COMPONENTE ÚNICO: AuthShell
+
+* Layout 2 columnas (izquierda form, derecha visual).
+* Card height fija: height: clamp(640px, 74vh, 760px).
+* Card width: clamp(980px, 76vw, 1180px).
+* Border radius grande (24–28px), shadow suave y realista.
+* Background de la página: gradiente MUY sutil + glow radial (no banding).
+* Panel derecho: imagen + overlay gradient para legibilidad (from-black/60 via-black/20 to-transparent).
+
+2. PANEL IZQUIERDO: ESTRUCTURA FIJA (evitar espacio feo)
+
+* Panel izquierdo usa layout en 3 zonas:
+  A) Header (logo + título + subtítulo)
+  B) FormArea (centrado verticalmente con min-height)
+  C) Footer (links) pegado al fondo (mt-auto)
+* El contenido NO puede quedar flotando arriba con sótano blanco abajo.
+* El Footer siempre en el mismo lugar visual en todas las pantallas.
+
+3. JERARQUÍA / TIPOGRAFÍA (premium)
+
+* Logo: tamaño moderado (no gigante).
+* Título grande y dominante (text-4xl/leading-tight).
+* Subtítulo corto, fino, neutral (text-sm).
+* Espaciado consistente: usa un sistema (ej. gap 12/16/20) no valores random.
+
+4. CAMPOS / BOTONES (cohesión visual)
+
+* Inputs altura h-11 o h-12, bordes sutiles, fondo ligeramente off-white.
+* Focus ring elegante (no azul default agresivo).
+* Estados de error: reserva espacio para mensaje (para que NO mueva layout).
+* Botón principal: “Sign in” / “Create workspace” debe dominar sin verse “bloque negro pesado”.
+
+  * Ajusta: un poquito menos contraste, mejor shadow y hover.
+* Botón Google: claramente secundario (outlined, menos contraste).
+* Loading state: spinner + texto, sin cambiar tamaño del botón.
+
+5. SEPARADOR SOCIAL (quitar template)
+
+* Reemplaza “OR CONTINUE WITH” por:
+
+  * línea fina + texto pequeño “or continue with” (text-xs, tracking-wide)
+  * alineado perfecto y sutil.
+
+6. PANEL DERECHO (que no compita raro)
+
+* Copy del panel derecho: más integrado.
+
+  * Subirlo un poco (no tan pegado abajo).
+  * Aumentar 1 nivel tamaño y contraste para que se lea.
+* Chips: máximo 2, pequeños, menos contraste, sin hashtags.
+
+7. CONSISTENCIA ENTRE PANTALLAS (Forgot/OTP/Activation)
+
+* Todas usan AuthShell EXACTO (misma altura/ancho/posiciones).
+* Solo cambia:
+
+  * el título/subtítulo
+  * el contenido del FormArea (campos / OTP inputs / botón)
+* OTP: inputs cuadrados iguales, spacing perfecto, auto-focus, paste handling (si ya existe lógica, solo UI).
+* Activation: pantalla de “Check your email” con botón “Resend” y link “Back to sign in”, sin romper layout.
+
+8. NO MOVIMIENTO / NO JUMP
+
+* Fija alturas mínimas para header y form area.
+* Mensajes de error y helper texts deben tener espacio reservado (placeholder height).
+* No cambiar padding entre pantallas.
+
+ENTREGABLE:
+
+* AuthShell reusable + actualiza Login/Register/Forgot/OTP/Activation para usarlo.
+* Verificar 1440px, 1280px y mobile (stack en mobile: solo panel izquierdo, panel derecho oculto o como header visual pequeño).
+* Resultado debe verse “premium SaaS” y consistente.

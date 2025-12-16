@@ -39,45 +39,44 @@ export function AuthLayout({
         }}
       />
 
-      {/* Main card container - Hero presence */}
+      {/* Main card container - Fixed hero dimensions */}
       <div 
-        className="relative z-10 w-full flex rounded-2xl overflow-hidden animate-in fade-in duration-300"
+        className="relative z-10 w-full flex overflow-hidden animate-in fade-in duration-300"
         style={{
-          width: 'clamp(360px, 82vw, 1140px)',
-          height: 'clamp(620px, 72vh, 740px)',
+          width: 'clamp(380px, 76vw, 1180px)',
+          height: 'clamp(640px, 74vh, 760px)',
+          borderRadius: '24px',
           boxShadow: '0 25px 80px -12px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04)',
         }}
       >
-        {/* Left Panel - Form (40%) */}
-        <div 
-          className="relative flex flex-col bg-white w-full lg:w-[40%]"
-        >
-          {/* Header zone - Logo */}
-          <div className="shrink-0 px-8 lg:px-10 pt-8 pb-2">
-            <img src={logo} alt="Curbe" className="h-10 w-auto" />
+        {/* Left Panel - Form (38%) */}
+        <div className="relative flex flex-col bg-white w-full lg:w-[38%]">
+          {/* Zone A: Header - Logo fixed */}
+          <div className="shrink-0 px-8 lg:px-10 pt-8">
+            <img src={logo} alt="Curbe" className="h-9 w-auto" />
           </div>
 
-          {/* Main content - Centered form */}
-          <div className="flex-1 flex flex-col justify-center px-8 lg:px-10 py-4 overflow-y-auto">
+          {/* Zone B: Form Area - Centered with min-height */}
+          <div className="flex-1 flex flex-col justify-center px-8 lg:px-10 py-6 min-h-0 overflow-y-auto">
             {/* Title & Subtitle */}
-            <div className="mb-6">
-              <h1 className="text-[32px] lg:text-[36px] font-semibold text-gray-900 leading-tight tracking-[-0.025em] mb-1">
+            <div className="mb-6 shrink-0">
+              <h1 className="text-[30px] lg:text-[34px] font-semibold text-gray-900 leading-tight tracking-[-0.025em] mb-1.5">
                 {title}
               </h1>
-              <p className="text-gray-400 text-[14px] font-normal">
+              <p className="text-gray-400 text-[14px] font-normal leading-relaxed">
                 {subtitle}
               </p>
             </div>
 
-            {/* Form content */}
-            <div className="space-y-5">
+            {/* Form content with consistent spacing */}
+            <div className="space-y-5 shrink-0">
               {children}
             </div>
 
             {/* SSO Section - Below form */}
             {ssoEnabled && onGoogleSSO && (
-              <div className="mt-6">
-                <div className="flex items-center gap-3 mb-5">
+              <div className="mt-6 shrink-0">
+                <div className="flex items-center gap-3 mb-4">
                   <div className="flex-1 h-px bg-gray-200"></div>
                   <span className="text-[11px] text-gray-400 font-medium tracking-wider uppercase">or continue with</span>
                   <div className="flex-1 h-px bg-gray-200"></div>
@@ -101,16 +100,14 @@ export function AuthLayout({
             )}
           </div>
 
-          {/* Footer zone - Fixed at bottom */}
+          {/* Zone C: Footer - Fixed at bottom */}
           <div className="shrink-0 mt-auto px-8 lg:px-10 py-5 border-t border-gray-100">
             {footer}
           </div>
         </div>
 
-        {/* Right Panel - Visual (60%) */}
-        <div 
-          className="relative hidden lg:flex w-[60%] items-center"
-        >
+        {/* Right Panel - Visual (62%) */}
+        <div className="relative hidden lg:flex w-[62%] items-center">
           {/* Background image */}
           <div 
             className="absolute inset-0 bg-cover bg-center"
@@ -119,35 +116,35 @@ export function AuthLayout({
             }}
           />
           
-          {/* Gradient overlay - subtle from bottom */}
+          {/* Gradient overlay - from-black/60 via-black/20 to-transparent */}
           <div 
             className="absolute inset-0"
             style={{
-              background: 'linear-gradient(180deg, rgba(0,0,0,0.1) 0%, rgba(0,0,0,0.2) 50%, rgba(0,0,0,0.5) 100%)',
+              background: 'linear-gradient(180deg, rgba(0,0,0,0.08) 0%, rgba(0,0,0,0.15) 40%, rgba(0,0,0,0.5) 100%)',
             }}
           />
 
-          {/* Content - Positioned lower but not at bottom */}
-          <div className="absolute bottom-0 left-0 right-0 p-10 pb-12">
-            <h2 className="text-[20px] font-semibold text-white mb-2 tracking-tight leading-snug max-w-md">
+          {/* Content - Positioned with good spacing from bottom */}
+          <div className="absolute bottom-0 left-0 right-0 p-10 pb-14">
+            <h2 className="text-[22px] font-semibold text-white mb-2.5 tracking-tight leading-snug max-w-md">
               {rightPanelTitle}
             </h2>
-            <p className="text-white/50 text-[13px] mb-5 max-w-sm leading-relaxed">
+            <p className="text-white/60 text-[14px] mb-5 max-w-sm leading-relaxed">
               {rightPanelSubtitle}
             </p>
             
-            {/* Badges - Smaller, more subtle */}
+            {/* Badges - Max 2, smaller, less contrast */}
             {rightPanelBadges.length > 0 && (
               <div className="flex flex-wrap gap-2">
                 {rightPanelBadges.slice(0, 2).map((badge, index) => (
                   <span 
                     key={index}
-                    className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-[11px] font-medium text-white/70 border border-white/10"
+                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-medium text-white/65 border border-white/10"
                     style={{
-                      background: 'rgba(255, 255, 255, 0.06)',
+                      background: 'rgba(255, 255, 255, 0.05)',
                     }}
                   >
-                    <span className="w-1 h-1 rounded-full bg-blue-400/80" />
+                    <span className="w-1 h-1 rounded-full bg-blue-400/70" />
                     {badge}
                   </span>
                 ))}
