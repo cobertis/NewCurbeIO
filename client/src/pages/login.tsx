@@ -91,25 +91,23 @@ export default function Login() {
   };
 
   return (
-    <div
+    <div 
       className="min-h-screen w-full flex items-center justify-center p-4 md:p-8"
       style={{
-        background: 'linear-gradient(135deg, #e0e7ef 0%, #f5f7fa 50%, #dfe6ed 100%)',
+        backgroundImage: `linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url(${backgroundImage})`,
         backgroundSize: 'cover',
         backgroundPosition: 'center',
       }}
       data-testid="login-page"
     >
       <div className="w-full max-w-[1300px] bg-white rounded-[2rem] shadow-2xl flex flex-col lg:flex-row relative">
-        <div className="w-full lg:w-[45%] p-10 md:p-14 relative z-10 flex flex-col justify-center" style={{ minHeight: '800px' }}>
+        <div className="w-full lg:w-[45%] p-10 md:p-14 relative z-10">
           <div className="flex items-center gap-2 mb-8">
             <img src={logo} alt="Curbe" className="h-12 w-auto" />
           </div>
 
-          <h1 className="text-[1.75rem] md:text-[2.25rem] font-bold text-gray-900 leading-tight mb-3">
-            Welcome back to Curbe
-          </h1>
-          <p className="text-gray-500 text-sm mb-8">
+          <h1 className="text-[1.75rem] md:text-[2.25rem] font-bold text-gray-900 leading-tight mb-3">Welcome back to Curbe</h1>
+          <p className="text-gray-500 text-sm mb-6">
             Sign in to continue managing your customer relationships and grow your business.
           </p>
 
