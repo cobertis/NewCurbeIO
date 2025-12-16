@@ -97,32 +97,6 @@ export default function Register() {
       data-testid="register-page"
     >
       <div className="w-full max-w-[1100px] bg-white rounded-[2rem] shadow-2xl flex flex-col lg:flex-row relative">
-        <div className="absolute -top-0 -right-0 lg:block hidden z-40">
-          <div className="bg-white rounded-bl-[2rem] p-6 min-w-[170px] relative">
-            <div 
-              className="absolute -bottom-6 left-0 w-6 h-6 bg-white"
-              style={{
-                clipPath: 'polygon(100% 0, 0 0, 100% 100%)',
-              }}
-            />
-            <div 
-              className="absolute top-full -left-6 w-6 h-6 bg-white"
-              style={{
-                clipPath: 'polygon(100% 0, 100% 100%, 0 0)',
-              }}
-            />
-            <div className="text-2xl font-bold text-gray-900">+89%</div>
-            <div className="text-xs text-gray-500 mt-1">Positive respond from<br/>people</div>
-            <Button 
-              size="sm" 
-              className="mt-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg w-full py-2 text-sm font-medium"
-              onClick={() => setLocation("/login")}
-            >
-              Start Now
-            </Button>
-          </div>
-        </div>
-
         <div className="w-full lg:w-[45%] p-8 md:p-10 relative z-10">
           <div className="flex items-center gap-2 mb-8">
             <div className="w-8 h-8 rounded-full border-[3px] border-blue-500 border-t-transparent" style={{ animation: 'spin 3s linear infinite' }} />
@@ -295,19 +269,39 @@ export default function Register() {
           </Form>
         </div>
 
-        <div className="hidden lg:block w-[55%] relative m-4 ml-0 overflow-hidden rounded-[1.5rem]">
+        <div className="hidden lg:block w-[55%] relative m-4 ml-0">
           <div 
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ backgroundImage: `url(${backgroundImage})` }}
+            className="absolute inset-0 bg-cover bg-center rounded-[1.5rem]"
+            style={{ 
+              backgroundImage: `url(${backgroundImage})`,
+              clipPath: 'polygon(0 0, calc(100% - 180px) 0, calc(100% - 180px) 30px, calc(100% - 30px) 30px, calc(100% - 30px) 220px, 100% 220px, 100% 100%, 0 100%)',
+            }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent" />
+          <div 
+            className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent rounded-[1.5rem]"
+            style={{ 
+              clipPath: 'polygon(0 0, calc(100% - 180px) 0, calc(100% - 180px) 30px, calc(100% - 30px) 30px, calc(100% - 30px) 220px, 100% 220px, 100% 100%, 0 100%)',
+            }}
+          />
           
-          <div className="absolute top-5 left-5 flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-full px-4 py-2">
-            <div className="w-5 h-5 rounded-full border-2 border-blue-400 border-t-transparent" />
+          <div className="absolute top-[30px] right-0 w-[180px] bg-white rounded-bl-[1.5rem] p-5 z-20">
+            <div className="text-2xl font-bold text-gray-900">+89%</div>
+            <div className="text-xs text-gray-500 mt-1">Positive respond from<br/>people</div>
+            <Button 
+              size="sm" 
+              className="mt-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg w-full py-2 text-sm font-medium"
+              onClick={() => setLocation("/login")}
+            >
+              Start Now
+            </Button>
+          </div>
+
+          <div className="absolute top-[200px] right-4 flex items-center gap-2 bg-black/40 backdrop-blur-sm rounded-full px-4 py-2 z-20">
+            <div className="w-5 h-5 rounded-full border-2 border-white/80 border-t-transparent" />
             <span className="text-white text-sm font-medium">Curbe.</span>
           </div>
 
-          <div className="absolute bottom-0 left-0 right-0 p-6 text-center">
+          <div className="absolute bottom-0 left-0 right-0 p-6 text-center z-10">
             <h2 className="text-2xl font-bold text-white mb-2">
               We are a Family
             </h2>
