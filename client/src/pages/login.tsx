@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Eye, EyeOff, LogIn } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import logo from "@assets/logo no fondo_1760457183587.png";
+import backgroundImage from "@assets/Curbe_SaaS_Brand_Illustration_1765854893427.png";
 
 export default function Login() {
   const [, setLocation] = useLocation();
@@ -14,7 +15,6 @@ export default function Login() {
   const [isLoading, setIsLoading] = useState(false);
   const { toast } = useToast();
 
-  // Check if user was redirected due to account deactivation
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     if (params.get("deactivated") === "true") {
@@ -24,12 +24,10 @@ export default function Login() {
         description: "Your account has been deactivated. Please contact support for assistance.",
         duration: 8000,
       });
-      // Clean up the URL
       window.history.replaceState({}, "", "/login");
     }
   }, [toast]);
 
-  // Check if user is already authenticated
   useEffect(() => {
     const checkAuth = async () => {
       try {
@@ -38,11 +36,9 @@ export default function Login() {
         });
 
         if (response.ok) {
-          // User is already authenticated, redirect to dashboard
           setLocation("/dashboard");
         }
       } catch (error) {
-        // User is not authenticated, stay on login page
       }
     };
 
@@ -64,7 +60,6 @@ export default function Login() {
       const data = await response.json();
 
       if (response.ok) {
-        // If trusted device, skip OTP and go directly to dashboard
         if (data.skipOTP) {
           toast({
             title: "Welcome back!",
@@ -72,7 +67,6 @@ export default function Login() {
           });
           setLocation("/dashboard");
         } else {
-          // Redirect to OTP verification page with email, phone, and 2FA flags
           const phoneParam = data.user.phone ? `&phone=${encodeURIComponent(data.user.phone)}` : '';
           const email2FAParam = data.user.twoFactorEmailEnabled ? '&email2FA=true' : '';
           const sms2FAParam = data.user.twoFactorSmsEnabled ? '&sms2FA=true' : '';
@@ -97,115 +91,163 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4 flex items-center justify-center">
-      {/* Logo in top left */}
-      <div className="absolute top-4 left-4 sm:top-6 sm:left-6">
-        <Link href="/">
-          <img 
-            src={logo} 
-            alt="Curbe.io" 
-            className="h-8 sm:h-10 w-auto object-contain cursor-pointer"
-          />
-        </Link>
-      </div>
-
-      {/* Login Card */}
-      <div className="w-full max-w-md">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-10">
-          {/* Icon */}
-          <div className="flex justify-center mb-6">
-            <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-              <LogIn className="w-6 h-6 text-gray-600 dark:text-gray-300" />
-            </div>
+    <div
+      className="min-h-screen w-full flex items-center justify-center p-4 md:p-8"
+      style={{
+        background: 'linear-gradient(135deg, #e0e7ef 0%, #f5f7fa 50%, #dfe6ed 100%)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+      }}
+      data-testid="login-page"
+    >
+      <div className="w-full max-w-[1300px] bg-white rounded-[2rem] shadow-2xl flex flex-col lg:flex-row relative">
+        <div className="w-full lg:w-[45%] p-10 md:p-14 relative z-10 flex flex-col justify-center min-h-[700px]">
+          <div className="flex items-center gap-2 mb-8">
+            <img src={logo} alt="Curbe" className="h-12 w-auto" />
           </div>
 
-          {/* Title */}
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-              Sign in with email
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              To help keep your account safe, Curbe.io wants to make sure it's really you trying to sign in.
-            </p>
-          </div>
+          <h1 className="text-[1.75rem] md:text-[2.25rem] font-bold text-gray-900 leading-tight mb-3">
+            Welcome back to Curbe
+          </h1>
+          <p className="text-gray-500 text-sm mb-8">
+            Sign in to continue managing your customer relationships and grow your business.
+          </p>
 
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email Input */}
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
+              <label className="block text-xs text-gray-400 mb-1 ml-1">Email</label>
               <Input
                 id="email"
                 type="email"
-                placeholder="Email address"
+                placeholder="example@curbe.io"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                className="h-11 px-4 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 required
+                autoComplete="email"
                 data-testid="input-email"
               />
             </div>
 
-            {/* Password Input */}
-            <div className="relative">
-              <Input
-                id="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                className="pr-10 h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                required
-                data-testid="input-password"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 transition-colors"
-                data-testid="button-toggle-password"
-              >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5" />
-                ) : (
-                  <Eye className="h-5 w-5" />
-                )}
-              </button>
+            <div>
+              <label className="block text-xs text-gray-400 mb-1 ml-1">Password</label>
+              <div className="relative">
+                <Input
+                  id="password"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Enter your password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  className="h-11 px-4 pr-10 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  required
+                  autoComplete="current-password"
+                  data-testid="input-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                  data-testid="button-toggle-password"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-5 w-5" />
+                  ) : (
+                    <Eye className="h-5 w-5" />
+                  )}
+                </button>
+              </div>
             </div>
 
-            {/* Forgot Password */}
             <div className="flex justify-end">
               <button
                 type="button"
                 onClick={() => setLocation("/forgot-password")}
-                className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+                className="text-sm text-gray-500 hover:text-gray-700"
                 data-testid="link-forgot-password"
               >
                 Forgot password?
               </button>
             </div>
 
-            {/* Sign In Button */}
             <Button
               type="submit"
-              className="w-full h-12 text-base font-medium bg-gray-600 hover:bg-gray-700 text-white rounded-lg"
               disabled={isLoading}
+              className="w-full h-14 text-base font-semibold bg-gray-900 hover:bg-gray-800 text-white rounded-xl mt-3"
               data-testid="button-login"
             >
-              {isLoading ? "Signing in..." : "Sign In"}
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                  Signing in...
+                </>
+              ) : (
+                "Sign In"
+              )}
             </Button>
 
-            {/* Register Link */}
-            <div className="text-center text-sm text-gray-600 dark:text-gray-400">
+            <div className="text-center text-sm text-gray-600 pt-4">
               Don't have an account?{" "}
               <button
                 type="button"
                 onClick={() => setLocation("/register")}
-                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium"
+                className="text-blue-600 hover:text-blue-700 font-medium"
                 data-testid="link-register"
               >
                 Register here
               </button>
             </div>
           </form>
+        </div>
+
+        <div className="hidden lg:block w-[55%] relative m-4 ml-0">
+          <div className="absolute inset-0 overflow-hidden rounded-[1.5rem]">
+            <div 
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ 
+                backgroundImage: `url(${backgroundImage})`,
+              }}
+            />
+            <div 
+              className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent"
+            />
+          </div>
+          
+          <div 
+            className="absolute top-6 -right-4 w-[170px] p-5 z-20 bg-white rounded-2xl"
+            style={{
+              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
+            }}
+          >
+            <div className="text-2xl font-bold text-gray-900">+89%</div>
+            <div className="text-xs text-gray-500 mt-1">Positive respond from<br/>people</div>
+            <Button 
+              size="sm" 
+              className="mt-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg w-full py-2 text-sm font-medium"
+              onClick={() => setLocation("/register")}
+            >
+              Start Now
+            </Button>
+          </div>
+
+          <div className="absolute bottom-0 left-0 right-0 p-6 text-center z-10">
+            <h2 className="text-2xl font-bold text-white mb-2">Turn every interaction into progress.</h2>
+            <p className="text-white/70 text-xs max-w-sm mx-auto mb-5">From first hello to loyal customer—without the chaos.</p>
+            
+            <div className="flex flex-nowrap justify-center gap-3 overflow-hidden">
+              <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20 shrink-0">
+                <div className="w-3 h-3 rounded-full bg-orange-400" />
+                <span className="text-white text-sm font-medium whitespace-nowrap"># CustomerMomentum</span>
+              </div>
+              <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20 shrink-0">
+                <div className="w-3 h-3 rounded-full bg-blue-400" />
+                <span className="text-white text-sm font-medium whitespace-nowrap"># Automation</span>
+              </div>
+              <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20 shrink-0">
+                <div className="w-3 h-3 rounded-full bg-pink-400" />
+                <span className="text-white text-sm font-medium whitespace-nowrap"># UnifiedJourney</span>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
