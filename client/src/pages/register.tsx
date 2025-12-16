@@ -282,10 +282,6 @@ export default function Register() {
                 )}
               </Button>
 
-              <p className="text-center text-[11px] text-gray-400 pt-2">
-                Verify your email to activate.
-              </p>
-
               <div className="text-center text-[13px] text-gray-500 pt-1">
                 Already have an account?{" "}
                 <button
