@@ -438,22 +438,18 @@ export default function Register() {
           </Form>
         </div>
 
-        <div className="hidden lg:block w-[55%] relative m-4 ml-0">
+        <div className="hidden lg:block w-[55%] relative m-4 ml-0 overflow-hidden rounded-[1.5rem]">
           <div 
-            className="absolute inset-0 bg-cover bg-center rounded-[1.5rem]"
+            className="absolute inset-0 bg-cover bg-center"
             style={{ 
               backgroundImage: `url(${backgroundImage})`,
-              clipPath: 'polygon(0 0, calc(100% - 180px) 0, calc(100% - 180px) 30px, calc(100% - 30px) 30px, calc(100% - 30px) 220px, 100% 220px, 100% 100%, 0 100%)',
             }}
           />
           <div 
-            className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent rounded-[1.5rem]"
-            style={{ 
-              clipPath: 'polygon(0 0, calc(100% - 180px) 0, calc(100% - 180px) 30px, calc(100% - 30px) 30px, calc(100% - 30px) 220px, 100% 220px, 100% 100%, 0 100%)',
-            }}
+            className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent"
           />
           
-          <div className="absolute top-[30px] right-0 w-[180px] bg-white rounded-bl-[30px] p-5 z-20">
+          <div className="absolute top-0 right-0 w-[180px] h-[220px] bg-white rounded-bl-[30px] p-5 pt-8 z-20">
             <div 
               className="absolute left-0 bottom-[-30px] w-[30px] h-[30px] bg-transparent"
               style={{
