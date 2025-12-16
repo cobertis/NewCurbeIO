@@ -114,12 +114,19 @@ export default function Login() {
       />
       <div className="w-full max-w-[1200px] flex flex-col lg:flex-row gap-0 relative z-10">
         <div 
-          className="w-full lg:w-[42%] p-12 md:p-14 relative z-10 lg:rounded-l-[2rem] lg:rounded-r-none rounded-[2rem]"
+          className="w-full lg:w-[42%] p-12 md:p-14 relative z-10 lg:rounded-l-[2rem] lg:rounded-r-none rounded-[2rem] overflow-hidden"
           style={{
             background: '#F6F8FB',
-            boxShadow: '0 60px 140px -40px rgba(0,0,0,0.12)',
+            boxShadow: '0 25px 80px -12px rgba(0,0,0,0.08), 0 4px 20px -4px rgba(0,0,0,0.04)',
+            border: '1px solid rgba(0,0,0,0.03)',
           }}
         >
+          <div 
+            className="absolute inset-0 opacity-[0.015] pointer-events-none"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+            }}
+          />
           <div className="flex items-center gap-2 mb-10">
             <img src={logo} alt="Curbe" className="h-9 w-auto" />
           </div>
@@ -157,7 +164,7 @@ export default function Login() {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div className="space-y-1.5">
-              <label className="block text-[11px] text-gray-400 font-medium ml-1 uppercase tracking-wide">Work email</label>
+              <label className="block text-[12px] text-gray-500 font-medium ml-0.5">Work email</label>
               <Input
                 id="email"
                 type="email"
@@ -173,14 +180,14 @@ export default function Login() {
 
             <div className="space-y-1.5">
               <div className="flex items-center justify-between">
-                <label className="block text-[11px] text-gray-400 font-medium ml-1 uppercase tracking-wide">Password</label>
+                <label className="block text-[12px] text-gray-500 font-medium ml-0.5">Password</label>
                 <button
                   type="button"
                   onClick={() => setLocation("/forgot-password")}
-                  className="text-[11px] text-gray-400 hover:text-gray-600 transition-colors duration-150"
+                  className="text-[12px] text-gray-400 hover:text-gray-600 transition-colors duration-150"
                   data-testid="link-forgot-password"
                 >
-                  Forgot?
+                  Forgot password?
                 </button>
               </div>
               <div className="relative">
@@ -213,10 +220,7 @@ export default function Login() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full h-[50px] text-[15px] font-semibold bg-gray-900 hover:bg-gray-800 hover:-translate-y-[1px] text-white rounded-full mt-4 transition-all duration-150 focus:ring-[3px] focus:ring-gray-900/20 focus:outline-none"
-              style={{
-                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
-              }}
+              className="w-full h-[50px] text-[15px] font-semibold bg-gray-900 hover:bg-gray-800 hover:-translate-y-0.5 hover:shadow-md text-white rounded-full mt-4 transition-all duration-200 focus:ring-2 focus:ring-gray-900/25 focus:ring-offset-2 focus:outline-none shadow-sm"
               data-testid="button-login"
             >
               {isLoading ? (
