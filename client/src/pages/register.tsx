@@ -17,7 +17,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Eye, EyeOff } from "lucide-react";
 import { formatPhoneInput } from "@shared/phone";
 import logo from "@assets/logo no fondo_1760457183587.png";
-import backgroundImage from "@assets/generated_images/dark_moody_forest_road.png";
+import backgroundImage from "@assets/mountain_road_background.png";
 
 const registerSchema = z.object({
   username: z.string().min(1, "Username is required"),
