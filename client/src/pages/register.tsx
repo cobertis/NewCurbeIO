@@ -415,9 +415,13 @@ export default function Register() {
                     Creating...
                   </>
                 ) : (
-                  "Start Journey"
+                  "Register"
                 )}
               </Button>
+
+              <p className="text-center text-xs text-gray-400 pt-2">
+                You'll receive an activation email to get started
+              </p>
 
               <div className="text-center text-sm text-gray-600 pt-1">
                 Have an account?{" "}
