@@ -96,19 +96,28 @@ export default function Login() {
 
   return (
     <div 
-      className="min-h-screen w-full flex items-center justify-center p-4 md:p-8"
+      className="min-h-screen w-full flex items-center justify-center p-4 md:p-8 relative"
       style={{
-        background: 'radial-gradient(ellipse at 50% 0%, #0f1a2e 0%, #050B14 50%, #020408 100%)',
+        background: `
+          radial-gradient(circle at 30% 20%, rgba(40,80,140,0.20), transparent 55%),
+          radial-gradient(circle at 70% 80%, rgba(0,180,255,0.10), transparent 60%),
+          linear-gradient(180deg, #050B14, #070F1E)
+        `,
       }}
       data-testid="login-page"
     >
-      <div className="w-full max-w-[1200px] flex flex-col lg:flex-row gap-6 lg:gap-0">
+      <div 
+        className="absolute inset-0 pointer-events-none opacity-[0.03]"
+        style={{
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+        }}
+      />
+      <div className="w-full max-w-[1200px] flex flex-col lg:flex-row gap-6 lg:gap-0 relative z-10">
         <div 
           className="w-full lg:w-[42%] p-10 md:p-14 relative z-10 lg:rounded-l-[2rem] lg:rounded-r-none rounded-[2rem]"
           style={{
-            background: 'rgba(250, 250, 252, 0.97)',
-            backdropFilter: 'blur(20px)',
-            boxShadow: '0 32px 64px -12px rgba(0,0,0,0.25), 0 0 0 1px rgba(0,0,0,0.03)',
+            background: 'rgba(255, 255, 255, 0.98)',
+            boxShadow: '0 40px 100px -20px rgba(0,0,0,0.20), 0 0 0 1px rgba(255,255,255,0.1)',
           }}
         >
           <div className="flex items-center gap-2 mb-12">
