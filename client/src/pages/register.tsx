@@ -20,7 +20,6 @@ import { AuthLayout } from "@/components/auth-layout";
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
-  companyName: z.string().min(1, "Workspace name is required"),
   termsAccepted: z.boolean().refine((val) => val === true, "Required"),
 });
 
@@ -37,7 +36,6 @@ export default function Register() {
     defaultValues: {
       email: "",
       password: "",
-      companyName: "",
       termsAccepted: false,
     },
   });
@@ -45,14 +43,16 @@ export default function Register() {
   const onSubmit = async (data: RegisterForm) => {
     setIsLoading(true);
     try {
-      const slug = data.companyName
+      const emailPrefix = data.email.split('@')[0];
+      const companyName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1) + "'s Workspace";
+      const slug = emailPrefix
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');
       
       const payload = {
         company: {
-          name: data.companyName,
+          name: companyName,
           slug: slug,
         },
         admin: {
@@ -171,28 +171,6 @@ export default function Register() {
                         )}
                       </button>
                     </div>
-                  </FormControl>
-                  <FormMessage className="text-[11px]" />
-                </FormItem>
-              )}
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <label className="block text-[13px] text-gray-600 font-medium">Workspace name</label>
-            <FormField
-              control={form.control}
-              name="companyName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormControl>
-                    <Input
-                      placeholder="Acme Inc"
-                      className="h-[48px] px-4 bg-white border border-gray-200 rounded-lg text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all outline-none"
-                      {...field}
-                      autoComplete="organization"
-                      data-testid="input-company"
-                    />
                   </FormControl>
                   <FormMessage className="text-[11px]" />
                 </FormItem>

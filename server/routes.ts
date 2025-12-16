@@ -4293,7 +4293,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       const protocol = req.headers['x-forwarded-proto'] || req.protocol;
       const host = req.headers['x-forwarded-host'] || req.get('host');
-      const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+      const redirectUri = `${protocol}://${host}/api/auth/callback/google`;
       
       const params = new URLSearchParams({
         client_id: clientId,
@@ -4312,7 +4312,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
+  app.get("/api/auth/callback/google", async (req: Request, res: Response) => {
     try {
       const { code, error: oauthError } = req.query;
 
@@ -4329,7 +4329,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       const protocol = req.headers['x-forwarded-proto'] || req.protocol;
       const host = req.headers['x-forwarded-host'] || req.get('host');
-      const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+      const redirectUri = `${protocol}://${host}/api/auth/callback/google`;
 
       // Exchange code for tokens
       const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
