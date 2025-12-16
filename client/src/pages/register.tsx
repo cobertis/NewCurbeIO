@@ -450,13 +450,6 @@ export default function Register() {
           />
           
           <div className="absolute top-0 right-0 w-[180px] h-[220px] bg-white rounded-bl-[30px] p-5 pt-8 z-20">
-            <div 
-              className="absolute left-0 bottom-[-30px] w-[30px] h-[30px] bg-transparent"
-              style={{
-                borderTopRightRadius: '30px',
-                boxShadow: '15px -15px 0 0 white',
-              }}
-            />
             <div className="text-2xl font-bold text-gray-900">+89%</div>
             <div className="text-xs text-gray-500 mt-1">Positive respond from<br/>people</div>
             <Button 
