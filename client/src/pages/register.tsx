@@ -18,7 +18,7 @@ import { Loader2 } from "lucide-react";
 import { formatPhoneInput } from "@shared/phone";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import logo from "@assets/logo no fondo_1760457183587.png";
-import backgroundImage from "@assets/mountain_road_background.png";
+import backgroundImage from "@assets/Curbe_SaaS_Brand_Illustration_1765854893427.png";
 
 const registerSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
