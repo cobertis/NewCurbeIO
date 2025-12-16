@@ -7606,13 +7606,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const paymentMethodDetails = await stripeClient.paymentMethods.retrieve(userPaymentMethodId);
       
       // If payment method is attached to a different customer, detach first then attach
+      // If payment method is attached to a different customer, inform user
       if (paymentMethodDetails.customer && paymentMethodDetails.customer !== subscription.stripeCustomerId) {
-        console.log("[SKIP-TRIAL] Detaching PM from user customer:", paymentMethodDetails.customer);
-        await stripeClient.paymentMethods.detach(userPaymentMethodId);
+        console.log("[SKIP-TRIAL] PM attached to wrong customer:", paymentMethodDetails.customer, "vs", subscription.stripeCustomerId);
+        return res.status(400).json({ 
+          message: "Your saved card needs to be re-added. Please delete your current card and add it again, then try to activate."
+        });
       }
-      
-      // Now attach to the subscription customer
-      if (!paymentMethodDetails.customer || paymentMethodDetails.customer !== subscription.stripeCustomerId) {
+      // If payment method has no customer, attach to subscription customer
+      if (!paymentMethodDetails.customer) {
         console.log("[SKIP-TRIAL] Attaching PM to subscription customer:", subscription.stripeCustomerId);
         await stripeClient.paymentMethods.attach(userPaymentMethodId, {
           customer: subscription.stripeCustomerId,
@@ -8234,15 +8236,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       // Get or create user's own Stripe customer
-      const userStripeCustomerId = await getOrCreateUserStripeCustomer(
-        currentUser.id,
-        companyId,
-        currentUser.email,
-        `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || currentUser.email
-      );
+      // Use the SUBSCRIPTION customer (not user personal customer) so payment methods work for billing
+      const subscription = await storage.getSubscriptionByCompany(companyId);
+      if (!subscription || !subscription.stripeCustomerId) {
+        return res.status(400).json({ message: "No active subscription found. Please contact support." });
+      }
+      const subscriptionCustomerId = subscription.stripeCustomerId;
       
       const setupIntent = await stripeClient.setupIntents.create({
-        customer: userStripeCustomerId,
+        customer: subscriptionCustomerId,
         payment_method_types: ['card'],
         usage: 'off_session',
         metadata: {
@@ -8254,7 +8256,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       res.json({ 
         clientSecret: setupIntent.client_secret,
-        customerId: userStripeCustomerId
+        customerId: subscriptionCustomerId
       });
     } catch (error: any) {
       console.error('[STRIPE] Error creating setup intent:', error);
@@ -8280,13 +8282,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(500).json({ message: "Stripe is not configured" });
       }
       
-      // Get or create user's Stripe customer
-      const userStripeCustomerId = await getOrCreateUserStripeCustomer(
-        currentUser.id,
-        companyId,
-        currentUser.email,
-        `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || currentUser.email
-      );
+      // Use the SUBSCRIPTION customer so payment methods are ready for billing
+      const subscription = await storage.getSubscriptionByCompany(companyId);
+      if (!subscription || !subscription.stripeCustomerId) {
+        return res.status(400).json({ message: "No active subscription found" });
+      }
+      const subscriptionCustomerId = subscription.stripeCustomerId;
       
       // Retrieve the payment method from Stripe to get card details
       const pm = await stripeClient.paymentMethods.retrieve(paymentMethodId);
@@ -8300,7 +8301,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         companyId,
         ownerUserId: currentUser.id,
         stripePaymentMethodId: paymentMethodId,
-        stripeCustomerId: userStripeCustomerId,
+        stripeCustomerId: subscriptionCustomerId,
         type: pm.type || 'card',
         brand: pm.card?.brand || null,
         last4: pm.card?.last4 || null,
@@ -8312,7 +8313,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Set as default in Stripe if first card
       if (isFirst) {
-        await stripeClient.customers.update(userStripeCustomerId, {
+        await stripeClient.customers.update(subscriptionCustomerId, {
           invoice_settings: { default_payment_method: paymentMethodId }
         });
       }
