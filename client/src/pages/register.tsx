@@ -13,14 +13,15 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { formatPhoneInput } from "@shared/phone";
 import logo from "@assets/logo no fondo_1760457183587.png";
 import backgroundImage from "@assets/mountain_road_background.png";
 
 const registerSchema = z.object({
-  username: z.string().min(1, "Username is required"),
+  fullName: z.string().min(1, "Full name is required"),
+  companyName: z.string().min(1, "Company name is required"),
+  address: z.string().min(1, "Address is required"),
   email: z.string().email("Invalid email address"),
   phone: z.string().min(1, "Phone number is required").refine(
     (val) => {
@@ -29,8 +30,6 @@ const registerSchema = z.object({
     },
     "Valid phone number is required"
   ),
-  password: z.string().min(6, "Password must be at least 6 characters"),
-  smsConsent: z.boolean().refine(val => val === true, "You must agree to receive SMS messages"),
 });
 
 type RegisterForm = z.infer<typeof registerSchema>;
@@ -39,16 +38,15 @@ export default function Register() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false);
 
   const form = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      username: "",
+      fullName: "",
+      companyName: "",
+      address: "",
       email: "",
       phone: "",
-      password: "",
-      smsConsent: false,
     },
   });
 
@@ -110,21 +108,65 @@ export default function Register() {
           </p>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <div>
-                <label className="block text-xs text-gray-400 mb-1 ml-1">Username</label>
+                <label className="block text-xs text-gray-400 mb-1 ml-1">Full Name</label>
                 <FormField
                   control={form.control}
-                  name="username"
+                  name="fullName"
                   render={({ field }) => (
                     <FormItem>
                       <FormControl>
                         <Input
-                          placeholder="Jahan"
+                          placeholder="John Doe"
                           className="h-11 px-4 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                           {...field}
-                          autoComplete="username"
-                          data-testid="input-username"
+                          autoComplete="name"
+                          data-testid="input-fullname"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 mb-1 ml-1">Company Name</label>
+                <FormField
+                  control={form.control}
+                  name="companyName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input
+                          placeholder="Acme Inc."
+                          className="h-11 px-4 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          {...field}
+                          autoComplete="organization"
+                          data-testid="input-company"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs text-gray-400 mb-1 ml-1">Address</label>
+                <FormField
+                  control={form.control}
+                  name="address"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input
+                          placeholder="123 Main St, City, State"
+                          className="h-11 px-4 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          {...field}
+                          autoComplete="street-address"
+                          data-testid="input-address"
                         />
                       </FormControl>
                       <FormMessage />
@@ -181,61 +223,6 @@ export default function Register() {
                   )}
                 />
               </div>
-
-              <div>
-                <label className="block text-xs text-gray-400 mb-1 ml-1">Password</label>
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <div className="relative">
-                          <Input
-                            type={showPassword ? "text" : "password"}
-                            placeholder="••••••••••"
-                            className="h-11 px-4 pr-10 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            {...field}
-                            autoComplete="new-password"
-                            data-testid="input-password"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                            data-testid="button-toggle-password"
-                          >
-                            {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                          </button>
-                        </div>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="smsConsent"
-                render={({ field }) => (
-                  <FormItem className="flex items-start space-x-3 space-y-0">
-                    <FormControl>
-                      <Checkbox
-                        checked={field.value}
-                        onCheckedChange={field.onChange}
-                        data-testid="checkbox-sms-consent"
-                      />
-                    </FormControl>
-                    <div className="space-y-1 leading-none">
-                      <p className="text-[10px] text-gray-500 leading-relaxed">
-                        By providing your phone number, you agree to receive SMS promotional offers and marketing updates from Curbe.io. Message frequency may vary. Standard Message and Data Rates may apply. Reply STOP to opt out. Reply HELP for help. We will not share mobile information with third parties for promotional or marketing purposes.
-                      </p>
-                      <FormMessage />
-                    </div>
-                  </FormItem>
-                )}
-              />
 
               <Button
                 type="submit"
