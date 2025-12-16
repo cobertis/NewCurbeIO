@@ -94,30 +94,34 @@ export default function Login() {
     <div 
       className="min-h-screen w-full flex items-center justify-center p-4 md:p-8"
       style={{
-        backgroundImage: `linear-gradient(rgba(0,0,0,0.7), rgba(0,0,0,0.7)), url(${backgroundImage})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
+        background: 'radial-gradient(ellipse at center, #0a1628 0%, #050B14 70%, #030810 100%)',
       }}
       data-testid="login-page"
     >
-      <div className="w-full max-w-[1300px] bg-white rounded-[2rem] shadow-2xl flex flex-col lg:flex-row relative">
-        <div className="w-full lg:w-[45%] p-10 md:p-14 relative z-10">
+      <div 
+        className="w-full max-w-[1300px] bg-white rounded-[2rem] flex flex-col lg:flex-row relative"
+        style={{
+          boxShadow: '0 25px 80px rgba(0,0,0,0.4)',
+          border: '1px solid rgba(255,255,255,0.08)',
+        }}
+      >
+        <div className="w-full lg:w-[45%] p-12 md:p-16 relative z-10">
           <div className="flex items-center gap-2 mb-8">
             <img src={logo} alt="Curbe" className="h-12 w-auto" />
           </div>
 
-          <h1 className="text-[1.75rem] md:text-[2.25rem] font-bold text-gray-900 leading-tight mb-3">Welcome back to Curbe</h1>
+          <h1 className="text-[1.75rem] md:text-[2.25rem] font-bold text-gray-900 leading-tight mb-3">Welcome back.</h1>
           <p className="text-gray-500 text-sm mb-6">
-            Sign in to continue managing your customer relationships and grow your business.
+            Pick up where you left off.
           </p>
 
           <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-xs text-gray-400 mb-1 ml-1">Email</label>
+              <label className="block text-xs text-gray-400 mb-1 ml-1">Work email</label>
               <Input
                 id="email"
                 type="email"
-                placeholder="example@curbe.io"
+                placeholder="name@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 className="h-11 px-4 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -179,11 +183,15 @@ export default function Login() {
                   Signing in...
                 </>
               ) : (
-                "Sign In"
+                "Sign in"
               )}
             </Button>
 
-            <div className="text-center text-sm text-gray-600 pt-4">
+            <p className="text-center text-xs text-gray-400 pt-2">
+              Secure sign-in. Verify email on first login.
+            </p>
+
+            <div className="text-center text-sm text-gray-600 pt-2">
               Don't have an account?{" "}
               <button
                 type="button"
@@ -191,7 +199,7 @@ export default function Login() {
                 className="text-blue-600 hover:text-blue-700 font-medium"
                 data-testid="link-register"
               >
-                Register here
+                Create a workspace
               </button>
             </div>
           </form>
@@ -216,16 +224,12 @@ export default function Login() {
             
             <div className="flex flex-nowrap justify-center gap-3 overflow-hidden">
               <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20 shrink-0">
-                <div className="w-3 h-3 rounded-full bg-orange-400" />
-                <span className="text-white text-sm font-medium whitespace-nowrap"># CustomerMomentum</span>
-              </div>
-              <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20 shrink-0">
                 <div className="w-3 h-3 rounded-full bg-blue-400" />
-                <span className="text-white text-sm font-medium whitespace-nowrap"># Automation</span>
+                <span className="text-white text-sm font-medium whitespace-nowrap">Automation</span>
               </div>
               <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20 shrink-0">
                 <div className="w-3 h-3 rounded-full bg-pink-400" />
-                <span className="text-white text-sm font-medium whitespace-nowrap"># UnifiedJourney</span>
+                <span className="text-white text-sm font-medium whitespace-nowrap">Unified journey</span>
               </div>
             </div>
           </div>
