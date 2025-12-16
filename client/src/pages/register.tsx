@@ -449,7 +449,7 @@ export default function Register() {
             className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent"
           />
           
-          <div className="absolute top-0 right-0 w-[180px] h-[220px] bg-white rounded-bl-[30px] p-5 pt-8 z-20">
+          <div className="absolute top-0 right-0 w-[180px] h-[220px] rounded-bl-[30px] p-5 pt-8 z-20 bg-[#ebebeb]">
             <div className="text-2xl font-bold text-gray-900">+89%</div>
             <div className="text-xs text-gray-500 mt-1">Positive respond from<br/>people</div>
             <Button 
