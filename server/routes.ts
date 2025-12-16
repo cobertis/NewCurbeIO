@@ -7591,19 +7591,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!subscription || !subscription.stripeSubscriptionId || !subscription.stripeCustomerId) {
         return res.status(404).json({ message: "No active subscription found" });
       }
-      // Step 1: Check if customer has a payment method
-      const paymentMethods = await stripeClient.paymentMethods.list({
-        customer: subscription.stripeCustomerId,
-        type: 'card',
-      });
-      if (!paymentMethods.data || paymentMethods.data.length === 0) {
+      // Step 1: Check if USER has a payment method (USER-SCOPED - each admin has their own cards)
+      const userPaymentMethods = await storage.getUserPaymentMethods(companyId, currentUser.id);
+      if (!userPaymentMethods || userPaymentMethods.length === 0) {
         return res.status(400).json({ 
           message: "Please add a payment method before activating your subscription" 
         });
       }
-      // Get the default payment method
-      const customer = await stripeClient.customers.retrieve(subscription.stripeCustomerId) as any;
-      const defaultPaymentMethodId = customer.invoice_settings?.default_payment_method || paymentMethods.data[0].id;
+      // Get the default payment method from users saved cards
+      const defaultUserPayment = userPaymentMethods.find(pm => pm.isDefault) || userPaymentMethods[0];
+      const userPaymentMethodId = defaultUserPayment.stripePaymentMethodId;
+      // Attach the users payment method to the subscription customer if not already attached
+      try {
+        await stripeClient.paymentMethods.attach(userPaymentMethodId, {
+          customer: subscription.stripeCustomerId,
+        });
+      } catch (attachErr: any) {
+        // Ignore if already attached
+        if (attachErr.code !== "resource_already_exists") {
+          console.log("[SKIP-TRIAL] Payment method attach info:", attachErr.message);
+        }
+      }
+      const defaultPaymentMethodId = userPaymentMethodId;
       // Step 2: Get the subscription to find the price
       const stripeSubscription = await stripeClient.subscriptions.retrieve(subscription.stripeSubscriptionId);
       if (!stripeSubscription.items.data || stripeSubscription.items.data.length === 0) {
