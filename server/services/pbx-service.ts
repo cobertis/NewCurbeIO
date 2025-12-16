@@ -349,6 +349,16 @@ export class PbxService {
       .insert(pbxExtensions)
       .values({ ...safeData, companyId } as any)
       .returning();
+    
+    // Auto-enable SIP for user when extension is created
+    if (extension.userId) {
+      await db
+        .update(users)
+        .set({ sipEnabled: true })
+        .where(eq(users.id, extension.userId));
+      console.log(`[PBX] Auto-enabled SIP for user ${extension.userId} after extension creation`);
+    }
+    
     return extension;
   }
 
@@ -358,11 +368,28 @@ export class PbxService {
     data: Record<string, any>
   ): Promise<PbxExtension | null> {
     const { companyId: _, id: __, ...safeData } = data;
+    
+    // Get current extension to check if user is changing
+    const [current] = await db
+      .select()
+      .from(pbxExtensions)
+      .where(and(eq(pbxExtensions.companyId, companyId), eq(pbxExtensions.id, extensionId)));
+    
     const [updated] = await db
       .update(pbxExtensions)
       .set({ ...safeData, updatedAt: new Date() })
       .where(and(eq(pbxExtensions.companyId, companyId), eq(pbxExtensions.id, extensionId)))
       .returning();
+    
+    // Auto-enable SIP for new user when extension is reassigned
+    if (updated?.userId && updated.userId !== current?.userId) {
+      await db
+        .update(users)
+        .set({ sipEnabled: true })
+        .where(eq(users.id, updated.userId));
+      console.log(`[PBX] Auto-enabled SIP for user ${updated.userId} after extension assignment`);
+    }
+    
     return updated || null;
   }
 
