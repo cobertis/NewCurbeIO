@@ -14,8 +14,8 @@ export const companies = pgTable("companies", {
   name: text("name").notNull(),
   slug: text("slug").notNull().unique(), // URL-friendly identifier
   email: text("email").notNull(), // Company contact email
-  phone: text("phone").notNull(), // Company phone number
-  address: text("address").notNull(), // Company address (street address)
+  phone: text("phone"), // Company phone number (optional, set during onboarding)
+  address: text("address"), // Company address (optional, set during onboarding)
   addressLine2: text("address_line_2"), // Suite, Apt, Unit, etc.
   domain: text("domain"), // Custom domain
   customDomain: text("custom_domain"), // White-label custom domain (verified via Cloudflare)
