@@ -47,7 +47,7 @@ export function AuthShell({
       >
         <div className="relative flex flex-col bg-white w-full lg:w-[40%]">
           <div className="shrink-0 px-10 lg:px-14 pt-10 pb-4">
-            <img src={logo} alt="Curbe" className="h-8 w-auto mb-6" />
+            <img src={logo} alt="Curbe" className="h-10 w-auto mb-8" />
             <h1 className="text-[28px] lg:text-[32px] font-semibold text-gray-900 leading-tight tracking-[-0.02em]">
               {title}
             </h1>

@@ -3691,6 +3691,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }),
         admin: z.object({
           email: z.string().email("Valid email is required"),
+          password: z.string().min(8, "Password must be at least 8 characters"),
           firstName: z.string().optional().nullable(),
           lastName: z.string().optional().nullable(),
           phone: z.string().optional().nullable(),
@@ -3748,8 +3749,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         role: 'admin',
         companyId: newCompany.id,
         status: 'pending_activation', // Account pending activation until user clicks email link
+        password: adminData.password ? await hashPassword(adminData.password) : null, // Hash password during registration
         isActive: false, // Account starts inactive until email verification
-        password: null, // No password until user activates account via email link
         smsSubscribed: adminData.smsSubscribed ?? true,
       });
       // Send activation email using existing function
@@ -4738,28 +4739,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to validate activation token" });
     }
   });
-  // Activate account by setting password
+  // Activate account - password was already set during registration
   app.post("/api/auth/activate-account", async (req: Request, res: Response) => {
     try {
-      const { token, password } = req.body;
-      if (!token || !password) {
-        return res.status(400).json({ message: "Token and password are required" });
-      }
-      // Validate password complexity
-      if (password.length < 8) {
-        return res.status(400).json({ message: "Password must be at least 8 characters" });
-      }
-      if (!/[A-Z]/.test(password)) {
-        return res.status(400).json({ message: "Password must contain at least one uppercase letter" });
-      }
-      if (!/[a-z]/.test(password)) {
-        return res.status(400).json({ message: "Password must contain at least one lowercase letter" });
-      }
-      if (!/[0-9]/.test(password)) {
-        return res.status(400).json({ message: "Password must contain at least one number" });
-      }
-      if (!/[^a-zA-Z0-9]/.test(password)) {
-        return res.status(400).json({ message: "Password must contain at least one special character (!@#$%^&*)" });
+      const { token } = req.body;
+      if (!token) {
+        return res.status(400).json({ message: "Activation token is required" });
       }
       // Validate and use the token (marks it as used)
       const userId = await storage.validateAndUseToken(token);
@@ -4771,11 +4756,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-      // Hash the password
-      const hashedPassword = await hashPassword(password);
-      // Update user with new password, mark email as verified, activate account, and set status to active
+      // Update user: mark email as verified, activate account, and set status to active
       await storage.updateUser(userId, {
-        password: hashedPassword,
         emailVerified: true,
         isActive: true,
         status: 'active',
