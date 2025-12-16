@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2 } from "lucide-react";
 import { formatPhoneInput } from "@shared/phone";
+import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import logo from "@assets/logo no fondo_1760457183587.png";
 import backgroundImage from "@assets/mountain_road_background.png";
 
@@ -188,21 +189,24 @@ export default function Register() {
 
               <div className="grid grid-cols-4 gap-4">
                 <div className="col-span-3">
-                  <label className="block text-xs text-gray-400 mb-1 ml-1">Street Address</label>
                   <FormField
                     control={form.control}
                     name="address"
                     render={({ field }) => (
                       <FormItem>
-                        <FormControl>
-                          <Input
-                            placeholder="123 Main St"
-                            className="h-11 px-4 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                            {...field}
-                            autoComplete="street-address"
-                            data-testid="input-address"
-                          />
-                        </FormControl>
+                        <GooglePlacesAddressAutocomplete
+                          value={field.value}
+                          onChange={field.onChange}
+                          onAddressSelect={(address) => {
+                            form.setValue("address", address.street);
+                            form.setValue("city", address.city);
+                            form.setValue("state", address.state);
+                            form.setValue("zipCode", address.postalCode);
+                          }}
+                          label="Street Address"
+                          placeholder="Start typing your address..."
+                          testId="input-address"
+                        />
                         <FormMessage />
                       </FormItem>
                     )}
