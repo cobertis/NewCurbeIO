@@ -8,38 +8,52 @@ interface AuthLayoutProps {
   onGoogleSSO?: () => void;
   footer: React.ReactNode;
   children: React.ReactNode;
+  rightPanelTitle?: string;
+  rightPanelSubtitle?: string;
+  rightPanelBadges?: string[];
 }
 
 export function AuthLayout({
   title,
   subtitle,
-  ssoEnabled = true,
+  ssoEnabled = false,
   onGoogleSSO,
   footer,
   children,
+  rightPanelTitle = "Turn every interaction into progress.",
+  rightPanelSubtitle = "From first hello to loyal customer—without the chaos.",
+  rightPanelBadges = ["Automation", "Unified inbox"],
 }: AuthLayoutProps) {
   return (
     <div 
-      className="min-h-screen w-full flex items-center justify-center p-4 md:p-8 relative bg-slate-950"
+      className="min-h-screen w-full flex items-center justify-center p-4 md:p-8"
+      style={{
+        background: 'linear-gradient(145deg, #070B14 0%, #0B1220 50%, #0A1018 100%)',
+      }}
     >
-      {/* Subtle noise texture */}
+      {/* Subtle ambient glow */}
       <div 
-        className="absolute inset-0 opacity-[0.04] pointer-events-none"
+        className="fixed inset-0 pointer-events-none"
         style={{
-          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
+          background: 'radial-gradient(ellipse 80% 50% at 50% 30%, rgba(59, 130, 246, 0.04) 0%, transparent 60%)',
         }}
       />
-      
+
+      {/* Main card container - FIXED dimensions */}
       <div 
-        className="w-full max-w-[960px] flex flex-col lg:flex-row gap-0 relative z-10 rounded-2xl overflow-hidden"
+        className="relative z-10 w-full flex rounded-3xl overflow-hidden shadow-2xl"
         style={{
-          border: '1px solid rgba(255,255,255,0.06)',
-          boxShadow: '0 4px 24px rgba(0,0,0,0.2)',
+          width: 'clamp(340px, 78vw, 1100px)',
+          height: 'clamp(500px, 70vh, 680px)',
+          boxShadow: '0 25px 80px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05)',
         }}
       >
-        {/* Left panel - Form */}
-        <div className="w-full lg:w-[48%] bg-white flex flex-col">
-          <div className="flex flex-col h-full px-12 py-10">
+        {/* Left Panel - Form (42%) */}
+        <div 
+          className="relative flex flex-col bg-white w-full lg:w-[42%]"
+        >
+          {/* Scrollable content area */}
+          <div className="flex-1 overflow-y-auto px-8 lg:px-12 py-10">
             {/* Logo */}
             <div className="mb-8">
               <img src={logo} alt="Curbe" className="h-7 w-auto" />
@@ -47,7 +61,7 @@ export function AuthLayout({
 
             {/* Header */}
             <div className="mb-6">
-              <h1 className="text-[2rem] font-semibold text-gray-900 leading-tight tracking-[-0.02em] mb-1">
+              <h1 className="text-[28px] lg:text-[32px] font-semibold text-gray-900 leading-tight tracking-[-0.02em] mb-1.5">
                 {title}
               </h1>
               <p className="text-gray-500 text-[15px]">
@@ -55,13 +69,13 @@ export function AuthLayout({
               </p>
             </div>
 
-            {/* SSO */}
-            {ssoEnabled && (
+            {/* SSO Button */}
+            {ssoEnabled && onGoogleSSO && (
               <>
                 <button
                   type="button"
                   onClick={onGoogleSSO}
-                  className="w-full h-[48px] flex items-center justify-center gap-3 bg-white border border-gray-200 rounded-lg text-[14px] font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all duration-150"
+                  className="w-full h-[48px] flex items-center justify-center gap-3 bg-white border border-gray-200 rounded-xl text-[14px] font-medium text-gray-700 hover:bg-gray-50 hover:border-gray-300 transition-all duration-150"
                   data-testid="button-google-sso"
                 >
                   <svg className="w-[18px] h-[18px]" viewBox="0 0 24 24">
@@ -73,47 +87,73 @@ export function AuthLayout({
                   Continue with Google
                 </button>
 
-                <div className="flex items-center gap-3 my-5">
+                <div className="flex items-center gap-4 my-5">
                   <div className="flex-1 h-px bg-gray-200"></div>
-                  <span className="text-[12px] text-gray-400 font-medium">or</span>
+                  <span className="text-[12px] text-gray-400 font-medium uppercase tracking-wide">or</span>
                   <div className="flex-1 h-px bg-gray-200"></div>
                 </div>
               </>
             )}
 
             {/* Form content */}
-            <div className="flex-1">
+            <div className="space-y-4">
               {children}
             </div>
+          </div>
 
-            {/* Footer */}
-            <div className="mt-6 pt-4">
-              {footer}
-            </div>
+          {/* Footer - fixed at bottom */}
+          <div className="shrink-0 px-8 lg:px-12 py-5 border-t border-gray-100">
+            {footer}
           </div>
         </div>
 
-        {/* Right panel - Ambient image */}
-        <div className="hidden lg:block w-[52%] relative">
+        {/* Right Panel - Visual (58%) */}
+        <div 
+          className="relative hidden lg:flex w-[58%] items-end"
+        >
+          {/* Background image - clean, no blur */}
           <div 
             className="absolute inset-0 bg-cover bg-center"
             style={{ 
               backgroundImage: `url(${backgroundImage})`,
-              filter: 'blur(2px) saturate(0.9) brightness(0.75)',
             }}
           />
-          {/* Dark overlay */}
+          
+          {/* Subtle gradient overlay for text legibility */}
           <div 
             className="absolute inset-0"
             style={{
-              background: 'rgba(0,0,0,0.45)',
+              background: 'linear-gradient(180deg, rgba(0,0,0,0.15) 0%, rgba(0,0,0,0.25) 40%, rgba(0,0,0,0.55) 100%)',
             }}
           />
-          {/* Optional minimal text */}
-          <div className="absolute bottom-8 left-8 right-8">
-            <p className="text-white/50 text-[13px]">
-              Customer relationships, simplified.
+
+          {/* Content at bottom */}
+          <div className="relative z-10 p-10 w-full">
+            <h2 className="text-[22px] font-semibold text-white mb-2 tracking-tight leading-snug">
+              {rightPanelTitle}
+            </h2>
+            <p className="text-white/55 text-[14px] mb-5 max-w-sm leading-relaxed">
+              {rightPanelSubtitle}
             </p>
+            
+            {/* Badges */}
+            {rightPanelBadges.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {rightPanelBadges.map((badge, index) => (
+                  <span 
+                    key={index}
+                    className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-[12px] font-medium text-white/85 border border-white/15"
+                    style={{
+                      background: 'rgba(255, 255, 255, 0.08)',
+                      backdropFilter: 'blur(8px)',
+                    }}
+                  >
+                    <span className="w-1.5 h-1.5 rounded-full bg-blue-400" />
+                    {badge}
+                  </span>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
