@@ -18,6 +18,7 @@ import { Loader2, Eye, EyeOff } from "lucide-react";
 import { AuthShell } from "@/components/auth-shell";
 
 const registerSchema = z.object({
+  workspaceName: z.string().min(2, "Workspace name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   termsAccepted: z.boolean().refine((val) => val === true, "Required"),
@@ -34,6 +35,7 @@ export default function Register() {
   const form = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
+      workspaceName: "",
       email: "",
       password: "",
       termsAccepted: false,
@@ -43,16 +45,14 @@ export default function Register() {
   const onSubmit = async (data: RegisterForm) => {
     setIsLoading(true);
     try {
-      const emailPrefix = data.email.split('@')[0];
-      const companyName = emailPrefix.charAt(0).toUpperCase() + emailPrefix.slice(1) + "'s Workspace";
-      const slug = emailPrefix
+      const slug = data.workspaceName
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');
       
       const payload = {
         company: {
-          name: companyName,
+          name: data.workspaceName,
           slug: slug,
         },
         admin: {
@@ -117,6 +117,33 @@ export default function Register() {
     >
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="block text-[11px] text-gray-500 font-medium tracking-wide uppercase">
+              Workspace name
+            </label>
+            <FormField
+              control={form.control}
+              name="workspaceName"
+              render={({ field }) => (
+                <FormItem>
+                  <FormControl>
+                    <Input
+                      type="text"
+                      placeholder="Your company or team name"
+                      className="h-11 px-4 bg-white border border-gray-200 rounded-lg text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
+                      {...field}
+                      autoComplete="organization"
+                      data-testid="input-workspace-name"
+                    />
+                  </FormControl>
+                  <div className="h-4">
+                    <FormMessage className="text-[10px]" />
+                  </div>
+                </FormItem>
+              )}
+            />
+          </div>
+
           <div className="space-y-1.5">
             <label className="block text-[11px] text-gray-500 font-medium tracking-wide uppercase">
               Work email
