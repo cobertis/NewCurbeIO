@@ -3691,8 +3691,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }),
         admin: z.object({
           email: z.string().email("Valid email is required"),
-          firstName: z.string().min(1, "First name is required"),
-          lastName: z.string().min(1, "Last name is required"),
+          firstName: z.string().optional().nullable(),
+          lastName: z.string().optional().nullable(),
           phone: z.string().optional().nullable(),
           smsSubscribed: z.boolean().optional().default(true),
         }),
@@ -12693,8 +12693,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const requestSchema = z.object({
         role: z.string().min(1, "Role is required"),
         memberData: z.object({
-          firstName: z.string().min(1, "First name is required"),
-          lastName: z.string().min(1, "Last name is required"),
+          firstName: z.string().optional().nullable(),
+          lastName: z.string().optional().nullable(),
           email: z.string().email().optional().nullable(),
           phone: z.string().optional().nullable(),
           smsSubscribed: z.boolean().optional().default(true),
@@ -12756,8 +12756,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const requestSchema = z.object({
         role: z.string().min(1, "Role is required"),
         memberData: z.object({
-          firstName: z.string().min(1, "First name is required"),
-          lastName: z.string().min(1, "Last name is required"),
+          firstName: z.string().optional().nullable(),
+          lastName: z.string().optional().nullable(),
           email: z.string().email().optional().nullable(),
           phone: z.string().optional().nullable(),
           smsSubscribed: z.boolean().optional().default(true),
