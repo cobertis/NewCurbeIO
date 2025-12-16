@@ -3680,6 +3680,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           name: z.string().min(1, "Company name is required"),
           slug: z.string().min(1, "Company slug is required"),
           phone: z.string().optional().nullable(),
+          smsSubscribed: z.boolean().optional().default(true),
           website: z.string().url().optional().or(z.literal("")).nullable(),
           address: z.string().optional().nullable(),
           addressLine2: z.string().optional().nullable(),
@@ -3693,6 +3694,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           firstName: z.string().min(1, "First name is required"),
           lastName: z.string().min(1, "Last name is required"),
           phone: z.string().optional().nullable(),
+          smsSubscribed: z.boolean().optional().default(true),
         }),
       });
       // Validate request body with Zod
@@ -3748,6 +3750,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         status: 'pending_activation', // Account pending activation until user clicks email link
         isActive: false, // Account starts inactive until email verification
         password: null, // No password until user activates account via email link
+        smsSubscribed: adminData.smsSubscribed ?? true,
       });
       // Send activation email using existing function
       const emailSent = await sendActivationEmail(newUser, newCompany.name, req);
@@ -12557,6 +12560,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           lastName: z.string().min(1, "Last name is required"),
           email: z.string().email().optional().nullable(),
           phone: z.string().optional().nullable(),
+          smsSubscribed: z.boolean().optional().default(true),
           dateOfBirth: z.string().optional().nullable(),
           ssn: z.string().optional().nullable(),
           gender: z.string().optional().nullable(),
@@ -12619,6 +12623,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           lastName: z.string().min(1, "Last name is required"),
           email: z.string().email().optional().nullable(),
           phone: z.string().optional().nullable(),
+          smsSubscribed: z.boolean().optional().default(true),
           dateOfBirth: z.string().optional().nullable(),
           ssn: z.string().optional().nullable(),
           gender: z.string().optional().nullable(),
@@ -12685,6 +12690,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         secondLastName: z.string().optional().nullable(),
         email: z.string().email().optional().nullable(),
         phone: z.string().optional().nullable(),
+          smsSubscribed: z.boolean().optional().default(true),
         dateOfBirth: z.string().optional().nullable(),
         ssn: z.string().optional().nullable(),
         gender: z.string().optional().nullable(),

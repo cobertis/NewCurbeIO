@@ -67,10 +67,38 @@ export default function Register() {
   const onSubmit = async (data: RegisterForm) => {
     setIsLoading(true);
     try {
+      // Generate slug from company name
+      const slug = data.companyName
+        .toLowerCase()
+        .replace(/[^a-z0-9]+/g, '-')
+        .replace(/^-|-$/g, '');
+      
+      // Map form data to the expected backend format
+      const payload = {
+        company: {
+          name: data.companyName,
+          slug: slug,
+          phone: data.phone,
+          address: data.address,
+          addressLine2: data.apt || null,
+          city: data.city,
+          state: data.state,
+          postalCode: data.zipCode,
+          country: "US",
+        },
+        admin: {
+          email: data.email,
+          firstName: data.firstName,
+          lastName: data.lastName,
+          phone: data.phone,
+          smsSubscribed: data.smsConsent,
+        },
+      };
+      
       const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
 
       const result = await response.json();
