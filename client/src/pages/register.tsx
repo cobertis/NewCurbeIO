@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useId } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -46,6 +46,7 @@ export default function Register() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
+  const clipId = useId();
 
   const form = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
@@ -438,7 +439,25 @@ export default function Register() {
         </div>
 
         <div className="hidden lg:block w-[55%] relative m-4 ml-0">
-          <div className="absolute inset-0 overflow-hidden rounded-[1.5rem]">
+          <svg width="0" height="0" className="absolute">
+            <defs>
+              <clipPath id={`image-clip-${clipId}`} clipPathUnits="objectBoundingBox">
+                <path d="M0,0 H0.82 V0.02 C0.82,0.08 0.88,0.12 0.94,0.12 H1 V1 H0 V0.05 C0,0.022 0.022,0 0.05,0 Z" />
+              </clipPath>
+              <clipPath id={`card-clip-${clipId}`} clipPathUnits="objectBoundingBox">
+                <path d="M0.15,0 H0.9 C0.955,0 1,0.04 1,0.08 V0.92 C1,0.96 0.955,1 0.9,1 H0.15 C0.07,1 0,0.94 0,0.86 V0.45 C0,0.38 0.08,0.32 0.08,0.25 C0.08,0.18 0,0.12 0,0.05 V0.08 C0,0.035 0.065,0 0.15,0 Z" />
+              </clipPath>
+            </defs>
+          </svg>
+          
+          <div 
+            className="absolute inset-0 overflow-hidden"
+            style={{ 
+              clipPath: `url(#image-clip-${clipId})`,
+              WebkitClipPath: `url(#image-clip-${clipId})`,
+              borderRadius: '1.5rem',
+            }}
+          >
             <div 
               className="absolute inset-0 bg-cover bg-center"
               style={{ 
@@ -451,9 +470,12 @@ export default function Register() {
           </div>
           
           <div 
-            className="absolute top-4 -right-3 w-[180px] rounded-[20px] p-5 z-20 bg-white shadow-xl"
+            className="absolute top-3 -right-4 w-[180px] p-5 z-20 bg-white"
             style={{
-              boxShadow: '-8px 8px 24px rgba(0,0,0,0.15)',
+              clipPath: `url(#card-clip-${clipId})`,
+              WebkitClipPath: `url(#card-clip-${clipId})`,
+              filter: 'drop-shadow(-6px 6px 12px rgba(0,0,0,0.2))',
+              borderRadius: '16px',
             }}
           >
             <div className="text-2xl font-bold text-gray-900">+89%</div>
