@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2 } from "lucide-react";
 import { formatPhoneInput } from "@shared/phone";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
@@ -36,6 +37,7 @@ const registerSchema = z.object({
     },
     "Valid phone number is required"
   ),
+  smsConsent: z.boolean().refine((val) => val === true, "You must agree to receive SMS messages"),
 });
 
 type RegisterForm = z.infer<typeof registerSchema>;
@@ -58,6 +60,7 @@ export default function Register() {
       zipCode: "",
       email: "",
       phone: "",
+      smsConsent: false,
     },
   });
 
@@ -106,7 +109,7 @@ export default function Register() {
       data-testid="register-page"
     >
       <div className="w-full max-w-[1300px] bg-white rounded-[2rem] shadow-2xl flex flex-col lg:flex-row relative">
-        <div className="w-full lg:w-[55%] p-10 md:p-14 relative z-10">
+        <div className="w-full lg:w-[45%] p-10 md:p-14 relative z-10">
           <div className="flex items-center gap-2 mb-8">
             <img src={logo} alt="Curbe" className="h-12 w-auto" />
           </div>
@@ -349,6 +352,28 @@ export default function Register() {
                 />
               </div>
 
+              <FormField
+                control={form.control}
+                name="smsConsent"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="checkbox-sms-consent"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <label className="text-xs text-gray-500 leading-relaxed cursor-pointer" onClick={() => field.onChange(!field.value)}>
+                        By providing your phone number, you agree to receive SMS promotional offers and marketing updates from Curbe.io. Message frequency may vary. Standard Message and Data Rates may apply. Reply STOP to opt out. Reply HELP for help. We will not share mobile information with third parties for promotional or marketing purposes.
+                      </label>
+                      <FormMessage />
+                    </div>
+                  </FormItem>
+                )}
+              />
+
               <Button
                 type="submit"
                 disabled={isLoading}
@@ -380,7 +405,7 @@ export default function Register() {
           </Form>
         </div>
 
-        <div className="hidden lg:block w-[45%] relative m-4 ml-0">
+        <div className="hidden lg:block w-[55%] relative m-4 ml-0">
           <div 
             className="absolute inset-0 bg-cover bg-center rounded-[1.5rem]"
             style={{ 
