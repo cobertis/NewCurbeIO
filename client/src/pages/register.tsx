@@ -99,8 +99,7 @@ export default function Register() {
       <div className="w-full max-w-[1100px] bg-white rounded-[2rem] shadow-2xl flex flex-col lg:flex-row relative">
         <div className="w-full lg:w-[45%] p-8 md:p-10 relative z-10">
           <div className="flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 rounded-full border-[3px] border-blue-500 border-t-transparent" style={{ animation: 'spin 3s linear infinite' }} />
-            <span className="text-xl font-semibold text-blue-600">Curbe.</span>
+            <img src={logo} alt="Curbe" className="h-8 w-auto" />
           </div>
 
           <h1 className="text-[1.75rem] md:text-[2.25rem] font-bold text-gray-900 leading-tight mb-3">
