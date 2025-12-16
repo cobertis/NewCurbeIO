@@ -149,14 +149,14 @@ export default function Login() {
             Continue with Google
           </button>
 
-          <div className="flex items-center gap-4 mb-6">
-            <div className="flex-1 h-px bg-gray-200/50"></div>
-            <span className="text-[10px] text-gray-400 font-medium tracking-widest">OR</span>
-            <div className="flex-1 h-px bg-gray-200/50"></div>
+          <div className="flex items-center gap-3 my-5">
+            <div className="flex-1 h-px bg-gray-900/[0.06]"></div>
+            <span className="text-[10px] text-gray-400 font-medium">or</span>
+            <div className="flex-1 h-px bg-gray-900/[0.06]"></div>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <label className="block text-[11px] text-gray-400 font-medium ml-1 uppercase tracking-wide">Work email</label>
               <Input
                 id="email"
@@ -164,14 +164,14 @@ export default function Login() {
                 placeholder="name@company.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="h-[50px] px-4 bg-[#FFFFFF] border border-gray-200/60 rounded-xl text-[15px] text-gray-900 placeholder:text-gray-300 focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-400/40 focus:bg-white transition-all duration-200"
+                className="h-[50px] px-4 bg-gray-50/50 border border-gray-900/[0.06] rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400/70 focus:bg-white focus:border-blue-500/30 focus:ring-[3px] focus:ring-blue-500/[0.08] transition-all duration-150 outline-none"
                 required
                 autoComplete="email"
                 data-testid="input-email"
               />
             </div>
 
-            <div className="space-y-1">
+            <div className="space-y-1.5">
               <div className="flex items-center justify-between">
                 <label className="block text-[11px] text-gray-400 font-medium ml-1 uppercase tracking-wide">Password</label>
                 <button
@@ -190,7 +190,7 @@ export default function Login() {
                   placeholder="Enter your password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="h-[50px] px-4 pr-12 bg-[#FFFFFF] border border-gray-200/60 rounded-xl text-[15px] text-gray-900 placeholder:text-gray-300 focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-400/40 focus:bg-white transition-all duration-200"
+                  className="h-[50px] px-4 pr-12 bg-gray-50/50 border border-gray-900/[0.06] rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400/70 focus:bg-white focus:border-blue-500/30 focus:ring-[3px] focus:ring-blue-500/[0.08] transition-all duration-150 outline-none"
                   required
                   autoComplete="current-password"
                   data-testid="input-password"
@@ -198,7 +198,7 @@ export default function Login() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-300 hover:text-gray-500 transition-colors duration-150"
+                  className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400/60 hover:text-gray-500 transition-colors duration-150"
                   data-testid="button-toggle-password"
                 >
                   {showPassword ? (
@@ -213,9 +213,9 @@ export default function Login() {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full h-[50px] text-[15px] font-semibold bg-gray-900 hover:bg-gray-800 text-white rounded-full mt-4 transition-all duration-150"
+              className="w-full h-[50px] text-[15px] font-semibold bg-gray-900 hover:bg-gray-800 hover:-translate-y-[1px] text-white rounded-full mt-4 transition-all duration-150 focus:ring-[3px] focus:ring-gray-900/20 focus:outline-none"
               style={{
-                boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                boxShadow: '0 1px 3px rgba(0,0,0,0.08)',
               }}
               data-testid="button-login"
             >
