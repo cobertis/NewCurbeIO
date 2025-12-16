@@ -13,14 +13,24 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Eye, EyeOff } from "lucide-react";
+import { formatPhoneInput } from "@shared/phone";
 import logo from "@assets/logo no fondo_1760457183587.png";
 import backgroundImage from "@assets/generated_images/mountain_road_scenic_background.png";
 
 const registerSchema = z.object({
   username: z.string().min(1, "Username is required"),
   email: z.string().email("Invalid email address"),
+  phone: z.string().min(1, "Phone number is required").refine(
+    (val) => {
+      const digits = val.replace(/\D/g, '');
+      return digits.length === 10 || (digits.length === 11 && digits.startsWith('1'));
+    },
+    "Valid phone number is required"
+  ),
   password: z.string().min(6, "Password must be at least 6 characters"),
+  smsConsent: z.boolean().refine(val => val === true, "You must agree to receive SMS messages"),
 });
 
 type RegisterForm = z.infer<typeof registerSchema>;
@@ -36,7 +46,9 @@ export default function Register() {
     defaultValues: {
       username: "",
       email: "",
+      phone: "",
       password: "",
+      smsConsent: false,
     },
   });
 
@@ -149,6 +161,32 @@ export default function Register() {
               </div>
 
               <div>
+                <label className="block text-xs text-gray-400 mb-1 ml-1">Phone</label>
+                <FormField
+                  control={form.control}
+                  name="phone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormControl>
+                        <Input
+                          placeholder="(555) 123-4567"
+                          className="h-11 px-4 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          {...field}
+                          onChange={(e) => {
+                            const formatted = formatPhoneInput(e.target.value);
+                            field.onChange(formatted);
+                          }}
+                          autoComplete="tel"
+                          data-testid="input-phone"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+
+              <div>
                 <label className="block text-xs text-gray-400 mb-1 ml-1">Password</label>
                 <FormField
                   control={form.control}
@@ -180,6 +218,28 @@ export default function Register() {
                   )}
                 />
               </div>
+
+              <FormField
+                control={form.control}
+                name="smsConsent"
+                render={({ field }) => (
+                  <FormItem className="flex items-start space-x-3 space-y-0">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        data-testid="checkbox-sms-consent"
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <p className="text-xs text-gray-500">
+                        I agree to receive SMS messages for account verification and important updates.
+                      </p>
+                      <FormMessage />
+                    </div>
+                  </FormItem>
+                )}
+              />
 
               <Button
                 type="submit"
