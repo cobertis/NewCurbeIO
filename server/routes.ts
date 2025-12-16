@@ -4281,6 +4281,143 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(500).json({ message: "Failed to fetch business suggestions" });
     }
   });
+
+  // ==================== GOOGLE OAUTH ENDPOINTS ====================
+  app.get("/api/auth/google", async (req: Request, res: Response) => {
+    try {
+      const { clientId } = await credentialProvider.getGoogleOAuth();
+      
+      if (!clientId) {
+        return res.status(500).json({ message: "Google OAuth not configured" });
+      }
+
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.headers['x-forwarded-host'] || req.get('host');
+      const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+      
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: redirectUri,
+        response_type: 'code',
+        scope: 'openid email profile',
+        access_type: 'offline',
+        prompt: 'select_account',
+      });
+
+      const authUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
+      res.redirect(authUrl);
+    } catch (error) {
+      console.error("[GOOGLE_AUTH] Error initiating OAuth:", error);
+      res.redirect('/login?error=oauth_failed');
+    }
+  });
+
+  app.get("/api/auth/google/callback", async (req: Request, res: Response) => {
+    try {
+      const { code, error: oauthError } = req.query;
+
+      if (oauthError || !code) {
+        console.error("[GOOGLE_AUTH] OAuth error:", oauthError);
+        return res.redirect('/login?error=oauth_denied');
+      }
+
+      const { clientId, clientSecret } = await credentialProvider.getGoogleOAuth();
+      
+      if (!clientId || !clientSecret) {
+        return res.redirect('/login?error=oauth_not_configured');
+      }
+
+      const protocol = req.headers['x-forwarded-proto'] || req.protocol;
+      const host = req.headers['x-forwarded-host'] || req.get('host');
+      const redirectUri = `${protocol}://${host}/api/auth/google/callback`;
+
+      // Exchange code for tokens
+      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+        body: new URLSearchParams({
+          code: code as string,
+          client_id: clientId,
+          client_secret: clientSecret,
+          redirect_uri: redirectUri,
+          grant_type: 'authorization_code',
+        }),
+      });
+
+      if (!tokenResponse.ok) {
+        const errorData = await tokenResponse.text();
+        console.error("[GOOGLE_AUTH] Token exchange failed:", errorData);
+        return res.redirect('/login?error=token_exchange_failed');
+      }
+
+      const tokens = await tokenResponse.json() as { access_token: string; id_token?: string };
+
+      // Get user info
+      const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      });
+
+      if (!userInfoResponse.ok) {
+        console.error("[GOOGLE_AUTH] Failed to get user info");
+        return res.redirect('/login?error=user_info_failed');
+      }
+
+      const googleUser = await userInfoResponse.json() as { 
+        id: string; 
+        email: string; 
+        name: string; 
+        given_name?: string;
+        family_name?: string;
+        picture?: string;
+      };
+
+      console.log("[GOOGLE_AUTH] Google user:", { email: googleUser.email, name: googleUser.name });
+
+      // Check if user exists
+      let user = await storage.getUserByEmail(googleUser.email);
+      
+      if (user) {
+        // Existing user - log them in
+        if (user.status === 'inactive' || user.status === 'deactivated') {
+          return res.redirect('/login?error=account_deactivated');
+        }
+
+        // Update last login
+        await storage.updateUser(user.id, { 
+          lastLoginAt: new Date(),
+          googleId: googleUser.id,
+        });
+
+        // Set session
+        req.session.userId = user.id;
+        req.session.companyId = user.companyId;
+        req.session.isAuthenticated = true;
+        
+        await new Promise<void>((resolve, reject) => {
+          req.session.save((err) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
+
+        console.log("[GOOGLE_AUTH] Existing user logged in:", user.email);
+        return res.redirect('/dashboard');
+      } else {
+        // New user - redirect to register with pre-filled data
+        const registerParams = new URLSearchParams({
+          email: googleUser.email,
+          name: googleUser.name || '',
+          googleId: googleUser.id,
+          sso: 'google',
+        });
+        return res.redirect(`/register?${registerParams.toString()}`);
+      }
+    } catch (error) {
+      console.error("[GOOGLE_AUTH] Callback error:", error);
+      res.redirect('/login?error=oauth_callback_failed');
+    }
+  });
+
   // ==================== 2FA/OTP ENDPOINTS ====================
   app.post("/api/auth/send-otp", async (req: Request, res: Response) => {
     try {

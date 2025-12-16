@@ -1,0 +1,155 @@
+Eres un diseñador/frontend senior. Necesito que refactorices TODO el flujo de autenticación (Login, Register/Create workspace, Forgot Password, Activation portal, OTP verify, Reset password) para que tengan EXACTAMENTE el mismo diseño base y NO se mueva el layout entre pantallas.
+
+OBJETIVO VISUAL (premium, moderno, limpio):
+
+* Un “AuthShell” reutilizable con un card grande centrado, elegante, consistente.
+* Tamaño del card FIJO (misma altura/anchura en todas las pantallas). Solo cambia el contenido del panel izquierdo dentro de un área scrolleable si hace falta.
+* Estilo: minimal + premium (tipo Linear/Stripe vibes). Mucho aire, bordes suaves, sombras sutiles.
+* Mantener branding Curbe.io.
+* La ilustración del “S” (la imagen actual) se usa SOLO como panel derecho (no como fondo gigante). Si se usa fondo, que sea un gradiente MUY sutil, sin “ruido” excesivo.
+
+PROBLEMA ACTUAL QUE DEBES CORREGIR:
+
+* El fondo oscuro con mucho espacio hace que se vea feo y pequeño.
+* El formulario cambia de tamaño entre Login y Register.
+* El panel derecho se ve raro por blur/overlay.
+* Quiero que el contenedor NO cambie nunca. “Nada se mueve”. Solo el contenido cambia.
+
+ARQUITECTURA REQUERIDA:
+
+1. Crear componente reutilizable: AuthShell
+
+   * Layout centrado con maxWidth grande y altura consistente.
+   * Desktop: grid 2 columnas: izquierda (form), derecha (visual).
+   * Mobile: una sola columna (solo form), ocultar panel derecho o ponerlo como header pequeño.
+   * Debe aceptar props:
+
+     * title, subtitle
+     * children (form content)
+     * footer (links inferiores)
+     * rightPanelTitle, rightPanelSubtitle, rightPanelBadges (chips opcionales)
+     * rightPanelImage (la “S” actual)
+2. El AuthShell debe tener DIMENSIONES FIJAS:
+
+   * Ancho total: clamp(920px, 78vw, 1100px)
+   * Alto total: clamp(560px, 70vh, 680px)
+   * Border radius: 24px o 28px
+   * Left panel width ~ 42% ; right panel ~ 58% (ajustable)
+   * Si el contenido del lado izquierdo excede, que scrollee SOLO el panel izquierdo (overflow-y-auto) SIN cambiar el alto del contenedor.
+3. El fondo de la página (BODY) NO debe ser la imagen.
+
+   * Fondo: un gradiente oscuro suave o neutro (ej: #070B14 → #0B1220) con un glow leve.
+   * Nada de “bandas” exageradas. Súper sutil.
+
+ESTILO (Tailwind/shadcn):
+
+* Usa Tailwind + shadcn/ui components (Card, Button, Input, Separator, Checkbox).
+* Tipografía: tamaño headline grande (text-4xl o text-3xl) y subtítulo pequeño.
+* Inputs: altos, redondeados, borde muy suave, focus ring elegante.
+* Botón principal: oscuro/azul Curbe, grande, full width, hover sutil.
+* Botones OAuth (Google): estilo neutral, borde, icono, no compita con CTA principal.
+* Microcopy limpio, sin frases “turísticas”. Esto es B2B SaaS.
+
+COPY (usar exactamente o muy similar):
+LOGIN:
+
+* Title: “Welcome back.”
+* Subtitle: “Sign in to your workspace.”
+* CTA: “Sign in”
+* Links: “Forgot password?” / “Create workspace”
+
+REGISTER (Create workspace):
+
+* Title: “Create your workspace”
+* Subtitle: “Launch the next era of customer relationships.”
+* Fields: Work email, Password, Workspace name
+* Checkbox: “I agree to the Terms of Service and Privacy Policy.”
+* CTA: “Create workspace”
+* Link: “Already have an account? Sign in”
+
+FORGOT PASSWORD:
+
+* Title: “Reset your password”
+* Subtitle: “We’ll email you a secure code.”
+* Field: Email
+* CTA: “Send code”
+* Link: “Back to sign in”
+
+OTP / CODE VERIFY:
+
+* Title: “Verify your email”
+* Subtitle: “Enter the 6-digit code we sent to {email}.”
+* Component: OTP input (6 boxes)
+* CTA: “Verify”
+* Secondary: “Resend code” (con timer/disabled)
+* Link: “Back to sign in”
+
+ACTIVATION PORTAL (si aplica):
+
+* Title: “Activate your workspace”
+* Subtitle: “Confirm your email to finish setup.”
+* CTA: “Continue”
+* Mostrar estado: “Email confirmed” / “Pending verification” con icono.
+
+RESET PASSWORD (nuevo password):
+
+* Title: “Set a new password”
+* Subtitle: “Choose a strong password you’ll remember.”
+* Fields: New password + Confirm password
+* CTA: “Update password”
+* Link: “Back to sign in”
+
+COMPLIANCE / CONSENT (IMPORTANTE):
+
+* NO quiero “marketing consent” metido en Login.
+* En Register, solo lo legal mínimo:
+
+  * Terms/Privacy (required).
+* Si necesitas consentimiento SMS/marketing por compliance, hazlo como checkbox opcional separado SOLO cuando el usuario agregue teléfono (si esa pantalla existe). Texto corto:
+  “Optional: I agree to receive product updates by SMS. Msg & data rates may apply. Reply STOP to opt out.”
+* No mezcles compliance largo en el registro principal. Si hay texto legal largo, usar link “View details” que abre modal/drawer.
+
+RIGHT PANEL (visual):
+
+* Mantener la imagen “S” como background del panel derecho, cover, centrada, sin blur feo.
+* Agregar overlay: un degradado oscuro MUY sutil para que el texto sea legible.
+* Texto:
+
+  * Right title: “Turn every interaction into progress.”
+  * Right subtitle: “From first hello to loyal customer—without the chaos.”
+* Chips: “Automation” “Unified journey” (máximo 2–3).
+* NO uses hashtags tipo #Be_happy.
+* No metas métricas falsas tipo “+89%”. Eso se siente scam.
+
+INTERACCIONES / DETALLES:
+
+* Animación sutil al cambiar de pantalla (fade/slide 10–16px) solo en el contenido izquierdo. El contenedor no se mueve.
+* Alineación vertical: el contenido del lado izquierdo debe verse centrado/estable, no flotando raro arriba.
+* Espaciado consistente: padding 48px desktop, 24px mobile.
+* Accesibilidad: labels claros, focus visible, estados de error/disabled.
+
+RESPONSIVE:
+
+* < 1024px: ocultar panel derecho o ponerlo colapsado arriba con altura fija pequeña.
+* Todo debe verse perfecto en mobile: card full width con padding.
+
+IMPLEMENTACIÓN:
+
+* NO rompas la lógica existente (auth, routes, handlers). Cambia solo UI/layout.
+* Crear AuthShell y reemplazar el layout en estas rutas:
+  /login
+  /register (o /create-workspace)
+  /forgot-password
+  /activate (si existe)
+  /otp (si existe)
+  /reset-password
+* Asegúrate que todos usan el mismo AuthShell con el mismo tamaño fijo.
+* La altura y anchura del contenedor deben ser idénticas entre páginas. Si el form es corto, usar un “spacer” o centrar dentro del panel izquierdo sin cambiar dimensiones.
+
+ENTREGABLE:
+
+* Código final con AuthShell + páginas actualizadas.
+* Confirmar que el card no cambia de tamaño y que el panel izquierdo scrollea si hay overflow.
+* Mantener imagen actual del panel derecho y que se vea nítida, elegante.
+
+No me des explicaciones largas: implementa y ajusta hasta que se vea premium.

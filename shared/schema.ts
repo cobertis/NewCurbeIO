@@ -217,6 +217,7 @@ export const users = pgTable("users", {
   
   // Billing
   stripeCustomerId: text("stripe_customer_id"), // User's own Stripe customer ID for billing
+  googleId: text("google_id"), // Google OAuth ID for SSO
   
   // Security
   lastLoginAt: timestamp("last_login_at"),
@@ -5261,6 +5262,7 @@ export const apiProviders = [
   "bluebubbles",
   "evolution_api",
   "google_places",
+  "google_oauth",
   "nodemailer",
   "openai",
   "cms_api",

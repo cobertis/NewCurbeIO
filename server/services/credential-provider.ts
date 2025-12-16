@@ -226,6 +226,19 @@ export const credentialProvider = {
     return result;
   },
 
+  async getGoogleOAuth(): Promise<{ clientId: string; clientSecret: string }> {
+    const cacheKey = getCacheKey('google_oauth');
+    const cached = getFromCache<{ clientId: string; clientSecret: string }>(cacheKey);
+    if (cached) return cached;
+
+    const clientId = await secretsService.getCredential("google_oauth" as ApiProvider, "client_id") || '';
+    const clientSecret = await secretsService.getCredential("google_oauth" as ApiProvider, "client_secret") || '';
+    
+    const result = { clientId, clientSecret };
+    setCache(cacheKey, result);
+    return result;
+  },
+
   async get(service: string, key: string): Promise<string> {
     const cacheKey = getCacheKey(service, key);
     const cached = getFromCache<string>(cacheKey);

@@ -93,11 +93,7 @@ export default function Register() {
   };
 
   const handleGoogleSSO = () => {
-    toast({
-      title: "Coming soon",
-      description: "Google SSO will be available shortly.",
-      duration: 3000,
-    });
+    window.location.href = "/api/auth/google";
   };
 
   return (
