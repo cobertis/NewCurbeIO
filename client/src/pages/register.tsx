@@ -145,7 +145,7 @@ export default function Register() {
           <h1 className="text-[1.75rem] md:text-[2.25rem] font-bold text-gray-900 leading-tight mb-3">The next era of customer relationships starts here.
 </h1>
           <p className="text-gray-500 text-sm mb-6">
-            More than Thousand Locations for customized just for you. You can start now for start your journey.
+            A smarter system that turns every touchpoint into momentum—automated, consistent, and measurable.
           </p>
 
           <Form {...form}>
@@ -448,23 +448,6 @@ export default function Register() {
             <div 
               className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent"
             />
-          </div>
-          
-          <div 
-            className="absolute top-6 -right-4 w-[170px] p-5 z-20 bg-white rounded-2xl"
-            style={{
-              boxShadow: '0 8px 24px rgba(0,0,0,0.15)',
-            }}
-          >
-            <div className="text-2xl font-bold text-gray-900">+89%</div>
-            <div className="text-xs text-gray-500 mt-1">Positive respond from<br/>people</div>
-            <Button 
-              size="sm" 
-              className="mt-3 bg-gray-900 hover:bg-gray-800 text-white rounded-lg w-full py-2 text-sm font-medium"
-              onClick={() => setLocation("/login")}
-            >
-              Start Now
-            </Button>
           </div>
 
           <div className="absolute bottom-0 left-0 right-0 p-6 text-center z-10">
