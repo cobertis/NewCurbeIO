@@ -469,22 +469,20 @@ export default function Register() {
 
           <div className="absolute bottom-0 left-0 right-0 p-6 text-center z-10">
             <h2 className="text-2xl font-bold text-white mb-2">Turn every interaction into progress.</h2>
-            <p className="text-white/70 text-xs max-w-sm mx-auto mb-5">
-              In camp we have a lot people with different life story that help you feel more better in trip
-            </p>
+            <p className="text-white/70 text-xs max-w-sm mx-auto mb-5">From first hello to loyal customer—without the chaos.</p>
             
             <div className="flex flex-nowrap justify-center gap-3 overflow-hidden">
               <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20 shrink-0">
                 <div className="w-3 h-3 rounded-full bg-orange-400" />
-                <span className="text-white text-sm font-medium whitespace-nowrap"># Curbe_Trip</span>
+                <span className="text-white text-sm font-medium whitespace-nowrap"># CustomerMomentum</span>
               </div>
               <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20 shrink-0">
                 <div className="w-3 h-3 rounded-full bg-blue-400" />
-                <span className="text-white text-sm font-medium whitespace-nowrap"># Be_happy</span>
+                <span className="text-white text-sm font-medium whitespace-nowrap"># Automation</span>
               </div>
               <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20 shrink-0">
                 <div className="w-3 h-3 rounded-full bg-pink-400" />
-                <span className="text-white text-sm font-medium whitespace-nowrap"># Be_happy</span>
+                <span className="text-white text-sm font-medium whitespace-nowrap"># UnifiedJourney</span>
               </div>
             </div>
           </div>
