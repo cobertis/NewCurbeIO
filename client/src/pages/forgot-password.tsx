@@ -1,10 +1,10 @@
 import { useState } from "react";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Mail, ArrowLeft } from "lucide-react";
+import { Mail, ArrowLeft, CheckCircle2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import logo from "@assets/logo no fondo_1760457183587.png";
+import { AuthLayout } from "@/components/auth-layout";
 
 export default function ForgotPassword() {
   const [, setLocation] = useLocation();
@@ -62,121 +62,78 @@ export default function ForgotPassword() {
 
   if (emailSent) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4 flex items-center justify-center">
-        {/* Logo in top left */}
-        <div className="absolute top-6 left-6">
-          <Link href="/">
-            <img 
-              src={logo} 
-              alt="Curbe.io" 
-              className="h-10 w-auto object-contain cursor-pointer"
-            />
-          </Link>
-        </div>
-
-        <div className="w-full max-w-md">
-          <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-10">
-            <div className="text-center mb-8">
-              <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center mx-auto mb-4">
-                <Mail className="w-6 h-6 text-green-600 dark:text-green-400" />
-              </div>
-              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-                Check Your Email
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                If an account exists with that email, we've sent you a password reset link. Please check your inbox and follow the instructions.
-              </p>
-            </div>
-            
-            <Button
+      <AuthLayout
+        title="Check your email"
+        subtitle="We've sent you a password reset link"
+        footer={
+          <div className="text-center text-[13px] text-gray-500">
+            <button
+              type="button"
               onClick={() => setLocation("/login")}
-              variant="outline"
-              className="w-full h-12 text-base font-medium rounded-lg"
-              data-testid="button-back-to-login"
+              className="text-gray-900 hover:text-gray-700 font-medium transition-colors inline-flex items-center gap-1.5"
+              data-testid="link-back-to-login"
             >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Back to Login
-            </Button>
+              <ArrowLeft className="w-3.5 h-3.5" />
+              Back to sign in
+            </button>
           </div>
+        }
+      >
+        <div className="flex flex-col items-center justify-center py-8">
+          <div className="w-14 h-14 rounded-full bg-green-50 flex items-center justify-center mb-5">
+            <CheckCircle2 className="w-7 h-7 text-green-600" />
+          </div>
+          <p className="text-center text-gray-500 text-[14px] max-w-[280px]">
+            If an account exists with <span className="font-medium text-gray-700">{identifier}</span>, you'll receive a password reset link shortly.
+          </p>
         </div>
-      </div>
+      </AuthLayout>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4 flex items-center justify-center">
-      {/* Logo in top left */}
-      <div className="absolute top-4 left-4 sm:top-6 sm:left-6">
-        <Link href="/">
-          <img 
-            src={logo} 
-            alt="Curbe.io" 
-            className="h-8 sm:h-10 w-auto object-contain cursor-pointer"
-          />
-        </Link>
-      </div>
-
-      {/* Forgot Password Card */}
-      <div className="w-full max-w-md">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-10">
-          {/* Icon */}
-          <div className="flex justify-center mb-6">
-            <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-              <Mail className="w-6 h-6 text-gray-600 dark:text-gray-300" />
-            </div>
-          </div>
-
-          {/* Title */}
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-              Forgot Password?
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Enter your email and we'll send you a link to reset your password
-            </p>
-          </div>
-
-          {/* Form */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Email/Username Input */}
-            <div>
-              <Input
-                id="identifier"
-                type="text"
-                placeholder="Email"
-                value={identifier}
-                onChange={(e) => setIdentifier(e.target.value)}
-                className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                required
-                data-testid="input-identifier"
-              />
-            </div>
-
-            {/* Send Reset Link Button */}
-            <Button
-              type="submit"
-              className="w-full h-12 text-base font-medium bg-gray-600 hover:bg-gray-700 text-white rounded-lg"
-              disabled={isLoading}
-              data-testid="button-send-reset-link"
-            >
-              {isLoading ? "Sending..." : "Send Reset Link"}
-            </Button>
-
-            {/* Back to Login Link */}
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={() => setLocation("/login")}
-                className="text-sm text-gray-600 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300 font-medium inline-flex items-center"
-                data-testid="link-back-to-login"
-              >
-                <ArrowLeft className="w-3 h-3 mr-1" />
-                Back to Login
-              </button>
-            </div>
-          </form>
+    <AuthLayout
+      title="Reset your password"
+      subtitle="We'll email you a secure code."
+      footer={
+        <div className="text-center text-[13px] text-gray-500">
+          <button
+            type="button"
+            onClick={() => setLocation("/login")}
+            className="text-gray-900 hover:text-gray-700 font-medium transition-colors inline-flex items-center gap-1.5"
+            data-testid="link-back-to-login"
+          >
+            <ArrowLeft className="w-3.5 h-3.5" />
+            Back to sign in
+          </button>
         </div>
-      </div>
-    </div>
+      }
+    >
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1.5">
+          <label className="block text-[13px] text-gray-600 font-medium">Email</label>
+          <Input
+            id="identifier"
+            type="email"
+            placeholder="you@company.com"
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            className="h-[48px] px-4 bg-white border border-gray-200 rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all outline-none"
+            required
+            autoComplete="email"
+            data-testid="input-identifier"
+          />
+        </div>
+
+        <Button
+          type="submit"
+          className="w-full h-[48px] text-[14px] font-medium bg-gray-900 hover:bg-gray-800 text-white rounded-xl transition-colors"
+          disabled={isLoading}
+          data-testid="button-send-reset-link"
+        >
+          {isLoading ? "Sending..." : "Send code"}
+        </Button>
+      </form>
+    </AuthLayout>
   );
 }
