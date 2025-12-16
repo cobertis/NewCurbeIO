@@ -44,7 +44,7 @@ export function AuthLayout({
         className="relative z-10 w-full flex rounded-3xl overflow-hidden shadow-2xl"
         style={{
           width: 'clamp(340px, 78vw, 1100px)',
-          height: 'clamp(500px, 70vh, 680px)',
+          height: 'clamp(540px, 75vh, 720px)',
           boxShadow: '0 25px 80px -12px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.05)',
         }}
       >
@@ -53,18 +53,18 @@ export function AuthLayout({
           className="relative flex flex-col bg-white w-full lg:w-[42%]"
         >
           {/* Scrollable content area */}
-          <div className="flex-1 overflow-y-auto px-8 lg:px-12 py-10">
+          <div className="flex-1 overflow-y-auto px-8 lg:px-10 py-8">
             {/* Logo */}
-            <div className="mb-8">
+            <div className="mb-6">
               <img src={logo} alt="Curbe" className="h-7 w-auto" />
             </div>
 
             {/* Header */}
-            <div className="mb-6">
-              <h1 className="text-[28px] lg:text-[32px] font-semibold text-gray-900 leading-tight tracking-[-0.02em] mb-1.5">
+            <div className="mb-5">
+              <h1 className="text-[26px] lg:text-[30px] font-semibold text-gray-900 leading-tight tracking-[-0.02em] mb-1">
                 {title}
               </h1>
-              <p className="text-gray-500 text-[15px]">
+              <p className="text-gray-500 text-[14px]">
                 {subtitle}
               </p>
             </div>
@@ -87,7 +87,7 @@ export function AuthLayout({
                   Continue with Google
                 </button>
 
-                <div className="flex items-center gap-4 my-5">
+                <div className="flex items-center gap-4 my-4">
                   <div className="flex-1 h-px bg-gray-200"></div>
                   <span className="text-[12px] text-gray-400 font-medium uppercase tracking-wide">or</span>
                   <div className="flex-1 h-px bg-gray-200"></div>
@@ -96,13 +96,13 @@ export function AuthLayout({
             )}
 
             {/* Form content */}
-            <div className="space-y-4">
+            <div className="space-y-3.5">
               {children}
             </div>
           </div>
 
           {/* Footer - fixed at bottom */}
-          <div className="shrink-0 px-8 lg:px-12 py-5 border-t border-gray-100">
+          <div className="shrink-0 px-8 lg:px-10 py-4 border-t border-gray-100">
             {footer}
           </div>
         </div>
