@@ -121,9 +121,9 @@ export default function Register() {
       }
     >
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
-          <div className="space-y-1">
-            <label className="block text-[11px] text-gray-500 font-medium ml-0.5">Work email</label>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <div className="space-y-1.5">
+            <label className="block text-[12px] text-gray-500 font-medium ml-0.5">Work email</label>
             <FormField
               control={form.control}
               name="email"
@@ -133,7 +133,7 @@ export default function Register() {
                     <Input
                       type="email"
                       placeholder="name@company.com"
-                      className="h-[46px] px-4 bg-gray-50/50 border border-gray-900/[0.06] rounded-xl text-[14px] text-gray-900 placeholder:text-gray-400/70 focus:bg-white focus:border-blue-500/30 focus:ring-[3px] focus:ring-blue-500/[0.08] transition-all duration-150 outline-none"
+                      className="h-[52px] px-4 bg-gray-50/50 border border-gray-900/[0.06] rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400/70 focus:bg-white focus:border-blue-500/30 focus:ring-[3px] focus:ring-blue-500/[0.08] transition-all duration-150 outline-none"
                       {...field}
                       autoComplete="email"
                       data-testid="input-email"
@@ -145,7 +145,7 @@ export default function Register() {
             />
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <label className="block text-[12px] text-gray-500 font-medium ml-0.5">Password</label>
             <FormField
               control={form.control}
@@ -157,7 +157,7 @@ export default function Register() {
                       <Input
                         type={showPassword ? "text" : "password"}
                         placeholder="Min. 8 characters"
-                        className="h-[46px] px-4 pr-12 bg-gray-50/50 border border-gray-900/[0.06] rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400/70 focus:bg-white focus:border-blue-500/30 focus:ring-[3px] focus:ring-blue-500/[0.08] transition-all duration-150 outline-none"
+                        className="h-[52px] px-4 pr-12 bg-gray-50/50 border border-gray-900/[0.06] rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400/70 focus:bg-white focus:border-blue-500/30 focus:ring-[3px] focus:ring-blue-500/[0.08] transition-all duration-150 outline-none"
                         {...field}
                         autoComplete="new-password"
                         data-testid="input-password"
@@ -182,7 +182,7 @@ export default function Register() {
             />
           </div>
 
-          <div className="space-y-1">
+          <div className="space-y-1.5">
             <label className="block text-[12px] text-gray-500 font-medium ml-0.5">Company / workspace name</label>
             <FormField
               control={form.control}
@@ -192,7 +192,7 @@ export default function Register() {
                   <FormControl>
                     <Input
                       placeholder="Acme Insurance"
-                      className="h-[46px] px-4 bg-gray-50/50 border border-gray-900/[0.06] rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400/70 focus:bg-white focus:border-blue-500/30 focus:ring-[3px] focus:ring-blue-500/[0.08] transition-all duration-150 outline-none"
+                      className="h-[52px] px-4 bg-gray-50/50 border border-gray-900/[0.06] rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400/70 focus:bg-white focus:border-blue-500/30 focus:ring-[3px] focus:ring-blue-500/[0.08] transition-all duration-150 outline-none"
                       {...field}
                       autoComplete="organization"
                       data-testid="input-company"
@@ -233,7 +233,7 @@ export default function Register() {
           <Button
             type="submit"
             disabled={isLoading}
-            className="w-full h-[46px] text-[15px] font-semibold bg-gray-900 hover:bg-gray-800 hover:-translate-y-0.5 hover:shadow-md text-white rounded-full mt-2 transition-all duration-200 focus:ring-2 focus:ring-gray-900/25 focus:ring-offset-2 focus:outline-none shadow-sm"
+            className="w-full h-[50px] text-[14px] font-semibold bg-gray-900 hover:bg-gray-800 text-white rounded-full mt-2 transition-all duration-200 focus:ring-2 focus:ring-gray-900/20 focus:ring-offset-2 focus:outline-none"
             data-testid="button-register"
           >
             {isLoading ? (

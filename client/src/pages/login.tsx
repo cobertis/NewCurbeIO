@@ -3,7 +3,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Loader2, Eye, EyeOff } from "lucide-react";
+import { Loader2, Eye, EyeOff, MessageSquare, Zap } from "lucide-react";
 import { AuthLayout } from "@/components/auth-layout";
 
 export default function Login() {
@@ -63,12 +63,30 @@ export default function Login() {
     });
   };
 
+  const TrustBlock = (
+    <div className="space-y-2.5 pt-2">
+      <div className="flex items-center gap-3">
+        <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+          <MessageSquare className="w-3 h-3 text-gray-500" />
+        </div>
+        <span className="text-[13px] text-gray-500">Unified inbox for SMS, iMessage, WhatsApp</span>
+      </div>
+      <div className="flex items-center gap-3">
+        <div className="w-5 h-5 rounded-full bg-gray-100 flex items-center justify-center shrink-0">
+          <Zap className="w-3 h-3 text-gray-500" />
+        </div>
+        <span className="text-[13px] text-gray-500">Automations that follow up instantly</span>
+      </div>
+    </div>
+  );
+
   return (
     <AuthLayout
       title="Welcome back."
       subtitle="Pick up where you left off."
       ssoEnabled={true}
       onGoogleSSO={handleGoogleSSO}
+      trustBlock={TrustBlock}
       footer={
         <div className="text-center text-[13px] text-gray-500">
           Don't have an account?{" "}
@@ -83,8 +101,8 @@ export default function Login() {
         </div>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-3">
-        <div className="space-y-1">
+      <form onSubmit={handleSubmit} className="space-y-4">
+        <div className="space-y-1.5">
           <label className="block text-[12px] text-gray-500 font-medium ml-0.5">Work email</label>
           <Input
             id="email"
@@ -92,14 +110,14 @@ export default function Login() {
             placeholder="name@company.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="h-[46px] px-4 bg-gray-50/50 border border-gray-900/[0.06] rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400/70 focus:bg-white focus:border-blue-500/30 focus:ring-[3px] focus:ring-blue-500/[0.08] transition-all duration-150 outline-none"
+            className="h-[52px] px-4 bg-gray-50/50 border border-gray-900/[0.06] rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400/70 focus:bg-white focus:border-blue-500/30 focus:ring-[3px] focus:ring-blue-500/[0.08] transition-all duration-150 outline-none"
             required
             autoComplete="email"
             data-testid="input-email"
           />
         </div>
 
-        <div className="space-y-1">
+        <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="block text-[12px] text-gray-500 font-medium ml-0.5">Password</label>
             <button
@@ -118,7 +136,7 @@ export default function Login() {
               placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-[46px] px-4 pr-12 bg-gray-50/50 border border-gray-900/[0.06] rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400/70 focus:bg-white focus:border-blue-500/30 focus:ring-[3px] focus:ring-blue-500/[0.08] transition-all duration-150 outline-none"
+              className="h-[52px] px-4 pr-12 bg-gray-50/50 border border-gray-900/[0.06] rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400/70 focus:bg-white focus:border-blue-500/30 focus:ring-[3px] focus:ring-blue-500/[0.08] transition-all duration-150 outline-none"
               required
               autoComplete="current-password"
               data-testid="input-password"
@@ -141,7 +159,7 @@ export default function Login() {
         <Button
           type="submit"
           disabled={isLoading}
-          className="w-full h-[46px] text-[15px] font-semibold bg-gray-900 hover:bg-gray-800 hover:-translate-y-0.5 hover:shadow-md text-white rounded-full mt-3 transition-all duration-200 focus:ring-2 focus:ring-gray-900/25 focus:ring-offset-2 focus:outline-none shadow-sm"
+          className="w-full h-[50px] text-[14px] font-semibold bg-gray-900 hover:bg-gray-800 text-white rounded-full mt-2 transition-all duration-200 focus:ring-2 focus:ring-gray-900/20 focus:ring-offset-2 focus:outline-none"
           data-testid="button-login"
         >
           {isLoading ? (
@@ -154,7 +172,7 @@ export default function Login() {
           )}
         </Button>
 
-        <p className="text-center text-[11px] text-gray-400 pt-1">
+        <p className="text-center text-[11px] text-gray-400">
           Secure sign-in. Verify email on first login.
         </p>
       </form>
