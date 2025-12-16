@@ -142,9 +142,8 @@ export default function Register() {
             <img src={logo} alt="Curbe" className="h-12 w-auto" />
           </div>
 
-          <h1 className="text-[1.75rem] md:text-[2.25rem] font-bold text-gray-900 leading-tight mb-3">
-            This is where incredible experiences start.
-          </h1>
+          <h1 className="text-[1.75rem] md:text-[2.25rem] font-bold text-gray-900 leading-tight mb-3">The next era of customer relationships starts here.
+</h1>
           <p className="text-gray-500 text-sm mb-6">
             More than Thousand Locations for customized just for you. You can start now for start your journey.
           </p>
@@ -438,18 +437,25 @@ export default function Register() {
           </Form>
         </div>
 
-        <div className="hidden lg:block w-[55%] relative m-4 ml-0 overflow-hidden rounded-[1.5rem]">
-          <div 
-            className="absolute inset-0 bg-cover bg-center"
-            style={{ 
-              backgroundImage: `url(${backgroundImage})`,
-            }}
-          />
-          <div 
-            className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent"
-          />
+        <div className="hidden lg:block w-[55%] relative m-4 ml-0">
+          <div className="absolute inset-0 overflow-hidden rounded-[1.5rem]">
+            <div 
+              className="absolute inset-0 bg-cover bg-center"
+              style={{ 
+                backgroundImage: `url(${backgroundImage})`,
+              }}
+            />
+            <div 
+              className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent"
+            />
+          </div>
           
-          <div className="absolute top-0 right-0 w-[180px] h-[220px] rounded-bl-[30px] p-5 pt-8 z-20 bg-[#ebebeb]">
+          <div 
+            className="absolute top-4 -right-3 w-[180px] rounded-[20px] p-5 z-20 bg-white shadow-xl"
+            style={{
+              boxShadow: '-8px 8px 24px rgba(0,0,0,0.15)',
+            }}
+          >
             <div className="text-2xl font-bold text-gray-900">+89%</div>
             <div className="text-xs text-gray-500 mt-1">Positive respond from<br/>people</div>
             <Button 
