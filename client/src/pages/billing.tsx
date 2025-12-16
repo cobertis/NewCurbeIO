@@ -460,7 +460,7 @@ export default function Billing() {
   const saveBillingAddressMutation = useMutation({
     mutationFn: async (data: typeof billingForm) => {
       const result = await apiRequest("POST", "/api/billing/address", data);
-      return result.json();
+      return result;
     },
     onSuccess: () => {
       toast({
@@ -492,7 +492,7 @@ export default function Billing() {
   const portalMutation = useMutation({
     mutationFn: async () => {
       const result = await apiRequest("POST", "/api/billing/portal", {});
-      return result.json();
+      return result;
     },
     onSuccess: (data) => {
       if (data.url) {
@@ -512,7 +512,7 @@ export default function Billing() {
   const skipTrialMutation = useMutation({
     mutationFn: async () => {
       const result = await apiRequest("POST", "/api/billing/skip-trial", {});
-      return result.json();
+      return result;
     },
     onSuccess: () => {
       toast({
@@ -543,7 +543,7 @@ export default function Billing() {
         billingPeriod,
         immediate: immediate ?? false // Default to false if not provided
       });
-      return result.json();
+      return result;
     },
     onSuccess: () => {
       toast({
@@ -566,7 +566,7 @@ export default function Billing() {
   const cancelSubscriptionMutation = useMutation({
     mutationFn: async () => {
       const result = await apiRequest("POST", "/api/billing/cancel", {});
-      return result.json();
+      return result;
     },
     onSuccess: () => {
       toast({
@@ -588,7 +588,7 @@ export default function Billing() {
   const reactivateSubscriptionMutation = useMutation({
     mutationFn: async () => {
       const result = await apiRequest("POST", "/api/billing/reactivate", {});
-      return result.json();
+      return result;
     },
     onSuccess: () => {
       toast({
@@ -610,7 +610,7 @@ export default function Billing() {
   const applyCouponMutation = useMutation({
     mutationFn: async (code: string) => {
       const result = await apiRequest("POST", "/api/billing/apply-coupon", { code });
-      return result.json();
+      return result;
     },
     onSuccess: (data) => {
       setAppliedCoupon(data.coupon);
@@ -632,7 +632,7 @@ export default function Billing() {
   const financialSupportMutation = useMutation({
     mutationFn: async (data: { situation: string; proposedSolution: string }) => {
       const result = await apiRequest("POST", "/api/billing/financial-support", data);
-      return result.json();
+      return result;
     },
     onSuccess: (data) => {
       toast({
@@ -658,7 +658,7 @@ export default function Billing() {
       const result = await apiRequest("POST", "/api/billing/set-default-payment-method", {
         paymentMethodId,
       });
-      return result.json();
+      return result;
     },
     onSuccess: () => {
       toast({
@@ -680,7 +680,7 @@ export default function Billing() {
   const removePaymentMutation = useMutation({
     mutationFn: async (paymentMethodId: string) => {
       const result = await apiRequest("DELETE", `/api/billing/payment-method/${paymentMethodId}`, {});
-      return result.json();
+      return result;
     },
     onSuccess: () => {
       toast({
