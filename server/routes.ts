@@ -33122,10 +33122,41 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       if (!extension.sipUsername || !extension.sipPassword) {
-        return res.status(404).json({ 
-          error: "Extension has no SIP credentials", 
+        // Auto-provision SIP credentials if missing
+        console.log(`[WebRTC] Extension ${extension.id} needs SIP provisioning, auto-provisioning...`);
+        const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+        const provisionResult = await telephonyProvisioningService.provisionExtensionSipConnection(
+          user.companyId,
+          extension.id
+        );
+        
+        if (!provisionResult.success) {
+          console.error(`[WebRTC] Auto-provisioning failed:`, provisionResult.error);
+          return res.status(400).json({ 
+            error: `Failed to provision SIP credentials: ${provisionResult.error}`, 
+            extensionId: extension.id,
+            needsProvisioning: true 
+          });
+        }
+        
+        console.log(`[WebRTC] Auto-provisioned SIP credentials for extension ${extension.id}`);
+        
+        // Return the newly provisioned credentials
+        const [settings] = await db
+          .select({ sipDomain: telephonySettings.sipDomain })
+          .from(telephonySettings)
+          .where(eq(telephonySettings.companyId, user.companyId));
+        
+        const sipDomain = settings?.sipDomain || "sip.telnyx.com";
+        
+        return res.json({
           extensionId: extension.id,
-          needsProvisioning: true 
+          extension: extension.extension,
+          displayName: extension.displayName,
+          sipUsername: provisionResult.sipUsername,
+          sipPassword: provisionResult.sipPassword,
+          sipDomain: provisionResult.sipDomain || sipDomain,
+          credentialConnectionId: provisionResult.credentialConnectionId,
         });
       }
       

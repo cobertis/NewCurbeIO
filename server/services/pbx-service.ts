@@ -79,13 +79,17 @@ export class PbxService {
         .from(telephonySettings)
         .where(eq(telephonySettings.companyId, companyId));
 
-      if (!settings?.managedAccountId) {
+      // Get managed account ID from wallets table
+      const { getCompanyManagedAccountId } = await import('./telnyx-managed-accounts');
+      const managedAccountId = await getCompanyManagedAccountId(companyId);
+      
+      if (!managedAccountId) {
         console.log(`[PBX] No Telnyx managed account found for company: ${companyId}`);
         return;
       }
 
       // Check if already provisioned with Call Control App
-      if (settings.callControlAppId) {
+      if (settings?.callControlAppId) {
         console.log(`[PBX] Company already has Call Control App: ${settings.callControlAppId}, skipping provisioning`);
         return;
       }
