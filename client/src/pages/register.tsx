@@ -468,9 +468,7 @@ export default function Register() {
           </div>
 
           <div className="absolute bottom-0 left-0 right-0 p-6 text-center z-10">
-            <h2 className="text-2xl font-bold text-white mb-2">
-              We are a Family
-            </h2>
+            <h2 className="text-2xl font-bold text-white mb-2">Turn every interaction into progress.</h2>
             <p className="text-white/70 text-xs max-w-sm mx-auto mb-5">
               In camp we have a lot people with different life story that help you feel more better in trip
             </p>
