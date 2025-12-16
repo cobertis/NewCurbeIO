@@ -117,9 +117,11 @@ export default function Register() {
       }
     >
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
           <div className="space-y-1.5">
-            <label className="block text-[13px] text-gray-600 font-medium">Email</label>
+            <label className="block text-[12px] text-gray-500 font-medium tracking-wide">
+              Work email
+            </label>
             <FormField
               control={form.control}
               name="email"
@@ -129,20 +131,22 @@ export default function Register() {
                     <Input
                       type="email"
                       placeholder="you@company.com"
-                      className="h-[48px] px-4 bg-white border border-gray-200 rounded-lg text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all outline-none"
+                      className="h-12 px-4 bg-white border border-gray-200 rounded-lg text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
                       {...field}
                       autoComplete="email"
                       data-testid="input-email"
                     />
                   </FormControl>
-                  <FormMessage className="text-[11px]" />
+                  <FormMessage className="text-[11px] mt-1" />
                 </FormItem>
               )}
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-[13px] text-gray-600 font-medium">Password</label>
+            <label className="block text-[12px] text-gray-500 font-medium tracking-wide">
+              Password
+            </label>
             <FormField
               control={form.control}
               name="password"
@@ -153,7 +157,7 @@ export default function Register() {
                       <Input
                         type={showPassword ? "text" : "password"}
                         placeholder="Min. 8 characters"
-                        className="h-[48px] px-4 pr-12 bg-white border border-gray-200 rounded-lg text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all outline-none"
+                        className="h-12 px-4 pr-12 bg-white border border-gray-200 rounded-lg text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
                         {...field}
                         autoComplete="new-password"
                         data-testid="input-password"
@@ -172,7 +176,7 @@ export default function Register() {
                       </button>
                     </div>
                   </FormControl>
-                  <FormMessage className="text-[11px]" />
+                  <FormMessage className="text-[11px] mt-1" />
                 </FormItem>
               )}
             />
@@ -207,7 +211,7 @@ export default function Register() {
           <Button
             type="submit"
             disabled={isLoading}
-            className="w-full h-[48px] text-[14px] font-medium bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-colors"
+            className="w-full h-12 text-[14px] font-semibold bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-all duration-150 shadow-sm hover:shadow-md disabled:opacity-70"
             data-testid="button-register"
           >
             {isLoading ? (

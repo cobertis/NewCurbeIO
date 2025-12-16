@@ -1,0 +1,69 @@
+Necesito que el LOGIN quede 10/10 (premium SaaS, nada “template”). Ajusta SOLO UI, no rompas lógica.
+
+CAMBIOS OBLIGATORIOS (Login):
+
+1. ARQUITECTURA / PROPORCIONES
+
+* El contenedor (AuthShell) debe sentirse “hero”, no modal pequeño.
+* Aumenta altura del card: clamp(620px, 72vh, 740px).
+* Mantén el card centrado pero con presencia. Menos vacío oscuro alrededor.
+* El panel izquierdo NO puede terminar con un “sótano blanco” gigante:
+
+  * Solución: centra verticalmente el bloque del formulario dentro del panel izquierdo (flex + justify-center) y pon el footer pegado abajo con mt-auto.
+  * Alternativa: usa un layout interno con 3 zonas: header / form / footer. Header y footer fijos; form centrado.
+
+2. JERARQUÍA VISUAL (izquierda)
+
+* Reduce tamaño del logo ~15–20% (se roba el show).
+* Sube el título (text-4xl) y hazlo más dominante.
+* Subtítulo más corto y más fino (text-sm/neutral).
+* Espaciado: menos gaps gigantes, más ritmo consistente (space-y-5 o 6).
+
+3. INPUTS Y LABELS (premium)
+
+* Quita labels tipo “Email / Password” y cámbialos a:
+
+  * “Work email” y “Password”
+* Inputs más altos (h-12 o h-11), borde sutil, focus ring elegante.
+* Añade estados: error border + mensaje pequeño debajo (sin mover layout; reserva espacio).
+* Añade “Caps lock is on” si detectas (opcional pero pro).
+
+4. BOTONES / CTA
+
+* El CTA principal debe dominar: “Sign in”.
+* Botón Google debe ser claramente secundario:
+
+  * estilo outlined suave, menos alto que CTA o mismo alto pero menos contraste.
+  * icono más chico, sin sentirse “principal”.
+* Añade estado loading en CTA (“Signing in…” + spinner). No cambies tamaño del botón cuando carga.
+
+5. “OR” SEPARATOR
+
+* Cambia el separador “OR” por una línea fina con texto pequeño “or continue with” (text-xs, tracking-wide).
+* Alineación perfecta, nada de plantilla bootstrap.
+
+6. LINKS / FOOTER
+
+* “Forgot?” a la derecha del label Password está ok, pero hazlo más sutil (text-xs).
+* Footer inferior:
+
+  * “Don’t have an account?” + link “Create workspace”
+  * debe ir pegado al fondo del panel izquierdo (mt-auto) y NO flotar raro.
+
+7. PANEL DERECHO (se vea integrado, no pegote)
+
+* Ajusta overlay para legibilidad: gradient from-black/60 to transparent (sutil).
+* Mueve el copy un poco arriba (no tan pegado abajo) y alinea con márgenes del panel.
+* Chips: máximo 2, más pequeños, menos contraste. Sin hashtags.
+
+8. MICRO-INTERACCIONES (esto da el 10/10)
+
+* Transiciones suaves: hover en botones, focus en inputs, y fade-in del panel izquierdo al cargar (200ms).
+* Accesibilidad: focus visible, tab order correcto.
+* Mantén dimensiones FIJAS: nada se mueve entre estados (error/loading).
+
+ENTREGABLE:
+
+* Commit con Login refinado + AuthShell si hay cambios.
+* Verifica que en 1440px se vea “hero premium”, y en mobile se vea perfecto.
+* No quiero reescribir todo el sistema, solo elevar el diseño al nivel Stripe/Linear.

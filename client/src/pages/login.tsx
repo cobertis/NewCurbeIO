@@ -62,7 +62,7 @@ export default function Login() {
   return (
     <AuthLayout
       title="Welcome back"
-      subtitle="Sign in to your workspace"
+      subtitle="Sign in to continue to your workspace"
       ssoEnabled={true}
       onGoogleSSO={handleGoogleSSO}
       footer={
@@ -79,16 +79,18 @@ export default function Login() {
         </div>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-5">
         <div className="space-y-1.5">
-          <label className="block text-[13px] text-gray-600 font-medium">Email</label>
+          <label className="block text-[12px] text-gray-500 font-medium tracking-wide">
+            Work email
+          </label>
           <Input
             id="email"
             type="email"
             placeholder="you@company.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="h-[48px] px-4 bg-white border border-gray-200 rounded-lg text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all outline-none"
+            className="h-12 px-4 bg-white border border-gray-200 rounded-lg text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
             required
             autoComplete="email"
             data-testid="input-email"
@@ -97,24 +99,26 @@ export default function Login() {
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="block text-[13px] text-gray-600 font-medium">Password</label>
+            <label className="block text-[12px] text-gray-500 font-medium tracking-wide">
+              Password
+            </label>
             <button
               type="button"
               onClick={() => setLocation("/forgot-password")}
-              className="text-[12px] text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
               data-testid="link-forgot-password"
             >
-              Forgot?
+              Forgot password?
             </button>
           </div>
           <div className="relative">
             <Input
               id="password"
               type={showPassword ? "text" : "password"}
-              placeholder="Enter password"
+              placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-[48px] px-4 pr-12 bg-white border border-gray-200 rounded-lg text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all outline-none"
+              className="h-12 px-4 pr-12 bg-white border border-gray-200 rounded-lg text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
               required
               autoComplete="current-password"
               data-testid="input-password"
@@ -137,7 +141,7 @@ export default function Login() {
         <Button
           type="submit"
           disabled={isLoading}
-          className="w-full h-[48px] text-[14px] font-medium bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-colors"
+          className="w-full h-12 text-[14px] font-semibold bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-all duration-150 shadow-sm hover:shadow-md disabled:opacity-70"
           data-testid="button-login"
         >
           {isLoading ? (
