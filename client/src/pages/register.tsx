@@ -21,7 +21,7 @@ const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
   companyName: z.string().min(1, "Workspace name is required"),
-  termsAccepted: z.boolean().refine((val) => val === true, "You must accept the Terms of Service and Privacy Policy"),
+  termsAccepted: z.boolean().refine((val) => val === true, "Required"),
 });
 
 type RegisterForm = z.infer<typeof registerSchema>;
@@ -103,7 +103,7 @@ export default function Register() {
   return (
     <AuthLayout
       title="Create workspace"
-      subtitle="Get started in under 2 minutes."
+      subtitle="Get started in minutes"
       ssoEnabled={true}
       onGoogleSSO={handleGoogleSSO}
       footer={
@@ -112,7 +112,7 @@ export default function Register() {
           <button
             type="button"
             onClick={() => setLocation("/login")}
-            className="text-gray-900 hover:text-gray-700 font-medium transition-colors duration-150"
+            className="text-gray-900 hover:text-gray-700 font-medium transition-colors"
             data-testid="link-login"
           >
             Sign in
@@ -123,7 +123,7 @@ export default function Register() {
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="block text-[12px] text-gray-500 font-medium ml-0.5">Work email</label>
+            <label className="block text-[13px] text-gray-600 font-medium">Email</label>
             <FormField
               control={form.control}
               name="email"
@@ -132,8 +132,8 @@ export default function Register() {
                   <FormControl>
                     <Input
                       type="email"
-                      placeholder="name@company.com"
-                      className="h-[52px] px-4 bg-gray-50/50 border border-gray-900/[0.06] rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400/70 focus:bg-white focus:border-blue-500/30 focus:ring-[3px] focus:ring-blue-500/[0.08] transition-all duration-150 outline-none"
+                      placeholder="you@company.com"
+                      className="h-[48px] px-4 bg-white border border-gray-200 rounded-lg text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all outline-none"
                       {...field}
                       autoComplete="email"
                       data-testid="input-email"
@@ -146,7 +146,7 @@ export default function Register() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-[12px] text-gray-500 font-medium ml-0.5">Password</label>
+            <label className="block text-[13px] text-gray-600 font-medium">Password</label>
             <FormField
               control={form.control}
               name="password"
@@ -157,7 +157,7 @@ export default function Register() {
                       <Input
                         type={showPassword ? "text" : "password"}
                         placeholder="Min. 8 characters"
-                        className="h-[52px] px-4 pr-12 bg-gray-50/50 border border-gray-900/[0.06] rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400/70 focus:bg-white focus:border-blue-500/30 focus:ring-[3px] focus:ring-blue-500/[0.08] transition-all duration-150 outline-none"
+                        className="h-[48px] px-4 pr-12 bg-white border border-gray-200 rounded-lg text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all outline-none"
                         {...field}
                         autoComplete="new-password"
                         data-testid="input-password"
@@ -165,7 +165,7 @@ export default function Register() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400/60 hover:text-gray-500 transition-colors duration-150"
+                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                         data-testid="button-toggle-password"
                       >
                         {showPassword ? (
@@ -183,7 +183,7 @@ export default function Register() {
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-[12px] text-gray-500 font-medium ml-0.5">Company / workspace name</label>
+            <label className="block text-[13px] text-gray-600 font-medium">Workspace name</label>
             <FormField
               control={form.control}
               name="companyName"
@@ -191,8 +191,8 @@ export default function Register() {
                 <FormItem>
                   <FormControl>
                     <Input
-                      placeholder="Acme Insurance"
-                      className="h-[52px] px-4 bg-gray-50/50 border border-gray-900/[0.06] rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400/70 focus:bg-white focus:border-blue-500/30 focus:ring-[3px] focus:ring-blue-500/[0.08] transition-all duration-150 outline-none"
+                      placeholder="Acme Inc"
+                      className="h-[48px] px-4 bg-white border border-gray-200 rounded-lg text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 transition-all outline-none"
                       {...field}
                       autoComplete="organization"
                       data-testid="input-company"
@@ -208,23 +208,23 @@ export default function Register() {
             control={form.control}
             name="termsAccepted"
             render={({ field }) => (
-              <FormItem className="flex flex-row items-center space-x-3 space-y-0 pt-1">
+              <FormItem className="flex flex-row items-start space-x-2.5 space-y-0">
                 <FormControl>
                   <Checkbox
                     checked={field.value}
                     onCheckedChange={field.onChange}
-                    className="h-[16px] w-[16px] border-gray-300 data-[state=checked]:bg-gray-900 data-[state=checked]:border-gray-900 rounded"
+                    className="h-4 w-4 mt-0.5 border-gray-300 data-[state=checked]:bg-gray-900 data-[state=checked]:border-gray-900 rounded"
                     data-testid="checkbox-terms"
                   />
                 </FormControl>
                 <div className="leading-none">
-                  <label className="text-[12px] text-gray-600 leading-snug cursor-pointer" onClick={() => field.onChange(!field.value)}>
+                  <label className="text-[12px] text-gray-500 leading-relaxed cursor-pointer" onClick={() => field.onChange(!field.value)}>
                     I agree to the{" "}
-                    <a href="https://curbe.io/terms" target="_blank" rel="noopener noreferrer" className="text-gray-800 hover:text-gray-900 underline underline-offset-2" onClick={(e) => e.stopPropagation()}>Terms</a>
+                    <a href="https://curbe.io/terms" target="_blank" rel="noopener noreferrer" className="text-gray-700 hover:text-gray-900 underline underline-offset-2" onClick={(e) => e.stopPropagation()}>Terms</a>
                     {" "}and{" "}
-                    <a href="https://curbe.io/privacy" target="_blank" rel="noopener noreferrer" className="text-gray-800 hover:text-gray-900 underline underline-offset-2" onClick={(e) => e.stopPropagation()}>Privacy Policy</a>
+                    <a href="https://curbe.io/privacy" target="_blank" rel="noopener noreferrer" className="text-gray-700 hover:text-gray-900 underline underline-offset-2" onClick={(e) => e.stopPropagation()}>Privacy Policy</a>
                   </label>
-                  <FormMessage className="text-[10px] mt-0.5" />
+                  <FormMessage className="text-[10px] mt-1" />
                 </div>
               </FormItem>
             )}
@@ -233,13 +233,13 @@ export default function Register() {
           <Button
             type="submit"
             disabled={isLoading}
-            className="w-full h-[50px] text-[14px] font-semibold bg-gray-900 hover:bg-gray-800 text-white rounded-full mt-2 transition-all duration-200 focus:ring-2 focus:ring-gray-900/20 focus:ring-offset-2 focus:outline-none"
+            className="w-full h-[48px] text-[14px] font-medium bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-colors"
             data-testid="button-register"
           >
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                Creating workspace...
+                Creating...
               </>
             ) : (
               "Create workspace"
