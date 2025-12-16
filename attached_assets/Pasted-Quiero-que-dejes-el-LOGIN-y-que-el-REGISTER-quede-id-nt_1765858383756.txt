@@ -1,0 +1,112 @@
+Quiero que dejes el LOGIN (y que el REGISTER quede idéntico en estilo) con un look “quiet luxury / Stripe-Linear”: limpio, moderno, elegante. NO cambies el layout 2 columnas, solo refina estilos y consistencia.
+
+## A) BACKGROUND (global)
+
+* Nada de negro puro. Usar “midnight navy” con gradiente suave + spotlight.
+* Agregar noise MUY sutil (1–3% opacity) para que no se vea plano.
+* Ejemplo (concepto): radial spotlight detrás del card + linear gradient vertical.
+
+## B) CONTAINER (card principal 2 columnas)
+
+* Quitar bordes visibles “duros”. Mantener borde 1px ultra sutil.
+* Sombra premium: blur grande, opacidad baja (que parezca flotando, no pegado).
+* Radio consistente (24–28px).
+* Padding un poco más generoso en el panel izquierdo.
+
+## C) PANEL IZQUIERDO (form)
+
+1. Fondo:
+
+* Cambiar blanco puro a off-white tipo “paper” (ej: #F6F8FB / #F7F9FC).
+* Opcional: micro textura/paper noise (1–2%) SOLO dentro del panel.
+
+2. Tipografía:
+
+* Mantener H1 “Welcome back.” pero ajustar:
+
+  * line-height un poco más tight
+  * peso/size ligeramente más premium (sin exagerar)
+* Labels NO en all caps:
+
+  * “Work email”
+  * “Password”
+* Subheading: “Pick up where you left off.” (ok)
+
+3. Inputs (PRIORIDAD #1):
+
+* Altura 50–52px.
+* Background ligeramente tintado (no blanco).
+* Border 1px súper sutil (casi invisible).
+* Focus ring elegante (glow azul/cyan MUY leve) + transición 150–200ms.
+* Placeholder más claro.
+* Icono de “show password” alineado y con hover sutil.
+
+4. “Forgot password?”
+
+* Texto completo: “Forgot password?”
+* Más legible (no tan pálido), alineado con el campo password.
+
+5. SSO + Divider
+
+* “Continue with Google” debe verse premium:
+
+  * botón con fondo claro, borde sutil, hover suave
+* Divider “or” con líneas a ambos lados (no texto suelto):
+
+  * line — or — line
+* Espaciado más compacto entre SSO/divider/inputs.
+
+6. Primary button
+
+* Mantener “Sign in”.
+* Hacerlo menos “pesado”:
+
+  * sombra más suave (menos opacidad)
+  * hover: lift 1–2px + shadow ligera
+  * focus ring elegante (no default feo)
+
+7. Microcopy + link inferior
+
+* Debajo del botón: “Secure sign-in. Verify email on first login.”
+* Abajo: “Don’t have an account? Create a workspace” (link con buen contraste, no chillón).
+
+## D) PANEL DERECHO (imagen)
+
+* Mantener la imagen actual.
+* El texto inferior debe estar sobre un overlay editorial:
+
+  * degradado oscuro + blur suave en la parte baja para legibilidad
+* Mantener:
+
+  * Title: “Turn every interaction into progress.”
+  * Subtitle: “From first hello to loyal customer—without the chaos.”
+* Pills:
+
+  * máximo 2, minimal, sin hashtags:
+
+    * “Automation”
+    * “Unified journey”
+  * más pequeñas y discretas.
+
+## E) CONSISTENCIA con REGISTER
+
+* Register debe usar EXACTAMENTE el mismo sistema visual:
+
+  * mismos inputs (altura, focus ring, tintado)
+  * mismo background global
+  * misma sombra/borde del card
+  * mismo estilo de SSO + divider
+* Register Step 1 mínimo:
+
+  * Work email + Password + Workspace/Company name
+  * Checkbox requerido: “I agree to Terms of Service and Privacy Policy”
+  * NO pedir address/phone en Step 1
+* Compliance de SMS va en onboarding (Unlock SMS) después, no en el registro inicial.
+
+## F) Detalles de calidad (micro-interactions)
+
+* Transiciones suaves en hover/focus (150–200ms).
+* Accesibilidad: focus visible pero elegante.
+* Asegurar que el formulario NO haga scroll en pantalla estándar; CTA siempre visible.
+
+Entrega: aplica estos cambios y envíame screenshot final de login + register para revisión.

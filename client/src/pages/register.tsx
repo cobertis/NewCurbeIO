@@ -95,33 +95,48 @@ export default function Register() {
 
   return (
     <div 
-      className="min-h-screen w-full flex items-center justify-center p-4 md:p-8"
+      className="min-h-screen w-full flex items-center justify-center p-4 md:p-8 relative"
       style={{
-        background: 'radial-gradient(ellipse at center, #0a1628 0%, #050B14 70%, #030810 100%)',
+        background: 'radial-gradient(ellipse 80% 50% at 50% 50%, #0C1829 0%, #070F1E 50%, #050B14 100%)',
       }}
       data-testid="register-page"
     >
       <div 
-        className="w-full max-w-[1300px] bg-white rounded-[2rem] flex flex-col lg:flex-row relative"
+        className="absolute inset-0 opacity-[0.025] pointer-events-none"
         style={{
-          boxShadow: '0 25px 80px rgba(0,0,0,0.4)',
-          border: '1px solid rgba(255,255,255,0.08)',
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)'/%3E%3C/svg%3E")`,
         }}
-      >
-        <div className="w-full lg:w-[45%] p-12 md:p-16 relative z-10">
-          <div className="flex items-center gap-2 mb-8">
-            <img src={logo} alt="Curbe" className="h-12 w-auto" />
+      />
+      <div className="w-full max-w-[1200px] flex flex-col lg:flex-row gap-0 relative z-10">
+        <div 
+          className="w-full lg:w-[42%] p-12 md:p-14 relative z-10 lg:rounded-l-[2rem] lg:rounded-r-none rounded-[2rem] overflow-hidden"
+          style={{
+            background: '#F6F8FB',
+            boxShadow: '0 25px 80px -12px rgba(0,0,0,0.08), 0 4px 20px -4px rgba(0,0,0,0.04)',
+            border: '1px solid rgba(0,0,0,0.03)',
+          }}
+        >
+          <div 
+            className="absolute inset-0 opacity-[0.015] pointer-events-none"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E")`,
+            }}
+          />
+          <div className="flex items-center gap-2 mb-10">
+            <img src={logo} alt="Curbe" className="h-9 w-auto" />
           </div>
 
-          <h1 className="text-[1.75rem] md:text-[2.25rem] font-bold text-gray-900 leading-tight mb-3">Create your workspace</h1>
-          <p className="text-gray-500 text-sm mb-6">
-            A smarter system that turns every touchpoint into momentum—automated, consistent, and measurable.
+          <h1 className="text-[2.25rem] md:text-[2.75rem] font-semibold text-gray-900 leading-[1.08] tracking-[-0.02em] mb-2">
+            Create your workspace
+          </h1>
+          <p className="text-gray-500 text-[15px] mb-8">
+            Get started in under 2 minutes.
           </p>
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div>
-                <label className="block text-xs text-gray-400 mb-1 ml-1">Work Email</label>
+              <div className="space-y-1.5">
+                <label className="block text-[12px] text-gray-500 font-medium ml-0.5">Work email</label>
                 <FormField
                   control={form.control}
                   name="email"
@@ -130,8 +145,8 @@ export default function Register() {
                       <FormControl>
                         <Input
                           type="email"
-                          placeholder="you@company.com"
-                          className="h-11 px-4 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          placeholder="name@company.com"
+                          className="h-[50px] px-4 bg-gray-50/50 border border-gray-900/[0.06] rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400/70 focus:bg-white focus:border-blue-500/30 focus:ring-[3px] focus:ring-blue-500/[0.08] transition-all duration-150 outline-none"
                           {...field}
                           autoComplete="email"
                           data-testid="input-email"
@@ -143,8 +158,8 @@ export default function Register() {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs text-gray-400 mb-1 ml-1">Password</label>
+              <div className="space-y-1.5">
+                <label className="block text-[12px] text-gray-500 font-medium ml-0.5">Password</label>
                 <FormField
                   control={form.control}
                   name="password"
@@ -155,7 +170,7 @@ export default function Register() {
                           <Input
                             type={showPassword ? "text" : "password"}
                             placeholder="Min. 8 characters"
-                            className="h-11 px-4 pr-10 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            className="h-[50px] px-4 pr-12 bg-gray-50/50 border border-gray-900/[0.06] rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400/70 focus:bg-white focus:border-blue-500/30 focus:ring-[3px] focus:ring-blue-500/[0.08] transition-all duration-150 outline-none"
                             {...field}
                             autoComplete="new-password"
                             data-testid="input-password"
@@ -163,13 +178,13 @@ export default function Register() {
                           <button
                             type="button"
                             onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                            className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400/60 hover:text-gray-500 transition-colors duration-150"
                             data-testid="button-toggle-password"
                           >
                             {showPassword ? (
-                              <EyeOff className="h-5 w-5" />
+                              <EyeOff className="h-[18px] w-[18px]" />
                             ) : (
-                              <Eye className="h-5 w-5" />
+                              <Eye className="h-[18px] w-[18px]" />
                             )}
                           </button>
                         </div>
@@ -180,8 +195,8 @@ export default function Register() {
                 />
               </div>
 
-              <div>
-                <label className="block text-xs text-gray-400 mb-1 ml-1">Workspace Name</label>
+              <div className="space-y-1.5">
+                <label className="block text-[12px] text-gray-500 font-medium ml-0.5">Workspace name</label>
                 <FormField
                   control={form.control}
                   name="companyName"
@@ -190,7 +205,7 @@ export default function Register() {
                       <FormControl>
                         <Input
                           placeholder="Acme Inc."
-                          className="h-11 px-4 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                          className="h-[50px] px-4 bg-gray-50/50 border border-gray-900/[0.06] rounded-xl text-[15px] text-gray-900 placeholder:text-gray-400/70 focus:bg-white focus:border-blue-500/30 focus:ring-[3px] focus:ring-blue-500/[0.08] transition-all duration-150 outline-none"
                           {...field}
                           autoComplete="organization"
                           data-testid="input-company"
@@ -211,15 +226,16 @@ export default function Register() {
                       <Checkbox
                         checked={field.value}
                         onCheckedChange={field.onChange}
+                        className="mt-0.5 border-gray-300 data-[state=checked]:bg-gray-900 data-[state=checked]:border-gray-900"
                         data-testid="checkbox-terms"
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
-                      <label className="text-xs text-gray-500 leading-relaxed cursor-pointer" onClick={() => field.onChange(!field.value)}>
+                      <label className="text-[13px] text-gray-500 leading-relaxed cursor-pointer" onClick={() => field.onChange(!field.value)}>
                         I agree to the{" "}
-                        <a href="/terms" className="text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>Terms of Service</a>
+                        <a href="/terms" className="text-gray-700 hover:text-gray-900 underline underline-offset-2" onClick={(e) => e.stopPropagation()}>Terms of Service</a>
                         {" "}and{" "}
-                        <a href="/privacy" className="text-blue-600 hover:underline" onClick={(e) => e.stopPropagation()}>Privacy Policy</a>.
+                        <a href="/privacy" className="text-gray-700 hover:text-gray-900 underline underline-offset-2" onClick={(e) => e.stopPropagation()}>Privacy Policy</a>
                       </label>
                       <FormMessage />
                     </div>
@@ -230,7 +246,7 @@ export default function Register() {
               <Button
                 type="submit"
                 disabled={isLoading}
-                className="w-full h-14 text-base font-semibold bg-gray-900 hover:bg-gray-800 text-white rounded-xl mt-3"
+                className="w-full h-[50px] text-[15px] font-semibold bg-gray-900 hover:bg-gray-800 hover:-translate-y-0.5 hover:shadow-md text-white rounded-full mt-4 transition-all duration-200 focus:ring-2 focus:ring-gray-900/25 focus:ring-offset-2 focus:outline-none shadow-sm"
                 data-testid="button-register"
               >
                 {isLoading ? (
@@ -243,16 +259,16 @@ export default function Register() {
                 )}
               </Button>
 
-              <p className="text-center text-xs text-gray-400 pt-2">
+              <p className="text-center text-[11px] text-gray-400 pt-2">
                 Verify your email to activate. Takes ~2 minutes.
               </p>
 
-              <div className="text-center text-sm text-gray-600 pt-1">
+              <div className="text-center text-[13px] text-gray-500 pt-1">
                 Already have an account?{" "}
                 <button
                   type="button"
                   onClick={() => setLocation("/login")}
-                  className="text-blue-600 hover:text-blue-700 font-medium"
+                  className="text-gray-900 hover:text-gray-700 font-medium transition-colors duration-150"
                   data-testid="link-login"
                 >
                   Sign in
@@ -262,31 +278,41 @@ export default function Register() {
           </Form>
         </div>
 
-        <div className="hidden lg:block w-[55%] relative m-4 ml-0">
-          <div className="absolute inset-0 overflow-hidden rounded-[1.5rem]">
-            <div 
-              className="absolute inset-0 bg-cover bg-center"
-              style={{ 
-                backgroundImage: `url(${backgroundImage})`,
-              }}
-            />
-            <div 
-              className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/10 to-transparent"
-            />
-          </div>
-
-          <div className="absolute bottom-0 left-0 right-0 p-6 text-center z-10">
-            <h2 className="text-2xl font-bold text-white mb-2">Turn every interaction into progress.</h2>
-            <p className="text-white/70 text-xs max-w-sm mx-auto mb-5">From first hello to loyal customer—without the chaos.</p>
+        <div className="hidden lg:block w-[58%] relative rounded-r-[2rem] overflow-hidden">
+          <div 
+            className="absolute inset-0 bg-cover bg-center"
+            style={{ 
+              backgroundImage: `url(${backgroundImage})`,
+            }}
+          />
+          <div 
+            className="absolute inset-0"
+            style={{
+              background: 'linear-gradient(to top, rgba(0,0,0,0.7) 0%, rgba(0,0,0,0.2) 40%, transparent 60%)',
+            }}
+          />
+          <div 
+            className="absolute bottom-0 left-0 right-0 p-10"
+            style={{
+              backdropFilter: 'blur(8px)',
+              background: 'linear-gradient(to top, rgba(0,0,0,0.5) 0%, transparent 100%)',
+            }}
+          >
+            <h2 className="text-[1.75rem] font-semibold text-white mb-2 tracking-tight">
+              Turn every interaction into progress.
+            </h2>
+            <p className="text-white/60 text-sm max-w-md mb-6">
+              From first hello to loyal customer—without the chaos.
+            </p>
             
-            <div className="flex flex-nowrap justify-center gap-3 overflow-hidden">
-              <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20 shrink-0">
-                <div className="w-3 h-3 rounded-full bg-blue-400" />
-                <span className="text-white text-sm font-medium whitespace-nowrap">Automation</span>
+            <div className="flex gap-3">
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
+                <div className="w-2 h-2 rounded-full bg-blue-400" />
+                <span className="text-white/90 text-[13px] font-medium">Automation</span>
               </div>
-              <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20 shrink-0">
-                <div className="w-3 h-3 rounded-full bg-pink-400" />
-                <span className="text-white text-sm font-medium whitespace-nowrap">Unified journey</span>
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md px-4 py-2 rounded-full border border-white/10">
+                <div className="w-2 h-2 rounded-full bg-violet-400" />
+                <span className="text-white/90 text-[13px] font-medium">Unified journey</span>
               </div>
             </div>
           </div>
