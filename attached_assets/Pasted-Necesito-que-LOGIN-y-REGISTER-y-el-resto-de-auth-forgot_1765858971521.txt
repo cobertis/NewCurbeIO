@@ -1,0 +1,88 @@
+Necesito que LOGIN y REGISTER (y el resto de auth: forgot/otp/verify) NO cambien de tamaño ni “brinquen”. Solo debe cambiar el contenido del panel izquierdo. Implementa un AuthLayout fijo.
+
+OBJETIVO:
+
+* El card principal (2 columnas) debe tener SIEMPRE el mismo ancho/alto en desktop.
+* El panel derecho (imagen) SIEMPRE del mismo tamaño.
+* El panel izquierdo SIEMPRE mismo padding/estructura.
+* Si una pantalla tiene más campos (register), el contenido interno debe manejarse sin cambiar el tamaño del card.
+
+A) LAYOUT FIJO (desktop)
+
+1. Wrapper:
+
+* Centered, no scroll en condiciones normales.
+* Usa un contenedor con altura fija o al menos un “min-height” consistente.
+  Ejemplo: cardHeight = 560–620px (elige 600px para estándar) y mantenlo.
+
+2. Card principal:
+
+* width fijo (ej: 1040–1120px) y height fijo (ej: 600px)
+* border-radius consistente
+* shadow/border igual siempre
+
+3. Grid:
+
+* 2 columnas: izquierda 40–45%, derecha 55–60%
+* La imagen derecha debe ocupar 100% del alto del card (object-fit: cover).
+
+B) PANEL IZQUIERDO (contenido estable)
+
+1. Header (zona fija):
+
+* Reserva un “header block” con altura constante (ej: 120–140px) para logo + H1 + subtexto.
+* Así el formulario nunca sube/baja cuando cambia el título.
+
+2. Form area (zona flexible controlada):
+
+* Reserva un “form block” con altura fija (ej: 320–360px).
+* Dentro del form block:
+
+  * Usa spacing consistente entre campos.
+  * Si hay más campos (register), reduce spacing ligeramente SOLO dentro del form.
+  * Alternativa: permitir scroll SOLO dentro del form block (no en toda la página) pero idealmente que no haga falta.
+
+3. Footer (zona fija):
+
+* Reserva un “footer block” con altura fija (ej: 80–100px) para:
+
+  * microcopy debajo del botón
+  * link “Create a workspace / Sign in”
+* El footer debe estar SIEMPRE pegado abajo del panel izquierdo (flex layout: header / form / footer).
+
+C) CONSISTENCIA ENTRE LOGIN Y REGISTER
+
+* Login y Register deben usar EXACTAMENTE el mismo AuthLayout y mismas medidas.
+* Lo único que cambia: el contenido del “form block”.
+
+D) COMPRESIÓN INTELIGENTE (para que register quepa sin cambiar tamaño)
+
+* En register:
+
+  * Usa SSO + divider igual que login.
+  * Campos: email, password, company/workspace.
+  * Checkbox TOS.
+* Para que todo quepa en el mismo alto:
+
+  * Reduce el spacing vertical entre campos (por ejemplo de 16px a 12px).
+  * Reduce el tamaño del helper text.
+  * Si aún no cabe: convierte “password hint” en texto que aparece solo on-focus o debajo del input con menor altura.
+  * Último recurso: hacer scroll dentro del form block (overflow-y: auto) con scrollbar oculto/estilizado sutil (NO cambiar tamaño del card).
+
+E) RESPONSIVE (mobile)
+
+* En mobile:
+
+  * Card pasa a 1 columna.
+  * La imagen derecha se oculta o pasa arriba como banner fijo.
+  * Mantener consistencia visual.
+
+ENTREGABLE:
+
+* Crea un componente reutilizable `AuthLayout` con props para:
+
+  * title, subtitle
+  * ssoEnabled (true/false)
+  * children (form content)
+  * footer (links)
+* Asegura que login y register rendericen dentro de ese AuthLayout con el mismo height/width en desktop.

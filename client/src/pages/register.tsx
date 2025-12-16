@@ -256,9 +256,9 @@ export default function Register() {
                     <div className="leading-none">
                       <label className="text-[13px] text-gray-600 leading-snug cursor-pointer" onClick={() => field.onChange(!field.value)}>
                         I agree to the{" "}
-                        <a href="/terms" className="text-gray-800 hover:text-gray-900 underline underline-offset-2" onClick={(e) => e.stopPropagation()}>Terms of Service</a>
+                        <a href="https://curbe.io/terms" target="_blank" rel="noopener noreferrer" className="text-gray-800 hover:text-gray-900 underline underline-offset-2" onClick={(e) => e.stopPropagation()}>Terms of Service</a>
                         {" "}and{" "}
-                        <a href="/privacy" className="text-gray-800 hover:text-gray-900 underline underline-offset-2" onClick={(e) => e.stopPropagation()}>Privacy Policy</a>
+                        <a href="https://curbe.io/privacy" target="_blank" rel="noopener noreferrer" className="text-gray-800 hover:text-gray-900 underline underline-offset-2" onClick={(e) => e.stopPropagation()}>Privacy Policy</a>
                       </label>
                       <FormMessage className="mt-1" />
                     </div>
