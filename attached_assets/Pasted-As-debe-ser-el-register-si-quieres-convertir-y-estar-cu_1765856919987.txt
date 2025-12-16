@@ -1,0 +1,75 @@
+Así debe ser el **register** si quieres convertir y estar cubierto de verdad:
+
+## Register (Paso 1) — “Create workspace”
+
+**Objetivo:** crear cuenta en 15 segundos. Nada más.
+
+**Campos (mínimos):**
+
+* **Work email** (required)
+* **Password** (required) + show/hide
+* **Workspace / Company name** (required u opcional, pero recomendado)
+
+**Checkbox (único y obligatorio):**
+
+* ✅ **“I agree to the Terms of Service and Privacy Policy.”** (links)
+
+**Botón:**
+
+* **Create workspace**
+
+**Microcopy abajo:**
+
+* **“Verify your email to activate.”**
+* (Opcional si es cierto) **“Takes ~2 minutes.”**
+
+**NO pedir aquí:**
+
+* Teléfono, dirección, ciudad, estado, ZIP, ni “SMS promotional”. Eso es fricción inútil.
+
+---
+
+## Onboarding (Paso 2) — después del register
+
+Aquí sí separas lo importante por módulos. Y lo haces condicional.
+
+### 2A) Profile (30s)
+
+* First name / Last name (opcional)
+* Timezone (auto)
+
+### 2B) Business (solo si lo necesitas para billing)
+
+* Address / City / State / ZIP (y si no es necesario, ni lo pidas)
+
+### 2C) Messaging / SMS Compliance (solo si activan SMS)
+
+Un step “Unlock SMS” que **bloquea SMS** hasta completar:
+
+**Checkboxes requeridos:**
+
+* ✅ “I confirm I have obtained consent to contact recipients via SMS and will comply with TCPA/CTIA and carrier policies.”
+* ✅ “I will include opt-out instructions (e.g., STOP) and honor opt-outs.”
+
+**Campos requeridos:**
+
+* **Business/Brand name** que aparecerá en mensajes (si aplica)
+* **Support contact** (email o phone) para HELP/STOP flows
+* **Default opt-in script/template** (textarea) — para auditoría interna
+
+**Logging (importante):**
+Guardar: timestamp, userId, workspaceId, IP, user agent, versión del texto legal.
+
+### 2D) Connect number (después de compliance)
+
+* conectar número / canal / etc.
+
+---
+
+### Por qué este diseño es el correcto (sin drama)
+
+* **Compliance real** se activa cuando **usas** SMS, no cuando alguien apenas se registra.
+* Legalmente y operacionalmente, te protege más tener **evidencia versionada** en el momento de habilitar mensajes.
+* Y tu signup deja de ser una pared.
+
+Si quieres, te escribo el copy exacto de cada checkbox y los textos de “Unlock SMS” para que no suene a abogado barato y aun así sea sólido.
