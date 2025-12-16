@@ -97,7 +97,7 @@ export default function Register() {
       data-testid="register-page"
     >
       <div className="w-full max-w-[1100px] bg-white rounded-[2rem] shadow-2xl flex flex-col lg:flex-row relative">
-        <div className="w-full lg:w-[45%] p-8 md:p-10 relative z-10">
+        <div className="w-full lg:w-[50%] p-10 md:p-12 relative z-10">
           <div className="flex items-center gap-2 mb-8">
             <img src={logo} alt="Curbe" className="h-8 w-auto" />
           </div>
@@ -268,7 +268,7 @@ export default function Register() {
           </Form>
         </div>
 
-        <div className="hidden lg:block w-[55%] relative m-4 ml-0">
+        <div className="hidden lg:block w-[50%] relative m-4 ml-0">
           <div 
             className="absolute inset-0 bg-cover bg-center rounded-[1.5rem]"
             style={{ 
