@@ -3,7 +3,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useToast } from "@/hooks/use-toast";
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
 import {
   Form,
   FormControl,
@@ -14,8 +14,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
-import { UserPlus, Building2, Loader2, MapPin, Phone, Globe, Check, ChevronLeft } from "lucide-react";
+import { Building2, Loader2, MapPin, Check, ChevronLeft, ChevronRight, Shield, Users, Zap } from "lucide-react";
 import logo from "@assets/logo no fondo_1760457183587.png";
+import backgroundImage from "@assets/generated_images/modern_cityscape_sunset_background.png";
 import { formatForDisplay, formatPhoneInput } from "@shared/phone";
 
 const registerSchema = z.object({
@@ -61,7 +62,6 @@ const generateSlug = (name: string): string => {
     .replace(/^-+|-+$/g, '')
     .substring(0, 50);
 };
-
 
 interface BusinessResult {
   id: string;
@@ -149,6 +149,7 @@ export default function Register() {
 
   const handleSearchChange = (value: string) => {
     setSearchQuery(value);
+    setSelectedBusiness(null);
     
     if (searchTimer) {
       clearTimeout(searchTimer);
@@ -156,76 +157,30 @@ export default function Register() {
     
     const timer = setTimeout(() => {
       searchBusinesses(value);
-    }, 400);
+    }, 300);
     
     setSearchTimer(timer);
   };
 
   const selectBusiness = (business: BusinessResult) => {
     setSelectedBusiness(business);
-    setShowResults(false);
-    setSearchResults([]);
     setSearchQuery(business.name);
-    
-    // Format phone number if it exists using system standard
-    const formattedPhone = business.phone ? formatForDisplay(business.phone) : "";
+    setShowResults(false);
     
     form.setValue("company.name", business.name);
     form.setValue("company.slug", generateSlug(business.name));
-    form.setValue("company.phone", formattedPhone);
+    form.setValue("company.phone", business.phone ? formatForDisplay(business.phone) : "");
     form.setValue("company.website", business.website || "");
-    form.setValue("company.address", business.address.street || "");
-    form.setValue("company.addressLine2", business.address.addressLine2 || "");
-    form.setValue("company.city", business.address.city || "");
-    form.setValue("company.state", business.address.state || "");
-    form.setValue("company.postalCode", business.address.postalCode || "");
-    form.setValue("company.country", business.address.country || "United States");
-  };
-
-  const enterManually = () => {
-    const name = searchQuery.trim() || "";
-    
-    setSelectedBusiness({ 
-      id: 'manual',
-      name: name || 'Manual Entry',
-      formattedAddress: '',
-      shortFormattedAddress: '',
-      phone: '',
-      website: '',
-      address: {
-        street: '',
-        addressLine2: '',
-        city: '',
-        state: '',
-        postalCode: '',
-        country: 'United States'
-      }
-    } as BusinessResult);
-    
-    // Set initial values but allow editing
-    form.setValue("company.name", name);
-    form.setValue("company.slug", name ? generateSlug(name) : "");
-    form.setValue("company.phone", "");
-    form.setValue("company.website", "");
-    form.setValue("company.address", "");
-    form.setValue("company.addressLine2", "");
-    form.setValue("company.city", "");
-    form.setValue("company.state", "");
-    form.setValue("company.postalCode", "");
-    form.setValue("company.country", "United States");
-    
-    setShowResults(false);
-    setSearchResults([]);
+    form.setValue("company.address", business.address?.street || "");
+    form.setValue("company.addressLine2", business.address?.addressLine2 || "");
+    form.setValue("company.city", business.address?.city || "");
+    form.setValue("company.state", business.address?.state || "");
+    form.setValue("company.postalCode", business.address?.postalCode || "");
+    form.setValue("company.country", business.address?.country || "United States");
   };
 
   const handleNextStep = async () => {
-    // Validate step 1 fields
-    const companyValid = await form.trigger([
-      "company.name",
-      "company.phone",
-      "company.address"
-    ]);
-    
+    const companyValid = await form.trigger("company");
     if (companyValid) {
       setCurrentStep(2);
     }
@@ -235,18 +190,9 @@ export default function Register() {
     setCurrentStep(1);
   };
 
-  useEffect(() => {
-    return () => {
-      if (searchTimer) clearTimeout(searchTimer);
-    };
-  }, [searchTimer]);
-
   const onSubmit = async (data: RegisterForm) => {
     setIsLoading(true);
-    
     try {
-      console.log("Submitting registration:", data);
-      
       const response = await fetch("/api/register", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -254,347 +200,168 @@ export default function Register() {
       });
 
       const result = await response.json();
-      
+
       if (!response.ok) {
         throw new Error(result.message || "Registration failed");
       }
 
       toast({
-        title: "Account created!",
-        description: "Check your email for activation instructions.",
+        title: "Registration successful!",
+        description: "Please check your email to activate your account.",
+        duration: 3000,
       });
-      
-      setTimeout(() => setLocation("/plans"), 2000);
+
+      setLocation("/login");
     } catch (error: any) {
-      console.error("Registration error:", error);
       toast({
-        title: "Registration Failed",
+        title: "Registration failed",
         description: error.message,
         variant: "destructive",
+        duration: 3000,
       });
     } finally {
       setIsLoading(false);
     }
   };
 
+  useEffect(() => {
+    return () => {
+      if (searchTimer) {
+        clearTimeout(searchTimer);
+      }
+    };
+  }, [searchTimer]);
+
+  const companyName = form.watch("company.name");
+  useEffect(() => {
+    if (companyName && !selectedBusiness) {
+      form.setValue("company.slug", generateSlug(companyName));
+    }
+  }, [companyName, selectedBusiness, form]);
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-100 via-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800 p-4 flex items-center justify-center">
-      <div className="absolute top-4 left-4 sm:top-6 sm:left-6">
-        <Link href="/">
-          <img src={logo} alt="Curbe.io" className="h-8 sm:h-10 w-auto object-contain cursor-pointer" />
-        </Link>
-      </div>
-
-      <div className="w-full max-w-md">
-        <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-lg p-8 sm:p-10">
-          {/* Step Indicator */}
-          <div className="mb-8">
-            <div className="flex items-center justify-center gap-3">
-              {/* Step 1 */}
-              <div className="flex flex-col items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all ${
-                  currentStep === 1 
-                    ? 'bg-primary text-primary-foreground' 
-                    : currentStep > 1 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                }`}>
-                  {currentStep > 1 ? <Check className="w-5 h-5" /> : '1'}
-                </div>
-                <span className="text-xs mt-2 font-medium text-gray-600 dark:text-gray-400">Company</span>
-              </div>
-              
-              {/* Progress Line */}
-              <div className="w-16 sm:w-20 h-0.5 bg-gray-200 dark:bg-gray-700 relative overflow-hidden rounded-full">
-                <div className={`h-full bg-primary transition-all duration-300 ${
-                  currentStep > 1 ? 'w-full' : 'w-0'
-                }`} />
-              </div>
-              
-              {/* Step 2 */}
-              <div className="flex flex-col items-center">
-                <div className={`w-10 h-10 rounded-full flex items-center justify-center font-semibold text-sm transition-all ${
-                  currentStep === 2 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-gray-200 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
-                }`}>
-                  2
-                </div>
-                <span className="text-xs mt-2 font-medium text-gray-600 dark:text-gray-400">Admin</span>
-              </div>
-            </div>
+    <div className="min-h-screen flex" data-testid="register-page">
+      <div className="flex-1 flex items-center justify-center p-6 lg:p-12 bg-white dark:bg-gray-950">
+        <div className="w-full max-w-md space-y-8">
+          <div className="flex items-center gap-3">
+            <img src={logo} alt="Curbe" className="h-10 w-auto" />
+            <span className="text-2xl font-bold text-gray-900 dark:text-white">Curbe</span>
           </div>
 
-          {/* Header */}
-          <div className="flex justify-center mb-6">
-            <div className="w-12 h-12 rounded-full bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
-              {currentStep === 1 ? (
-                <Building2 className="w-6 h-6 text-gray-600 dark:text-gray-300" />
-              ) : (
-                <UserPlus className="w-6 h-6 text-gray-600 dark:text-gray-300" />
-              )}
-            </div>
-          </div>
-
-          <div className="text-center mb-8">
-            <h1 className="text-2xl font-semibold text-gray-900 dark:text-white mb-2">
-              {currentStep === 1 ? "Find your business" : "Create your account"}
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
+              Start your journey with us
             </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              {currentStep === 1 
-                ? "Search or enter your company details" 
-                : "Enter your admin account information"}
+            <p className="mt-2 text-gray-600 dark:text-gray-400">
+              Create your account and transform how you manage your business.
             </p>
           </div>
 
+          <div className="flex items-center gap-3">
+            <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors ${
+              currentStep >= 1 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
+            }`}>
+              {currentStep > 1 ? <Check className="w-4 h-4" /> : '1'}
+            </div>
+            <div className={`flex-1 h-1 rounded-full transition-colors ${
+              currentStep > 1 ? 'bg-blue-600' : 'bg-gray-200'
+            }`} />
+            <div className={`flex items-center justify-center w-8 h-8 rounded-full text-sm font-medium transition-colors ${
+              currentStep >= 2 ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-500'
+            }`}>
+              2
+            </div>
+          </div>
+
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              {/* STEP 1: Company Information */}
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
               {currentStep === 1 && (
                 <>
-                  {!selectedBusiness ? (
-                    <>
-                      {/* Search for business */}
-                      <div className="relative">
-                        <div className="relative">
-                          <Input
-                            placeholder="Search your business..."
-                            value={searchQuery}
-                            onChange={(e) => handleSearchChange(e.target.value)}
-                            className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg pr-10"
-                            data-testid="input-business-search"
-                          />
-                          {isSearching && (
-                            <div className="absolute right-3 top-1/2 -translate-y-1/2">
-                              <Loader2 className="h-4 w-4 animate-spin text-gray-400" />
+                  <div className="relative">
+                    <div className="relative">
+                      <Building2 className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                      <Input
+                        placeholder="Search for your business..."
+                        value={searchQuery}
+                        onChange={(e) => handleSearchChange(e.target.value)}
+                        className="h-12 pl-10 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 rounded-xl focus:ring-2 focus:ring-blue-500"
+                        data-testid="input-business-search"
+                      />
+                      {isSearching && (
+                        <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400 animate-spin" />
+                      )}
+                    </div>
+
+                    {showResults && searchResults.length > 0 && (
+                      <div className="absolute z-50 w-full mt-2 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 rounded-xl shadow-lg max-h-64 overflow-auto">
+                        {searchResults.map((business) => (
+                          <button
+                            key={business.id}
+                            type="button"
+                            onClick={() => selectBusiness(business)}
+                            className="w-full px-4 py-3 text-left hover:bg-gray-50 dark:hover:bg-gray-800 border-b border-gray-100 dark:border-gray-800 last:border-0 transition-colors"
+                            data-testid={`result-business-${business.id}`}
+                          >
+                            <div className="font-medium text-gray-900 dark:text-white">{business.name}</div>
+                            <div className="text-sm text-gray-500 flex items-center gap-1 mt-0.5">
+                              <MapPin className="w-3 h-3" />
+                              {business.shortFormattedAddress}
                             </div>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedBusiness && (
+                    <div className="p-4 bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-900 rounded-xl">
+                      <div className="flex items-start gap-3">
+                        <div className="p-2 bg-blue-600 rounded-lg">
+                          <Building2 className="w-5 h-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <h3 className="font-semibold text-gray-900 dark:text-white">{selectedBusiness.name}</h3>
+                          <p className="text-sm text-gray-600 dark:text-gray-400 mt-0.5">{selectedBusiness.formattedAddress}</p>
+                          {selectedBusiness.phone && (
+                            <p className="text-sm text-gray-500 mt-1">{formatForDisplay(selectedBusiness.phone)}</p>
                           )}
                         </div>
-                        
-                        {/* Results dropdown */}
-                        {showResults && searchResults.length > 0 && (
-                          <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-                            {searchResults.slice(0, 5).map((business) => (
-                              <button
-                                key={business.id}
-                                type="button"
-                                onClick={() => selectBusiness(business)}
-                                className="w-full text-left p-3 hover-elevate border-b border-gray-100 dark:border-gray-700 last:border-0 rounded-lg"
-                                data-testid={`business-result-${business.id}`}
-                              >
-                                <div className="flex items-start gap-2">
-                                  <Building2 className="h-4 w-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                                  <div>
-                                    <div className="font-medium text-sm text-gray-900 dark:text-gray-100">
-                                      {business.name}
-                                    </div>
-                                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                                      {business.shortFormattedAddress || business.formattedAddress}
-                                    </div>
-                                  </div>
-                                </div>
-                              </button>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Manual entry option */}
-                      <div className="text-center">
                         <button
                           type="button"
-                          onClick={enterManually}
-                          className="text-sm text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200 underline"
-                          data-testid="button-manual-entry"
+                          onClick={() => {
+                            setSelectedBusiness(null);
+                            setSearchQuery("");
+                            form.reset();
+                          }}
+                          className="text-gray-400 hover:text-gray-600 text-sm"
                         >
-                          My business is not listed
+                          Change
                         </button>
                       </div>
-                    </>
-                  ) : (
-                    <>
-                      {/* Business Summary Card - Only show for Google Places selection */}
-                      {selectedBusiness.id !== 'manual' && (
-                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-5 border border-gray-200 dark:border-gray-600">
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex items-center gap-2">
-                              <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                                <Building2 className="h-5 w-5 text-primary" />
-                              </div>
-                              <div>
-                                <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">
-                                  {selectedBusiness.name}
-                                </h3>
-                                <p className="text-xs text-gray-500 dark:text-gray-400">
-                                  Company Information
-                                </p>
-                              </div>
-                            </div>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setSelectedBusiness(null);
-                                setSearchQuery("");
-                              }}
-                              className="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
-                              data-testid="button-change-business"
-                            >
-                              Change
-                            </button>
-                          </div>
+                    </div>
+                  )}
 
-                          {/* Company Details */}
-                          <div className="space-y-2.5">
-                            {(selectedBusiness.address.street || selectedBusiness.address.city || selectedBusiness.address.state) && (
-                              <div className="flex items-start gap-2.5">
-                                <MapPin className="h-4 w-4 text-gray-500 dark:text-gray-400 mt-0.5 flex-shrink-0" />
-                                <div className="flex-1 min-w-0">
-                                  {selectedBusiness.address.street && (
-                                    <p className="text-sm text-gray-700 dark:text-gray-300 font-medium">
-                                      {selectedBusiness.address.street}
-                                    </p>
-                                  )}
-                                  {selectedBusiness.address.addressLine2 && (
-                                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                                      {selectedBusiness.address.addressLine2}
-                                    </p>
-                                  )}
-                                  {(selectedBusiness.address.city || selectedBusiness.address.state || selectedBusiness.address.postalCode || selectedBusiness.address.country) && (
-                                    <p className="text-sm text-gray-700 dark:text-gray-300">
-                                      {[
-                                        selectedBusiness.address.city,
-                                        selectedBusiness.address.state,
-                                        selectedBusiness.address.postalCode,
-                                        selectedBusiness.address.country
-                                      ].filter(Boolean).join(', ')}
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            )}
-                            
-                            {selectedBusiness.phone && (
-                              <div className="flex items-center gap-2.5">
-                                <Phone className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-                                <p className="text-sm text-gray-700 dark:text-gray-300">
-                                  {selectedBusiness.phone}
-                                </p>
-                              </div>
-                            )}
-                            
-                            {selectedBusiness.website && (
-                              <div className="flex items-center gap-2.5">
-                                <Globe className="h-4 w-4 text-gray-500 dark:text-gray-400 flex-shrink-0" />
-                                <a 
-                                  href={selectedBusiness.website}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 truncate"
-                                >
-                                  {selectedBusiness.website.replace(/^https?:\/\//, '')}
-                                </a>
-                              </div>
-                            )}
-                          </div>
-                        </div>
-                      )}
+                  {!selectedBusiness && searchQuery.length > 0 && !showResults && !isSearching && (
+                    <div className="space-y-4">
+                      <p className="text-sm text-gray-500">Can't find your business? Enter details manually:</p>
                       
-                      {/* Manual Entry Header - Show only for manual entry */}
-                      {selectedBusiness.id === 'manual' && (
-                        <div className="space-y-4">
-                          <button
-                            type="button"
-                            onClick={() => {
-                              setSelectedBusiness(null);
-                              setSearchQuery("");
-                            }}
-                            className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100 transition-colors"
-                            data-testid="button-back-to-search"
-                          >
-                            <ChevronLeft className="h-4 w-4" />
-                            Back to search
-                          </button>
-                          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                            Enter Company Information
-                          </h3>
-                        </div>
-                      )}
-
-                      {/* Editable Company Fields */}
-                      {/* For manual entry, show ALL fields. For Google Places, show only fields that can be edited */}
-                      {selectedBusiness.id === 'manual' && (
-                        <FormField
-                          control={form.control}
-                          name="company.name"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <Input
-                                  placeholder="Company name"
-                                  className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                                  {...field}
-                                  onChange={(e) => {
-                                    field.onChange(e);
-                                    // Auto-update slug when name changes
-                                    form.setValue("company.slug", generateSlug(e.target.value));
-                                  }}
-                                  name="organization"
-                                  autoComplete="organization"
-                                  data-testid="input-company-name"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
-
                       <FormField
                         control={form.control}
-                        name="company.phone"
+                        name="company.name"
                         render={({ field }) => (
                           <FormItem>
                             <FormControl>
                               <Input
-                                placeholder="(456) 789-1234"
-                                className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                placeholder="Company name"
+                                className="h-12 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 rounded-xl"
                                 {...field}
-                                onChange={(e) => {
-                                  const formatted = formatPhoneInput(e.target.value);
-                                  field.onChange(formatted);
-                                }}
-                                name="tel"
-                                autoComplete="tel"
-                                data-testid="input-company-phone"
+                                data-testid="input-company-name"
                               />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
                         )}
                       />
-
-                      {selectedBusiness.id === 'manual' && (
-                        <FormField
-                          control={form.control}
-                          name="company.website"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormControl>
-                                <Input
-                                  placeholder="Website (optional)"
-                                  className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                                  {...field}
-                                  value={field.value ?? ""}
-                                  name="url"
-                                  autoComplete="url"
-                                  data-testid="input-company-website"
-                                />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      )}
 
                       <FormField
                         control={form.control}
@@ -603,54 +370,10 @@ export default function Register() {
                           <FormItem>
                             <FormControl>
                               <Input
-                                placeholder="Street address"
-                                className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                placeholder="Business address"
+                                className="h-12 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 rounded-xl"
                                 {...field}
-                                name="address-line1"
-                                autoComplete="address-line1"
-                                data-testid="input-company-address"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="company.addressLine2"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormControl>
-                              <Input
-                                placeholder="Suite, Apt, Unit (optional)"
-                                className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                                {...field}
-                                value={field.value ?? ""}
-                                name="address-line2"
-                                autoComplete="address-line2"
-                                data-testid="input-company-address-line2"
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-
-                      <FormField
-                        control={form.control}
-                        name="company.city"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormControl>
-                              <Input
-                                placeholder="City"
-                                className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
-                                {...field}
-                                value={field.value ?? ""}
-                                name="address-level2"
-                                autoComplete="address-level2"
-                                data-testid="input-company-city"
+                                data-testid="input-address"
                               />
                             </FormControl>
                             <FormMessage />
@@ -661,39 +384,32 @@ export default function Register() {
                       <div className="grid grid-cols-2 gap-3">
                         <FormField
                           control={form.control}
-                          name="company.state"
+                          name="company.city"
                           render={({ field }) => (
                             <FormItem>
                               <FormControl>
                                 <Input
-                                  placeholder="State"
-                                  className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                  placeholder="City"
+                                  className="h-12 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 rounded-xl"
                                   {...field}
-                                  value={field.value ?? ""}
-                                  name="address-level1"
-                                  autoComplete="address-level1"
-                                  data-testid="input-company-state"
+                                  data-testid="input-city"
                                 />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
                           )}
                         />
-
                         <FormField
                           control={form.control}
-                          name="company.postalCode"
+                          name="company.state"
                           render={({ field }) => (
                             <FormItem>
                               <FormControl>
                                 <Input
-                                  placeholder="ZIP code"
-                                  className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                                  placeholder="State"
+                                  className="h-12 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 rounded-xl"
                                   {...field}
-                                  value={field.value ?? ""}
-                                  name="postal-code"
-                                  autoComplete="postal-code"
-                                  data-testid="input-company-postal-code"
+                                  data-testid="input-state"
                                 />
                               </FormControl>
                               <FormMessage />
@@ -702,35 +418,68 @@ export default function Register() {
                         />
                       </div>
 
-                      {/* Next Step Button */}
-                      <Button
-                        type="button"
-                        onClick={handleNextStep}
-                        className="w-full h-12 text-base font-medium"
-                        data-testid="button-next-step"
-                      >
-                        Continue to Admin Account
-                      </Button>
-                    </>
-                  )}
-
-                  {!selectedBusiness && (
-                    <div className="text-center text-sm text-gray-600 dark:text-gray-400 pt-2">
-                      Already have an account?{" "}
-                      <button
-                        type="button"
-                        onClick={() => setLocation("/login")}
-                        className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
-                        data-testid="link-login"
-                      >
-                        Sign in here
-                      </button>
+                      <FormField
+                        control={form.control}
+                        name="company.phone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormControl>
+                              <Input
+                                placeholder="Business phone"
+                                className="h-12 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 rounded-xl"
+                                {...field}
+                                onChange={(e) => {
+                                  const formatted = formatPhoneInput(e.target.value);
+                                  field.onChange(formatted);
+                                }}
+                                data-testid="input-company-phone"
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
                     </div>
                   )}
+
+                  {selectedBusiness && (
+                    <Button
+                      type="button"
+                      onClick={handleNextStep}
+                      className="w-full h-12 text-base font-medium bg-blue-600 hover:bg-blue-700 rounded-xl"
+                      data-testid="button-next-step"
+                    >
+                      Continue
+                      <ChevronRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  )}
+
+                  {!selectedBusiness && searchQuery.length > 0 && !showResults && !isSearching && (
+                    <Button
+                      type="button"
+                      onClick={handleNextStep}
+                      className="w-full h-12 text-base font-medium bg-blue-600 hover:bg-blue-700 rounded-xl"
+                      data-testid="button-next-step"
+                    >
+                      Continue
+                      <ChevronRight className="w-4 h-4 ml-2" />
+                    </Button>
+                  )}
+
+                  <div className="text-center text-sm text-gray-600 dark:text-gray-400">
+                    Already have an account?{" "}
+                    <button
+                      type="button"
+                      onClick={() => setLocation("/login")}
+                      className="text-blue-600 hover:text-blue-700 font-medium"
+                      data-testid="link-login"
+                    >
+                      Sign in
+                    </button>
+                  </div>
                 </>
               )}
 
-              {/* STEP 2: Admin Information */}
               {currentStep === 2 && (
                 <>
                   <div className="grid grid-cols-2 gap-3">
@@ -742,9 +491,8 @@ export default function Register() {
                           <FormControl>
                             <Input
                               placeholder="First name"
-                              className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                              className="h-12 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 rounded-xl"
                               {...field}
-                              name="given-name"
                               autoComplete="given-name"
                               data-testid="input-first-name"
                             />
@@ -753,7 +501,6 @@ export default function Register() {
                         </FormItem>
                       )}
                     />
-
                     <FormField
                       control={form.control}
                       name="admin.lastName"
@@ -762,9 +509,8 @@ export default function Register() {
                           <FormControl>
                             <Input
                               placeholder="Last name"
-                              className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                              className="h-12 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 rounded-xl"
                               {...field}
-                              name="family-name"
                               autoComplete="family-name"
                               data-testid="input-last-name"
                             />
@@ -784,9 +530,8 @@ export default function Register() {
                           <Input
                             type="email"
                             placeholder="Email address"
-                            className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                            className="h-12 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 rounded-xl"
                             {...field}
-                            name="email"
                             autoComplete="email"
                             data-testid="input-email"
                           />
@@ -803,15 +548,13 @@ export default function Register() {
                       <FormItem>
                         <FormControl>
                           <Input
-                            placeholder="(456) 789-1234"
-                            className="h-12 bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-700 rounded-lg"
+                            placeholder="Your phone number"
+                            className="h-12 bg-gray-50 dark:bg-gray-900 border-gray-200 dark:border-gray-800 rounded-xl"
                             {...field}
-                            value={field.value ?? ""}
                             onChange={(e) => {
                               const formatted = formatPhoneInput(e.target.value);
                               field.onChange(formatted);
                             }}
-                            name="tel-admin"
                             autoComplete="tel"
                             data-testid="input-admin-phone"
                           />
@@ -825,7 +568,7 @@ export default function Register() {
                     control={form.control}
                     name="admin.smsConsent"
                     render={({ field }) => (
-                      <FormItem className="flex flex-row items-start space-x-2 space-y-0">
+                      <FormItem className="flex items-start space-x-3 space-y-0 p-4 bg-gray-50 dark:bg-gray-900 rounded-xl">
                         <FormControl>
                           <Checkbox
                             checked={field.value}
@@ -834,25 +577,21 @@ export default function Register() {
                           />
                         </FormControl>
                         <div className="space-y-1 leading-none">
-                          <label 
-                            className="text-xs text-gray-500 dark:text-gray-400 cursor-pointer"
-                            onClick={() => field.onChange(!field.value)}
-                          >
-                            By providing your phone number, you agree to receive SMS promotional offers and marketing updates from Curbe.io. Message frequency may vary. Standard Message and Data Rates may apply. Reply STOP to opt out. Reply HELP for help. We will not share mobile information with third parties for promotional or marketing purposes.
-                          </label>
+                          <p className="text-sm text-gray-700 dark:text-gray-300">
+                            I agree to receive SMS messages for account verification and important updates.
+                          </p>
                           <FormMessage />
                         </div>
                       </FormItem>
                     )}
                   />
 
-                  {/* Action Buttons */}
                   <div className="flex gap-3">
                     <Button
                       type="button"
                       onClick={handleBackStep}
                       variant="outline"
-                      className="h-12 text-base font-medium"
+                      className="h-12 px-6 rounded-xl"
                       data-testid="button-back-step"
                     >
                       <ChevronLeft className="w-4 h-4 mr-1" />
@@ -862,7 +601,7 @@ export default function Register() {
                     <Button
                       type="submit"
                       disabled={isLoading}
-                      className="flex-1 h-12 text-base font-medium"
+                      className="flex-1 h-12 text-base font-medium bg-blue-600 hover:bg-blue-700 rounded-xl"
                       data-testid="button-register"
                     >
                       {isLoading ? (
@@ -876,25 +615,71 @@ export default function Register() {
                     </Button>
                   </div>
 
-                  <div className="text-center text-xs text-gray-500 dark:text-gray-400">
+                  <p className="text-center text-xs text-gray-500">
                     You'll receive an activation email to get started
-                  </div>
+                  </p>
 
-                  <div className="text-center text-sm text-gray-600 dark:text-gray-400 pt-2">
+                  <div className="text-center text-sm text-gray-600 dark:text-gray-400">
                     Already have an account?{" "}
                     <button
                       type="button"
                       onClick={() => setLocation("/login")}
-                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
+                      className="text-blue-600 hover:text-blue-700 font-medium"
                       data-testid="link-login"
                     >
-                      Sign in here
+                      Sign in
                     </button>
                   </div>
                 </>
               )}
             </form>
           </Form>
+        </div>
+      </div>
+
+      <div className="hidden lg:flex lg:flex-1 relative overflow-hidden">
+        <div 
+          className="absolute inset-0 bg-cover bg-center"
+          style={{ backgroundImage: `url(${backgroundImage})` }}
+        />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent" />
+        
+        <div className="relative z-10 flex flex-col justify-end p-12 text-white">
+          <div className="space-y-6 max-w-lg">
+            <h2 className="text-4xl font-bold leading-tight">
+              We are a Family
+            </h2>
+            <p className="text-lg text-white/80">
+              Join thousands of insurance professionals who trust Curbe to streamline their operations and grow their business.
+            </p>
+            
+            <div className="flex flex-wrap gap-3 pt-4">
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
+                <Shield className="w-4 h-4" />
+                <span className="text-sm">Secure Platform</span>
+              </div>
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
+                <Users className="w-4 h-4" />
+                <span className="text-sm">Team Collaboration</span>
+              </div>
+              <div className="flex items-center gap-2 bg-white/10 backdrop-blur-sm px-4 py-2 rounded-full">
+                <Zap className="w-4 h-4" />
+                <span className="text-sm">Fast & Efficient</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="absolute top-8 right-8 bg-white/10 backdrop-blur-md rounded-2xl p-5 border border-white/20">
+            <div className="text-3xl font-bold">+89%</div>
+            <div className="text-sm text-white/80">Positive response<br/>from users</div>
+            <Button 
+              size="sm" 
+              className="mt-3 bg-white text-gray-900 hover:bg-white/90 rounded-lg w-full"
+              onClick={() => setLocation("/login")}
+            >
+              Start Now
+            </Button>
+          </div>
         </div>
       </div>
     </div>
