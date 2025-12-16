@@ -451,8 +451,8 @@ export default function Register() {
           </div>
 
           <div className="absolute bottom-0 left-0 right-0 p-6 text-center z-10">
-            <h2 className="text-2xl font-bold text-white mb-2">Turn every interaction into progress.</h2>
-            <p className="text-white/70 text-xs max-w-sm mx-auto mb-5">From first hello to loyal customer—without the chaos.</p>
+            <h2 className="font-bold text-white mb-2 text-[26px]">Turn every interaction into progress.</h2>
+            <p className="text-white/70 max-w-sm mx-auto mb-5 text-[14px]">From first hello to loyal customer—without the chaos.</p>
             
             <div className="flex flex-nowrap justify-center gap-3 overflow-hidden">
               <div className="flex items-center gap-2 bg-white/15 backdrop-blur-md px-5 py-2.5 rounded-full border border-white/20 shrink-0">
