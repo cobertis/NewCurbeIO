@@ -7413,9 +7413,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
 
       }
-      // Get invoices from database - user-scoped for admins
-      const userId = currentUser.role === 'admin' ? currentUser.id : undefined;
-      const allInvoices = await storage.getInvoicesByCompany(companyId, userId);
+      // Get invoices from database - subscription invoices should be visible to all admins
+      // Don't filter by userId since subscription invoices belong to the company, not individual users
+      const allInvoices = await storage.getInvoicesByCompany(companyId);
       // Filter out $0.00 invoices (trial invoices) from billing history
       const filteredInvoices = allInvoices.filter(invoice => invoice.total > 0);
       // Sort by date descending (most recent first)
