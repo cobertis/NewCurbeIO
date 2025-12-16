@@ -192,6 +192,7 @@ export default function Register() {
 
               <div className="grid grid-cols-4 gap-4">
                 <div className="col-span-3">
+                  <label className="block text-xs text-gray-400 mb-1 ml-1">Street Address</label>
                   <FormField
                     control={form.control}
                     name="address"
@@ -206,7 +207,7 @@ export default function Register() {
                             form.setValue("state", address.state);
                             form.setValue("zipCode", address.postalCode);
                           }}
-                          label="Street Address"
+                          label=""
                           placeholder="Start typing your address..."
                           testId="input-address"
                         />

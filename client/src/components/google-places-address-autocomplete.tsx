@@ -146,12 +146,13 @@ export function GooglePlacesAddressAutocomplete({
 
   return (
     <div ref={wrapperRef} className="relative space-y-2">
-      {label && <label className="text-sm font-medium">{label}</label>}
+      {label && <label className="block text-xs text-gray-400 mb-1 ml-1">{label}</label>}
       <div className="relative">
         <Input
           value={value}
           onChange={handleInputChange}
           placeholder={placeholder}
+          className="h-11 px-4 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           data-testid={testId}
           autoComplete="off"
           name="street-address"
