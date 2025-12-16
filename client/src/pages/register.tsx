@@ -228,8 +228,8 @@ export default function Register() {
                       />
                     </FormControl>
                     <div className="space-y-1 leading-none">
-                      <p className="text-xs text-gray-500">
-                        I agree to receive SMS messages for account verification and important updates.
+                      <p className="text-[10px] text-gray-500 leading-relaxed">
+                        By providing your phone number, you agree to receive SMS promotional offers and marketing updates from Curbe.io. Message frequency may vary. Standard Message and Data Rates may apply. Reply STOP to opt out. Reply HELP for help. We will not share mobile information with third parties for promotional or marketing purposes.
                       </p>
                       <FormMessage />
                     </div>
