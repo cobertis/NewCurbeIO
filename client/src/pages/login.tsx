@@ -101,7 +101,7 @@ export default function Login() {
       data-testid="login-page"
     >
       <div className="w-full max-w-[1300px] bg-white rounded-[2rem] shadow-2xl flex flex-col lg:flex-row relative">
-        <div className="w-full lg:w-[45%] p-10 md:p-14 relative z-10 flex flex-col justify-center min-h-[700px]">
+        <div className="w-full lg:w-[45%] p-10 md:p-14 relative z-10 flex flex-col justify-center" style={{ minHeight: '800px' }}>
           <div className="flex items-center gap-2 mb-8">
             <img src={logo} alt="Curbe" className="h-12 w-auto" />
           </div>
