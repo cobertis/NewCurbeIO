@@ -8289,6 +8289,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       const subscriptionCustomerId = subscription.stripeCustomerId;
       
+      // CRITICAL: Attach the payment method to the subscription customer in Stripe
+      try {
+        await stripeClient.paymentMethods.attach(paymentMethodId, {
+          customer: subscriptionCustomerId,
+        });
+        console.log(`[BILLING] Attached payment method ${paymentMethodId} to customer ${subscriptionCustomerId}`);
+      } catch (attachError: any) {
+        // If already attached to this customer, that is fine
+        if (attachError.code !== 'resource_already_exists') {
+          throw attachError;
+        }
+        console.log(`[BILLING] Payment method ${paymentMethodId} already attached`);
+      }
+      
       // Retrieve the payment method from Stripe to get card details
       const pm = await stripeClient.paymentMethods.retrieve(paymentMethodId);
       
