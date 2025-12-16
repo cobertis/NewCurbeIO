@@ -172,7 +172,11 @@ export default function VerifyOTP() {
           title: "Success!",
           description: "You have been logged in successfully",
         });
-        setLocation("/dashboard");
+        if (data.requiresOnboarding) {
+          setLocation("/onboarding");
+        } else {
+          setLocation("/dashboard");
+        }
       } else {
         toast({
           variant: "destructive",

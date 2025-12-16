@@ -36,6 +36,11 @@ export default function Login() {
         return;
       }
 
+      if (data.requiresOnboarding) {
+        setLocation("/onboarding");
+        return;
+      }
+
       toast({
         title: "Welcome back!",
         description: "You have been logged in successfully.",

@@ -172,79 +172,6 @@ function detectStopKeyword(messageBody: string): boolean {
   return stopKeywords.some(keyword => normalizedBody === keyword || normalizedBody.startsWith(keyword + " "));
 
   // ============================================================
-  // ============================================================
-  // ONBOARDING - Complete user profile after registration
-  // ============================================================
-  
-  app.post("/api/onboarding/complete", async (req: Request, res: Response) => {
-    try {
-      const userId = req.session.userId;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-      
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      const {
-        firstName,
-        lastName,
-        phone,
-        dateOfBirth,
-        preferredLanguage,
-        timezone,
-        address,
-        // Agent-specific fields (optional)
-        agentInternalCode,
-        instructionLevel,
-        nationalProducerNumber,
-        federallyFacilitatedMarketplace,
-        referredBy,
-      } = req.body;
-      
-      // Validate required fields
-      if (!firstName || !lastName) {
-        return res.status(400).json({ message: "First name and last name are required" });
-      }
-      
-      // Update user profile
-      await storage.updateUser(userId, {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        phone: phone?.trim() || null,
-        dateOfBirth: dateOfBirth || null,
-        preferredLanguage: preferredLanguage || "en",
-        timezone: timezone || "America/New_York",
-        address: address?.trim() || null,
-        agentInternalCode: agentInternalCode?.trim() || null,
-        instructionLevel: instructionLevel || null,
-        nationalProducerNumber: nationalProducerNumber?.trim() || null,
-        federallyFacilitatedMarketplace: federallyFacilitatedMarketplace?.trim() || null,
-        referredBy: referredBy?.trim() || null,
-      });
-      
-      const updatedUser = await storage.getUser(userId);
-      
-      res.json({
-        success: true,
-        user: {
-          id: updatedUser?.id,
-          email: updatedUser?.email,
-          firstName: updatedUser?.firstName,
-          lastName: updatedUser?.lastName,
-          phone: updatedUser?.phone,
-          role: updatedUser?.role,
-          companyId: updatedUser?.companyId,
-        },
-      });
-    } catch (error: any) {
-      console.error("[Onboarding] Error completing profile:", error);
-      res.status(500).json({ message: "Failed to complete profile" });
-    }
-  });
-
   return httpServer;
 }
 // Verify ffmpeg is available at startup
@@ -276,79 +203,6 @@ async function extractAudioDuration(audioPath: string): Promise<number> {
   }
 
   // ============================================================
-  // ============================================================
-  // ONBOARDING - Complete user profile after registration
-  // ============================================================
-  
-  app.post("/api/onboarding/complete", async (req: Request, res: Response) => {
-    try {
-      const userId = req.session.userId;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-      
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      const {
-        firstName,
-        lastName,
-        phone,
-        dateOfBirth,
-        preferredLanguage,
-        timezone,
-        address,
-        // Agent-specific fields (optional)
-        agentInternalCode,
-        instructionLevel,
-        nationalProducerNumber,
-        federallyFacilitatedMarketplace,
-        referredBy,
-      } = req.body;
-      
-      // Validate required fields
-      if (!firstName || !lastName) {
-        return res.status(400).json({ message: "First name and last name are required" });
-      }
-      
-      // Update user profile
-      await storage.updateUser(userId, {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        phone: phone?.trim() || null,
-        dateOfBirth: dateOfBirth || null,
-        preferredLanguage: preferredLanguage || "en",
-        timezone: timezone || "America/New_York",
-        address: address?.trim() || null,
-        agentInternalCode: agentInternalCode?.trim() || null,
-        instructionLevel: instructionLevel || null,
-        nationalProducerNumber: nationalProducerNumber?.trim() || null,
-        federallyFacilitatedMarketplace: federallyFacilitatedMarketplace?.trim() || null,
-        referredBy: referredBy?.trim() || null,
-      });
-      
-      const updatedUser = await storage.getUser(userId);
-      
-      res.json({
-        success: true,
-        user: {
-          id: updatedUser?.id,
-          email: updatedUser?.email,
-          firstName: updatedUser?.firstName,
-          lastName: updatedUser?.lastName,
-          phone: updatedUser?.phone,
-          role: updatedUser?.role,
-          companyId: updatedUser?.companyId,
-        },
-      });
-    } catch (error: any) {
-      console.error("[Onboarding] Error completing profile:", error);
-      res.status(500).json({ message: "Failed to complete profile" });
-    }
-  });
-
   return httpServer;
 }
 // Helper function to generate real waveform from audio file
@@ -426,79 +280,6 @@ async function generateAudioWaveform(audioPath: string, targetSamples: number = 
   }
 
   // ============================================================
-  // ============================================================
-  // ONBOARDING - Complete user profile after registration
-  // ============================================================
-  
-  app.post("/api/onboarding/complete", async (req: Request, res: Response) => {
-    try {
-      const userId = req.session.userId;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-      
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      const {
-        firstName,
-        lastName,
-        phone,
-        dateOfBirth,
-        preferredLanguage,
-        timezone,
-        address,
-        // Agent-specific fields (optional)
-        agentInternalCode,
-        instructionLevel,
-        nationalProducerNumber,
-        federallyFacilitatedMarketplace,
-        referredBy,
-      } = req.body;
-      
-      // Validate required fields
-      if (!firstName || !lastName) {
-        return res.status(400).json({ message: "First name and last name are required" });
-      }
-      
-      // Update user profile
-      await storage.updateUser(userId, {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        phone: phone?.trim() || null,
-        dateOfBirth: dateOfBirth || null,
-        preferredLanguage: preferredLanguage || "en",
-        timezone: timezone || "America/New_York",
-        address: address?.trim() || null,
-        agentInternalCode: agentInternalCode?.trim() || null,
-        instructionLevel: instructionLevel || null,
-        nationalProducerNumber: nationalProducerNumber?.trim() || null,
-        federallyFacilitatedMarketplace: federallyFacilitatedMarketplace?.trim() || null,
-        referredBy: referredBy?.trim() || null,
-      });
-      
-      const updatedUser = await storage.getUser(userId);
-      
-      res.json({
-        success: true,
-        user: {
-          id: updatedUser?.id,
-          email: updatedUser?.email,
-          firstName: updatedUser?.firstName,
-          lastName: updatedUser?.lastName,
-          phone: updatedUser?.phone,
-          role: updatedUser?.role,
-          companyId: updatedUser?.companyId,
-        },
-      });
-    } catch (error: any) {
-      console.error("[Onboarding] Error completing profile:", error);
-      res.status(500).json({ message: "Failed to complete profile" });
-    }
-  });
-
   return httpServer;
 }
 async function convertWebMToCAF(inputPath: string, tryOpus: boolean = true): Promise<{ path: string, metadata: AudioMetadata }> {
@@ -593,79 +374,6 @@ async function convertWebMToCAF(inputPath: string, tryOpus: boolean = true): Pro
   });
 
   // ============================================================
-  // ============================================================
-  // ONBOARDING - Complete user profile after registration
-  // ============================================================
-  
-  app.post("/api/onboarding/complete", async (req: Request, res: Response) => {
-    try {
-      const userId = req.session.userId;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-      
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      const {
-        firstName,
-        lastName,
-        phone,
-        dateOfBirth,
-        preferredLanguage,
-        timezone,
-        address,
-        // Agent-specific fields (optional)
-        agentInternalCode,
-        instructionLevel,
-        nationalProducerNumber,
-        federallyFacilitatedMarketplace,
-        referredBy,
-      } = req.body;
-      
-      // Validate required fields
-      if (!firstName || !lastName) {
-        return res.status(400).json({ message: "First name and last name are required" });
-      }
-      
-      // Update user profile
-      await storage.updateUser(userId, {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        phone: phone?.trim() || null,
-        dateOfBirth: dateOfBirth || null,
-        preferredLanguage: preferredLanguage || "en",
-        timezone: timezone || "America/New_York",
-        address: address?.trim() || null,
-        agentInternalCode: agentInternalCode?.trim() || null,
-        instructionLevel: instructionLevel || null,
-        nationalProducerNumber: nationalProducerNumber?.trim() || null,
-        federallyFacilitatedMarketplace: federallyFacilitatedMarketplace?.trim() || null,
-        referredBy: referredBy?.trim() || null,
-      });
-      
-      const updatedUser = await storage.getUser(userId);
-      
-      res.json({
-        success: true,
-        user: {
-          id: updatedUser?.id,
-          email: updatedUser?.email,
-          firstName: updatedUser?.firstName,
-          lastName: updatedUser?.lastName,
-          phone: updatedUser?.phone,
-          role: updatedUser?.role,
-          companyId: updatedUser?.companyId,
-        },
-      });
-    } catch (error: any) {
-      console.error("[Onboarding] Error completing profile:", error);
-      res.status(500).json({ message: "Failed to complete profile" });
-    }
-  });
-
   return httpServer;
 }
 interface AudioMetadata {
@@ -677,79 +385,6 @@ interface AudioMetadata {
   sampleRate: number;
 
   // ============================================================
-  // ============================================================
-  // ONBOARDING - Complete user profile after registration
-  // ============================================================
-  
-  app.post("/api/onboarding/complete", async (req: Request, res: Response) => {
-    try {
-      const userId = req.session.userId;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-      
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      const {
-        firstName,
-        lastName,
-        phone,
-        dateOfBirth,
-        preferredLanguage,
-        timezone,
-        address,
-        // Agent-specific fields (optional)
-        agentInternalCode,
-        instructionLevel,
-        nationalProducerNumber,
-        federallyFacilitatedMarketplace,
-        referredBy,
-      } = req.body;
-      
-      // Validate required fields
-      if (!firstName || !lastName) {
-        return res.status(400).json({ message: "First name and last name are required" });
-      }
-      
-      // Update user profile
-      await storage.updateUser(userId, {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        phone: phone?.trim() || null,
-        dateOfBirth: dateOfBirth || null,
-        preferredLanguage: preferredLanguage || "en",
-        timezone: timezone || "America/New_York",
-        address: address?.trim() || null,
-        agentInternalCode: agentInternalCode?.trim() || null,
-        instructionLevel: instructionLevel || null,
-        nationalProducerNumber: nationalProducerNumber?.trim() || null,
-        federallyFacilitatedMarketplace: federallyFacilitatedMarketplace?.trim() || null,
-        referredBy: referredBy?.trim() || null,
-      });
-      
-      const updatedUser = await storage.getUser(userId);
-      
-      res.json({
-        success: true,
-        user: {
-          id: updatedUser?.id,
-          email: updatedUser?.email,
-          firstName: updatedUser?.firstName,
-          lastName: updatedUser?.lastName,
-          phone: updatedUser?.phone,
-          role: updatedUser?.role,
-          companyId: updatedUser?.companyId,
-        },
-      });
-    } catch (error: any) {
-      console.error("[Onboarding] Error completing profile:", error);
-      res.status(500).json({ message: "Failed to complete profile" });
-    }
-  });
-
   return httpServer;
 }
 async function ensureUserSlug(userId: string, companyId: string): Promise<string> {
@@ -791,79 +426,6 @@ async function ensureUserSlug(userId: string, companyId: string): Promise<string
   return finalSlug;
 
   // ============================================================
-  // ============================================================
-  // ONBOARDING - Complete user profile after registration
-  // ============================================================
-  
-  app.post("/api/onboarding/complete", async (req: Request, res: Response) => {
-    try {
-      const userId = req.session.userId;
-      if (!userId) {
-        return res.status(401).json({ message: "Not authenticated" });
-      }
-      
-      const user = await storage.getUser(userId);
-      if (!user) {
-        return res.status(404).json({ message: "User not found" });
-      }
-      
-      const {
-        firstName,
-        lastName,
-        phone,
-        dateOfBirth,
-        preferredLanguage,
-        timezone,
-        address,
-        // Agent-specific fields (optional)
-        agentInternalCode,
-        instructionLevel,
-        nationalProducerNumber,
-        federallyFacilitatedMarketplace,
-        referredBy,
-      } = req.body;
-      
-      // Validate required fields
-      if (!firstName || !lastName) {
-        return res.status(400).json({ message: "First name and last name are required" });
-      }
-      
-      // Update user profile
-      await storage.updateUser(userId, {
-        firstName: firstName.trim(),
-        lastName: lastName.trim(),
-        phone: phone?.trim() || null,
-        dateOfBirth: dateOfBirth || null,
-        preferredLanguage: preferredLanguage || "en",
-        timezone: timezone || "America/New_York",
-        address: address?.trim() || null,
-        agentInternalCode: agentInternalCode?.trim() || null,
-        instructionLevel: instructionLevel || null,
-        nationalProducerNumber: nationalProducerNumber?.trim() || null,
-        federallyFacilitatedMarketplace: federallyFacilitatedMarketplace?.trim() || null,
-        referredBy: referredBy?.trim() || null,
-      });
-      
-      const updatedUser = await storage.getUser(userId);
-      
-      res.json({
-        success: true,
-        user: {
-          id: updatedUser?.id,
-          email: updatedUser?.email,
-          firstName: updatedUser?.firstName,
-          lastName: updatedUser?.lastName,
-          phone: updatedUser?.phone,
-          role: updatedUser?.role,
-          companyId: updatedUser?.companyId,
-        },
-      });
-    } catch (error: any) {
-      console.error("[Onboarding] Error completing profile:", error);
-      res.status(500).json({ message: "Failed to complete profile" });
-    }
-  });
-
   return httpServer;
 }
 export async function registerRoutes(app: Express, sessionStore?: any): Promise<Server> {
@@ -3798,7 +3360,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           res.json({
             success: true,
             skipOTP: true,
-            requiresOnboarding: !user.firstName,
             user: {
               id: user.id,
               email: user.email,
@@ -3873,7 +3434,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             res.json({
               success: true,
               skipOTP: true,
-            requiresOnboarding: !user.firstName,
               user: {
                 id: user.id,
                 email: user.email,
@@ -5052,7 +4612,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
         console.log(`✓ Session saved successfully for ${user.email}. Trusted device: ${!!deviceToken}`);
         res.json({
-          requiresOnboarding: !user.firstName,
           success: true,
           user: {
             id: user.id,
@@ -34887,7 +34446,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         preferredLanguage,
         timezone,
         address,
-        // Agent-specific fields (optional)
         agentInternalCode,
         instructionLevel,
         nationalProducerNumber,
@@ -34895,12 +34453,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         referredBy,
       } = req.body;
       
-      // Validate required fields
       if (!firstName || !lastName) {
         return res.status(400).json({ message: "First name and last name are required" });
       }
       
-      // Update user profile
       await storage.updateUser(userId, {
         firstName: firstName.trim(),
         lastName: lastName.trim(),
