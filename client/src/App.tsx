@@ -636,53 +636,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                 <TooltipContent>New Policy</TooltipContent>
               </Tooltip>
 
-              {/* WebPhone Button - Always visible */}
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={() => {
-                      if (!canMakeCalls) {
-                        toast({
-                          title: "Phone Not Available",
-                          description: noPhoneMessage,
-                          variant: "destructive",
-                          duration: 5000,
-                        });
-                        return;
-                      }
-                      toggleDialpad();
-                    }}
-                    data-testid="button-phone"
-                    className={cn(
-                      "w-9 h-9 rounded-full flex items-center justify-center transition-all duration-200 relative",
-                      effectiveCall 
-                        ? "bg-green-500 hover:bg-green-600 text-white ring-2 ring-green-300 ring-offset-1" 
-                        : effectiveConnectionStatus === 'connected'
-                          ? "bg-green-500 hover:bg-green-600 text-white"
-                          : effectiveConnectionStatus === 'connecting'
-                            ? "bg-yellow-500 hover:bg-yellow-600 text-white"
-                            : "bg-gray-400 hover:bg-gray-500 text-white"
-                    )}
-                  >
-                    <Phone className="h-[18px] w-[18px]" />
-                    {/* Connection status indicator */}
-                    <span className={cn(
-                      "absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white",
-                      effectiveConnectionStatus === 'connected' ? "bg-green-500" : 
-                      effectiveConnectionStatus === 'connecting' ? "bg-yellow-400 animate-pulse" : 
-                      "bg-red-400"
-                    )} />
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {!canMakeCalls ? "No Phone Assigned" :
-                   effectiveCall ? "In Call" : 
-                   effectiveConnectionStatus === 'connected' ? "Phone Ready" : 
-                   effectiveConnectionStatus === 'connecting' ? "Connecting..." : 
-                   "Phone Offline"}
-                </TooltipContent>
-              </Tooltip>
-
               {/* Search Icon */}
               <button data-testid="button-search" className={circularButtonClass}>
                 <Search className="h-[18px] w-[18px]" />
