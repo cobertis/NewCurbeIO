@@ -96,7 +96,7 @@ export default function Register() {
       }}
       data-testid="register-page"
     >
-      <div className="w-full max-w-[1100px] bg-white rounded-[2rem] shadow-2xl flex flex-col lg:flex-row relative">
+      <div className="w-full max-w-[1300px] bg-white rounded-[2rem] shadow-2xl flex flex-col lg:flex-row relative">
         <div className="w-full lg:w-[55%] p-10 md:p-14 relative z-10">
           <div className="flex items-center gap-2 mb-8">
             <img src={logo} alt="Curbe" className="h-12 w-auto" />
