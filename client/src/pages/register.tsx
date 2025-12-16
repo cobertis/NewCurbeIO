@@ -19,7 +19,8 @@ import logo from "@assets/logo no fondo_1760457183587.png";
 import backgroundImage from "@assets/mountain_road_background.png";
 
 const registerSchema = z.object({
-  fullName: z.string().min(1, "Full name is required"),
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
   companyName: z.string().min(1, "Company name is required"),
   address: z.string().min(1, "Address is required"),
   email: z.string().email("Invalid email address"),
@@ -42,7 +43,8 @@ export default function Register() {
   const form = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
-      fullName: "",
+      firstName: "",
+      lastName: "",
       companyName: "",
       address: "",
       email: "",
@@ -95,9 +97,9 @@ export default function Register() {
       data-testid="register-page"
     >
       <div className="w-full max-w-[1100px] bg-white rounded-[2rem] shadow-2xl flex flex-col lg:flex-row relative">
-        <div className="w-full lg:w-[50%] p-10 md:p-12 relative z-10">
+        <div className="w-full lg:w-[55%] p-10 md:p-14 relative z-10">
           <div className="flex items-center gap-2 mb-8">
-            <img src={logo} alt="Curbe" className="h-8 w-auto" />
+            <img src={logo} alt="Curbe" className="h-12 w-auto" />
           </div>
 
           <h1 className="text-[1.75rem] md:text-[2.25rem] font-bold text-gray-900 leading-tight mb-3">
@@ -109,26 +111,49 @@ export default function Register() {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <div>
-                <label className="block text-xs text-gray-400 mb-1 ml-1">Full Name</label>
-                <FormField
-                  control={form.control}
-                  name="fullName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Input
-                          placeholder="John Doe"
-                          className="h-11 px-4 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                          {...field}
-                          autoComplete="name"
-                          data-testid="input-fullname"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1 ml-1">First Name</label>
+                  <FormField
+                    control={form.control}
+                    name="firstName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            placeholder="John"
+                            className="h-11 px-4 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            {...field}
+                            autoComplete="given-name"
+                            data-testid="input-firstname"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs text-gray-400 mb-1 ml-1">Last Name</label>
+                  <FormField
+                    control={form.control}
+                    name="lastName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormControl>
+                          <Input
+                            placeholder="Doe"
+                            className="h-11 px-4 bg-white border-gray-200 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                            {...field}
+                            autoComplete="family-name"
+                            data-testid="input-lastname"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
               </div>
 
               <div>
@@ -255,7 +280,7 @@ export default function Register() {
           </Form>
         </div>
 
-        <div className="hidden lg:block w-[50%] relative m-4 ml-0">
+        <div className="hidden lg:block w-[45%] relative m-4 ml-0">
           <div 
             className="absolute inset-0 bg-cover bg-center rounded-[1.5rem]"
             style={{ 
