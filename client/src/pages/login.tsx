@@ -4,7 +4,7 @@ import { useLocation } from "wouter";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-import { AuthLayout } from "@/components/auth-layout";
+import { AuthShell } from "@/components/auth-shell";
 
 export default function Login() {
   const { toast } = useToast();
@@ -65,10 +65,9 @@ export default function Login() {
   };
 
   return (
-    <AuthLayout
+    <AuthShell
       title="Welcome back"
       subtitle="Sign in to continue to your workspace"
-      ssoEnabled={true}
       onGoogleSSO={handleGoogleSSO}
       footer={
         <div className="text-center text-[13px] text-gray-500">
@@ -84,9 +83,9 @@ export default function Login() {
         </div>
       }
     >
-      <form onSubmit={handleSubmit} className="space-y-5">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div className="space-y-1.5">
-          <label className="block text-[12px] text-gray-500 font-medium tracking-wide">
+          <label className="block text-[11px] text-gray-500 font-medium tracking-wide uppercase">
             Work email
           </label>
           <Input
@@ -95,16 +94,17 @@ export default function Login() {
             placeholder="you@company.com"
             value={email}
             onChange={(e) => setEmail(e.target.value)}
-            className="h-12 px-4 bg-white border border-gray-200 rounded-lg text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
+            className="h-11 px-4 bg-white border border-gray-200 rounded-lg text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
             required
             autoComplete="email"
             data-testid="input-email"
           />
+          <div className="h-4" />
         </div>
 
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="block text-[12px] text-gray-500 font-medium tracking-wide">
+            <label className="block text-[11px] text-gray-500 font-medium tracking-wide uppercase">
               Password
             </label>
             <button
@@ -113,7 +113,7 @@ export default function Login() {
               className="text-[11px] text-gray-400 hover:text-gray-600 transition-colors"
               data-testid="link-forgot-password"
             >
-              Forgot password?
+              Forgot?
             </button>
           </div>
           <div className="relative">
@@ -123,7 +123,7 @@ export default function Login() {
               placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="h-12 px-4 pr-12 bg-white border border-gray-200 rounded-lg text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
+              className="h-11 px-4 pr-11 bg-white border border-gray-200 rounded-lg text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
               required
               autoComplete="current-password"
               data-testid="input-password"
@@ -131,22 +131,23 @@ export default function Login() {
             <button
               type="button"
               onClick={() => setShowPassword(!showPassword)}
-              className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
               data-testid="button-toggle-password"
             >
               {showPassword ? (
-                <EyeOff className="h-[18px] w-[18px]" />
+                <EyeOff className="h-4 w-4" />
               ) : (
-                <Eye className="h-[18px] w-[18px]" />
+                <Eye className="h-4 w-4" />
               )}
             </button>
           </div>
+          <div className="h-4" />
         </div>
 
         <Button
           type="submit"
           disabled={isLoading}
-          className="w-full h-12 text-[14px] font-semibold bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-all duration-150 shadow-sm hover:shadow-md disabled:opacity-70"
+          className="w-full h-11 text-[13px] font-semibold bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-all duration-150 shadow-sm hover:shadow disabled:opacity-70"
           data-testid="button-login"
         >
           {isLoading ? (
@@ -159,6 +160,6 @@ export default function Login() {
           )}
         </Button>
       </form>
-    </AuthLayout>
+    </AuthShell>
   );
 }

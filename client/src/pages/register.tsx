@@ -15,7 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Loader2, Eye, EyeOff } from "lucide-react";
-import { AuthLayout } from "@/components/auth-layout";
+import { AuthShell } from "@/components/auth-shell";
 
 const registerSchema = z.object({
   email: z.string().email("Invalid email address"),
@@ -97,10 +97,9 @@ export default function Register() {
   };
 
   return (
-    <AuthLayout
+    <AuthShell
       title="Create workspace"
       subtitle="Get started in minutes"
-      ssoEnabled={true}
       onGoogleSSO={handleGoogleSSO}
       footer={
         <div className="text-center text-[13px] text-gray-500">
@@ -117,9 +116,9 @@ export default function Register() {
       }
     >
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-5">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-1.5">
-            <label className="block text-[12px] text-gray-500 font-medium tracking-wide">
+            <label className="block text-[11px] text-gray-500 font-medium tracking-wide uppercase">
               Work email
             </label>
             <FormField
@@ -131,20 +130,22 @@ export default function Register() {
                     <Input
                       type="email"
                       placeholder="you@company.com"
-                      className="h-12 px-4 bg-white border border-gray-200 rounded-lg text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
+                      className="h-11 px-4 bg-white border border-gray-200 rounded-lg text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
                       {...field}
                       autoComplete="email"
                       data-testid="input-email"
                     />
                   </FormControl>
-                  <FormMessage className="text-[11px] mt-1" />
+                  <div className="h-4">
+                    <FormMessage className="text-[10px]" />
+                  </div>
                 </FormItem>
               )}
             />
           </div>
 
           <div className="space-y-1.5">
-            <label className="block text-[12px] text-gray-500 font-medium tracking-wide">
+            <label className="block text-[11px] text-gray-500 font-medium tracking-wide uppercase">
               Password
             </label>
             <FormField
@@ -157,7 +158,7 @@ export default function Register() {
                       <Input
                         type={showPassword ? "text" : "password"}
                         placeholder="Min. 8 characters"
-                        className="h-12 px-4 pr-12 bg-white border border-gray-200 rounded-lg text-[15px] text-gray-900 placeholder:text-gray-400 focus:border-gray-400 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
+                        className="h-11 px-4 pr-11 bg-white border border-gray-200 rounded-lg text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
                         {...field}
                         autoComplete="new-password"
                         data-testid="input-password"
@@ -165,18 +166,20 @@ export default function Register() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                         data-testid="button-toggle-password"
                       >
                         {showPassword ? (
-                          <EyeOff className="h-[18px] w-[18px]" />
+                          <EyeOff className="h-4 w-4" />
                         ) : (
-                          <Eye className="h-[18px] w-[18px]" />
+                          <Eye className="h-4 w-4" />
                         )}
                       </button>
                     </div>
                   </FormControl>
-                  <FormMessage className="text-[11px] mt-1" />
+                  <div className="h-4">
+                    <FormMessage className="text-[10px]" />
+                  </div>
                 </FormItem>
               )}
             />
@@ -186,7 +189,7 @@ export default function Register() {
             control={form.control}
             name="termsAccepted"
             render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-2.5 space-y-0">
+              <FormItem className="flex flex-row items-start space-x-2.5 space-y-0 pt-1">
                 <FormControl>
                   <Checkbox
                     checked={field.value}
@@ -202,7 +205,9 @@ export default function Register() {
                     {" "}and{" "}
                     <a href="https://curbe.io/privacy" target="_blank" rel="noopener noreferrer" className="text-gray-700 hover:text-gray-900 underline underline-offset-2" onClick={(e) => e.stopPropagation()}>Privacy Policy</a>
                   </label>
-                  <FormMessage className="text-[10px] mt-1" />
+                  <div className="h-4">
+                    <FormMessage className="text-[10px]" />
+                  </div>
                 </div>
               </FormItem>
             )}
@@ -211,7 +216,7 @@ export default function Register() {
           <Button
             type="submit"
             disabled={isLoading}
-            className="w-full h-12 text-[14px] font-semibold bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-all duration-150 shadow-sm hover:shadow-md disabled:opacity-70"
+            className="w-full h-11 text-[13px] font-semibold bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-all duration-150 shadow-sm hover:shadow disabled:opacity-70"
             data-testid="button-register"
           >
             {isLoading ? (
@@ -225,6 +230,6 @@ export default function Register() {
           </Button>
         </form>
       </Form>
-    </AuthLayout>
+    </AuthShell>
   );
 }
