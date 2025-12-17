@@ -44,10 +44,19 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
       const companyId = (req as any).user.companyId;
       const members = await walletPassService.listMembers(companyId);
       
+      // Build base URL from current request to support both dev and production
+      const protocol = req.headers["x-forwarded-proto"] || req.protocol || "https";
+      const host = req.headers["x-forwarded-host"] || req.headers.host;
+      const currentBaseUrl = `${protocol}://${host}`;
+      
       const membersWithLinks = await Promise.all(
         members.map(async (member) => {
           const link = await walletPassService.getLinkByMember(member.id);
-          return { ...member, link: link || null };
+          if (link) {
+            // Rebuild URL with current domain instead of stored domain
+            return { ...member, link: { ...link, url: `${currentBaseUrl}/w/${link.slug}` } };
+          }
+          return { ...member, link: null };
         })
       );
       
