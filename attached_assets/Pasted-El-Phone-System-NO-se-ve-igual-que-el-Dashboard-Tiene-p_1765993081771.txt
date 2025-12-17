@@ -1,0 +1,86 @@
+El Phone System NO se ve igual que el Dashboard. Tiene problemas graves de diseño:
+
+## PROBLEMAS CRÍTICOS en Phone System:
+
+1. **Call Direction cards (Inbound 40 / Outbound 10)**: Tienen backgrounds de colores (azul claro y verde claro) que NO coinciden con el estilo del Dashboard. El Dashboard usa cards BLANCOS con sombras sutiles.
+
+2. **Performance Metrics**: Tiene backgrounds de colores (azul, rosa, amarillo) que también desentonan. Debe ser consistente con el Dashboard.
+
+3. **Organización general**: El layout no sigue el mismo grid system que el Dashboard. Se ve desorganizado.
+
+## SOLUCIÓN - Hazlo IGUAL al Dashboard:
+
+### Call Direction Section:
+```jsx
+// CAMBIAR DE:
+<div className="bg-blue-50"> {/* o bg-green-50 */}
+  <PhoneIncoming />
+  <div>40</div>
+  <div>Inbound Calls</div>
+</div>
+
+// A:
+<div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all p-6">
+  <div className="flex items-center gap-4">
+    <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
+      <PhoneIncoming className="w-6 h-6 text-blue-600" />
+    </div>
+    <div>
+      <div className="text-4xl font-bold text-slate-900">40</div>
+      <div className="text-sm font-medium text-slate-600">Inbound Calls</div>
+      <div className="text-xs text-slate-500">1 min</div>
+    </div>
+  </div>
+</div>
+```
+
+### Performance Metrics Section:
+```jsx
+// CAMBIAR backgrounds de colores por cards blancos:
+<div className="bg-white rounded-xl shadow-sm p-4">
+  <div className="flex items-center justify-between">
+    <div className="flex items-center gap-3">
+      <div className="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center">
+        <Clock className="w-5 h-5 text-blue-600" />
+      </div>
+      <span className="text-sm font-medium text-slate-700">Avg Call Duration</span>
+    </div>
+    <span className="text-lg font-bold text-slate-900">0:09</span>
+  </div>
+</div>
+```
+
+### Layout Grid:
+Usa el MISMO grid system que el Dashboard:
+```jsx
+{/* KPI Cards Row */}
+<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+  {/* 4 KPI cards */}
+</div>
+
+{/* Charts Row */}
+<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
+  {/* Call Volume chart */}
+  {/* Call Status chart */}
+</div>
+
+{/* Bottom Row */}
+<div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+  {/* Call Direction - 2 cards side by side dentro de un contenedor blanco */}
+  {/* Performance Metrics */}
+</div>
+```
+
+## REGLAS DE DISEÑO CONSISTENTES:
+
+1. **SOLO usar backgrounds blancos** para cards principales: `bg-white`
+2. **Íconos en círculos de color suave**: `bg-blue-50`, `bg-green-50`, etc.
+3. **Sombras sutiles**: `shadow-sm hover:shadow-md`
+4. **Border radius consistente**: `rounded-xl` (12px)
+5. **Spacing consistente**: `p-6` para cards grandes, `p-4` para cards pequeños
+6. **Texto consistente**: 
+   - Números grandes: `text-4xl font-bold text-slate-900`
+   - Labels: `text-sm font-medium text-slate-600`
+   - Secondary text: `text-xs text-slate-500`
+
+**IMPLEMENTA estos cambios AHORA para que Phone System se vea IDÉNTICO al Dashboard en términos de estilo visual.**
