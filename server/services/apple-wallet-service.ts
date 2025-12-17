@@ -325,7 +325,22 @@ export const appleWalletService = {
       ],
     };
     
-    // NO BARCODE - Clean bottom area
+    // QR Code at the bottom with Member ID
+    passData.barcodes = [
+      {
+        format: "PKBarcodeFormatQR",
+        message: member.memberId,
+        messageEncoding: "iso-8859-1",
+        altText: `ID: ${member.memberId}`,
+      },
+    ];
+    // Legacy barcode field for older iOS versions
+    passData.barcode = {
+      format: "PKBarcodeFormatQR",
+      message: member.memberId,
+      messageEncoding: "iso-8859-1",
+      altText: `ID: ${member.memberId}`,
+    };
 
     const certificates: any = {
       signerCert: signerCert,
