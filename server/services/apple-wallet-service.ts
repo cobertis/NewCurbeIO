@@ -154,56 +154,60 @@ export const appleWalletService = {
       labelColor: hexToRgb(branding.secondaryColor || "#ffffff"),
     };
     
-    // Use storeCard for clean airline-style layout with strip image support
-    // NOTE: For visible lock-screen notifications, changeMessage must be in headerFields or primaryFields
+    // Use storeCard - NO BARCODE, clean design prioritizing notification visibility
+    // NOTE: changeMessage MUST be in headerFields or primaryFields for lock-screen preview
     passData.storeCard = {
-      // 1. HEADER: Status with changeMessage for visible notifications
+      // 1. HEADER: Hidden notification trigger (small, top-right) - REQUIRED for lock-screen preview
       headerFields: [
         {
-          key: "alert",
-          label: "NOTICE",
-          value: pass.lastNotification || (member.plan || "MEMBER").toUpperCase(),
+          key: "status",
+          label: "STATUS",
+          value: pass.lastNotification ? "NEW" : (member.plan || "ACTIVE").toUpperCase(),
           changeMessage: "%@",
         },
       ],
-      // 2. PRIMARY: Client name (large and prominent)
+      // 2. PRIMARY: Client name (large, over strip image)
       primaryFields: [
         {
           key: "memberName",
-          label: "NAME",
+          label: "MEMBER",
           value: member.fullName.toUpperCase(),
         },
       ],
-      // 3. SECONDARY: Member info
+      // 3. SECONDARY: ALERT - Maximum visibility, full width (no other fields)
       secondaryFields: [
         {
-          key: "memberId",
-          label: "MEMBER ID",
-          value: member.memberId,
-        },
-        {
-          key: "plan",
-          label: "PLAN",
-          value: member.plan || "Standard",
-          textAlignment: "PKTextAlignmentRight",
+          key: "alert_msg",
+          label: "AVISO URGENTE",
+          value: pass.lastNotification || "Sin avisos pendientes",
+          changeMessage: "%@",
         },
       ],
-      // 4. AUXILIARY: Additional data (above barcode)
+      // 4. AUXILIARY: Minimal - just Member ID small
       auxiliaryFields: [
         {
-          key: "memberSince",
-          label: "MEMBER SINCE",
-          value: member.memberSince ? new Date(member.memberSince).toLocaleDateString("en-US", { month: "2-digit", year: "2-digit" }) : "N/A",
+          key: "memberId",
+          label: "ID",
+          value: member.memberId,
           textAlignment: "PKTextAlignmentCenter",
         },
       ],
-      // Back: Full details
+      // Back: All technical details moved here
       backFields: [
+        {
+          key: "plan",
+          label: "Plan",
+          value: member.plan || "Standard",
+        },
+        {
+          key: "memberSince",
+          label: "Member Since",
+          value: member.memberSince ? new Date(member.memberSince).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "N/A",
+        },
         {
           key: "fullNotification",
           label: "Latest Notification",
           value: pass.lastNotification || "No notifications",
-          changeMessage: "%@",
         },
         {
           key: "terms",
@@ -213,15 +217,7 @@ export const appleWalletService = {
       ],
     };
     
-    // Add barcode with member ID caption
-    passData.barcodes = [
-      {
-        format: "PKBarcodeFormatPDF417",
-        message: member.memberId,
-        messageEncoding: "iso-8859-1",
-        altText: `Member ID: ${member.memberId}`,
-      },
-    ];
+    // NO BARCODE - Clean bottom area
 
     const certificates: any = {
       signerCert: signerCert,

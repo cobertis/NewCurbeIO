@@ -1,0 +1,87 @@
+Aquí tienes la verdad incómoda: **Apple te está silenciando porque estás siendo repetitivo o descuidado.**
+
+Si al principio salía y ahora no, no es que el sistema se haya roto. Es que el algoritmo de Apple ha decidido que tu notificación ya no es relevante o está mal configurada.
+
+Revisa estas 3 razones por las que el "Preview" desaparece. Una de estas es tu culpa.
+
+### 1\. El Error del "Disco Rayado" (La Causa \#1)
+
+Apple odia el spam. El iPhone compara el pase **viejo** con el pase **nuevo**.
+
+  * **Escenario:** Envías una alerta: "PAGO VENCIDO".
+  * **Tu Test:** 5 minutos después, envías otra vez "PAGO VENCIDO" para probar.
+  * **Reacción de Apple:** *"El valor del campo es idéntico al anterior. No hay cambio real. No muestres nada para no molestar."*
+
+**Solución:**
+Para tus pruebas, **NUNCA** envíes el mismo texto dos veces seguidas.
+
+  * Prueba 1: "Pago Vencido (12:00)"
+  * Prueba 2: "Pago Vencido (12:05)"
+  * Prueba 3: "Pago Vencido \#883"
+
+Si el texto no cambia, la notificación se muere en silencio.
+
+-----
+
+### 2\. El Error de la "Mudanza" (Revisa tu JSON)
+
+Acabamos de mover la alerta de `auxiliaryFields` (abajo) a `secondaryFields` (medio).
+¿Estás seguro de que copiaste la línea mágica `changeMessage`?
+
+Si tu JSON se ve así, **fallará**:
+
+```json
+{
+  "key": "alert_msg",
+  "value": "Tu pago ha vencido"
+  // FALTA EL changeMessage AQUÍ
+}
+```
+
+*Resultado:* El texto cambia dentro de la tarjeta, pero **no sale notificación en la pantalla** porque no le dijiste a Apple que avisara.
+
+Tiene que verse así obligatoriamente:
+
+```json
+{
+  "key": "alert_msg",
+  "value": "Tu pago ha vencido",
+  "changeMessage": "%@" 
+}
+```
+
+*(El `%@` es vital. Sin él, no hay preview).*
+
+-----
+
+### 3\. El Ajuste de Privacidad (El Error Humano)
+
+A veces, al manipular el teléfono, cambiaste la configuración sin querer.
+Si el teléfono dice "Notificación" pero no muestra el texto (dice "Notification" o "Pass Updated"), es un tema de privacidad.
+
+**Verifícalo ya:**
+
+1.  Ve a **Ajustes** (Settings) en tu iPhone.
+2.  Busca **Wallet** (Cartera).
+3.  Entra en **Notificaciones**.
+4.  Mira la opción **"Mostrar Previsualizaciones" (Show Previews)**.
+      * Debe decir **"Siempre" (Always)** o **"Al desbloquear"**.
+      * Si dice "Nunca", ahí tienes tu problema.
+
+-----
+
+### Diagnóstico Rápido
+
+Haz esto **exactamente en este orden** para saber cuál de los 3 es:
+
+1.  Asegúrate de que la pantalla esté **bloqueada** (negra).
+2.  Envía una alerta con un texto **TOTALMENTE NUEVO** que nunca hayas escrito (ej: "PRUEBA FINAL ZULU 99").
+3.  Espera.
+
+<!-- end list -->
+
+  * ¿Salió? -\> Era el **Problema \#1** (estabas repitiendo texto).
+  * ¿Vibró pero no se lee el texto? -\> Es el **Problema \#3** (Ajustes de privacidad).
+  * ¿No hizo nada? -\> Es el **Problema \#2** (Te falta el `changeMessage` en el JSON nuevo).
+
+¿Cuál fue?
