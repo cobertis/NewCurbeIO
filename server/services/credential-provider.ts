@@ -207,25 +207,6 @@ export const credentialProvider = {
     return result;
   },
 
-  async getWebPush(): Promise<{ publicKey: string; privateKey: string; subject: string; internalApiKey: string }> {
-    const cacheKey = getCacheKey('web_push');
-    const cached = getFromCache<{ publicKey: string; privateKey: string; subject: string; internalApiKey: string }>(cacheKey);
-    if (cached) return cached;
-
-    const publicKey = await secretsService.getCredential("web_push" as ApiProvider, "public_key") || 
-                      process.env.VAPID_PUBLIC_KEY || '';
-    const privateKey = await secretsService.getCredential("web_push" as ApiProvider, "private_key") || 
-                       process.env.VAPID_PRIVATE_KEY || '';
-    const subject = await secretsService.getCredential("web_push" as ApiProvider, "subject") || 
-                    process.env.VAPID_SUBJECT || 'mailto:support@curbe.io';
-    const internalApiKey = await secretsService.getCredential("web_push" as ApiProvider, "internal_api_key") || 
-                           process.env.PUSH_INTERNAL_API_KEY || '';
-    
-    const result = { publicKey, privateKey, subject, internalApiKey };
-    setCache(cacheKey, result);
-    return result;
-  },
-
   async getGoogleOAuth(): Promise<{ clientId: string; clientSecret: string }> {
     const cacheKey = getCacheKey('google_oauth');
     const cached = getFromCache<{ clientId: string; clientSecret: string }>(cacheKey);
