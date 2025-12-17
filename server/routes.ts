@@ -23958,6 +23958,38 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // ====================================================================
   // iMessage Routes (BlueBubbles Integration)
   // ====================================================================
+  
+  // GET /api/imessage/access - Check if current user's company has iMessage enabled
+  app.get("/api/imessage/access", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user || !user.companyId) {
+        return res.json({ hasAccess: false, reason: "no_company" });
+      }
+      
+      // Check if company has iMessage feature enabled
+      const hasFeature = await storage.hasFeature(user.companyId, 'imessage');
+      if (!hasFeature) {
+        return res.json({ hasAccess: false, reason: "feature_not_enabled" });
+      }
+      
+      // Check if iMessage is enabled in company settings
+      const settings = await storage.getCompanySettings(user.companyId);
+      const imessageSettings = settings?.imessageSettings as {
+        isEnabled?: boolean;
+      } || {};
+      
+      if (!imessageSettings.isEnabled) {
+        return res.json({ hasAccess: false, reason: "imessage_not_enabled" });
+      }
+      
+      return res.json({ hasAccess: true });
+    } catch (error: any) {
+      console.error("Error checking iMessage access:", error);
+      return res.json({ hasAccess: false, reason: "error" });
+    }
+  });
+
   // GET /api/imessage/settings - Get iMessage settings for company (superadmin only)
   app.get("/api/imessage/settings", requireActiveCompany, async (req: Request, res: Response) => {
     try {

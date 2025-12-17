@@ -193,6 +193,13 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
   });
   const hasPhoneSystemAccess = phoneSystemAccessData?.hasAccess || false;
 
+  // Query for iMessage access - check if user's company has iMessage enabled
+  const { data: imessageAccessData } = useQuery<{ hasAccess: boolean; reason?: string }>({
+    queryKey: ['/api/imessage/access'],
+    enabled: !!user,
+  });
+  const hasImessageAccess = imessageAccessData?.hasAccess || false;
+
   // Query for user phone status - check if user can make calls
   const { data: userPhoneStatusData } = useQuery<{ hasAssignedNumber: boolean; canMakeCalls: boolean; reason: string; message?: string; phoneNumber?: string; hasPbxExtension?: boolean; pbxExtension?: string }>({
     queryKey: ['/api/telnyx/user-phone-status'],
@@ -851,18 +858,20 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             <TooltipContent side="right" className="font-medium">WhatsApp</TooltipContent>
           </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setLocation("/imessage")}
-                data-testid="sidebar-button-imessage"
-                className={circularButtonClass}
-              >
-                <MessageSquare className="h-[18px] w-[18px] text-blue-500" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">iMessage</TooltipContent>
-          </Tooltip>
+          {hasImessageAccess && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setLocation("/imessage")}
+                  data-testid="sidebar-button-imessage"
+                  className={circularButtonClass}
+                >
+                  <MessageSquare className="h-[18px] w-[18px] text-blue-500" />
+                </button>
+              </TooltipTrigger>
+              <TooltipContent side="right" className="font-medium">iMessage</TooltipContent>
+            </Tooltip>
+          )}
 
           <Tooltip>
             <TooltipTrigger asChild>
