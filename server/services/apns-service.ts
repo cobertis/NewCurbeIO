@@ -298,6 +298,191 @@ export const apnsService = {
     });
   },
 
+  /**
+   * PROACTIVE COLLECTION: Set payment reminder for a pass
+   * Activates at 12:01 AM EST on the payment day
+   * @param passSerial - The pass serial number
+   * @param paymentDay - Day of month (1-31) when payment is due
+   */
+  async setPaymentReminder(passSerial: string, paymentDay: number): Promise<SendPassAlertResult> {
+    const message = `PAYMENT DUE TODAY - Tap to view`;
+    
+    console.log(`[Payment Reminder] Setting reminder for pass ${passSerial}, payment day: ${paymentDay}`);
+    
+    // Update pass with payment reminder message and trigger push
+    return this.sendPassAlert({
+      passSerial,
+      message,
+      useSandbox: false,
+    });
+  },
+
+  /**
+   * PROACTIVE COLLECTION: Clear payment reminder
+   * Restores pass to neutral state after payment is confirmed
+   * @param passSerial - The pass serial number
+   */
+  async clearPaymentReminder(passSerial: string): Promise<SendPassAlertResult> {
+    const [pass] = await db.select().from(walletPasses).where(eq(walletPasses.serialNumber, passSerial));
+    
+    if (!pass) {
+      return {
+        success: false,
+        passUpdated: false,
+        pushResults: [],
+        devicesNotified: 0,
+        errors: [`Pass with serial ${passSerial} not found`],
+      };
+    }
+
+    // Clear the notification - set to null to remove alert from pass
+    await db.update(walletPasses)
+      .set({ 
+        lastNotification: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(walletPasses.id, pass.id));
+
+    console.log(`[Payment Reminder] Cleared reminder for pass ${passSerial}`);
+
+    // Send silent push to update the pass (no visible notification since message is null)
+    const [settings] = await db.select().from(walletSettings).where(eq(walletSettings.companyId, pass.companyId));
+    
+    if (!settings?.appleP12Base64 || !settings?.applePassTypeIdentifier) {
+      return {
+        success: true,
+        passUpdated: true,
+        pushResults: [],
+        devicesNotified: 0,
+        errors: ["Pass cleared but no push credentials configured"],
+      };
+    }
+
+    const encryptionKey = settings.encryptionKey;
+    if (!encryptionKey || encryptionKey.length < 32) {
+      return {
+        success: true,
+        passUpdated: true,
+        pushResults: [],
+        devicesNotified: 0,
+        errors: ["Pass cleared but encryption key not configured"],
+      };
+    }
+
+    const devices = await db.select().from(walletDevices).where(eq(walletDevices.walletPassId, pass.id));
+    
+    if (devices.length === 0) {
+      return {
+        success: true,
+        passUpdated: true,
+        pushResults: [],
+        devicesNotified: 0,
+        errors: [],
+      };
+    }
+
+    let credentials: APNsCredentials;
+    try {
+      const p12Buffer = Buffer.from(settings.appleP12Base64, "base64");
+      credentials = extractP12Credentials(p12Buffer, settings.appleP12Password || "");
+    } catch (err: any) {
+      return {
+        success: true,
+        passUpdated: true,
+        pushResults: [],
+        devicesNotified: 0,
+        errors: [`Failed to extract credentials: ${err.message}`],
+      };
+    }
+
+    const pushResults: SendPushResult[] = [];
+    let successCount = 0;
+    const errors: string[] = [];
+
+    for (const device of devices) {
+      if (!device.pushToken) continue;
+
+      let decryptedToken: string;
+      try {
+        decryptedToken = decrypt(device.pushToken, encryptionKey);
+      } catch (err: any) {
+        continue;
+      }
+
+      const result = await sendEmptyPush(
+        decryptedToken,
+        settings.applePassTypeIdentifier,
+        credentials,
+        false
+      );
+      
+      pushResults.push(result);
+      if (result.success) successCount++;
+    }
+
+    return {
+      success: true,
+      passUpdated: true,
+      pushResults,
+      devicesNotified: successCount,
+      errors: errors.length > 0 ? errors : undefined,
+    };
+  },
+
+  /**
+   * PROACTIVE COLLECTION: Process all payment reminders for today
+   * Called by cron job at 12:01 AM EST daily
+   */
+  async processPaymentReminders(): Promise<{
+    processed: number;
+    notified: number;
+    errors: string[];
+  }> {
+    const today = new Date();
+    const currentDay = today.getDate();
+    
+    console.log(`[Payment Reminder Cron] Processing reminders for day ${currentDay} of month`);
+    
+    // Get all wallet members with payment date matching today
+    const { walletMembers } = await import("@shared/schema");
+    
+    const membersWithPaymentToday = await db.select()
+      .from(walletMembers)
+      .where(eq(walletMembers.paymentDay, currentDay));
+    
+    console.log(`[Payment Reminder Cron] Found ${membersWithPaymentToday.length} members with payment due today`);
+    
+    let processed = 0;
+    let notified = 0;
+    const errors: string[] = [];
+
+    for (const member of membersWithPaymentToday) {
+      // Find the pass for this member
+      const [pass] = await db.select()
+        .from(walletPasses)
+        .where(eq(walletPasses.memberId, member.id));
+      
+      if (!pass) {
+        errors.push(`No pass found for member ${member.id}`);
+        continue;
+      }
+
+      processed++;
+      
+      const result = await this.setPaymentReminder(pass.serialNumber, currentDay);
+      
+      if (result.success) {
+        notified += result.devicesNotified;
+      } else if (result.errors) {
+        errors.push(...result.errors);
+      }
+    }
+
+    console.log(`[Payment Reminder Cron] Completed: ${processed} processed, ${notified} devices notified`);
+    
+    return { processed, notified, errors };
+  },
+
   async sendBulkAlert(companyId: string, message: string, useSandbox: boolean = false): Promise<{
     totalPasses: number;
     successfulUpdates: number;

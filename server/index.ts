@@ -11,6 +11,7 @@ import { startBirthdayScheduler } from "./birthday-scheduler";
 import { startImessageCampaignProcessor } from "./imessage-campaign-processor";
 import { startBounceProcessor } from "./bounce-processor";
 import { startMonthlyBillingScheduler } from "./monthly-billing-scheduler";
+import { startPaymentReminderScheduler } from "./payment-reminder-scheduler";
 import { seedCampaignStudioData } from "./scripts/seedCampaignStudio";
 
 // Handle unhandled promise rejections to prevent server crashes
@@ -200,6 +201,9 @@ app.use((req, res, next) => {
     
     // Start the monthly billing scheduler for telephony fees
     startMonthlyBillingScheduler();
+    
+    // Start the payment reminder scheduler for proactive collection alerts
+    startPaymentReminderScheduler();
     
     // Test email service on startup
     import("./email").then(({ emailService }) => {

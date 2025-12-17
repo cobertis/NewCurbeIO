@@ -17759,6 +17759,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               planType: planDataObj.type || walletMember.planType,
               effectiveDate: planDataObj.effectiveDate || walletMember.effectiveDate,
               expirationDate: planDataObj.expirationDate || walletMember.expirationDate,
+              paymentDay: planDataObj.paymentDay || walletMember.paymentDay,
             });
             
             // Send APNs push notification to refresh the pass
