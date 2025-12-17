@@ -28508,7 +28508,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       // Get managed account ID for this company
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      console.log("[10DLC Brand] Looking up managed account for company:", companyId);
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[10DLC Brand] Managed account result:", managedAccountId);
       
       if (!managedAccountId) {
         return res.status(400).json({ message: "Phone system not activated. Please set up Phone System first." });
