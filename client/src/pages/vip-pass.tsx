@@ -22,7 +22,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Loader2, Plus, Trash2, Save, Smartphone, QrCode, CreditCard, 
   Palette, Settings2, BarChart3, Eye, Download, Bell, Users, RefreshCw, Send, Copy, Link,
-  Shield, Upload, CheckCircle, XCircle, Key, AlertCircle
+  Shield, Upload, CheckCircle, XCircle, Key, AlertCircle, Heart
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -158,10 +158,10 @@ const replaceTemplateVars = (value: string): string => {
 function PassPreview({ design, showBack = false }: { design: VipPassDesignFormData; showBack?: boolean }) {
   const bgColor = design.backgroundColor?.startsWith('#') ? design.backgroundColor : (design.backgroundColor || '#1a2744');
   const fgColor = design.foregroundColor?.startsWith('#') ? design.foregroundColor : (design.foregroundColor || '#ffffff');
-  const lblColor = design.labelColor?.startsWith('#') ? design.labelColor : (design.labelColor || '#e87722');
+  const lblColor = design.labelColor?.startsWith('#') ? design.labelColor : (design.labelColor || '#00bfff');
 
-  const headerField = design.headerFields?.[0];
-  const primaryField = design.primaryFields?.[0];
+  const headerFields = design.headerFields || [];
+  const primaryFields = design.primaryFields || [];
   const secondaryFields = design.secondaryFields || [];
   const auxiliaryFields = design.auxiliaryFields || [];
 
@@ -202,105 +202,143 @@ function PassPreview({ design, showBack = false }: { design: VipPassDesignFormDa
         style={{ backgroundColor: bgColor, color: fgColor, boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}
         data-testid="pass-preview"
       >
-        {/* Header Row: Logo + Header Field */}
+        {/* Header Row: Logo (dynamic size) + Header Fields */}
         <div className="p-4 flex justify-between items-start">
           <div className="flex-shrink-0">
             {design.logoBase64 ? (
               <img 
                 src={design.logoBase64} 
                 alt="Logo" 
-                className="max-h-10 object-contain" 
-                style={{ maxWidth: '100px' }}
+                className="object-contain"
+                style={{ maxHeight: '40px' }}
               />
             ) : (
-              <div className="text-lg font-bold" style={{ color: fgColor }}>
-                {design.logoText || "LOGO"}
+              <div className="text-xl font-bold tracking-tight" style={{ color: fgColor }}>
+                {design.logoText || "HEALTH INSURANCE"}
               </div>
             )}
           </div>
-          {headerField && (
-            <div className="text-right">
-              <div className="text-[9px] uppercase tracking-wide" style={{ color: lblColor }}>
-                {headerField.label}
-              </div>
-              <div className="text-base font-bold">
-                {replaceTemplateVars(headerField.value)}
-              </div>
+          {headerFields.length > 0 && (
+            <div className="text-right flex gap-4">
+              {headerFields.slice(0, 2).map((field, i) => (
+                <div key={i}>
+                  <div className="text-[8px] uppercase tracking-wide" style={{ color: lblColor }}>
+                    {field.label}
+                  </div>
+                  <div className="text-sm font-bold">
+                    {replaceTemplateVars(field.value)}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
 
-        {/* Primary Field with Thumbnail */}
-        <div className="px-4 pb-3">
-          <div className="flex justify-between items-start">
-            <div className="flex-1">
-              {primaryField ? (
-                <>
-                  <div className="text-[10px] uppercase tracking-wide font-semibold mb-1" style={{ color: lblColor }}>
-                    {primaryField.label}
+        {/* Primary Fields Row - Large values with icon in center */}
+        <div className="px-4 pb-4">
+          <div className="flex items-center justify-between">
+            {primaryFields.length >= 2 ? (
+              <>
+                <div className="flex-1">
+                  <div className="text-[9px] uppercase tracking-wide mb-1" style={{ color: lblColor }}>
+                    {primaryFields[0]?.label}
                   </div>
-                  <div className="text-2xl font-bold leading-tight">
-                    {replaceTemplateVars(primaryField.value)}
+                  <div className="text-4xl font-bold tracking-tight">
+                    {replaceTemplateVars(primaryFields[0]?.value || "")}
                   </div>
-                </>
-              ) : (
-                <>
-                  <div className="text-[10px] uppercase tracking-wide font-semibold mb-1" style={{ color: lblColor }}>
-                    POLICYHOLDER
+                </div>
+                {design.stripBase64 ? (
+                  <div className="px-4 flex-shrink-0">
+                    <img 
+                      src={design.stripBase64} 
+                      alt="Icon" 
+                      className="h-10 w-auto object-contain"
+                    />
                   </div>
-                  <div className="text-2xl font-bold leading-tight">
-                    John Doe
+                ) : (
+                  <div className="px-4 flex-shrink-0">
+                    <Heart className="h-8 w-8" style={{ color: lblColor }} />
                   </div>
-                </>
-              )}
-            </div>
-            {design.stripBase64 && (
-              <div className="flex-shrink-0 ml-3">
-                <img 
-                  src={design.stripBase64} 
-                  alt="Thumbnail" 
-                  className="h-16 w-auto object-contain rounded"
-                />
+                )}
+                <div className="flex-1 text-right">
+                  <div className="text-[9px] uppercase tracking-wide mb-1" style={{ color: lblColor }}>
+                    {primaryFields[1]?.label}
+                  </div>
+                  <div className="text-4xl font-bold tracking-tight">
+                    {replaceTemplateVars(primaryFields[1]?.value || "")}
+                  </div>
+                </div>
+              </>
+            ) : primaryFields.length === 1 ? (
+              <div className="w-full">
+                <div className="text-[9px] uppercase tracking-wide mb-1" style={{ color: lblColor }}>
+                  {primaryFields[0]?.label}
+                </div>
+                <div className="text-3xl font-bold tracking-tight">
+                  {replaceTemplateVars(primaryFields[0]?.value || "")}
+                </div>
               </div>
+            ) : (
+              <>
+                <div className="flex-1">
+                  <div className="text-[9px] uppercase tracking-wide mb-1" style={{ color: lblColor }}>MEMBER ID</div>
+                  <div className="text-4xl font-bold tracking-tight">MED</div>
+                </div>
+                <div className="px-4">
+                  <Heart className="h-8 w-8" style={{ color: lblColor }} />
+                </div>
+                <div className="flex-1 text-right">
+                  <div className="text-[9px] uppercase tracking-wide mb-1" style={{ color: lblColor }}>GROUP</div>
+                  <div className="text-4xl font-bold tracking-tight">PPO</div>
+                </div>
+              </>
             )}
           </div>
         </div>
 
-        {/* Secondary Fields */}
+        {/* Secondary Fields Row */}
         {secondaryFields.length > 0 && (
-          <div className="px-4 pb-3 space-y-2">
-            {secondaryFields.map((field, i) => (
-              <div key={i}>
-                <div className="text-[9px] uppercase tracking-wide font-semibold" style={{ color: lblColor }}>
-                  {field.label}
-                </div>
-                <div className="text-sm font-medium">
-                  {replaceTemplateVars(field.value)}
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Auxiliary Fields */}
-        {auxiliaryFields.length > 0 && (
           <div className="px-4 pb-3">
-            <div className="text-[9px] uppercase tracking-wide font-semibold mb-0.5" style={{ color: lblColor }}>
-              {auxiliaryFields[0]?.label || "COVERAGE"}
-            </div>
-            <div className="text-sm">
-              {auxiliaryFields.map(f => replaceTemplateVars(f.value)).join(", ")}
+            <div className="flex justify-between gap-2">
+              {secondaryFields.slice(0, 3).map((field, i) => (
+                <div key={i} className={i === 0 ? "flex-1" : "text-right"}>
+                  <div className="text-[8px] uppercase tracking-wide mb-0.5" style={{ color: lblColor }}>
+                    {field.label}
+                  </div>
+                  <div className="text-sm font-semibold">
+                    {replaceTemplateVars(field.value)}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}
 
-        {/* QR Code Section */}
-        <div className="mt-auto p-4 flex flex-col items-center bg-white rounded-t-xl">
-          <div className="w-24 h-24 flex items-center justify-center mb-2" data-testid="preview-barcode">
-            <QrCode className="h-20 w-20 text-gray-800" />
+        {/* Auxiliary Fields Row */}
+        {auxiliaryFields.length > 0 && (
+          <div className="px-4 pb-4">
+            <div className="flex justify-between gap-2">
+              {auxiliaryFields.slice(0, 3).map((field, i) => (
+                <div key={i} className={i === 0 ? "flex-1" : i === auxiliaryFields.length - 1 ? "text-right" : "text-center"}>
+                  <div className="text-[8px] uppercase tracking-wide mb-0.5" style={{ color: lblColor }}>
+                    {field.label}
+                  </div>
+                  <div className="text-sm font-semibold">
+                    {replaceTemplateVars(field.value)}
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
-          <div className="text-[10px] text-gray-600 font-medium">
-            {design.passDescription || "Scan for verification"}
+        )}
+
+        {/* QR Code Section - White background */}
+        <div className="mt-auto p-4 flex flex-col items-center bg-white">
+          <div className="w-28 h-28 flex items-center justify-center mb-1" data-testid="preview-barcode">
+            <QrCode className="h-24 w-24 text-gray-900" />
+          </div>
+          <div className="text-xs text-gray-700 font-mono tracking-wider">
+            {design.barcodeMessage ? replaceTemplateVars(design.barcodeMessage).substring(0, 12) : "P8F8R8"}
           </div>
         </div>
       </div>
@@ -463,25 +501,34 @@ export default function VipPassPage() {
   const form = useForm<VipPassDesignFormData>({
     resolver: zodResolver(vipPassDesignSchema),
     defaultValues: {
-      passName: "Insurance Card", 
+      passName: "Health Insurance Card", 
       passDescription: "Scan for verification", 
-      logoText: "INSURANCE",
+      logoText: "HEALTH INSURANCE",
       backgroundColor: "#1a2744", 
       foregroundColor: "#ffffff", 
-      labelColor: "#e87722",
+      labelColor: "#00bfff",
       passTypeIdentifier: "", 
       teamIdentifier: "", 
       passStyle: "storeCard",
       barcodeFormat: "PKBarcodeFormatQR", 
       barcodeMessage: "{{serialNumber}}",
-      headerFields: [{ key: "policyNumber", label: "POLICY", value: "{{memberId}}" }],
-      primaryFields: [{ key: "name", label: "POLICYHOLDER", value: "{{recipientName}}" }],
+      headerFields: [
+        { key: "effective", label: "EFFECTIVE", value: "{{memberSince}}" },
+        { key: "id", label: "MEMBER ID", value: "{{memberId}}" }
+      ],
+      primaryFields: [
+        { key: "plan", label: "PLAN", value: "PPO" },
+        { key: "group", label: "GROUP", value: "HMO" }
+      ],
       secondaryFields: [
-        { key: "plan", label: "PLAN TYPE", value: "{{tierLevel}}" },
-        { key: "company", label: "INSURER", value: "{{companyName}}" }
+        { key: "name", label: "NAME", value: "{{recipientName}}" },
+        { key: "copay", label: "COPAY", value: "$25" },
+        { key: "rx", label: "RX BIN", value: "003858" }
       ],
       auxiliaryFields: [
-        { key: "coverage", label: "COVERAGE", value: "Auto, Liability, Comprehensive" }
+        { key: "deductible", label: "DEDUCTIBLE", value: "$500" },
+        { key: "outOfPocket", label: "MAX OOP", value: "$3,000" },
+        { key: "pcp", label: "PCP COPAY", value: "$20" }
       ],
       backFields: [
         { key: "portal", label: "Member Portal", value: "https://member.curbe.io" },
