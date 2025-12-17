@@ -8327,7 +8327,7 @@ export default function PoliciesPage() {
                               <div key={policyPlan.id || index} className="rounded-lg border border-border/60 bg-background/40 overflow-hidden">
                                 {/* Header: Logo + Carrier + Plan Name + Badges */}
                                 <div className="px-4 py-3 border-b border-border/40 bg-muted/20">
-                                  <div className="flex items-start gap-3">
+                                  <div className="flex items-start justify-between gap-3">
                                     {/* Carrier Logo */}
                                     {(plan.issuer?.name || '').toLowerCase().includes('ambetter') ? (
                                       <img src={ambetterLogo} alt="Ambetter" className="h-8 object-contain flex-shrink-0" />
@@ -8335,10 +8335,10 @@ export default function PoliciesPage() {
                                       <Building2 className="h-8 w-8 text-muted-foreground flex-shrink-0" />
                                     )}
                                     {/* Carrier + Plan Info */}
-                                    <div className="flex-1 min-w-0">
+                                    <div className="text-right">
                                       <p className="text-sm font-semibold text-foreground">{plan.issuer?.name || 'Insurance Provider'}</p>
-                                      <p className="text-sm text-primary font-medium truncate">{plan.name}</p>
-                                      <div className="flex items-center gap-1.5 mt-1">
+                                      <p className="text-sm text-primary font-medium">{plan.name}</p>
+                                      <div className="flex items-center justify-end gap-1.5 mt-1">
                                         <Badge variant="secondary" className="text-[10px] h-5 font-medium">{plan.metal_level || 'N/A'}</Badge>
                                         <Badge variant="outline" className="text-[10px] h-5">{plan.type || 'N/A'}</Badge>
                                       </div>
