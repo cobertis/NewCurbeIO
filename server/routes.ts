@@ -17796,8 +17796,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             await walletPassService.updateMember(walletMember.id, updateData);
             
             // Send APNs push notification with unique message to avoid Apple suppression
-            const timestamp = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-            await apnsService.sendPassAlertByMemberId(walletMember.id, `Plan updated at ${timestamp}`);
+            // Alternate with period suffix instead of timestamp for cleaner notifications
+            const suffix = Date.now() % 2 === 0 ? "." : "";
+            await apnsService.sendPassAlertByMemberId(walletMember.id, `Plan updated${suffix}`);
             console.log(`[Wallet Sync] Updated pass for member ${walletMember.memberId}`);
           } else {
             console.log(`[Wallet Sync] No wallet member found for planId: ${planId} or memberId: ${memberIdFromPlan}`);
