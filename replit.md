@@ -33,7 +33,7 @@ The backend is an Express.js application with TypeScript, providing a RESTful AP
 - **Communication:** Email, SMS/MMS, iMessage, WhatsApp.
 - **Billing & Integrations:** Stripe, Telnyx Phone System (full white-label telephony, WebRTC, E911 management, call control application routing).
 - **Automation & Analytics:** Birthday Automation, Dashboard Analytics ("Policy Journeys"), Email Processing (IMAP bounce, exponential backoff).
-- **Specialized Systems:** Landing Page Builder, Unified Contacts Directory, Tab Auto-Save, Duplicate Message Prevention, Custom Domain (White Label), Apple Wallet VIP Pass System.
+- **Specialized Systems:** Landing Page Builder, Unified Contacts Directory, Tab Auto-Save, Duplicate Message Prevention, Custom Domain (White Label).
 
 **Telnyx WebRTC Configuration:**
 All WebRTC implementations follow official Telnyx documentation, including programmatic audio element creation, `prefetchIceCandidates: true`, string ID for remote elements, specific call options (`audio: true`, `useStereo: true`, `preferred_codecs`), detailed audio settings, `userMediaError` handling, and `encrypted_media: null` (SRTP disabled) for compatibility. Key optimizations include pre-warming ICE candidates on login, early initialization, and using `iceCandidatePoolSize: 8`. RTCP-MUX is enabled on credential connections for WebRTC browser compatibility.
@@ -46,9 +46,6 @@ Includes immediate purchase billing for phone numbers and monthly recurring bill
 
 **Security Architecture:**
 Session security (`SESSION_SECRET`), webhook signature validation (Twilio, BulkVS, BlueBubbles), Zod schema validation for all public endpoints, open redirect protection via allowlist, unsubscribe token enforcement, user-scoped data isolation (BulkVS), iMessage webhook secret isolation, and multi-tenant session isolation for WhatsApp integration with real-time webhooks and secure media storage.
-
-**Apple Wallet VIP Pass System:**
-A multi-tenant system for creating, issuing, and managing Apple Wallet VIP Passes with per-company branding and APNs push notifications. It includes dedicated database tables and backend services for pass generation and APNs, following Apple's PassKit Web Service endpoints.
 
 **Extension-to-Extension Calling:**
 Enables internal calls between PBX extensions using pure WebRTC peer-to-peer over WebSocket signaling, integrated into PBX settings.
@@ -71,4 +68,3 @@ Implemented via `simultaneous_ringing: "enabled"` in Telnyx credential connectio
 - **Security:** Bcrypt.
 - **Utilities:** `date-fns`.
 - **Background Jobs:** `node-cron`.
-- **Apple Wallet:** `passkit-generator`.

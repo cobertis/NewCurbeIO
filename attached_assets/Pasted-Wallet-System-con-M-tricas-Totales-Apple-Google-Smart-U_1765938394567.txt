@@ -1,0 +1,573 @@
+Wallet System con Métricas Totales (Apple + Google) + Smart URL + Analytics
+0) REGLAS (NO NEGOCIABLES)
+
+Vamos a eliminar todo el sistema anterior y crear uno nuevo.
+
+No reutilizar endpoints antiguos ni estructura.
+
+No hardcode secrets.
+
+No “mock” analytics: debe persistir en DB.
+
+Todo debe quedar documentado y probado con casos reales.
+
+El sistema debe ser multi-tenant (por compañía/agency), pero con un “default tenant” si no existe aún.
+
+1) OBJETIVO DEL PRODUCTO
+
+Construir un sistema que:
+
+Genere Apple Wallet pass (.pkpass) correctamente firmado + PassKit Web Service para updates y device registration.
+
+Genere Google Wallet (Loyalty/Generic) con Objects API y link “Save to Google Wallet”.
+
+Entregue un Smart Link único que detecta OS (iOS/Android/Desktop) y muestra el botón correcto.
+
+Capture métricas completas:
+
+quién abrió el link
+
+OS / device / browser
+
+IP + geolocalización aproximada (country/region) (opcional)
+
+quién instaló el pass (Apple: cuando el device se registra; Google: cuando confirmamos “save”/estado)
+
+cuántas veces se abre el pass link
+
+cuántas veces se actualiza
+
+cuántas veces se llama API PassKit desde Wallet
+
+errores de generación/firma (con stacktrace)
+
+Exporte dashboard básico de analytics (tabla + filtros) y endpoints para reporting.
+
+2) TEC STACK OBLIGATORIO
+
+Backend: Node.js + TypeScript + Fastify (o Express si ya está, pero preferir Fastify)
+
+DB: PostgreSQL
+
+ORM: Prisma
+
+Cache (opcional): Redis
+
+Logging: pino + structured logs
+
+Error tracking: Sentry (opcional pero recomendado)
+
+Storage: S3-compatible (o Replit storage) para assets + certificados encriptados
+
+Security: encryption at rest para tokens/certs
+
+3) MODELO DE DATOS (PRISMA) — CREAR ESTO EXACTO
+
+Implementar tablas:
+
+tenants
+
+id (uuid)
+
+name
+
+domain
+
+brandColor
+
+logoUrl
+
+createdAt
+
+members
+
+id (uuid)
+
+tenantId (fk)
+
+fullName
+
+memberId (unique per tenant)
+
+plan
+
+memberSince
+
+createdAt
+
+wallet_passes
+
+id (uuid)
+
+tenantId
+
+memberId (fk members.id)
+
+serialNumber (Apple, unique)
+
+passTypeIdentifier
+
+teamIdentifier
+
+authToken (Apple authenticationToken, encrypted)
+
+webServiceUrl
+
+appleStatus enum: [created, installed, revoked]
+
+googleClassId
+
+googleObjectId
+
+googleStatus enum: [created, saved, revoked, unknown]
+
+createdAt
+
+updatedAt
+
+wallet_links
+
+id (uuid)
+
+tenantId
+
+memberId
+
+slug (unique short id)
+
+url (full URL)
+
+createdAt
+
+wallet_events (CORE ANALYTICS)
+
+id (uuid)
+
+tenantId
+
+memberId
+
+walletPassId
+
+type enum:
+
+link_open
+
+ios_offer_view
+
+android_offer_view
+
+desktop_offer_view
+
+apple_pkpass_download
+
+apple_device_registered
+
+apple_device_unregistered
+
+apple_pass_get
+
+apple_log
+
+apple_pass_updated
+
+apple_pass_error
+
+google_save_clicked
+
+google_saved_confirmed
+
+google_update
+
+google_error
+
+userAgent
+
+os
+
+deviceType
+
+browser
+
+ip
+
+country
+
+region
+
+referrer
+
+metadata jsonb
+
+createdAt
+
+wallet_devices (Apple only, because Apple gives deviceLibraryIdentifier)
+
+id (uuid)
+
+walletPassId
+
+deviceLibraryIdentifier
+
+pushToken
+
+deviceInfo jsonb (parsed UA)
+
+createdAt
+
+lastSeenAt
+
+IMPORTANTE: En Apple no sabremos “modelo exacto” siempre, pero sí deviceLibraryIdentifier + user-agent que venga del request.
+
+4) SMART LINK (OS DETECTION) — ENDPOINTS
+
+Crear:
+
+GET /w/:slug
+
+Detectar OS por User-Agent:
+
+iOS / iPadOS => mostrar “Add to Apple Wallet”
+
+Android => “Save to Google Wallet”
+
+Desktop => mostrar QR + instrucciones
+
+Registrar evento wallet_events.type = link_open + (ios_offer_view/android_offer_view/desktop_offer_view)
+
+Mostrar página UI minimal con branding del tenant (logo + color + nombre + member info)
+
+Botones:
+
+iOS -> link a: GET /w/:slug/apple
+
+Android -> link a: GET /w/:slug/google
+
+Desktop -> mostrar ambos + QR al mismo /w/:slug
+
+GET /w/:slug/apple
+
+Sirve el .pkpass con Content-Type correcto
+
+Registrar evento: apple_pkpass_download
+
+Debe regenerar el pass si no existe o está expirado
+
+No revelar tokens
+
+GET /w/:slug/google
+
+Redirige al “Save to Google Wallet” link (JWT o URL)
+
+Registrar evento: google_save_clicked
+
+5) APPLE PASSKIT — IMPLEMENTACIÓN COMPLETA (SIN ATajos)
+5.1 Generación PKPASS
+
+Implementar:
+
+Crear pass.json (storeCard o generic) con:
+
+formatVersion, passTypeIdentifier, serialNumber, teamIdentifier
+
+organizationName, description
+
+webServiceURL
+
+authenticationToken (único por pass, encrypted en DB)
+
+generic/storeCard fields
+
+backFields con links (portal, coverage, support)
+
+barcode QR con verify URL
+
+Incluir imágenes obligatorias:
+
+icon.png (29/58)
+
+logo.png (160x50/320x100)
+
+Crear manifest.json (sha1 hashes)
+
+Firmar con:
+
+Pass Type .p12 + password
+
+WWDR certificate (incluido por backend)
+
+Output: Buffer .pkpass
+
+5.2 PassKit Web Service endpoints (EXACTOS)
+
+Validar auth header:
+Authorization: ApplePass <authenticationToken>
+
+Implementar y registrar eventos:
+
+GET /passkit/v1/passes/:passTypeId/:serialNumber
+
+Si auth válido:
+
+responder pass actualizado (pkpass) o 304 si no hay cambios con Last-Modified
+
+Registrar evento: apple_pass_get
+
+Actualizar wallet_passes.updatedAt
+
+POST /passkit/v1/devices/:deviceLibraryIdentifier/registrations/:passTypeId/:serialNumber
+
+Body: pushToken
+
+Registrar device en wallet_devices
+
+Registrar evento: apple_device_registered
+
+Marcar wallet_passes.appleStatus = installed
+
+Guardar lastSeenAt
+
+DELETE /passkit/v1/devices/:deviceLibraryIdentifier/registrations/:passTypeId/:serialNumber
+
+Eliminar device
+
+Registrar evento: apple_device_unregistered
+
+POST /passkit/v1/log
+
+Registrar evento: apple_log (guardar payload en metadata)
+
+5.3 Push Updates Apple (FASE 2 PERO PREPARADO)
+
+Guardar pushToken de cada device
+
+Dejar interface sendApplePush(walletPassId) aunque sea stub
+
+Documentar claramente cómo conectar APNs luego
+
+6) GOOGLE WALLET — IMPLEMENTACIÓN COMPLETA
+6.1 Crear Class y Object
+
+Crear “Class” por tenant (branding)
+
+Crear “Object” por member
+
+Guardar googleClassId / googleObjectId
+
+6.2 Save link / JWT
+
+Generar link “Save to Google Wallet”
+
+Registrar google_save_clicked cuando el usuario hace click
+
+6.3 Confirmación de “Saved”
+
+Google no da un callback simple como Apple.
+Implementar al menos 2 estrategias:
+
+Polling verification:
+
+Después del click, redirigir a una “success page” propia:
+GET /w/:slug/google/return
+
+En esa página:
+
+llamar backend para verificar status del object si posible
+
+registrar google_saved_confirmed si detectamos “saved”
+
+si no se puede confirmar, registrar googleStatus=unknown y evento igual
+
+Event-based (si disponible):
+
+Implementar endpoint para recibir eventos/webhooks si Google lo permite en tu configuración
+
+Registrar eventos google_saved_confirmed
+
+(Nota: si no existe webhook, documentar limitación y dejar el sistema listo para integrarlo)
+
+6.4 Google Notifications
+
+Preparar módulo sendGoogleWalletNotification(memberId, message, deepLink)
+
+No enviar marketing spam; solo updates reales.
+
+Registrar google_update y google_error.
+
+7) ANALYTICS DASHBOARD (MVP PERO ÚTIL)
+
+Crear UI /admin/wallet-analytics con:
+
+Filtros: tenant, member, date range, event type
+
+Métricas:
+
+opens
+
+pkpass downloads
+
+apple installs (device_registered)
+
+apple updates (pass_get + updated)
+
+google save clicks
+
+google saved confirmed
+
+errors grouped
+
+Tabla de eventos con metadata JSON visible
+
+Export:
+
+GET /api/analytics/summary?tenantId&from&to
+
+GET /api/analytics/events?tenantId&from&to&type
+
+8) SEGURIDAD Y COMPLIANCE
+
+Encriptar en DB:
+
+authenticationToken
+
+p12 password
+
+p12 file (si se almacena)
+
+Nunca loggear secrets
+
+Rate limit en PassKit endpoints
+
+Validar input
+
+Generar tokens con crypto.randomBytes(32)
+
+9) TESTING REAL (OBLIGATORIO)
+
+Agregar scripts de test:
+
+Generar pass localmente y validar que abre en iPhone
+
+Simular llamadas de Apple:
+
+register device
+
+get pass
+
+Probar smart link con user agents:
+
+iOS Safari
+
+Android Chrome
+
+Desktop
+
+Cada test debe dejar eventos en DB.
+
+10) ENTREGABLES (NO TERMINAR SIN ESTO)
+
+El agente debe entregar:
+
+Código backend completo
+
+Migraciones Prisma
+
+Endpoints documentados
+
+UI de analytics
+
+Checklist de producción:
+
+dominios
+
+https
+
+certs
+
+env vars
+
+“Known limitations” (especialmente Google saved confirmation si aplica)
+
+11) ENV VARS (LISTA OBLIGATORIA)
+
+DATABASE_URL
+
+BASE_URL
+
+APPLE_TEAM_ID
+
+APPLE_PASS_TYPE_ID
+
+APPLE_P12_B64 (o ruta)
+
+APPLE_P12_PASSWORD
+
+APPLE_WWDR_CERT_PEM (embedded)
+
+GOOGLE_SERVICE_ACCOUNT_JSON_B64
+
+GOOGLE_ISSUER_ID
+
+ENCRYPTION_KEY_32BYTES
+
+SENTRY_DSN (opcional)
+
+12) EXTRA COSAS QUE DEBES IMPLEMENTAR (IMPORTANTES)
+12.1 Revocación / Rotación
+
+Endpoint:
+POST /api/wallet/revoke/:memberId
+
+marca appleStatus revoked
+
+marca googleStatus revoked
+
+invalida tokens
+
+registra evento
+
+12.2 Regeneración segura
+
+Regenerar pkpass sin cambiar serialNumber
+
+Rotar authenticationToken si se compromete
+
+12.3 “Member Portal Page”
+
+Crear página:
+
+/member/:memberId
+Con:
+
+info ampliada
+
+links
+
+soporte
+Esto es lo que se abre desde backFields.
+
+13) DEFINICIÓN DE “DONE”
+
+No digas terminado hasta que:
+
+iPhone muestre “Details” con información
+
+aparezca “Allow Notifications” y “Automatic Updates” en Apple Wallet
+
+smart link muestre el botón correcto por OS
+
+eventos queden en DB con device registration
+
+dashboard muestre stats reales
+
+pkpass se instala y luego llama al webService (pass_get)
+
+14) SI ALGO NO SE PUEDE (REGLA)
+
+Si hay una limitación real (Google saved confirmation), el agente debe:
+
+implementar workaround (polling + success page)
+
+documentar la limitación
+
+dejar preparado para upgrade

@@ -121,12 +121,6 @@ export const companySettings = pgTable("company_settings", {
   // Holiday settings
   holidayCountryCode: text("holiday_country_code").default("US"), // Country code for public holidays (ISO 3166-1 alpha-2)
   
-  // Web Push (VAPID) settings for Android PWA notifications
-  vapidPublicKey: text("vapid_public_key"), // VAPID public key for push notifications
-  vapidPrivateKey: text("vapid_private_key"), // VAPID private key for push notifications
-  vapidSubject: text("vapid_subject"), // VAPID subject (mailto:email or https://domain)
-  pushInternalApiKey: text("push_internal_api_key"), // API key for internal push send endpoint
-  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
