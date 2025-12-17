@@ -154,102 +154,134 @@ export const appleWalletService = {
       labelColor: hexToRgb(branding.secondaryColor || "#ffffff"),
     };
     
-    // Use storeCard - NO BARCODE, clean design prioritizing notification visibility
-    // NOTE: changeMessage MUST be in headerFields or primaryFields for lock-screen preview
+    // MAXIMIZED READABILITY DESIGN
+    // Short labels (≤6 chars), concise values = Apple renders LARGEST font
+    // Keep front minimal, details go to back
+    
+    // Format premium as currency
+    const fmtPremium = (p: string | null) => {
+      if (!p) return "—";
+      const n = parseFloat(p);
+      return isNaN(n) ? p : `$${n.toFixed(0)}`;
+    };
+    
+    // Truncate to 24 chars max for readability
+    const truncate = (s: string | null, max = 24) => {
+      if (!s) return "—";
+      return s.length > max ? s.slice(0, max - 1) + "…" : s;
+    };
+    
+    // Extract carrier short name (first word or acronym)
+    const shortCarrier = (c: string | null) => {
+      if (!c) return "—";
+      // Common insurance carriers to abbreviate
+      if (c.toLowerCase().includes("united")) return "UHC";
+      if (c.toLowerCase().includes("blue cross")) return "BCBS";
+      if (c.toLowerCase().includes("aetna")) return "Aetna";
+      if (c.toLowerCase().includes("cigna")) return "Cigna";
+      if (c.toLowerCase().includes("humana")) return "Humana";
+      if (c.toLowerCase().includes("kaiser")) return "Kaiser";
+      if (c.toLowerCase().includes("anthem")) return "Anthem";
+      if (c.toLowerCase().includes("ambetter")) return "Ambetter";
+      if (c.toLowerCase().includes("molina")) return "Molina";
+      if (c.toLowerCase().includes("oscar")) return "Oscar";
+      // Return first word if short enough
+      const first = c.split(" ")[0];
+      return first.length <= 12 ? first : c.slice(0, 10) + "…";
+    };
+
     passData.storeCard = {
-      // 1. HEADER: Notification trigger (top-right) - REQUIRED for lock-screen preview
+      // HEADER: Premium amount (top right) - highly visible
       headerFields: [
         {
-          key: "status",
-          label: "STATUS",
-          value: pass.lastNotification ? "NEW" : "ACTIVE",
+          key: "cost",
+          label: "COST",
+          value: fmtPremium(member.monthlyPremium),
           changeMessage: "%@",
         },
       ],
-      // 2. PRIMARY: Client name (large, over strip image)
+      // PRIMARY: Member name - LARGEST TEXT
       primaryFields: [
         {
-          key: "memberName",
-          label: "MEMBER",
+          key: "name",
+          label: "",
           value: member.fullName.toUpperCase(),
         },
       ],
-      // 3. SECONDARY: Insurance carrier and plan info OR alert message
+      // SECONDARY: Carrier name only - one clear field
       secondaryFields: pass.lastNotification ? [
         {
-          key: "alert_msg",
-          label: "URGENT NOTICE",
-          value: pass.lastNotification,
+          key: "msg",
+          label: "ALERT",
+          value: truncate(pass.lastNotification, 40),
           changeMessage: "%@",
         },
       ] : [
         {
-          key: "carrier",
-          label: "INSURANCE CARRIER",
-          value: member.carrierName || "N/A",
-        },
-        {
-          key: "planName",
-          label: "PLAN",
-          value: member.planName || member.plan || "N/A",
+          key: "ins",
+          label: "INSURER",
+          value: shortCarrier(member.carrierName),
         },
       ],
-      // 4. AUXILIARY: Plan ID and Monthly Premium
+      // AUXILIARY: Plan name and ID - two clear items
       auxiliaryFields: [
         {
-          key: "planId",
-          label: "PLAN ID",
-          value: member.planId || member.memberId,
-          textAlignment: "PKTextAlignmentLeft",
+          key: "pln",
+          label: "PLAN",
+          value: truncate(member.planName || member.plan, 20),
         },
         {
-          key: "premium",
-          label: "MONTHLY",
-          value: member.monthlyPremium ? `$${member.monthlyPremium}` : "N/A",
-          textAlignment: "PKTextAlignmentRight",
+          key: "pid",
+          label: "ID",
+          value: truncate(member.planId || member.memberId, 16),
         },
       ],
-      // Back: All technical details
+      // BACK: All complete details
       backFields: [
         {
-          key: "memberId",
+          key: "b1",
+          label: "Full Name",
+          value: member.fullName,
+        },
+        {
+          key: "b2",
           label: "Member ID",
           value: member.memberId,
         },
         {
-          key: "carrierFull",
+          key: "b3",
           label: "Insurance Carrier",
-          value: member.carrierName || "N/A",
+          value: member.carrierName || "—",
         },
         {
-          key: "planIdFull",
+          key: "b4",
           label: "Plan ID",
-          value: member.planId || "N/A",
+          value: member.planId || "—",
         },
         {
-          key: "planNameFull",
+          key: "b5",
           label: "Plan Name",
-          value: member.planName || member.plan || "N/A",
+          value: member.planName || member.plan || "—",
         },
         {
-          key: "premiumFull",
+          key: "b6",
           label: "Monthly Premium",
-          value: member.monthlyPremium ? `$${member.monthlyPremium}/month` : "N/A",
+          value: member.monthlyPremium ? `$${member.monthlyPremium}/mo` : "—",
         },
         {
-          key: "memberSince",
+          key: "b7",
           label: "Member Since",
-          value: member.memberSince ? new Date(member.memberSince).toLocaleDateString("en-US", { month: "long", year: "numeric" }) : "N/A",
+          value: member.memberSince ? new Date(member.memberSince).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "—",
         },
         {
-          key: "fullNotification",
-          label: "Latest Notification",
-          value: pass.lastNotification || "No notifications",
+          key: "b8",
+          label: "Last Notice",
+          value: pass.lastNotification || "None",
         },
         {
-          key: "terms",
-          label: "Terms & Conditions",
-          value: `This pass is issued by ${branding.name}. For support, contact us through the app.`,
+          key: "b9",
+          label: "Issued By",
+          value: branding.name,
         },
       ],
     };
