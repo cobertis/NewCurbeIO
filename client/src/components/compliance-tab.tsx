@@ -239,8 +239,7 @@ export function ComplianceTab() {
 
   const createProfileMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/phone-system/messaging-profile", {});
-      return res.json();
+      return await apiRequest("POST", "/api/phone-system/messaging-profile", {});
     },
     onSuccess: () => {
       toast({ title: "Messaging Profile created", description: "Your SMS profile has been configured." });
@@ -278,8 +277,7 @@ export function ComplianceTab() {
 
   const createBrandMutation = useMutation({
     mutationFn: async (data: BrandFormValues) => {
-      const res = await apiRequest("POST", "/api/phone-system/brands", data);
-      return res.json();
+      return await apiRequest("POST", "/api/phone-system/brands", data);
     },
     onSuccess: () => {
       toast({ title: "Brand registered successfully", description: "Your 10DLC brand has been submitted for verification." });
