@@ -181,20 +181,14 @@ export const appleWalletService = {
           label: "MEMBER SINCE",
           value: member.memberSince ? new Date(member.memberSince).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "N/A",
         },
-        ...(pass.lastNotification ? [{
-          key: "alert",
-          label: "ALERT",
-          value: pass.lastNotification,
-          changeMessage: "%@",
-        }] : []),
-      ],
-      backFields: [
         {
-          key: "notification_channel",
-          label: "Avisos",
-          value: pass.lastNotification || "Sin novedades",
+          key: "alert",
+          label: "NOTIFICATION",
+          value: pass.lastNotification || "-",
           changeMessage: "%@",
         },
+      ],
+      backFields: [
         {
           key: "terms",
           label: "Terms & Conditions",
@@ -202,14 +196,6 @@ export const appleWalletService = {
         },
       ],
     };
-    
-    passData.barcodes = [
-      {
-        format: "PKBarcodeFormatQR",
-        message: member.memberId,
-        messageEncoding: "iso-8859-1",
-      },
-    ];
 
     const certificates: any = {
       signerCert: signerCert,
