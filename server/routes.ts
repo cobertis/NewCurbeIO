@@ -28695,14 +28695,47 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .from(wallets)
         .where(and(eq(wallets.companyId, companyId!), isNotNull(wallets.telnyxAccountId)));
       
-      if (!wallet?.telnyxMessagingProfileId) {
-        return res.json({ exists: false, profile: null });
-      }
-      
-      // Get profile details from Telnyx
+      // Get Telnyx credentials
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      // If no profile ID saved, try to fetch from Telnyx and sync
+      if (!wallet?.telnyxMessagingProfileId && wallet && telnyxApiKey && managedAccountId) {
+        console.log(`[Messaging Profile] No local profile, checking Telnyx for company ${companyId}`);
+        
+        const listResponse = await fetch("https://api.telnyx.com/v2/messaging_profiles", {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${telnyxApiKey}`,
+            "x-managed-account-id": managedAccountId,
+          },
+        });
+        
+        if (listResponse.ok) {
+          const listResult = await listResponse.json();
+          const profiles = listResult.data || [];
+          
+          if (profiles.length > 0) {
+            const profile = profiles[0];
+            console.log(`[Messaging Profile] Found existing profile ${profile.id}, syncing to wallet ${wallet.id}`);
+            
+            // Save to wallet
+            await db
+              .update(wallets)
+              .set({ telnyxMessagingProfileId: profile.id, updatedAt: new Date() })
+              .where(eq(wallets.id, wallet.id));
+            
+            return res.json({ exists: true, profile });
+          }
+        }
+        
+        return res.json({ exists: false, profile: null });
+      }
+      
+      if (!wallet?.telnyxMessagingProfileId) {
+        return res.json({ exists: false, profile: null });
+      }
       
       if (!telnyxApiKey || !managedAccountId) {
         return res.json({ exists: true, profile: { id: wallet.telnyxMessagingProfileId } });
