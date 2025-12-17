@@ -769,9 +769,24 @@ export function ComplianceTab() {
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Messaging Profile</h3>
-          <p className="text-sm text-slate-500 mt-1">Required for sending SMS/MMS messages through your phone numbers</p>
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Messaging Profile</h3>
+            <p className="text-sm text-slate-500 mt-1">Required for sending SMS/MMS messages through your phone numbers</p>
+          </div>
+          {!isLoadingProfile && !messagingProfile?.exists && (
+            <Button 
+              onClick={() => createProfileMutation.mutate()}
+              disabled={createProfileMutation.isPending}
+              data-testid="btn-create-messaging-profile"
+            >
+              {createProfileMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>
+              ) : (
+                <><Plus className="h-4 w-4 mr-2" />Create Profile</>
+              )}
+            </Button>
+          )}
         </div>
 
         <div className="p-6">
@@ -780,23 +795,23 @@ export function ComplianceTab() {
               <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
             </div>
           ) : messagingProfile?.exists ? (
-            <div className="flex items-center gap-4">
-              <div className="w-12 h-12 rounded-full bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
-                <MessageSquare className="h-6 w-6 text-green-600" />
-              </div>
-              <div className="flex-1">
-                <div className="flex items-center gap-2">
+            <div className="flex items-start justify-between">
+              <div className="flex items-start gap-4">
+                <div className="w-10 h-10 rounded-full bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
+                  <MessageSquare className="h-5 w-5 text-green-600" />
+                </div>
+                <div>
                   <h4 className="font-semibold text-slate-900 dark:text-white">
                     {messagingProfile.profile?.name || "SMS Profile"}
                   </h4>
-                  <Badge className="bg-green-100 text-green-800 border-green-200">
-                    <CheckCircle2 className="h-3 w-3 mr-1" />Active
-                  </Badge>
+                  <p className="text-xs text-slate-400 mt-1 font-mono">
+                    Profile ID: {messagingProfile.profile?.id}
+                  </p>
                 </div>
-                <p className="text-xs text-slate-500 mt-1 font-mono">
-                  Profile ID: {messagingProfile.profile?.id}
-                </p>
               </div>
+              <Badge className="bg-green-100 text-green-800 border-green-200">
+                <CheckCircle2 className="h-3 w-3 mr-1" />Active
+              </Badge>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center py-8 text-center">
@@ -805,18 +820,6 @@ export function ComplianceTab() {
               <p className="text-sm text-slate-500 mt-1 max-w-md">
                 Create a messaging profile to enable SMS/MMS sending through your phone numbers.
               </p>
-              <Button 
-                className="mt-4" 
-                onClick={() => createProfileMutation.mutate()}
-                disabled={createProfileMutation.isPending}
-                data-testid="btn-create-messaging-profile"
-              >
-                {createProfileMutation.isPending ? (
-                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>
-                ) : (
-                  <><Plus className="h-4 w-4 mr-2" />Create Messaging Profile</>
-                )}
-              </Button>
             </div>
           )}
         </div>
@@ -986,9 +989,19 @@ export function ComplianceTab() {
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800">
-          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Toll-Free Verification</h3>
-          <p className="text-sm text-slate-500 mt-1">Verify toll-free numbers (800, 888, 877, etc.) for SMS/MMS messaging</p>
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Toll-Free Verification</h3>
+            <p className="text-sm text-slate-500 mt-1">Verify toll-free numbers (800, 888, 877, etc.) for SMS/MMS messaging</p>
+          </div>
+          {!isLoadingTollFree && (!tollFreeData?.verifications || tollFreeData.verifications.length === 0) && (
+            <Button 
+              disabled
+              data-testid="btn-submit-toll-free-verification"
+            >
+              <Plus className="h-4 w-4 mr-2" />Submit Verification
+            </Button>
+          )}
         </div>
 
         <div className="p-6">
@@ -1045,13 +1058,6 @@ export function ComplianceTab() {
               <p className="text-sm text-slate-500 mt-1 max-w-md">
                 Submit a verification request to enable messaging on your toll-free numbers.
               </p>
-              <Button 
-                className="mt-4" 
-                disabled
-                data-testid="btn-submit-toll-free-verification"
-              >
-                <Plus className="h-4 w-4 mr-2" />Submit Verification
-              </Button>
             </div>
           )}
         </div>
