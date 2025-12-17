@@ -141,22 +141,20 @@ export default function WalletAnalyticsPage() {
     queryKey: ["/api/wallet/events", { limit: 50 }],
   });
 
-  const { data: contacts } = useQuery<Contact[]>({
-    queryKey: ["/api/contacts", { search: contactSearch }],
+  const { data: contactsData } = useQuery<{ contacts: Contact[], total: number }>({
+    queryKey: ["/api/contacts/list", contactSearch],
+    queryFn: async () => {
+      const res = await fetch(`/api/contacts/list?search=${encodeURIComponent(contactSearch)}&limit=10`);
+      if (!res.ok) throw new Error("Failed to fetch contacts");
+      return res.json();
+    },
     enabled: contactSearch.length >= 2,
   });
 
   const filteredContacts = useMemo(() => {
-    if (!contacts || contactSearch.length < 2) return [];
-    const search = contactSearch.toLowerCase();
-    return contacts.filter(
-      (c) =>
-        c.firstName?.toLowerCase().includes(search) ||
-        c.lastName?.toLowerCase().includes(search) ||
-        c.email?.toLowerCase().includes(search) ||
-        c.phone?.includes(search)
-    ).slice(0, 10);
-  }, [contacts, contactSearch]);
+    if (!contactsData?.contacts || contactSearch.length < 2) return [];
+    return contactsData.contacts.slice(0, 10);
+  }, [contactsData, contactSearch]);
 
   const chartData = useMemo(() => {
     if (!events || events.length === 0) return [];
