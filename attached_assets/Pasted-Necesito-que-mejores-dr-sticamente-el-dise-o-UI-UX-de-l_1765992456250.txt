@@ -1,0 +1,87 @@
+Necesito que mejores drásticamente el diseño UI/UX de la aplicación. Actualmente el Dashboard y especialmente Phone System se ven muy mal. Actúa como un experto en UI/UX y sigue estas instrucciones específicas:
+
+## DASHBOARD PRINCIPAL - Problemas críticos:
+
+1. **Tarjetas de estadísticas superiores**: Las 4 tarjetas (Today's reminders, Birthdays, Failed login, New leads) tienen fondos blancos planos sin jerarquía visual. Mejóralas:
+   - Añade sombras sutiles (box-shadow: 0 2px 8px rgba(0,0,0,0.08))
+   - Aumenta el border-radius a 12px para esquinas más suaves
+   - Añade padding interno más generoso (20px)
+   - Los iconos necesitan más espacio de respiro y mejor color contrast
+   - Los números grandes (0, 1, 4, 0) necesitan font-weight: 700 y mejor jerarquía tipográfica
+
+2. **Monthly Performance Overview**: Esta sección es un desastre visual:
+   - El título está perdido sin un header claro
+   - El estado "No data available" necesita mejor diseño con un ícono ilustrativo
+   - Añade un background color suave (bg-gray-50 o #f9fafb)
+   - Necesita padding consistente y mejor spacing
+
+3. **Interactive US Heat Map**: Mismos problemas
+   - Falta contraste visual
+   - Necesita un contenedor con background definido
+   - El texto "Hover over states" es muy pequeño y poco visible
+
+## PHONE SYSTEM - URGENTE (se ve PEOR):
+
+1. **Header superior** (3 Numbers, E911, Balance):
+   - Está flotando sin estructura clara
+   - Necesita un contenedor con background (#f9fafb)
+   - Añade padding vertical (py-3) y sombra sutil
+   - Los badges de E911 Ready y Balance necesitan mejor diseño
+
+2. **Tabs de navegación** (Overview, Numbers, Calls, etc):
+   - El tab activo (Overview) tiene pobre contraste
+   - Necesita border-bottom más grueso (3px) en color primary
+   - Los tabs inactivos necesitan mejor hover state
+
+3. **Tarjetas de métricas** (Total Calls: 50, Answer Rate: 18%, etc):
+   - Estas tarjetas necesitan URGENTE rediseño:
+   - Background white con sombra: box-shadow: 0 1px 3px rgba(0,0,0,0.1)
+   - Border radius: 12px
+   - Padding: 24px
+   - Los íconos (teléfono, check, reloj, dólar) necesitan circular background con color suave
+   - Los números necesitan ser MÁS GRANDES (text-4xl) y bold (font-bold)
+   - Los labels necesitan text-sm y color gris (text-gray-600)
+
+4. **Charts section**:
+   - "Call Volume (Last 7 Days)" y "Call Status" están muy planos
+   - Necesitan contenedores con padding generoso (p-6)
+   - Background white con sombra
+   - Los gráficos necesitan más espacio alrededor
+
+5. **Call Direction cards** (Inbound: 40, Outbound: 10):
+   - Muy básicas, necesitan:
+   - Íconos más grandes con background circular
+   - Mejor jerarquía tipográfica
+   - Border sutil o sombra suave
+
+6. **Performance Metrics**:
+   - Lista muy aburrida sin separadores visuales
+   - Añade dividers entre items
+   - Iconos más prominentes
+   - Mejor spacing vertical
+
+## GUÍA DE DISEÑO GENERAL:
+
+**Colores**:
+- Primary: Usa el azul de Curbe.io (#2563eb o similar)
+- Backgrounds: white (#ffffff) y gray-50 (#f9fafb)
+- Text: gray-900 para títulos, gray-600 para secundario
+- Borders: gray-200 (#e5e7eb)
+
+**Spacing**:
+- Usa spacing consistente: 16px, 24px, 32px, 48px
+- No mezcles valores random
+- Más whitespace = mejor legibilidad
+
+**Typography**:
+- Títulos: font-bold, text-2xl o text-xl
+- Números grandes: font-bold, text-4xl
+- Labels: font-medium, text-sm, text-gray-600
+- Body text: font-normal, text-base
+
+**Shadows**:
+- Cards: box-shadow: 0 1px 3px rgba(0,0,0,0.1)
+- Elevated: box-shadow: 0 4px 6px rgba(0,0,0,0.1)
+- Hover: box-shadow: 0 8px 16px rgba(0,0,0,0.1)
+
+**Implementa estos cambios de forma sistemática en todos los componentes. Prioriza Phone System porque está PEOR que Dashboard.**

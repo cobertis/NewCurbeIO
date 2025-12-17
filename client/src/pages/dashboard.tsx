@@ -215,29 +215,29 @@ export default function Dashboard() {
   }
 
   return (
-    <div className="flex flex-col gamin-h-screen bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
+    <div className="flex flex-col gap-6 min-h-screen bg-gradient-to-br from-slate-50 via-gray-50 to-slate-100 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 p-6">
       {/* Quick Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-5">
         {quickStats.map((stat, index) => (
           <Card 
             key={index} 
-            className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl cursor-pointer hover:shadow-xl transition-all hover:-translate-y-1"
+            className="bg-white dark:bg-gray-800/90 backdrop-blur-sm border border-slate-100 dark:border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] rounded-2xl cursor-pointer hover:shadow-[0_8px_16px_rgba(0,0,0,0.1)] transition-all hover:-translate-y-1"
             onClick={() => setLocation(stat.link)}
             data-testid={`card-quick-stat-${index}`}
           >
-            <CardContent className="p-5">
-              <div className="flex items-start justify-between gap-3">
-                <div className="flex items-start gap-3 flex-1">
-                  <div className={`w-11 h-11 rounded-lg ${stat.iconBg} flex items-center justify-center flex-shrink-0`}>
+            <CardContent className="p-6">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-start gap-4 flex-1">
+                  <div className={`w-12 h-12 rounded-xl ${stat.iconBg} flex items-center justify-center flex-shrink-0 shadow-sm`}>
                     <stat.icon className={`h-6 w-6 ${stat.iconColor}`} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-1">{stat.count}</h3>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white mb-0.5">{stat.title}</p>
+                    <h3 className="text-4xl font-bold text-gray-900 dark:text-white mb-1">{stat.count}</h3>
+                    <p className="text-sm font-semibold text-gray-800 dark:text-white mb-0.5">{stat.title}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{stat.subtitle}</p>
                   </div>
                 </div>
-                <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0 mt-1" />
+                <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0 mt-2" />
               </div>
             </CardContent>
           </Card>
@@ -247,13 +247,15 @@ export default function Dashboard() {
       {/* Monthly Chart & US Map */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Monthly Chart */}
-        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <BarChart3 className="h-4 w-4" />
+        <Card className="bg-white dark:bg-gray-800/90 backdrop-blur-sm border border-slate-100 dark:border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] rounded-2xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-100 to-blue-50 dark:from-blue-900/40 dark:to-blue-800/20 flex items-center justify-center">
+                <BarChart3 className="h-5 w-5 text-blue-600" />
+              </div>
               Monthly Performance Overview
             </CardTitle>
-            <p className="text-xs text-gray-500 mt-1">Total Policies and Total Customers (applicants only) by policy start date</p>
+            <p className="text-sm text-gray-500 mt-2">Total Policies and Total Customers (applicants only) by policy start date</p>
           </CardHeader>
           <CardContent>
             {monthlyData?.data && monthlyData.data.length > 0 ? (
@@ -347,19 +349,27 @@ export default function Dashboard() {
                 </ResponsiveContainer>
               </div>
             ) : (
-              <div className="h-80 flex items-center justify-center text-gray-400">No data available</div>
+              <div className="h-80 flex flex-col items-center justify-center bg-slate-50/50 dark:bg-slate-800/30 rounded-xl mx-4 mb-4">
+                <div className="w-20 h-20 rounded-2xl bg-slate-100 dark:bg-slate-700 flex items-center justify-center mb-4">
+                  <BarChart3 className="h-10 w-10 text-slate-400 dark:text-slate-400" />
+                </div>
+                <p className="text-base font-medium text-gray-600 dark:text-gray-300">No data available</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Performance data will appear here once you have policies</p>
+              </div>
             )}
           </CardContent>
         </Card>
 
         {/* US Map */}
-        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl overflow-hidden">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <MapPin className="h-4 w-4" />
-              Interactive US Heat Map - Customer Distribution
+        <Card className="bg-white dark:bg-gray-800/90 backdrop-blur-sm border border-slate-100 dark:border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] rounded-2xl overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-green-100 to-green-50 dark:from-green-900/40 dark:to-green-800/20 flex items-center justify-center">
+                <MapPin className="h-5 w-5 text-green-600" />
+              </div>
+              Interactive US Heat Map
             </CardTitle>
-            <p className="text-xs text-gray-500 mt-1">Hover over states to see detailed statistics</p>
+            <p className="text-sm text-gray-500 mt-2">Hover over states to see customer distribution and statistics</p>
           </CardHeader>
           <CardContent className="p-0">
             {(() => {
@@ -456,13 +466,15 @@ export default function Dashboard() {
       {/* Agents & Product Type */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Agents Leaderboard */}
-        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Agents leaderboard (Top 5)
+        <Card className="bg-white dark:bg-gray-800/90 backdrop-blur-sm border border-slate-100 dark:border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] rounded-2xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-100 to-purple-50 dark:from-purple-900/40 dark:to-purple-800/20 flex items-center justify-center">
+                <Users className="h-5 w-5 text-purple-600" />
+              </div>
+              Agents Leaderboard (Top 5)
             </CardTitle>
-            <p className="text-xs text-gray-500 mt-1">Top performing agents by policies and applicants</p>
+            <p className="text-sm text-gray-500 mt-2">Top performing agents by policies and applicants</p>
           </CardHeader>
           <CardContent>
             {(agentsData?.agents || []).length > 0 ? (
@@ -508,13 +520,15 @@ export default function Dashboard() {
         </Card>
 
         {/* Product Type Donut */}
-        <Card className="bg-white/80 dark:bg-gray-800/80 backdrop-blur-sm border-0 shadow-lg rounded-2xl">
-          <CardHeader>
-            <CardTitle className="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
-              <PieChart className="h-4 w-4" />
+        <Card className="bg-white dark:bg-gray-800/90 backdrop-blur-sm border border-slate-100 dark:border-slate-800 shadow-[0_2px_8px_rgba(0,0,0,0.08)] rounded-2xl">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg font-bold text-gray-900 dark:text-white flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-100 to-orange-50 dark:from-orange-900/40 dark:to-orange-800/20 flex items-center justify-center">
+                <PieChart className="h-5 w-5 text-orange-600" />
+              </div>
               Policies by Product Type (Top 10)
             </CardTitle>
-            <p className="text-xs text-gray-500 mt-1">Distribution of policies grouped by product category</p>
+            <p className="text-sm text-gray-500 mt-2">Distribution of policies grouped by product category</p>
           </CardHeader>
           <CardContent>
             {analyticsData?.byProductType && analyticsData.byProductType.length > 0 ? (
