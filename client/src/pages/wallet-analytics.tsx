@@ -176,7 +176,15 @@ export default function WalletAnalyticsPage() {
     return policiesData.items.map((policy: any) => {
       // selectedPlan contains planData from policy_plans (merged in getPoliciesList)
       // The plan data includes all manual entry fields stored in JSONB
-      const plan = policy.selectedPlan || {};
+      // CRITICAL: selectedPlan may be a JSON string - parse it if needed
+      let plan = policy.selectedPlan || {};
+      if (typeof plan === 'string') {
+        try {
+          plan = JSON.parse(plan);
+        } catch (e) {
+          plan = {};
+        }
+      }
       
       // Extract ALL fields from the plan data (stored in planData JSONB)
       const carrierName = plan?.issuer?.name || plan?.carrierName || "";
@@ -1012,12 +1020,12 @@ export default function WalletAnalyticsPage() {
                         />
                         <FormField
                           control={form.control}
-                          name="marketplaceId"
+                          name="monthlyPremium"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Marketplace ID</FormLabel>
+                              <FormLabel>Monthly Payment</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="e.g., 6148775766" data-testid="input-marketplace-id" />
+                                <Input {...field} placeholder="e.g., 17.25" data-testid="input-monthly-premium" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1052,35 +1060,6 @@ export default function WalletAnalyticsPage() {
                           </FormItem>
                         )}
                       />
-
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="planId"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Plan ID</FormLabel>
-                              <FormControl>
-                                <Input {...field} placeholder="e.g., 68398FL0030040" data-testid="input-plan-id" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="monthlyPremium"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Monthly Payment</FormLabel>
-                              <FormControl>
-                                <Input {...field} placeholder="e.g., 17.25" data-testid="input-monthly-premium" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
 
                       <div className="grid grid-cols-2 gap-4">
                         <FormField

@@ -4920,7 +4920,15 @@ export default function PoliciesPage() {
     if (manualPlanDialogOpen && editingPlanId && viewingQuote?.plans) {
       const existingPlan = viewingQuote.plans.find((p: any) => p.id === editingPlanId);
       if (existingPlan) {
-        const plan = existingPlan.planData || {};
+        // CRITICAL: planData may be a JSON string - parse it if needed
+        let plan = existingPlan.planData || {};
+        if (typeof plan === 'string') {
+          try {
+            plan = JSON.parse(plan);
+          } catch (e) {
+            plan = {};
+          }
+        }
         setSimplePlanFormData({
           planId: plan.id || existingPlan.planId || '',
           carrier: plan.issuer?.name || existingPlan.carrier || '',
@@ -8383,13 +8391,13 @@ export default function PoliciesPage() {
                                     {(plan.effectiveDate || policyPlan.effectiveDate) && (
                                       <div>
                                         <p className="text-xs text-muted-foreground">Effective Date</p>
-                                        <p className="text-xs">{plan.effectiveDate || policyPlan.effectiveDate}</p>
+                                        <p className="text-xs">{formatDateForDisplay(plan.effectiveDate || policyPlan.effectiveDate, "MM/dd/yyyy")}</p>
                                       </div>
                                     )}
                                     {(plan.expirationDate || policyPlan.expirationDate) && (
                                       <div>
                                         <p className="text-xs text-muted-foreground">Expiration Date</p>
-                                        <p className="text-xs">{plan.expirationDate || policyPlan.expirationDate}</p>
+                                        <p className="text-xs">{formatDateForDisplay(plan.expirationDate || policyPlan.expirationDate, "MM/dd/yyyy")}</p>
                                       </div>
                                     )}
                                   </div>
