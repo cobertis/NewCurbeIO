@@ -957,101 +957,111 @@ export default function PhoneSystem() {
                 </div>
               </div>
 
-              {/* Bottom Row: Direction Stats + Quick Stats */}
-              <div className="grid lg:grid-cols-2 gap-6">
-                {/* Inbound vs Outbound */}
-                <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-slate-100 dark:border-slate-800">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Call Direction</h3>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="bg-white dark:bg-slate-800/50 rounded-xl shadow-sm hover:shadow-md transition-all p-6 border border-slate-100 dark:border-slate-700">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-                          <PhoneIncoming className="h-6 w-6 text-blue-600" />
-                        </div>
-                        <div>
-                          <p className="text-4xl font-bold text-slate-900 dark:text-white" data-testid="stat-inbound">
-                            {callLogsData?.logs?.filter(l => l.direction === 'inbound').length || 0}
-                          </p>
-                          <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Inbound Calls</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-500">
-                            {callLogsData?.logs?.filter(l => l.direction === 'inbound').reduce((acc, l) => acc + (l.duration || 0), 0) 
-                              ? `${Math.round(callLogsData.logs.filter(l => l.direction === 'inbound').reduce((acc, l) => acc + (l.duration || 0), 0) / 60)} min` 
-                              : '0 min'}
-                          </p>
-                        </div>
+              {/* Bottom Row: Call Direction Cards + Performance Metrics */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Inbound Card - Full width rectangular */}
+                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm hover:shadow-md transition-all p-6 border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+                        <PhoneIncoming className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Inbound Calls</p>
+                        <p className="text-4xl font-bold text-slate-900 dark:text-white" data-testid="stat-inbound">
+                          {callLogsData?.logs?.filter(l => l.direction === 'inbound').length || 0}
+                        </p>
                       </div>
                     </div>
-                    <div className="bg-white dark:bg-slate-800/50 rounded-xl shadow-sm hover:shadow-md transition-all p-6 border border-slate-100 dark:border-slate-700">
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 rounded-full bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
-                          <PhoneOutgoing className="h-6 w-6 text-green-600" />
-                        </div>
-                        <div>
-                          <p className="text-4xl font-bold text-slate-900 dark:text-white" data-testid="stat-outbound">
-                            {callLogsData?.logs?.filter(l => l.direction === 'outbound').length || 0}
-                          </p>
-                          <p className="text-sm font-medium text-slate-600 dark:text-slate-400">Outbound Calls</p>
-                          <p className="text-xs text-slate-500 dark:text-slate-500">
-                            {callLogsData?.logs?.filter(l => l.direction === 'outbound').reduce((acc, l) => acc + (l.duration || 0), 0) 
-                              ? `${Math.round(callLogsData.logs.filter(l => l.direction === 'outbound').reduce((acc, l) => acc + (l.duration || 0), 0) / 60)} min` 
-                              : '0 min'}
-                          </p>
-                        </div>
-                      </div>
+                    <div className="text-right">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Total Duration</p>
+                      <p className="text-lg font-semibold text-slate-700 dark:text-slate-300">
+                        {callLogsData?.logs?.filter(l => l.direction === 'inbound').reduce((acc, l) => acc + (l.duration || 0), 0) 
+                          ? `${Math.round(callLogsData.logs.filter(l => l.direction === 'inbound').reduce((acc, l) => acc + (l.duration || 0), 0) / 60)} min` 
+                          : '0 min'}
+                      </p>
                     </div>
                   </div>
                 </div>
 
-                {/* Performance Metrics */}
-                <div className="bg-white dark:bg-slate-900 rounded-xl p-6 shadow-sm border border-slate-100 dark:border-slate-800">
-                  <h3 className="text-lg font-bold text-slate-900 dark:text-white mb-6">Performance Metrics</h3>
-                  <div className="space-y-3">
-                    <div className="bg-white dark:bg-slate-800/50 rounded-xl shadow-sm p-4 border border-slate-100 dark:border-slate-700">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-                            <Clock className="h-5 w-5 text-blue-600" />
-                          </div>
-                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Avg Call Duration</span>
-                        </div>
-                        <span className="text-lg font-bold text-slate-900 dark:text-white" data-testid="stat-avg-duration">
+                {/* Outbound Card - Full width rectangular */}
+                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm hover:shadow-md transition-all p-6 border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
+                        <PhoneOutgoing className="h-6 w-6 text-green-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Outbound Calls</p>
+                        <p className="text-4xl font-bold text-slate-900 dark:text-white" data-testid="stat-outbound">
+                          {callLogsData?.logs?.filter(l => l.direction === 'outbound').length || 0}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Total Duration</p>
+                      <p className="text-lg font-semibold text-slate-700 dark:text-slate-300">
+                        {callLogsData?.logs?.filter(l => l.direction === 'outbound').reduce((acc, l) => acc + (l.duration || 0), 0) 
+                          ? `${Math.round(callLogsData.logs.filter(l => l.direction === 'outbound').reduce((acc, l) => acc + (l.duration || 0), 0) / 60)} min` 
+                          : '0 min'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Performance Metrics Row */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm hover:shadow-md transition-all p-6 border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+                        <Clock className="h-6 w-6 text-blue-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Avg Call Duration</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="stat-avg-duration">
                           {(() => {
                             const answeredCalls = callLogsData?.logs?.filter(l => l.status === 'answered' && l.duration > 0) || [];
                             if (!answeredCalls.length) return '0:00';
                             const avgSec = Math.round(answeredCalls.reduce((acc, l) => acc + l.duration, 0) / answeredCalls.length);
                             return `${Math.floor(avgSec / 60)}:${(avgSec % 60).toString().padStart(2, '0')}`;
                           })()}
-                        </span>
+                        </p>
                       </div>
                     </div>
-                    <div className="bg-white dark:bg-slate-800/50 rounded-xl shadow-sm p-4 border border-slate-100 dark:border-slate-700">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-center">
-                            <Mic className="h-5 w-5 text-red-600" />
-                          </div>
-                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Calls with Recordings</span>
-                        </div>
-                        <span className="text-lg font-bold text-slate-900 dark:text-white" data-testid="stat-recordings">
+                  </div>
+                </div>
+                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm hover:shadow-md transition-all p-6 border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-red-50 dark:bg-red-900/30 flex items-center justify-center">
+                        <Mic className="h-6 w-6 text-red-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Calls with Recordings</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="stat-recordings">
                           {callLogsData?.logs?.filter(l => l.recordingUrl).length || 0}
-                        </span>
+                        </p>
                       </div>
                     </div>
-                    <div className="bg-white dark:bg-slate-800/50 rounded-xl shadow-sm p-4 border border-slate-100 dark:border-slate-700">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
-                            <TrendingUp className="h-5 w-5 text-amber-600" />
-                          </div>
-                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Longest Call</span>
-                        </div>
-                        <span className="text-lg font-bold text-slate-900 dark:text-white" data-testid="stat-longest">
+                  </div>
+                </div>
+                <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm hover:shadow-md transition-all p-6 border border-slate-100 dark:border-slate-800">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-amber-50 dark:bg-amber-900/30 flex items-center justify-center">
+                        <TrendingUp className="h-6 w-6 text-amber-600" />
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-slate-600 dark:text-slate-400 mb-1">Longest Call</p>
+                        <p className="text-2xl font-bold text-slate-900 dark:text-white" data-testid="stat-longest">
                           {(() => {
                             const maxDuration = Math.max(...(callLogsData?.logs?.map(l => l.duration || 0) || [0]));
                             if (!maxDuration) return '0:00';
                             return `${Math.floor(maxDuration / 60)}:${(maxDuration % 60).toString().padStart(2, '0')}`;
                           })()}
-                        </span>
+                        </p>
                       </div>
                     </div>
                   </div>
