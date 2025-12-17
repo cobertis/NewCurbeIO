@@ -119,6 +119,7 @@ export default function WalletAnalyticsPage() {
       planName: "",
       monthlyPremium: "",
       contactId: "",
+      expirationDate: "",
     },
   });
 
@@ -242,7 +243,7 @@ export default function WalletAnalyticsPage() {
     }
   };
 
-  const handleSelectContact = (contact: Contact & { carrierName?: string; planName?: string; planId?: string; monthlyPremium?: string }) => {
+  const handleSelectContact = (contact: Contact & { carrierName?: string; planName?: string; planId?: string; monthlyPremium?: string; memberId?: string; expirationDate?: string }) => {
     setSelectedContact(contact);
     setContactSearch("");
     form.setValue("fullName", `${contact.firstName} ${contact.lastName}`.trim());
@@ -254,6 +255,8 @@ export default function WalletAnalyticsPage() {
     if (contact.planName) form.setValue("planName", contact.planName);
     if (contact.planId) form.setValue("planId", contact.planId);
     if (contact.monthlyPremium) form.setValue("monthlyPremium", String(contact.monthlyPremium));
+    if (contact.memberId) form.setValue("memberId", contact.memberId);
+    if (contact.expirationDate) form.setValue("expirationDate", contact.expirationDate);
   };
 
   const handleGeneratePass = async (memberId: string) => {
@@ -1030,6 +1033,20 @@ export default function WalletAnalyticsPage() {
                           )}
                         />
                       </div>
+
+                      <FormField
+                        control={form.control}
+                        name="expirationDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Expiration Date</FormLabel>
+                            <FormControl>
+                              <Input type="date" {...field} data-testid="input-expiration-date" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
                       <div className="flex gap-2 pt-2">
                         {createNewMember && !selectedContact && (

@@ -11316,14 +11316,24 @@ export default function PoliciesPage() {
                       expirationDate: simplePlanFormData.expirationDate || undefined,
                     };
                     
-                    await apiRequest('POST', `/api/policies/${viewingQuote.id}/plans`, {
-                      source: 'manual',
-                      planData: planData,
-                    });
+                    if (editingPlanId) {
+                      // Update existing plan
+                      await apiRequest('PATCH', `/api/policies/${viewingQuote.id}/plans/${editingPlanId}`, {
+                        source: 'manual',
+                        planData: planData,
+                      });
+                      toast({ title: "Success", description: "Plan has been updated successfully.", duration: 3000 });
+                    } else {
+                      // Add new plan
+                      await apiRequest('POST', `/api/policies/${viewingQuote.id}/plans`, {
+                        source: 'manual',
+                        planData: planData,
+                      });
+                      toast({ title: "Success", description: "Plan has been added successfully.", duration: 3000 });
+                    }
 
                     queryClient.invalidateQueries({ queryKey: ['/api/policies'] });
                     
-                    toast({ title: "Success", description: "Plan has been added successfully.", duration: 3000 });
                     setManualPlanDialogOpen(false);
                     setSimplePlanFormData({ 
                       planId: '', carrier: '', planName: '', metalLevel: '', planType: '',
