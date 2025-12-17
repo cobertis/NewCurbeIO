@@ -1,0 +1,170 @@
+Necesito implementar la funcionalidad de 10DLC Brand Registration (compliance) en el Phone System. Este es un requisito obligatorio para enviar y recibir mensajes SMS en Estados Unidos.
+
+## CONTEXTO - 10DLC Compliance:
+
+10DLC (10-Digit Long Code) A2P (Application-to-Person) es el estándar obligatorio para tráfico de mensajería SMS en Estados Unidos. El proceso tiene 3 pasos:
+
+1. **Crear un Brand** - Representa a la organización/empresa
+2. **Crear una Campaign** - Asociada al Brand
+3. **Asociar números telefónicos a la Campaign**
+
+Cada creación de brand tiene un costo no reembolsable de $4.
+
+## TAREA: Implementar Brand Registration en Phone System
+
+Crea una nueva sección "Compliance" en el Phone System con un tab adicional:
+
+### 1. Agregar nuevo tab "Compliance" en Phone System:
+
+```tsx
+// En phone-system.tsx, agregar el tab "Compliance" después de "PBX":
+
+const tabs = [
+  { id: 'overview', label: 'Overview' },
+  { id: 'numbers', label: 'Numbers' },
+  { id: 'calls', label: 'Calls' },
+  { id: 'pricing', label: 'Pricing' },
+  { id: 'pbx', label: 'PBX' },
+  { id: 'compliance', label: 'Compliance' } // NUEVO TAB
+];
+```
+
+### 2. Crear la interfaz de Brand Registration:
+
+Cuando el usuario haga click en "Compliance", mostrar un formulario para registrar un 10DLC Brand con estos campos:
+
+**Campos OBLIGATORIOS (required):**
+- `entityType` (enum): Tipo de entidad - Opciones: PRIVATE_PROFIT, PUBLIC_PROFIT, NON_PROFIT, GOVERNMENT, SOLE_PROPRIETOR
+- `displayName` (string, max 100): Nombre comercial o DBA
+- `country` (string, 2 chars): Código ISO2 del país (US)
+- `email` (string, max 100): Email de contacto del brand
+- `vertical` (enum): Industria/sector - Opciones: REAL_ESTATE, HEALTHCARE, ENERGY, ENTERTAINMENT, RETAIL, AGRICULTURE, INSURANCE, EDUCATION, HOSPITALITY, FINANCIAL, GAMBLING, CONSTRUCTION, NGO, MANUFACTURING, GOVERNMENT, TECHNOLOGY, COMMUNICATION
+
+**Campos CONDICIONALES:**
+- `companyName` (string, max 100): Nombre legal de la empresa (Required para Non-profit/private/public)
+- `ein` (string, max 20): Tax ID (Required para Non-profit) - 9 dígitos en USA
+- `businessContactEmail` (string): Email de contacto del negocio (Required si entityType es PUBLIC_PROFIT)
+- `stockSymbol` (string, max 10): Símbolo bursátil (Required para public company)
+- `stockExchange` (enum): Bolsa de valores (Required para public company) - Opciones: NASDAQ, NYSE, AMEX, etc.
+
+**Campos OPCIONALES:**
+- `firstName` (string, max 100): Nombre de contacto
+- `lastName` (string, max 100): Apellido de contacto
+- `phone` (string, max 20): Teléfono en formato e.164 (+12024567890)
+- `street` (string, max 100): Calle y número
+- `city` (string, max 100): Ciudad
+- `state` (string, max 20): Estado (2 letras para USA)
+- `postalCode` (string, max 10): Código postal (5 dígitos para USA)
+- `website` (string, max 100): URL del sitio web
+- `mobilePhone` (string, max 20): Teléfono móvil en formato e.164
+- `isReseller` (boolean): Indica si es un reseller
+- `webhookURL` (string): URL para recibir actualizaciones de estado
+
+### 3. Crear el endpoint API:
+
+**Backend (server/routes/phone-system.js):**
+
+```javascript
+router.post('/api/phone-system/brands', authenticateToken, async (req, res) => {
+  try {
+    const brandData = req.body;
+    
+    // Llamar a la API de Telnyx para crear el brand
+    const response = await fetch('https://api.telnyx.com/v2/10dlc/brand', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${process.env.TELNYX_API_KEY}`
+      },
+      body: JSON.stringify(brandData)
+    });
+    
+    const result = await response.json();
+    
+    if (!response.ok) {
+      throw new Error(result.errors?.[0]?.detail || 'Error creando brand');
+    }
+    
+    // Guardar el brand en la base de datos
+    const brand = await db.query(
+      `INSERT INTO telnyx_brands 
+       (user_id, brand_id, tcr_brand_id, display_name, entity_type, status, brand_data) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) 
+       RETURNING *`,
+      [
+        req.user.userId,
+        result.brandId,
+        result.tcrBrandId,
+        result.displayName,
+        result.entityType,
+        result.status,
+        JSON.stringify(result)
+      ]
+    );
+    
+    res.json({
+      success: true,
+      brand: brand.rows[0]
+    });
+    
+  } catch (error) {
+    console.error('Error creating brand:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Endpoint para listar brands del usuario
+router.get('/api/phone-system/brands', authenticateToken, async (req, res) => {
+  try {
+    const brands = await db.query(
+      'SELECT * FROM telnyx_brands WHERE user_id = $1 ORDER BY created_at DESC',
+      [req.user.userId]
+    );
+    res.json(brands.rows);
+  } catch (error) {
+    console.error('Error fetching brands:', error);
+    res.status(500).json({ error: error.message });
+  }
+});
+```
+
+### 4. Crear la tabla en la base de datos:
+
+```sql
+CREATE TABLE IF NOT EXISTS telnyx_brands (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER REFERENCES users(id),
+  brand_id VARCHAR(255) UNIQUE NOT NULL,
+  tcr_brand_id VARCHAR(255),
+  display_name VARCHAR(100) NOT NULL,
+  entity_type VARCHAR(50) NOT NULL,
+  status VARCHAR(50) DEFAULT 'REGISTRATION_PENDING',
+  identity_status VARCHAR(50),
+  brand_data JSONB,
+  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+```
+
+### 5. Diseño UI del formulario:
+
+- Usa el MISMO estilo que el resto del Phone System (cards blancos con sombras sutiles)
+- Agrupa campos relacionados en secciones con headers claros:
+  - "Company Information"
+  - "Contact Information"
+  - "Address"
+  - "Additional Information"
+- Usa un select dropdown para entityType y vertical
+- Muestra campos condicionales dinámicamente según entityType seleccionado
+- Botón "Register Brand" de color primary
+- Mostrar una lista de brands registrados con su status
+- Mostrar el costo ($4) claramente antes de submitear
+
+### 6. Manejo de estados:
+
+- Mostrar loading state mientras se crea el brand
+- Mostrar el status del brand: OK, REGISTRATION_PENDING, REGISTRATION_FAILED
+- identityStatus: VERIFIED, UNVERIFIED, SELF_DECLARED, VETTED_VERIFIED
+- Si falla, mostrar el error claramente
+
+**IMPLEMENTA ESTO AHORA. Prioriza la funcionalidad sobre la perfección visual, pero mantén consistencia con el diseño actual del Phone System.**

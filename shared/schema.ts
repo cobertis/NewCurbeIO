@@ -6087,3 +6087,102 @@ export type InsertWalletDevice = z.infer<typeof insertWalletDeviceSchema>;
 
 export type WalletSettings = typeof walletSettings.$inferSelect;
 export type InsertWalletSettings = z.infer<typeof insertWalletSettingsSchema>;
+
+// ==================== 10DLC Brand Registration ====================
+
+export const brandEntityTypeEnum = pgEnum("brand_entity_type", [
+  "PRIVATE_PROFIT",
+  "PUBLIC_PROFIT", 
+  "NON_PROFIT",
+  "GOVERNMENT",
+  "SOLE_PROPRIETOR"
+]);
+
+export const brandVerticalEnum = pgEnum("brand_vertical", [
+  "REAL_ESTATE",
+  "HEALTHCARE",
+  "ENERGY",
+  "ENTERTAINMENT",
+  "RETAIL",
+  "AGRICULTURE",
+  "INSURANCE",
+  "EDUCATION",
+  "HOSPITALITY",
+  "FINANCIAL",
+  "GAMBLING",
+  "CONSTRUCTION",
+  "NGO",
+  "MANUFACTURING",
+  "GOVERNMENT",
+  "TECHNOLOGY",
+  "COMMUNICATION"
+]);
+
+export const brandStatusEnum = pgEnum("brand_status", [
+  "PENDING",
+  "VERIFIED",
+  "UNVERIFIED",
+  "VETTED_VERIFIED",
+  "SELF_DECLARED",
+  "EXPIRED"
+]);
+
+export const telnyxBrands = pgTable("telnyx_brands", {
+  id: serial("id").primaryKey(),
+  companyId: varchar("company_id", { length: 255 }).references(() => companies.id).notNull(),
+  userId: varchar("user_id", { length: 255 }).references(() => users.id).notNull(),
+  
+  // Telnyx/TCR identifiers
+  brandId: varchar("brand_id", { length: 255 }).unique(),
+  tcrBrandId: varchar("tcr_brand_id", { length: 255 }),
+  
+  // Required fields
+  entityType: brandEntityTypeEnum("entity_type").notNull(),
+  displayName: varchar("display_name", { length: 100 }).notNull(),
+  country: varchar("country", { length: 2 }).notNull().default("US"),
+  email: varchar("email", { length: 100 }).notNull(),
+  vertical: brandVerticalEnum("vertical").notNull(),
+  
+  // Conditional fields (based on entityType)
+  companyName: varchar("company_name", { length: 100 }),
+  ein: varchar("ein", { length: 20 }),
+  businessContactEmail: varchar("business_contact_email", { length: 100 }),
+  stockSymbol: varchar("stock_symbol", { length: 10 }),
+  stockExchange: varchar("stock_exchange", { length: 50 }),
+  
+  // Optional contact info
+  firstName: varchar("first_name", { length: 100 }),
+  lastName: varchar("last_name", { length: 100 }),
+  phone: varchar("phone", { length: 20 }),
+  mobilePhone: varchar("mobile_phone", { length: 20 }),
+  
+  // Optional address
+  street: varchar("street", { length: 100 }),
+  city: varchar("city", { length: 100 }),
+  state: varchar("state", { length: 20 }),
+  postalCode: varchar("postal_code", { length: 10 }),
+  
+  // Additional
+  website: varchar("website", { length: 100 }),
+  isReseller: boolean("is_reseller").default(false),
+  webhookUrl: text("webhook_url"),
+  
+  // Status
+  status: varchar("status", { length: 50 }).default("PENDING"),
+  identityStatus: varchar("identity_status", { length: 50 }),
+  
+  // Full response from Telnyx
+  brandData: jsonb("brand_data"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertTelnyxBrandSchema = createInsertSchema(telnyxBrands).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type TelnyxBrand = typeof telnyxBrands.$inferSelect;
+export type InsertTelnyxBrand = z.infer<typeof insertTelnyxBrandSchema>;
