@@ -201,12 +201,22 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
               .replace("{name}", member.fullName.split(" ")[0])
               .replace("{link}", dynamicLinkUrl);
 
+            // Normalize phone to E.164 format and create chat first (BlueBubbles requirement)
+            const normalizedPhone = member.phone.replace(/\D/g, '').replace(/^1/, '+1').replace(/^(?!\+)/, '+1');
+            try {
+              await blueBubblesManager.createChat(companyId, [normalizedPhone], 'iMessage');
+              console.log(`[Wallet] Chat created for ${normalizedPhone}`);
+            } catch (chatErr: any) {
+              // Chat might already exist, continue with message
+              console.log(`[Wallet] Chat creation result: ${chatErr.message || 'already exists'}`);
+            }
+
             await blueBubblesManager.sendMessage(companyId, {
-              chatGuid: `iMessage;-;${member.phone}`,
+              chatGuid: `iMessage;-;${normalizedPhone}`,
               message: messageText,
             });
             iMessageSent = true;
-            console.log(`[Wallet] iMessage sent to ${member.phone} with wallet link`);
+            console.log(`[Wallet] iMessage sent to ${normalizedPhone} with wallet link`);
           }
         } catch (imError) {
           console.error("[Wallet] Failed to send iMessage with wallet link:", imError);
