@@ -167,9 +167,27 @@ export const appleWalletService = {
       wwdr: wwdrBuffer,
     };
 
-    // Create PKPass with empty buffers, certificates, and passData as overrides
-    // The third argument sets in-memory properties including 'generic' which is required for type detection
-    const pkpass = new PKPass({}, certificates, passData);
+    // Create PKPass with empty buffers and certificates
+    // Then set ALL properties directly on the instance including type
+    const pkpass = new PKPass({}, certificates);
+    
+    // Set all required pass properties directly on the instance
+    (pkpass as any).formatVersion = 1;
+    (pkpass as any).passTypeIdentifier = passTypeId;
+    (pkpass as any).teamIdentifier = teamId;
+    (pkpass as any).serialNumber = pass.serialNumber;
+    (pkpass as any).authenticationToken = authToken;
+    (pkpass as any).webServiceURL = webServiceUrl;
+    (pkpass as any).organizationName = branding.name;
+    (pkpass as any).description = `${branding.name} Member Card`;
+    (pkpass as any).backgroundColor = hexToRgb(branding.primaryColor || "#1a1a2e");
+    (pkpass as any).foregroundColor = hexToRgb(branding.secondaryColor || "#ffffff");
+    (pkpass as any).labelColor = hexToRgb(branding.secondaryColor || "#ffffff");
+    (pkpass as any).barcodes = passData.barcodes;
+    
+    // Set the pass type (generic) - this is required for type detection
+    (pkpass as any).type = "generic";
+    (pkpass as any).generic = passData.generic;
 
     // Add images if they exist
     const iconPath = path.join(process.cwd(), "attached_assets", "pass-icon.png");
