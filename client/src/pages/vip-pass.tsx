@@ -43,11 +43,17 @@ const vipPassDesignSchema = z.object({
   labelColor: z.string(),
   passTypeIdentifier: z.string().optional(),
   teamIdentifier: z.string().optional(),
+  passStyle: z.string().default("storeCard"),
   barcodeFormat: z.string(),
   barcodeMessage: z.string(),
+  headerFields: z.array(passFieldSchema),
   primaryFields: z.array(passFieldSchema),
+  secondaryFields: z.array(passFieldSchema),
   auxiliaryFields: z.array(passFieldSchema),
   backFields: z.array(passFieldSchema),
+  iconBase64: z.string().optional(),
+  logoBase64: z.string().optional(),
+  stripBase64: z.string().optional(),
 });
 
 type VipPassDesignFormData = z.infer<typeof vipPassDesignSchema>;
@@ -128,10 +134,18 @@ const rgbToHex = (rgb: string): string => {
 
 const templateVariables = [
   { key: "serialNumber", description: "Unique pass serial number", example: "VIP-ABC123" },
-  { key: "memberId", description: "Member ID", example: "M-001234" },
+  { key: "memberId", description: "Member ID", example: "MIM-6546" },
   { key: "recipientName", description: "Recipient's name", example: "John Doe" },
-  { key: "tierLevel", description: "VIP tier level", example: "Gold" },
-  { key: "companyName", description: "Company name", example: "Your Company" },
+  { key: "tierLevel", description: "Plan/Tier level", example: "Gold PPO" },
+  { key: "companyName", description: "Insurance company", example: "Curbe Insurance" },
+  { key: "memberSince", description: "Member since date", example: "Jan 2024" },
+];
+
+const passStyleOptions = [
+  { value: "storeCard", label: "Store Card (Insurance, Membership)" },
+  { value: "generic", label: "Generic Pass" },
+  { value: "eventTicket", label: "Event Ticket" },
+  { value: "coupon", label: "Coupon" },
 ];
 
 const replaceTemplateVars = (value: string): string => {
@@ -141,189 +155,190 @@ const replaceTemplateVars = (value: string): string => {
   });
 };
 
-function PassPreview({ design }: { design: VipPassDesignFormData }) {
-  const bgColor = design.backgroundColor?.startsWith('#') ? design.backgroundColor : (design.backgroundColor || '#000000');
-  const fgColor = design.foregroundColor?.startsWith('#') ? design.foregroundColor : (design.foregroundColor || '#ffffff');
-  const lblColor = design.labelColor?.startsWith('#') ? design.labelColor : (design.labelColor || '#c8c8c8');
+function PassPreview({ design, showBack = false }: { design: VipPassDesignFormData; showBack?: boolean }) {
+  const bgColor = design.backgroundColor?.startsWith('#') ? design.backgroundColor : (design.backgroundColor || '#f5f5f5');
+  const fgColor = design.foregroundColor?.startsWith('#') ? design.foregroundColor : (design.foregroundColor || '#1a1a1a');
+  const lblColor = design.labelColor?.startsWith('#') ? design.labelColor : (design.labelColor || '#666666');
+
+  if (showBack) {
+    return (
+      <div className="flex flex-col items-center">
+        <div 
+          className="w-[280px] min-h-[380px] rounded-2xl overflow-hidden p-5"
+          style={{ backgroundColor: bgColor, color: fgColor, boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}
+          data-testid="pass-preview-back"
+        >
+          <div className="text-sm font-semibold mb-4 pb-2 border-b" style={{ borderColor: `${fgColor}20` }}>
+            Pass Information
+          </div>
+          <div className="space-y-3">
+            {(design.backFields?.length > 0 ? design.backFields : [
+              { key: "portal", label: "Member Portal", value: "https://insurance.curbe.io/member" },
+              { key: "support", label: "Customer Support", value: "1-800-CURBE-00" },
+            ]).map((field, i) => (
+              <div key={i} className="py-2 border-b" style={{ borderColor: `${fgColor}10` }}>
+                <div className="text-xs font-medium mb-1" style={{ color: lblColor }}>{field.label}</div>
+                <div className="text-sm" style={{ color: field.value.startsWith('http') || field.value.startsWith('tel:') ? '#007AFF' : fgColor }}>
+                  {field.value}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col items-center">
-      <div className="relative w-[300px] h-[420px] flex items-center justify-center">
-        <div 
-          className="absolute inset-0 rounded-3xl opacity-60 blur-xl"
-          style={{
-            background: `linear-gradient(135deg, ${bgColor}90, #00f2fe40, #4facfe40, #00f2fe40, ${bgColor}90)`,
-            animation: 'pulse 3s ease-in-out infinite',
-          }}
-        />
-        
-        <div 
-          className="relative w-[280px] h-[400px] rounded-3xl overflow-hidden"
-          style={{ 
-            backgroundColor: bgColor,
-            color: fgColor,
-            boxShadow: `0 0 30px ${bgColor}80, 0 20px 40px -12px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255,255,255,0.1)`,
-          }}
-          data-testid="pass-preview"
-        >
-          <div 
-            className="absolute inset-0 pointer-events-none opacity-25"
-            style={{
-              background: 'linear-gradient(135deg, transparent 0%, rgba(255,255,255,0.1) 25%, transparent 50%, rgba(255,255,255,0.15) 75%, transparent 100%)',
-              backgroundSize: '400% 400%',
-              animation: 'shimmer 8s ease-in-out infinite',
-            }}
-          />
-          
-          <div 
-            className="absolute inset-0 pointer-events-none opacity-[0.03]"
-            style={{
-              backgroundImage: `linear-gradient(${fgColor}20 1px, transparent 1px), linear-gradient(90deg, ${fgColor}20 1px, transparent 1px)`,
-              backgroundSize: '16px 16px',
-            }}
-          />
-          
-          <div 
-            className="absolute top-0 left-0 right-0 h-[2px]"
-            style={{ background: `linear-gradient(90deg, transparent, ${fgColor}60, transparent)` }}
-          />
-          
-          <div className="relative p-5 flex justify-between items-start">
-            <div className="flex flex-col gap-0.5">
-              <div 
-                className="text-xl font-black tracking-[0.15em] uppercase"
-                style={{ textShadow: `0 0 15px ${fgColor}40` }}
-                data-testid="preview-logo-text"
-              >
-                {design.logoText || "VIP GOLD"}
-              </div>
-              <div className="text-[8px] uppercase tracking-[0.25em] font-medium opacity-50">
-                Exclusive Access
-              </div>
-            </div>
-            
-            <div 
-              className="relative w-11 h-11 rounded-xl flex items-center justify-center overflow-hidden"
-              style={{ 
-                background: `linear-gradient(135deg, ${fgColor}12, ${fgColor}05)`,
-                boxShadow: `inset 0 1px 0 ${fgColor}15`,
-              }}
-            >
-              <CreditCard className="h-5 w-5" style={{ color: fgColor }} />
-            </div>
-          </div>
-          
-          <div className="px-5 pb-3">
-            <div className="relative h-[1px] w-full" style={{ backgroundColor: `${fgColor}15` }}>
-              <div 
-                className="absolute left-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full"
-                style={{ backgroundColor: fgColor, boxShadow: `0 0 8px ${fgColor}` }}
-              />
-              <div 
-                className="absolute right-0 top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full"
-                style={{ backgroundColor: fgColor, boxShadow: `0 0 8px ${fgColor}` }}
-              />
-            </div>
-          </div>
-          
-          <div className="px-5 py-1">
-            {design.primaryFields?.length > 0 ? (
-              design.primaryFields.map((field, i) => (
-                <div key={i} className="mb-3" data-testid={`preview-primary-field-${i}`}>
-                  <div 
-                    className="text-[9px] uppercase tracking-[0.2em] font-semibold mb-1 flex items-center gap-1.5"
-                    style={{ color: lblColor }}
-                  >
-                    <span className="w-1 h-1 rounded-full" style={{ backgroundColor: lblColor }} />
-                    {field.label}
-                  </div>
-                  <div 
-                    className="text-2xl font-bold tracking-tight"
-                    style={{ textShadow: `0 0 20px ${fgColor}25` }}
-                  >
-                    {replaceTemplateVars(field.value)}
-                  </div>
-                </div>
-              ))
+      <div 
+        className="w-[280px] h-[400px] rounded-2xl overflow-hidden flex flex-col"
+        style={{ backgroundColor: bgColor, color: fgColor, boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}
+        data-testid="pass-preview"
+      >
+        <div className="p-4 flex justify-between items-start">
+          <div className="flex items-center gap-3">
+            {design.logoBase64 ? (
+              <img src={design.logoBase64} alt="Logo" className="w-10 h-10 object-contain rounded" />
             ) : (
-              <div className="mb-3">
-                <div 
-                  className="text-[9px] uppercase tracking-[0.2em] font-semibold mb-1 flex items-center gap-1.5"
-                  style={{ color: lblColor }}
-                >
-                  <span className="w-1 h-1 rounded-full" style={{ backgroundColor: lblColor }} />
-                  Member ID
-                </div>
-                <div className="text-2xl font-bold tracking-tight" style={{ textShadow: `0 0 20px ${fgColor}25` }}>
-                  VIP-ABC123
-                </div>
+              <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center">
+                <CreditCard className="h-5 w-5 text-gray-400" />
               </div>
             )}
-          </div>
-
-          <div className="px-5 py-2 flex gap-3">
-            {design.auxiliaryFields?.length > 0 ? (
-              design.auxiliaryFields.slice(0, 2).map((field, i) => (
-                <div 
-                  key={i} 
-                  className="flex-1 p-2.5 rounded-lg"
-                  style={{ 
-                    background: `linear-gradient(135deg, ${fgColor}08, ${fgColor}02)`,
-                    border: `1px solid ${fgColor}10`,
-                  }}
-                  data-testid={`preview-auxiliary-field-${i}`}
-                >
-                  <div className="text-[7px] uppercase tracking-[0.15em] font-semibold mb-0.5" style={{ color: lblColor }}>
-                    {field.label}
-                  </div>
-                  <div className="text-xs font-semibold tracking-wide">
-                    {replaceTemplateVars(field.value)}
-                  </div>
-                </div>
-              ))
-            ) : (
-              <>
-                <div className="flex-1 p-2.5 rounded-lg" style={{ background: `linear-gradient(135deg, ${fgColor}08, ${fgColor}02)`, border: `1px solid ${fgColor}10` }}>
-                  <div className="text-[7px] uppercase tracking-[0.15em] font-semibold mb-0.5" style={{ color: lblColor }}>Tier</div>
-                  <div className="text-xs font-semibold tracking-wide">Gold</div>
-                </div>
-                <div className="flex-1 p-2.5 rounded-lg" style={{ background: `linear-gradient(135deg, ${fgColor}08, ${fgColor}02)`, border: `1px solid ${fgColor}10` }}>
-                  <div className="text-[7px] uppercase tracking-[0.15em] font-semibold mb-0.5" style={{ color: lblColor }}>Name</div>
-                  <div className="text-xs font-semibold tracking-wide">John Doe</div>
-                </div>
-              </>
-            )}
-          </div>
-
-          <div 
-            className="absolute bottom-0 left-0 right-0 p-4 flex flex-col items-center"
-            style={{ background: `linear-gradient(to top, rgba(255,255,255,0.98), rgba(255,255,255,0.95))` }}
-          >
-            <div className="relative">
-              <div className="absolute -top-0.5 -left-0.5 w-2 h-2 border-t-2 border-l-2 border-gray-400" />
-              <div className="absolute -top-0.5 -right-0.5 w-2 h-2 border-t-2 border-r-2 border-gray-400" />
-              <div className="absolute -bottom-0.5 -left-0.5 w-2 h-2 border-b-2 border-l-2 border-gray-400" />
-              <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 border-b-2 border-r-2 border-gray-400" />
-              
-              <div className="w-20 h-20 rounded-lg flex items-center justify-center bg-white" data-testid="preview-barcode">
-                {design.barcodeFormat === "PKBarcodeFormatQR" || design.barcodeFormat === "PKBarcodeFormatAztec" ? (
-                  <QrCode className="h-14 w-14 text-gray-800" />
-                ) : (
-                  <BarChart3 className="h-12 w-14 text-gray-800" />
-                )}
-              </div>
+            <div className="text-base font-bold tracking-wide uppercase" data-testid="preview-logo-text">
+              {design.logoText || "INSURANCE CARD"}
             </div>
-            <div className="text-[8px] text-gray-500 mt-2 font-mono tracking-wider uppercase">
-              {replaceTemplateVars(design.barcodeMessage || "{{serialNumber}}")}
+          </div>
+        </div>
+
+        <div className="px-4 py-3 flex-1">
+          {design.primaryFields?.length > 0 ? (
+            design.primaryFields.map((field, i) => (
+              <div key={i} className="mb-4" data-testid={`preview-primary-field-${i}`}>
+                <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: lblColor }}>
+                  {field.label}
+                </div>
+                <div className="text-2xl font-bold tracking-tight">
+                  {replaceTemplateVars(field.value)}
+                </div>
+              </div>
+            ))
+          ) : (
+            <div className="mb-4">
+              <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: lblColor }}>MEMBER ID</div>
+              <div className="text-2xl font-bold tracking-tight">MIM-6546</div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3 mb-4">
+            {(design.secondaryFields?.length > 0 ? design.secondaryFields : [
+              { key: "name", label: "NAME", value: "John Doe" },
+              { key: "insurance", label: "INSURANCE", value: "Curbe Insurance" }
+            ]).slice(0, 2).map((field, i) => (
+              <div key={i} data-testid={`preview-secondary-field-${i}`}>
+                <div className="text-[9px] uppercase tracking-wider font-semibold mb-0.5" style={{ color: lblColor }}>
+                  {field.label}
+                </div>
+                <div className="text-sm font-medium truncate">
+                  {replaceTemplateVars(field.value)}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            {(design.auxiliaryFields?.length > 0 ? design.auxiliaryFields : [
+              { key: "plan", label: "PLAN", value: "Gold PPO" },
+              { key: "since", label: "MEMBER SINCE", value: "Jan 2024" }
+            ]).slice(0, 2).map((field, i) => (
+              <div key={i} data-testid={`preview-auxiliary-field-${i}`}>
+                <div className="text-[9px] uppercase tracking-wider font-semibold mb-0.5" style={{ color: lblColor }}>
+                  {field.label}
+                </div>
+                <div className="text-sm font-medium truncate">
+                  {replaceTemplateVars(field.value)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="p-4 flex justify-center items-center bg-white">
+          <div className="text-center">
+            <div className="w-20 h-20 flex items-center justify-center" data-testid="preview-barcode">
+              {design.barcodeFormat === "PKBarcodeFormatQR" || design.barcodeFormat === "PKBarcodeFormatAztec" ? (
+                <QrCode className="h-16 w-16 text-gray-800" />
+              ) : (
+                <BarChart3 className="h-12 w-16 text-gray-800" />
+              )}
+            </div>
+            <div className="text-[8px] text-gray-500 mt-1 font-mono">
+              Scan to verify
             </div>
           </div>
         </div>
       </div>
-      
-      <style>{`
-        @keyframes shimmer { 0%, 100% { background-position: 0% 0%; } 50% { background-position: 100% 100%; } }
-        @keyframes pulse { 0%, 100% { opacity: 0.4; transform: scale(0.98); } 50% { opacity: 0.7; transform: scale(1); } }
-      `}</style>
+    </div>
+  );
+}
+
+function ImageUploadSection({ 
+  label, description, size, fieldName, value, onChange 
+}: { 
+  label: string;
+  description: string;
+  size: string;
+  fieldName: string;
+  value?: string;
+  onChange: (base64: string) => void;
+}) {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = () => {
+        onChange(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  return (
+    <div className="border rounded-lg p-4 text-center" data-testid={`upload-${fieldName}`}>
+      {value ? (
+        <div className="space-y-2">
+          <img src={value} alt={label} className="w-16 h-16 mx-auto object-contain rounded" />
+          <Button 
+            type="button" 
+            variant="outline" 
+            size="sm" 
+            onClick={() => onChange("")}
+            data-testid={`button-remove-${fieldName}`}
+          >
+            <Trash2 className="h-3 w-3 mr-1" /> Remove
+          </Button>
+        </div>
+      ) : (
+        <>
+          <div className="w-12 h-12 mx-auto mb-2 border-2 border-dashed rounded flex items-center justify-center text-muted-foreground">
+            <Upload className="h-5 w-5" />
+          </div>
+          <div className="text-sm font-medium">{label}</div>
+          <div className="text-xs text-muted-foreground mb-2">{description}<br/>{size}</div>
+          <label className="cursor-pointer">
+            <input 
+              type="file" 
+              accept="image/png,image/jpeg" 
+              className="hidden" 
+              onChange={handleFileChange}
+              data-testid={`input-${fieldName}`}
+            />
+            <Button type="button" variant="outline" size="sm" asChild>
+              <span><Upload className="h-3 w-3 mr-1" /> Upload</span>
+            </Button>
+          </label>
+        </>
+      )}
     </div>
   );
 }
@@ -332,7 +347,7 @@ function FieldArraySection({
   title, name, fields, append, remove, form 
 }: { 
   title: string;
-  name: "primaryFields" | "auxiliaryFields" | "backFields";
+  name: "headerFields" | "primaryFields" | "secondaryFields" | "auxiliaryFields" | "backFields";
   fields: PassField[];
   append: (value: PassField) => void;
   remove: (index: number) => void;
@@ -390,6 +405,7 @@ export default function VipPassPage() {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("management");
   const [designConfigTab, setDesignConfigTab] = useState("basic");
+  const [previewSide, setPreviewSide] = useState<"front" | "back">("front");
   const [issueDialogOpen, setIssueDialogOpen] = useState(false);
   const [pushDialogOpen, setPushDialogOpen] = useState(false);
   const [selectedPassId, setSelectedPassId] = useState<string | null>(null);
@@ -421,16 +437,42 @@ export default function VipPassPage() {
   const form = useForm<VipPassDesignFormData>({
     resolver: zodResolver(vipPassDesignSchema),
     defaultValues: {
-      passName: "VIP Gold Pass", passDescription: "VIP Member Pass", logoText: "VIP GOLD",
-      backgroundColor: "#000000", foregroundColor: "#ffffff", labelColor: "#c8c8c8",
-      passTypeIdentifier: "", teamIdentifier: "", barcodeFormat: "PKBarcodeFormatQR", barcodeMessage: "{{serialNumber}}",
-      primaryFields: [{ key: "member", label: "Member ID", value: "{{memberId}}" }],
-      auxiliaryFields: [{ key: "tier", label: "Tier", value: "{{tierLevel}}" }, { key: "name", label: "Name", value: "{{recipientName}}" }],
-      backFields: [{ key: "info", label: "VIP Benefits", value: "Priority service\nExclusive updates" }],
+      passName: "Insurance Card", 
+      passDescription: "Member Insurance Card", 
+      logoText: "INSURANCE CARD",
+      backgroundColor: "#f5f5f5", 
+      foregroundColor: "#1a1a1a", 
+      labelColor: "#666666",
+      passTypeIdentifier: "", 
+      teamIdentifier: "", 
+      passStyle: "storeCard",
+      barcodeFormat: "PKBarcodeFormatQR", 
+      barcodeMessage: "https://insurance.curbe.io/verify?token={{serialNumber}}",
+      headerFields: [],
+      primaryFields: [{ key: "memberId", label: "MEMBER ID", value: "{{memberId}}" }],
+      secondaryFields: [
+        { key: "name", label: "NAME", value: "{{recipientName}}" },
+        { key: "insurance", label: "INSURANCE", value: "{{companyName}}" }
+      ],
+      auxiliaryFields: [
+        { key: "plan", label: "PLAN", value: "{{tierLevel}}" },
+        { key: "memberSince", label: "MEMBER SINCE", value: "{{memberSince}}" }
+      ],
+      backFields: [
+        { key: "portal", label: "Member Portal", value: "https://insurance.curbe.io/member" },
+        { key: "coverage", label: "Coverage Details", value: "https://insurance.curbe.io/coverage" },
+        { key: "support", label: "Customer Support", value: "1-800-CURBE-00" },
+        { key: "terms", label: "Terms & Conditions", value: "https://insurance.curbe.io/terms" }
+      ],
+      iconBase64: "",
+      logoBase64: "",
+      stripBase64: "",
     },
   });
 
+  const headerFieldsArray = useFieldArray({ control: form.control, name: "headerFields" });
   const primaryFieldsArray = useFieldArray({ control: form.control, name: "primaryFields" });
+  const secondaryFieldsArray = useFieldArray({ control: form.control, name: "secondaryFields" });
   const auxiliaryFieldsArray = useFieldArray({ control: form.control, name: "auxiliaryFields" });
   const backFieldsArray = useFieldArray({ control: form.control, name: "backFields" });
 
@@ -609,42 +651,59 @@ export default function VipPassPage() {
           </TabsList>
 
           <TabsContent value="designer" className="space-y-6">
-            <div className="grid grid-cols-1 xl:grid-cols-[1fr_340px] gap-6">
+            <div className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-6">
               <Card>
                 <CardHeader className="pb-4">
                   <CardTitle className="text-lg flex items-center gap-2"><Settings2 className="h-5 w-5" /> Pass Configuration</CardTitle>
-                  <CardDescription>Customize your VIP pass appearance and fields</CardDescription>
+                  <CardDescription>Design your Insurance Card for Apple Wallet and Google Wallet</CardDescription>
                 </CardHeader>
                 <CardContent>
                   <Form {...form}>
                     <form className="space-y-6">
                       <Tabs value={designConfigTab} onValueChange={setDesignConfigTab}>
-                        <TabsList className="grid w-full grid-cols-4" data-testid="config-tabs">
+                        <TabsList className="grid w-full grid-cols-5" data-testid="config-tabs">
                           <TabsTrigger value="basic">Basic</TabsTrigger>
+                          <TabsTrigger value="images">Images</TabsTrigger>
                           <TabsTrigger value="colors">Colors</TabsTrigger>
                           <TabsTrigger value="barcode">Barcode</TabsTrigger>
                           <TabsTrigger value="fields">Fields</TabsTrigger>
                         </TabsList>
 
                         <TabsContent value="basic" className="space-y-4 pt-4">
-                          <FormField control={form.control} name="passName" render={({ field }) => (
+                          <FormField control={form.control} name="passStyle" render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Pass Name</FormLabel>
-                              <FormControl><Input {...field} placeholder="VIP Gold Pass" data-testid="input-pass-name" /></FormControl>
-                              <FormMessage />
+                              <FormLabel>Pass Type</FormLabel>
+                              <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl><SelectTrigger data-testid="select-pass-style"><SelectValue /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                  {passStyleOptions.map(opt => (
+                                    <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormDescription>Store Card is recommended for insurance/membership cards</FormDescription>
                             </FormItem>
                           )} />
+                          <div className="grid grid-cols-2 gap-4">
+                            <FormField control={form.control} name="passName" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Pass Name</FormLabel>
+                                <FormControl><Input {...field} placeholder="Insurance Card" data-testid="input-pass-name" /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
+                            <FormField control={form.control} name="logoText" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Header Text</FormLabel>
+                                <FormControl><Input {...field} placeholder="INSURANCE CARD" data-testid="input-logo-text" /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
+                          </div>
                           <FormField control={form.control} name="passDescription" render={({ field }) => (
                             <FormItem>
                               <FormLabel>Description</FormLabel>
-                              <FormControl><Input {...field} placeholder="VIP Member Pass" data-testid="input-pass-description" /></FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )} />
-                          <FormField control={form.control} name="logoText" render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Logo Text</FormLabel>
-                              <FormControl><Input {...field} placeholder="VIP GOLD" data-testid="input-logo-text" /></FormControl>
+                              <FormControl><Input {...field} placeholder="Member Insurance Card" data-testid="input-pass-description" /></FormControl>
                               <FormMessage />
                             </FormItem>
                           )} />
@@ -652,7 +711,7 @@ export default function VipPassPage() {
                             <FormField control={form.control} name="passTypeIdentifier" render={({ field }) => (
                               <FormItem>
                                 <FormLabel>Pass Type ID</FormLabel>
-                                <FormControl><Input {...field} placeholder="pass.com.company.vip" data-testid="input-pass-type-id" /></FormControl>
+                                <FormControl><Input {...field} placeholder="pass.com.company.insurance" data-testid="input-pass-type-id" /></FormControl>
                               </FormItem>
                             )} />
                             <FormField control={form.control} name="teamIdentifier" render={({ field }) => (
@@ -661,6 +720,38 @@ export default function VipPassPage() {
                                 <FormControl><Input {...field} placeholder="ABCD1234" data-testid="input-team-id" /></FormControl>
                               </FormItem>
                             )} />
+                          </div>
+                        </TabsContent>
+
+                        <TabsContent value="images" className="space-y-4 pt-4">
+                          <div className="text-sm text-muted-foreground mb-4">
+                            Upload your company branding. Image resolutions differ between Apple and Google Wallet.
+                          </div>
+                          <div className="grid grid-cols-3 gap-4">
+                            <ImageUploadSection
+                              label="Icon"
+                              description="Lockscreen icon"
+                              size="87 x 87 pixels"
+                              fieldName="iconBase64"
+                              value={watchedValues.iconBase64}
+                              onChange={(v) => form.setValue("iconBase64", v)}
+                            />
+                            <ImageUploadSection
+                              label="Logo"
+                              description="Header logo"
+                              size="150 x 150 pixels"
+                              fieldName="logoBase64"
+                              value={watchedValues.logoBase64}
+                              onChange={(v) => form.setValue("logoBase64", v)}
+                            />
+                            <ImageUploadSection
+                              label="Strip Image"
+                              description="Banner image"
+                              size="1125 x 432 pixels"
+                              fieldName="stripBase64"
+                              value={watchedValues.stripBase64}
+                              onChange={(v) => form.setValue("stripBase64", v)}
+                            />
                           </div>
                         </TabsContent>
 
@@ -726,12 +817,17 @@ export default function VipPassPage() {
                           )} />
                         </TabsContent>
 
-                        <TabsContent value="fields" className="space-y-6 pt-4">
-                          <FieldArraySection title="Primary Fields" name="primaryFields" fields={primaryFieldsArray.fields as PassField[]} append={primaryFieldsArray.append} remove={primaryFieldsArray.remove} form={form} />
+                        <TabsContent value="fields" className="space-y-4 pt-4">
+                          <div className="text-sm text-muted-foreground mb-2">
+                            Configure the fields displayed on your pass. Use template variables like {"{{memberId}}"} for dynamic content.
+                          </div>
+                          <FieldArraySection title="Primary Fields (Main Info)" name="primaryFields" fields={primaryFieldsArray.fields as PassField[]} append={primaryFieldsArray.append} remove={primaryFieldsArray.remove} form={form} />
                           <Separator />
-                          <FieldArraySection title="Auxiliary Fields" name="auxiliaryFields" fields={auxiliaryFieldsArray.fields as PassField[]} append={auxiliaryFieldsArray.append} remove={auxiliaryFieldsArray.remove} form={form} />
+                          <FieldArraySection title="Secondary Fields (Name, Company)" name="secondaryFields" fields={secondaryFieldsArray.fields as PassField[]} append={secondaryFieldsArray.append} remove={secondaryFieldsArray.remove} form={form} />
                           <Separator />
-                          <FieldArraySection title="Back Fields" name="backFields" fields={backFieldsArray.fields as PassField[]} append={backFieldsArray.append} remove={backFieldsArray.remove} form={form} />
+                          <FieldArraySection title="Auxiliary Fields (Plan, Date)" name="auxiliaryFields" fields={auxiliaryFieldsArray.fields as PassField[]} append={auxiliaryFieldsArray.append} remove={auxiliaryFieldsArray.remove} form={form} />
+                          <Separator />
+                          <FieldArraySection title="Back Fields (Info when tapping i)" name="backFields" fields={backFieldsArray.fields as PassField[]} append={backFieldsArray.append} remove={backFieldsArray.remove} form={form} />
                         </TabsContent>
                       </Tabs>
                     </form>
@@ -742,10 +838,30 @@ export default function VipPassPage() {
               <div className="space-y-4">
                 <Card>
                   <CardHeader className="pb-2">
-                    <CardTitle className="text-base flex items-center gap-2"><Eye className="h-4 w-4" /> Live Preview</CardTitle>
+                    <div className="flex items-center justify-between">
+                      <CardTitle className="text-base flex items-center gap-2"><Eye className="h-4 w-4" /> Live Preview</CardTitle>
+                      <div className="flex rounded-lg border overflow-hidden">
+                        <button
+                          type="button"
+                          className={`px-3 py-1 text-xs font-medium transition-colors ${previewSide === "front" ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}
+                          onClick={() => setPreviewSide("front")}
+                          data-testid="button-preview-front"
+                        >
+                          Front
+                        </button>
+                        <button
+                          type="button"
+                          className={`px-3 py-1 text-xs font-medium transition-colors ${previewSide === "back" ? "bg-primary text-primary-foreground" : "bg-background hover:bg-muted"}`}
+                          onClick={() => setPreviewSide("back")}
+                          data-testid="button-preview-back"
+                        >
+                          Back
+                        </button>
+                      </div>
+                    </div>
                   </CardHeader>
                   <CardContent className="pt-2">
-                    <PassPreview design={watchedValues} />
+                    <PassPreview design={watchedValues} showBack={previewSide === "back"} />
                   </CardContent>
                 </Card>
                 <Card>

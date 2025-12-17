@@ -495,17 +495,40 @@ export class VipPassService {
       }
     }
 
-    // Create pass bundle with required icon files
-    const iconBuffer = generateDefaultIcon();
-    const logoBuffer = generateDefaultLogo();
+    // Create pass bundle with image files
+    const passBuffers: Record<string, Buffer> = {};
     
-    const passBuffers: Record<string, Buffer> = {
-      "icon.png": iconBuffer,
-      "icon@2x.png": iconBuffer,
-      "icon@3x.png": iconBuffer,
-      "logo.png": logoBuffer,
-      "logo@2x.png": logoBuffer,
-    };
+    // Use custom images from design if available, otherwise use defaults
+    if (design.iconBase64) {
+      const iconData = design.iconBase64.replace(/^data:image\/\w+;base64,/, "");
+      const iconBuffer = Buffer.from(iconData, "base64");
+      passBuffers["icon.png"] = iconBuffer;
+      passBuffers["icon@2x.png"] = iconBuffer;
+      passBuffers["icon@3x.png"] = iconBuffer;
+    } else {
+      const defaultIcon = generateDefaultIcon();
+      passBuffers["icon.png"] = defaultIcon;
+      passBuffers["icon@2x.png"] = defaultIcon;
+      passBuffers["icon@3x.png"] = defaultIcon;
+    }
+    
+    if (design.logoBase64) {
+      const logoData = design.logoBase64.replace(/^data:image\/\w+;base64,/, "");
+      const logoBuffer = Buffer.from(logoData, "base64");
+      passBuffers["logo.png"] = logoBuffer;
+      passBuffers["logo@2x.png"] = logoBuffer;
+    } else {
+      const defaultLogo = generateDefaultLogo();
+      passBuffers["logo.png"] = defaultLogo;
+      passBuffers["logo@2x.png"] = defaultLogo;
+    }
+    
+    if (design.stripBase64) {
+      const stripData = design.stripBase64.replace(/^data:image\/\w+;base64,/, "");
+      const stripBuffer = Buffer.from(stripData, "base64");
+      passBuffers["strip.png"] = stripBuffer;
+      passBuffers["strip@2x.png"] = stripBuffer;
+    }
 
     const pass = new PKPass(passBuffers, certificates, passJson);
     pass.type = styleKey as "boardingPass" | "coupon" | "eventTicket" | "generic" | "storeCard";

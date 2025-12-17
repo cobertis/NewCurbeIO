@@ -1,0 +1,172 @@
+Estamos construyendo un sistema de emisión de Apple Wallet Insurance Cards (no boarding pass real, solo estética inspirada) usando PassKit.
+
+El objetivo es generar un Insurance Member Card moderno, limpio y clínico, cumpliendo estrictamente las reglas de Apple Wallet.
+
+NO estamos diseñando una app iOS.
+NO usamos Xcode.
+NO usamos frontend custom para Wallet.
+Todo se genera desde backend.
+
+🎯 OBJETIVO DEL PASS
+
+Crear un Insurance Card (Store Card type) que muestre:
+
+Nombre del asegurado
+
+Compañía de seguros
+
+Logo de la aseguradora
+
+Member ID (campo principal)
+
+Plan (Gold / PPO / etc.)
+
+Código QR verificable
+
+Además:
+
+Usar la ⓘ (info) nativa de Apple Wallet
+
+Al tocar la ⓘ, mostrar links a más información (portal, soporte, cobertura)
+
+❗ REGLAS DE DISEÑO (NO ROMPER)
+
+Tipo de pass: Store Card
+
+NO botones en el frente
+
+NO links en el frente
+
+NO “i” personalizada
+
+La “i” la provee Apple automáticamente
+
+El diseño debe ser minimalista, legible y clínico
+
+Inspirado en boarding pass, pero adaptado a insurance
+
+🧱 ESTRUCTURA DEL PASS (OBLIGATORIA)
+Header
+
+Logo de la aseguradora (imagen)
+
+LogoText: INSURANCE CARD
+
+Primary Field (el más importante)
+
+Member ID
+
+Label: MEMBER ID
+
+Value: dinámico (ej: MIM-6546)
+
+Secondary Fields (máximo 2)
+
+NAME → Nombre del asegurado
+
+INSURANCE → Nombre de la aseguradora
+
+Auxiliary Fields (opcional)
+
+PLAN → Gold / PPO / HMO
+
+MEMBER SINCE → Fecha corta
+
+Barcode
+
+Tipo: QR
+
+Contenido: URL segura con token
+
+https://insurance.curbe.io/verify?token=XYZ
+
+
+NO incluir datos sensibles directos
+
+🔁 BACK OF PASS (INFO ⓘ)
+
+Al tocar la ⓘ, mostrar campos clicables:
+
+Member Portal
+https://insurance.curbe.io/member/{token}
+
+Coverage Details
+https://insurance.curbe.io/coverage/{token}
+
+Customer Support
+tel:1-800-XXX-XXXX
+mailto:support@insurance.com
+
+Terms & Conditions
+https://insurance.curbe.io/terms
+
+🎨 ESTILO VISUAL
+
+Fondo: blanco o gris muy claro
+
+Texto principal: negro
+
+Label text: gris suave
+
+Acento: color corporativo del seguro
+
+Mucho espacio en blanco
+
+NO gradientes pesados
+
+NO sombras decorativas
+
+Apple Wallet prioriza claridad clínica.
+
+🧩 VARIABLES DINÁMICAS
+
+El sistema debe soportar estas variables:
+
+{{memberName}}
+{{memberId}}
+{{insuranceCompany}}
+{{plan}}
+{{memberSince}}
+{{token}}
+
+🔐 FIRMA Y ENTREGA
+
+El pass debe firmarse correctamente usando:
+
+Pass Type Certificate (.p12)
+
+WWDR Certificate (global, backend)
+
+El resultado debe ser un .pkpass válido
+
+El pass debe instalarse correctamente en Apple Wallet
+
+🚫 EXPLÍCITAMENTE NO HACER
+
+No usar boardingPass real
+
+No usar Generic pass
+
+No poner links en el frente
+
+No renderizar HTML para iOS
+
+No crear botones “Add to Wallet” dentro del pass
+
+✅ RESULTADO ESPERADO
+
+Insurance Card profesional
+
+Se ve bien en lock screen
+
+Se entiende en 1 segundo
+
+Member ID claro
+
+QR funcional
+
+Info accesible desde ⓘ
+
+100% compatible con Apple Wallet
+
+Implementar esto como infraestructura de producción, no demo.

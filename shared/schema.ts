@@ -5423,6 +5423,21 @@ export const vipPassDesigns = pgTable("vip_pass_designs", {
   logoUrl: text("logo_url"),
   stripUrl: text("strip_url"),
   backgroundUrl: text("background_url"),
+  thumbnailUrl: text("thumbnail_url"),
+  
+  // Images as Base64 (for direct storage without Object Storage)
+  iconBase64: text("icon_base64"),
+  logoBase64: text("logo_base64"),
+  stripBase64: text("strip_base64"),
+  thumbnailBase64: text("thumbnail_base64"),
+  
+  // Header fields configuration
+  headerFields: text("header_fields"),
+  
+  // Google Wallet specific configuration
+  googleWalletEnabled: boolean("google_wallet_enabled").default(true),
+  googleWalletClassId: text("google_wallet_class_id"),
+  googleWalletIssuerId: text("google_wallet_issuer_id"),
   
   // Apple certificates (stored paths/references)
   passTypeIdentifier: text("pass_type_identifier"),
