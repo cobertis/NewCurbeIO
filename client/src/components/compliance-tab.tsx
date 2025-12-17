@@ -293,7 +293,7 @@ export function ComplianceTab() {
     queryKey: ["/api/phone-system/campaigns"],
   });
 
-  const [campaignSheetOpen, setCampaignSheetOpen] = useState(false);
+  const [showCampaignWizard, setShowCampaignWizard] = useState(false);
   const [campaignStep, setCampaignStep] = useState(1);
   const [selectedBrandForCampaign, setSelectedBrandForCampaign] = useState<string>("");
   const [selectedUseCase, setSelectedUseCase] = useState<string>("");
@@ -421,7 +421,7 @@ export function ComplianceTab() {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ["/api/phone-system/campaigns"] });
       toast({ title: "Campaign created", description: "Your 10DLC campaign has been submitted for approval." });
-      setCampaignSheetOpen(false);
+      setShowCampaignWizard(false);
       resetCampaignForm();
     },
     onError: (error: any) => {
@@ -490,6 +490,292 @@ export function ComplianceTab() {
   const needsEin = ["PRIVATE_PROFIT", "PUBLIC_PROFIT", "NON_PROFIT"].includes(entityType);
   const needsPublicFields = entityType === "PUBLIC_PROFIT";
   const isSoleProprietor = entityType === "SOLE_PROPRIETOR";
+
+  // Campaign Wizard - Full Width Main Content
+  if (showCampaignWizard) {
+    return (
+      <div className="p-6">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Create a campaign</h2>
+          </div>
+          <div className="p-6">
+            <div className="flex gap-8">
+              {/* Main Content */}
+              <div className="flex-1 max-w-4xl">
+                {campaignStep === 1 && (
+                  <div className="space-y-6">
+                    <h3 className="font-semibold text-lg">Campaign use case</h3>
+                    <div className="grid grid-cols-2 gap-6">
+                      <div className="space-y-2">
+                        <Label>Brand</Label>
+                        <Select value={selectedBrandForCampaign} onValueChange={setSelectedBrandForCampaign}>
+                          <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
+                          <SelectContent>
+                            {brands.filter(b => b.status === "OK" || b.identityStatus === "VERIFIED").map(brand => (
+                              <SelectItem key={brand.brandId} value={brand.brandId || ""}>{brand.displayName}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Use case</Label>
+                        <Select value={selectedUseCase} onValueChange={(value) => { setSelectedUseCase(value); setSelectedSubUseCases([]); }}>
+                          <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
+                          <SelectContent>
+                            {USE_CASES.map(uc => (<SelectItem key={uc.value} value={uc.value}>{uc.label}</SelectItem>))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                    {needsSubUseCases && (
+                      <div className="space-y-3">
+                        <Label>Select use case type for {selectedUseCase === "MIXED" ? "Mixed" : "Low Volume"} campaign type</Label>
+                        <div className="grid grid-cols-3 gap-2">
+                          {SUB_USE_CASES.map(sub => (
+                            <div key={sub.value} className={`flex items-center gap-2 p-3 rounded border cursor-pointer ${selectedSubUseCases.includes(sub.value) ? "bg-primary/10 border-primary" : "hover:bg-slate-50 dark:hover:bg-slate-800"}`} onClick={() => toggleSubUseCase(sub.value)}>
+                              <input type="checkbox" checked={selectedSubUseCases.includes(sub.value)} onChange={() => toggleSubUseCase(sub.value)} className="h-4 w-4" />
+                              <span className="text-sm">{sub.label}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                    <div className="flex gap-2 pt-6">
+                      <Button onClick={() => setCampaignStep(2)} disabled={!selectedBrandForCampaign || !selectedUseCase || (needsSubUseCases && selectedSubUseCases.length < minSubUseCases)}>Next</Button>
+                      <Button variant="outline" onClick={() => { setShowCampaignWizard(false); resetCampaignForm(); }}>Cancel</Button>
+                    </div>
+                  </div>
+                )}
+
+                {campaignStep === 2 && (
+                  <div className="space-y-6">
+                    <h3 className="font-semibold text-lg">Carrier terms preview</h3>
+                    <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 rounded-lg text-sm text-blue-800 dark:text-blue-200">
+                      The terms displayed in this page may be subject to change at the sole discretion of the mobile network operator.
+                    </div>
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-sm">
+                        <thead>
+                          <tr className="border-b">
+                            <th className="text-left py-2 font-medium">Carrier</th>
+                            <th className="text-left py-2 font-medium">Qualify</th>
+                            <th className="text-left py-2 font-medium">MNO Review</th>
+                            <th className="text-left py-2 font-medium">Surcharge</th>
+                            <th className="text-left py-2 font-medium">SMS TPM</th>
+                            <th className="text-left py-2 font-medium">MMS TPM</th>
+                            <th className="text-left py-2 font-medium">Brand Tier</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {CARRIER_TERMS.map(ct => (
+                            <tr key={ct.carrier} className="border-b">
+                              <td className="py-2">{ct.carrier}</td>
+                              <td className="py-2">{ct.qualify}</td>
+                              <td className="py-2">{ct.mnoReview}</td>
+                              <td className="py-2">{ct.surcharge}</td>
+                              <td className="py-2">{ct.smsTpm}</td>
+                              <td className="py-2">{ct.mmsTpm}</td>
+                              <td className="py-2">{ct.brandTier}</td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                    <div className="flex gap-2 pt-6">
+                      <Button onClick={() => setCampaignStep(3)}>Next</Button>
+                      <Button variant="outline" onClick={() => setCampaignStep(1)}>Back</Button>
+                    </div>
+                  </div>
+                )}
+
+                {campaignStep === 3 && (
+                  <div className="space-y-6">
+                    <h3 className="font-semibold text-lg">Campaign details</h3>
+                    
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300 border-b pb-2">Content details</h4>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label>Campaign Description <span className="text-red-500">*</span></Label>
+                          <textarea className="w-full min-h-[100px] p-3 border rounded-md text-sm" value={campaignDescription} onChange={(e) => setCampaignDescription(e.target.value)} placeholder="Your selected Use Case(s) from Brand Name. EX: Customer care Messages for Telnyx" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Opt In Workflow Description (Message Flow) <span className="text-red-500">*</span></Label>
+                          <textarea className="w-full min-h-[100px] p-3 border rounded-md text-sm" value={messageFlow} onChange={(e) => setMessageFlow(e.target.value)} placeholder="Digital: Customer opt in via the following LINK which they get to via (describe path)." />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300 border-b pb-2">Keywords</h4>
+                      <div className="grid grid-cols-3 gap-6">
+                        <div className="space-y-2">
+                          <Label>Opt in keywords <span className="text-red-500">*</span></Label>
+                          <Input value={optInKeywords} onChange={(e) => setOptInKeywords(e.target.value)} placeholder="START,YES" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Opt out keywords <span className="text-red-500">*</span></Label>
+                          <Input value={optOutKeywords} onChange={(e) => setOptOutKeywords(e.target.value)} placeholder="STOP,UNSUBSCRIBE" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Help keywords <span className="text-red-500">*</span></Label>
+                          <Input value={helpKeywords} onChange={(e) => setHelpKeywords(e.target.value)} placeholder="HELP" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300 border-b pb-2">Auto-responses</h4>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label>Opt in message <span className="text-red-500">*</span></Label>
+                          <textarea className="w-full min-h-[80px] p-3 border rounded-md text-sm" value={optInMessage} onChange={(e) => setOptInMessage(e.target.value)} placeholder="[Brand name]: Thanks for subscribing! Reply HELP for help. Msg&data rates may apply. Reply STOP to opt out." />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Opt out message <span className="text-red-500">*</span></Label>
+                          <textarea className="w-full min-h-[80px] p-3 border rounded-md text-sm" value={optOutMessage} onChange={(e) => setOptOutMessage(e.target.value)} placeholder="[Brand Name]: You are unsubscribed and will receive no further messages." />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Help message <span className="text-red-500">*</span></Label>
+                        <textarea className="w-full min-h-[80px] p-3 border rounded-md text-sm" value={helpMessage} onChange={(e) => setHelpMessage(e.target.value)} placeholder="[Brand name]: Please reach out to us at [website/email/toll free number] for help." />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300 border-b pb-2">Sample messages</h4>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label>Message 1 <span className="text-red-500">*</span></Label>
+                          <textarea className="w-full min-h-[80px] p-3 border rounded-md text-sm" value={sampleMessage1} onChange={(e) => setSampleMessage1(e.target.value)} placeholder="Marketing: Thanks for subscribing! Use promo code: 20OFF for $20 off! Reply STOP to opt out." />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Message 2 {(selectedUseCase === "MARKETING" || selectedUseCase === "MIXED") && <span className="text-red-500">*</span>}</Label>
+                          <textarea className="w-full min-h-[80px] p-3 border rounded-md text-sm" value={sampleMessage2} onChange={(e) => setSampleMessage2(e.target.value)} placeholder="Account Notification: Your Password has been reset." />
+                          {(selectedUseCase === "MARKETING" || selectedUseCase === "MIXED") && <p className="text-xs text-amber-600">Required for Marketing or Mixed campaigns</p>}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300 border-b pb-2">Compliance links</h4>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label>Privacy policy</Label>
+                          <Input value={privacyPolicyLink} onChange={(e) => setPrivacyPolicyLink(e.target.value)} placeholder="Link to the campaign's privacy policy" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Terms and conditions</Label>
+                          <Input value={termsAndConditionsLink} onChange={(e) => setTermsAndConditionsLink(e.target.value)} placeholder="Link to the campaign's terms and conditions" />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Embedded link sample</Label>
+                        <Input value={embeddedLinkSample} onChange={(e) => setEmbeddedLinkSample(e.target.value)} placeholder="Sample of a link that will be sent to subscribers" />
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300 border-b pb-2">Campaign and content attributes</h4>
+                      <div className="grid grid-cols-3 gap-4 text-sm">
+                        <div className="flex items-center justify-between p-3 border rounded">
+                          <span>Embedded Link</span>
+                          <div className="flex gap-4">
+                            <label className="flex items-center gap-1"><input type="radio" checked={embeddedLink} onChange={() => setEmbeddedLink(true)} /> Yes</label>
+                            <label className="flex items-center gap-1"><input type="radio" checked={!embeddedLink} onChange={() => setEmbeddedLink(false)} /> No</label>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between p-3 border rounded">
+                          <span>Embedded Phone</span>
+                          <div className="flex gap-4">
+                            <label className="flex items-center gap-1"><input type="radio" checked={embeddedPhone} onChange={() => setEmbeddedPhone(true)} /> Yes</label>
+                            <label className="flex items-center gap-1"><input type="radio" checked={!embeddedPhone} onChange={() => setEmbeddedPhone(false)} /> No</label>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between p-3 border rounded">
+                          <span>Number Pooling</span>
+                          <div className="flex gap-4">
+                            <label className="flex items-center gap-1"><input type="radio" checked={numberPool} onChange={() => setNumberPool(true)} /> Yes</label>
+                            <label className="flex items-center gap-1"><input type="radio" checked={!numberPool} onChange={() => setNumberPool(false)} /> No</label>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between p-3 border rounded">
+                          <span>Age-Gated Content</span>
+                          <div className="flex gap-4">
+                            <label className="flex items-center gap-1"><input type="radio" checked={ageGated} onChange={() => setAgeGated(true)} /> Yes</label>
+                            <label className="flex items-center gap-1"><input type="radio" checked={!ageGated} onChange={() => setAgeGated(false)} /> No</label>
+                          </div>
+                        </div>
+                        <div className="flex items-center justify-between p-3 border rounded col-span-2">
+                          <span>Direct Lending or Loan Arrangement</span>
+                          <div className="flex gap-4">
+                            <label className="flex items-center gap-1"><input type="radio" checked={directLending} onChange={() => setDirectLending(true)} /> Yes</label>
+                            <label className="flex items-center gap-1"><input type="radio" checked={!directLending} onChange={() => setDirectLending(false)} /> No</label>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="space-y-4">
+                      <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300 border-b pb-2">Webhooks</h4>
+                      <div className="grid grid-cols-2 gap-6">
+                        <div className="space-y-2">
+                          <Label>Webhook URL</Label>
+                          <Input value={webhookURL} onChange={(e) => setWebhookURL(e.target.value)} placeholder="Where you will receive provisioning status updates" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label>Webhook Failover URL</Label>
+                          <Input value={webhookFailoverURL} onChange={(e) => setWebhookFailoverURL(e.target.value)} placeholder="Failover webhook URL" />
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex gap-2 pt-6">
+                      <Button onClick={() => setCampaignStep(4)} disabled={!campaignDescription || !messageFlow || !optInMessage || !optOutMessage || !helpMessage || !sampleMessage1}>Next</Button>
+                      <Button variant="outline" onClick={() => setCampaignStep(2)}>Back</Button>
+                    </div>
+                  </div>
+                )}
+
+                {campaignStep === 4 && (
+                  <div className="space-y-6">
+                    <h3 className="font-semibold text-lg">Payment and confirmation</h3>
+                    <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border space-y-3">
+                      <div className="flex justify-between"><span>Registration Fee (3 months):</span><span className="font-medium">{selectedUseCase === "LOW_VOLUME" || selectedUseCase === "UCAAS_LOW_VOLUME" ? "$6.00" : selectedUseCase === "CHARITY" ? "$15.00" : "$30.00"}</span></div>
+                      <div className="flex justify-between"><span>Monthly Fee (after):</span><span className="font-medium">{selectedUseCase === "LOW_VOLUME" || selectedUseCase === "UCAAS_LOW_VOLUME" ? "$2.00/mo" : selectedUseCase === "CHARITY" ? "$5.00/mo" : "$10.00/mo"}</span></div>
+                    </div>
+                    <div className="p-4 border rounded-lg space-y-2">
+                      <p className="font-medium">Campaign Summary</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">Brand: {brands.find(b => b.brandId === selectedBrandForCampaign)?.displayName}</p>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">Use Case: {USE_CASES.find(uc => uc.value === selectedUseCase)?.label}</p>
+                      {needsSubUseCases && <p className="text-sm text-slate-600 dark:text-slate-400">Sub Use Cases: {selectedSubUseCases.join(", ")}</p>}
+                    </div>
+                    <div className="flex gap-2 pt-6">
+                      <Button onClick={() => createCampaignMutation.mutate()} disabled={createCampaignMutation.isPending || !campaignDescription || !sampleMessage1}>
+                        {createCampaignMutation.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Submitting...</> : "Submit Campaign"}
+                      </Button>
+                      <Button variant="outline" onClick={() => setCampaignStep(3)}>Back</Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* Step Sidebar */}
+              <div className="w-56 border-l pl-6">
+                <div className="space-y-3 text-sm sticky top-6">
+                  <div className={`py-2 ${campaignStep === 1 ? "text-primary font-medium border-l-2 border-primary pl-3 -ml-[25px]" : "text-slate-500 pl-3"}`}>1. Campaign use case</div>
+                  <div className={`py-2 ${campaignStep === 2 ? "text-primary font-medium border-l-2 border-primary pl-3 -ml-[25px]" : "text-slate-500 pl-3"}`}>2. Carrier terms preview</div>
+                  <div className={`py-2 ${campaignStep === 3 ? "text-primary font-medium border-l-2 border-primary pl-3 -ml-[25px]" : "text-slate-500 pl-3"}`}>3. Campaign details</div>
+                  <div className={`py-2 ${campaignStep === 4 ? "text-primary font-medium border-l-2 border-primary pl-3 -ml-[25px]" : "text-slate-500 pl-3"}`}>4. Payment and confirmation</div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="p-6 space-y-6">
@@ -957,288 +1243,9 @@ export function ComplianceTab() {
             <p className="text-sm text-slate-500 mt-1">Register messaging campaigns to enable A2P SMS on your phone numbers</p>
           </div>
           {brands.some(b => b.status === "OK" || b.identityStatus === "VERIFIED") && (
-            <Sheet open={campaignSheetOpen} onOpenChange={setCampaignSheetOpen}>
-              <SheetTrigger asChild>
-                <Button size="sm" data-testid="btn-open-create-campaign">
-                  <Plus className="h-4 w-4 mr-2" />Create Campaign
-                </Button>
-              </SheetTrigger>
-              <SheetContent className="w-[600px] sm:max-w-[600px] overflow-y-auto">
-                <SheetHeader>
-                  <SheetTitle>Create a campaign</SheetTitle>
-                </SheetHeader>
-
-                <div className="flex gap-6 mt-6">
-                  <div className="flex-1">
-                    {campaignStep === 1 && (
-                      <div className="space-y-6">
-                        <h3 className="font-semibold text-lg">Campaign use case</h3>
-                        <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label>Brand</Label>
-                            <Select value={selectedBrandForCampaign} onValueChange={setSelectedBrandForCampaign}>
-                              <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
-                              <SelectContent>
-                                {brands.filter(b => b.status === "OK" || b.identityStatus === "VERIFIED").map(brand => (
-                                  <SelectItem key={brand.brandId} value={brand.brandId || ""}>{brand.displayName}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Use case</Label>
-                            <Select value={selectedUseCase} onValueChange={(value) => { setSelectedUseCase(value); setSelectedSubUseCases([]); }}>
-                              <SelectTrigger><SelectValue placeholder="Please select" /></SelectTrigger>
-                              <SelectContent>
-                                {USE_CASES.map(uc => (<SelectItem key={uc.value} value={uc.value}>{uc.label}</SelectItem>))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          {needsSubUseCases && (
-                            <div className="space-y-3">
-                              <Label>Select use case type for {selectedUseCase === "MIXED" ? "Mixed" : "Low Volume"} campaign type</Label>
-                              <div className="grid grid-cols-2 gap-2">
-                                {SUB_USE_CASES.map(sub => (
-                                  <div key={sub.value} className={`flex items-center gap-2 p-2 rounded border cursor-pointer ${selectedSubUseCases.includes(sub.value) ? "bg-primary/10 border-primary" : "hover:bg-slate-50"}`} onClick={() => toggleSubUseCase(sub.value)}>
-                                    <input type="checkbox" checked={selectedSubUseCases.includes(sub.value)} onChange={() => toggleSubUseCase(sub.value)} className="h-4 w-4" />
-                                    <span className="text-sm">{sub.label}</span>
-                                  </div>
-                                ))}
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex gap-2 pt-4">
-                          <Button onClick={() => setCampaignStep(2)} disabled={!selectedBrandForCampaign || !selectedUseCase || (needsSubUseCases && selectedSubUseCases.length < minSubUseCases)}>Next</Button>
-                          <Button variant="outline" onClick={() => { setCampaignSheetOpen(false); resetCampaignForm(); }}>Cancel</Button>
-                        </div>
-                      </div>
-                    )}
-
-                    {campaignStep === 2 && (
-                      <div className="space-y-6">
-                        <h3 className="font-semibold text-lg">Carrier terms preview</h3>
-                        <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 rounded-lg text-sm text-blue-800 dark:text-blue-200">
-                          The terms displayed in this page may be subject to change at the sole discretion of the mobile network operator.
-                        </div>
-                        <div className="overflow-x-auto">
-                          <table className="w-full text-sm">
-                            <thead>
-                              <tr className="border-b">
-                                <th className="text-left py-2 font-medium">Carrier</th>
-                                <th className="text-left py-2 font-medium">Qualify</th>
-                                <th className="text-left py-2 font-medium">MNO Review</th>
-                                <th className="text-left py-2 font-medium">Surcharge</th>
-                                <th className="text-left py-2 font-medium">SMS TPM</th>
-                                <th className="text-left py-2 font-medium">MMS TPM</th>
-                                <th className="text-left py-2 font-medium">Brand Tier</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              {CARRIER_TERMS.map(ct => (
-                                <tr key={ct.carrier} className="border-b">
-                                  <td className="py-2">{ct.carrier}</td>
-                                  <td className="py-2">{ct.qualify}</td>
-                                  <td className="py-2">{ct.mnoReview}</td>
-                                  <td className="py-2">{ct.surcharge}</td>
-                                  <td className="py-2">{ct.smsTpm}</td>
-                                  <td className="py-2">{ct.mmsTpm}</td>
-                                  <td className="py-2">{ct.brandTier}</td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
-                        <div className="flex gap-2 pt-4">
-                          <Button onClick={() => setCampaignStep(3)}>Next</Button>
-                          <Button variant="outline" onClick={() => setCampaignStep(1)}>Back</Button>
-                        </div>
-                      </div>
-                    )}
-
-                    {campaignStep === 3 && (
-                      <div className="space-y-6">
-                        <h3 className="font-semibold text-lg">Campaign details</h3>
-                        
-                        <div className="space-y-4">
-                          <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300">Content details</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Campaign Description <span className="text-red-500">*</span></Label>
-                              <textarea className="w-full min-h-[80px] p-2 border rounded-md text-sm" value={campaignDescription} onChange={(e) => setCampaignDescription(e.target.value)} placeholder="Your selected Use Case(s) from Brand Name. EX: Customer care Messages for Telnyx" />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Opt In Workflow Description (Message Flow/Call To Action) <span className="text-red-500">*</span></Label>
-                              <textarea className="w-full min-h-[80px] p-2 border rounded-md text-sm" value={messageFlow} onChange={(e) => setMessageFlow(e.target.value)} placeholder="Digital: Customer opt in via the following LINK which they get to via (describe path). Paper: Customer signs the following form: HOSTED IMAGE which they get via (describe path)." />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300">Keywords</h4>
-                          <div className="grid grid-cols-3 gap-4">
-                            <div className="space-y-2">
-                              <Label>Opt in keywords <span className="text-red-500">*</span></Label>
-                              <Input value={optInKeywords} onChange={(e) => setOptInKeywords(e.target.value)} placeholder="START,YES" />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Opt out keywords <span className="text-red-500">*</span></Label>
-                              <Input value={optOutKeywords} onChange={(e) => setOptOutKeywords(e.target.value)} placeholder="STOP,UNSUBSCRIBE" />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Help keywords <span className="text-red-500">*</span></Label>
-                              <Input value={helpKeywords} onChange={(e) => setHelpKeywords(e.target.value)} placeholder="HELP" />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300">Auto-responses</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Opt in message <span className="text-red-500">*</span></Label>
-                              <textarea className="w-full min-h-[60px] p-2 border rounded-md text-sm" value={optInMessage} onChange={(e) => setOptInMessage(e.target.value)} placeholder="[Brand name]: Thanks for subscribing to [use case(s)]! Reply HELP for help. Message frequency may vary. Msg&data rates may apply. Consent is not a condition of purchase. Reply STOP to opt out." />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Opt out message <span className="text-red-500">*</span></Label>
-                              <textarea className="w-full min-h-[60px] p-2 border rounded-md text-sm" value={optOutMessage} onChange={(e) => setOptOutMessage(e.target.value)} placeholder="[Brand Name]: You are unsubscribed and will receive no further messages." />
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Help message <span className="text-red-500">*</span></Label>
-                            <textarea className="w-full min-h-[60px] p-2 border rounded-md text-sm" value={helpMessage} onChange={(e) => setHelpMessage(e.target.value)} placeholder="[Brand name]: Please reach out to us at [website/email/toll free number] for help." />
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300">Sample messages</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Message 1 <span className="text-red-500">*</span></Label>
-                              <textarea className="w-full min-h-[60px] p-2 border rounded-md text-sm" value={sampleMessage1} onChange={(e) => setSampleMessage1(e.target.value)} placeholder="Marketing: Thanks for subscribing to our promotional program! Use promo code: 20OFF for $20 off your next order! Reply STOP to opt out." />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Message 2 {(selectedUseCase === "MARKETING" || selectedUseCase === "MIXED") && <span className="text-red-500">*</span>}</Label>
-                              <textarea className="w-full min-h-[60px] p-2 border rounded-md text-sm" value={sampleMessage2} onChange={(e) => setSampleMessage2(e.target.value)} placeholder="Account Notification: Your Password has been reset." />
-                              {(selectedUseCase === "MARKETING" || selectedUseCase === "MIXED") && <p className="text-xs text-amber-600">Required for Marketing or Mixed campaigns</p>}
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300">Compliance links</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Privacy policy</Label>
-                              <Input value={privacyPolicyLink} onChange={(e) => setPrivacyPolicyLink(e.target.value)} placeholder="Link to the campaign's privacy policy" />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Terms and conditions</Label>
-                              <Input value={termsAndConditionsLink} onChange={(e) => setTermsAndConditionsLink(e.target.value)} placeholder="Link to the campaign's terms and conditions" />
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Embedded link</Label>
-                            <Input value={embeddedLinkSample} onChange={(e) => setEmbeddedLinkSample(e.target.value)} placeholder="Sample of a link that will be sent to subscribers" />
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300">Campaign and content attributes</h4>
-                          <div className="grid grid-cols-2 gap-4 text-sm">
-                            <div className="flex items-center justify-between p-2 border rounded">
-                              <span>Embedded Link</span>
-                              <div className="flex gap-4">
-                                <label className="flex items-center gap-1"><input type="radio" checked={embeddedLink} onChange={() => setEmbeddedLink(true)} /> Yes</label>
-                                <label className="flex items-center gap-1"><input type="radio" checked={!embeddedLink} onChange={() => setEmbeddedLink(false)} /> No</label>
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between p-2 border rounded">
-                              <span>Embedded Phone Number</span>
-                              <div className="flex gap-4">
-                                <label className="flex items-center gap-1"><input type="radio" checked={embeddedPhone} onChange={() => setEmbeddedPhone(true)} /> Yes</label>
-                                <label className="flex items-center gap-1"><input type="radio" checked={!embeddedPhone} onChange={() => setEmbeddedPhone(false)} /> No</label>
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between p-2 border rounded">
-                              <span>Number Pooling</span>
-                              <div className="flex gap-4">
-                                <label className="flex items-center gap-1"><input type="radio" checked={numberPool} onChange={() => setNumberPool(true)} /> Yes</label>
-                                <label className="flex items-center gap-1"><input type="radio" checked={!numberPool} onChange={() => setNumberPool(false)} /> No</label>
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between p-2 border rounded">
-                              <span>Age-Gated Content</span>
-                              <div className="flex gap-4">
-                                <label className="flex items-center gap-1"><input type="radio" checked={ageGated} onChange={() => setAgeGated(true)} /> Yes</label>
-                                <label className="flex items-center gap-1"><input type="radio" checked={!ageGated} onChange={() => setAgeGated(false)} /> No</label>
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between p-2 border rounded col-span-2">
-                              <span>Direct Lending or Loan Arrangement</span>
-                              <div className="flex gap-4">
-                                <label className="flex items-center gap-1"><input type="radio" checked={directLending} onChange={() => setDirectLending(true)} /> Yes</label>
-                                <label className="flex items-center gap-1"><input type="radio" checked={!directLending} onChange={() => setDirectLending(false)} /> No</label>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="space-y-4">
-                          <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300">Webhooks</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Webhook URL</Label>
-                              <Input value={webhookURL} onChange={(e) => setWebhookURL(e.target.value)} placeholder="Where you will receive provisioning status updates" />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Webhook Failover URL</Label>
-                              <Input value={webhookFailoverURL} onChange={(e) => setWebhookFailoverURL(e.target.value)} placeholder="Failover webhook URL" />
-                            </div>
-                          </div>
-                        </div>
-
-                        <div className="flex gap-2 pt-4">
-                          <Button onClick={() => setCampaignStep(4)} disabled={!campaignDescription || !messageFlow || !optInMessage || !optOutMessage || !helpMessage || !sampleMessage1}>Next</Button>
-                          <Button variant="outline" onClick={() => setCampaignStep(2)}>Back</Button>
-                        </div>
-                      </div>
-                    )}
-
-                    {campaignStep === 4 && (
-                      <div className="space-y-6">
-                        <h3 className="font-semibold text-lg">Payment and confirmation</h3>
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border space-y-3">
-                          <div className="flex justify-between"><span>Registration Fee (3 months):</span><span className="font-medium">{selectedUseCase === "LOW_VOLUME" || selectedUseCase === "UCAAS_LOW_VOLUME" ? "$6.00" : selectedUseCase === "CHARITY" ? "$15.00" : "$30.00"}</span></div>
-                          <div className="flex justify-between"><span>Monthly Fee (after):</span><span className="font-medium">{selectedUseCase === "LOW_VOLUME" || selectedUseCase === "UCAAS_LOW_VOLUME" ? "$2.00/mo" : selectedUseCase === "CHARITY" ? "$5.00/mo" : "$10.00/mo"}</span></div>
-                        </div>
-                        <div className="p-4 border rounded-lg space-y-2">
-                          <p className="font-medium">Campaign Summary</p>
-                          <p className="text-sm text-slate-600">Brand: {brands.find(b => b.brandId === selectedBrandForCampaign)?.displayName}</p>
-                          <p className="text-sm text-slate-600">Use Case: {USE_CASES.find(uc => uc.value === selectedUseCase)?.label}</p>
-                          {needsSubUseCases && <p className="text-sm text-slate-600">Sub Use Cases: {selectedSubUseCases.join(", ")}</p>}
-                        </div>
-                        <div className="flex gap-2 pt-4">
-                          <Button onClick={() => createCampaignMutation.mutate()} disabled={createCampaignMutation.isPending || !campaignDescription || !sampleMessage1 || !sampleMessage2}>
-                            {createCampaignMutation.isPending ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Submitting...</> : "Submit Campaign"}
-                          </Button>
-                          <Button variant="outline" onClick={() => setCampaignStep(3)}>Back</Button>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="w-48 border-l pl-4">
-                    <div className="space-y-2 text-sm">
-                      <div className={`py-1 ${campaignStep === 1 ? "text-primary font-medium border-l-2 border-primary pl-2 -ml-[17px]" : "text-slate-500 pl-2"}`}>1. Campaign use case</div>
-                      <div className={`py-1 ${campaignStep === 2 ? "text-primary font-medium border-l-2 border-primary pl-2 -ml-[17px]" : "text-slate-500 pl-2"}`}>2. Carrier terms preview</div>
-                      <div className={`py-1 ${campaignStep === 3 ? "text-primary font-medium border-l-2 border-primary pl-2 -ml-[17px]" : "text-slate-500 pl-2"}`}>3. Campaign details</div>
-                      <div className={`py-1 ${campaignStep === 4 ? "text-primary font-medium border-l-2 border-primary pl-2 -ml-[17px]" : "text-slate-500 pl-2"}`}>4. Payment and confirmation</div>
-                    </div>
-                  </div>
-                </div>
-              </SheetContent>
-            </Sheet>
+            <Button size="sm" data-testid="btn-open-create-campaign" onClick={() => setShowCampaignWizard(true)}>
+              <Plus className="h-4 w-4 mr-2" />Create Campaign
+            </Button>
           )}
         </div>
 
