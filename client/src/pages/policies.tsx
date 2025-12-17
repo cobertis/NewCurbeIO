@@ -4440,7 +4440,8 @@ export default function PoliciesPage() {
     marketplaceId: '', 
     memberId: '',
     effectiveDate: '', 
-    expirationDate: '' 
+    expirationDate: '',
+    paymentDate: ''
   });
   
   // Empty form state for manual plan dialog
@@ -4942,6 +4943,7 @@ export default function PoliciesPage() {
           memberId: plan.memberId || existingPlan.memberId || '',
           effectiveDate: plan.effectiveDate || existingPlan.effectiveDate || '',
           expirationDate: plan.expirationDate || existingPlan.expirationDate || '',
+          paymentDate: plan.paymentDate || existingPlan.paymentDate || '',
         });
       }
     }
@@ -8408,6 +8410,12 @@ export default function PoliciesPage() {
                                         <p className="text-xs">{formatDateForDisplay(plan.expirationDate || policyPlan.expirationDate, "MM/dd/yyyy")}</p>
                                       </div>
                                     )}
+                                    {(plan.paymentDate || policyPlan.paymentDate) && (
+                                      <div>
+                                        <p className="text-xs text-muted-foreground">Payment Date</p>
+                                        <p className="text-xs">{plan.paymentDate || policyPlan.paymentDate}</p>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
 
@@ -8428,6 +8436,7 @@ export default function PoliciesPage() {
                                       memberId: plan.memberId || policyPlan.memberId || '',
                                       effectiveDate: plan.effectiveDate || policyPlan.effectiveDate || '',
                                       expirationDate: plan.expirationDate || policyPlan.expirationDate || '',
+                                      paymentDate: plan.paymentDate || policyPlan.paymentDate || '',
                                     });
                                     setManualPlanDialogOpen(true); 
                                   }} data-testid={`button-edit-plan-${policyPlan.id}`}>
@@ -11167,7 +11176,7 @@ export default function PoliciesPage() {
             setSimplePlanFormData({ 
               planId: '', carrier: '', planName: '', metalLevel: '', planType: '',
               monthlyPayment: '', originalPrice: '', marketplaceId: '', memberId: '',
-              effectiveDate: '', expirationDate: '' 
+              effectiveDate: '', expirationDate: '', paymentDate: ''
             });
             setEditingPlanId(null);
           }
@@ -11323,6 +11332,17 @@ export default function PoliciesPage() {
                     data-testid="input-expiration-date"
                   />
                 </div>
+                <div>
+                  <Label htmlFor="paymentDate" className="text-sm">Payment Date</Label>
+                  <Input
+                    id="paymentDate"
+                    value={simplePlanFormData.paymentDate}
+                    onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, paymentDate: e.target.value })}
+                    placeholder="e.g., 1st of each month"
+                    className="mt-1"
+                    data-testid="input-payment-date"
+                  />
+                </div>
               </div>
             </div>
 
@@ -11347,6 +11367,7 @@ export default function PoliciesPage() {
                       memberId: simplePlanFormData.memberId || undefined,
                       effectiveDate: simplePlanFormData.effectiveDate || undefined,
                       expirationDate: simplePlanFormData.expirationDate || undefined,
+                      paymentDate: simplePlanFormData.paymentDate || undefined,
                     };
                     
                     if (editingPlanId) {
@@ -11371,7 +11392,7 @@ export default function PoliciesPage() {
                     setSimplePlanFormData({ 
                       planId: '', carrier: '', planName: '', metalLevel: '', planType: '',
                       monthlyPayment: '', originalPrice: '', marketplaceId: '', memberId: '',
-                      effectiveDate: '', expirationDate: '' 
+                      effectiveDate: '', expirationDate: '', paymentDate: ''
                     });
                     setEditingPlanId(null);
                   } catch (error: any) {
