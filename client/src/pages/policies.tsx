@@ -4427,6 +4427,23 @@ export default function PoliciesPage() {
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [carrierPopoverOpen, setCarrierPopoverOpen] = useState(false);
   
+  // Simplified plan dialog state
+  const [searchPlanId, setSearchPlanId] = useState('');
+  const [isSearchingPlan, setIsSearchingPlan] = useState(false);
+  const [foundPlanData, setFoundPlanData] = useState<any>(null);
+  const [simplePlanFormData, setSimplePlanFormData] = useState({ marketplaceId: '', effectiveDate: '', memberId: '', expirationDate: '' });
+  const [manualEntryMode, setManualEntryMode] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [manualPlanEntry, setManualPlanEntry] = useState({
+    carrier: '',
+    planName: '',
+    metalLevel: '',
+    planType: '',
+    monthlyPayment: '',
+    originalPrice: '',
+    planId: '',
+  });
+  
   // Empty form state for manual plan dialog
   const emptyManualPlanData = {
     // Basic Info
@@ -8217,30 +8234,7 @@ export default function PoliciesPage() {
                             <p className="text-sm font-medium text-foreground mb-1">No Plans Added</p>
                             <p className="text-xs text-muted-foreground mb-5 max-w-[200px]">Search the marketplace or add a plan manually</p>
                             <div className="flex items-center gap-2">
-                              {viewingQuote.productType === 'aca' && (() => {
-                                const policyState = viewingQuote.physical_state?.toUpperCase().trim() || '';
-                                const isStateBased = STATE_BASED_EXCHANGES.includes(policyState);
-                                if (isStateBased) {
-                                  return (
-                                    <Button variant="outline" size="sm" className="h-8 text-xs" data-testid="button-state-marketplace-info-empty"
-                                      onClick={() => {
-                                        const marketplaceName = STATE_MARKETPLACE_NAMES[policyState] || 'state marketplace';
-                                        toast({ title: "State-Based Marketplace", description: `This policy uses ${marketplaceName}. Add plans manually.`, duration: 5000 });
-                                      }}
-                                    >
-                                      <Info className="h-3.5 w-3.5 mr-1" />
-                                      {policyState}
-                                    </Button>
-                                  );
-                                }
-                                return (
-                                  <Button variant="default" size="sm" className="h-8 text-xs" onClick={() => setLocation(`/customers/${viewingQuote.id}/marketplace-plans`)} data-testid="button-search-plans-empty">
-                                    <Search className="h-3.5 w-3.5 mr-1" />
-                                    Search
-                                  </Button>
-                                );
-                              })()}
-                              <Button variant="outline" size="sm" className="h-8 text-xs" onClick={() => setManualPlanDialogOpen(true)} data-testid="button-add-plan-manually-empty">
+                              <Button variant="default" size="sm" className="h-8 text-xs" onClick={() => setManualPlanDialogOpen(true)} data-testid="button-add-plan-empty">
                                 <Plus className="h-3.5 w-3.5 mr-1" />
                                 Add Plan
                               </Button>
@@ -8301,110 +8295,81 @@ export default function PoliciesPage() {
                             
                             return (
                               <div key={policyPlan.id || index} className="rounded-lg border border-border/60 bg-background/40 overflow-hidden">
-                                {/* Plan Header */}
-                                <div className="flex items-center justify-between gap-3 px-4 py-3 border-b border-border/40 bg-muted/20">
-                                  <div className="flex items-center gap-3 flex-1 min-w-0">
-                                    <div className="h-9 w-9 rounded-lg bg-background border border-border/40 flex items-center justify-center flex-shrink-0">
-                                      <Shield className="h-4.5 w-4.5 text-primary" />
-                                    </div>
+                                {/* Header: Carrier + Plan Name + Badges */}
+                                <div className="px-4 py-3 border-b border-border/40 bg-muted/20">
+                                  <div className="flex items-center justify-between gap-3">
                                     <div className="flex-1 min-w-0">
-                                      <p className="text-sm font-semibold text-foreground truncate">{plan.issuer?.name || 'Insurance Provider'}</p>
-                                      <p className="text-[11px] text-muted-foreground font-mono">Plan ID: {plan.id || 'N/A'}</p>
+                                      <p className="text-sm font-semibold text-foreground">{plan.issuer?.name || 'Insurance Provider'}</p>
+                                      <p className="text-sm text-primary font-medium truncate">{plan.name}</p>
+                                    </div>
+                                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                                      <Badge variant="secondary" className="text-[10px] h-5 font-medium">{plan.metal_level || 'N/A'}</Badge>
+                                      <Badge variant="outline" className="text-[10px] h-5">{plan.type || 'N/A'}</Badge>
                                     </div>
                                   </div>
-                                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                                    <Badge variant="secondary" className="text-[10px] h-5 font-medium">{plan.metal_level || 'N/A'}</Badge>
-                                    <Badge variant="outline" className="text-[10px] h-5">{plan.type || 'N/A'}</Badge>
-                                    {plan.quality_rating?.available && plan.quality_rating.global_rating > 0 && (
-                                      <Badge variant="outline" className="text-[10px] h-5">Rating: {plan.quality_rating.global_rating}/5</Badge>
-                                    )}
-                                    {plan.hsa_eligible && (
-                                      <Badge variant="outline" className="text-[10px] h-5 bg-green-50 dark:bg-green-950 border-green-300 dark:border-green-700">HSA</Badge>
-                                    )}
-                                  </div>
                                 </div>
 
-                                {/* Plan Name */}
-                                <div className="px-4 pt-3">
-                                  <p className="text-sm font-medium text-primary">{plan.name}</p>
-                                </div>
-
-                                {/* Plan Cost Details */}
+                                {/* Cost Summary - Prominent */}
                                 <div className="p-4">
-                                  <div className="space-y-4">
-                                    {/* Cost Summary */}
-                                    <div className="grid grid-cols-3 gap-4">
-                                      <div>
-                                        <p className="text-xs text-muted-foreground mb-1">Premium</p>
-                                        {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && plan.premium !== plan.premium_w_credit ? (
-                                          <>
-                                            <p className="text-2xl font-bold">{formatCurrency(plan.premium_w_credit)}</p>
-                                            <p className="text-xs text-muted-foreground line-through">Was {formatCurrency(plan.premium)}</p>
-                                            <p className="text-xs font-medium text-green-600 dark:text-green-400">Save: {formatCurrency(Math.abs(plan.premium - plan.premium_w_credit))}</p>
-                                          </>
-                                        ) : (
-                                          <p className="text-2xl font-bold">{formatCurrency(premium)}</p>
-                                        )}
-                                      </div>
-                                      <div>
-                                        <p className="text-xs text-muted-foreground mb-1">Deductible</p>
-                                        <p className="text-2xl font-bold">{mainDeductible ? formatCurrency(mainDeductible.amount) : '$0'}</p>
-                                        <p className="text-xs text-muted-foreground">Individual total</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-xs text-muted-foreground mb-1">Out-of-pocket max</p>
-                                        <p className="text-2xl font-bold">{outOfPocketMax ? formatCurrency(outOfPocketMax) : 'N/A'}</p>
-                                        <p className="text-xs text-muted-foreground">Individual total</p>
-                                      </div>
+                                  <div className="flex items-center gap-6">
+                                    {/* Monthly Payment - Large and prominent */}
+                                    <div className="text-center">
+                                      <p className="text-xs text-muted-foreground mb-1">Monthly Payment</p>
+                                      <p className="text-3xl font-bold text-primary">
+                                        ${(plan.premium_w_credit ?? plan.premium ?? 0).toFixed(2)}
+                                      </p>
                                     </div>
-
-                                    {/* Benefits Grid */}
-                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                                      <div>
-                                        <p className="text-xs font-medium mb-0.5">Primary Doctor</p>
-                                        <p className="text-xs text-muted-foreground">{primaryCareCost || 'No Charge'}</p>
+                                    
+                                    {/* Savings */}
+                                    {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && plan.premium !== plan.premium_w_credit && (
+                                      <div className="text-center">
+                                        <p className="text-xs text-muted-foreground mb-1">Savings</p>
+                                        <p className="text-xl font-semibold text-green-600">
+                                          ${Math.abs((plan.premium ?? 0) - (plan.premium_w_credit ?? plan.premium ?? 0)).toFixed(2)}
+                                        </p>
                                       </div>
-                                      <div>
-                                        <p className="text-xs font-medium mb-0.5">Specialist</p>
-                                        <p className="text-xs text-muted-foreground">{specialistCost || 'No Charge'}</p>
+                                    )}
+                                    
+                                    {/* Plan Was */}
+                                    {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && plan.premium !== plan.premium_w_credit && (
+                                      <div className="text-center">
+                                        <p className="text-xs text-muted-foreground mb-1">Plan Was</p>
+                                        <p className="text-lg font-medium text-muted-foreground line-through">
+                                          ${(plan.premium ?? 0).toFixed(2)}
+                                        </p>
                                       </div>
-                                      <div>
-                                        <p className="text-xs font-medium mb-0.5">Urgent Care</p>
-                                        <p className="text-xs text-muted-foreground">{urgentCareCost || 'No Charge'}</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-xs font-medium mb-0.5">Emergency</p>
-                                        <p className="text-xs text-muted-foreground">{emergencyCost || '40% Coinsurance'}</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-xs font-medium mb-0.5">Mental Health</p>
-                                        <p className="text-xs text-muted-foreground">{mentalHealthCost || 'No Charge'}</p>
-                                      </div>
-                                      <div>
-                                        <p className="text-xs font-medium mb-0.5">Generic Drugs</p>
-                                        <p className="text-xs text-muted-foreground">{genericDrugsCost || 'No Charge'}</p>
-                                      </div>
+                                    )}
+                                  </div>
+                                  
+                                  {/* Plan ID, Marketplace ID, Effective Date */}
+                                  <div className="mt-4 pt-3 border-t border-border/30 grid grid-cols-3 gap-4 text-sm">
+                                    <div>
+                                      <p className="text-xs text-muted-foreground">Plan ID</p>
+                                      <p className="font-mono text-xs">{plan.id || 'N/A'}</p>
                                     </div>
+                                    {(plan.marketplaceId || policyPlan.marketplaceId) && (
+                                      <div>
+                                        <p className="text-xs text-muted-foreground">Marketplace ID</p>
+                                        <p className="font-mono text-xs">{plan.marketplaceId || policyPlan.marketplaceId}</p>
+                                      </div>
+                                    )}
+                                    {(plan.effectiveDate || policyPlan.effectiveDate) && (
+                                      <div>
+                                        <p className="text-xs text-muted-foreground">Effective Date</p>
+                                        <p className="text-xs">{plan.effectiveDate || policyPlan.effectiveDate}</p>
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
 
                                 {/* Footer Actions */}
-                                <div className="px-4 py-2 border-t border-border/40 flex items-center justify-between bg-muted/10">
-                                  <div className="flex items-center gap-2">
-                                    {policyPlan.isPrimary && <Badge variant="default" className="text-[10px] h-5">Primary Plan</Badge>}
-                                    <span className="text-[10px] text-muted-foreground">{policyPlan.source === 'marketplace' ? 'Marketplace Plan' : 'Manual Entry'}</span>
-                                  </div>
-                                  <div className="flex items-center gap-1.5">
-                                    <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setEditingPlanId(policyPlan.id); setManualPlanDialogOpen(true); }} data-testid={`button-edit-plan-${policyPlan.id}`}>
-                                      <Edit className="h-3 w-3 mr-1" /> Edit
-                                    </Button>
-                                    <Button variant="outline" size="sm" className="h-7 text-xs" onClick={() => setLocation(`/customers/${viewingQuote.id}/marketplace-plans`)} data-testid={`button-change-plan-${policyPlan.id}`}>
-                                      <RefreshCw className="h-3 w-3 mr-1" /> Change Plan
-                                    </Button>
-                                    <Button variant="destructive" size="sm" className="h-7 text-xs" onClick={() => setDeletingPlan({ id: policyPlan.id, name: policyPlan.planName || 'this plan' })} data-testid={`button-remove-plan-${policyPlan.id}`}>
-                                      <X className="h-3 w-3 mr-1" /> Remove
-                                    </Button>
-                                  </div>
+                                <div className="px-4 py-2 border-t border-border/40 flex items-center justify-end gap-1.5 bg-muted/10">
+                                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setEditingPlanId(policyPlan.id); setManualPlanDialogOpen(true); }} data-testid={`button-edit-plan-${policyPlan.id}`}>
+                                    <Edit className="h-3 w-3 mr-1" /> Edit
+                                  </Button>
+                                  <Button variant="destructive" size="sm" className="h-7 text-xs" onClick={() => setDeletingPlan({ id: policyPlan.id, name: policyPlan.planName || 'this plan' })} data-testid={`button-remove-plan-${policyPlan.id}`}>
+                                    <X className="h-3 w-3 mr-1" /> Remove
+                                  </Button>
                                 </div>
                               </div>
                             );
@@ -11129,1125 +11094,426 @@ export default function PoliciesPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        {/* Manual Plan Dialog */}
-        <Dialog open={manualPlanDialogOpen} onOpenChange={setManualPlanDialogOpen}>
-          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" data-testid="dialog-manual-plan">
+        {/* Manual Plan Dialog - Simplified */}
+        <Dialog open={manualPlanDialogOpen} onOpenChange={(open) => {
+          setManualPlanDialogOpen(open);
+          if (!open) {
+            setSearchPlanId('');
+            setFoundPlanData(null);
+            setSimplePlanFormData({ marketplaceId: '', effectiveDate: '', memberId: '', expirationDate: '' });
+            setEditingPlanId(null);
+          }
+        }}>
+          <DialogContent className="max-w-lg" data-testid="dialog-manual-plan">
             <DialogHeader>
-              <DialogTitle>Manual Plan Entry</DialogTitle>
+              <DialogTitle>{editingPlanId ? 'Edit Plan' : 'Add Plan'}</DialogTitle>
               <DialogDescription>
-                Enter all plan details manually. Required fields are marked with *
+                {editingPlanId ? 'Update plan information' : 'Enter a Plan ID to search and add a marketplace plan'}
               </DialogDescription>
             </DialogHeader>
             
             <div className="space-y-6">
-              {/* 1. Basic Information */}
-              <div>
-                <h3 className="text-sm font-semibold text-primary mb-3">Basic Information</h3>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="productType" className="text-sm">Product type <span className="text-red-500">*</span></Label>
-                    <Select
-                      value={manualPlanData.productType}
-                      onValueChange={(value) => setManualPlanData({ ...manualPlanData, productType: value })}
-                    >
-                      <SelectTrigger id="productType" className="mt-1" data-testid="select-product-type">
-                        <SelectValue placeholder="Select product type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="aca">Health Insurance (ACA)</SelectItem>
-                        <SelectItem value="annuities">Annuities</SelectItem>
-                        <SelectItem value="dental">Dental</SelectItem>
-                        <SelectItem value="final_expense">Final Expense</SelectItem>
-                        <SelectItem value="life">Life Insurance</SelectItem>
-                        <SelectItem value="medicaid">Medicaid</SelectItem>
-                        <SelectItem value="medicare">Medicare</SelectItem>
-                        <SelectItem value="private">Private</SelectItem>
-                        <SelectItem value="supplemental">Supplemental</SelectItem>
-                        <SelectItem value="travel">Travel</SelectItem>
-                        <SelectItem value="vision">Vision</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="carrier" className="text-sm">Carrier <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="carrier"
-                      value={manualPlanData.carrier}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, carrier: e.target.value })}
-                      placeholder="e.g., Ambetter Health, Blue Cross Blue Shield, etc."
-                      className="mt-1"
-                      list="carrier-suggestions"
-                      disabled={!manualPlanData.productType}
-                      data-testid="input-carrier"
-                    />
-                    <datalist id="carrier-suggestions">
-                      {manualPlanData.productType && getCarriersByProductType(manualPlanData.productType).map((carrier) => (
-                        <option key={carrier} value={carrier} />
-                      ))}
-                    </datalist>
-                    {manualPlanData.productType && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        Suggested: {getCarriersByProductType(manualPlanData.productType).slice(0, 3).join(', ')}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <Label htmlFor="planName" className="text-sm">Plan name</Label>
-                    <Input
-                      id="planName"
-                      value={manualPlanData.planName}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, planName: e.target.value })}
-                      placeholder="e.g., Silver Plan A"
-                      className="mt-1"
-                      data-testid="input-plan-name"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="cmsPlanId" className="text-sm">Plan ID / CMS Plan ID</Label>
-                    <Input
-                      id="cmsPlanId"
-                      value={manualPlanData.cmsPlanId}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, cmsPlanId: e.target.value })}
-                      placeholder="Enter plan ID"
-                      className="mt-1"
-                      data-testid="input-cms-plan-id"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <Label htmlFor="carrierIssuerId" className="text-sm">Carrier Issuer ID</Label>
+              {/* Plan ID Search */}
+              <div className="space-y-3">
+                <Label htmlFor="searchPlanId" className="text-sm font-medium">Plan ID <span className="text-red-500">*</span></Label>
+                <div className="flex gap-2">
                   <Input
-                    id="carrierIssuerId"
-                    value={manualPlanData.carrierIssuerId}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, carrierIssuerId: e.target.value })}
-                    placeholder="e.g., 12345"
-                    className="mt-1"
-                    data-testid="input-carrier-issuer-id"
+                    id="searchPlanId"
+                    value={searchPlanId}
+                    onChange={(e) => setSearchPlanId(e.target.value)}
+                    placeholder="Enter Plan ID (e.g., 12345XX1234567)"
+                    className="flex-1"
+                    data-testid="input-plan-id-search"
+                    disabled={isSearchingPlan || !!foundPlanData}
                   />
-                </div>
-
-                <div className="grid grid-cols-3 gap-4 mt-4">
-                  <div>
-                    <Label htmlFor="metal" className="text-sm">Metal level</Label>
-                    <Select
-                      value={manualPlanData.metal}
-                      onValueChange={(value) => setManualPlanData({ ...manualPlanData, metal: value })}
+                  {!foundPlanData ? (
+                    <Button
+                      type="button"
+                      onClick={async () => {
+                        if (!searchPlanId.trim() || !viewingQuote?.id) return;
+                        setIsSearchingPlan(true);
+                        try {
+                          const response = await fetch(`/api/policies/${viewingQuote.id}/marketplace-plan/${searchPlanId.trim()}`);
+                          if (!response.ok) {
+                            const error = await response.json();
+                            throw new Error(error.message || 'Plan not found');
+                          }
+                          const data = await response.json();
+                          setFoundPlanData(data.plan);
+                          setSearchError(null);
+                          setManualEntryMode(false);
+                          toast({ title: "Plan Found", description: `Found: ${data.plan?.name || 'Plan'}`, duration: 2000 });
+                        } catch (error: any) {
+                          setSearchError(error.message || "Plan not found");
+                          toast({ title: "Search Failed", description: error.message || "Plan not found. You can enter the plan details manually.", variant: "destructive", duration: 4000 });
+                          setFoundPlanData(null);
+                        } finally {
+                          setIsSearchingPlan(false);
+                        }
+                      }}
+                      disabled={isSearchingPlan || !searchPlanId.trim()}
+                      data-testid="button-search-plan-id"
                     >
-                      <SelectTrigger id="metal" className="mt-1" data-testid="select-metal">
-                        <SelectValue placeholder="Select metal" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="bronze">Bronze</SelectItem>
-                        <SelectItem value="silver">Silver</SelectItem>
-                        <SelectItem value="gold">Gold</SelectItem>
-                        <SelectItem value="platinum">Platinum</SelectItem>
-                        <SelectItem value="catastrophic">Catastrophic</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="networkType" className="text-sm">Network Type</Label>
-                    <Select
-                      value={manualPlanData.networkType}
-                      onValueChange={(value) => setManualPlanData({ ...manualPlanData, networkType: value })}
+                      {isSearchingPlan ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
+                    </Button>
+                  ) : (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setFoundPlanData(null);
+                        setSearchPlanId('');
+                        setSearchError(null);
+                        setManualEntryMode(false);
+                      }}
+                      data-testid="button-clear-plan"
                     >
-                      <SelectTrigger id="networkType" className="mt-1" data-testid="select-network-type">
-                        <SelectValue placeholder="Select network" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="EPO">EPO</SelectItem>
-                        <SelectItem value="PPO">PPO</SelectItem>
-                        <SelectItem value="HMO">HMO</SelectItem>
-                        <SelectItem value="POS">POS</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div>
-                    <Label htmlFor="rating" className="text-sm">Rating (0-5)</Label>
-                    <Input
-                      id="rating"
-                      type="number"
-                      min="0"
-                      max="5"
-                      step="0.1"
-                      value={manualPlanData.rating}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, rating: e.target.value })}
-                      placeholder="e.g., 4.5"
-                      className="mt-1"
-                      data-testid="input-rating"
-                    />
-                  </div>
+                      <X className="h-4 w-4" />
+                    </Button>
+                  )}
                 </div>
               </div>
 
-              {/* 2. Cost Details */}
-              <div className="pt-4 border-t">
-                <h3 className="text-sm font-semibold text-primary mb-3">Cost Details</h3>
-                
-                <div className="grid grid-cols-3 gap-4">
-                  <div>
-                    <Label htmlFor="planWas" className="text-sm">Plan was</Label>
-                    <Input
-                      id="planWas"
-                      type="number"
-                      step="0.01"
-                      value={manualPlanData.planWas}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, planWas: e.target.value })}
-                      placeholder="e.g., 1481.93"
-                      className="mt-1"
-                      data-testid="input-plan-was"
-                    />
+              {/* Found Plan Details (readonly) */}
+              {foundPlanData && (
+                <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
+                  <h4 className="text-sm font-semibold text-primary flex items-center gap-2">
+                    <Check className="h-4 w-4 text-green-600" />
+                    Plan Found
+                  </h4>
+                  
+                  <div className="grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-muted-foreground text-xs">Plan ID</p>
+                      <p className="font-mono font-medium">{foundPlanData.id}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Carrier</p>
+                      <p className="font-medium">{foundPlanData.issuer?.name || 'N/A'}</p>
+                    </div>
+                    <div className="col-span-2">
+                      <p className="text-muted-foreground text-xs">Plan Name</p>
+                      <p className="font-medium">{foundPlanData.name}</p>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Metal Level</p>
+                      <Badge variant="secondary" className="mt-1">{foundPlanData.metal_level || 'N/A'}</Badge>
+                    </div>
+                    <div>
+                      <p className="text-muted-foreground text-xs">Plan Type</p>
+                      <Badge variant="outline" className="mt-1">{foundPlanData.type || 'N/A'}</Badge>
+                    </div>
                   </div>
 
-                  <div>
-                    <Label htmlFor="premium" className="text-sm">Premium (monthly payment)</Label>
-                    <Input
-                      id="premium"
-                      type="number"
-                      step="0.01"
-                      value={manualPlanData.premium}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, premium: e.target.value })}
-                      placeholder="e.g., 450.00"
-                      className="mt-1"
-                      data-testid="input-premium"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="taxCredit" className="text-sm">Tax Credit / Subsidy (APTC)</Label>
-                    <Input
-                      id="taxCredit"
-                      type="number"
-                      step="0.01"
-                      value={manualPlanData.taxCredit}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, taxCredit: e.target.value })}
-                      placeholder="e.g., 150.00"
-                      className="mt-1"
-                      data-testid="input-tax-credit"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <Label htmlFor="deductible" className="text-sm">Deductible (Individual)</Label>
-                    <Input
-                      id="deductible"
-                      type="number"
-                      step="0.01"
-                      value={manualPlanData.deductible}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, deductible: e.target.value })}
-                      placeholder="e.g., 2000.00"
-                      className="mt-1"
-                      data-testid="input-deductible"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="deductibleFamily" className="text-sm">Deductible (Family)</Label>
-                    <Input
-                      id="deductibleFamily"
-                      type="number"
-                      step="0.01"
-                      value={manualPlanData.deductibleFamily}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, deductibleFamily: e.target.value })}
-                      placeholder="e.g., 4000.00"
-                      className="mt-1"
-                      data-testid="input-deductible-family"
-                    />
+                  <div className="border-t pt-4 mt-4">
+                    <div className="grid grid-cols-3 gap-4">
+                      <div className="text-center">
+                        <p className="text-muted-foreground text-xs mb-1">Monthly Payment</p>
+                        <p className="text-xl font-bold text-primary">
+                          ${(foundPlanData.premium_w_credit ?? foundPlanData.premium ?? 0).toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-muted-foreground text-xs mb-1">Savings</p>
+                        <p className="text-lg font-semibold text-green-600">
+                          ${((foundPlanData.premium ?? 0) - (foundPlanData.premium_w_credit ?? foundPlanData.premium ?? 0)).toFixed(2)}
+                        </p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-muted-foreground text-xs mb-1">Plan Was</p>
+                        <p className="text-lg font-medium text-muted-foreground line-through">
+                          ${(foundPlanData.premium ?? 0).toFixed(2)}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <Label htmlFor="outOfPocketMax" className="text-sm">Out-of-pocket max (Individual)</Label>
-                    <Input
-                      id="outOfPocketMax"
-                      type="number"
-                      step="0.01"
-                      value={manualPlanData.outOfPocketMax}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, outOfPocketMax: e.target.value })}
-                      placeholder="e.g., 8000.00"
-                      className="mt-1"
-                      data-testid="input-out-of-pocket-max"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="outOfPocketMaxFamily" className="text-sm">Out-of-pocket max (Family)</Label>
-                    <Input
-                      id="outOfPocketMaxFamily"
-                      type="number"
-                      step="0.01"
-                      value={manualPlanData.outOfPocketMaxFamily}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, outOfPocketMaxFamily: e.target.value })}
-                      placeholder="e.g., 16000.00"
-                      className="mt-1"
-                      data-testid="input-out-of-pocket-max-family"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* 3. Benefits & Copays */}
-              <div className="pt-4 border-t">
-                <h3 className="text-sm font-semibold text-primary mb-3">Benefits & Copays</h3>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="primaryCare" className="text-sm">Primary Doctor visits</Label>
-                    <Input
-                      id="primaryCare"
-                      value={manualPlanData.primaryCare}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, primaryCare: e.target.value })}
-                      placeholder='e.g., "$10" or "20%"'
-                      className="mt-1"
-                      data-testid="input-primary-care"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="specialist" className="text-sm">Specialist visits</Label>
-                    <Input
-                      id="specialist"
-                      value={manualPlanData.specialist}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, specialist: e.target.value })}
-                      placeholder='e.g., "$50" or "30%"'
-                      className="mt-1"
-                      data-testid="input-specialist"
-                    />
+              {/* Search Error & Manual Entry Toggle */}
+              {searchError && !foundPlanData && !manualEntryMode && (
+                <div className="space-y-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
+                  <div className="flex items-start gap-3">
+                    <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
+                    <div className="flex-1">
+                      <h4 className="text-sm font-semibold text-red-700 dark:text-red-400">Plan Not Found</h4>
+                      <p className="text-sm text-red-600 dark:text-red-300 mt-1">{searchError}</p>
+                      <div className="mt-3 flex gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setSearchError(null)}
+                          data-testid="button-try-again"
+                        >
+                          Try Different ID
+                        </Button>
+                        <Button
+                          type="button"
+                          size="sm"
+                          onClick={() => {
+                            setManualEntryMode(true);
+                            setManualPlanEntry({ ...manualPlanEntry, planId: searchPlanId });
+                          }}
+                          data-testid="button-enter-manually"
+                        >
+                          <Edit className="h-4 w-4 mr-1" />
+                          Enter Manually
+                        </Button>
+                      </div>
+                    </div>
                   </div>
                 </div>
+              )}
 
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <Label htmlFor="urgentCare" className="text-sm">Urgent care</Label>
-                    <Input
-                      id="urgentCare"
-                      value={manualPlanData.urgentCare}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, urgentCare: e.target.value })}
-                      placeholder='e.g., "$75"'
-                      className="mt-1"
-                      data-testid="input-urgent-care"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="emergency" className="text-sm">Emergencies</Label>
-                    <Input
-                      id="emergency"
-                      value={manualPlanData.emergency}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, emergency: e.target.value })}
-                      placeholder='e.g., "$500"'
-                      className="mt-1"
-                      data-testid="input-emergency"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <Label htmlFor="mentalHealth" className="text-sm">Mental health</Label>
-                    <Input
-                      id="mentalHealth"
-                      value={manualPlanData.mentalHealth}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, mentalHealth: e.target.value })}
-                      placeholder='e.g., "$30"'
-                      className="mt-1"
-                      data-testid="input-mental-health"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="genericDrugs" className="text-sm">Generic drugs</Label>
-                    <Input
-                      id="genericDrugs"
-                      value={manualPlanData.genericDrugs}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, genericDrugs: e.target.value })}
-                      placeholder='e.g., "$10"'
-                      className="mt-1"
-                      data-testid="input-generic-drugs"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* 4. Extended Benefits & Services */}
-              <div className="pt-4 border-t">
-                <h3 className="text-sm font-semibold text-primary mb-3">Extended Benefits & Services</h3>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="preferredBrandDrugs" className="text-sm">Preferred brand drugs</Label>
-                    <Input
-                      id="preferredBrandDrugs"
-                      value={manualPlanData.preferredBrandDrugs}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, preferredBrandDrugs: e.target.value })}
-                      placeholder='e.g., "$40" or "25%"'
-                      className="mt-1"
-                      data-testid="input-preferred-brand-drugs"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="nonPreferredBrandDrugs" className="text-sm">Non-preferred brand drugs</Label>
-                    <Input
-                      id="nonPreferredBrandDrugs"
-                      value={manualPlanData.nonPreferredBrandDrugs}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, nonPreferredBrandDrugs: e.target.value })}
-                      placeholder='e.g., "$80" or "50%"'
-                      className="mt-1"
-                      data-testid="input-non-preferred-brand-drugs"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <Label htmlFor="specialtyDrugs" className="text-sm">Specialty drugs</Label>
-                    <Input
-                      id="specialtyDrugs"
-                      value={manualPlanData.specialtyDrugs}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, specialtyDrugs: e.target.value })}
-                      placeholder='e.g., "$150" or "30%"'
-                      className="mt-1"
-                      data-testid="input-specialty-drugs"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="preventiveCare" className="text-sm">Preventive care</Label>
-                    <Input
-                      id="preventiveCare"
-                      value={manualPlanData.preventiveCare}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, preventiveCare: e.target.value })}
-                      placeholder='e.g., "No Charge"'
-                      className="mt-1"
-                      data-testid="input-preventive-care"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <Label htmlFor="inpatientFacility" className="text-sm">Inpatient facility</Label>
-                    <Input
-                      id="inpatientFacility"
-                      value={manualPlanData.inpatientFacility}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, inpatientFacility: e.target.value })}
-                      placeholder='e.g., "$1,500" or "30%"'
-                      className="mt-1"
-                      data-testid="input-inpatient-facility"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="inpatientPhysician" className="text-sm">Inpatient physician</Label>
-                    <Input
-                      id="inpatientPhysician"
-                      value={manualPlanData.inpatientPhysician}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, inpatientPhysician: e.target.value })}
-                      placeholder='e.g., "No Charge"'
-                      className="mt-1"
-                      data-testid="input-inpatient-physician"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <Label htmlFor="outpatientFacility" className="text-sm">Outpatient facility</Label>
-                    <Input
-                      id="outpatientFacility"
-                      value={manualPlanData.outpatientFacility}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, outpatientFacility: e.target.value })}
-                      placeholder='e.g., "$250"'
-                      className="mt-1"
-                      data-testid="input-outpatient-facility"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="outpatientPhysician" className="text-sm">Outpatient physician</Label>
-                    <Input
-                      id="outpatientPhysician"
-                      value={manualPlanData.outpatientPhysician}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, outpatientPhysician: e.target.value })}
-                      placeholder='e.g., "No Charge"'
-                      className="mt-1"
-                      data-testid="input-outpatient-physician"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <Label htmlFor="imaging" className="text-sm">Imaging (CT/PET/MRI)</Label>
-                    <Input
-                      id="imaging"
-                      value={manualPlanData.imaging}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, imaging: e.target.value })}
-                      placeholder='e.g., "$200" or "20%"'
-                      className="mt-1"
-                      data-testid="input-imaging"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="xrays" className="text-sm">X-rays and diagnostic imaging</Label>
-                    <Input
-                      id="xrays"
-                      value={manualPlanData.xrays}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, xrays: e.target.value })}
-                      placeholder='e.g., "$50"'
-                      className="mt-1"
-                      data-testid="input-xrays"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <Label htmlFor="labWork" className="text-sm">Laboratory services</Label>
-                    <Input
-                      id="labWork"
-                      value={manualPlanData.labWork}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, labWork: e.target.value })}
-                      placeholder='e.g., "$35"'
-                      className="mt-1"
-                      data-testid="input-lab-work"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="rehabilitation" className="text-sm">Rehabilitation services</Label>
-                    <Input
-                      id="rehabilitation"
-                      value={manualPlanData.rehabilitation}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, rehabilitation: e.target.value })}
-                      placeholder='e.g., "$45"'
-                      className="mt-1"
-                      data-testid="input-rehabilitation"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <Label htmlFor="habilitationServices" className="text-sm">Habilitation services</Label>
-                    <Input
-                      id="habilitationServices"
-                      value={manualPlanData.habilitationServices}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, habilitationServices: e.target.value })}
-                      placeholder='e.g., "$45"'
-                      className="mt-1"
-                      data-testid="input-habilitation-services"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="skilledNursing" className="text-sm">Skilled nursing facility</Label>
-                    <Input
-                      id="skilledNursing"
-                      value={manualPlanData.skilledNursing}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, skilledNursing: e.target.value })}
-                      placeholder='e.g., "$200/day"'
-                      className="mt-1"
-                      data-testid="input-skilled-nursing"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <Label htmlFor="durableMedicalEquipment" className="text-sm">Durable medical equipment</Label>
-                    <Input
-                      id="durableMedicalEquipment"
-                      value={manualPlanData.durableMedicalEquipment}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, durableMedicalEquipment: e.target.value })}
-                      placeholder='e.g., "20%"'
-                      className="mt-1"
-                      data-testid="input-durable-medical-equipment"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="hospiceCare" className="text-sm">Hospice care</Label>
-                    <Input
-                      id="hospiceCare"
-                      value={manualPlanData.hospiceCare}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, hospiceCare: e.target.value })}
-                      placeholder='e.g., "No Charge"'
-                      className="mt-1"
-                      data-testid="input-hospice-care"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <Label htmlFor="emergencyTransport" className="text-sm">Emergency medical transportation</Label>
-                  <Input
-                    id="emergencyTransport"
-                    value={manualPlanData.emergencyTransport}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, emergencyTransport: e.target.value })}
-                    placeholder='e.g., "$300"'
-                    className="mt-1"
-                    data-testid="input-emergency-transport"
-                  />
-                </div>
-              </div>
-
-              {/* 5. Plan Features */}
-              <div className="pt-4 border-t">
-                <h3 className="text-sm font-semibold text-primary mb-3">Plan Features</h3>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="dentalChild"
-                      checked={manualPlanData.dentalChild}
-                      onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, dentalChild: !!checked })}
-                      data-testid="checkbox-dental-child"
-                    />
-                    <Label htmlFor="dentalChild" className="text-sm font-normal cursor-pointer">
-                      Dental coverage (child)
-                    </Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="dentalAdult"
-                      checked={manualPlanData.dentalAdult}
-                      onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, dentalAdult: !!checked })}
-                      data-testid="checkbox-dental-adult"
-                    />
-                    <Label htmlFor="dentalAdult" className="text-sm font-normal cursor-pointer">
-                      Dental coverage (adult)
-                    </Label>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-3">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="hsaEligible"
-                      checked={manualPlanData.hsaEligible}
-                      onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, hsaEligible: !!checked })}
-                      data-testid="checkbox-hsa-eligible"
-                    />
-                    <Label htmlFor="hsaEligible" className="text-sm font-normal cursor-pointer">
-                      HSA eligible
-                    </Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="simpleChoice"
-                      checked={manualPlanData.simpleChoice}
-                      onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, simpleChoice: !!checked })}
-                      data-testid="checkbox-simple-choice"
-                    />
-                    <Label htmlFor="simpleChoice" className="text-sm font-normal cursor-pointer">
-                      Simple Choice plan
-                    </Label>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-3">
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="specialistReferralRequired"
-                      checked={manualPlanData.specialistReferralRequired}
-                      onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, specialistReferralRequired: !!checked })}
-                      data-testid="checkbox-specialist-referral-required"
-                    />
-                    <Label htmlFor="specialistReferralRequired" className="text-sm font-normal cursor-pointer">
-                      Specialist referral required
-                    </Label>
-                  </div>
-
-                  <div className="flex items-center space-x-2">
-                    <Checkbox
-                      id="hasNationalNetwork"
-                      checked={manualPlanData.hasNationalNetwork}
-                      onCheckedChange={(checked) => setManualPlanData({ ...manualPlanData, hasNationalNetwork: !!checked })}
-                      data-testid="checkbox-has-national-network"
-                    />
-                    <Label htmlFor="hasNationalNetwork" className="text-sm font-normal cursor-pointer">
-                      Has national network
-                    </Label>
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <Label htmlFor="diseaseManagementPrograms" className="text-sm">Disease management programs</Label>
-                  <Input
-                    id="diseaseManagementPrograms"
-                    value={manualPlanData.diseaseManagementPrograms}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, diseaseManagementPrograms: e.target.value })}
-                    placeholder='e.g., "Diabetes, Asthma, Heart Disease"'
-                    className="mt-1"
-                    data-testid="input-disease-management-programs"
-                  />
-                </div>
-              </div>
-
-              {/* 6. Enrollment Information */}
-              <div className="pt-4 border-t">
-                <h3 className="text-sm font-semibold text-primary mb-3">Enrollment Information</h3>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="saleType" className="text-sm">Type of sale</Label>
-                    <Select
-                      value={manualPlanData.saleType}
-                      onValueChange={(value) => setManualPlanData({ ...manualPlanData, saleType: value })}
+              {/* Manual Entry Form */}
+              {manualEntryMode && (
+                <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2">
+                      <Edit className="h-4 w-4" />
+                      Manual Entry Mode
+                    </h4>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => {
+                        setManualEntryMode(false);
+                        setSearchError(null);
+                      }}
+                      data-testid="button-cancel-manual"
                     >
-                      <SelectTrigger id="saleType" className="mt-1" data-testid="select-sale-type-manual">
-                        <SelectValue placeholder="Select type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="new">New sale</SelectItem>
-                        <SelectItem value="renewal">Renewal</SelectItem>
-                      </SelectContent>
-                    </Select>
+                      <X className="h-4 w-4" />
+                    </Button>
                   </div>
-
-                  <div>
-                    <Label htmlFor="ffmMarketplace" className="text-sm">FFM used in marketplace</Label>
-                    <Input
-                      id="ffmMarketplace"
-                      value={manualPlanData.ffmMarketplace}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, ffmMarketplace: e.target.value })}
-                      placeholder="Enter FFM"
-                      className="mt-1"
-                      data-testid="input-ffm-marketplace-manual"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <Label htmlFor="npnMarketplace" className="text-sm">NPN used in marketplace</Label>
-                    <Input
-                      id="npnMarketplace"
-                      value={manualPlanData.npnMarketplace}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, npnMarketplace: e.target.value })}
-                      placeholder="e.g., 17925766"
-                      className="mt-1"
-                      data-testid="input-npn-marketplace-manual"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="marketplaceId" className="text-sm">Marketplace ID</Label>
-                    <Input
-                      id="marketplaceId"
-                      value={manualPlanData.marketplaceId}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, marketplaceId: e.target.value })}
-                      placeholder="Enter marketplace ID"
-                      className="mt-1"
-                      data-testid="input-marketplace-id-manual"
-                    />
-                  </div>
-                </div>
-
-                <div className="mt-4">
-                  <Label htmlFor="memberId" className="text-sm">Member ID</Label>
-                  <Input
-                    id="memberId"
-                    value={manualPlanData.memberId}
-                    onChange={(e) => setManualPlanData({ ...manualPlanData, memberId: e.target.value })}
-                    placeholder="e.g., 441414053"
-                    className="mt-1"
-                    data-testid="input-member-id-manual"
-                  />
-                </div>
-              </div>
-
-              {/* 6. Policy Information */}
-              <div className="pt-4 border-t">
-                <h3 className="text-sm font-semibold text-primary mb-3">Policy Information</h3>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <Label htmlFor="effectiveDate" className="text-sm">Effective date <span className="text-red-500">*</span></Label>
-                    <Input
-                      id="effectiveDate"
-                      type="date"
-                      value={manualPlanData.effectiveDate}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, effectiveDate: e.target.value })}
-                      className="mt-1"
-                      data-testid="input-effective-date-manual"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="cancellationDate" className="text-sm">Cancellation date</Label>
-                    <Input
-                      id="cancellationDate"
-                      type="date"
-                      value={manualPlanData.cancellationDate}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, cancellationDate: e.target.value })}
-                      className="mt-1"
-                      data-testid="input-cancellation-date-manual"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4 mt-4">
-                  <div>
-                    <Label htmlFor="specialEnrollmentDate" className="text-sm">Special enrollment period date</Label>
-                    <Input
-                      id="specialEnrollmentDate"
-                      type="date"
-                      value={manualPlanData.specialEnrollmentDate}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, specialEnrollmentDate: e.target.value })}
-                      className="mt-1"
-                      data-testid="input-special-enrollment-date-manual"
-                    />
-                  </div>
-
-                  <div>
-                    <Label htmlFor="specialEnrollmentReason" className="text-sm">Special enrollment reason</Label>
-                    <Input
-                      id="specialEnrollmentReason"
-                      value={manualPlanData.specialEnrollmentReason}
-                      onChange={(e) => setManualPlanData({ ...manualPlanData, specialEnrollmentReason: e.target.value })}
-                      placeholder="Enter reason"
-                      className="mt-1"
-                      data-testid="input-special-enrollment-reason-manual"
-                    />
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="col-span-2">
+                      <Label htmlFor="manualPlanId" className="text-sm">Plan ID</Label>
+                      <Input
+                        id="manualPlanId"
+                        value={manualPlanEntry.planId}
+                        onChange={(e) => setManualPlanEntry({ ...manualPlanEntry, planId: e.target.value })}
+                        placeholder="e.g., 12345XX1234567"
+                        className="mt-1"
+                        data-testid="input-manual-plan-id"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="manualCarrier" className="text-sm">Carrier <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="manualCarrier"
+                        value={manualPlanEntry.carrier}
+                        onChange={(e) => setManualPlanEntry({ ...manualPlanEntry, carrier: e.target.value })}
+                        placeholder="e.g., Blue Cross Blue Shield"
+                        className="mt-1"
+                        data-testid="input-manual-carrier"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="manualPlanName" className="text-sm">Plan Name <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="manualPlanName"
+                        value={manualPlanEntry.planName}
+                        onChange={(e) => setManualPlanEntry({ ...manualPlanEntry, planName: e.target.value })}
+                        placeholder="e.g., Bronze PPO"
+                        className="mt-1"
+                        data-testid="input-manual-plan-name"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="manualMetalLevel" className="text-sm">Metal Level</Label>
+                      <Select
+                        value={manualPlanEntry.metalLevel}
+                        onValueChange={(value) => setManualPlanEntry({ ...manualPlanEntry, metalLevel: value })}
+                      >
+                        <SelectTrigger className="mt-1" data-testid="select-manual-metal-level">
+                          <SelectValue placeholder="Select metal level" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Bronze">Bronze</SelectItem>
+                          <SelectItem value="Silver">Silver</SelectItem>
+                          <SelectItem value="Gold">Gold</SelectItem>
+                          <SelectItem value="Platinum">Platinum</SelectItem>
+                          <SelectItem value="Catastrophic">Catastrophic</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="manualPlanType" className="text-sm">Plan Type</Label>
+                      <Select
+                        value={manualPlanEntry.planType}
+                        onValueChange={(value) => setManualPlanEntry({ ...manualPlanEntry, planType: value })}
+                      >
+                        <SelectTrigger className="mt-1" data-testid="select-manual-plan-type">
+                          <SelectValue placeholder="Select plan type" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="PPO">PPO</SelectItem>
+                          <SelectItem value="HMO">HMO</SelectItem>
+                          <SelectItem value="EPO">EPO</SelectItem>
+                          <SelectItem value="POS">POS</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label htmlFor="manualMonthlyPayment" className="text-sm">Monthly Payment ($) <span className="text-red-500">*</span></Label>
+                      <Input
+                        id="manualMonthlyPayment"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={manualPlanEntry.monthlyPayment}
+                        onChange={(e) => setManualPlanEntry({ ...manualPlanEntry, monthlyPayment: e.target.value })}
+                        placeholder="0.00"
+                        className="mt-1"
+                        data-testid="input-manual-monthly-payment"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="manualOriginalPrice" className="text-sm">Original Price ($)</Label>
+                      <Input
+                        id="manualOriginalPrice"
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        value={manualPlanEntry.originalPrice}
+                        onChange={(e) => setManualPlanEntry({ ...manualPlanEntry, originalPrice: e.target.value })}
+                        placeholder="0.00"
+                        className="mt-1"
+                        data-testid="input-manual-original-price"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
+              )}
 
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
-                <Button
-                  variant="outline"
-                  onClick={() => {
-                    setEditingPlanId(null);
-                    setManualPlanDialogOpen(false);
-                    setManualPlanData({
-                      productType: '',
-                      carrier: '',
-                      carrierIssuerId: '',
-                      planName: '',
-                      cmsPlanId: '',
-                      metal: '',
-                      networkType: '',
-                      rating: '',
-                      premium: '',
-                      taxCredit: '',
-                      deductible: '',
-                      deductibleFamily: '',
-                      outOfPocketMax: '',
-                      outOfPocketMaxFamily: '',
-                      primaryCare: '',
-                      specialist: '',
-                      urgentCare: '',
-                      emergency: '',
-                      mentalHealth: '',
-                      genericDrugs: '',
-                      preferredBrandDrugs: '',
-                      nonPreferredBrandDrugs: '',
-                      specialtyDrugs: '',
-                      inpatientFacility: '',
-                      inpatientPhysician: '',
-                      outpatientFacility: '',
-                      outpatientPhysician: '',
-                      imaging: '',
-                      labWork: '',
-                      xrays: '',
-                      preventiveCare: '',
-                      rehabilitation: '',
-                      habilitationServices: '',
-                      skilledNursing: '',
-                      durableMedicalEquipment: '',
-                      hospiceCare: '',
-                      emergencyTransport: '',
-                      dentalChild: false,
-                      dentalAdult: false,
-                      hsaEligible: false,
-                      simpleChoice: false,
-                      specialistReferralRequired: false,
-                      hasNationalNetwork: false,
-                      diseaseManagementPrograms: '',
-                      effectiveDate: '',
-                      cancellationDate: '',
-                      specialEnrollmentDate: '',
-                      specialEnrollmentReason: '',
-                      saleType: '',
-                      ffmMarketplace: '',
-                      npnMarketplace: '',
-                      marketplaceId: '',
-                      memberId: '',
-                      policyTotalCost: '',
-                    });
-                  }}
-                  className="flex-1"
-                  data-testid="button-close-manual-plan"
-                >
-                  Close
-                </Button>
-                <Button
-                  onClick={async () => {
-                    console.log('[EDIT PLAN] editingPlanId:', editingPlanId);
-                    console.log('[EDIT PLAN] manualPlanData:', manualPlanData);
-                    
-                    if (!manualPlanData.productType || !manualPlanData.carrier || !manualPlanData.effectiveDate) {
-                      toast({
-                        title: "Validation Error",
-                        description: "Please fill in all required fields (Product type, Carrier, and Effective date).",
-                        variant: "destructive",
-                        duration: 3000,
-                      });
-                      return;
-                    }
-
-                    try {
-                      // Build deductibles array
-                      const deductibles = [];
-                      if (manualPlanData.deductible) {
-                        deductibles.push({
-                          amount: parseFloat(manualPlanData.deductible),
-                          type: 'Individual Medical',
-                          individual_cost: true,
-                          family_cost: false
-                        });
-                      }
-                      if (manualPlanData.deductibleFamily) {
-                        deductibles.push({
-                          amount: parseFloat(manualPlanData.deductibleFamily),
-                          type: 'Family Medical',
-                          individual_cost: false,
-                          family_cost: true
-                        });
-                      }
-
-                      // Build MOOPs array
-                      const moops = [];
-                      if (manualPlanData.outOfPocketMax) {
-                        moops.push({
-                          amount: parseFloat(manualPlanData.outOfPocketMax),
-                          type: 'Individual Medical',
-                          individual_cost: true,
-                          family_cost: false
-                        });
-                      }
-                      if (manualPlanData.outOfPocketMaxFamily) {
-                        moops.push({
-                          amount: parseFloat(manualPlanData.outOfPocketMaxFamily),
-                          type: 'Family Medical',
-                          individual_cost: false,
-                          family_cost: true
-                        });
-                      }
-
-                      const planObject = {
-                        id: manualPlanData.cmsPlanId || 'MANUAL-' + Date.now(),
-                        name: manualPlanData.planName || `${manualPlanData.carrier} Plan`,
-                        issuer: { 
-                          name: manualPlanData.carrier,
-                          id: manualPlanData.carrierIssuerId || ''
-                        },
-                        metal_level: manualPlanData.metal,
-                        type: manualPlanData.productType,
-                        network_type: manualPlanData.networkType,
-                        premium: manualPlanData.planWas ? parseFloat(manualPlanData.planWas) : (manualPlanData.premium ? parseFloat(manualPlanData.premium) : 0),
-                        premium_w_credit: manualPlanData.premium ? parseFloat(manualPlanData.premium) : null,
-                        household_aptc: manualPlanData.taxCredit ? parseFloat(manualPlanData.taxCredit) : null,
-                        deductibles: deductibles,
-                        moops: moops,
-                        out_of_pocket_limit: manualPlanData.outOfPocketMax ? parseFloat(manualPlanData.outOfPocketMax) : null,
-                        copay_primary: parseCostShareValue(manualPlanData.primaryCare),
-                        copay_specialist: parseCostShareValue(manualPlanData.specialist),
-                        copay_urgent_care: parseCostShareValue(manualPlanData.urgentCare),
-                        copay_emergency: parseCostShareValue(manualPlanData.emergency),
-                        copay_mental_health: parseCostShareValue(manualPlanData.mentalHealth),
-                        copay_generic_drugs: parseCostShareValue(manualPlanData.genericDrugs),
-                        copay_preferred_brand_drugs: parseCostShareValue(manualPlanData.preferredBrandDrugs),
-                        copay_non_preferred_brand_drugs: parseCostShareValue(manualPlanData.nonPreferredBrandDrugs),
-                        copay_specialty_drugs: parseCostShareValue(manualPlanData.specialtyDrugs),
-                        copay_inpatient_facility: parseCostShareValue(manualPlanData.inpatientFacility),
-                        copay_inpatient_physician: parseCostShareValue(manualPlanData.inpatientPhysician),
-                        copay_outpatient_facility: parseCostShareValue(manualPlanData.outpatientFacility),
-                        copay_outpatient_physician: parseCostShareValue(manualPlanData.outpatientPhysician),
-                        copay_imaging: parseCostShareValue(manualPlanData.imaging),
-                        copay_lab_work: parseCostShareValue(manualPlanData.labWork),
-                        copay_xrays: parseCostShareValue(manualPlanData.xrays),
-                        copay_preventive_care: parseCostShareValue(manualPlanData.preventiveCare),
-                        copay_rehabilitation: parseCostShareValue(manualPlanData.rehabilitation),
-                        copay_habilitation_services: parseCostShareValue(manualPlanData.habilitationServices),
-                        copay_skilled_nursing: parseCostShareValue(manualPlanData.skilledNursing),
-                        copay_durable_medical_equipment: parseCostShareValue(manualPlanData.durableMedicalEquipment),
-                        copay_hospice_care: parseCostShareValue(manualPlanData.hospiceCare),
-                        copay_emergency_transport: parseCostShareValue(manualPlanData.emergencyTransport),
-                        has_dental_child_coverage: manualPlanData.dentalChild,
-                        has_dental_adult_coverage: manualPlanData.dentalAdult,
-                        hsa_eligible: manualPlanData.hsaEligible,
-                        simple_choice: manualPlanData.simpleChoice,
-                        specialist_referral_required: manualPlanData.specialistReferralRequired,
-                        has_national_network: manualPlanData.hasNationalNetwork,
-                        disease_mgmt_programs: manualPlanData.diseaseManagementPrograms 
-                          ? manualPlanData.diseaseManagementPrograms.split(',').map(p => p.trim()).filter(Boolean)
-                          : [],
-                        quality_rating: manualPlanData.rating ? {
-                          available: true,
-                          global_rating: parseFloat(manualPlanData.rating)
-                        } : null,
-                        manual: true
-                      };
-
-                      // Check if we're editing an existing plan or creating a new one
-                      if (editingPlanId) {
-                        // CRITICAL FIX: When editing, merge with original planData to preserve benefits/deductibles/moops
-                        console.log('[EDIT PLAN] Updating plan:', editingPlanId);
-                        
-                        // Get original plan data
-                        const originalPlan = quoteDetail?.plans?.find((p: any) => p.id === editingPlanId);
-                        const originalPlanData = originalPlan?.planData 
-                          ? (typeof originalPlan.planData === 'string' ? JSON.parse(originalPlan.planData) : originalPlan.planData)
-                          : {};
-                        
-                        // Merge: Keep original benefits/deductibles/moops, update only edited fields
-                        const mergedPlanData = {
-                          ...originalPlanData,  // Keep all original data (benefits, deductibles, moops, etc.)
-                          ...planObject,        // Overwrite only the fields from the form
-                          // Preserve complex arrays that might not be in the form
-                          benefits: originalPlanData.benefits || planObject.benefits,
-                          deductibles: planObject.deductibles || originalPlanData.deductibles,
-                          moops: planObject.moops || originalPlanData.moops,
-                          // CRITICAL FIX: Explicitly preserve the NEW issuer data (carrier name) from the form
-                          issuer: {
-                            ...originalPlanData.issuer,  // Keep original issuer data first (e.g., existing ID)
-                            ...planObject.issuer,        // Overwrite with new values from form (carrier name)
-                          },
-                        };
-                        
-                        await apiRequest("PATCH", `/api/policies/${viewingQuote.id}/plans/${editingPlanId}`, {
-                          planData: mergedPlanData,
-                          source: 'manual'
-                        });
-                      } else {
-                        // Add new plan
-                        console.log('[EDIT PLAN] Creating new plan');
-                        await apiRequest("POST", `/api/policies/${viewingQuote.id}/plans`, {
-                          planData: planObject,
-                          source: 'manual'
-                        });
-                      }
-                      
-                      // Update policy metadata separately if needed
-                      if (manualPlanData.memberId || manualPlanData.npnMarketplace || manualPlanData.saleType || 
-                          manualPlanData.effectiveDate || manualPlanData.marketplaceId || manualPlanData.ffmMarketplace ||
-                          manualPlanData.specialEnrollmentReason || manualPlanData.cancellationDate || manualPlanData.specialEnrollmentDate) {
-                        await apiRequest("PATCH", `/api/policies/${viewingQuote.id}`, {
-                          memberId: manualPlanData.memberId || null,
-                          npnMarketplace: manualPlanData.npnMarketplace || null,
-                          saleType: manualPlanData.saleType || null,
-                          effectiveDate: formatDateForBackend(manualPlanData.effectiveDate),
-                          marketplaceId: manualPlanData.marketplaceId || null,
-                          ffmMarketplace: manualPlanData.ffmMarketplace || null,
-                          specialEnrollmentReason: manualPlanData.specialEnrollmentReason || null,
-                          cancellationDate: formatDateForBackend(manualPlanData.cancellationDate),
-                          specialEnrollmentDate: formatDateForBackend(manualPlanData.specialEnrollmentDate),
-                        });
-                      }
-                      
-                      // Invalidate all policy-related queries to refresh the UI
-                      queryClient.invalidateQueries({ queryKey: ['/api/policies', viewingQuote.id, 'detail'] });
-                      queryClient.invalidateQueries({ queryKey: ['/api/policies'] });
-                      
-                      toast({
-                        title: "Success",
-                        description: editingPlanId ? "Plan has been updated successfully." : "Plan has been saved successfully.",
-                        duration: 3000,
-                      });
-                      setEditingPlanId(null);
-                      setManualPlanDialogOpen(false);
-                      setManualPlanData({
-                        productType: '',
-                        carrier: '',
-                        carrierIssuerId: '',
-                        planName: '',
-                        cmsPlanId: '',
-                        metal: '',
-                        networkType: '',
-                        rating: '',
-                        premium: '',
-                        taxCredit: '',
-                        deductible: '',
-                        deductibleFamily: '',
-                        outOfPocketMax: '',
-                        outOfPocketMaxFamily: '',
-                        primaryCare: '',
-                        specialist: '',
-                        urgentCare: '',
-                        emergency: '',
-                        mentalHealth: '',
-                        genericDrugs: '',
-                        preferredBrandDrugs: '',
-                        nonPreferredBrandDrugs: '',
-                        specialtyDrugs: '',
-                        inpatientFacility: '',
-                        inpatientPhysician: '',
-                        outpatientFacility: '',
-                        outpatientPhysician: '',
-                        imaging: '',
-                        labWork: '',
-                        xrays: '',
-                        preventiveCare: '',
-                        rehabilitation: '',
-                        habilitationServices: '',
-                        skilledNursing: '',
-                        durableMedicalEquipment: '',
-                        hospiceCare: '',
-                        emergencyTransport: '',
-                        dentalChild: false,
-                        dentalAdult: false,
-                        hsaEligible: false,
-                        simpleChoice: false,
-                        specialistReferralRequired: false,
-                        hasNationalNetwork: false,
-                        diseaseManagementPrograms: '',
-                        effectiveDate: '',
-                        cancellationDate: '',
-                        specialEnrollmentDate: '',
-                        specialEnrollmentReason: '',
-                        saleType: '',
-                        ffmMarketplace: '',
-                        npnMarketplace: '',
-                        marketplaceId: '',
-                        memberId: '',
-                        policyTotalCost: '',
-                      });
-                    } catch (error: any) {
-                      toast({
-                        title: "Error",
-                        description: error.message || "Failed to add manual plan.",
-                        variant: "destructive",
-                        duration: 3000,
-                      });
-                    }
-                  }}
-                  className="flex-1"
-                  data-testid="button-submit-manual-plan"
-                >
-                  Submit
-                </Button>
-              </div>
+              {/* Editable Fields (for both modes) */}
+              {(foundPlanData || manualEntryMode) && (
+                <div className="space-y-4">
+                  <h4 className="text-sm font-semibold">Additional Information</h4>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label htmlFor="marketplaceId" className="text-sm">Marketplace ID</Label>
+                      <Input
+                        id="marketplaceId"
+                        value={simplePlanFormData.marketplaceId}
+                        onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, marketplaceId: e.target.value })}
+                        placeholder="FFM Application ID"
+                        className="mt-1"
+                        data-testid="input-marketplace-id"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="memberId" className="text-sm">Member ID</Label>
+                      <Input
+                        id="memberId"
+                        value={simplePlanFormData.memberId}
+                        onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, memberId: e.target.value })}
+                        placeholder="Member ID"
+                        className="mt-1"
+                        data-testid="input-member-id"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="effectiveDate" className="text-sm">Effective Date</Label>
+                      <Input
+                        id="effectiveDate"
+                        type="date"
+                        value={simplePlanFormData.effectiveDate}
+                        onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, effectiveDate: e.target.value })}
+                        className="mt-1"
+                        data-testid="input-effective-date"
+                      />
+                    </div>
+                    <div>
+                      <Label htmlFor="expirationDate" className="text-sm">Expiration Date</Label>
+                      <Input
+                        id="expirationDate"
+                        type="date"
+                        value={simplePlanFormData.expirationDate}
+                        onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, expirationDate: e.target.value })}
+                        className="mt-1"
+                        data-testid="input-expiration-date"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
+
+            <DialogFooter className="mt-6">
+              <Button variant="outline" onClick={() => setManualPlanDialogOpen(false)} data-testid="button-cancel-plan">
+                Cancel
+              </Button>
+              <Button
+                disabled={!foundPlanData && !(manualEntryMode && manualPlanEntry.carrier && manualPlanEntry.planName && manualPlanEntry.monthlyPayment)}
+                onClick={async () => {
+                  if (!viewingQuote?.id) return;
+                  if (!foundPlanData && !manualEntryMode) return;
+                  try {
+                    let planData;
+                    let source;
+                    
+                    if (foundPlanData) {
+                      // Use data from CMS search
+                      planData = {
+                        ...foundPlanData,
+                        marketplaceId: simplePlanFormData.marketplaceId || undefined,
+                        memberId: simplePlanFormData.memberId || undefined,
+                        effectiveDate: simplePlanFormData.effectiveDate || undefined,
+                        expirationDate: simplePlanFormData.expirationDate || undefined,
+                      };
+                      source = 'marketplace';
+                    } else {
+                      // Use manually entered data
+                      planData = {
+                        id: manualPlanEntry.planId || `manual-${Date.now()}`,
+                        name: manualPlanEntry.planName,
+                        issuer: { name: manualPlanEntry.carrier },
+                        metal_level: manualPlanEntry.metalLevel || undefined,
+                        type: manualPlanEntry.planType || undefined,
+                        premium: parseFloat(manualPlanEntry.originalPrice) || parseFloat(manualPlanEntry.monthlyPayment) || 0,
+                        premium_w_credit: parseFloat(manualPlanEntry.monthlyPayment) || 0,
+                        marketplaceId: simplePlanFormData.marketplaceId || undefined,
+                        memberId: simplePlanFormData.memberId || undefined,
+                        effectiveDate: simplePlanFormData.effectiveDate || undefined,
+                        expirationDate: simplePlanFormData.expirationDate || undefined,
+                      };
+                      source = 'manual';
+                    }
+                    
+                    const response = await apiRequest('POST', `/api/policies/${viewingQuote.id}/plans`, {
+                      source: source,
+                      planData: planData,
+                    });
+                    
+                    if (!response.ok) {
+                      const error = await response.json();
+                      throw new Error(error.message || 'Failed to save plan');
+                    }
+
+                    queryClient.invalidateQueries({ queryKey: ['/api/policies'] });
+                    
+                    toast({ title: "Success", description: "Plan has been added successfully.", duration: 3000 });
+                    setManualPlanDialogOpen(false);
+                    setSearchPlanId('');
+                    setFoundPlanData(null);
+                    setSimplePlanFormData({ marketplaceId: '', effectiveDate: '', memberId: '', expirationDate: '' });
+                    setEditingPlanId(null);
+                    setManualEntryMode(false);
+                    setSearchError(null);
+                    setManualPlanEntry({ carrier: '', planName: '', metalLevel: '', planType: '', monthlyPayment: '', originalPrice: '', planId: '' });
+                  } catch (error: any) {
+                    toast({ title: "Error", description: error.message || "Failed to save plan.", variant: "destructive", duration: 3000 });
+                  }
+                }}
+                data-testid="button-submit-plan"
+              >
+                {editingPlanId ? 'Update Plan' : 'Add Plan'}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
         {/* Cancel Policy Confirmation Dialog */}

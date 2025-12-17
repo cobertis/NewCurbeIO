@@ -19868,6 +19868,141 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to select plan" });
     }
   });
+
+  // GET /api/policies/:policyId/marketplace-plan/:planId - Search for a specific plan by ID
+  app.get("/api/policies/:policyId/marketplace-plan/:planId", requireActiveCompany, async (req: Request, res: Response) => {
+    const currentUser = req.user!;
+    const { policyId, planId } = req.params;
+    try {
+      if (!policyId || !planId) {
+        return res.status(400).json({ message: "Policy ID and Plan ID are required" });
+      }
+
+      const policy = await storage.getPolicy(policyId);
+      if (!policy) {
+        return res.status(404).json({ message: "Policy not found" });
+      }
+
+      if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
+        return res.status(403).json({ message: "Forbidden - access denied" });
+      }
+
+      // Validate required policy data for CMS API search
+      if (!policy.zipCode || !policy.physicalState || !policy.clientDateOfBirth) {
+        return res.status(400).json({ 
+          message: "Policy is missing required data (zip code, state, or client date of birth). Use manual entry instead.",
+          code: "MISSING_POLICY_DATA"
+        });
+      }
+
+      const members = await storage.getPolicyMembersByPolicyId(policyId, policy.companyId);
+
+      let totalIncome = 0;
+      if (policy.annualHouseholdIncome) {
+        totalIncome = Number(policy.annualHouseholdIncome);
+      } else {
+        const incomePromises = members.map(member => 
+          storage.getPolicyMemberIncome(member.id, policy.companyId)
+        );
+        const incomeRecords = await Promise.all(incomePromises);
+        totalIncome = incomeRecords.reduce((sum, income) => {
+          if (income?.totalAnnualIncome) {
+            return sum + Number(income.totalAnnualIncome);
+          }
+          return sum;
+        }, 0);
+      }
+
+      const policyData = {
+        zipCode: policy.zipCode || '',
+        county: policy.county || '',
+        state: policy.physicalState || '',
+        householdIncome: totalIncome || 50000,
+        effectiveDate: policy.effectiveDate || undefined,
+        client: {
+          dateOfBirth: policy.clientDateOfBirth || '',
+          gender: policy.clientGender || undefined,
+          pregnant: policy.clientPregnant || false,
+          usesTobacco: policy.clientTobaccoUser || false,
+        },
+        spouses: members
+          .filter(m => m.relationship === 'spouse')
+          .map(m => ({
+            dateOfBirth: m.dateOfBirth || '',
+            gender: m.gender || undefined,
+            pregnant: m.pregnant || false,
+            usesTobacco: m.tobaccoUser || false,
+            aptc_eligible: m.isApplicant !== false,
+          })),
+        dependents: members
+          .filter(m => m.relationship !== 'spouse' && m.relationship !== 'self')
+          .map(m => ({
+            dateOfBirth: m.dateOfBirth || '',
+            gender: m.gender || undefined,
+            pregnant: m.pregnant || false,
+            usesTobacco: m.tobaccoUser || false,
+            isApplicant: m.isApplicant !== false,
+          })),
+      };
+
+      // Search through all available pages to find the plan by ID
+      let foundPlan = null;
+      let householdAptc = null;
+      let householdCsr = null;
+      let currentPage = 1;
+      const pageSize = 100;
+      const maxPages = 20; // Safety limit to prevent infinite loops
+      
+      console.log(`[MARKETPLACE_PLAN_SEARCH] Searching for plan ${planId} in policy ${policyId}`);
+      
+      while (!foundPlan && currentPage <= maxPages) {
+        console.log(`[MARKETPLACE_PLAN_SEARCH] Fetching page ${currentPage}...`);
+        const marketplaceData = await fetchMarketplacePlans(policyData, currentPage, pageSize);
+        
+        // Store APTC/CSR from first response
+        if (currentPage === 1) {
+          householdAptc = marketplaceData.household_aptc;
+          householdCsr = marketplaceData.household_csr;
+        }
+        
+        // Search for the plan in current page
+        foundPlan = marketplaceData.plans?.find((p: any) => p.id === planId);
+        
+        if (foundPlan) {
+          console.log(`[MARKETPLACE_PLAN_SEARCH] Found plan ${planId} on page ${currentPage}`);
+          break;
+        }
+        
+        // Check if there are more pages
+        const totalPages = marketplaceData.totalPages || 1;
+        if (currentPage >= totalPages) {
+          console.log(`[MARKETPLACE_PLAN_SEARCH] Exhausted all ${totalPages} pages, plan not found`);
+          break;
+        }
+        
+        currentPage++;
+      }
+      
+      if (!foundPlan) {
+        return res.status(404).json({ 
+          message: "Plan not found in CMS Marketplace. The plan ID may be incorrect or the plan may not be available for this location/household. You can use manual entry instead.",
+          code: "PLAN_NOT_FOUND"
+        });
+      }
+
+      res.json({ 
+        plan: foundPlan,
+        household_aptc: householdAptc,
+        household_csr: householdCsr
+      });
+    } catch (error: any) {
+      console.error("Error fetching marketplace plan by ID:", error);
+      res.status(500).json({ 
+        message: error.message || "Failed to search CMS Marketplace. Please try manual entry.",
+        code: "CMS_API_ERROR"
+      });
+    }
+  });
   // GET /api/policies/:id/marketplace-plans - Get marketplace plans for a policy
   app.get("/api/policies/:id/marketplace-plans", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
