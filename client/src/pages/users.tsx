@@ -575,7 +575,7 @@ export default function Users() {
       }
     };
 
-    const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.agent;
+    const config = roleConfig[role as keyof typeof roleConfig] || roleConfig.member;
     return config;
   };
 
