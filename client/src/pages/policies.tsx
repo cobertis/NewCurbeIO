@@ -8330,9 +8330,9 @@ export default function PoliciesPage() {
                                   <div className="flex items-start justify-between gap-3">
                                     {/* Carrier Logo */}
                                     {(plan.issuer?.name || '').toLowerCase().includes('ambetter') ? (
-                                      <img src={ambetterLogo} alt="Ambetter" className="h-8 object-contain flex-shrink-0" />
+                                      <img src={ambetterLogo} alt="Ambetter" className="h-12 object-contain flex-shrink-0" />
                                     ) : (
-                                      <Building2 className="h-8 w-8 text-muted-foreground flex-shrink-0" />
+                                      <Building2 className="h-12 w-12 text-muted-foreground flex-shrink-0" />
                                     )}
                                     {/* Carrier + Plan Info */}
                                     <div className="text-right">
@@ -8348,16 +8348,16 @@ export default function PoliciesPage() {
 
                                 {/* Cost Summary - Prominent */}
                                 <div className="p-4">
-                                  <div className="flex items-center gap-6">
-                                    {/* Monthly Payment - Large and prominent */}
-                                    <div className="text-center">
+                                  <div className="flex items-center justify-between">
+                                    {/* Monthly Payment - Left */}
+                                    <div className="text-left">
                                       <p className="text-xs text-muted-foreground mb-1">Monthly Payment</p>
                                       <p className="text-3xl font-bold text-primary">
                                         ${(plan.premium_w_credit ?? plan.premium ?? 0).toFixed(2)}
                                       </p>
                                     </div>
                                     
-                                    {/* Savings */}
+                                    {/* Savings - Center */}
                                     {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && plan.premium !== plan.premium_w_credit && (
                                       <div className="text-center">
                                         <p className="text-xs text-muted-foreground mb-1">Savings</p>
@@ -8367,9 +8367,9 @@ export default function PoliciesPage() {
                                       </div>
                                     )}
                                     
-                                    {/* Plan Was */}
+                                    {/* Plan Was - Right */}
                                     {plan.premium_w_credit !== undefined && plan.premium_w_credit !== null && plan.premium !== plan.premium_w_credit && (
-                                      <div className="text-center">
+                                      <div className="text-right">
                                         <p className="text-xs text-muted-foreground mb-1">Plan Was</p>
                                         <p className="text-lg font-medium text-muted-foreground line-through">
                                           ${(plan.premium ?? 0).toFixed(2)}
