@@ -6,6 +6,7 @@ import { appleWalletService } from "./services/apple-wallet-service";
 import { googleWalletService } from "./services/google-wallet-service";
 import { apnsService } from "./services/apns-service";
 import { insertWalletMemberSchema } from "@shared/schema";
+import { broadcastWalletAnalyticsUpdate } from "./websocket";
 
 const passkitRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -407,6 +408,9 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
         link.memberId,
         link.walletPassId || undefined
       );
+      
+      // Broadcast real-time update to dashboard
+      broadcastWalletAnalyticsUpdate(link.companyId, { eventType: "link_open", memberId: link.memberId });
 
       // iOS: redirect directly to pkpass download (no landing page)
       if (os === "ios" && link.walletPassId) {
@@ -431,6 +435,7 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
 
       const eventType = os === "android" ? "android_offer_view" : "desktop_offer_view";
       await walletPassService.logEvent(link.companyId, eventType, deviceInfo, link.memberId, link.walletPassId || undefined);
+      broadcastWalletAnalyticsUpdate(link.companyId, { eventType, memberId: link.memberId });
 
       const html = `<!DOCTYPE html>
 <html lang="en">
@@ -548,6 +553,7 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
 
       const deviceInfo = getDeviceInfo(req);
       await walletPassService.logEvent(link.companyId, "apple_pkpass_download", deviceInfo, link.memberId, pass.id);
+      broadcastWalletAnalyticsUpdate(link.companyId, { eventType: "apple_pkpass_download", memberId: link.memberId, passId: pass.id });
 
       const pkpassBuffer = await appleWalletService.generatePass({
         pass,
@@ -585,6 +591,7 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
 
       const deviceInfo = getDeviceInfo(req);
       await walletPassService.logEvent(link.companyId, "google_save_clicked", deviceInfo, link.memberId, pass.id);
+      broadcastWalletAnalyticsUpdate(link.companyId, { eventType: "google_save_clicked", memberId: link.memberId, passId: pass.id });
 
       const googleSaveUrl = await googleWalletService.generateSaveLink({ pass, member });
       
@@ -607,6 +614,7 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
 
       const deviceInfo = getDeviceInfo(req);
       await walletPassService.logEvent(link.companyId, "google_saved_confirmed", deviceInfo, link.memberId, link.walletPassId || undefined);
+      broadcastWalletAnalyticsUpdate(link.companyId, { eventType: "google_saved_confirmed", memberId: link.memberId });
 
       if (pass) {
         await walletPassService.updatePassStatus(pass.id, undefined, "saved");
@@ -725,6 +733,7 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
 
       const deviceInfo = getDeviceInfo(req);
       await walletPassService.logEvent(link.companyId, "apple_pkpass_download", deviceInfo, link.memberId, pass.id);
+      broadcastWalletAnalyticsUpdate(link.companyId, { eventType: "apple_pkpass_download", memberId: link.memberId, passId: pass.id });
 
       const pkpassBuffer = await appleWalletService.generatePass({
         pass,
@@ -747,6 +756,7 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
       if (link) {
         const deviceInfo = getDeviceInfo(req);
         await walletPassService.logEvent(link.companyId, "google_save_clicked", deviceInfo, link.memberId, link.walletPassId || undefined);
+        broadcastWalletAnalyticsUpdate(link.companyId, { eventType: "google_save_clicked", memberId: link.memberId });
       }
       res.status(204).send();
     } catch (error) {
@@ -796,6 +806,7 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
 
       const deviceInfo = getDeviceInfo(req);
       await walletPassService.logEvent(pass.companyId, "apple_device_registered", deviceInfo, pass.memberId, pass.id, { deviceLibraryIdentifier });
+      broadcastWalletAnalyticsUpdate(pass.companyId, { eventType: "apple_device_registered", memberId: pass.memberId, passId: pass.id });
 
       console.log("[PassKit] Device registered successfully:", { passId: pass.id, deviceLibraryIdentifier });
       res.status(201).send();
@@ -832,6 +843,7 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
       
       const deviceInfo = getDeviceInfo(req);
       await walletPassService.logEvent(pass.companyId, "apple_device_unregistered", deviceInfo, pass.memberId, pass.id, { deviceLibraryIdentifier });
+      broadcastWalletAnalyticsUpdate(pass.companyId, { eventType: "apple_device_unregistered", memberId: pass.memberId, passId: pass.id });
 
       res.status(200).send();
     } catch (error) {

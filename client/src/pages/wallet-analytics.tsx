@@ -14,7 +14,7 @@ import {
   BarChart3, Apple, Chrome, Eye, Plus, RefreshCw, Copy, ExternalLink, ChevronRight, Settings, Upload, Key, FileCheck, Trash2, Bell, Send
 } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, useCallback } from "react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -22,6 +22,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { useForm } from "react-hook-form";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { useWebSocket } from "@/hooks/use-websocket";
 
 interface AnalyticsSummary {
   totalMembers: number;
@@ -120,6 +121,18 @@ export default function WalletAnalyticsPage() {
       contactId: "",
     },
   });
+
+  // Real-time WebSocket updates for analytics
+  const handleWebSocketMessage = useCallback((message: any) => {
+    if (message.type === 'wallet_analytics_update') {
+      // Invalidate all wallet analytics queries to refresh data in real-time
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet/analytics"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet/members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet/events", { limit: 50 }] });
+    }
+  }, []);
+  
+  useWebSocket(handleWebSocketMessage);
 
   const { data: config, isLoading: configLoading } = useQuery<WalletConfig>({
     queryKey: ["/api/wallet/config"],

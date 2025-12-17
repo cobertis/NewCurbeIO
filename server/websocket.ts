@@ -1242,3 +1242,44 @@ export function broadcastNewCallLog(companyId: string, callLog: CallLogData): vo
   
   console.log(`[WebSocket] Broadcast new_call_log to ${sentCount} client(s) for company ${companyId}`);
 }
+
+// =====================================================
+// WALLET ANALYTICS REAL-TIME UPDATES
+// =====================================================
+
+export interface WalletAnalyticsUpdateData {
+  eventType: string;
+  memberId?: string;
+  passId?: string;
+}
+
+export function broadcastWalletAnalyticsUpdate(companyId: string, data: WalletAnalyticsUpdateData): void {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const payload = JSON.stringify({
+    type: 'wallet_analytics_updated',
+    companyId,
+    data
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    if (authClient.companyId === companyId) {
+      client.send(payload);
+      sentCount++;
+    }
+  });
+  
+  if (sentCount > 0) {
+    console.log(`[WebSocket] Broadcast wallet_analytics_updated (${data.eventType}) to ${sentCount} client(s) for company ${companyId}`);
+  }
+}
