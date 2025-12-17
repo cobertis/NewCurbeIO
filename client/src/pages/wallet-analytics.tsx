@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,11 +6,14 @@ import { LoadingSpinner } from "@/components/loading-spinner";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import { Label } from "@/components/ui/label";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
+import { Separator } from "@/components/ui/separator";
 import { 
   Wallet, Smartphone, Users, Link, Download, AlertCircle,
-  BarChart3, Apple, Chrome, Eye, Plus, RefreshCw, Copy, ExternalLink, ChevronRight
+  BarChart3, Apple, Chrome, Eye, Plus, RefreshCw, Copy, ExternalLink, ChevronRight, Settings, Upload, Key, FileCheck
 } from "lucide-react";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useRef } from "react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -55,9 +58,34 @@ interface WalletConfig {
   googleConfigured: boolean;
 }
 
+interface WalletSettingsResponse {
+  appleTeamId?: string;
+  applePassTypeIdentifier?: string;
+  appleP12Configured?: boolean;
+  appleP12PasswordConfigured?: boolean;
+  appleWwdrConfigured?: boolean;
+  googleServiceAccountConfigured?: boolean;
+  googleIssuerId?: string;
+  encryptionKeyConfigured?: boolean;
+}
+
 export default function WalletAnalyticsPage() {
   const { toast } = useToast();
   const [showAddMember, setShowAddMember] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
+  
+  const [appleTeamId, setAppleTeamId] = useState("");
+  const [applePassTypeId, setApplePassTypeId] = useState("");
+  const [appleP12Password, setAppleP12Password] = useState("");
+  const [appleP12File, setAppleP12File] = useState<File | null>(null);
+  const [appleWwdrFile, setAppleWwdrFile] = useState<File | null>(null);
+  const [googleServiceAccountFile, setGoogleServiceAccountFile] = useState<File | null>(null);
+  const [googleIssuerId, setGoogleIssuerId] = useState("");
+  const [encryptionKey, setEncryptionKey] = useState("");
+  
+  const appleP12InputRef = useRef<HTMLInputElement>(null);
+  const appleWwdrInputRef = useRef<HTMLInputElement>(null);
+  const googleServiceInputRef = useRef<HTMLInputElement>(null);
   
   const form = useForm({
     defaultValues: {
@@ -71,6 +99,10 @@ export default function WalletAnalyticsPage() {
 
   const { data: config, isLoading: configLoading } = useQuery<WalletConfig>({
     queryKey: ["/api/wallet/config"],
+  });
+
+  const { data: settings, isLoading: settingsLoading, refetch: refetchSettings } = useQuery<WalletSettingsResponse>({
+    queryKey: ["/api/wallet/settings"],
   });
 
   const { data: summary, isLoading: summaryLoading } = useQuery<AnalyticsSummary>({
@@ -134,6 +166,68 @@ export default function WalletAnalyticsPage() {
     } catch (error) {
       toast({ title: "Failed to generate pass", variant: "destructive" });
     }
+  };
+
+  const fileToBase64 = (file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
+      reader.onload = () => {
+        const result = reader.result as string;
+        const base64 = result.split(",")[1];
+        resolve(base64);
+      };
+      reader.onerror = reject;
+    });
+  };
+
+  const generateRandomKey = () => {
+    const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+    let key = "";
+    for (let i = 0; i < 32; i++) {
+      key += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setEncryptionKey(key);
+  };
+
+  const handleSaveSettings = async () => {
+    try {
+      const payload: Record<string, string | undefined> = {};
+      
+      if (appleTeamId) payload.appleTeamId = appleTeamId;
+      if (applePassTypeId) payload.applePassTypeIdentifier = applePassTypeId;
+      if (appleP12Password) payload.appleP12Password = appleP12Password;
+      if (googleIssuerId) payload.googleIssuerId = googleIssuerId;
+      if (encryptionKey) payload.encryptionKey = encryptionKey;
+      
+      if (appleP12File) {
+        payload.appleP12Base64 = await fileToBase64(appleP12File);
+      }
+      if (appleWwdrFile) {
+        payload.appleWwdrBase64 = await fileToBase64(appleWwdrFile);
+      }
+      if (googleServiceAccountFile) {
+        payload.googleServiceAccountJsonBase64 = await fileToBase64(googleServiceAccountFile);
+      }
+      
+      await apiRequest("PUT", "/api/wallet/settings", payload);
+      toast({ title: "Settings saved successfully" });
+      setShowSettings(false);
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet/config"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet/settings"] });
+      refetchSettings();
+    } catch (error) {
+      toast({ title: "Failed to save settings", variant: "destructive" });
+    }
+  };
+
+  const handleOpenSettings = () => {
+    if (settings) {
+      setAppleTeamId(settings.appleTeamId || "");
+      setApplePassTypeId(settings.applePassTypeIdentifier || "");
+      setGoogleIssuerId(settings.googleIssuerId || "");
+    }
+    setShowSettings(true);
   };
 
   const getEventTypeIcon = (type: string) => {
@@ -209,9 +303,227 @@ export default function WalletAnalyticsPage() {
   return (
     <div className="flex flex-col gap-6 bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 min-h-screen p-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">Wallet System</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">Manage member passes for Apple Wallet and Google Wallet</p>
+        <div className="flex items-center gap-3">
+          <div>
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">Wallet System</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">Manage member passes for Apple Wallet and Google Wallet</p>
+          </div>
+          <Sheet open={showSettings} onOpenChange={setShowSettings}>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" onClick={handleOpenSettings} data-testid="button-settings">
+                <Settings className="h-4 w-4" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="w-[400px] sm:w-[540px] overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>Wallet Settings</SheetTitle>
+                <SheetDescription>Configure your Apple Wallet and Google Wallet credentials</SheetDescription>
+              </SheetHeader>
+              
+              <div className="space-y-6 mt-6">
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Apple className="h-5 w-5" />
+                    <h3 className="font-semibold">Apple Wallet</h3>
+                  </div>
+                  <Separator />
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="appleTeamId">Team ID</Label>
+                    <Input 
+                      id="appleTeamId" 
+                      value={appleTeamId} 
+                      onChange={(e) => setAppleTeamId(e.target.value)}
+                      placeholder="e.g., ABC123DEF4"
+                      data-testid="input-apple-team-id"
+                    />
+                    {settings?.appleTeamId && !appleTeamId && (
+                      <p className="text-xs text-muted-foreground">Current: {settings.appleTeamId}</p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="applePassTypeId">Pass Type Identifier</Label>
+                    <Input 
+                      id="applePassTypeId" 
+                      value={applePassTypeId}
+                      onChange={(e) => setApplePassTypeId(e.target.value)}
+                      placeholder="e.g., pass.com.example.membership"
+                      data-testid="input-apple-pass-type-id"
+                    />
+                    {settings?.applePassTypeIdentifier && !applePassTypeId && (
+                      <p className="text-xs text-muted-foreground">Current: {settings.applePassTypeIdentifier}</p>
+                    )}
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="appleP12">P12 Certificate File</Label>
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        ref={appleP12InputRef}
+                        id="appleP12"
+                        type="file"
+                        accept=".p12,.pfx"
+                        onChange={(e) => setAppleP12File(e.target.files?.[0] || null)}
+                        className="hidden"
+                        data-testid="input-apple-p12"
+                      />
+                      <Button 
+                        variant="outline" 
+                        type="button" 
+                        className="w-full justify-start gap-2"
+                        onClick={() => appleP12InputRef.current?.click()}
+                        data-testid="button-upload-p12"
+                      >
+                        <Upload className="h-4 w-4" />
+                        {appleP12File ? appleP12File.name : "Choose P12 file..."}
+                      </Button>
+                      {settings?.appleP12Configured && !appleP12File && (
+                        <FileCheck className="h-5 w-5 text-green-500 flex-shrink-0" />
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="appleP12Password">P12 Password</Label>
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        id="appleP12Password"
+                        type="password"
+                        value={appleP12Password}
+                        onChange={(e) => setAppleP12Password(e.target.value)}
+                        placeholder="Certificate password"
+                        data-testid="input-apple-p12-password"
+                      />
+                      {settings?.appleP12PasswordConfigured && !appleP12Password && (
+                        <FileCheck className="h-5 w-5 text-green-500 flex-shrink-0" />
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="appleWwdr">WWDR Certificate File</Label>
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        ref={appleWwdrInputRef}
+                        id="appleWwdr"
+                        type="file"
+                        accept=".cer,.pem"
+                        onChange={(e) => setAppleWwdrFile(e.target.files?.[0] || null)}
+                        className="hidden"
+                        data-testid="input-apple-wwdr"
+                      />
+                      <Button 
+                        variant="outline" 
+                        type="button" 
+                        className="w-full justify-start gap-2"
+                        onClick={() => appleWwdrInputRef.current?.click()}
+                        data-testid="button-upload-wwdr"
+                      >
+                        <Upload className="h-4 w-4" />
+                        {appleWwdrFile ? appleWwdrFile.name : "Choose WWDR file..."}
+                      </Button>
+                      {settings?.appleWwdrConfigured && !appleWwdrFile && (
+                        <FileCheck className="h-5 w-5 text-green-500 flex-shrink-0" />
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Chrome className="h-5 w-5" />
+                    <h3 className="font-semibold">Google Wallet</h3>
+                  </div>
+                  <Separator />
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="googleServiceAccount">Service Account JSON</Label>
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        ref={googleServiceInputRef}
+                        id="googleServiceAccount"
+                        type="file"
+                        accept=".json"
+                        onChange={(e) => setGoogleServiceAccountFile(e.target.files?.[0] || null)}
+                        className="hidden"
+                        data-testid="input-google-service-account"
+                      />
+                      <Button 
+                        variant="outline" 
+                        type="button" 
+                        className="w-full justify-start gap-2"
+                        onClick={() => googleServiceInputRef.current?.click()}
+                        data-testid="button-upload-google-service"
+                      >
+                        <Upload className="h-4 w-4" />
+                        {googleServiceAccountFile ? googleServiceAccountFile.name : "Choose JSON file..."}
+                      </Button>
+                      {settings?.googleServiceAccountConfigured && !googleServiceAccountFile && (
+                        <FileCheck className="h-5 w-5 text-green-500 flex-shrink-0" />
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="googleIssuerId">Issuer ID</Label>
+                    <Input 
+                      id="googleIssuerId" 
+                      value={googleIssuerId}
+                      onChange={(e) => setGoogleIssuerId(e.target.value)}
+                      placeholder="e.g., 1234567890123456789"
+                      data-testid="input-google-issuer-id"
+                    />
+                    {settings?.googleIssuerId && !googleIssuerId && (
+                      <p className="text-xs text-muted-foreground">Current: {settings.googleIssuerId}</p>
+                    )}
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <Key className="h-5 w-5" />
+                    <h3 className="font-semibold">Security</h3>
+                  </div>
+                  <Separator />
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="encryptionKey">Encryption Key</Label>
+                    <div className="flex gap-2">
+                      <Input 
+                        id="encryptionKey" 
+                        value={encryptionKey}
+                        onChange={(e) => setEncryptionKey(e.target.value)}
+                        placeholder="32-character encryption key"
+                        data-testid="input-encryption-key"
+                      />
+                      <Button 
+                        variant="outline" 
+                        type="button" 
+                        onClick={generateRandomKey}
+                        data-testid="button-generate-key"
+                      >
+                        Generate
+                      </Button>
+                    </div>
+                    {settings?.encryptionKeyConfigured && !encryptionKey && (
+                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                        <FileCheck className="h-3 w-3 text-green-500" /> Encryption key is configured
+                      </p>
+                    )}
+                  </div>
+                </div>
+                
+                <Button 
+                  className="w-full" 
+                  onClick={handleSaveSettings}
+                  data-testid="button-save-settings"
+                >
+                  Save Settings
+                </Button>
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant={config?.appleConfigured ? "default" : "secondary"} className="gap-1" data-testid="badge-apple-status">

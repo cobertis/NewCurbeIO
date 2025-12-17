@@ -5985,6 +5985,29 @@ export const walletDevices = pgTable("wallet_devices", {
   deviceIdx: index("wallet_devices_device_idx").on(table.deviceLibraryIdentifier),
 }));
 
+// Wallet Settings - Per-company wallet configuration
+export const walletSettings = pgTable("wallet_settings", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }).unique(),
+  
+  // Apple Wallet Configuration
+  appleTeamId: text("apple_team_id"),
+  applePassTypeIdentifier: text("apple_pass_type_identifier"),
+  appleP12Base64: text("apple_p12_base64"),
+  appleP12Password: text("apple_p12_password"),
+  appleWwdrBase64: text("apple_wwdr_base64"),
+  
+  // Google Wallet Configuration
+  googleServiceAccountJsonBase64: text("google_service_account_json_base64"),
+  googleIssuerId: text("google_issuer_id"),
+  
+  // Encryption key for tokens (32 bytes)
+  encryptionKey: text("encryption_key"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
 // Insert Schemas
 export const insertWalletMemberSchema = createInsertSchema(walletMembers).omit({
   id: true,
@@ -6014,6 +6037,12 @@ export const insertWalletDeviceSchema = createInsertSchema(walletDevices).omit({
   lastSeenAt: true,
 });
 
+export const insertWalletSettingsSchema = createInsertSchema(walletSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Types
 export type WalletMember = typeof walletMembers.$inferSelect;
 export type InsertWalletMember = z.infer<typeof insertWalletMemberSchema>;
@@ -6029,3 +6058,6 @@ export type InsertWalletEvent = z.infer<typeof insertWalletEventSchema>;
 
 export type WalletDevice = typeof walletDevices.$inferSelect;
 export type InsertWalletDevice = z.infer<typeof insertWalletDeviceSchema>;
+
+export type WalletSettings = typeof walletSettings.$inferSelect;
+export type InsertWalletSettings = z.infer<typeof insertWalletSettingsSchema>;

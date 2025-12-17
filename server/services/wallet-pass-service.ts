@@ -1,8 +1,8 @@
 import { db } from "../db";
 import { 
-  walletMembers, walletPasses, walletLinks, walletEvents, walletDevices,
-  InsertWalletMember, InsertWalletPass, InsertWalletLink, InsertWalletEvent, InsertWalletDevice,
-  WalletMember, WalletPass, WalletLink, WalletEvent, WalletDevice
+  walletMembers, walletPasses, walletLinks, walletEvents, walletDevices, walletSettings,
+  InsertWalletMember, InsertWalletPass, InsertWalletLink, InsertWalletEvent, InsertWalletDevice, InsertWalletSettings,
+  WalletMember, WalletPass, WalletLink, WalletEvent, WalletDevice, WalletSettings
 } from "@shared/schema";
 import { eq, and, desc, gte, lte, sql, count } from "drizzle-orm";
 import { nanoid } from "nanoid";
@@ -390,6 +390,33 @@ export const walletPassService = {
   detectOS,
   parseUserAgent,
   generateSlug,
+
+  async getWalletSettings(companyId: string): Promise<WalletSettings | undefined> {
+    const [settings] = await db.select().from(walletSettings).where(eq(walletSettings.companyId, companyId));
+    return settings;
+  },
+
+  async saveWalletSettings(companyId: string, data: Partial<InsertWalletSettings>): Promise<WalletSettings> {
+    const existing = await this.getWalletSettings(companyId);
+    
+    if (existing) {
+      const [updated] = await db.update(walletSettings)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(walletSettings.companyId, companyId))
+        .returning();
+      return updated;
+    } else {
+      const [created] = await db.insert(walletSettings).values({
+        ...data,
+        companyId,
+      }).returning();
+      return created;
+    }
+  },
+
+  generateEncryptionKey(): string {
+    return crypto.randomBytes(32).toString("hex").slice(0, 32);
+  },
 };
 
 export default walletPassService;

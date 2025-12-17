@@ -1,11 +1,11 @@
 import { GoogleAuth } from "google-auth-library";
-import { WalletPass, WalletMember } from "@shared/schema";
+import { WalletPass, WalletMember, WalletSettings } from "@shared/schema";
 import { db } from "../db";
 import { companies } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
-const GOOGLE_SERVICE_ACCOUNT_JSON_B64 = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_B64;
-const GOOGLE_ISSUER_ID = process.env.GOOGLE_ISSUER_ID;
+const ENV_GOOGLE_SERVICE_ACCOUNT_JSON_B64 = process.env.GOOGLE_SERVICE_ACCOUNT_JSON_B64;
+const ENV_GOOGLE_ISSUER_ID = process.env.GOOGLE_ISSUER_ID;
 
 interface ServiceAccountCredentials {
   client_email: string;
@@ -17,12 +17,12 @@ let credentials: ServiceAccountCredentials | null = null;
 let auth: GoogleAuth | null = null;
 
 function initializeAuth(): void {
-  if (!GOOGLE_SERVICE_ACCOUNT_JSON_B64 || !GOOGLE_ISSUER_ID) {
+  if (!ENV_GOOGLE_SERVICE_ACCOUNT_JSON_B64 || !ENV_GOOGLE_ISSUER_ID) {
     return;
   }
 
   try {
-    const decoded = Buffer.from(GOOGLE_SERVICE_ACCOUNT_JSON_B64, "base64").toString("utf8");
+    const decoded = Buffer.from(ENV_GOOGLE_SERVICE_ACCOUNT_JSON_B64, "base64").toString("utf8");
     credentials = JSON.parse(decoded);
     
     auth = new GoogleAuth({
@@ -35,6 +35,29 @@ function initializeAuth(): void {
 }
 
 initializeAuth();
+
+function getAuthForSettings(settings?: WalletSettings): { auth: GoogleAuth; credentials: ServiceAccountCredentials; issuerId: string } | null {
+  if (settings?.googleServiceAccountJsonBase64 && settings?.googleIssuerId) {
+    try {
+      const decoded = Buffer.from(settings.googleServiceAccountJsonBase64, "base64").toString("utf8");
+      const settingsCredentials = JSON.parse(decoded) as ServiceAccountCredentials;
+      const settingsAuth = new GoogleAuth({
+        credentials: settingsCredentials,
+        scopes: ["https://www.googleapis.com/auth/wallet_object.issuer"],
+      });
+      return { auth: settingsAuth, credentials: settingsCredentials, issuerId: settings.googleIssuerId };
+    } catch (error) {
+      console.error("[Google Wallet] Failed to initialize from settings:", error);
+      return null;
+    }
+  }
+  
+  if (auth && credentials && ENV_GOOGLE_ISSUER_ID) {
+    return { auth, credentials, issuerId: ENV_GOOGLE_ISSUER_ID };
+  }
+  
+  return null;
+}
 
 async function getCompanyBranding(companyId: string): Promise<{
   name: string;
@@ -49,12 +72,13 @@ async function getCompanyBranding(companyId: string): Promise<{
   };
 }
 
-async function makeApiRequest(method: string, endpoint: string, body?: any): Promise<any> {
-  if (!auth) {
+async function makeApiRequest(method: string, endpoint: string, body?: any, customAuth?: GoogleAuth): Promise<any> {
+  const authToUse = customAuth || auth;
+  if (!authToUse) {
     throw new Error("Google Wallet not configured");
   }
 
-  const client = await auth.getClient();
+  const client = await authToUse.getClient();
   const accessToken = await client.getAccessToken();
 
   const response = await fetch(`https://walletobjects.googleapis.com/walletobjects/v1/${endpoint}`, {
@@ -81,19 +105,28 @@ async function makeApiRequest(method: string, endpoint: string, body?: any): Pro
 export interface GooglePassGenerationOptions {
   pass: WalletPass;
   member: WalletMember;
+  settings?: WalletSettings;
 }
 
 export const googleWalletService = {
   isConfigured(): boolean {
-    return !!(GOOGLE_SERVICE_ACCOUNT_JSON_B64 && GOOGLE_ISSUER_ID && auth);
+    return !!(ENV_GOOGLE_SERVICE_ACCOUNT_JSON_B64 && ENV_GOOGLE_ISSUER_ID && auth);
   },
 
-  async ensureClassExists(companyId: string): Promise<string> {
-    if (!this.isConfigured()) {
+  isConfiguredWithSettings(settings?: WalletSettings): boolean {
+    if (settings) {
+      return !!(settings.googleServiceAccountJsonBase64 && settings.googleIssuerId);
+    }
+    return this.isConfigured();
+  },
+
+  async ensureClassExists(companyId: string, settings?: WalletSettings): Promise<string> {
+    const authConfig = getAuthForSettings(settings);
+    if (!authConfig) {
       throw new Error("Google Wallet is not configured");
     }
 
-    const classId = `${GOOGLE_ISSUER_ID}.${companyId.replace(/-/g, "_")}`;
+    const classId = `${authConfig.issuerId}.${companyId.replace(/-/g, "_")}`;
     const branding = await getCompanyBranding(companyId);
 
     const classObject = {
@@ -124,24 +157,25 @@ export const googleWalletService = {
     };
 
     try {
-      await makeApiRequest("GET", `genericClass/${classId}`);
-      await makeApiRequest("PUT", `genericClass/${classId}`, classObject);
+      await makeApiRequest("GET", `genericClass/${classId}`, undefined, authConfig.auth);
+      await makeApiRequest("PUT", `genericClass/${classId}`, classObject, authConfig.auth);
     } catch {
-      await makeApiRequest("POST", "genericClass", classObject);
+      await makeApiRequest("POST", "genericClass", classObject, authConfig.auth);
     }
 
     return classId;
   },
 
   async createObject(options: GooglePassGenerationOptions): Promise<string> {
-    if (!this.isConfigured()) {
+    const { pass, member, settings } = options;
+    const authConfig = getAuthForSettings(settings);
+    if (!authConfig) {
       throw new Error("Google Wallet is not configured");
     }
 
-    const { pass, member } = options;
-    const classId = await this.ensureClassExists(pass.companyId);
+    const classId = await this.ensureClassExists(pass.companyId, settings);
     const branding = await getCompanyBranding(pass.companyId);
-    const objectId = `${GOOGLE_ISSUER_ID}.${pass.serialNumber}`;
+    const objectId = `${authConfig.issuerId}.${pass.serialNumber}`;
 
     const genericObject = {
       id: objectId,
@@ -168,27 +202,28 @@ export const googleWalletService = {
     };
 
     try {
-      await makeApiRequest("GET", `genericObject/${objectId}`);
-      await makeApiRequest("PUT", `genericObject/${objectId}`, genericObject);
+      await makeApiRequest("GET", `genericObject/${objectId}`, undefined, authConfig.auth);
+      await makeApiRequest("PUT", `genericObject/${objectId}`, genericObject, authConfig.auth);
     } catch {
-      await makeApiRequest("POST", "genericObject", genericObject);
+      await makeApiRequest("POST", "genericObject", genericObject, authConfig.auth);
     }
 
     return objectId;
   },
 
   async generateSaveLink(options: GooglePassGenerationOptions): Promise<string> {
-    if (!this.isConfigured()) {
+    const { pass, member, settings } = options;
+    const authConfig = getAuthForSettings(settings);
+    if (!authConfig) {
       throw new Error("Google Wallet is not configured");
     }
 
-    const { pass, member } = options;
     const objectId = await this.createObject(options);
     const branding = await getCompanyBranding(pass.companyId);
 
     const genericObject = {
       id: objectId,
-      classId: `${GOOGLE_ISSUER_ID}.${pass.companyId.replace(/-/g, "_")}`,
+      classId: `${authConfig.issuerId}.${pass.companyId.replace(/-/g, "_")}`,
       state: "ACTIVE",
       textModulesData: [
         { id: "member_id", header: "MEMBER ID", body: member.memberId },
@@ -202,12 +237,13 @@ export const googleWalletService = {
       header: { defaultValue: { language: "en-US", value: member.fullName } },
     };
 
-    const jwt = await this.createJwt(genericObject);
+    const jwt = await this.createJwt(genericObject, authConfig.credentials);
     return `https://pay.google.com/gp/v/save/${jwt}`;
   },
 
-  async createJwt(genericObject: any): Promise<string> {
-    if (!credentials) {
+  async createJwt(genericObject: any, customCredentials?: ServiceAccountCredentials): Promise<string> {
+    const credsToUse = customCredentials || credentials;
+    if (!credsToUse) {
       throw new Error("Google Wallet credentials not initialized");
     }
 
@@ -220,7 +256,7 @@ export const googleWalletService = {
     };
 
     const payload = {
-      iss: credentials.client_email,
+      iss: credsToUse.client_email,
       aud: "google",
       typ: "savetowallet",
       iat: now,
@@ -236,7 +272,7 @@ export const googleWalletService = {
 
     const sign = crypto.createSign("RSA-SHA256");
     sign.update(signatureInput);
-    const signature = sign.sign(credentials.private_key, "base64url");
+    const signature = sign.sign(credsToUse.private_key, "base64url");
 
     return `${signatureInput}.${signature}`;
   },

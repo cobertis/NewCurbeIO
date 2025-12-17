@@ -1,17 +1,18 @@
 import { PKPass } from "passkit-generator";
 import path from "path";
 import fs from "fs";
-import { WalletPass, WalletMember } from "@shared/schema";
+import { WalletPass, WalletMember, WalletSettings } from "@shared/schema";
 import { walletPassService } from "./wallet-pass-service";
 import { db } from "../db";
 import { companies } from "@shared/schema";
 import { eq } from "drizzle-orm";
 
-const APPLE_TEAM_ID = process.env.APPLE_TEAM_ID;
-const APPLE_PASS_TYPE_ID = process.env.APPLE_PASS_TYPE_ID;
-const APPLE_P12_B64 = process.env.APPLE_P12_B64;
-const APPLE_P12_PASSWORD = process.env.APPLE_P12_PASSWORD || "";
-const APPLE_WWDR_B64 = process.env.APPLE_WWDR_B64;
+// Fallback environment variables for backward compatibility
+const ENV_APPLE_TEAM_ID = process.env.APPLE_TEAM_ID;
+const ENV_APPLE_PASS_TYPE_ID = process.env.APPLE_PASS_TYPE_ID;
+const ENV_APPLE_P12_B64 = process.env.APPLE_P12_B64;
+const ENV_APPLE_P12_PASSWORD = process.env.APPLE_P12_PASSWORD || "";
+const ENV_APPLE_WWDR_B64 = process.env.APPLE_WWDR_B64;
 
 async function getCompanyBranding(companyId: string): Promise<{
   name: string;
@@ -40,34 +41,48 @@ export interface PassGenerationOptions {
   pass: WalletPass;
   member: WalletMember;
   webServiceUrl: string;
+  settings?: WalletSettings;
 }
 
 export const appleWalletService = {
   isConfigured(): boolean {
-    return !!(APPLE_TEAM_ID && APPLE_PASS_TYPE_ID && APPLE_P12_B64);
+    return !!(ENV_APPLE_TEAM_ID && ENV_APPLE_PASS_TYPE_ID && ENV_APPLE_P12_B64);
+  },
+
+  isConfiguredWithSettings(settings?: WalletSettings): boolean {
+    if (settings) {
+      return !!(settings.appleTeamId && settings.applePassTypeIdentifier && settings.appleP12Base64);
+    }
+    return this.isConfigured();
   },
 
   async generatePass(options: PassGenerationOptions): Promise<Buffer> {
-    const { pass, member, webServiceUrl } = options;
+    const { pass, member, webServiceUrl, settings } = options;
 
-    if (!this.isConfigured()) {
-      throw new Error("Apple Wallet is not configured. Missing required environment variables.");
+    const teamId = settings?.appleTeamId || ENV_APPLE_TEAM_ID;
+    const passTypeId = settings?.applePassTypeIdentifier || ENV_APPLE_PASS_TYPE_ID;
+    const p12B64 = settings?.appleP12Base64 || ENV_APPLE_P12_B64;
+    const p12Password = settings?.appleP12Password || ENV_APPLE_P12_PASSWORD;
+    const wwdrB64 = settings?.appleWwdrBase64 || ENV_APPLE_WWDR_B64;
+
+    if (!teamId || !passTypeId || !p12B64) {
+      throw new Error("Apple Wallet is not configured. Missing required credentials.");
     }
 
     const branding = await getCompanyBranding(pass.companyId);
     const authToken = walletPassService.getDecryptedAuthToken(pass);
 
-    const p12Buffer = Buffer.from(APPLE_P12_B64!, "base64");
+    const p12Buffer = Buffer.from(p12B64, "base64");
     
     let wwdrBuffer: Buffer | undefined;
-    if (APPLE_WWDR_B64) {
-      wwdrBuffer = Buffer.from(APPLE_WWDR_B64, "base64");
+    if (wwdrB64) {
+      wwdrBuffer = Buffer.from(wwdrB64, "base64");
     }
 
     const passData = {
       formatVersion: 1 as const,
-      passTypeIdentifier: APPLE_PASS_TYPE_ID!,
-      teamIdentifier: APPLE_TEAM_ID!,
+      passTypeIdentifier: passTypeId,
+      teamIdentifier: teamId,
       serialNumber: pass.serialNumber,
       authenticationToken: authToken,
       webServiceURL: webServiceUrl,
@@ -125,7 +140,7 @@ export const appleWalletService = {
     const certificates: any = {
       signerCert: p12Buffer,
       signerKey: p12Buffer,
-      signerKeyPassphrase: APPLE_P12_PASSWORD,
+      signerKeyPassphrase: p12Password,
     };
 
     if (wwdrBuffer) {

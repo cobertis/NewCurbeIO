@@ -233,10 +233,71 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
   });
 
   app.get("/api/wallet/config", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
-    res.json({
-      appleConfigured: appleWalletService.isConfigured(),
-      googleConfigured: googleWalletService.isConfigured(),
-    });
+    try {
+      const companyId = (req as any).user.companyId;
+      const settings = await walletPassService.getWalletSettings(companyId);
+      
+      const appleConfigured = settings 
+        ? !!(settings.appleTeamId && settings.applePassTypeIdentifier && settings.appleP12Base64)
+        : appleWalletService.isConfigured();
+      
+      const googleConfigured = settings
+        ? !!(settings.googleServiceAccountJsonBase64 && settings.googleIssuerId)
+        : googleWalletService.isConfigured();
+        
+      res.json({ appleConfigured, googleConfigured });
+    } catch (error) {
+      console.error("[Wallet] Error getting config:", error);
+      res.json({
+        appleConfigured: appleWalletService.isConfigured(),
+        googleConfigured: googleWalletService.isConfigured(),
+      });
+    }
+  });
+
+  app.get("/api/wallet/settings", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = (req as any).user.companyId;
+      const settings = await walletPassService.getWalletSettings(companyId);
+      
+      if (!settings) {
+        return res.json({
+          appleTeamId: "",
+          applePassTypeIdentifier: "",
+          appleP12Configured: false,
+          appleP12PasswordConfigured: false,
+          appleWwdrConfigured: false,
+          googleServiceAccountConfigured: false,
+          googleIssuerId: "",
+          encryptionKeyConfigured: false,
+        });
+      }
+      
+      res.json({
+        appleTeamId: settings.appleTeamId || "",
+        applePassTypeIdentifier: settings.applePassTypeIdentifier || "",
+        appleP12Configured: !!settings.appleP12Base64,
+        appleP12PasswordConfigured: !!settings.appleP12Password,
+        appleWwdrConfigured: !!settings.appleWwdrBase64,
+        googleServiceAccountConfigured: !!settings.googleServiceAccountJsonBase64,
+        googleIssuerId: settings.googleIssuerId || "",
+        encryptionKeyConfigured: !!settings.encryptionKey,
+      });
+    } catch (error) {
+      console.error("[Wallet] Error getting settings:", error);
+      res.status(500).json({ message: "Failed to get settings" });
+    }
+  });
+
+  app.put("/api/wallet/settings", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = (req as any).user.companyId;
+      await walletPassService.saveWalletSettings(companyId, req.body);
+      res.json({ message: "Settings saved", configured: true });
+    } catch (error) {
+      console.error("[Wallet] Error saving settings:", error);
+      res.status(500).json({ message: "Failed to save settings" });
+    }
   });
 
   app.get("/w/:slug", smartLinkRateLimiter, async (req: Request, res: Response) => {
