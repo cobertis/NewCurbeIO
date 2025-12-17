@@ -5478,6 +5478,16 @@ export const vipPassInstances = pgTable("vip_pass_instances", {
   downloadCount: integer("download_count").notNull().default(0),
   lastDownloadAt: timestamp("last_download_at"),
   
+  // Universal link token for smart delivery
+  universalToken: text("universal_token").unique(),
+  
+  // Google Wallet pass URL (generated when pass is created)
+  googleWalletUrl: text("google_wallet_url"),
+  
+  // Platform delivery tracking
+  appleDownloads: integer("apple_downloads").notNull().default(0),
+  googleDownloads: integer("google_downloads").notNull().default(0),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
