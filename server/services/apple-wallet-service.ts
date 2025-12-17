@@ -454,9 +454,8 @@ export const appleWalletService = {
     }
 
     // passRecord.webServiceUrl already contains the full path including /api/passkit
-    // Only append /api/passkit if using fallback base URL
-    const webServiceUrl = passRecord.webServiceUrl || 
-      `${process.env.BASE_URL || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:5000")}/api/passkit`;
+    // Use stored webServiceUrl - it should always be set correctly when pass is created/updated
+    const webServiceUrl = passRecord.webServiceUrl || "https://crm.cemscale.com/api/passkit";
 
     const passBuffer = await this.generatePass({
       pass: passRecord,

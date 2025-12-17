@@ -224,14 +224,11 @@ export const walletPassService = {
 
   async createLink(data: Omit<InsertWalletLink, "slug">): Promise<WalletLink> {
     const slug = generateSlug();
-    const baseUrl = process.env.BASE_URL || (process.env.REPLIT_DEV_DOMAIN 
-      ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
-      : "http://localhost:5000");
     
     const [link] = await db.insert(walletLinks).values({
       ...data,
       slug,
-      url: `${baseUrl}/w/${slug}`,
+      url: `/w/${slug}`,
     }).returning();
     return link;
   },
