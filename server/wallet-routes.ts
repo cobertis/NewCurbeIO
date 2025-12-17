@@ -122,13 +122,17 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
         return res.status(404).json({ message: "Member not found" });
       }
 
+      const settings = await walletPassService.getWalletSettings(companyId);
+      const passTypeIdentifier = settings?.applePassTypeIdentifier || process.env.APPLE_PASS_TYPE_ID;
+      const teamIdentifier = settings?.appleTeamId || process.env.APPLE_TEAM_ID;
+
       let pass = await walletPassService.getPassByMember(member.id);
       if (!pass) {
         pass = await walletPassService.createPass({
           companyId,
           memberId: member.id,
-          passTypeIdentifier: process.env.APPLE_PASS_TYPE_ID,
-          teamIdentifier: process.env.APPLE_TEAM_ID,
+          passTypeIdentifier,
+          teamIdentifier,
           webServiceUrl: `${getBaseUrl()}/api/passkit/v1`,
         });
       }
