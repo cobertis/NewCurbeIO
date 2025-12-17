@@ -28782,6 +28782,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           enabled: true,
           webhook_url: webhookUrl || null,
           webhook_api_version: "2",
+          whitelisted_destinations: ["US"],
           number_pool_settings: {
             toll_free_weight: 10,
             long_code_weight: 1,
