@@ -253,6 +253,13 @@ export const appleWalletService = {
       return null;
     }
 
+    // Get wallet settings for this company (contains certificates)
+    const settings = await walletPassService.getWalletSettings(passRecord.companyId);
+    if (!settings) {
+      console.error("[PassKit] No wallet settings found for company:", passRecord.companyId);
+      return null;
+    }
+
     // passRecord.webServiceUrl already contains the full path including /api/passkit
     // Only append /api/passkit if using fallback base URL
     const webServiceUrl = passRecord.webServiceUrl || 
@@ -262,6 +269,7 @@ export const appleWalletService = {
       pass: passRecord,
       member,
       webServiceUrl,
+      settings,
     });
 
     return {
