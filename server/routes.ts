@@ -16963,11 +16963,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           await storage.createPolicyNote({
             policyId: newPolicyId,
             companyId: originalPolicy.companyId,
-            authorId: currentUser.id,
-            category: note.category,
-            content: `[Copied from Policy ${id}] ${note.content}`,
-            memberId: note.memberId,
-            imageUrl: note.imageUrl,
+            createdBy: currentUser.id,
+            note: `[Copied from Policy ${id}] ${note.note || ""}`,
+            isImportant: note.isImportant || false,
+            isPinned: note.isPinned || false,
+            isResolved: note.isResolved || false,
+            attachments: note.attachments || [],
           });
         }
 
