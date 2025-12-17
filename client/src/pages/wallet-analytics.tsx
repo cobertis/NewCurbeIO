@@ -394,6 +394,12 @@ export default function WalletAnalyticsPage() {
       
       await apiRequest("PUT", "/api/wallet/settings", payload);
       toast({ title: "Settings saved successfully" });
+      
+      setAppleP12File(null);
+      setAppleIconFile(null);
+      setGoogleServiceAccountFile(null);
+      setAppleP12Password("");
+      
       setShowSettings(false);
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/config"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/settings"] });
