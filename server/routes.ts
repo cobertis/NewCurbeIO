@@ -32377,13 +32377,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const hasSignerCert = !!(design?.signerCertBase64);
       const hasSignerKey = !!(design?.signerKeyBase64);
-      
-      // WWDR cert is global - check if exists in filesystem or env
-      const fs = await import("fs");
-      const path = await import("path");
-      const wwdrPath = path.join(process.cwd(), "certificates", "wwdr.pem");
-      const hasWwdr = fs.existsSync(wwdrPath) || !!process.env.APPLE_WWDR_CERT;
-      
       let certInfo = null;
       if (hasSignerCert && design?.certUploadedAt) {
         certInfo = {
@@ -32398,7 +32391,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         configured: hasSignerCert && hasSignerKey,
         hasSignerCert,
         hasSignerKey,
-        hasWwdr,
+        
         certInfo,
       });
     } catch (error) {

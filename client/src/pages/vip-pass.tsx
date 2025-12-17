@@ -98,7 +98,6 @@ interface CertificateStatus {
   configured: boolean;
   hasSignerCert: boolean;
   hasSignerKey: boolean;
-  hasWwdr: boolean;
   certInfo: {
     uploadedAt: string;
     expiresAt: string | null;
@@ -1064,7 +1063,7 @@ export default function VipPassPage() {
                       </div>
                     </div>
                     
-                    <div className="grid grid-cols-3 gap-4 text-sm">
+                    <div className="grid grid-cols-2 gap-4 text-sm">
                       <div className="flex items-center gap-2">
                         {certStatus.hasSignerCert ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
                         <span>Signer Certificate</span>
@@ -1072,10 +1071,6 @@ export default function VipPassPage() {
                       <div className="flex items-center gap-2">
                         {certStatus.hasSignerKey ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
                         <span>Private Key</span>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {certStatus.hasWwdr ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
-                        <span>WWDR Certificate</span>
                       </div>
                     </div>
                     
@@ -1157,7 +1152,6 @@ export default function VipPassPage() {
                         <li>Create a Pass Type ID under Identifiers</li>
                         <li>Create a Pass Type ID Certificate under Certificates</li>
                         <li>Download and export as .p12 from Keychain Access</li>
-                        <li>Also download the Apple WWDR certificate (G4) from Apple's Certificate Authority page</li>
                       </ol>
                     </div>
                   </div>
