@@ -47,6 +47,7 @@ import {
 import { CARRIERS_BY_TYPE, PRODUCT_TYPES as SIMPLE_PRODUCT_TYPES, getCarriersByProductType } from "@shared/carriers";
 import { PolicyRenewalComparison } from "@/components/PolicyRenewalComparison";
 import { parseCostShareValue, formatCostShareValue, formatCostShareValueShort, extractCostShareFromCMS, type CostShareValue } from "@shared/cost-share-utils";
+import ambetterLogo from "@assets/ambetter_1765960250992.png";
 
 // Type definitions for spouse and dependent objects (matching zod schemas in shared/schema.ts)
 type Spouse = {
@@ -8324,16 +8325,23 @@ export default function PoliciesPage() {
                             
                             return (
                               <div key={policyPlan.id || index} className="rounded-lg border border-border/60 bg-background/40 overflow-hidden">
-                                {/* Header: Carrier + Plan Name + Badges */}
+                                {/* Header: Logo + Carrier + Plan Name + Badges */}
                                 <div className="px-4 py-3 border-b border-border/40 bg-muted/20">
-                                  <div className="flex items-center justify-between gap-3">
+                                  <div className="flex items-start gap-3">
+                                    {/* Carrier Logo */}
+                                    {(plan.issuer?.name || '').toLowerCase().includes('ambetter') ? (
+                                      <img src={ambetterLogo} alt="Ambetter" className="h-8 object-contain flex-shrink-0" />
+                                    ) : (
+                                      <Building2 className="h-8 w-8 text-muted-foreground flex-shrink-0" />
+                                    )}
+                                    {/* Carrier + Plan Info */}
                                     <div className="flex-1 min-w-0">
                                       <p className="text-sm font-semibold text-foreground">{plan.issuer?.name || 'Insurance Provider'}</p>
                                       <p className="text-sm text-primary font-medium truncate">{plan.name}</p>
-                                    </div>
-                                    <div className="flex items-center gap-1.5 flex-shrink-0">
-                                      <Badge variant="secondary" className="text-[10px] h-5 font-medium">{plan.metal_level || 'N/A'}</Badge>
-                                      <Badge variant="outline" className="text-[10px] h-5">{plan.type || 'N/A'}</Badge>
+                                      <div className="flex items-center gap-1.5 mt-1">
+                                        <Badge variant="secondary" className="text-[10px] h-5 font-medium">{plan.metal_level || 'N/A'}</Badge>
+                                        <Badge variant="outline" className="text-[10px] h-5">{plan.type || 'N/A'}</Badge>
+                                      </div>
                                     </div>
                                   </div>
                                 </div>
