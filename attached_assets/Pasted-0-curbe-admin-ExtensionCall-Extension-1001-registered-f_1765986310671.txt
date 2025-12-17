@@ -1,0 +1,45 @@
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user d994cb38-776f-40ea-80d1-2a355e12819f
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | [ExtensionCall] Extension 1001 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user d994cb38-776f-40ea-80d1-2a355e12819f
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | [ExtensionCall] Extension 1001 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user d994cb38-776f-40ea-80d1-2a355e12819f
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | [ExtensionCall] Extension 1001 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user d994cb38-776f-40ea-80d1-2a355e12819f
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | [ExtensionCall] Extension 1001 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user d994cb38-776f-40ea-80d1-2a355e12819f
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | [ExtensionCall] Extension 1001 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user d994cb38-776f-40ea-80d1-2a355e12819f
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | [ExtensionCall] Extension 1001 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user d994cb38-776f-40ea-80d1-2a355e12819f
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user d994cb38-776f-40ea-80d1-2a355e12819f
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user d994cb38-776f-40ea-80d1-2a355e12819f
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user d994cb38-776f-40ea-80d1-2a355e12819f
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 1 clients in company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | [ExtensionCall] Extension 1001 unregistered
+0|curbe-admin  | [ExtensionCall] Broadcast online_extensions to 0 clients in company 6b8a1a6f-e604-4ab4-bc28-36feca0d7fc7
+0|curbe-admin  | [WebSocket] Accepting authenticated connection for path: /ws/pbx
+0|curbe-admin  | [ExtensionCall] Extension 1001 registered for user d994cb38-776f-40ea-80d1-2a355e12819f
