@@ -28809,6 +28809,213 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // ========== TOLL-FREE VERIFICATION ENDPOINTS ==========
+
+  // GET /api/phone-system/toll-free/verifications - List toll-free verification requests
+  app.get("/api/phone-system/toll-free/verifications", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session?.activeCompanyId;
+      
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey || !managedAccountId) {
+        return res.status(400).json({ message: "Telnyx not configured" });
+      }
+      
+      const page = parseInt(req.query.page as string) || 1;
+      const pageSize = parseInt(req.query.page_size as string) || 25;
+      
+      const response = await fetch(
+        `https://api.telnyx.com/v2/messaging_tollfree/verification/requests?page=${page}&page_size=${pageSize}`,
+        {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${telnyxApiKey}`,
+            "x-managed-account-id": managedAccountId,
+            "Accept": "application/json",
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        const result = await response.json();
+        console.error("[Toll-Free Verification] Error listing:", result);
+        return res.status(response.status).json({ 
+          message: result.errors?.[0]?.detail || "Error fetching verifications" 
+        });
+      }
+      
+      const result = await response.json();
+      res.json({
+        verifications: result.data || [],
+        meta: result.meta || {},
+      });
+    } catch (error: any) {
+      console.error("[Toll-Free Verification] Error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/phone-system/toll-free/verifications - Submit toll-free verification request
+  app.post("/api/phone-system/toll-free/verifications", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session?.activeCompanyId;
+      
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey || !managedAccountId) {
+        return res.status(400).json({ message: "Telnyx not configured" });
+      }
+      
+      const {
+        businessName,
+        corporateWebsite,
+        businessAddr1,
+        businessAddr2,
+        businessCity,
+        businessState,
+        businessZip,
+        businessContactFirstName,
+        businessContactLastName,
+        businessContactEmail,
+        businessContactPhone,
+        messageVolume,
+        phoneNumbers,
+        useCase,
+        useCaseSummary,
+        productionMessageContent,
+        optInWorkflow,
+        optInWorkflowImageURLs,
+        additionalInformation,
+        isvReseller,
+        businessRegistrationNumber,
+        businessRegistrationType,
+        businessRegistrationCountry,
+      } = req.body;
+      
+      if (!businessName || !corporateWebsite || !businessAddr1 || !businessCity || 
+          !businessState || !businessZip || !businessContactFirstName || 
+          !businessContactLastName || !businessContactEmail || !businessContactPhone ||
+          !messageVolume || !phoneNumbers?.length || !useCase || !useCaseSummary ||
+          !productionMessageContent || !optInWorkflow) {
+        return res.status(400).json({ message: "Missing required fields" });
+      }
+      
+      const requestBody: any = {
+        businessName,
+        corporateWebsite,
+        businessAddr1,
+        businessCity,
+        businessState,
+        businessZip,
+        businessContactFirstName,
+        businessContactLastName,
+        businessContactEmail,
+        businessContactPhone,
+        messageVolume,
+        phoneNumbers: phoneNumbers.map((pn: string) => ({ phoneNumber: pn })),
+        useCase,
+        useCaseSummary,
+        productionMessageContent,
+        optInWorkflow,
+      };
+      
+      if (businessAddr2) requestBody.businessAddr2 = businessAddr2;
+      if (optInWorkflowImageURLs?.length) {
+        requestBody.optInWorkflowImageURLs = optInWorkflowImageURLs.map((url: string) => ({ url }));
+      }
+      if (additionalInformation) requestBody.additionalInformation = additionalInformation;
+      if (isvReseller) requestBody.isvReseller = isvReseller;
+      if (businessRegistrationNumber) requestBody.businessRegistrationNumber = businessRegistrationNumber;
+      if (businessRegistrationType) requestBody.businessRegistrationType = businessRegistrationType;
+      if (businessRegistrationCountry) requestBody.businessRegistrationCountry = businessRegistrationCountry;
+      
+      console.log("[Toll-Free Verification] Submitting request:", { 
+        businessName, 
+        phoneNumbers: phoneNumbers.length,
+        useCase 
+      });
+      
+      const response = await fetch(
+        "https://api.telnyx.com/v2/messaging_tollfree/verification/requests",
+        {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${telnyxApiKey}`,
+            "x-managed-account-id": managedAccountId,
+            "Content-Type": "application/json",
+            "Accept": "application/json",
+          },
+          body: JSON.stringify(requestBody),
+        }
+      );
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        console.error("[Toll-Free Verification] Error submitting:", result);
+        return res.status(response.status).json({ 
+          message: result.errors?.[0]?.detail || "Error submitting verification request" 
+        });
+      }
+      
+      console.log("[Toll-Free Verification] Request submitted:", result.data?.id);
+      res.json({
+        success: true,
+        verification: result.data,
+      });
+    } catch (error: any) {
+      console.error("[Toll-Free Verification] Error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/phone-system/toll-free/verifications/:id - Get specific verification request
+  app.get("/api/phone-system/toll-free/verifications/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session?.activeCompanyId;
+      const { id } = req.params;
+      
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey || !managedAccountId) {
+        return res.status(400).json({ message: "Telnyx not configured" });
+      }
+      
+      const response = await fetch(
+        `https://api.telnyx.com/v2/messaging_tollfree/verification/requests/${id}`,
+        {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${telnyxApiKey}`,
+            "x-managed-account-id": managedAccountId,
+            "Accept": "application/json",
+          },
+        }
+      );
+      
+      if (!response.ok) {
+        const result = await response.json();
+        console.error("[Toll-Free Verification] Error fetching:", result);
+        return res.status(response.status).json({ 
+          message: result.errors?.[0]?.detail || "Error fetching verification" 
+        });
+      }
+      
+      const result = await response.json();
+      res.json({ verification: result.data });
+    } catch (error: any) {
+      console.error("[Toll-Free Verification] Error:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // GET /api/telnyx/user-phone-status - Check if current user has an assigned phone number for calling
   app.get("/api/telnyx/user-phone-status", requireAuth, async (req: Request, res: Response) => {
     try {

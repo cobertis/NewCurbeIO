@@ -39,6 +39,7 @@ import {
   Clock,
   Loader2,
   MessageSquare,
+  Phone,
   Plus,
   ShieldCheck,
   XCircle,
@@ -53,6 +54,20 @@ interface MessagingProfileResponse {
     enabled?: boolean;
     webhook_url?: string | null;
   };
+}
+
+interface TollFreeVerification {
+  id: string;
+  verificationRequestId?: string;
+  verificationStatus: string;
+  businessName: string;
+  phoneNumbers?: { phoneNumber: string }[];
+  createdAt?: string;
+}
+
+interface TollFreeVerificationsResponse {
+  verifications: TollFreeVerification[];
+  meta?: any;
 }
 
 const ENTITY_TYPES = [
@@ -216,6 +231,10 @@ export function ComplianceTab() {
 
   const { data: messagingProfile, isLoading: isLoadingProfile } = useQuery<MessagingProfileResponse>({
     queryKey: ["/api/phone-system/messaging-profile"],
+  });
+
+  const { data: tollFreeData, isLoading: isLoadingTollFree } = useQuery<TollFreeVerificationsResponse>({
+    queryKey: ["/api/phone-system/toll-free/verifications"],
   });
 
   const createProfileMutation = useMutation({
@@ -736,6 +755,78 @@ export function ComplianceTab() {
                 ) : (
                   <><Plus className="h-4 w-4 mr-2" />Create Messaging Profile</>
                 )}
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Toll-Free Verification</h3>
+          <p className="text-sm text-slate-500 mt-1">Verify toll-free numbers (800, 888, 877, etc.) for SMS/MMS messaging</p>
+        </div>
+
+        <div className="p-6">
+          {isLoadingTollFree ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+            </div>
+          ) : tollFreeData?.verifications && tollFreeData.verifications.length > 0 ? (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {tollFreeData.verifications.map((verification) => {
+                const status = verification.verificationStatus?.toUpperCase();
+                let statusBadge;
+                if (status === "VERIFIED") {
+                  statusBadge = <Badge className="bg-green-100 text-green-800 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" />Verified</Badge>;
+                } else if (["PENDING", "IN PROGRESS", "WAITING FOR VENDOR", "WAITING FOR TELNYX"].includes(status)) {
+                  statusBadge = <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200"><Clock className="h-3 w-3 mr-1" />{verification.verificationStatus}</Badge>;
+                } else if (status === "WAITING FOR CUSTOMER") {
+                  statusBadge = <Badge className="bg-orange-100 text-orange-800 border-orange-200"><AlertTriangle className="h-3 w-3 mr-1" />Waiting For Customer</Badge>;
+                } else if (status === "REJECTED") {
+                  statusBadge = <Badge className="bg-red-100 text-red-800 border-red-200"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+                } else {
+                  statusBadge = <Badge variant="outline">{verification.verificationStatus || "Unknown"}</Badge>;
+                }
+
+                return (
+                  <div key={verification.id} className="py-4 first:pt-0 last:pb-0">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-full bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center">
+                          <Phone className="h-5 w-5 text-purple-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-slate-900 dark:text-white">{verification.businessName}</h4>
+                          <div className="flex items-center gap-3 mt-1">
+                            <span className="text-xs text-slate-500">
+                              {verification.phoneNumbers?.length || 0} phone number{(verification.phoneNumbers?.length || 0) !== 1 ? 's' : ''}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-400 mt-1 font-mono">ID: {verification.id}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        {statusBadge}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Phone className="h-12 w-12 text-slate-300 mb-4" />
+              <h4 className="text-lg font-medium text-slate-700 dark:text-slate-300">No toll-free verifications</h4>
+              <p className="text-sm text-slate-500 mt-1 max-w-md">
+                Submit a verification request to enable messaging on your toll-free numbers.
+              </p>
+              <Button 
+                className="mt-4" 
+                disabled
+                data-testid="btn-submit-toll-free-verification"
+              >
+                <Plus className="h-4 w-4 mr-2" />Submit Verification
               </Button>
             </div>
           )}
