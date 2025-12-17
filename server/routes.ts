@@ -28570,6 +28570,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Phone system not activated. Please set up Phone System first." });
       }
 
+      // Charge $4 brand registration fee
+      const BRAND_REGISTRATION_FEE = 4.00;
+      const { getOrCreateWallet, charge } = await import("./services/wallet-service");
+      const wallet = await getOrCreateWallet(companyId!, userId);
+      const currentBalance = parseFloat(wallet.balance);
+      
+      if (currentBalance < BRAND_REGISTRATION_FEE) {
+        return res.status(402).json({
+          message: `Insufficient wallet balance. Need $${BRAND_REGISTRATION_FEE.toFixed(2)}, have $${currentBalance.toFixed(2)}`,
+          insufficientFunds: true,
+          requiredAmount: BRAND_REGISTRATION_FEE,
+          currentBalance: currentBalance
+        });
+      }
+
       // Build Telnyx payload
       const telnyxPayload: Record<string, any> = {
         entityType: brandData.entityType,
@@ -28648,7 +28663,23 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         })
         .returning();
 
-      res.json({ success: true, brand: newBrand });
+      // Charge the $4 registration fee from wallet
+      const chargeResult = await charge(
+        wallet.id,
+        BRAND_REGISTRATION_FEE,
+        "BRAND_REGISTRATION",
+        `10DLC Brand registration: ${brandData.displayName}`,
+        newBrand.id.toString()
+      );
+      
+      if (!chargeResult.success) {
+        console.error("[10DLC Brand] Failed to charge wallet:", chargeResult.error);
+        // Brand was created successfully, log the billing failure but dont fail the request
+      } else {
+        console.log(`[10DLC Brand] Charged $${BRAND_REGISTRATION_FEE.toFixed(2)} for brand registration. New balance: $${chargeResult.newBalance}`);
+      }
+
+            res.json({ success: true, brand: newBrand });
     } catch (error: any) {
       console.error("Error creating brand:", error);
       res.status(500).json({ message: error.message });
@@ -28969,6 +29000,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
+      // Charge $15 campaign review fee
+      const CAMPAIGN_REVIEW_FEE = 15.00;
+      const userId = req.session?.userId;
+      const { getOrCreateWallet, charge } = await import("./services/wallet-service");
+      const wallet = await getOrCreateWallet(companyId!, userId);
+      const currentBalance = parseFloat(wallet.balance);
+      
+      if (currentBalance < CAMPAIGN_REVIEW_FEE) {
+        return res.status(402).json({
+          message: `Insufficient wallet balance. Need $${CAMPAIGN_REVIEW_FEE.toFixed(2)}, have $${currentBalance.toFixed(2)}`,
+          insufficientFunds: true,
+          requiredAmount: CAMPAIGN_REVIEW_FEE,
+          currentBalance: currentBalance
+        });
+      }
+
       const campaignData: Record<string, any> = {
         brandId,
         usecase,
@@ -29025,6 +29072,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       console.log("[10DLC Campaign] Created:", result);
+      // Charge the $15 campaign review fee from wallet
+      const chargeResult = await charge(
+        wallet.id,
+        CAMPAIGN_REVIEW_FEE,
+        "CAMPAIGN_REGISTRATION",
+        `10DLC Campaign registration: ${usecase}`,
+        result.data?.campaignId || result.campaignId || ""
+      );
+      
+      if (!chargeResult.success) {
+        console.error("[10DLC Campaign] Failed to charge wallet:", chargeResult.error);
+      } else {
+        console.log(`[10DLC Campaign] Charged $${CAMPAIGN_REVIEW_FEE.toFixed(2)} for campaign review. New balance: $${chargeResult.newBalance}`);
+      }
+
       res.json({ success: true, campaign: result.data || result });
     } catch (error: any) {
       console.error("Error creating 10DLC campaign:", error);

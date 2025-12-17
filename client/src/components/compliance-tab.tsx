@@ -1263,14 +1263,6 @@ export function ComplianceTab() {
         </div>
       </div>
 
-      {/* Campaign Fee Notice */}
-      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start gap-3">
-        <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-        <p className="text-sm text-blue-800 dark:text-blue-200">
-          Please note that campaigns are charged a $15 review fee by the carriers each time they are submitted for carrier compliance review. This includes resubmissions following carrier rejections.
-        </p>
-      </div>
-
       {/* 10DLC Campaigns Section */}
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
         <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
@@ -1283,6 +1275,14 @@ export function ComplianceTab() {
               <Plus className="h-4 w-4 mr-2" />Create Campaign
             </Button>
           )}
+        </div>
+
+        {/* Campaign Fee Notice */}
+        <div className="mx-6 mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-blue-800 dark:text-blue-200">
+            Please note that campaigns are charged a $15 review fee by the carriers each time they are submitted for carrier compliance review. This includes resubmissions following carrier rejections.
+          </p>
         </div>
 
         <div className="p-6">
