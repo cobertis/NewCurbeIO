@@ -28,14 +28,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import {
-  Sheet,
-  SheetContent,
-  SheetDescription,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from "@/components/ui/sheet";
-import {
   AlertCircle,
   AlertTriangle,
   Building2,
@@ -311,7 +303,7 @@ function getStatusBadge(status: string | null) {
 
 export function ComplianceTab() {
   const { toast } = useToast();
-  const [sheetOpen, setSheetOpen] = useState(false);
+  const [showBrandWizard, setShowBrandWizard] = useState(false);
 
   const { data: brands = [], isLoading } = useQuery<TelnyxBrand[]>({
     queryKey: ["/api/phone-system/brands"],
@@ -641,7 +633,7 @@ export function ComplianceTab() {
     onSuccess: () => {
       toast({ title: "Brand registered successfully", description: "Your 10DLC brand has been submitted for verification." });
       queryClient.invalidateQueries({ queryKey: ["/api/phone-system/brands"] });
-      setSheetOpen(false);
+      setShowBrandWizard(false);
       form.reset();
     },
     onError: (error: any) => {
@@ -657,6 +649,351 @@ export function ComplianceTab() {
   const needsEin = ["PRIVATE_PROFIT", "PUBLIC_PROFIT", "NON_PROFIT"].includes(entityType);
   const needsPublicFields = entityType === "PUBLIC_PROFIT";
   const isSoleProprietor = entityType === "SOLE_PROPRIETOR";
+
+  // Brand Wizard - Full Width Main Content
+  if (showBrandWizard) {
+    return (
+      <div className="p-6">
+        <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
+          <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+            <h2 className="text-xl font-semibold text-slate-900 dark:text-white">Register 10DLC Brand</h2>
+            <p className="text-sm text-slate-500 mt-1">Submit your business information for 10DLC compliance. This is required to send SMS in the US.</p>
+          </div>
+          <div className="p-6">
+            <div className="max-w-2xl">
+              <div className="mb-6 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <div className="flex items-start gap-2">
+                  <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Registration Fee: $4.00</p>
+                    <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">This is a non-refundable fee charged by The Campaign Registry (TCR).</p>
+                  </div>
+                </div>
+              </div>
+
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white border-b pb-2">Company Information</h3>
+                    
+                    <FormField
+                      control={form.control}
+                      name="entityType"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Entity Type *</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-entity-type">
+                                <SelectValue placeholder="Select entity type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {ENTITY_TYPES.map((type) => (
+                                <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="displayName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Display Name (DBA) *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Your business name" {...field} data-testid="input-display-name" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {needsCompanyName && (
+                      <FormField
+                        control={form.control}
+                        name="companyName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Legal Company Name {needsCompanyName ? "*" : ""}</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Legal entity name" {...field} data-testid="input-company-name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    {needsEin && (
+                      <FormField
+                        control={form.control}
+                        name="ein"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>EIN (Tax ID) *</FormLabel>
+                            <FormControl>
+                              <Input placeholder="XX-XXXXXXX" {...field} data-testid="input-ein" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
+                    <FormField
+                      control={form.control}
+                      name="email"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Contact Email *</FormLabel>
+                          <FormControl>
+                            <Input type="email" placeholder="contact@company.com" {...field} data-testid="input-email" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="vertical"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Industry *</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid="select-vertical">
+                                <SelectValue placeholder="Select industry" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {VERTICALS.map((v) => (
+                                <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {needsPublicFields && (
+                      <>
+                        <FormField
+                          control={form.control}
+                          name="businessContactEmail"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Business Contact Email *</FormLabel>
+                              <FormControl>
+                                <Input type="email" placeholder="business@company.com" {...field} data-testid="input-business-email" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <div className="grid grid-cols-2 gap-4">
+                          <FormField
+                            control={form.control}
+                            name="stockSymbol"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Stock Symbol *</FormLabel>
+                                <FormControl>
+                                  <Input placeholder="AAPL" {...field} data-testid="input-stock-symbol" />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="stockExchange"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Stock Exchange *</FormLabel>
+                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger data-testid="select-stock-exchange">
+                                      <SelectValue placeholder="Select exchange" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {STOCK_EXCHANGES.map((ex) => (
+                                      <SelectItem key={ex.value} value={ex.value}>{ex.label}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white border-b pb-2">
+                      Contact Information {isSoleProprietor ? "(Required)" : "(Optional)"}
+                    </h3>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="firstName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>First Name {isSoleProprietor && "*"}</FormLabel>
+                            <FormControl>
+                              <Input placeholder="John" {...field} data-testid="input-first-name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="lastName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Last Name {isSoleProprietor && "*"}</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Doe" {...field} data-testid="input-last-name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <FormField
+                      control={form.control}
+                      name="phone"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Phone Number {isSoleProprietor && "*"}</FormLabel>
+                          <FormControl>
+                            <Input placeholder="+12024567890" {...field} data-testid="input-phone" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white border-b pb-2">
+                      Address {isSoleProprietor ? "(Required)" : "(Optional)"}
+                    </h3>
+                    
+                    <FormField
+                      control={form.control}
+                      name="street"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Street Address {isSoleProprietor && "*"}</FormLabel>
+                          <FormControl>
+                            <Input placeholder="123 Main St" {...field} data-testid="input-street" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    <div className="grid grid-cols-3 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="city"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>City {isSoleProprietor && "*"}</FormLabel>
+                            <FormControl>
+                              <Input placeholder="Miami" {...field} data-testid="input-city" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="state"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>State {isSoleProprietor && "*"}</FormLabel>
+                            <FormControl>
+                              <Input placeholder="FL" maxLength={2} {...field} data-testid="input-state" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="postalCode"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>ZIP Code {isSoleProprietor && "*"}</FormLabel>
+                            <FormControl>
+                              <Input placeholder="33101" {...field} data-testid="input-zip" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white border-b pb-2">Additional (Optional)</h3>
+                    
+                    <FormField
+                      control={form.control}
+                      name="website"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Website</FormLabel>
+                          <FormControl>
+                            <Input placeholder="https://yourcompany.com" {...field} data-testid="input-website" />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="flex gap-2 pt-6">
+                    <Button 
+                      type="submit" 
+                      disabled={createBrandMutation.isPending}
+                      data-testid="btn-submit-brand"
+                    >
+                      {createBrandMutation.isPending ? (
+                        <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Registering...</>
+                      ) : (
+                        <>Register Brand ($4.00)</>
+                      )}
+                    </Button>
+                    <Button 
+                      type="button" 
+                      variant="outline" 
+                      onClick={() => { setShowBrandWizard(false); form.reset(); }}
+                    >
+                      Cancel
+                    </Button>
+                  </div>
+                </form>
+              </Form>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   // Campaign Wizard - Full Width Main Content
   if (showCampaignWizard) {
@@ -977,342 +1314,10 @@ export function ComplianceTab() {
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Registered Brands</h3>
             <p className="text-sm text-slate-500 mt-1">Your 10DLC brands registered with The Campaign Registry</p>
           </div>
-          <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
-            <SheetTrigger asChild>
-              <Button data-testid="btn-register-brand">
-                <Plus className="h-4 w-4 mr-2" />
-                Register Brand
-              </Button>
-            </SheetTrigger>
-            <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
-              <SheetHeader>
-                <SheetTitle>Register 10DLC Brand</SheetTitle>
-                <SheetDescription>
-                  Submit your business information for 10DLC compliance. This is required to send SMS in the US.
-                </SheetDescription>
-              </SheetHeader>
-
-              <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
-                <div className="flex items-start gap-2">
-                  <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Registration Fee: $4.00</p>
-                    <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">This is a non-refundable fee charged by The Campaign Registry (TCR).</p>
-                  </div>
-                </div>
-              </div>
-
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-6">
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white border-b pb-2">Company Information</h3>
-                    
-                    <FormField
-                      control={form.control}
-                      name="entityType"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Entity Type *</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-entity-type">
-                                <SelectValue placeholder="Select entity type" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {ENTITY_TYPES.map((type) => (
-                                <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="displayName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Display Name (DBA) *</FormLabel>
-                          <FormControl>
-                            <Input placeholder="Your business name" {...field} data-testid="input-display-name" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {needsCompanyName && (
-                      <FormField
-                        control={form.control}
-                        name="companyName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Legal Company Name {needsCompanyName ? "*" : ""}</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Legal entity name" {...field} data-testid="input-company-name" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-
-                    {needsEin && (
-                      <FormField
-                        control={form.control}
-                        name="ein"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>EIN (Tax ID) *</FormLabel>
-                            <FormControl>
-                              <Input placeholder="XX-XXXXXXX" {...field} data-testid="input-ein" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    )}
-
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Contact Email *</FormLabel>
-                          <FormControl>
-                            <Input type="email" placeholder="contact@company.com" {...field} data-testid="input-email" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <FormField
-                      control={form.control}
-                      name="vertical"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Industry *</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-vertical">
-                                <SelectValue placeholder="Select industry" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {VERTICALS.map((v) => (
-                                <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    {needsPublicFields && (
-                      <>
-                        <FormField
-                          control={form.control}
-                          name="businessContactEmail"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Business Contact Email *</FormLabel>
-                              <FormControl>
-                                <Input type="email" placeholder="business@company.com" {...field} data-testid="input-business-email" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <div className="grid grid-cols-2 gap-4">
-                          <FormField
-                            control={form.control}
-                            name="stockSymbol"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Stock Symbol *</FormLabel>
-                                <FormControl>
-                                  <Input placeholder="AAPL" {...field} data-testid="input-stock-symbol" />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                          <FormField
-                            control={form.control}
-                            name="stockExchange"
-                            render={({ field }) => (
-                              <FormItem>
-                                <FormLabel>Stock Exchange *</FormLabel>
-                                <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                  <FormControl>
-                                    <SelectTrigger data-testid="select-stock-exchange">
-                                      <SelectValue placeholder="Select exchange" />
-                                    </SelectTrigger>
-                                  </FormControl>
-                                  <SelectContent>
-                                    {STOCK_EXCHANGES.map((ex) => (
-                                      <SelectItem key={ex.value} value={ex.value}>{ex.label}</SelectItem>
-                                    ))}
-                                  </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )}
-                          />
-                        </div>
-                      </>
-                    )}
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white border-b pb-2">
-                      Contact Information {isSoleProprietor ? "(Required)" : "(Optional)"}
-                    </h3>
-                    
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="firstName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>First Name {isSoleProprietor && "*"}</FormLabel>
-                            <FormControl>
-                              <Input placeholder="John" {...field} data-testid="input-first-name" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="lastName"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Last Name {isSoleProprietor && "*"}</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Doe" {...field} data-testid="input-last-name" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-
-                    <FormField
-                      control={form.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone Number {isSoleProprietor && "*"}</FormLabel>
-                          <FormControl>
-                            <Input placeholder="+12024567890" {...field} data-testid="input-phone" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white border-b pb-2">
-                      Address {isSoleProprietor ? "(Required)" : "(Optional)"}
-                    </h3>
-                    
-                    <FormField
-                      control={form.control}
-                      name="street"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Street Address {isSoleProprietor && "*"}</FormLabel>
-                          <FormControl>
-                            <Input placeholder="123 Main St" {...field} data-testid="input-street" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-
-                    <div className="grid grid-cols-3 gap-4">
-                      <FormField
-                        control={form.control}
-                        name="city"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>City {isSoleProprietor && "*"}</FormLabel>
-                            <FormControl>
-                              <Input placeholder="Miami" {...field} data-testid="input-city" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="state"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>State {isSoleProprietor && "*"}</FormLabel>
-                            <FormControl>
-                              <Input placeholder="FL" maxLength={2} {...field} data-testid="input-state" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                      <FormField
-                        control={form.control}
-                        name="postalCode"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>ZIP Code {isSoleProprietor && "*"}</FormLabel>
-                            <FormControl>
-                              <Input placeholder="33101" {...field} data-testid="input-zip" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
-                    </div>
-                  </div>
-
-                  <div className="space-y-4">
-                    <h3 className="text-sm font-semibold text-slate-900 dark:text-white border-b pb-2">Additional (Optional)</h3>
-                    
-                    <FormField
-                      control={form.control}
-                      name="website"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Website</FormLabel>
-                          <FormControl>
-                            <Input placeholder="https://yourcompany.com" {...field} data-testid="input-website" />
-                          </FormControl>
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-
-                  <Button 
-                    type="submit" 
-                    className="w-full" 
-                    disabled={createBrandMutation.isPending}
-                    data-testid="btn-submit-brand"
-                  >
-                    {createBrandMutation.isPending ? (
-                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Registering...</>
-                    ) : (
-                      <>Register Brand ($4.00)</>
-                    )}
-                  </Button>
-                </form>
-              </Form>
-            </SheetContent>
-          </Sheet>
+          <Button data-testid="btn-register-brand" onClick={() => setShowBrandWizard(true)}>
+            <Plus className="h-4 w-4 mr-2" />
+            Register Brand
+          </Button>
         </div>
 
         {/* Brand Registration Fee Notice */}
@@ -1334,7 +1339,7 @@ export function ComplianceTab() {
             <p className="text-sm text-slate-500 mt-1 max-w-md">
               Register a 10DLC brand to enable SMS messaging in the United States. This is required for A2P compliance.
             </p>
-            <Button className="mt-4" onClick={() => setSheetOpen(true)} data-testid="btn-register-first-brand">
+            <Button className="mt-4" onClick={() => setShowBrandWizard(true)} data-testid="btn-register-first-brand">
               <Plus className="h-4 w-4 mr-2" />
               Register Your First Brand
             </Button>
