@@ -185,17 +185,21 @@ export const walletPassService = {
     }).where(eq(walletPasses.id, id));
   },
 
-  async regeneratePass(id: string, encryptionKey: string): Promise<WalletPass | undefined> {
+  async regeneratePass(id: string, encryptionKey: string, webServiceUrl?: string): Promise<WalletPass | undefined> {
     const newSerialNumber = generateSerialNumber();
     const newAuthToken = encrypt(generateAuthToken(), encryptionKey);
+    const updateData: any = {
+      serialNumber: newSerialNumber,
+      authToken: newAuthToken,
+      appleStatus: "created",
+      googleStatus: "created",
+      updatedAt: new Date(),
+    };
+    if (webServiceUrl) {
+      updateData.webServiceUrl = webServiceUrl;
+    }
     const [pass] = await db.update(walletPasses)
-      .set({
-        serialNumber: newSerialNumber,
-        authToken: newAuthToken,
-        appleStatus: "created",
-        googleStatus: "created",
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(walletPasses.id, id))
       .returning();
     

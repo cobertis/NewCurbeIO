@@ -155,6 +155,10 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
         return res.status(400).json({ message: "Encryption key not configured. Please set it in Wallet Settings (minimum 32 characters)." });
       }
 
+      // Use BASE_URL for production webServiceUrl so Apple Wallet can communicate with the correct server
+      const productionBaseUrl = process.env.BASE_URL || getBaseUrl();
+      const webServiceUrl = `${productionBaseUrl}/api/passkit`;
+      
       let pass = await walletPassService.getPassByMember(member.id);
       if (!pass) {
         pass = await walletPassService.createPass({
@@ -162,11 +166,11 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
           memberId: member.id,
           passTypeIdentifier,
           teamIdentifier,
-          webServiceUrl: `${getBaseUrl()}/api/passkit`,
+          webServiceUrl,
         }, encryptionKey);
       } else {
-        // Regenerate pass with new encryption key to ensure tokens are valid
-        pass = await walletPassService.regeneratePass(pass.id, encryptionKey) || pass;
+        // Regenerate pass with new encryption key and updated webServiceUrl
+        pass = await walletPassService.regeneratePass(pass.id, encryptionKey, webServiceUrl) || pass;
       }
 
       let link = await walletPassService.getLinkByMember(member.id);
