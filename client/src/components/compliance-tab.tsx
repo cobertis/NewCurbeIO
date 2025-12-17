@@ -326,12 +326,12 @@ export function ComplianceTab() {
   const [sampleMessage5, setSampleMessage5] = useState<string>("");
 
   const CARRIER_TERMS = [
-    { carrier: "AT&T", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "240", mmsTpm: "150", brandTier: "-" },
-    { carrier: "T-Mobile", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "LOW" },
-    { carrier: "US Cellular", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "-" },
-    { carrier: "Verizon Wireless", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "-" },
-    { carrier: "ClearSky", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "-" },
-    { carrier: "Interop", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "-" },
+    { carrier: "AT&T", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "240", mmsTpm: "150", brandTier: "-", dailyLimit: "N/A", messageClass: "P2P" },
+    { carrier: "T-Mobile", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "LOW", dailyLimit: "2,000", messageClass: "Standard" },
+    { carrier: "US Cellular", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "-", dailyLimit: "N/A", messageClass: "Standard" },
+    { carrier: "Verizon Wireless", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "-", dailyLimit: "N/A", messageClass: "Standard" },
+    { carrier: "ClearSky", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "-", dailyLimit: "N/A", messageClass: "Standard" },
+    { carrier: "Interop", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "-", dailyLimit: "N/A", messageClass: "Standard" },
   ];
 
   const resetCampaignForm = () => {
@@ -565,6 +565,8 @@ export function ComplianceTab() {
                             <th className="text-left py-2 font-medium">SMS TPM</th>
                             <th className="text-left py-2 font-medium">MMS TPM</th>
                             <th className="text-left py-2 font-medium">Brand Tier</th>
+                            <th className="text-left py-2 font-medium">Daily Limit</th>
+                            <th className="text-left py-2 font-medium">Message Class</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -577,6 +579,8 @@ export function ComplianceTab() {
                               <td className="py-2">{ct.smsTpm}</td>
                               <td className="py-2">{ct.mmsTpm}</td>
                               <td className="py-2">{ct.brandTier}</td>
+                              <td className="py-2">{ct.dailyLimit}</td>
+                              <td className="py-2">{ct.messageClass}</td>
                             </tr>
                           ))}
                         </tbody>
