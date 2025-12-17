@@ -884,17 +884,35 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
       }
       
       const token = authHeader.slice(10);
+      
+      // Check If-Modified-Since header - Apple expects 304 if pass hasn't changed
+      const ifModifiedSince = req.headers["if-modified-since"];
+      const pass = await walletPassService.getPassBySerial(serialNumber);
+      
+      if (!pass) {
+        return res.status(404).send("Pass not found");
+      }
+      
+      // If pass hasn't been modified since the requested time, return 304
+      if (ifModifiedSince) {
+        const clientDate = new Date(ifModifiedSince);
+        const passDate = new Date(pass.updatedAt);
+        
+        // If the pass hasn't been updated since the client's last fetch, return 304
+        if (passDate <= clientDate) {
+          console.log("[PassKit] Pass not modified since:", ifModifiedSince);
+          return res.status(304).send();
+        }
+      }
+      
       const result = await appleWalletService.getUpdatedPass(serialNumber);
       
       if (!result) {
         return res.status(404).send("Pass not found");
       }
 
-      const pass = await walletPassService.getPassBySerial(serialNumber);
-      if (pass) {
-        const deviceInfo = getDeviceInfo(req);
-        await walletPassService.logEvent(pass.companyId, "apple_pass_get", deviceInfo, pass.memberId, pass.id);
-      }
+      const deviceInfo = getDeviceInfo(req);
+      await walletPassService.logEvent(pass.companyId, "apple_pass_get", deviceInfo, pass.memberId, pass.id);
 
       res.setHeader("Content-Type", "application/vnd.apple.pkpass");
       res.setHeader("Last-Modified", result.lastModified);
