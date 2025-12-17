@@ -299,6 +299,7 @@ export function ComplianceTab() {
   const [selectedUseCase, setSelectedUseCase] = useState<string>("");
   const [selectedSubUseCases, setSelectedSubUseCases] = useState<string[]>([]);
   const [campaignDescription, setCampaignDescription] = useState<string>("");
+  const [campaignVertical, setCampaignVertical] = useState<string>("");
   const [sampleMessage1, setSampleMessage1] = useState<string>("");
   const [sampleMessage2, setSampleMessage2] = useState<string>("");
   const [messageFlow, setMessageFlow] = useState<string>("Customers opt-in via our website or in-person sign-up form. They can opt-out at any time by replying STOP.");
@@ -340,6 +341,7 @@ export function ComplianceTab() {
     setSelectedUseCase("");
     setSelectedSubUseCases([]);
     setCampaignDescription("");
+    setCampaignVertical("");
     setSampleMessage1("");
     setSampleMessage2("");
     setSampleMessage3("");
@@ -597,6 +599,27 @@ export function ComplianceTab() {
                   <div className="space-y-6">
                     <h3 className="font-semibold text-lg">Campaign details</h3>
                     
+                    <div className="p-3 bg-slate-50 dark:bg-slate-800 border rounded-lg text-sm text-slate-600 dark:text-slate-300">
+                      Ideally this should match Brand Vertical.
+                    </div>
+
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1">
+                        Vertical
+                        <span className="text-slate-400 cursor-help" title="The industry vertical for this campaign">?</span>
+                      </Label>
+                      <Select value={campaignVertical} onValueChange={setCampaignVertical}>
+                        <SelectTrigger className="w-full md:w-1/2">
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {VERTICALS.map((v) => (
+                            <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+
                     <div className="space-y-4">
                       <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300 border-b pb-2">Content details</h4>
                       <div className="grid grid-cols-2 gap-6">
