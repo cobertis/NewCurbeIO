@@ -173,6 +173,42 @@ export const appleWalletService = {
       labelColor: hexToRgb(branding.secondaryColor || "#ffffff"),
     };
     
+    // PROACTIVE COLLECTION: "Cenicienta Strategy" - relevantDate at END of day (23:59)
+    // This keeps the pass on lock screen ALL DAY as a pending deadline
+    // If set to beginning of day, Apple considers it "old news" and hides it
+    if (pass.lastNotification || member.paymentDay) {
+      const now = new Date();
+      const today = now.getDate();
+      const paymentDay = member.paymentDay || today;
+      
+      let relevantDate = new Date();
+      
+      if (pass.lastNotification) {
+        // Active alert - show for rest of TODAY (deadline: 23:59 tonight)
+        relevantDate.setHours(23, 59, 0, 0);
+      } else if (today === paymentDay) {
+        // It's payment day - deadline at end of today
+        relevantDate.setHours(23, 59, 0, 0);
+      } else if (today < paymentDay) {
+        // Payment day is later this month - deadline at end of that day
+        relevantDate.setDate(paymentDay);
+        relevantDate.setHours(23, 59, 0, 0);
+      } else {
+        // Payment day already passed, set for next month
+        relevantDate.setMonth(relevantDate.getMonth() + 1);
+        relevantDate.setDate(paymentDay);
+        relevantDate.setHours(23, 59, 0, 0);
+      }
+      
+      // Format with EST timezone offset (-05:00)
+      const year = relevantDate.getFullYear();
+      const month = String(relevantDate.getMonth() + 1).padStart(2, '0');
+      const day = String(relevantDate.getDate()).padStart(2, '0');
+      passData.relevantDate = `${year}-${month}-${day}T23:59:00-05:00`;
+      
+      console.log(`[Apple Wallet] Setting relevantDate DEADLINE: ${passData.relevantDate} for member ${member.memberId}`);
+    }
+    
     // MAXIMIZED READABILITY DESIGN
     // Short labels (≤6 chars), concise values = Apple renders LARGEST font
     // Keep front minimal, details go to back
