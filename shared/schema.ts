@@ -5903,12 +5903,16 @@ export const walletMembers = pgTable("wallet_members", {
   // Payment reminder - day of month (1-31) for automatic payment due date
   paymentDay: integer("payment_day"),
   
+  // Stable link to policy plan - allows syncing even when memberId changes
+  policyPlanId: text("policy_plan_id"),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
   companyMemberIdx: uniqueIndex("wallet_members_company_member_idx").on(table.companyId, table.memberId),
   contactIdx: index("wallet_members_contact_idx").on(table.contactId),
   paymentDayIdx: index("wallet_members_payment_day_idx").on(table.paymentDay),
+  policyPlanIdx: index("wallet_members_policy_plan_idx").on(table.policyPlanId),
 }));
 
 // Wallet Passes - Stores both Apple and Google pass info

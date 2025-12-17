@@ -101,6 +101,12 @@ export const walletPassService = {
     return member;
   },
 
+  async getMemberByPolicyPlanId(companyId: string, policyPlanId: string): Promise<WalletMember | undefined> {
+    const [member] = await db.select().from(walletMembers)
+      .where(and(eq(walletMembers.companyId, companyId), eq(walletMembers.policyPlanId, policyPlanId)));
+    return member;
+  },
+
   async listMembers(companyId: string): Promise<WalletMember[]> {
     return db.select().from(walletMembers)
       .where(eq(walletMembers.companyId, companyId))
