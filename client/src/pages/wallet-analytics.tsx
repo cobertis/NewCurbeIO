@@ -297,10 +297,20 @@ export default function WalletAnalyticsPage() {
   return (
     <div className="flex flex-col gap-6 bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900 min-h-screen p-6">
       <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">Wallet System</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">Manage member passes for Apple Wallet and Google Wallet</p>
+        </div>
         <div className="flex items-center gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white" data-testid="text-page-title">Wallet System</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">Manage member passes for Apple Wallet and Google Wallet</p>
+          <div className="flex items-center gap-2">
+            <Badge variant={config?.appleConfigured ? "default" : "secondary"} className="gap-1" data-testid="badge-apple-status">
+              <Apple className="h-3 w-3" />
+              {config?.appleConfigured ? "Configured" : "Not Configured"}
+            </Badge>
+            <Badge variant={config?.googleConfigured ? "default" : "secondary"} className="gap-1" data-testid="badge-google-status">
+              <Chrome className="h-3 w-3" />
+              {config?.googleConfigured ? "Configured" : "Not Configured"}
+            </Badge>
           </div>
           <Sheet open={showSettings} onOpenChange={setShowSettings}>
             <SheetTrigger asChild>
@@ -491,16 +501,6 @@ export default function WalletAnalyticsPage() {
               </div>
             </SheetContent>
           </Sheet>
-        </div>
-        <div className="flex items-center gap-2">
-          <Badge variant={config?.appleConfigured ? "default" : "secondary"} className="gap-1" data-testid="badge-apple-status">
-            <Apple className="h-3 w-3" />
-            {config?.appleConfigured ? "Configured" : "Not Configured"}
-          </Badge>
-          <Badge variant={config?.googleConfigured ? "default" : "secondary"} className="gap-1" data-testid="badge-google-status">
-            <Chrome className="h-3 w-3" />
-            {config?.googleConfigured ? "Configured" : "Not Configured"}
-          </Badge>
         </div>
       </div>
 
