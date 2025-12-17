@@ -92,7 +92,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, or, sql, inArray, count, isNotNull, isNull } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -28472,6 +28472,147 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to check access" });
     }
   });
+
+  // ==================== 10DLC Brand Registration ====================
+
+  // GET /api/phone-system/brands - List all brands for company
+  app.get("/api/phone-system/brands", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session?.activeCompanyId;
+      const brands = await db
+        .select()
+        .from(telnyxBrands)
+        .where(eq(telnyxBrands.companyId, companyId!))
+        .orderBy(desc(telnyxBrands.createdAt));
+      res.json(brands);
+    } catch (error: any) {
+      console.error("Error fetching brands:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/phone-system/brands - Create new 10DLC brand
+  app.post("/api/phone-system/brands", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session?.activeCompanyId;
+      const userId = req.session?.userId;
+      const brandData = req.body;
+
+      // Get Telnyx API key
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      
+      if (!telnyxApiKey) {
+        return res.status(400).json({ message: "Telnyx API key not configured" });
+      }
+
+      // Build Telnyx payload
+      const telnyxPayload: Record<string, any> = {
+        entityType: brandData.entityType,
+        displayName: brandData.displayName,
+        country: brandData.country || "US",
+        email: brandData.email,
+        vertical: brandData.vertical,
+      };
+
+      // Add conditional fields
+      if (brandData.companyName) telnyxPayload.companyName = brandData.companyName;
+      if (brandData.ein) telnyxPayload.ein = brandData.ein;
+      if (brandData.businessContactEmail) telnyxPayload.businessContactEmail = brandData.businessContactEmail;
+      if (brandData.stockSymbol) telnyxPayload.stockSymbol = brandData.stockSymbol;
+      if (brandData.stockExchange) telnyxPayload.stockExchange = brandData.stockExchange;
+      if (brandData.firstName) telnyxPayload.firstName = brandData.firstName;
+      if (brandData.lastName) telnyxPayload.lastName = brandData.lastName;
+      if (brandData.phone) telnyxPayload.phone = brandData.phone;
+      if (brandData.mobilePhone) telnyxPayload.mobilePhone = brandData.mobilePhone;
+      if (brandData.street) telnyxPayload.street = brandData.street;
+      if (brandData.city) telnyxPayload.city = brandData.city;
+      if (brandData.state) telnyxPayload.state = brandData.state;
+      if (brandData.postalCode) telnyxPayload.postalCode = brandData.postalCode;
+      if (brandData.website) telnyxPayload.website = brandData.website;
+      if (brandData.isReseller !== undefined) telnyxPayload.isReseller = brandData.isReseller;
+
+      const response = await fetch("https://api.telnyx.com/v2/10dlc/brand", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${telnyxApiKey}`,
+        },
+        body: JSON.stringify(telnyxPayload),
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        const errorMsg = result.errors?.[0]?.detail || result.message || "Error creating brand with Telnyx";
+        return res.status(response.status).json({ message: errorMsg, details: result });
+      }
+
+      // Save to database
+      const [newBrand] = await db
+        .insert(telnyxBrands)
+        .values({
+          companyId: companyId!,
+          userId: userId!,
+          brandId: result.data?.brandId || result.brandId,
+          tcrBrandId: result.data?.tcrBrandId || result.tcrBrandId,
+          entityType: brandData.entityType,
+          displayName: brandData.displayName,
+          country: brandData.country || "US",
+          email: brandData.email,
+          vertical: brandData.vertical,
+          companyName: brandData.companyName || null,
+          ein: brandData.ein || null,
+          businessContactEmail: brandData.businessContactEmail || null,
+          stockSymbol: brandData.stockSymbol || null,
+          stockExchange: brandData.stockExchange || null,
+          firstName: brandData.firstName || null,
+          lastName: brandData.lastName || null,
+          phone: brandData.phone || null,
+          mobilePhone: brandData.mobilePhone || null,
+          street: brandData.street || null,
+          city: brandData.city || null,
+          state: brandData.state || null,
+          postalCode: brandData.postalCode || null,
+          website: brandData.website || null,
+          isReseller: brandData.isReseller || false,
+          status: result.data?.status || result.status || "PENDING",
+          identityStatus: result.data?.identityStatus || result.identityStatus,
+          brandData: result.data || result,
+        })
+        .returning();
+
+      res.json({ success: true, brand: newBrand });
+    } catch (error: any) {
+      console.error("Error creating brand:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/phone-system/brands/:id - Get brand details
+  app.get("/api/phone-system/brands/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session?.activeCompanyId;
+      const brandId = parseInt(req.params.id);
+      
+      const [brand] = await db
+        .select()
+        .from(telnyxBrands)
+        .where(and(
+          eq(telnyxBrands.id, brandId),
+          eq(telnyxBrands.companyId, companyId!)
+        ));
+      
+      if (!brand) {
+        return res.status(404).json({ message: "Brand not found" });
+      }
+      
+      res.json(brand);
+    } catch (error: any) {
+      console.error("Error fetching brand:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
 
   // GET /api/telnyx/user-phone-status - Check if current user has an assigned phone number for calling
   app.get("/api/telnyx/user-phone-status", requireAuth, async (req: Request, res: Response) => {

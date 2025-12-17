@@ -1,0 +1,103 @@
+Has elegido la **"Arquitectura de Contención de Daños"**. Estratégicamente, es la decisión correcta para un negocio SaaS (Software as a Service) como *Curbe.io* o *VoiceSign*.
+
+Si un cliente hace spam y T-Mobile lo banea, solo muere esa subcuenta. Tu negocio principal y los demás clientes siguen operando. **Es el modelo más seguro, aunque requiere más disciplina en tu código.**
+
+Aquí tienes el plano de ejecución exacto para que tu backend maneje esto sin que te vuelvas loco gestionando cientos de claves.
+
+### El Concepto: Tú eres el "Switch"
+
+Tu aplicación (*Curbe.io*) actúa como un tablero de control. No mezclas datos. Simplemente "te pones el sombrero" (API Key) del cliente específico cuando necesitas hablar con Telnyx sobre sus asuntos.
+
+---
+
+### Paso 1: La Estructura de Datos (Database)
+
+En tu base de datos de *Curbe.io*, tu tabla de `Clients` o `Tenants` debe tener estos campos sagrados. Si no los tienes, créalos hoy:
+
+| Campo | Descripción |
+| --- | --- |
+| `telnyx_subaccount_id` | El ID de la subcuenta en Telnyx. |
+| `telnyx_api_key` | **CRÍTICO.** La API Key específica de ESA subcuenta. |
+| `tcr_brand_id` | El ID de la marca 10DLC (una vez aprobada). |
+| `tcr_campaign_id` | El ID de la campaña 10DLC (una vez aprobada). |
+
+**Nota:** Tú generas esa `telnyx_api_key` programáticamente cuando creas la subcuenta para el cliente. Guárdala encriptada.
+
+---
+
+### Paso 2: El Flujo de Código (Lógica de Registro)
+
+Cuando el cliente "Pizzería Pepe" llena tu formulario de registro 10DLC, tu backend hace esto:
+
+1. **Recupera las credenciales:** Busca en tu DB la `telnyx_api_key` de "Pizzería Pepe".
+2. **Instancia el Cliente Telnyx:** Configura la librería de Telnyx usando *esa* key específica, no la tuya maestra.
+3. **Ejecuta las llamadas:**
+
+```python
+# Pseudocódigo Brutalmente Simple
+
+def registrar_cliente_10dlc(cliente_id, datos_formulario):
+    # 1. Obtener la identidad del cliente
+    cliente = db.get_client(cliente_id)
+    api_key_subcuenta = cliente.telnyx_api_key
+
+    # 2. Configurar Telnyx para ACTUAR como la subcuenta
+    telnyx.api_key = api_key_subcuenta 
+
+    # 3. Crear la Marca (Brand) - Esto se crea DENTRO de la subcuenta
+    brand = telnyx.Brand.create(
+        entity_type=datos_formulario.entity_type,
+        company_name=datos_formulario.company_name,
+        ein=datos_formulario.ein,
+        ...
+    )
+    
+    # Guardar brand_id en tu DB local para referencia futura
+    cliente.tcr_brand_id = brand.id
+    cliente.save()
+
+    # 4. Crear la Campaña (Una vez que la marca esté verificada)
+    campaign = telnyx.Campaign.create(
+        brand_id=brand.id,
+        usecase="MARKETING",
+        ...
+    )
+
+    # 5. Asignar Números (Que ya deben existir en esa subcuenta)
+    telnyx.PhoneNumberCampaign.create(
+        campaign_id=campaign.id,
+        phone_numbers=["+15550001234"] 
+    )
+
+```
+
+### Paso 3: El "Punto Ciego" - Los Webhooks
+
+Aquí es donde la mayoría falla con las subcuentas y pierden mensajes.
+
+Como cada subcuenta es una isla, **cada subcuenta necesita tener configurada la URL de Webhook**. Si no lo configuras, los SMS entrantes de tus clientes se perderán en el limbo.
+
+* **Estrategia:** Usa una única URL central en tu servidor, pero identifica al cliente por los datos del payload o un parámetro.
+* **Configuración:** Al crear la subcuenta (vía API), configura automáticamente la "Connection" o "Messaging Profile" de esa subcuenta para que apunte a:
+`https://api.curbe.io/webhooks/telnyx/inbound`
+
+Cuando llegue un SMS a esa URL, Telnyx te enviará el JSON. Como el número de destino (`to`) es único, tu sistema sabrá a qué cliente pertenece ese mensaje y lo mostrará en el dashboard correcto.
+
+### Paso 4: La Facturación (El dinero)
+
+No olvides esto o quebrarás.
+
+* El registro de Brand cuesta dinero (aprox $4).
+* El mantenimiento de Campaña cuesta dinero (de $2 a $10/mes según el tipo).
+* Telnyx descontará esto del saldo de la **Subcuenta**.
+
+**Tu tarea:** Asegúrate de que tu sistema de cobro a clientes (Stripe, etc.) les cobre a ellos estos fees con tu margen de ganancia *antes* o *al mismo tiempo* que Telnyx te lo descuenta a ti. O mejor aún, véndeles un paquete "Compliance Fee" mensual de $20 que cubra todo y te deje ganancia.
+
+### Tu Siguiente Movimiento
+
+Tienes la arquitectura. Ahora valida tus herramientas:
+
+1. ¿Tienes ya generadas las API Keys para las subcuentas existentes?
+2. Si no, escribe un script ahora mismo para iterar sobre tus subcuentas, generar keys y guardarlas en tu DB.
+
+Ese es el primer paso real. Hazlo.
