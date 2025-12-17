@@ -425,6 +425,9 @@ export class VipPassService {
     }
 
     passJson[styleKey] = styleData;
+    
+    // Explicitly set pass type for passkit-generator
+    passJson.type = styleKey;
 
     // Load certificates from database (in-memory only, never stored on filesystem)
     const wwdrCert = getWWDRCertificate();
@@ -479,6 +482,7 @@ export class VipPassService {
     }
 
     const pass = new PKPass({}, certificates, passJson);
+    pass.type = styleKey as "boardingPass" | "coupon" | "eventTicket" | "generic" | "storeCard";
     const buffer = pass.getAsBuffer();
     
     await this.incrementDownloadCount(passInstanceId);
