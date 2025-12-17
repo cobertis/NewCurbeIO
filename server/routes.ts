@@ -28801,6 +28801,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       const profileId = result.data?.id;
+      console.log(`[Messaging Profile] Created profileId: ${profileId}, wallet: ${wallet?.id}`);
       
       // Save to wallet
       if (wallet) {
@@ -28809,6 +28810,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           .set({ telnyxMessagingProfileId: profileId, updatedAt: new Date() })
           .where(eq(wallets.id, wallet.id));
       }
+        console.log(`[Messaging Profile] Saved to wallet ${wallet.id}: ${profileId}`);
       
       res.json({ success: true, profile: result.data });
     } catch (error: any) {
