@@ -28554,6 +28554,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         body: JSON.stringify(telnyxPayload),
       });
 
+      const result = await response.json();
       if (!response.ok) {
         const errorMsg = result.errors?.[0]?.detail || result.message || "Error creating brand with Telnyx";
         return res.status(response.status).json({ message: errorMsg, details: result });
