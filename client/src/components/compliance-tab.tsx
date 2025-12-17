@@ -92,13 +92,27 @@ const USE_CASES = [
   { value: "DELIVERY_NOTIFICATION", label: "Delivery Notifications", description: "Status of delivery of a product or service" },
   { value: "FRAUD_ALERT", label: "Fraud Alert Messaging", description: "Notifications regarding potential fraudulent activity" },
   { value: "HIGHER_EDUCATION", label: "Higher Education", description: "Colleges, Universities, School Districts messaging" },
-  { value: "LOW_VOLUME", label: "Low Volume Mixed", description: "Multiple use cases with low messaging throughput" },
+  { value: "LOW_VOLUME", label: "Low Volume Mixed", description: "Multiple use cases with low messaging throughput (max 5)" },
   { value: "M2M", label: "Machine-to-Machine", description: "Device-to-device communication, no human interaction" },
   { value: "MARKETING", label: "Marketing", description: "Marketing and promotional content" },
   { value: "MIXED", label: "Mixed", description: "2-5 sub use cases on the same campaign" },
   { value: "POLLING_VOTING", label: "Polling and Voting", description: "Surveys, polling, and voting campaigns" },
   { value: "PUBLIC_SERVICE_ANNOUNCEMENT", label: "Public Service Announcement", description: "Informational messaging about important issues" },
   { value: "SECURITY_ALERT", label: "Security Alert", description: "System security compromise notifications" },
+] as const;
+
+const SUB_USE_CASES = [
+  { value: "2FA", label: "2FA" },
+  { value: "ACCOUNT_NOTIFICATION", label: "Account Notification" },
+  { value: "CUSTOMER_CARE", label: "Customer Care" },
+  { value: "DELIVERY_NOTIFICATION", label: "Delivery Notification" },
+  { value: "FRAUD_ALERT", label: "Fraud Alert Messaging" },
+  { value: "HIGHER_EDUCATION", label: "Higher Education" },
+  { value: "M2M", label: "Machine to Machine" },
+  { value: "MARKETING", label: "Marketing" },
+  { value: "POLLING_VOTING", label: "Polling and voting" },
+  { value: "PUBLIC_SERVICE_ANNOUNCEMENT", label: "Public Service Announcement" },
+  { value: "SECURITY_ALERT", label: "Security Alert" },
 ] as const;
 
 const ENTITY_TYPES = [
@@ -275,16 +289,34 @@ export function ComplianceTab() {
   const [campaignSheetOpen, setCampaignSheetOpen] = useState(false);
   const [selectedBrandForCampaign, setSelectedBrandForCampaign] = useState<string>("");
   const [selectedUseCase, setSelectedUseCase] = useState<string>("");
+  const [selectedSubUseCases, setSelectedSubUseCases] = useState<string[]>([]);
   const [campaignDescription, setCampaignDescription] = useState<string>("");
   const [sampleMessage1, setSampleMessage1] = useState<string>("");
   const [sampleMessage2, setSampleMessage2] = useState<string>("");
   const [messageFlow, setMessageFlow] = useState<string>("Customers opt-in via our website or in-person sign-up form. They can opt-out at any time by replying STOP.");
+
+  const needsSubUseCases = selectedUseCase === "MIXED" || selectedUseCase === "LOW_VOLUME";
+  const minSubUseCases = selectedUseCase === "MIXED" ? 2 : 1;
+  const maxSubUseCases = 5;
+
+  const toggleSubUseCase = (value: string) => {
+    setSelectedSubUseCases(prev => {
+      if (prev.includes(value)) {
+        return prev.filter(v => v !== value);
+      }
+      if (prev.length >= maxSubUseCases) {
+        return prev;
+      }
+      return [...prev, value];
+    });
+  };
 
   const createCampaignMutation = useMutation({
     mutationFn: async () => {
       return await apiRequest("POST", "/api/phone-system/campaigns", {
         brandId: selectedBrandForCampaign,
         useCase: selectedUseCase,
+        subUseCases: needsSubUseCases ? selectedSubUseCases : undefined,
         description: campaignDescription,
         sampleMessage1,
         sampleMessage2,
@@ -297,6 +329,7 @@ export function ComplianceTab() {
       setCampaignSheetOpen(false);
       setSelectedBrandForCampaign("");
       setSelectedUseCase("");
+      setSelectedSubUseCases([]);
       setCampaignDescription("");
       setSampleMessage1("");
       setSampleMessage2("");
@@ -865,7 +898,10 @@ export function ComplianceTab() {
                   </div>
                   <div className="space-y-2">
                     <Label>Use Case</Label>
-                    <Select value={selectedUseCase} onValueChange={setSelectedUseCase}>
+                    <Select value={selectedUseCase} onValueChange={(value) => {
+                      setSelectedUseCase(value);
+                      setSelectedSubUseCases([]);
+                    }}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select messaging use case" />
                       </SelectTrigger>
@@ -881,6 +917,46 @@ export function ComplianceTab() {
                       </SelectContent>
                     </Select>
                   </div>
+                  {needsSubUseCases && (
+                    <div className="space-y-3">
+                      <div>
+                        <Label>Select use case type for {selectedUseCase === "MIXED" ? "Mixed" : "Low Volume"} campaign type</Label>
+                        <p className="text-xs text-slate-500 mt-1">
+                          {selectedUseCase === "MIXED" 
+                            ? "Select 2-5 sub use cases for your campaign" 
+                            : "Select up to 5 sub use cases for your low volume campaign"}
+                        </p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2">
+                        {SUB_USE_CASES.map(sub => (
+                          <div 
+                            key={sub.value}
+                            className={`flex items-center gap-2 p-2 rounded border cursor-pointer transition-colors ${
+                              selectedSubUseCases.includes(sub.value) 
+                                ? "bg-primary/10 border-primary" 
+                                : "hover:bg-slate-50 dark:hover:bg-slate-800"
+                            }`}
+                            onClick={() => toggleSubUseCase(sub.value)}
+                          >
+                            <input 
+                              type="checkbox" 
+                              checked={selectedSubUseCases.includes(sub.value)}
+                              onChange={() => toggleSubUseCase(sub.value)}
+                              className="h-4 w-4"
+                            />
+                            <span className="text-sm">{sub.label}</span>
+                          </div>
+                        ))}
+                      </div>
+                      {selectedSubUseCases.length > 0 && (
+                        <p className="text-xs text-slate-500">
+                          Selected: {selectedSubUseCases.length}/{maxSubUseCases} 
+                          {selectedUseCase === "MIXED" && selectedSubUseCases.length < minSubUseCases && 
+                            ` (minimum ${minSubUseCases} required)`}
+                        </p>
+                      )}
+                    </div>
+                  )}
                   <div className="space-y-2">
                     <Label>Campaign Description</Label>
                     <Input 
@@ -917,7 +993,12 @@ export function ComplianceTab() {
                   <Button 
                     className="w-full mt-4"
                     onClick={() => createCampaignMutation.mutate()}
-                    disabled={createCampaignMutation.isPending || !selectedBrandForCampaign || !selectedUseCase}
+                    disabled={
+                      createCampaignMutation.isPending || 
+                      !selectedBrandForCampaign || 
+                      !selectedUseCase ||
+                      (needsSubUseCases && selectedSubUseCases.length < minSubUseCases)
+                    }
                     data-testid="btn-submit-create-campaign"
                   >
                     {createCampaignMutation.isPending ? (
