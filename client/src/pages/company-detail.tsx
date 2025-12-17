@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { ArrowLeft, Building2, Mail, Phone, MapPin, Globe, Edit, Users, Power, Trash2, UserPlus, CreditCard, FileText, Briefcase, UserCheck, Eye, Settings, Calendar, Puzzle, Plus, X, Palette, Clock, History, LogIn, Send, ChevronDown, ChevronUp, RefreshCw, PhoneCall, CheckCircle, XCircle, AlertCircle } from "lucide-react";
+import { ArrowLeft, Building2, Mail, Phone, MapPin, Globe, Edit, Users, Power, Trash2, UserPlus, CreditCard, FileText, Briefcase, UserCheck, Eye, Settings, Calendar, Puzzle, Plus, X, Palette, Clock, History, LogIn, Send, ChevronDown, ChevronUp, RefreshCw, PhoneCall, CheckCircle, XCircle, AlertCircle, Settings2, Copy, MessageCircle } from "lucide-react";
 import { formatForDisplay, formatE164, formatPhoneInput } from "@shared/phone";
 import type { Company, User } from "@shared/schema";
 import { useToast } from "@/hooks/use-toast";
@@ -18,7 +18,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertUserSchema } from "@shared/schema";
 import { z } from "zod";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { CompanyBillingTab } from "@/components/company-billing-tab";
 import { useTabsState } from "@/hooks/use-tabs-state";
 import { LoadingSpinner } from "@/components/loading-spinner";
@@ -50,6 +50,9 @@ export default function CompanyDetail() {
   const [selectedFeatureId, setSelectedFeatureId] = useState<string>("");
   const [expandedLogId, setExpandedLogId] = useState<string | null>(null);
   const [resendingLogId, setResendingLogId] = useState<string | null>(null);
+  const [imessageConfigOpen, setImessageConfigOpen] = useState(false);
+  const [showImessagePassword, setShowImessagePassword] = useState(false);
+  const [imessageWebhookUrl, setImessageWebhookUrl] = useState("");
   const companyId = params.id;
 
   const { data: companyData, isLoading: isLoadingCompany } = useQuery<{ company: Company }>({
@@ -190,6 +193,57 @@ export default function CompanyDetail() {
     enabled: !!companyId && activeTab === "phone" && phoneStatusData?.configured === true,
   });
 
+  // iMessage settings query
+  const { data: imessageSettingsData, isLoading: loadingImessageSettings } = useQuery<any>({
+    queryKey: ["/api/imessage/settings", companyId],
+    queryFn: async () => {
+      const response = await fetch(`/api/imessage/settings?companyId=${companyId}`, {
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to fetch iMessage settings");
+      }
+      return response.json();
+    },
+    enabled: imessageConfigOpen && !!companyId,
+  });
+
+  const currentImessageSettings = imessageSettingsData || {};
+
+  // Save iMessage settings mutation
+  const saveImessageSettingsMutation = useMutation({
+    mutationFn: async (data: { serverUrl: string; password: string; isEnabled: boolean }) => {
+      const response = await fetch(`/api/imessage/settings?companyId=${companyId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(data),
+      });
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Failed to save settings");
+      }
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/imessage/settings", companyId] });
+      toast({
+        title: "Settings saved",
+        description: "iMessage configuration has been updated",
+        duration: 3000,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to save settings",
+        variant: "destructive",
+        duration: 3000,
+      });
+    },
+  });
+
   const company = companyData?.company;
   const allUsers = usersData?.users || [];
   const companyUsers = allUsers.filter(user => user.companyId === companyId);
@@ -201,6 +255,17 @@ export default function CompanyDetail() {
   const availableFeaturesToAssign = allFeatures.filter(
     f => !companyFeatures.some((cf: any) => cf.id === f.id)
   );
+
+  // Set webhook URL when company changes
+  useEffect(() => {
+    if (typeof window !== "undefined" && company?.slug) {
+      const domain = window.location.origin;
+      setImessageWebhookUrl(`${domain}/api/imessage/webhook/${company.slug}`);
+    }
+  }, [company?.slug]);
+
+  // Check if imessage feature is assigned
+  const hasImessageFeature = companyFeatures.some((f: any) => f.key === "imessage");
 
   const createUserForm = useForm<UserForm>({
     resolver: zodResolver(userFormSchema),
@@ -833,16 +898,34 @@ export default function CompanyDetail() {
                     <div key={feature.id} className="flex items-center justify-between p-3 border rounded-lg bg-muted/30" data-testid={`feature-${feature.id}`}>
                       <div className="flex items-center gap-2 min-w-0">
                         <div className="h-8 w-8 rounded-md bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <Puzzle className="h-4 w-4 text-primary" />
+                          {feature.key === "imessage" ? (
+                            <MessageCircle className="h-4 w-4 text-primary" />
+                          ) : (
+                            <Puzzle className="h-4 w-4 text-primary" />
+                          )}
                         </div>
                         <div className="min-w-0">
                           <p className="text-sm font-medium truncate">{feature.name || "Unknown Feature"}</p>
                           {feature.key && <p className="text-xs text-muted-foreground font-mono">{feature.key}</p>}
                         </div>
                       </div>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive flex-shrink-0" onClick={() => removeFeatureMutation.mutate(feature.id)} disabled={removeFeatureMutation.isPending} title="Remove Feature" data-testid={`button-remove-feature-${feature.id}`}>
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
+                      <div className="flex items-center gap-1 flex-shrink-0">
+                        {feature.key === "imessage" && (
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="h-7 w-7"
+                            onClick={() => setImessageConfigOpen(true)}
+                            title="Configure iMessage"
+                            data-testid="button-configure-imessage"
+                          >
+                            <Settings2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive hover:text-destructive" onClick={() => removeFeatureMutation.mutate(feature.id)} disabled={removeFeatureMutation.isPending} title="Remove Feature" data-testid={`button-remove-feature-${feature.id}`}>
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -1582,6 +1665,149 @@ export default function CompanyDetail() {
               </Button>
             </DialogFooter>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* iMessage Configuration Dialog */}
+      <Dialog open={imessageConfigOpen} onOpenChange={setImessageConfigOpen}>
+        <DialogContent className="max-w-2xl" data-testid="dialog-configure-imessage">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageCircle className="h-5 w-5" />
+              Configure iMessage
+            </DialogTitle>
+            <DialogDescription>
+              Configure BlueBubbles server connection for iMessage integration
+            </DialogDescription>
+          </DialogHeader>
+
+          {loadingImessageSettings ? (
+            <LoadingSpinner fullScreen={false} />
+          ) : (
+            <div className="space-y-6">
+              {/* Server URL */}
+              <div className="space-y-2">
+                <Label htmlFor="serverUrl">BlueBubbles Server URL</Label>
+                <Input
+                  id="serverUrl"
+                  placeholder="http://192.168.1.100:1234 or https://your-tunnel.trycloudflare.com"
+                  defaultValue={currentImessageSettings.serverUrl || ""}
+                  data-testid="input-imessage-server-url"
+                />
+                <p className="text-xs text-muted-foreground">
+                  The URL of your BlueBubbles server (local IP with port or Cloudflare tunnel)
+                </p>
+              </div>
+
+              {/* Password */}
+              <div className="space-y-2">
+                <Label htmlFor="password">BlueBubbles Password</Label>
+                <div className="flex gap-2">
+                  <Input
+                    id="password"
+                    type={showImessagePassword ? "text" : "password"}
+                    placeholder="Your BlueBubbles password"
+                    defaultValue={currentImessageSettings.password || ""}
+                    data-testid="input-imessage-password"
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => setShowImessagePassword(!showImessagePassword)}
+                  >
+                    {showImessagePassword ? <Eye className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  The password configured in your BlueBubbles server settings
+                </p>
+              </div>
+
+              {/* Enabled Toggle */}
+              <div className="flex items-center justify-between p-4 border rounded-lg">
+                <div>
+                  <Label>Enable iMessage</Label>
+                  <p className="text-xs text-muted-foreground">
+                    Allow users to send and receive iMessages
+                  </p>
+                </div>
+                <Switch
+                  id="isEnabled"
+                  defaultChecked={currentImessageSettings.isEnabled || false}
+                  data-testid="switch-imessage-enabled"
+                />
+              </div>
+
+              {/* Webhook URL (Read-only) */}
+              <div className="space-y-2">
+                <Label>Webhook URL</Label>
+                <div className="flex gap-2">
+                  <Input
+                    value={imessageWebhookUrl}
+                    readOnly
+                    className="flex-1 font-mono text-sm bg-muted"
+                    data-testid="input-imessage-webhook-url"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      navigator.clipboard.writeText(imessageWebhookUrl);
+                      toast({
+                        title: "Copied",
+                        description: "Webhook URL copied to clipboard",
+                        duration: 2000,
+                      });
+                    }}
+                    data-testid="button-copy-webhook-url"
+                  >
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Configure this URL in BlueBubbles Settings &gt; API/Webhooks &gt; Add Webhook
+                </p>
+              </div>
+
+              {/* Secret Status */}
+              {currentImessageSettings.hasWebhookSecret && (
+                <div className="flex items-center gap-2 p-3 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+                  <CheckCircle className="h-4 w-4 text-green-600" />
+                  <span className="text-sm text-green-800 dark:text-green-200">Webhook secret is configured</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setImessageConfigOpen(false)}
+              data-testid="button-cancel-imessage-config"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                const serverUrl = (document.getElementById("serverUrl") as HTMLInputElement)?.value || "";
+                const password = (document.getElementById("password") as HTMLInputElement)?.value || "";
+                const isEnabled = (document.getElementById("isEnabled") as HTMLInputElement)?.checked || false;
+                
+                saveImessageSettingsMutation.mutate({
+                  serverUrl,
+                  password,
+                  isEnabled,
+                });
+              }}
+              disabled={saveImessageSettingsMutation.isPending}
+              data-testid="button-save-imessage-settings"
+            >
+              {saveImessageSettingsMutation.isPending ? "Saving..." : "Save Settings"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
