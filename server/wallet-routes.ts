@@ -408,6 +408,11 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
         link.walletPassId || undefined
       );
 
+      // iOS: redirect directly to pkpass download (no landing page)
+      if (os === "ios" && link.walletPassId) {
+        return res.redirect(`/w/${link.slug}/apple`);
+      }
+
       const member = await walletPassService.getMember(link.memberId);
       const pass = link.walletPassId ? await walletPassService.getPass(link.walletPassId) : null;
       
@@ -424,7 +429,7 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
         }
       }
 
-      const eventType = os === "ios" ? "ios_offer_view" : os === "android" ? "android_offer_view" : "desktop_offer_view";
+      const eventType = os === "android" ? "android_offer_view" : "desktop_offer_view";
       await walletPassService.logEvent(link.companyId, eventType, deviceInfo, link.memberId, link.walletPassId || undefined);
 
       const html = `<!DOCTYPE html>
