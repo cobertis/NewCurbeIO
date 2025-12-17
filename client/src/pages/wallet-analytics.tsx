@@ -154,19 +154,30 @@ export default function WalletAnalyticsPage() {
   const filteredContacts = useMemo(() => {
     if (!policiesData?.items || contactSearch.length < 2) return [];
     // Transform policies to contact-like objects using client info
-    return policiesData.items.map((policy: any) => ({
-      id: policy.id,
-      firstName: policy.clientFirstName || "",
-      lastName: policy.clientLastName || "",
-      email: policy.clientEmail || "",
-      phone: policy.clientPhone || "",
-      // Include policy info for display
-      carrierName: policy.carrierName || policy.insuranceCarrier || "",
-      planName: policy.planName || "",
-      planId: policy.planId || policy.id || "",
-      monthlyPremium: policy.monthlyPremium || policy.premium || "",
-      productType: policy.productType || "",
-    })).slice(0, 10);
+    // Note: These are policy-based entries, NOT real contacts - contactId should be null
+    return policiesData.items.map((policy: any) => {
+      // Extract insurance info from the selectedPlan JSONB field
+      const selectedPlan = policy.selectedPlan || {};
+      const carrierName = selectedPlan?.issuer?.name || policy.carrierName || "";
+      const planName = selectedPlan?.name || policy.planName || "";
+      const planId = selectedPlan?.id || policy.planId || "";
+      const monthlyPremium = selectedPlan?.premium || selectedPlan?.premium_w_credit || policy.estimatedPremium || "";
+      
+      return {
+        id: policy.id, // Policy ID for display purposes only
+        isPolicyBased: true, // Flag to indicate this is from a policy, not a real contact
+        firstName: policy.clientFirstName || "",
+        lastName: policy.clientLastName || "",
+        email: policy.clientEmail || "",
+        phone: policy.clientPhone || "",
+        // Include policy info extracted from selectedPlan
+        carrierName,
+        planName,
+        planId,
+        monthlyPremium: String(monthlyPremium),
+        productType: policy.productType || "",
+      };
+    }).slice(0, 10);
   }, [policiesData, contactSearch]);
 
   const chartData = useMemo(() => {
@@ -194,9 +205,15 @@ export default function WalletAnalyticsPage() {
 
   const handleAddMember = async (values: any) => {
     try {
+      // If selectedContact is from a policy (isPolicyBased), don't use its ID as contactId
+      // because it's a policy ID, not a real contact ID in the contacts table
+      const contactId = selectedContact && !(selectedContact as any).isPolicyBased 
+        ? selectedContact.id 
+        : null;
+      
       const memberData = {
         ...values,
-        contactId: selectedContact?.id || null,
+        contactId,
       };
       await apiRequest("POST", "/api/wallet/members", memberData);
       toast({ title: "Member created successfully" });
