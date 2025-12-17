@@ -28499,10 +28499,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const brandData = req.body;
 
       // Get Telnyx API key
+      // Get Telnyx API key (master key)
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx API key not configured" });
+      }
+
+      // Get managed account ID for this company
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!managedAccountId) {
+        return res.status(400).json({ message: "Phone system not activated. Please set up Phone System first." });
       }
 
       // Build Telnyx payload
@@ -28531,16 +28540,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (brandData.website) telnyxPayload.website = brandData.website;
       if (brandData.isReseller !== undefined) telnyxPayload.isReseller = brandData.isReseller;
 
+      console.log(`[10DLC] Registering brand for company ${companyId} using managed account ${managedAccountId}`);
+
       const response = await fetch("https://api.telnyx.com/v2/10dlc/brand", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${telnyxApiKey}`,
+          "x-managed-account-id": managedAccountId,
         },
         body: JSON.stringify(telnyxPayload),
       });
-
-      const result = await response.json();
 
       if (!response.ok) {
         const errorMsg = result.errors?.[0]?.detail || result.message || "Error creating brand with Telnyx";
@@ -28613,6 +28623,191 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+
+  // ==================== Messaging Profiles ====================
+  
+  // GET /api/phone-system/messaging-profile - Get messaging profile for company
+  app.get("/api/phone-system/messaging-profile", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session?.activeCompanyId;
+      
+      // Get wallet with messaging profile ID
+      const [wallet] = await db
+        .select()
+        .from(wallets)
+        .where(eq(wallets.companyId, companyId!));
+      
+      if (!wallet?.telnyxMessagingProfileId) {
+        return res.json({ exists: false, profile: null });
+      }
+      
+      // Get profile details from Telnyx
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey || !managedAccountId) {
+        return res.json({ exists: true, profile: { id: wallet.telnyxMessagingProfileId } });
+      }
+      
+      const response = await fetch(`https://api.telnyx.com/v2/messaging_profiles/${wallet.telnyxMessagingProfileId}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${telnyxApiKey}`,
+          "x-managed-account-id": managedAccountId,
+        },
+      });
+      
+      if (!response.ok) {
+        return res.json({ exists: true, profile: { id: wallet.telnyxMessagingProfileId } });
+      }
+      
+      const result = await response.json();
+      res.json({ exists: true, profile: result.data });
+    } catch (error: any) {
+      console.error("Error fetching messaging profile:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
+  // POST /api/phone-system/messaging-profile - Create messaging profile
+  app.post("/api/phone-system/messaging-profile", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session?.activeCompanyId;
+      const { webhookUrl } = req.body;
+      
+      // Get company for display name
+      const [company] = await db
+        .select()
+        .from(companies)
+        .where(eq(companies.id, companyId!));
+      
+      if (!company) {
+        return res.status(404).json({ message: "Company not found" });
+      }
+      
+      // Get Telnyx credentials
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey) {
+        return res.status(400).json({ message: "Telnyx API key not configured" });
+      }
+      
+      if (!managedAccountId) {
+        return res.status(400).json({ message: "Phone system not activated. Please set up Phone System first." });
+      }
+      
+      // Check if profile already exists
+      const [wallet] = await db
+        .select()
+        .from(wallets)
+        .where(eq(wallets.companyId, companyId!));
+      
+      if (wallet?.telnyxMessagingProfileId) {
+        return res.status(400).json({ message: "Messaging profile already exists" });
+      }
+      
+      console.log(`[Messaging Profile] Creating for company ${companyId} using managed account ${managedAccountId}`);
+      
+      // Create messaging profile in Telnyx
+      const response = await fetch("https://api.telnyx.com/v2/messaging_profiles", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${telnyxApiKey}`,
+          "x-managed-account-id": managedAccountId,
+        },
+        body: JSON.stringify({
+          name: `SMS Profile - ${company.name}`,
+          enabled: true,
+          webhook_url: webhookUrl || null,
+          webhook_api_version: "2",
+          number_pool_settings: {
+            toll_free_weight: 10,
+            long_code_weight: 1,
+            skip_unhealthy: true,
+            sticky_sender: true,
+            geomatch: false,
+          },
+        }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        const errorMsg = result.errors?.[0]?.detail || result.message || "Error creating messaging profile";
+        return res.status(response.status).json({ message: errorMsg, details: result });
+      }
+      
+      const profileId = result.data?.id;
+      
+      // Save to wallet
+      if (wallet) {
+        await db
+          .update(wallets)
+          .set({ telnyxMessagingProfileId: profileId, updatedAt: new Date() })
+          .where(eq(wallets.id, wallet.id));
+      }
+      
+      res.json({ success: true, profile: result.data });
+    } catch (error: any) {
+      console.error("Error creating messaging profile:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
+  // DELETE /api/phone-system/messaging-profile - Delete messaging profile
+  app.delete("/api/phone-system/messaging-profile", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session?.activeCompanyId;
+      
+      const [wallet] = await db
+        .select()
+        .from(wallets)
+        .where(eq(wallets.companyId, companyId!));
+      
+      if (!wallet?.telnyxMessagingProfileId) {
+        return res.status(404).json({ message: "No messaging profile found" });
+      }
+      
+      // Get Telnyx credentials
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey || !managedAccountId) {
+        return res.status(400).json({ message: "Telnyx not configured" });
+      }
+      
+      // Delete from Telnyx
+      const response = await fetch(`https://api.telnyx.com/v2/messaging_profiles/${wallet.telnyxMessagingProfileId}`, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${telnyxApiKey}`,
+          "x-managed-account-id": managedAccountId,
+        },
+      });
+      
+      if (!response.ok && response.status !== 404) {
+        const result = await response.json();
+        return res.status(response.status).json({ message: result.errors?.[0]?.detail || "Error deleting profile" });
+      }
+      
+      // Clear from wallet
+      await db
+        .update(wallets)
+        .set({ telnyxMessagingProfileId: null, updatedAt: new Date() })
+        .where(eq(wallets.id, wallet.id));
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error deleting messaging profile:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
 
   // GET /api/telnyx/user-phone-status - Check if current user has an assigned phone number for calling
   app.get("/api/telnyx/user-phone-status", requireAuth, async (req: Request, res: Response) => {

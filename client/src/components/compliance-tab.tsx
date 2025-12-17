@@ -38,11 +38,22 @@ import {
   CheckCircle2,
   Clock,
   Loader2,
+  MessageSquare,
   Plus,
   ShieldCheck,
   XCircle,
 } from "lucide-react";
 import type { TelnyxBrand } from "@shared/schema";
+
+interface MessagingProfileResponse {
+  exists: boolean;
+  profile?: {
+    id: string;
+    name?: string;
+    enabled?: boolean;
+    webhook_url?: string | null;
+  };
+}
 
 const ENTITY_TYPES = [
   { value: "PRIVATE_PROFIT", label: "Private For-Profit Company" },
@@ -201,6 +212,24 @@ export function ComplianceTab() {
 
   const { data: brands = [], isLoading } = useQuery<TelnyxBrand[]>({
     queryKey: ["/api/phone-system/brands"],
+  });
+
+  const { data: messagingProfile, isLoading: isLoadingProfile } = useQuery<MessagingProfileResponse>({
+    queryKey: ["/api/phone-system/messaging-profile"],
+  });
+
+  const createProfileMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/phone-system/messaging-profile", {});
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Messaging Profile created", description: "Your SMS profile has been configured." });
+      queryClient.invalidateQueries({ queryKey: ["/api/phone-system/messaging-profile"] });
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to create profile", description: error.message, variant: "destructive" });
+    },
   });
 
   const form = useForm<BrandFormValues>({
@@ -657,6 +686,60 @@ export function ComplianceTab() {
             ))}
           </div>
         )}
+      </div>
+
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Messaging Profile</h3>
+          <p className="text-sm text-slate-500 mt-1">Required for sending SMS/MMS messages through your phone numbers</p>
+        </div>
+
+        <div className="p-6">
+          {isLoadingProfile ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+            </div>
+          ) : messagingProfile?.exists ? (
+            <div className="flex items-center gap-4">
+              <div className="w-12 h-12 rounded-full bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
+                <MessageSquare className="h-6 w-6 text-green-600" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center gap-2">
+                  <h4 className="font-semibold text-slate-900 dark:text-white">
+                    {messagingProfile.profile?.name || "SMS Profile"}
+                  </h4>
+                  <Badge className="bg-green-100 text-green-800 border-green-200">
+                    <CheckCircle2 className="h-3 w-3 mr-1" />Active
+                  </Badge>
+                </div>
+                <p className="text-xs text-slate-500 mt-1 font-mono">
+                  Profile ID: {messagingProfile.profile?.id}
+                </p>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <MessageSquare className="h-12 w-12 text-slate-300 mb-4" />
+              <h4 className="text-lg font-medium text-slate-700 dark:text-slate-300">No messaging profile</h4>
+              <p className="text-sm text-slate-500 mt-1 max-w-md">
+                Create a messaging profile to enable SMS/MMS sending through your phone numbers.
+              </p>
+              <Button 
+                className="mt-4" 
+                onClick={() => createProfileMutation.mutate()}
+                disabled={createProfileMutation.isPending}
+                data-testid="btn-create-messaging-profile"
+              >
+                {createProfileMutation.isPending ? (
+                  <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>
+                ) : (
+                  <><Plus className="h-4 w-4 mr-2" />Create Messaging Profile</>
+                )}
+              </Button>
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6">
