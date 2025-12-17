@@ -8413,7 +8413,11 @@ export default function PoliciesPage() {
                                     {(plan.paymentDate || policyPlan.paymentDate) && (
                                       <div>
                                         <p className="text-xs text-muted-foreground">Payment Date</p>
-                                        <p className="text-xs">{plan.paymentDate || policyPlan.paymentDate}</p>
+                                        <p className="text-xs">{(() => {
+                                          const day = parseInt(plan.paymentDate || policyPlan.paymentDate);
+                                          const suffix = day === 1 ? 'st' : day === 2 ? 'nd' : day === 3 ? 'rd' : 'th';
+                                          return `${day}${suffix} of each month`;
+                                        })()}</p>
                                       </div>
                                     )}
                                   </div>
@@ -11334,14 +11338,21 @@ export default function PoliciesPage() {
                 </div>
                 <div>
                   <Label htmlFor="paymentDate" className="text-sm">Payment Date</Label>
-                  <Input
-                    id="paymentDate"
+                  <Select
                     value={simplePlanFormData.paymentDate}
-                    onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, paymentDate: e.target.value })}
-                    placeholder="e.g., 1st of each month"
-                    className="mt-1"
-                    data-testid="input-payment-date"
-                  />
+                    onValueChange={(value) => setSimplePlanFormData({ ...simplePlanFormData, paymentDate: value })}
+                  >
+                    <SelectTrigger className="mt-1" data-testid="input-payment-date">
+                      <SelectValue placeholder="Select day" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                        <SelectItem key={day} value={String(day)}>
+                          {day}{day === 1 ? 'st' : day === 2 ? 'nd' : day === 3 ? 'rd' : 'th'} of each month
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
             </div>
