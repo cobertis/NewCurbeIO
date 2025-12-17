@@ -141,20 +141,32 @@ export default function WalletAnalyticsPage() {
     queryKey: ["/api/wallet/events", { limit: 50 }],
   });
 
-  const { data: contactsData } = useQuery<{ contacts: Contact[], total: number }>({
-    queryKey: ["/api/contacts/list", contactSearch],
+  const { data: policiesData } = useQuery<{ items: any[] }>({
+    queryKey: ["/api/policies", contactSearch],
     queryFn: async () => {
-      const res = await fetch(`/api/contacts/list?search=${encodeURIComponent(contactSearch)}&limit=10`);
-      if (!res.ok) throw new Error("Failed to fetch contacts");
+      const res = await fetch(`/api/policies?searchTerm=${encodeURIComponent(contactSearch)}&limit=10`);
+      if (!res.ok) throw new Error("Failed to fetch policies");
       return res.json();
     },
     enabled: contactSearch.length >= 2,
   });
 
   const filteredContacts = useMemo(() => {
-    if (!contactsData?.contacts || contactSearch.length < 2) return [];
-    return contactsData.contacts.slice(0, 10);
-  }, [contactsData, contactSearch]);
+    if (!policiesData?.items || contactSearch.length < 2) return [];
+    // Transform policies to contact-like objects using applicant info
+    return policiesData.items.map((policy: any) => ({
+      id: policy.id,
+      firstName: policy.applicantFirstName || "",
+      lastName: policy.applicantLastName || "",
+      email: policy.applicantEmail || "",
+      phone: policy.applicantPhone || "",
+      // Include policy info for display
+      carrierName: policy.carrierName || policy.insuranceCarrier || "",
+      planName: policy.planName || "",
+      planId: policy.planId || policy.policyNumber || "",
+      monthlyPremium: policy.monthlyPremium || policy.premium || "",
+    })).slice(0, 10);
+  }, [policiesData, contactSearch]);
 
   const chartData = useMemo(() => {
     if (!events || events.length === 0) return [];
@@ -199,13 +211,18 @@ export default function WalletAnalyticsPage() {
     }
   };
 
-  const handleSelectContact = (contact: Contact) => {
+  const handleSelectContact = (contact: Contact & { carrierName?: string; planName?: string; planId?: string; monthlyPremium?: string }) => {
     setSelectedContact(contact);
     setContactSearch("");
     form.setValue("fullName", `${contact.firstName} ${contact.lastName}`.trim());
     form.setValue("email", contact.email || "");
     form.setValue("phone", contact.phone || "");
     form.setValue("contactId", contact.id);
+    // Auto-fill insurance fields from policy
+    if (contact.carrierName) form.setValue("carrierName", contact.carrierName);
+    if (contact.planName) form.setValue("planName", contact.planName);
+    if (contact.planId) form.setValue("planId", contact.planId);
+    if (contact.monthlyPremium) form.setValue("monthlyPremium", String(contact.monthlyPremium));
   };
 
   const handleGeneratePass = async (memberId: string) => {
@@ -807,8 +824,8 @@ export default function WalletAnalyticsPage() {
                         data-testid="input-contact-search"
                       />
                       {contactSearch.length >= 2 && filteredContacts.length > 0 && (
-                        <div className="border rounded-md max-h-48 overflow-y-auto">
-                          {filteredContacts.map((contact) => (
+                        <div className="border rounded-md max-h-60 overflow-y-auto">
+                          {filteredContacts.map((contact: any) => (
                             <div
                               key={contact.id}
                               className="p-3 hover:bg-muted cursor-pointer border-b last:border-b-0"
@@ -817,6 +834,11 @@ export default function WalletAnalyticsPage() {
                             >
                               <p className="font-medium">{contact.firstName} {contact.lastName}</p>
                               <p className="text-sm text-muted-foreground">{contact.email} {contact.phone && `| ${contact.phone}`}</p>
+                              {contact.carrierName && (
+                                <p className="text-xs text-blue-600 mt-1">
+                                  {contact.carrierName} {contact.planName && `- ${contact.planName}`} {contact.monthlyPremium && `| $${contact.monthlyPremium}/mo`}
+                                </p>
+                              )}
                             </div>
                           ))}
                         </div>
