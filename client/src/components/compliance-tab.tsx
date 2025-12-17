@@ -86,18 +86,19 @@ interface CampaignsResponse {
 }
 
 const USE_CASES = [
-  { value: "2FA", label: "Two-Factor Authentication", description: "OTP/verification codes" },
-  { value: "ACCOUNT_NOTIFICATION", label: "Account Notifications", description: "Account alerts and updates" },
-  { value: "CUSTOMER_CARE", label: "Customer Care", description: "Support and service messages" },
-  { value: "DELIVERY_NOTIFICATION", label: "Delivery Notifications", description: "Shipping and delivery updates" },
-  { value: "FRAUD_ALERT", label: "Fraud Alerts", description: "Security and fraud notifications" },
-  { value: "HIGHER_EDUCATION", label: "Higher Education", description: "College/university messaging" },
-  { value: "LOW_VOLUME", label: "Low Volume Mixed", description: "General low-volume messaging" },
-  { value: "MARKETING", label: "Marketing", description: "Promotional messages" },
-  { value: "MIXED", label: "Mixed", description: "Multiple use case types" },
-  { value: "POLLING_VOTING", label: "Polling & Voting", description: "Surveys and polls" },
-  { value: "PUBLIC_SERVICE_ANNOUNCEMENT", label: "Public Service Announcement", description: "PSA messages" },
-  { value: "SECURITY_ALERT", label: "Security Alerts", description: "Security notifications" },
+  { value: "2FA", label: "Two-Factor Authentication", description: "Authentication, verification, or one-time passcode" },
+  { value: "ACCOUNT_NOTIFICATION", label: "Account Notifications", description: "Password reset, low-balance, transaction alerts" },
+  { value: "CUSTOMER_CARE", label: "Customer Care", description: "Account management and customer support" },
+  { value: "DELIVERY_NOTIFICATION", label: "Delivery Notifications", description: "Status of delivery of a product or service" },
+  { value: "FRAUD_ALERT", label: "Fraud Alert Messaging", description: "Notifications regarding potential fraudulent activity" },
+  { value: "HIGHER_EDUCATION", label: "Higher Education", description: "Colleges, Universities, School Districts messaging" },
+  { value: "LOW_VOLUME", label: "Low Volume Mixed", description: "Multiple use cases with low messaging throughput" },
+  { value: "M2M", label: "Machine-to-Machine", description: "Device-to-device communication, no human interaction" },
+  { value: "MARKETING", label: "Marketing", description: "Marketing and promotional content" },
+  { value: "MIXED", label: "Mixed", description: "2-5 sub use cases on the same campaign" },
+  { value: "POLLING_VOTING", label: "Polling and Voting", description: "Surveys, polling, and voting campaigns" },
+  { value: "PUBLIC_SERVICE_ANNOUNCEMENT", label: "Public Service Announcement", description: "Informational messaging about important issues" },
+  { value: "SECURITY_ALERT", label: "Security Alert", description: "System security compromise notifications" },
 ] as const;
 
 const ENTITY_TYPES = [
