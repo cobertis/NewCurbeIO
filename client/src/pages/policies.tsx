@@ -8413,7 +8413,23 @@ export default function PoliciesPage() {
 
                                 {/* Footer Actions */}
                                 <div className="px-4 py-2 border-t border-border/40 flex items-center justify-end gap-1.5 bg-muted/10">
-                                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { setEditingPlanId(policyPlan.id); setManualPlanDialogOpen(true); }} data-testid={`button-edit-plan-${policyPlan.id}`}>
+                                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { 
+                                    setEditingPlanId(policyPlan.id); 
+                                    setSimplePlanFormData({
+                                      planId: policyPlan.planId || '',
+                                      carrier: policyPlan.carrierName || '',
+                                      planName: policyPlan.planName || '',
+                                      metalLevel: policyPlan.metalLevel || '',
+                                      planType: policyPlan.planType || '',
+                                      monthlyPayment: policyPlan.monthlyPremium?.toString() || '',
+                                      originalPrice: policyPlan.originalPrice?.toString() || '',
+                                      marketplaceId: policyPlan.marketplaceId || '',
+                                      memberId: policyPlan.memberId || '',
+                                      effectiveDate: policyPlan.effectiveDate || '',
+                                      expirationDate: policyPlan.expirationDate || '',
+                                    });
+                                    setManualPlanDialogOpen(true); 
+                                  }} data-testid={`button-edit-plan-${policyPlan.id}`}>
                                     <Edit className="h-3 w-3 mr-1" /> Edit
                                   </Button>
                                   <Button variant="destructive" size="sm" className="h-7 text-xs" onClick={() => setDeletingPlan({ id: policyPlan.id, name: policyPlan.planName || 'this plan' })} data-testid={`button-remove-plan-${policyPlan.id}`}>
