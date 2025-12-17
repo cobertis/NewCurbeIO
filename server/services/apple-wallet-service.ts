@@ -157,12 +157,12 @@ export const appleWalletService = {
     // Use storeCard - NO BARCODE, clean design prioritizing notification visibility
     // NOTE: changeMessage MUST be in headerFields or primaryFields for lock-screen preview
     passData.storeCard = {
-      // 1. HEADER: Hidden notification trigger (small, top-right) - REQUIRED for lock-screen preview
+      // 1. HEADER: Notification trigger (top-right) - REQUIRED for lock-screen preview
       headerFields: [
         {
           key: "status",
           label: "STATUS",
-          value: pass.lastNotification ? "NEW" : (member.plan || "ACTIVE").toUpperCase(),
+          value: pass.lastNotification ? "NEW" : "ACTIVE",
           changeMessage: "%@",
         },
       ],
@@ -174,30 +174,67 @@ export const appleWalletService = {
           value: member.fullName.toUpperCase(),
         },
       ],
-      // 3. SECONDARY: ALERT - Maximum visibility, full width (no other fields)
-      secondaryFields: [
+      // 3. SECONDARY: Insurance carrier and plan info OR alert message
+      secondaryFields: pass.lastNotification ? [
         {
           key: "alert_msg",
-          label: "AVISO URGENTE",
-          value: pass.lastNotification || "Sin avisos pendientes",
+          label: "URGENT NOTICE",
+          value: pass.lastNotification,
           changeMessage: "%@",
         },
-      ],
-      // 4. AUXILIARY: Minimal - just Member ID small
-      auxiliaryFields: [
+      ] : [
         {
-          key: "memberId",
-          label: "ID",
-          value: member.memberId,
-          textAlignment: "PKTextAlignmentCenter",
+          key: "carrier",
+          label: "INSURANCE CARRIER",
+          value: member.carrierName || "N/A",
+        },
+        {
+          key: "planName",
+          label: "PLAN",
+          value: member.planName || member.plan || "N/A",
         },
       ],
-      // Back: All technical details moved here
+      // 4. AUXILIARY: Plan ID and Monthly Premium
+      auxiliaryFields: [
+        {
+          key: "planId",
+          label: "PLAN ID",
+          value: member.planId || member.memberId,
+          textAlignment: "PKTextAlignmentLeft",
+        },
+        {
+          key: "premium",
+          label: "MONTHLY",
+          value: member.monthlyPremium ? `$${member.monthlyPremium}` : "N/A",
+          textAlignment: "PKTextAlignmentRight",
+        },
+      ],
+      // Back: All technical details
       backFields: [
         {
-          key: "plan",
-          label: "Plan",
-          value: member.plan || "Standard",
+          key: "memberId",
+          label: "Member ID",
+          value: member.memberId,
+        },
+        {
+          key: "carrierFull",
+          label: "Insurance Carrier",
+          value: member.carrierName || "N/A",
+        },
+        {
+          key: "planIdFull",
+          label: "Plan ID",
+          value: member.planId || "N/A",
+        },
+        {
+          key: "planNameFull",
+          label: "Plan Name",
+          value: member.planName || member.plan || "N/A",
+        },
+        {
+          key: "premiumFull",
+          label: "Monthly Premium",
+          value: member.monthlyPremium ? `$${member.monthlyPremium}/month` : "N/A",
         },
         {
           key: "memberSince",

@@ -70,21 +70,45 @@ Supports both Apple Wallet (PKPass) and Google Wallet with Smart Links, analytic
 
 **Apple Wallet Pass Structure (storeCard type):**
 ```
-Pass Layout:
+Pass Layout (Insurance Mode):
 ┌─────────────────────────────────┐
-│ [LOGO]              STATUS: NEW │  ← headerFields (changeMessage here!)
+│ [LOGO]           STATUS: ACTIVE │  ← headerFields (notification trigger)
 ├─────────────────────────────────┤
 │      [STRIP IMAGE]              │  ← strip.png (1280x168 @2x)
 │         MEMBER                  │
 │     JAVIER LAZO                 │  ← primaryFields (large name)
 ├─────────────────────────────────┤
-│ AVISO URGENTE                   │
-│ Tu pago ha vencido...           │  ← secondaryFields (alert, full width)
+│ INSURANCE CARRIER               │
+│ UnitedHealthcare                │  ← secondaryFields (carrier + plan)
+│ PLAN: Silver HMO $0 Deductible  │
 ├─────────────────────────────────┤
-│           ID: 123456            │  ← auxiliaryFields (minimal)
+│ PLAN ID: 68398FL0030  $132.44/mo│  ← auxiliaryFields (plan ID + premium)
 └─────────────────────────────────┘
    (NO BARCODE - clean design)
+
+Pass Layout (Alert Mode - when notification is active):
+┌─────────────────────────────────┐
+│ [LOGO]              STATUS: NEW │  ← headerFields (triggers notification)
+├─────────────────────────────────┤
+│      [STRIP IMAGE]              │
+│         MEMBER                  │
+│     JAVIER LAZO                 │
+├─────────────────────────────────┤
+│ URGENT NOTICE                   │
+│ Your payment is overdue...      │  ← secondaryFields (alert replaces plan)
+├─────────────────────────────────┤
+│ PLAN ID: 68398FL0030  $132.44/mo│
+└─────────────────────────────────┘
 ```
+
+**Wallet Member Fields:**
+- `fullName` - Member name displayed on pass
+- `memberId` - Unique member identifier
+- `contactId` - Link to CRM contact (optional)
+- `carrierName` - Insurance carrier (e.g., "UnitedHealthcare")
+- `planId` - Plan identifier (e.g., "68398FL0030040")
+- `planName` - Full plan name (e.g., "Silver HMO $0 Deductible")
+- `monthlyPremium` - Monthly premium amount (e.g., "132.44")
 
 **CRITICAL: Apple Wallet Notification Rules:**
 1. **changeMessage MUST be in headerFields or primaryFields** for lock-screen preview to appear

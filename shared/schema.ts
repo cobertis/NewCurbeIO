@@ -5889,6 +5889,12 @@ export const walletMembers = pgTable("wallet_members", {
   plan: text("plan").default("standard"),
   memberSince: timestamp("member_since").defaultNow(),
   
+  // Insurance carrier info for Apple Wallet pass
+  carrierName: text("carrier_name"),
+  planId: text("plan_id"),
+  planName: text("plan_name"),
+  monthlyPremium: text("monthly_premium"),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({

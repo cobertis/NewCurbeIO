@@ -44,7 +44,20 @@ interface WalletMember {
   phone: string | null;
   plan: string | null;
   memberSince: string | null;
+  carrierName: string | null;
+  planId: string | null;
+  planName: string | null;
+  monthlyPremium: string | null;
+  contactId: string | null;
   createdAt: string;
+}
+
+interface Contact {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  phone: string | null;
 }
 
 interface WalletEvent {
@@ -89,6 +102,10 @@ export default function WalletAnalyticsPage() {
   const appleP12InputRef = useRef<HTMLInputElement>(null);
   const googleServiceInputRef = useRef<HTMLInputElement>(null);
   
+  const [contactSearch, setContactSearch] = useState("");
+  const [selectedContact, setSelectedContact] = useState<Contact | null>(null);
+  const [createNewMember, setCreateNewMember] = useState(false);
+  
   const form = useForm({
     defaultValues: {
       fullName: "",
@@ -96,6 +113,11 @@ export default function WalletAnalyticsPage() {
       email: "",
       phone: "",
       plan: "standard",
+      carrierName: "",
+      planId: "",
+      planName: "",
+      monthlyPremium: "",
+      contactId: "",
     },
   });
 
@@ -118,6 +140,23 @@ export default function WalletAnalyticsPage() {
   const { data: events, isLoading: eventsLoading } = useQuery<WalletEvent[]>({
     queryKey: ["/api/wallet/events", { limit: 50 }],
   });
+
+  const { data: contacts } = useQuery<Contact[]>({
+    queryKey: ["/api/contacts", { search: contactSearch }],
+    enabled: contactSearch.length >= 2,
+  });
+
+  const filteredContacts = useMemo(() => {
+    if (!contacts || contactSearch.length < 2) return [];
+    const search = contactSearch.toLowerCase();
+    return contacts.filter(
+      (c) =>
+        c.firstName?.toLowerCase().includes(search) ||
+        c.lastName?.toLowerCase().includes(search) ||
+        c.email?.toLowerCase().includes(search) ||
+        c.phone?.includes(search)
+    ).slice(0, 10);
+  }, [contacts, contactSearch]);
 
   const chartData = useMemo(() => {
     if (!events || events.length === 0) return [];
@@ -144,15 +183,31 @@ export default function WalletAnalyticsPage() {
 
   const handleAddMember = async (values: any) => {
     try {
-      await apiRequest("POST", "/api/wallet/members", values);
+      const memberData = {
+        ...values,
+        contactId: selectedContact?.id || null,
+      };
+      await apiRequest("POST", "/api/wallet/members", memberData);
       toast({ title: "Member created successfully" });
       setShowAddMember(false);
+      setSelectedContact(null);
+      setContactSearch("");
+      setCreateNewMember(false);
       form.reset();
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/members"] });
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/analytics"] });
     } catch (error) {
       toast({ title: "Failed to create member", variant: "destructive" });
     }
+  };
+
+  const handleSelectContact = (contact: Contact) => {
+    setSelectedContact(contact);
+    setContactSearch("");
+    form.setValue("fullName", `${contact.firstName} ${contact.lastName}`.trim());
+    form.setValue("email", contact.email || "");
+    form.setValue("phone", contact.phone || "");
+    form.setValue("contactId", contact.id);
   };
 
   const handleGeneratePass = async (memberId: string) => {
@@ -738,92 +793,210 @@ export default function WalletAnalyticsPage() {
                   Add Member
                 </Button>
               </DialogTrigger>
-              <DialogContent>
+              <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
                 <DialogHeader>
-                  <DialogTitle>Add New Member</DialogTitle>
+                  <DialogTitle>Create Wallet Pass</DialogTitle>
                 </DialogHeader>
-                <Form {...form}>
-                  <form onSubmit={form.handleSubmit(handleAddMember)} className="space-y-4">
-                    <FormField
-                      control={form.control}
-                      name="fullName"
-                      rules={{ required: "Name is required" }}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Full Name</FormLabel>
-                          <FormControl>
-                            <Input {...field} data-testid="input-member-name" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                
+                {!selectedContact && !createNewMember ? (
+                  <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                      <Label>Search Existing Customer</Label>
+                      <Input
+                        placeholder="Search by name, email, or phone..."
+                        value={contactSearch}
+                        onChange={(e) => setContactSearch(e.target.value)}
+                        data-testid="input-contact-search"
+                      />
+                      {contactSearch.length >= 2 && filteredContacts.length > 0 && (
+                        <div className="border rounded-md max-h-48 overflow-y-auto">
+                          {filteredContacts.map((contact) => (
+                            <div
+                              key={contact.id}
+                              className="p-3 hover:bg-muted cursor-pointer border-b last:border-b-0"
+                              onClick={() => handleSelectContact(contact)}
+                              data-testid={`contact-option-${contact.id}`}
+                            >
+                              <p className="font-medium">{contact.firstName} {contact.lastName}</p>
+                              <p className="text-sm text-muted-foreground">{contact.email} {contact.phone && `| ${contact.phone}`}</p>
+                            </div>
+                          ))}
+                        </div>
                       )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="memberId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Member ID (optional)</FormLabel>
-                          <FormControl>
-                            <Input {...field} placeholder="Auto-generated if empty" data-testid="input-member-id" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
+                      {contactSearch.length >= 2 && filteredContacts.length === 0 && (
+                        <p className="text-sm text-muted-foreground py-2">No customers found</p>
                       )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Email</FormLabel>
-                          <FormControl>
-                            <Input type="email" {...field} data-testid="input-member-email" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="phone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Phone</FormLabel>
-                          <FormControl>
-                            <Input {...field} data-testid="input-member-phone" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="plan"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Plan</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                              <SelectTrigger data-testid="select-member-plan">
-                                <SelectValue placeholder="Select plan" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem value="standard">Standard</SelectItem>
-                              <SelectItem value="premium">Premium</SelectItem>
-                              <SelectItem value="vip">VIP</SelectItem>
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <Button type="submit" className="w-full" data-testid="button-submit-member">
-                      Create Member
+                    </div>
+                    <Separator />
+                    <Button 
+                      variant="outline" 
+                      className="w-full" 
+                      onClick={() => setCreateNewMember(true)}
+                      data-testid="button-create-new-member"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Create New Member (Without Customer)
                     </Button>
-                  </form>
-                </Form>
+                  </div>
+                ) : (
+                  <Form {...form}>
+                    <form onSubmit={form.handleSubmit(handleAddMember)} className="space-y-4">
+                      {selectedContact && (
+                        <div className="p-3 bg-muted rounded-md flex items-center justify-between">
+                          <div>
+                            <p className="font-medium">Linked Customer: {selectedContact.firstName} {selectedContact.lastName}</p>
+                            <p className="text-sm text-muted-foreground">{selectedContact.email}</p>
+                          </div>
+                          <Button 
+                            type="button" 
+                            variant="ghost" 
+                            size="sm"
+                            onClick={() => {
+                              setSelectedContact(null);
+                              form.reset();
+                            }}
+                          >
+                            Change
+                          </Button>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="fullName"
+                          rules={{ required: "Name is required" }}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Full Name</FormLabel>
+                              <FormControl>
+                                <Input {...field} data-testid="input-member-name" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="memberId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Member ID</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="Auto-generated" data-testid="input-member-id" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="email"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email</FormLabel>
+                              <FormControl>
+                                <Input type="email" {...field} data-testid="input-member-email" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="phone"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Phone</FormLabel>
+                              <FormControl>
+                                <Input {...field} data-testid="input-member-phone" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <Separator />
+                      <p className="text-sm font-medium text-muted-foreground">Insurance Information (for Apple Wallet)</p>
+
+                      <FormField
+                        control={form.control}
+                        name="carrierName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Insurance Carrier</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="e.g., UnitedHealthcare" data-testid="input-carrier-name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name="planName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Plan Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} placeholder="e.g., Silver HMO $0 Deductible" data-testid="input-plan-name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="planId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Plan ID</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="e.g., 68398FL0030040" data-testid="input-plan-id" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="monthlyPremium"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Monthly Premium</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="e.g., 132.44" data-testid="input-monthly-premium" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="flex gap-2 pt-2">
+                        {createNewMember && !selectedContact && (
+                          <Button 
+                            type="button" 
+                            variant="outline" 
+                            onClick={() => setCreateNewMember(false)}
+                          >
+                            Back
+                          </Button>
+                        )}
+                        <Button type="submit" className="flex-1" data-testid="button-submit-member">
+                          Create Wallet Pass
+                        </Button>
+                      </div>
+                    </form>
+                  </Form>
+                )}
               </DialogContent>
             </Dialog>
           </CardHeader>
