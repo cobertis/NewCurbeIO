@@ -167,10 +167,9 @@ export const appleWalletService = {
       wwdr: wwdrBuffer,
     };
 
-    // Build the buffers object with pass.json and images
-    const buffers: Record<string, Buffer> = {
-      "pass.json": Buffer.from(JSON.stringify(passData)),
-    };
+    // Create PKPass with empty buffers, certificates, and passData as overrides
+    // The third argument sets in-memory properties including 'generic' which is required for type detection
+    const pkpass = new PKPass({}, certificates, passData);
 
     // Add images if they exist
     const iconPath = path.join(process.cwd(), "attached_assets", "pass-icon.png");
@@ -179,20 +178,17 @@ export const appleWalletService = {
     const logo2xPath = path.join(process.cwd(), "attached_assets", "pass-logo@2x.png");
 
     if (fs.existsSync(iconPath)) {
-      buffers["icon.png"] = fs.readFileSync(iconPath);
+      pkpass.addBuffer("icon.png", fs.readFileSync(iconPath));
     }
     if (fs.existsSync(icon2xPath)) {
-      buffers["icon@2x.png"] = fs.readFileSync(icon2xPath);
+      pkpass.addBuffer("icon@2x.png", fs.readFileSync(icon2xPath));
     }
     if (fs.existsSync(logoPath)) {
-      buffers["logo.png"] = fs.readFileSync(logoPath);
+      pkpass.addBuffer("logo.png", fs.readFileSync(logoPath));
     }
     if (fs.existsSync(logo2xPath)) {
-      buffers["logo@2x.png"] = fs.readFileSync(logo2xPath);
+      pkpass.addBuffer("logo@2x.png", fs.readFileSync(logo2xPath));
     }
-
-    // Create PKPass with buffers and certificates (v3 API)
-    const pkpass = new PKPass(buffers, certificates);
 
     return pkpass.getAsBuffer();
   },
