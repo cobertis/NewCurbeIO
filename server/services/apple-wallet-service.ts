@@ -181,14 +181,14 @@ export const appleWalletService = {
           label: "MEMBER SINCE",
           value: member.memberSince ? new Date(member.memberSince).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "N/A",
         },
-        {
-          key: "alert",
-          label: "NOTIFICATION",
-          value: pass.lastNotification || "-",
-          changeMessage: "%@",
-        },
       ],
       backFields: [
+        {
+          key: "alert",
+          label: "⚠️ IMPORTANT NOTICE",
+          value: pass.lastNotification || "No notifications",
+          changeMessage: "⚠️ %@",
+        },
         {
           key: "terms",
           label: "Terms & Conditions",
@@ -196,6 +196,18 @@ export const appleWalletService = {
         },
       ],
     };
+    
+    // Add a footer field for notification (shown at bottom of pass)
+    if (pass.lastNotification) {
+      passData.generic.headerFields = [
+        {
+          key: "notification",
+          label: "⚠️ NOTICE",
+          value: pass.lastNotification.substring(0, 30) + (pass.lastNotification.length > 30 ? "..." : ""),
+          changeMessage: "⚠️ %@",
+        },
+      ];
+    }
 
     const certificates: any = {
       signerCert: signerCert,
