@@ -1,0 +1,100 @@
+Vamos al grano. Si el teléfono no suena ni vibra, no es porque Apple te odie, es porque **tu implementación está incompleta o mal configurada**.
+
+Apple Wallet es intencionalmente conservador. Si no le gritas explícitamente "¡AVISA AL USUARIO\!", asume que quieres una actualización silenciosa para no molestar.
+
+Aquí están las **únicas 4 razones** por las que tu notificación no está llegando. Revisa una por una.
+
+-----
+
+### 1\. El Error del "Silencio" (Falta el `changeMessage`)
+
+Esta es la causa del 90% de los fallos.
+Puedes cambiar el dato en la base de datos, puedes enviar el push, y el teléfono puede descargar el pase nuevo. Pero **si el campo que cambió no tiene la instrucción `changeMessage`, el iPhone NO emitirá sonido.**
+
+  * **Mal:**
+
+    ```json
+    { "key": "alert", "value": "Paga tu seguro" }
+    ```
+
+    *Resultado:* El texto cambia dentro del pase, pero el teléfono no hace nada.
+
+  * **Bien:**
+
+    ```json
+    { "key": "alert", "value": "Paga tu seguro", "changeMessage": "%@" }
+    ```
+
+    *Resultado:* El teléfono vibra, suena y muestra "Paga tu seguro" en la pantalla de bloqueo.
+
+**Acción:** Abre tu `pass.json` generado. ¿Tiene `changeMessage` en el campo que estás modificando?
+
+### 2\. El Error del "Dato Idéntico" (Checksum)
+
+El iPhone es inteligente. Cuando recibe tu señal de "hay actualización", descarga el pase nuevo y lo compara con el viejo **bit por bit**.
+Si envías una alerta que dice "Hola" y el pase ya decía "Hola":
+
+1.  Apple ve que no hay diferencia.
+2.  Cancela la notificación.
+3.  No suena nada.
+
+Para que suene **siempre**, el valor debe ser **siempre diferente**.
+
+  * **Truco:** Agrega un timestamp o un emoji aleatorio si el mensaje es el mismo, o asegúrate de limpiar el campo antes de enviar uno nuevo.
+
+### 3\. La Configuración del Usuario (El interruptor oculto)
+
+A veces el código es perfecto y el problema es el teléfono.
+Ve a tu iPhone:
+
+1.  Abre el Pase en Wallet.
+2.  Toca el círculo con los tres puntos `(...)` arriba a la derecha.
+3.  Toca en "Detalles del Pase" (o información del pase).
+4.  **¿Está activado el interruptor "Notificaciones"?** (A veces se llama "Permitir Notificaciones" o "Sugerir en pantalla bloqueada").
+
+Si tú o el usuario apagaron esto manualmente, **jamás sonará**, no importa lo que programes.
+
+### 4\. La Trampa de la "Pantalla Activa"
+
+Si tienes el pase **abierto en la pantalla** de tu teléfono mientras envías la prueba:
+
+  * El pase se actualizará visualmente (verás cambiar el texto).
+  * **PERO NO SONARÁ.**
+
+Apple asume que como lo estás mirando, no necesita avisarte con ruido.
+**Acción:** Bloquea el teléfono (pantalla negra) antes de disparar la prueba.
+
+-----
+
+### Cómo forzar que el usuario lo vea (La Opción Nuclear)
+
+Si el sonido no es suficiente y necesitas que sea imposible de ignorar, deja de pelear con las notificaciones y usa la **Relevancia Temporal**.
+
+No es una notificación, es un "secuestro" de la pantalla de bloqueo.
+
+En tu JSON, inyecta esto cuando quieras la atención del cliente:
+
+```json
+"relevantDate": "2025-12-17T12:00:00-05:00"
+```
+
+*(Pon la fecha y hora de AHORA MISMO)*.
+
+**Lo que pasará:**
+El pase aparecerá fijo en la pantalla de bloqueo con el texto: *"Relevante ahora"*. No se irá hasta que el usuario lo deslice. Es mucho más visible que una notificación fugaz.
+
+### Tu Diagnóstico en 1 Minuto
+
+Haz esto ahora mismo y dime qué pasa:
+
+1.  Bloquea tu iPhone (pantalla negra).
+2.  Dispara tu script de alerta cambiando el texto a algo nuevo (ej: "PRUEBA DE SONIDO 1").
+3.  Espera 10 segundos.
+4.  Desbloquea y abre el pase.
+
+**Pregunta:** ¿El texto dentro del pase cambió a "PRUEBA DE SONIDO 1"?
+
+  * **NO:** Tu servidor no está generando el nuevo `.pkpass` o la base de datos no actualizó. El problema está en tu Backend.
+  * **SÍ, pero no sonó:** Tienes el problema \#1 (falta `changeMessage`) o el problema \#3 (notificaciones apagadas).
+
+¿Cuál de los dos es?

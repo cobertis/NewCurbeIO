@@ -181,6 +181,12 @@ export const appleWalletService = {
           label: "MEMBER SINCE",
           value: member.memberSince ? new Date(member.memberSince).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "N/A",
         },
+        ...(pass.lastNotification ? [{
+          key: "alert",
+          label: "ALERT",
+          value: pass.lastNotification,
+          changeMessage: "%@",
+        }] : []),
       ],
       backFields: [
         {
