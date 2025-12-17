@@ -4788,6 +4788,7 @@ export const wallets = pgTable("wallets", {
   ownerUserId: varchar("owner_user_id").references(() => users.id, { onDelete: "cascade" }), // User who owns this wallet
   telnyxAccountId: text("telnyx_account_id"), // Shared across all wallets in company
   telnyxApiToken: text("telnyx_api_token"),
+  telnyxMessagingProfileId: text("telnyx_messaging_profile_id"), // Telnyx messaging profile for SMS/MMS
   balance: numeric("balance", { precision: 10, scale: 4 }).notNull().default("0.0000"),
   currency: text("currency").notNull().default("USD"),
   autoRecharge: boolean("auto_recharge").notNull().default(false),
