@@ -28478,7 +28478,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // GET /api/phone-system/brands - List all brands for company
   app.get("/api/phone-system/brands", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = req.session?.activeCompanyId;
+      const companyId = req.session.user?.companyId;
       const brands = await db
         .select()
         .from(telnyxBrands)
@@ -28494,7 +28494,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // POST /api/phone-system/brands - Create new 10DLC brand
   app.post("/api/phone-system/brands", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = req.session?.activeCompanyId;
+      const companyId = req.session.user?.companyId;
       const userId = req.session?.userId;
       const brandData = req.body;
 
@@ -28603,7 +28603,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // GET /api/phone-system/brands/:id - Get brand details
   app.get("/api/phone-system/brands/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = req.session?.activeCompanyId;
+      const companyId = req.session.user?.companyId;
       const brandId = parseInt(req.params.id);
       
       const [brand] = await db
@@ -28632,7 +28632,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // GET /api/phone-system/messaging-profile - Get messaging profile for company
   app.get("/api/phone-system/messaging-profile", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = req.session?.activeCompanyId;
+      const companyId = req.session.user?.companyId;
       
       // Get wallet with messaging profile ID
       const [wallet] = await db
@@ -28676,7 +28676,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // POST /api/phone-system/messaging-profile - Create messaging profile
   app.post("/api/phone-system/messaging-profile", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = req.session?.activeCompanyId;
+      const companyId = req.session.user?.companyId;
       const { webhookUrl } = req.body;
       
       // Get company for display name
@@ -28764,7 +28764,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // DELETE /api/phone-system/messaging-profile - Delete messaging profile
   app.delete("/api/phone-system/messaging-profile", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = req.session?.activeCompanyId;
+      const companyId = req.session.user?.companyId;
       
       const [wallet] = await db
         .select()
@@ -28816,7 +28816,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // GET /api/phone-system/toll-free/verifications - List toll-free verification requests
   app.get("/api/phone-system/toll-free/verifications", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = req.session?.activeCompanyId;
+      const companyId = req.session.user?.companyId;
       
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
@@ -28863,7 +28863,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // POST /api/phone-system/toll-free/verifications - Submit toll-free verification request
   app.post("/api/phone-system/toll-free/verifications", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = req.session?.activeCompanyId;
+      const companyId = req.session.user?.companyId;
       
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
@@ -28979,7 +28979,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // GET /api/phone-system/toll-free/verifications/:id - Get specific verification request
   app.get("/api/phone-system/toll-free/verifications/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = req.session?.activeCompanyId;
+      const companyId = req.session.user?.companyId;
       const { id } = req.params;
       
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
