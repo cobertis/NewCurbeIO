@@ -17795,10 +17795,37 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             
             await walletPassService.updateMember(walletMember.id, updateData);
             
-            // Send APNs push notification with unique message to avoid Apple suppression
-            // Alternate with period suffix instead of timestamp for cleaner notifications
-            const suffix = Date.now() % 2 === 0 ? "." : "";
-            await apnsService.sendPassAlertByMemberId(walletMember.id, `Plan updated${suffix}`);
+            // Detect which field changed and generate descriptive notification message
+            const fieldLabels: Record<string, string> = {
+              monthlyPremium: "Monthly Payment",
+              paymentDay: "Payment Day", 
+              planName: "Plan Name",
+              memberId: "Member ID",
+              carrierName: "Carrier",
+              planId: "Plan ID",
+              metalLevel: "Metal Level",
+              planType: "Plan Type",
+              effectiveDate: "Effective Date",
+              expirationDate: "Expiration Date",
+            };
+            
+            // Find which field changed (prioritized order)
+            const priorityFields = ["monthlyPremium", "paymentDay", "planName", "memberId", "carrierName", "planId", "metalLevel", "planType", "effectiveDate", "expirationDate"];
+            let changedField = "";
+            for (const field of priorityFields) {
+              const oldVal = (walletMember as any)[field]?.toString() || "";
+              const newVal = updateData[field]?.toString() || "";
+              if (newVal && oldVal !== newVal) {
+                changedField = field;
+                break;
+              }
+            }
+            
+            // Generate message based on changed field
+            const label = changedField ? fieldLabels[changedField] : "Plan";
+            const notificationMessage = `${label} updated`;
+            
+            await apnsService.sendPassAlertByMemberId(walletMember.id, notificationMessage);
             console.log(`[Wallet Sync] Updated pass for member ${walletMember.memberId}`);
           } else {
             console.log(`[Wallet Sync] No wallet member found for planId: ${planId} or memberId: ${memberIdFromPlan}`);
