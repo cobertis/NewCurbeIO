@@ -167,25 +167,32 @@ export const appleWalletService = {
       wwdr: wwdrBuffer,
     };
 
-    const pkpass = new PKPass({}, certificates, passData);
+    // Build the buffers object with pass.json and images
+    const buffers: Record<string, Buffer> = {
+      "pass.json": Buffer.from(JSON.stringify(passData)),
+    };
 
+    // Add images if they exist
     const iconPath = path.join(process.cwd(), "attached_assets", "pass-icon.png");
     const icon2xPath = path.join(process.cwd(), "attached_assets", "pass-icon@2x.png");
     const logoPath = path.join(process.cwd(), "attached_assets", "pass-logo.png");
     const logo2xPath = path.join(process.cwd(), "attached_assets", "pass-logo@2x.png");
 
     if (fs.existsSync(iconPath)) {
-      pkpass.addBuffer("icon.png", fs.readFileSync(iconPath));
+      buffers["icon.png"] = fs.readFileSync(iconPath);
     }
     if (fs.existsSync(icon2xPath)) {
-      pkpass.addBuffer("icon@2x.png", fs.readFileSync(icon2xPath));
+      buffers["icon@2x.png"] = fs.readFileSync(icon2xPath);
     }
     if (fs.existsSync(logoPath)) {
-      pkpass.addBuffer("logo.png", fs.readFileSync(logoPath));
+      buffers["logo.png"] = fs.readFileSync(logoPath);
     }
     if (fs.existsSync(logo2xPath)) {
-      pkpass.addBuffer("logo@2x.png", fs.readFileSync(logo2xPath));
+      buffers["logo@2x.png"] = fs.readFileSync(logo2xPath);
     }
+
+    // Create PKPass with buffers and certificates (v3 API)
+    const pkpass = new PKPass(buffers, certificates);
 
     return pkpass.getAsBuffer();
   },
