@@ -1,6 +1,7 @@
 import { PKPass } from "passkit-generator";
 import path from "path";
 import fs from "fs";
+import forge from "node-forge";
 import { WalletPass, WalletMember, WalletSettings } from "@shared/schema";
 import { walletPassService } from "./wallet-pass-service";
 import { db } from "../db";
@@ -32,6 +33,41 @@ function getWwdrCertificate(): Buffer {
     }
   }
   return WWDR_BUFFER;
+}
+
+interface P12Credentials {
+  signerCert: string;  // PEM certificate
+  signerKey: string;   // PEM private key
+}
+
+function extractP12Credentials(p12Buffer: Buffer, password: string): P12Credentials {
+  // Decode the P12/PKCS12 file
+  const p12Der = forge.util.decode64(p12Buffer.toString("base64"));
+  const p12Asn1 = forge.asn1.fromDer(p12Der);
+  const p12 = forge.pkcs12.pkcs12FromAsn1(p12Asn1, password || "");
+  
+  // Extract certificate
+  const certBags = p12.getBags({ bagType: forge.pki.oids.certBag });
+  const certBag = certBags[forge.pki.oids.certBag];
+  if (!certBag || certBag.length === 0 || !certBag[0].cert) {
+    throw new Error("No certificate found in P12 file");
+  }
+  const cert = certBag[0].cert;
+  const certPem = forge.pki.certificateToPem(cert);
+  
+  // Extract private key
+  const keyBags = p12.getBags({ bagType: forge.pki.oids.pkcs8ShroudedKeyBag });
+  const keyBag = keyBags[forge.pki.oids.pkcs8ShroudedKeyBag];
+  if (!keyBag || keyBag.length === 0 || !keyBag[0].key) {
+    throw new Error("No private key found in P12 file");
+  }
+  const key = keyBag[0].key;
+  const keyPem = forge.pki.privateKeyToPem(key);
+  
+  return {
+    signerCert: certPem,
+    signerKey: keyPem,
+  };
 }
 
 async function getCompanyBranding(companyId: string): Promise<{
@@ -98,6 +134,9 @@ export const appleWalletService = {
 
     const p12Buffer = Buffer.from(p12B64, "base64");
     
+    // Extract certificate and private key from P12 file (convert to PEM format)
+    const { signerCert, signerKey } = extractP12Credentials(p12Buffer, p12Password || "");
+    
     // WWDR is a global Apple certificate, loaded from static infrastructure file
     const wwdrBuffer = getWwdrCertificate();
 
@@ -161,9 +200,8 @@ export const appleWalletService = {
     ];
 
     const certificates: any = {
-      signerCert: p12Buffer,
-      signerKey: p12Buffer,
-      signerKeyPassphrase: p12Password,
+      signerCert: signerCert,
+      signerKey: signerKey,
       wwdr: wwdrBuffer,
     };
 
