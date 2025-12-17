@@ -4427,21 +4427,19 @@ export default function PoliciesPage() {
   const [editingPlanId, setEditingPlanId] = useState<string | null>(null);
   const [carrierPopoverOpen, setCarrierPopoverOpen] = useState(false);
   
-  // Simplified plan dialog state
-  const [searchPlanId, setSearchPlanId] = useState('');
-  const [isSearchingPlan, setIsSearchingPlan] = useState(false);
-  const [foundPlanData, setFoundPlanData] = useState<any>(null);
-  const [simplePlanFormData, setSimplePlanFormData] = useState({ marketplaceId: '', effectiveDate: '', memberId: '', expirationDate: '' });
-  const [manualEntryMode, setManualEntryMode] = useState(false);
-  const [searchError, setSearchError] = useState<string | null>(null);
-  const [manualPlanEntry, setManualPlanEntry] = useState({
+  // Simplified plan dialog state - manual entry only
+  const [simplePlanFormData, setSimplePlanFormData] = useState({ 
+    planId: '',
     carrier: '',
     planName: '',
     metalLevel: '',
     planType: '',
     monthlyPayment: '',
     originalPrice: '',
-    planId: '',
+    marketplaceId: '', 
+    memberId: '',
+    effectiveDate: '', 
+    expirationDate: '' 
   });
   
   // Empty form state for manual plan dialog
@@ -8341,8 +8339,8 @@ export default function PoliciesPage() {
                                     )}
                                   </div>
                                   
-                                  {/* Plan ID, Marketplace ID, Effective Date */}
-                                  <div className="mt-4 pt-3 border-t border-border/30 grid grid-cols-3 gap-4 text-sm">
+                                  {/* Plan ID, Marketplace ID, Member ID, Effective Date, Expiration Date */}
+                                  <div className="mt-4 pt-3 border-t border-border/30 grid grid-cols-3 gap-x-4 gap-y-2 text-sm">
                                     <div>
                                       <p className="text-xs text-muted-foreground">Plan ID</p>
                                       <p className="font-mono text-xs">{plan.id || 'N/A'}</p>
@@ -8353,10 +8351,22 @@ export default function PoliciesPage() {
                                         <p className="font-mono text-xs">{plan.marketplaceId || policyPlan.marketplaceId}</p>
                                       </div>
                                     )}
+                                    {(plan.memberId || policyPlan.memberId) && (
+                                      <div>
+                                        <p className="text-xs text-muted-foreground">Member ID</p>
+                                        <p className="font-mono text-xs">{plan.memberId || policyPlan.memberId}</p>
+                                      </div>
+                                    )}
                                     {(plan.effectiveDate || policyPlan.effectiveDate) && (
                                       <div>
                                         <p className="text-xs text-muted-foreground">Effective Date</p>
                                         <p className="text-xs">{plan.effectiveDate || policyPlan.effectiveDate}</p>
+                                      </div>
+                                    )}
+                                    {(plan.expirationDate || policyPlan.expirationDate) && (
+                                      <div>
+                                        <p className="text-xs text-muted-foreground">Expiration Date</p>
+                                        <p className="text-xs">{plan.expirationDate || policyPlan.expirationDate}</p>
                                       </div>
                                     )}
                                   </div>
@@ -11094,13 +11104,15 @@ export default function PoliciesPage() {
             </AlertDialogFooter>
           </AlertDialogContent>
         </AlertDialog>
-        {/* Manual Plan Dialog - Simplified */}
+        {/* Manual Plan Dialog - Simplified (Manual Entry Only) */}
         <Dialog open={manualPlanDialogOpen} onOpenChange={(open) => {
           setManualPlanDialogOpen(open);
           if (!open) {
-            setSearchPlanId('');
-            setFoundPlanData(null);
-            setSimplePlanFormData({ marketplaceId: '', effectiveDate: '', memberId: '', expirationDate: '' });
+            setSimplePlanFormData({ 
+              planId: '', carrier: '', planName: '', metalLevel: '', planType: '',
+              monthlyPayment: '', originalPrice: '', marketplaceId: '', memberId: '',
+              effectiveDate: '', expirationDate: '' 
+            });
             setEditingPlanId(null);
           }
         }}>
@@ -11108,339 +11120,154 @@ export default function PoliciesPage() {
             <DialogHeader>
               <DialogTitle>{editingPlanId ? 'Edit Plan' : 'Add Plan'}</DialogTitle>
               <DialogDescription>
-                {editingPlanId ? 'Update plan information' : 'Enter a Plan ID to search and add a marketplace plan'}
+                {editingPlanId ? 'Update plan information' : 'Enter plan details manually'}
               </DialogDescription>
             </DialogHeader>
             
-            <div className="space-y-6">
-              {/* Plan ID Search */}
-              <div className="space-y-3">
-                <Label htmlFor="searchPlanId" className="text-sm font-medium">Plan ID <span className="text-red-500">*</span></Label>
-                <div className="flex gap-2">
+            <div className="space-y-4">
+              {/* Plan Details Form */}
+              <div className="grid grid-cols-2 gap-4">
+                <div className="col-span-2">
+                  <Label htmlFor="planId" className="text-sm">Plan ID</Label>
                   <Input
-                    id="searchPlanId"
-                    value={searchPlanId}
-                    onChange={(e) => setSearchPlanId(e.target.value)}
-                    placeholder="Enter Plan ID (e.g., 12345XX1234567)"
-                    className="flex-1"
-                    data-testid="input-plan-id-search"
-                    disabled={isSearchingPlan || !!foundPlanData}
+                    id="planId"
+                    value={simplePlanFormData.planId}
+                    onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, planId: e.target.value })}
+                    placeholder="e.g., 12345XX1234567"
+                    className="mt-1"
+                    data-testid="input-plan-id"
                   />
-                  {!foundPlanData ? (
-                    <Button
-                      type="button"
-                      onClick={async () => {
-                        if (!searchPlanId.trim() || !viewingQuote?.id) return;
-                        setIsSearchingPlan(true);
-                        try {
-                          const response = await fetch(`/api/policies/${viewingQuote.id}/marketplace-plan/${searchPlanId.trim()}`);
-                          if (!response.ok) {
-                            const error = await response.json();
-                            throw new Error(error.message || 'Plan not found');
-                          }
-                          const data = await response.json();
-                          setFoundPlanData(data.plan);
-                          setSearchError(null);
-                          setManualEntryMode(false);
-                          toast({ title: "Plan Found", description: `Found: ${data.plan?.name || 'Plan'}`, duration: 2000 });
-                        } catch (error: any) {
-                          setSearchError(error.message || "Plan not found");
-                          toast({ title: "Search Failed", description: error.message || "Plan not found. You can enter the plan details manually.", variant: "destructive", duration: 4000 });
-                          setFoundPlanData(null);
-                        } finally {
-                          setIsSearchingPlan(false);
-                        }
-                      }}
-                      disabled={isSearchingPlan || !searchPlanId.trim()}
-                      data-testid="button-search-plan-id"
-                    >
-                      {isSearchingPlan ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
-                    </Button>
-                  ) : (
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => {
-                        setFoundPlanData(null);
-                        setSearchPlanId('');
-                        setSearchError(null);
-                        setManualEntryMode(false);
-                      }}
-                      data-testid="button-clear-plan"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
+                </div>
+                <div>
+                  <Label htmlFor="carrier" className="text-sm">Carrier <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="carrier"
+                    value={simplePlanFormData.carrier}
+                    onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, carrier: e.target.value })}
+                    placeholder="e.g., Blue Cross Blue Shield"
+                    className="mt-1"
+                    data-testid="input-carrier"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="planName" className="text-sm">Plan Name <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="planName"
+                    value={simplePlanFormData.planName}
+                    onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, planName: e.target.value })}
+                    placeholder="e.g., Bronze PPO"
+                    className="mt-1"
+                    data-testid="input-plan-name"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="metalLevel" className="text-sm">Metal Level</Label>
+                  <Select
+                    value={simplePlanFormData.metalLevel}
+                    onValueChange={(value) => setSimplePlanFormData({ ...simplePlanFormData, metalLevel: value })}
+                  >
+                    <SelectTrigger className="mt-1" data-testid="select-metal-level">
+                      <SelectValue placeholder="Select metal level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Bronze">Bronze</SelectItem>
+                      <SelectItem value="Silver">Silver</SelectItem>
+                      <SelectItem value="Gold">Gold</SelectItem>
+                      <SelectItem value="Platinum">Platinum</SelectItem>
+                      <SelectItem value="Catastrophic">Catastrophic</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="planType" className="text-sm">Plan Type</Label>
+                  <Select
+                    value={simplePlanFormData.planType}
+                    onValueChange={(value) => setSimplePlanFormData({ ...simplePlanFormData, planType: value })}
+                  >
+                    <SelectTrigger className="mt-1" data-testid="select-plan-type">
+                      <SelectValue placeholder="Select plan type" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="PPO">PPO</SelectItem>
+                      <SelectItem value="HMO">HMO</SelectItem>
+                      <SelectItem value="EPO">EPO</SelectItem>
+                      <SelectItem value="POS">POS</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="monthlyPayment" className="text-sm">Monthly Payment ($) <span className="text-red-500">*</span></Label>
+                  <Input
+                    id="monthlyPayment"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={simplePlanFormData.monthlyPayment}
+                    onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, monthlyPayment: e.target.value })}
+                    placeholder="0.00"
+                    className="mt-1"
+                    data-testid="input-monthly-payment"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="originalPrice" className="text-sm">Original Price ($)</Label>
+                  <Input
+                    id="originalPrice"
+                    type="number"
+                    step="0.01"
+                    min="0"
+                    value={simplePlanFormData.originalPrice}
+                    onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, originalPrice: e.target.value })}
+                    placeholder="0.00"
+                    className="mt-1"
+                    data-testid="input-original-price"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="marketplaceId" className="text-sm">Marketplace ID</Label>
+                  <Input
+                    id="marketplaceId"
+                    value={simplePlanFormData.marketplaceId}
+                    onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, marketplaceId: e.target.value })}
+                    placeholder="FFM Application ID"
+                    className="mt-1"
+                    data-testid="input-marketplace-id"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="memberId" className="text-sm">Member ID</Label>
+                  <Input
+                    id="memberId"
+                    value={simplePlanFormData.memberId}
+                    onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, memberId: e.target.value })}
+                    placeholder="Member ID"
+                    className="mt-1"
+                    data-testid="input-member-id"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="effectiveDate" className="text-sm">Effective Date</Label>
+                  <Input
+                    id="effectiveDate"
+                    type="date"
+                    value={simplePlanFormData.effectiveDate}
+                    onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, effectiveDate: e.target.value })}
+                    className="mt-1"
+                    data-testid="input-effective-date"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="expirationDate" className="text-sm">Expiration Date</Label>
+                  <Input
+                    id="expirationDate"
+                    type="date"
+                    value={simplePlanFormData.expirationDate}
+                    onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, expirationDate: e.target.value })}
+                    className="mt-1"
+                    data-testid="input-expiration-date"
+                  />
                 </div>
               </div>
-
-              {/* Found Plan Details (readonly) */}
-              {foundPlanData && (
-                <div className="space-y-4 p-4 bg-muted/30 rounded-lg border">
-                  <h4 className="text-sm font-semibold text-primary flex items-center gap-2">
-                    <Check className="h-4 w-4 text-green-600" />
-                    Plan Found
-                  </h4>
-                  
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <p className="text-muted-foreground text-xs">Plan ID</p>
-                      <p className="font-mono font-medium">{foundPlanData.id}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs">Carrier</p>
-                      <p className="font-medium">{foundPlanData.issuer?.name || 'N/A'}</p>
-                    </div>
-                    <div className="col-span-2">
-                      <p className="text-muted-foreground text-xs">Plan Name</p>
-                      <p className="font-medium">{foundPlanData.name}</p>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs">Metal Level</p>
-                      <Badge variant="secondary" className="mt-1">{foundPlanData.metal_level || 'N/A'}</Badge>
-                    </div>
-                    <div>
-                      <p className="text-muted-foreground text-xs">Plan Type</p>
-                      <Badge variant="outline" className="mt-1">{foundPlanData.type || 'N/A'}</Badge>
-                    </div>
-                  </div>
-
-                  <div className="border-t pt-4 mt-4">
-                    <div className="grid grid-cols-3 gap-4">
-                      <div className="text-center">
-                        <p className="text-muted-foreground text-xs mb-1">Monthly Payment</p>
-                        <p className="text-xl font-bold text-primary">
-                          ${(foundPlanData.premium_w_credit ?? foundPlanData.premium ?? 0).toFixed(2)}
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-muted-foreground text-xs mb-1">Savings</p>
-                        <p className="text-lg font-semibold text-green-600">
-                          ${((foundPlanData.premium ?? 0) - (foundPlanData.premium_w_credit ?? foundPlanData.premium ?? 0)).toFixed(2)}
-                        </p>
-                      </div>
-                      <div className="text-center">
-                        <p className="text-muted-foreground text-xs mb-1">Plan Was</p>
-                        <p className="text-lg font-medium text-muted-foreground line-through">
-                          ${(foundPlanData.premium ?? 0).toFixed(2)}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Search Error & Manual Entry Toggle */}
-              {searchError && !foundPlanData && !manualEntryMode && (
-                <div className="space-y-4 p-4 bg-red-50 dark:bg-red-900/20 rounded-lg border border-red-200 dark:border-red-800">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="h-5 w-5 text-red-500 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1">
-                      <h4 className="text-sm font-semibold text-red-700 dark:text-red-400">Plan Not Found</h4>
-                      <p className="text-sm text-red-600 dark:text-red-300 mt-1">{searchError}</p>
-                      <div className="mt-3 flex gap-2">
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => setSearchError(null)}
-                          data-testid="button-try-again"
-                        >
-                          Try Different ID
-                        </Button>
-                        <Button
-                          type="button"
-                          size="sm"
-                          onClick={() => {
-                            setManualEntryMode(true);
-                            setManualPlanEntry({ ...manualPlanEntry, planId: searchPlanId });
-                          }}
-                          data-testid="button-enter-manually"
-                        >
-                          <Edit className="h-4 w-4 mr-1" />
-                          Enter Manually
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Manual Entry Form */}
-              {manualEntryMode && (
-                <div className="space-y-4 p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
-                  <div className="flex items-center justify-between">
-                    <h4 className="text-sm font-semibold text-blue-700 dark:text-blue-400 flex items-center gap-2">
-                      <Edit className="h-4 w-4" />
-                      Manual Entry Mode
-                    </h4>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => {
-                        setManualEntryMode(false);
-                        setSearchError(null);
-                      }}
-                      data-testid="button-cancel-manual"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="col-span-2">
-                      <Label htmlFor="manualPlanId" className="text-sm">Plan ID</Label>
-                      <Input
-                        id="manualPlanId"
-                        value={manualPlanEntry.planId}
-                        onChange={(e) => setManualPlanEntry({ ...manualPlanEntry, planId: e.target.value })}
-                        placeholder="e.g., 12345XX1234567"
-                        className="mt-1"
-                        data-testid="input-manual-plan-id"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="manualCarrier" className="text-sm">Carrier <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="manualCarrier"
-                        value={manualPlanEntry.carrier}
-                        onChange={(e) => setManualPlanEntry({ ...manualPlanEntry, carrier: e.target.value })}
-                        placeholder="e.g., Blue Cross Blue Shield"
-                        className="mt-1"
-                        data-testid="input-manual-carrier"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="manualPlanName" className="text-sm">Plan Name <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="manualPlanName"
-                        value={manualPlanEntry.planName}
-                        onChange={(e) => setManualPlanEntry({ ...manualPlanEntry, planName: e.target.value })}
-                        placeholder="e.g., Bronze PPO"
-                        className="mt-1"
-                        data-testid="input-manual-plan-name"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="manualMetalLevel" className="text-sm">Metal Level</Label>
-                      <Select
-                        value={manualPlanEntry.metalLevel}
-                        onValueChange={(value) => setManualPlanEntry({ ...manualPlanEntry, metalLevel: value })}
-                      >
-                        <SelectTrigger className="mt-1" data-testid="select-manual-metal-level">
-                          <SelectValue placeholder="Select metal level" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Bronze">Bronze</SelectItem>
-                          <SelectItem value="Silver">Silver</SelectItem>
-                          <SelectItem value="Gold">Gold</SelectItem>
-                          <SelectItem value="Platinum">Platinum</SelectItem>
-                          <SelectItem value="Catastrophic">Catastrophic</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="manualPlanType" className="text-sm">Plan Type</Label>
-                      <Select
-                        value={manualPlanEntry.planType}
-                        onValueChange={(value) => setManualPlanEntry({ ...manualPlanEntry, planType: value })}
-                      >
-                        <SelectTrigger className="mt-1" data-testid="select-manual-plan-type">
-                          <SelectValue placeholder="Select plan type" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="PPO">PPO</SelectItem>
-                          <SelectItem value="HMO">HMO</SelectItem>
-                          <SelectItem value="EPO">EPO</SelectItem>
-                          <SelectItem value="POS">POS</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div>
-                      <Label htmlFor="manualMonthlyPayment" className="text-sm">Monthly Payment ($) <span className="text-red-500">*</span></Label>
-                      <Input
-                        id="manualMonthlyPayment"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={manualPlanEntry.monthlyPayment}
-                        onChange={(e) => setManualPlanEntry({ ...manualPlanEntry, monthlyPayment: e.target.value })}
-                        placeholder="0.00"
-                        className="mt-1"
-                        data-testid="input-manual-monthly-payment"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="manualOriginalPrice" className="text-sm">Original Price ($)</Label>
-                      <Input
-                        id="manualOriginalPrice"
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        value={manualPlanEntry.originalPrice}
-                        onChange={(e) => setManualPlanEntry({ ...manualPlanEntry, originalPrice: e.target.value })}
-                        placeholder="0.00"
-                        className="mt-1"
-                        data-testid="input-manual-original-price"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Editable Fields (for both modes) */}
-              {(foundPlanData || manualEntryMode) && (
-                <div className="space-y-4">
-                  <h4 className="text-sm font-semibold">Additional Information</h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    <div>
-                      <Label htmlFor="marketplaceId" className="text-sm">Marketplace ID</Label>
-                      <Input
-                        id="marketplaceId"
-                        value={simplePlanFormData.marketplaceId}
-                        onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, marketplaceId: e.target.value })}
-                        placeholder="FFM Application ID"
-                        className="mt-1"
-                        data-testid="input-marketplace-id"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="memberId" className="text-sm">Member ID</Label>
-                      <Input
-                        id="memberId"
-                        value={simplePlanFormData.memberId}
-                        onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, memberId: e.target.value })}
-                        placeholder="Member ID"
-                        className="mt-1"
-                        data-testid="input-member-id"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="effectiveDate" className="text-sm">Effective Date</Label>
-                      <Input
-                        id="effectiveDate"
-                        type="date"
-                        value={simplePlanFormData.effectiveDate}
-                        onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, effectiveDate: e.target.value })}
-                        className="mt-1"
-                        data-testid="input-effective-date"
-                      />
-                    </div>
-                    <div>
-                      <Label htmlFor="expirationDate" className="text-sm">Expiration Date</Label>
-                      <Input
-                        id="expirationDate"
-                        type="date"
-                        value={simplePlanFormData.expirationDate}
-                        onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, expirationDate: e.target.value })}
-                        className="mt-1"
-                        data-testid="input-expiration-date"
-                      />
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
 
             <DialogFooter className="mt-6">
@@ -11448,63 +11275,39 @@ export default function PoliciesPage() {
                 Cancel
               </Button>
               <Button
-                disabled={!foundPlanData && !(manualEntryMode && manualPlanEntry.carrier && manualPlanEntry.planName && manualPlanEntry.monthlyPayment)}
+                disabled={!simplePlanFormData.carrier || !simplePlanFormData.planName || !simplePlanFormData.monthlyPayment}
                 onClick={async () => {
                   if (!viewingQuote?.id) return;
-                  if (!foundPlanData && !manualEntryMode) return;
                   try {
-                    let planData;
-                    let source;
+                    const planData = {
+                      id: simplePlanFormData.planId || `manual-${Date.now()}`,
+                      name: simplePlanFormData.planName,
+                      issuer: { name: simplePlanFormData.carrier },
+                      metal_level: simplePlanFormData.metalLevel || undefined,
+                      type: simplePlanFormData.planType || undefined,
+                      premium: parseFloat(simplePlanFormData.originalPrice) || parseFloat(simplePlanFormData.monthlyPayment) || 0,
+                      premium_w_credit: parseFloat(simplePlanFormData.monthlyPayment) || 0,
+                      marketplaceId: simplePlanFormData.marketplaceId || undefined,
+                      memberId: simplePlanFormData.memberId || undefined,
+                      effectiveDate: simplePlanFormData.effectiveDate || undefined,
+                      expirationDate: simplePlanFormData.expirationDate || undefined,
+                    };
                     
-                    if (foundPlanData) {
-                      // Use data from CMS search
-                      planData = {
-                        ...foundPlanData,
-                        marketplaceId: simplePlanFormData.marketplaceId || undefined,
-                        memberId: simplePlanFormData.memberId || undefined,
-                        effectiveDate: simplePlanFormData.effectiveDate || undefined,
-                        expirationDate: simplePlanFormData.expirationDate || undefined,
-                      };
-                      source = 'marketplace';
-                    } else {
-                      // Use manually entered data
-                      planData = {
-                        id: manualPlanEntry.planId || `manual-${Date.now()}`,
-                        name: manualPlanEntry.planName,
-                        issuer: { name: manualPlanEntry.carrier },
-                        metal_level: manualPlanEntry.metalLevel || undefined,
-                        type: manualPlanEntry.planType || undefined,
-                        premium: parseFloat(manualPlanEntry.originalPrice) || parseFloat(manualPlanEntry.monthlyPayment) || 0,
-                        premium_w_credit: parseFloat(manualPlanEntry.monthlyPayment) || 0,
-                        marketplaceId: simplePlanFormData.marketplaceId || undefined,
-                        memberId: simplePlanFormData.memberId || undefined,
-                        effectiveDate: simplePlanFormData.effectiveDate || undefined,
-                        expirationDate: simplePlanFormData.expirationDate || undefined,
-                      };
-                      source = 'manual';
-                    }
-                    
-                    const response = await apiRequest('POST', `/api/policies/${viewingQuote.id}/plans`, {
-                      source: source,
+                    await apiRequest('POST', `/api/policies/${viewingQuote.id}/plans`, {
+                      source: 'manual',
                       planData: planData,
                     });
-                    
-                    if (!response.ok) {
-                      const error = await response.json();
-                      throw new Error(error.message || 'Failed to save plan');
-                    }
 
                     queryClient.invalidateQueries({ queryKey: ['/api/policies'] });
                     
                     toast({ title: "Success", description: "Plan has been added successfully.", duration: 3000 });
                     setManualPlanDialogOpen(false);
-                    setSearchPlanId('');
-                    setFoundPlanData(null);
-                    setSimplePlanFormData({ marketplaceId: '', effectiveDate: '', memberId: '', expirationDate: '' });
+                    setSimplePlanFormData({ 
+                      planId: '', carrier: '', planName: '', metalLevel: '', planType: '',
+                      monthlyPayment: '', originalPrice: '', marketplaceId: '', memberId: '',
+                      effectiveDate: '', expirationDate: '' 
+                    });
                     setEditingPlanId(null);
-                    setManualEntryMode(false);
-                    setSearchError(null);
-                    setManualPlanEntry({ carrier: '', planName: '', metalLevel: '', planType: '', monthlyPayment: '', originalPrice: '', planId: '' });
                   } catch (error: any) {
                     toast({ title: "Error", description: error.message || "Failed to save plan.", variant: "destructive", duration: 3000 });
                   }
