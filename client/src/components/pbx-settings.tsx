@@ -598,15 +598,6 @@ export function PbxSettings() {
 
   return (
     <div className="p-6 space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">PBX Settings</h2>
-          <p className="text-slate-500 dark:text-slate-400">
-            Configure your IVR, call queues, and extensions
-          </p>
-        </div>
-      </div>
-
       <Tabs value={activeTab} onValueChange={(tab) => {
         setActiveTab(tab);
         // Refresh data when switching tabs
