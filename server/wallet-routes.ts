@@ -11,6 +11,7 @@ import { insertWalletMemberSchema } from "@shared/schema";
 import { broadcastWalletAnalyticsUpdate } from "./websocket";
 import { blueBubblesManager } from "./bluebubbles";
 import { storage } from "./storage";
+import { formatE164 } from "@shared/phone";
 
 const passkitRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -201,8 +202,11 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
               .replace("{name}", member.fullName.split(" ")[0])
               .replace("{link}", dynamicLinkUrl);
 
-            // Normalize phone to E.164 format and create chat first (BlueBubbles requirement)
-            const normalizedPhone = member.phone.replace(/\D/g, '').replace(/^1/, '+1').replace(/^(?!\+)/, '+1');
+            // Normalize phone to E.164 format using shared utility
+            const normalizedPhone = formatE164(member.phone) || member.phone;
+            console.log(`[Wallet] Sending wallet link via iMessage to: ${normalizedPhone} (original: ${member.phone})`);
+            
+            // Create chat first (BlueBubbles requirement)
             try {
               await blueBubblesManager.createChat(companyId, [normalizedPhone], 'iMessage');
               console.log(`[Wallet] Chat created for ${normalizedPhone}`);
@@ -216,7 +220,7 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
               message: messageText,
             });
             iMessageSent = true;
-            console.log(`[Wallet] iMessage sent to ${normalizedPhone} with wallet link`);
+            console.log(`[Wallet] iMessage sent successfully to ${normalizedPhone}`);
           }
         } catch (imError) {
           console.error("[Wallet] Failed to send iMessage with wallet link:", imError);
