@@ -154,8 +154,17 @@ export const appleWalletService = {
       labelColor: hexToRgb(branding.secondaryColor || "#ffffff"),
     };
     
-    // Add generic pass fields
-    passData.generic = {
+    // Use storeCard for clean airline-style layout with strip image support
+    passData.storeCard = {
+      // Header: Company status (small, top right)
+      headerFields: [
+        {
+          key: "status",
+          label: "STATUS",
+          value: member.plan || "ACTIVE",
+        },
+      ],
+      // Primary: Member name only (large, prominent)
       primaryFields: [
         {
           key: "memberName",
@@ -163,31 +172,43 @@ export const appleWalletService = {
           value: member.fullName,
         },
       ],
+      // Secondary: ONLY notification - full width when alone
       secondaryFields: [
+        {
+          key: "alert_msg",
+          label: "AVISO IMPORTANTE",
+          value: pass.lastNotification || "Sin notificaciones pendientes",
+          changeMessage: "⚠️ %@",
+        },
+      ],
+      // Auxiliary: Technical data (small, centered, above barcode area)
+      auxiliaryFields: [
         {
           key: "memberId",
           label: "MEMBER ID",
           value: member.memberId,
+          textAlignment: "PKTextAlignmentCenter",
         },
         {
           key: "plan",
           label: "PLAN",
           value: member.plan || "Standard",
+          textAlignment: "PKTextAlignmentCenter",
         },
-      ],
-      auxiliaryFields: [
         {
           key: "memberSince",
-          label: "MEMBER SINCE",
+          label: "SINCE",
           value: member.memberSince ? new Date(member.memberSince).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "N/A",
+          textAlignment: "PKTextAlignmentCenter",
         },
       ],
+      // Back: Full details
       backFields: [
         {
-          key: "alert",
-          label: "⚠️ IMPORTANT NOTICE",
-          value: pass.lastNotification || "No notifications",
-          changeMessage: "⚠️ %@",
+          key: "fullNotification",
+          label: "Última Notificación",
+          value: pass.lastNotification || "Sin notificaciones",
+          changeMessage: "%@",
         },
         {
           key: "terms",
@@ -196,18 +217,6 @@ export const appleWalletService = {
         },
       ],
     };
-    
-    // Add a footer field for notification (shown at bottom of pass)
-    if (pass.lastNotification) {
-      passData.generic.headerFields = [
-        {
-          key: "notification",
-          label: "⚠️ NOTICE",
-          value: pass.lastNotification.substring(0, 30) + (pass.lastNotification.length > 30 ? "..." : ""),
-          changeMessage: "⚠️ %@",
-        },
-      ];
-    }
 
     const certificates: any = {
       signerCert: signerCert,
@@ -226,6 +235,8 @@ export const appleWalletService = {
     const icon2xPath = path.join(process.cwd(), "attached_assets", "pass-icon@2x.png");
     const logoPath = path.join(process.cwd(), "attached_assets", "pass-logo.png");
     const logo2xPath = path.join(process.cwd(), "attached_assets", "pass-logo@2x.png");
+    const stripPath = path.join(process.cwd(), "attached_assets", "strip.png");
+    const strip2xPath = path.join(process.cwd(), "attached_assets", "strip@2x.png");
 
     if (fs.existsSync(iconPath)) {
       template["icon.png"] = fs.readFileSync(iconPath);
@@ -238,6 +249,13 @@ export const appleWalletService = {
     }
     if (fs.existsSync(logo2xPath)) {
       template["logo@2x.png"] = fs.readFileSync(logo2xPath);
+    }
+    // Strip image for storeCard - appears at the top behind header/primary fields
+    if (fs.existsSync(stripPath)) {
+      template["strip.png"] = fs.readFileSync(stripPath);
+    }
+    if (fs.existsSync(strip2xPath)) {
+      template["strip@2x.png"] = fs.readFileSync(strip2xPath);
     }
 
     // Create PKPass with template (containing pass.json) and certificates
