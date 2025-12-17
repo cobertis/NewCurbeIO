@@ -98,7 +98,6 @@ import ImessageCampaigns from "@/pages/imessage-campaigns";
 import ImessageCampaignDetail from "@/pages/imessage-campaign-detail";
 import WhatsAppPage from "@/pages/whatsapp";
 import NotificationsPage from "@/pages/notifications";
-import VipPassPage from "@/pages/vip-pass";
 import NotFound from "@/pages/not-found";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 
@@ -942,19 +941,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               </button>
             </TooltipTrigger>
             <TooltipContent side="right" className="font-medium">Landing Page</TooltipContent>
-          </Tooltip>
-
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => setLocation("/vip-pass")}
-                data-testid="sidebar-button-vip-pass"
-                className={circularButtonClass}
-              >
-                <Wallet className="h-[18px] w-[18px] text-amber-600" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">VIP Pass</TooltipContent>
           </Tooltip>
 
           {/* Spacer to push bottom icons down */}
@@ -1809,13 +1795,6 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <IntegrationsPage />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/vip-pass">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <VipPassPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
