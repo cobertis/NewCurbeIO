@@ -1151,6 +1151,14 @@ export function ComplianceTab() {
           </Sheet>
         </div>
 
+        {/* Brand Registration Fee Notice */}
+        <div className="mx-6 mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start gap-3">
+          <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+          <p className="text-sm text-blue-800 dark:text-blue-200">
+            Registration Fee: $4.00. This is a non-refundable fee charged by The Campaign Registry (TCR).
+          </p>
+        </div>
+
         {isLoading ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
