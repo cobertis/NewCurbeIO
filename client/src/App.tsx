@@ -247,20 +247,23 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     ...getCompanyQueryOptions(user?.companyId || undefined),
   });
   
-  // Compute logo with NO flash: null until we definitively know what to show
+  // Compute logo: use session logo immediately (white-label support), fallback to company data or default
   const displayLogo = useMemo(() => {
-    // Case 1: User not loaded yet - show nothing
+    // Case 1: User not loaded yet - show nothing (still authenticating)
     if (!user) return null;
     
     // Case 2: User has no company - show default
     if (!user.companyId) return defaultLogo;
     
-    // Case 3: Company query still loading or not fetched - show nothing (prevents flash)
-    if (isLoadingCompany || !isCompanyFetched) return null;
+    // Case 3: Use logo from session (available immediately after login) - WHITE LABEL PRIORITY
+    if ((user as any).companyLogo) return (user as any).companyLogo;
     
-    // Case 4: Company data loaded - show company logo or default if none
-    return companyData?.company?.logo || defaultLogo;
-  }, [user, user?.companyId, isLoadingCompany, isCompanyFetched, companyData?.company?.logo]);
+    // Case 4: Fallback to company data logo if available
+    if (companyData?.company?.logo) return companyData.company.logo;
+    
+    // Case 5: No custom logo - show default
+    return defaultLogo;
+  }, [user, user?.companyId, (user as any)?.companyLogo, companyData?.company?.logo]);
 
   const userInitial = user?.firstName?.[0]?.toUpperCase() || user?.email?.[0]?.toUpperCase() || "U";
   const userName = user?.firstName && user?.lastName 

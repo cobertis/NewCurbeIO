@@ -341,6 +341,20 @@ export default function Settings() {
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
   
+  // OPTIMIZATION: Determine active tab from URL FIRST (before queries)
+  // This allows us to guard queries with `enabled` based on which tab is active
+  const getCurrentTab = () => {
+    if (location === "/settings/automations") return "automations";
+    if (location === "/settings" || location === "/settings/profile" || location === "/settings/overview" || location === "/settings/company") return "overview";
+    if (location === "/settings/security") return "security";
+    if (location === "/settings/notifications") return "notifications";
+    if (location === "/settings/team") return "team";
+    if (location === "/settings/webphone") return "webphone";
+    return "overview"; // default
+  };
+  const currentTab = getCurrentTab();
+  
+  // ESSENTIAL: Always fetch session and preferences (needed for initial render)
   const { data: userData, isLoading: isLoadingUser } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
   });
@@ -349,17 +363,19 @@ export default function Settings() {
     queryKey: ["/api/settings/preferences"],
   });
 
+  // OPTIMIZATION: Only fetch company settings when on overview tab
   const { data: companySettingsData, isLoading: isLoadingCompanySettings } = useQuery<{ settings: CompanySettings }>({
     queryKey: ["/api/settings/company"],
-    enabled: userData?.user?.role === "admin" || userData?.user?.role === "superadmin",
+    enabled: (userData?.user?.role === "admin" || userData?.user?.role === "superadmin") && currentTab === "overview",
   });
 
-  // Fetch notifications for the current user
+  // OPTIMIZATION: Only fetch notifications when on notifications tab
   const { data: notificationsData, isLoading: isLoadingNotifications } = useQuery<{ notifications: any[] }>({
     queryKey: ["/api/notifications"],
+    enabled: currentTab === "notifications",
   });
 
-  // Fetch active sessions for the current user
+  // OPTIMIZATION: Only fetch sessions when on security tab, with conditional polling
   const { data: sessionsData, isLoading: isLoadingSessions } = useQuery<{ sessions: Array<{
     id: string;
     isCurrent: boolean;
@@ -369,7 +385,8 @@ export default function Settings() {
     ipAddress: string;
   }> }>({
     queryKey: ["/api/user/sessions"],
-    refetchInterval: 30000, // Refetch every 30 seconds
+    enabled: currentTab === "security",
+    refetchInterval: currentTab === "security" ? 30000 : false,
   });
 
   const [emailTestAddress, setEmailTestAddress] = useState("");
@@ -423,7 +440,7 @@ export default function Settings() {
   
   const user = userData?.user;
 
-  // Fetch company data if user has a companyId
+  // OPTIMIZATION: Only fetch company data when on overview tab
   const { data: companyData, isLoading: isLoadingCompany, isError: isCompanyError } = useQuery<{ company: any }>({
     queryKey: ["/api/companies", user?.companyId],
     queryFn: async () => {
@@ -441,17 +458,17 @@ export default function Settings() {
       }
       return response.json();
     },
-    enabled: !!user?.companyId,
+    enabled: !!user?.companyId && currentTab === "overview",
     retry: false,
   });
 
-  // Fetch subscription data to show plan information (admin only)
+  // OPTIMIZATION: Only fetch subscription data when on overview tab (admin only)
   const { data: subscriptionData } = useQuery<{ subscription: any }>({
     queryKey: ['/api/billing/subscription'],
-    enabled: !!user?.companyId && (user?.role === "admin" || user?.role === "superadmin"),
+    enabled: !!user?.companyId && (user?.role === "admin" || user?.role === "superadmin") && currentTab === "overview",
   });
 
-  // Fetch user limits which includes plan name (available to all users including agents)
+  // OPTIMIZATION: Only fetch user limits when on team or overview tab
   const { data: userLimitsData } = useQuery<{ 
     maxUsers: number | null;
     currentUsers: number;
@@ -459,7 +476,7 @@ export default function Settings() {
     planName: string | null;
   }>({
     queryKey: ["/api/users/limits"],
-    enabled: !!user?.companyId,
+    enabled: !!user?.companyId && (currentTab === "team" || currentTab === "overview"),
   });
 
   // Get plan name from either subscription (admin) or limits (agents)
@@ -468,7 +485,7 @@ export default function Settings() {
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
   
 
-  // Fetch custom domain status - Admin only
+  // OPTIMIZATION: Only fetch custom domain status when on overview tab (admin only)
   const { data: customDomainData, isLoading: isLoadingCustomDomain, refetch: refetchCustomDomain } = useQuery<{
     configured: boolean;
     domain: string | null;
@@ -482,7 +499,7 @@ export default function Settings() {
     };
   }>({
     queryKey: ['/api/organization/domain'],
-    enabled: isAdmin && !!user?.companyId,
+    enabled: isAdmin && !!user?.companyId && currentTab === "overview",
   });
 
   // Custom domain state
@@ -555,8 +572,11 @@ export default function Settings() {
     },
   });
 
-  // Auto-refresh domain status every 5 seconds while pending validation
+  // OPTIMIZATION: Only poll domain status when on overview tab AND domain needs validation
   useEffect(() => {
+    // Only poll if we're on overview tab
+    if (currentTab !== "overview") return;
+    // Only poll if domain is configured but not yet active
     if (!customDomainData?.configured) return;
     if (customDomainData.status === "active") return;
     
@@ -565,26 +585,12 @@ export default function Settings() {
     }, 5000);
 
     return () => clearInterval(intervalId);
-  }, [customDomainData?.configured, customDomainData?.status, refetchCustomDomain]);
-
-  // Determine active tab from URL (must be defined before use)
-  const getCurrentTab = () => {
-    if (location === "/settings/automations") return "automations";
-    if (location === "/settings" || location === "/settings/profile" || location === "/settings/overview" || location === "/settings/company") return "overview";
-    if (location === "/settings/security") return "security";
-    if (location === "/settings/notifications") return "notifications";
-    if (location === "/settings/team") return "team";
-    if (location === "/settings/webphone") return "webphone";
-    return "overview"; // default
-  };
+  }, [currentTab, customDomainData?.configured, customDomainData?.status, refetchCustomDomain]);
 
   // CRITICAL: Ensure company data is loaded before rendering (prevents race conditions)
   // For users with companyId, we MUST wait for companyData to be available OR for the query to error out
   // Adding isCompanyError ensures we don't get stuck in infinite loading if the company fetch fails
   const isCompanyDataReady = !user?.companyId || (!!companyData?.company && !isLoadingCompany) || isCompanyError;
-  
-  // Determine current tab
-  const currentTab = getCurrentTab();
   
   // Only wait for company data if we're on the overview tab (which shows company info)
   // Note: "team" tab doesn't need companyData - it only needs usersData which loads independently

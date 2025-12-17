@@ -3830,11 +3830,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
   app.get("/api/session", requireActiveCompany, async (req: Request, res: Response) => {
     const user = req.user!; // User is guaranteed by middleware
-    // Get company name if user has a company
+    // Get company info if user has a company (includes logo for Settings page optimization)
     let companyName: string | undefined;
+    let companyLogo: string | undefined;
     if (user.companyId) {
       const company = await storage.getCompany(user.companyId);
       companyName = company?.name;
+      companyLogo = company?.logo;
     }
     res.json({
       user: {
@@ -3848,6 +3850,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         status: user.status,
         companyId: user.companyId,
         companyName: companyName,
+        companyLogo: companyLogo,
         timezone: user.timezone,
         dateOfBirth: user.dateOfBirth,
         preferredLanguage: user.preferredLanguage,
