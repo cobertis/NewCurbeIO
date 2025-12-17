@@ -1024,7 +1024,7 @@ export default function WalletAnalyticsPage() {
                           name="monthlyPremium"
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Monthly Premium</FormLabel>
+                              <FormLabel>Monthly Payment</FormLabel>
                               <FormControl>
                                 <Input {...field} placeholder="e.g., 132.44" data-testid="input-monthly-premium" />
                               </FormControl>
