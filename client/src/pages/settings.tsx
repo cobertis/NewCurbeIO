@@ -588,16 +588,21 @@ export default function Settings() {
   }, [currentTab, customDomainData?.configured, customDomainData?.status, refetchCustomDomain]);
 
   // CRITICAL: Ensure company data is loaded before rendering (prevents race conditions)
-  // For users with companyId, we MUST wait for companyData to be available OR for the query to error out
-  // Adding isCompanyError ensures we don't get stuck in infinite loading if the company fetch fails
-  const isCompanyDataReady = !user?.companyId || (!!companyData?.company && !isLoadingCompany) || isCompanyError;
+  // For users with companyId on overview tab, wait for companyData to be available OR for query to error out
+  // When query is disabled (wrong tab or no user), we consider data "ready" to avoid blocking
+  const companyQueryEnabled = !!user?.companyId && currentTab === "overview";
+  const isCompanyDataReady = !user?.companyId || 
+                             !companyQueryEnabled || 
+                             (!!companyData?.company && !isLoadingCompany) || 
+                             isCompanyError;
   
   // Only wait for company data if we're on the overview tab (which shows company info)
   // Note: "team" tab doesn't need companyData - it only needs usersData which loads independently
   const needsCompanyData = currentTab === "overview";
   
   // Check if critical data is still loading
-  const isLoadingCriticalData = isLoadingUser || isLoadingPreferences || (needsCompanyData && !isCompanyDataReady);
+  // Only block on company data if the query is actually enabled and running
+  const isLoadingCriticalData = isLoadingUser || isLoadingPreferences || (needsCompanyData && companyQueryEnabled && !isCompanyDataReady);
 
   // Calculate available tabs based on user role
   const availableTabs = useMemo(() => {
