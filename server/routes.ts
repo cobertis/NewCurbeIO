@@ -29016,12 +29016,37 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
       }
 
+      // Validate required fields BEFORE sending to Telnyx (to avoid $15 charge on validation errors)
+      const validatedOptinKeywords = optinKeywords || "START,YES";
+      const validatedOptoutKeywords = optoutKeywords || "STOP,UNSUBSCRIBE,CANCEL,END,QUIT";
+      const validatedHelpKeywords = helpKeywords || "HELP,INFO";
+      const validatedOptinMessage = optinMessage || "You are now subscribed. Reply HELP for help, STOP to unsubscribe. Msg&data rates may apply.";
+      const validatedOptoutMessage = optoutMessage || "You have been unsubscribed and will receive no further messages.";
+      const validatedHelpMessage = helpMessage || "For assistance, reply STOP to unsubscribe or contact us at support.";
+      const validatedDescription = description || `${usecase} messaging campaign`;
+      const validatedMessageFlow = messageFlow || "Customers opt-in via our website or sign-up form. They can reply STOP to opt-out at any time.";
+      const validatedSample1 = sample1 || "Hi, this is a reminder about your upcoming appointment.";
+
+      // Validate messageFlow length (Telnyx requires 40-2048 characters)
+      if (validatedMessageFlow.length < 40) {
+        return res.status(400).json({ 
+          message: "Message flow description must be at least 40 characters long.",
+          field: "messageFlow"
+        });
+      }
+
       const campaignData: Record<string, any> = {
         brandId,
         usecase,
-        description: description || `${usecase} messaging campaign`,
-        messageFlow: messageFlow || "Customers opt-in via our website. Reply STOP to opt-out.",
-        sample1: sample1 || "Hi, this is a reminder about your appointment.",
+        description: validatedDescription,
+        messageFlow: validatedMessageFlow,
+        sample1: validatedSample1,
+        optinKeywords: validatedOptinKeywords,
+        optinMessage: validatedOptinMessage,
+        optoutKeywords: validatedOptoutKeywords,
+        optoutMessage: validatedOptoutMessage,
+        helpKeywords: validatedHelpKeywords,
+        helpMessage: validatedHelpMessage,
         subscriberOptin: subscriberOptin ?? true,
         subscriberOptout: subscriberOptout ?? true,
         subscriberHelp: subscriberHelp ?? true,
@@ -29040,12 +29065,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (sample3) campaignData.sample3 = sample3;
       if (sample4) campaignData.sample4 = sample4;
       if (sample5) campaignData.sample5 = sample5;
-      if (optinKeywords) campaignData.optinKeywords = optinKeywords;
-      if (optinMessage) campaignData.optinMessage = optinMessage;
-      if (optoutKeywords) campaignData.optoutKeywords = optoutKeywords;
-      if (optoutMessage) campaignData.optoutMessage = optoutMessage;
-      if (helpKeywords) campaignData.helpKeywords = helpKeywords;
-      if (helpMessage) campaignData.helpMessage = helpMessage;
       if (privacyPolicyLink) campaignData.privacyPolicyLink = privacyPolicyLink;
       if (termsAndConditionsLink) campaignData.termsAndConditionsLink = termsAndConditionsLink;
       if (embeddedLinkSample) campaignData.embeddedLinkSample = embeddedLinkSample;
