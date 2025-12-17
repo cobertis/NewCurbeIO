@@ -156,32 +156,32 @@ export const appleWalletService = {
     
     // Use storeCard for clean airline-style layout with strip image support
     passData.storeCard = {
-      // Header: Company status (small, top right)
+      // 1. HEADER: Status only (top right corner)
       headerFields: [
         {
           key: "status",
           label: "STATUS",
-          value: member.plan || "ACTIVE",
+          value: (member.plan || "MEMBER").toUpperCase(),
         },
       ],
-      // Primary: Member name only (large, prominent)
+      // 2. PRIMARY: Client name only (large and prominent)
       primaryFields: [
         {
           key: "memberName",
-          label: "MEMBER",
-          value: member.fullName,
+          label: "NAME",
+          value: member.fullName.toUpperCase(),
         },
       ],
-      // Secondary: ONLY notification - full width when alone
+      // 3. SECONDARY: ONLY alert/notification (full width when alone)
       secondaryFields: [
         {
-          key: "alert_msg",
-          label: "AVISO IMPORTANTE",
-          value: pass.lastNotification || "Sin notificaciones pendientes",
-          changeMessage: "⚠️ %@",
+          key: "alert",
+          label: "NOTIFICATION",
+          value: pass.lastNotification || "No pending notifications",
+          changeMessage: "%@",
         },
       ],
-      // Auxiliary: Technical data (small, centered, above barcode area)
+      // 4. AUXILIARY: All technical data (centered, above barcode)
       auxiliaryFields: [
         {
           key: "memberId",
@@ -198,7 +198,7 @@ export const appleWalletService = {
         {
           key: "memberSince",
           label: "SINCE",
-          value: member.memberSince ? new Date(member.memberSince).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "N/A",
+          value: member.memberSince ? new Date(member.memberSince).toLocaleDateString("en-US", { month: "2-digit", year: "2-digit" }) : "N/A",
           textAlignment: "PKTextAlignmentCenter",
         },
       ],
@@ -206,8 +206,8 @@ export const appleWalletService = {
       backFields: [
         {
           key: "fullNotification",
-          label: "Última Notificación",
-          value: pass.lastNotification || "Sin notificaciones",
+          label: "Latest Notification",
+          value: pass.lastNotification || "No notifications",
           changeMessage: "%@",
         },
         {
@@ -217,6 +217,16 @@ export const appleWalletService = {
         },
       ],
     };
+    
+    // Add barcode with member ID caption
+    passData.barcodes = [
+      {
+        format: "PKBarcodeFormatPDF417",
+        message: member.memberId,
+        messageEncoding: "iso-8859-1",
+        altText: `Member ID: ${member.memberId}`,
+      },
+    ];
 
     const certificates: any = {
       signerCert: signerCert,
