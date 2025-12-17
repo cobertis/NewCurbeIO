@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { LoadingSpinner } from "@/components/loading-spinner";
+import { ComplianceTab } from "@/components/compliance-tab";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Switch } from "@/components/ui/switch";
@@ -805,6 +806,9 @@ export default function PhoneSystem() {
               </TabsTrigger>
               <TabsTrigger value="pbx" className="data-[state=active]:border-b-[3px] data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 data-[state=active]:font-semibold rounded-none px-5 py-4 text-sm font-medium bg-transparent hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors" data-testid="tab-pbx">
                 PBX
+              </TabsTrigger>
+              <TabsTrigger value="compliance" className="data-[state=active]:border-b-[3px] data-[state=active]:border-indigo-600 data-[state=active]:text-indigo-600 data-[state=active]:font-semibold rounded-none px-5 py-4 text-sm font-medium bg-transparent hover:bg-slate-100/50 dark:hover:bg-slate-800/50 transition-colors" data-testid="tab-compliance">
+                Compliance
               </TabsTrigger>
             </TabsList>
           </div>
@@ -1863,6 +1867,11 @@ export default function PhoneSystem() {
 
           <TabsContent value="pbx" className="flex-1 m-0 overflow-auto">
             <PbxSettings />
+          </TabsContent>
+
+          {/* Compliance Tab - 10DLC Brand Registration */}
+          <TabsContent value="compliance" className="flex-1 m-0 overflow-auto">
+            <ComplianceTab />
           </TabsContent>
 
         </Tabs>

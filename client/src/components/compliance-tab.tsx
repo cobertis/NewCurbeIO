@@ -1,0 +1,624 @@
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import {
+  AlertTriangle,
+  Building2,
+  CheckCircle2,
+  Clock,
+  Loader2,
+  Plus,
+  ShieldCheck,
+  XCircle,
+} from "lucide-react";
+import type { TelnyxBrand } from "@shared/schema";
+
+const ENTITY_TYPES = [
+  { value: "PRIVATE_PROFIT", label: "Private For-Profit Company" },
+  { value: "PUBLIC_PROFIT", label: "Public For-Profit Company" },
+  { value: "NON_PROFIT", label: "Non-Profit Organization" },
+  { value: "GOVERNMENT", label: "Government Entity" },
+  { value: "SOLE_PROPRIETOR", label: "Sole Proprietor" },
+] as const;
+
+const VERTICALS = [
+  { value: "REAL_ESTATE", label: "Real Estate" },
+  { value: "HEALTHCARE", label: "Healthcare" },
+  { value: "ENERGY", label: "Energy" },
+  { value: "ENTERTAINMENT", label: "Entertainment" },
+  { value: "RETAIL", label: "Retail" },
+  { value: "AGRICULTURE", label: "Agriculture" },
+  { value: "INSURANCE", label: "Insurance" },
+  { value: "EDUCATION", label: "Education" },
+  { value: "HOSPITALITY", label: "Hospitality" },
+  { value: "FINANCIAL", label: "Financial" },
+  { value: "GAMBLING", label: "Gambling" },
+  { value: "CONSTRUCTION", label: "Construction" },
+  { value: "NGO", label: "NGO" },
+  { value: "MANUFACTURING", label: "Manufacturing" },
+  { value: "GOVERNMENT", label: "Government" },
+  { value: "TECHNOLOGY", label: "Technology" },
+  { value: "COMMUNICATION", label: "Communication" },
+] as const;
+
+const STOCK_EXCHANGES = [
+  { value: "NASDAQ", label: "NASDAQ" },
+  { value: "NYSE", label: "NYSE" },
+  { value: "AMEX", label: "AMEX" },
+  { value: "AMX", label: "AMX" },
+  { value: "ASX", label: "ASX" },
+  { value: "B3", label: "B3" },
+  { value: "BME", label: "BME" },
+  { value: "BSE", label: "BSE" },
+  { value: "FRA", label: "FRA" },
+  { value: "ICEX", label: "ICEX" },
+  { value: "JPX", label: "JPX" },
+  { value: "JSE", label: "JSE" },
+  { value: "KRX", label: "KRX" },
+  { value: "LON", label: "LON" },
+  { value: "NSE", label: "NSE" },
+  { value: "OMX", label: "OMX" },
+  { value: "SEHK", label: "SEHK" },
+  { value: "SGX", label: "SGX" },
+  { value: "SSE", label: "SSE" },
+  { value: "STO", label: "STO" },
+  { value: "SWX", label: "SWX" },
+  { value: "SZSE", label: "SZSE" },
+  { value: "TSX", label: "TSX" },
+  { value: "TWSE", label: "TWSE" },
+  { value: "VSE", label: "VSE" },
+  { value: "OTHER", label: "Other" },
+] as const;
+
+const brandFormSchema = z.object({
+  entityType: z.enum(["PRIVATE_PROFIT", "PUBLIC_PROFIT", "NON_PROFIT", "GOVERNMENT", "SOLE_PROPRIETOR"]),
+  displayName: z.string().min(1, "Display name is required").max(100),
+  email: z.string().email("Valid email is required"),
+  vertical: z.enum(["REAL_ESTATE", "HEALTHCARE", "ENERGY", "ENTERTAINMENT", "RETAIL", "AGRICULTURE", "INSURANCE", "EDUCATION", "HOSPITALITY", "FINANCIAL", "GAMBLING", "CONSTRUCTION", "NGO", "MANUFACTURING", "GOVERNMENT", "TECHNOLOGY", "COMMUNICATION"]),
+  companyName: z.string().max(100).optional(),
+  ein: z.string().max(20).optional(),
+  businessContactEmail: z.string().email().optional().or(z.literal("")),
+  stockSymbol: z.string().max(10).optional(),
+  stockExchange: z.string().max(50).optional(),
+  firstName: z.string().max(100).optional(),
+  lastName: z.string().max(100).optional(),
+  phone: z.string().max(20).optional(),
+  street: z.string().max(100).optional(),
+  city: z.string().max(100).optional(),
+  state: z.string().max(20).optional(),
+  postalCode: z.string().max(10).optional(),
+  website: z.string().max(100).optional(),
+});
+
+type BrandFormValues = z.infer<typeof brandFormSchema>;
+
+function getStatusBadge(status: string | null) {
+  switch (status?.toUpperCase()) {
+    case "VERIFIED":
+    case "OK":
+      return <Badge className="bg-green-100 text-green-800 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" />Verified</Badge>;
+    case "VETTED_VERIFIED":
+      return <Badge className="bg-blue-100 text-blue-800 border-blue-200"><ShieldCheck className="h-3 w-3 mr-1" />Vetted</Badge>;
+    case "PENDING":
+    case "REGISTRATION_PENDING":
+      return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+    case "UNVERIFIED":
+    case "REGISTRATION_FAILED":
+      return <Badge className="bg-red-100 text-red-800 border-red-200"><XCircle className="h-3 w-3 mr-1" />Failed</Badge>;
+    case "SELF_DECLARED":
+      return <Badge className="bg-slate-100 text-slate-800 border-slate-200">Self Declared</Badge>;
+    default:
+      return <Badge variant="outline">{status || "Unknown"}</Badge>;
+  }
+}
+
+export function ComplianceTab() {
+  const { toast } = useToast();
+  const [sheetOpen, setSheetOpen] = useState(false);
+
+  const { data: brands = [], isLoading } = useQuery<TelnyxBrand[]>({
+    queryKey: ["/api/phone-system/brands"],
+  });
+
+  const form = useForm<BrandFormValues>({
+    resolver: zodResolver(brandFormSchema),
+    defaultValues: {
+      entityType: "PRIVATE_PROFIT",
+      displayName: "",
+      email: "",
+      vertical: "INSURANCE",
+      companyName: "",
+      ein: "",
+      businessContactEmail: "",
+      stockSymbol: "",
+      stockExchange: "",
+      firstName: "",
+      lastName: "",
+      phone: "",
+      street: "",
+      city: "",
+      state: "",
+      postalCode: "",
+      website: "",
+    },
+  });
+
+  const entityType = form.watch("entityType");
+
+  const createBrandMutation = useMutation({
+    mutationFn: async (data: BrandFormValues) => {
+      const res = await apiRequest("POST", "/api/phone-system/brands", data);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Brand registered successfully", description: "Your 10DLC brand has been submitted for verification." });
+      queryClient.invalidateQueries({ queryKey: ["/api/phone-system/brands"] });
+      setSheetOpen(false);
+      form.reset();
+    },
+    onError: (error: any) => {
+      toast({ title: "Registration failed", description: error.message || "Failed to register brand", variant: "destructive" });
+    },
+  });
+
+  const onSubmit = (data: BrandFormValues) => {
+    createBrandMutation.mutate(data);
+  };
+
+  const needsCompanyName = ["PRIVATE_PROFIT", "PUBLIC_PROFIT", "NON_PROFIT"].includes(entityType);
+  const needsEin = entityType === "NON_PROFIT";
+  const needsPublicFields = entityType === "PUBLIC_PROFIT";
+
+  return (
+    <div className="p-6 space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900 dark:text-white">10DLC Compliance</h2>
+          <p className="text-sm text-slate-500 mt-1">Register your brand for A2P messaging in the United States</p>
+        </div>
+        <Sheet open={sheetOpen} onOpenChange={setSheetOpen}>
+          <SheetTrigger asChild>
+            <Button data-testid="btn-register-brand">
+              <Plus className="h-4 w-4 mr-2" />
+              Register Brand
+            </Button>
+          </SheetTrigger>
+          <SheetContent className="w-full sm:max-w-xl overflow-y-auto">
+            <SheetHeader>
+              <SheetTitle>Register 10DLC Brand</SheetTitle>
+              <SheetDescription>
+                Submit your business information for 10DLC compliance. This is required to send SMS in the US.
+              </SheetDescription>
+            </SheetHeader>
+
+            <div className="mt-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <div className="flex items-start gap-2">
+                <AlertTriangle className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                <div>
+                  <p className="text-sm font-medium text-amber-800 dark:text-amber-200">Registration Fee: $4.00</p>
+                  <p className="text-xs text-amber-700 dark:text-amber-300 mt-0.5">This is a non-refundable fee charged by The Campaign Registry (TCR).</p>
+                </div>
+              </div>
+            </div>
+
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 mt-6">
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white border-b pb-2">Company Information</h3>
+                  
+                  <FormField
+                    control={form.control}
+                    name="entityType"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Entity Type *</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-entity-type">
+                              <SelectValue placeholder="Select entity type" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {ENTITY_TYPES.map((type) => (
+                              <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="displayName"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Display Name (DBA) *</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Your business name" {...field} data-testid="input-display-name" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {needsCompanyName && (
+                    <FormField
+                      control={form.control}
+                      name="companyName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Legal Company Name {needsCompanyName ? "*" : ""}</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Legal entity name" {...field} data-testid="input-company-name" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  {needsEin && (
+                    <FormField
+                      control={form.control}
+                      name="ein"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>EIN (Tax ID) *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="XX-XXXXXXX" {...field} data-testid="input-ein" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  )}
+
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Contact Email *</FormLabel>
+                        <FormControl>
+                          <Input type="email" placeholder="contact@company.com" {...field} data-testid="input-email" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name="vertical"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Industry *</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-vertical">
+                              <SelectValue placeholder="Select industry" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {VERTICALS.map((v) => (
+                              <SelectItem key={v.value} value={v.value}>{v.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {needsPublicFields && (
+                    <>
+                      <FormField
+                        control={form.control}
+                        name="businessContactEmail"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Business Contact Email *</FormLabel>
+                            <FormControl>
+                              <Input type="email" placeholder="business@company.com" {...field} data-testid="input-business-email" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="stockSymbol"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Stock Symbol *</FormLabel>
+                              <FormControl>
+                                <Input placeholder="AAPL" {...field} data-testid="input-stock-symbol" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="stockExchange"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Stock Exchange *</FormLabel>
+                              <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                <FormControl>
+                                  <SelectTrigger data-testid="select-stock-exchange">
+                                    <SelectValue placeholder="Select exchange" />
+                                  </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                  {STOCK_EXCHANGES.map((ex) => (
+                                    <SelectItem key={ex.value} value={ex.value}>{ex.label}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white border-b pb-2">Contact Information (Optional)</h3>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="firstName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>First Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="John" {...field} data-testid="input-first-name" />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="lastName"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Last Name</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Doe" {...field} data-testid="input-last-name" />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Phone Number</FormLabel>
+                        <FormControl>
+                          <Input placeholder="+12024567890" {...field} data-testid="input-phone" />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white border-b pb-2">Address (Optional)</h3>
+                  
+                  <FormField
+                    control={form.control}
+                    name="street"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Street Address</FormLabel>
+                        <FormControl>
+                          <Input placeholder="123 Main St" {...field} data-testid="input-street" />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="city"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>City</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Miami" {...field} data-testid="input-city" />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="state"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>State</FormLabel>
+                          <FormControl>
+                            <Input placeholder="FL" maxLength={2} {...field} data-testid="input-state" />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="postalCode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>ZIP Code</FormLabel>
+                          <FormControl>
+                            <Input placeholder="33101" {...field} data-testid="input-zip" />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white border-b pb-2">Additional (Optional)</h3>
+                  
+                  <FormField
+                    control={form.control}
+                    name="website"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Website</FormLabel>
+                        <FormControl>
+                          <Input placeholder="https://yourcompany.com" {...field} data-testid="input-website" />
+                        </FormControl>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <Button 
+                  type="submit" 
+                  className="w-full" 
+                  disabled={createBrandMutation.isPending}
+                  data-testid="btn-submit-brand"
+                >
+                  {createBrandMutation.isPending ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Registering...</>
+                  ) : (
+                    <>Register Brand ($4.00)</>
+                  )}
+                </Button>
+              </form>
+            </Form>
+          </SheetContent>
+        </Sheet>
+      </div>
+
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800">
+          <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Registered Brands</h3>
+          <p className="text-sm text-slate-500 mt-1">Your 10DLC brands registered with The Campaign Registry</p>
+        </div>
+
+        {isLoading ? (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+          </div>
+        ) : brands.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <Building2 className="h-12 w-12 text-slate-300 mb-4" />
+            <h4 className="text-lg font-medium text-slate-700 dark:text-slate-300">No brands registered</h4>
+            <p className="text-sm text-slate-500 mt-1 max-w-md">
+              Register a 10DLC brand to enable SMS messaging in the United States. This is required for A2P compliance.
+            </p>
+            <Button className="mt-4" onClick={() => setSheetOpen(true)} data-testid="btn-register-first-brand">
+              <Plus className="h-4 w-4 mr-2" />
+              Register Your First Brand
+            </Button>
+          </div>
+        ) : (
+          <div className="divide-y divide-slate-100 dark:divide-slate-800">
+            {brands.map((brand) => (
+              <div key={brand.id} className="p-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-start gap-4">
+                    <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
+                      <Building2 className="h-5 w-5 text-indigo-600" />
+                    </div>
+                    <div>
+                      <h4 className="font-semibold text-slate-900 dark:text-white">{brand.displayName}</h4>
+                      <p className="text-sm text-slate-500 mt-0.5">{brand.companyName || brand.email}</p>
+                      <div className="flex items-center gap-3 mt-2">
+                        <span className="text-xs text-slate-400">
+                          {ENTITY_TYPES.find(e => e.value === brand.entityType)?.label}
+                        </span>
+                        <span className="text-xs text-slate-300">•</span>
+                        <span className="text-xs text-slate-400">
+                          {VERTICALS.find(v => v.value === brand.vertical)?.label}
+                        </span>
+                      </div>
+                      {brand.brandId && (
+                        <p className="text-xs text-slate-400 mt-1 font-mono">Brand ID: {brand.brandId}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    {getStatusBadge(brand.status)}
+                    {brand.identityStatus && brand.identityStatus !== brand.status && (
+                      <span className="text-xs text-slate-500">Identity: {brand.identityStatus}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6">
+        <h4 className="font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2">
+          <ShieldCheck className="h-5 w-5" />
+          What is 10DLC?
+        </h4>
+        <p className="text-sm text-blue-800 dark:text-blue-200 mt-2">
+          10DLC (10-Digit Long Code) is the standard for Application-to-Person (A2P) messaging in the United States. 
+          All businesses sending SMS must register their brand and campaigns with The Campaign Registry (TCR).
+        </p>
+        <div className="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-3">
+            <p className="font-medium text-slate-900 dark:text-white">Step 1: Brand</p>
+            <p className="text-slate-500 text-xs mt-1">Register your business identity ($4 one-time)</p>
+          </div>
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-3">
+            <p className="font-medium text-slate-900 dark:text-white">Step 2: Campaign</p>
+            <p className="text-slate-500 text-xs mt-1">Define your messaging use case ($2-10/mo)</p>
+          </div>
+          <div className="bg-white dark:bg-slate-800 rounded-lg p-3">
+            <p className="font-medium text-slate-900 dark:text-white">Step 3: Numbers</p>
+            <p className="text-slate-500 text-xs mt-1">Assign phone numbers to your campaign</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
