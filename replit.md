@@ -54,7 +54,7 @@ Enables internal calls between PBX extensions using pure WebRTC peer-to-peer ove
 Implemented via `simultaneous_ringing: "enabled"` in Telnyx credential connection configuration to enable simultaneous ringing on all registered SIP devices. Uses a Dial+Bridge pattern (not transfer) for incoming calls.
 
 **Wallet System Architecture:**
-Supports both Apple Wallet (PKPass) and Google Wallet with Smart Links, analytics dashboard, APNs push notifications, and security features:
+Supports both Apple Wallet (PKPass) and Google Wallet with Smart Links, analytics dashboard, APNs push notifications, and Proactive Payment Collection:
 
 - **Database Tables:** `wallet_members`, `wallet_passes`, `wallet_links`, `wallet_events`, `wallet_devices`, `wallet_settings`
 - **Services:** 
@@ -67,6 +67,7 @@ Supports both Apple Wallet (PKPass) and Google Wallet with Smart Links, analytic
   - PassKit Web Service: `/api/passkit/v1/*` (device registration, pass updates)
   - Smart Links: `/w/:slug` (OS detection for iOS/Android)
 - **Frontend:** `/wallet-analytics` page with member management, pass generation, bulk alerts, and real-time analytics
+- **Scheduler:** `payment-reminder-scheduler.ts` - Daily cron job at 12:01 AM EST for Proactive Collection
 
 **Apple Wallet Pass Structure (storeCard type):**
 ```
@@ -116,6 +117,38 @@ Pass Layout (Alert Mode - when notification is active):
 3. **webServiceURL must be `/api/passkit`** (NOT `/api/passkit/v1`) - Apple appends `/v1/` automatically
 4. **If-Modified-Since header** must be respected - return 304 if pass unchanged
 5. **Each notification must have unique text** - append timestamp or ID for testing
+
+**Proactive Payment Collection System:**
+Automated payment reminders that trigger lock-screen notifications on payment day.
+
+- **Scheduler:** `payment-reminder-scheduler.ts` runs daily at 12:01 AM EST via `node-cron`
+- **Trigger:** Checks all wallet members where `payment_day` matches current day of month
+- **Action:** Sends APNs push notification with payment reminder message
+- **Message:** Configurable per-company via `wallet_settings.paymentReminderMessage`
+
+**"Cenicienta Strategy" - Lock Screen Persistence:**
+To keep the pass visible on the iPhone lock screen ALL DAY (like airline boarding passes):
+
+- **Problem:** If `relevantDate` is set to beginning of day (00:01 AM), Apple considers it "old news" and hides it quickly
+- **Solution:** Set `relevantDate` to END of day (23:59 PM) - this makes iOS treat it as a "pending deadline"
+- **Format:** `YYYY-MM-DDT23:59:00-05:00` (EST timezone)
+- **Result:** Pass appears on lock screen from morning until midnight as "something due today"
+
+```typescript
+// Cenicienta Strategy implementation in apple-wallet-service.ts
+passData.relevantDate = `${year}-${month}-${day}T23:59:00-05:00`;
+```
+
+**Pass Image Limitations:**
+- **Images are "baked in"** when pass is first installed
+- **Push updates ONLY change text/data**, NOT images (icon, logo, strip)
+- **To update images:** User must delete and reinstall the pass
+- **New passes** automatically include the latest uploaded images
+
+**Wallet Member Sync (Policy Integration):**
+- Members linked by `policyPlanId` (stable) instead of just `memberId`
+- Auto-sync from policies table when wallet member is created
+- Fallback to `memberId` lookup for backward compatibility
 
 **APNs Push Notification Flow:**
 1. Update `lastNotification` field in database (`wallet_passes` table)
