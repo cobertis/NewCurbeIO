@@ -647,10 +647,14 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
       await walletPassService.logEvent(link.companyId, "apple_pkpass_download", deviceInfo, link.memberId, pass.id);
       broadcastWalletAnalyticsUpdate(link.companyId, { eventType: "apple_pkpass_download", memberId: link.memberId, passId: pass.id });
 
+      // Always use production BASE_URL for webServiceURL - critical for Apple Wallet
+      const webServiceUrl = `${getBaseUrl()}/api/passkit`;
+      console.log(`[Apple Wallet] Generating pass with webServiceUrl: ${webServiceUrl} (BASE_URL: ${process.env.BASE_URL})`);
+
       const pkpassBuffer = await appleWalletService.generatePass({
         pass,
         member,
-        webServiceUrl: `${getBaseUrl()}/api/passkit`,
+        webServiceUrl,
         settings,
       });
 
