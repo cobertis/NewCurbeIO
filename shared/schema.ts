@@ -1,6 +1,6 @@
 
 import { sql } from "drizzle-orm";
-import { pgTable, text, varchar, timestamp, date, boolean, jsonb, integer, numeric, unique, index, uniqueIndex, AnyPgColumn, serial, bigint } from "drizzle-orm/pg-core";
+import { pgTable, text, varchar, timestamp, date, boolean, jsonb, integer, numeric, unique, index, uniqueIndex, AnyPgColumn, serial, bigint, pgEnum } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 import { validateCardNumber, validateCVV, validateExpirationDate } from './creditCardUtils';
@@ -5848,3 +5848,184 @@ export const insertPushSubscriptionSchema = createInsertSchema(pushSubscriptions
 
 export type PushSubscription = typeof pushSubscriptions.$inferSelect;
 export type InsertPushSubscription = z.infer<typeof insertPushSubscriptionSchema>;
+
+// =============================================================================
+// WALLET SYSTEM - Apple Wallet + Google Wallet with Analytics
+// =============================================================================
+
+// Wallet Pass Status Enums
+export const walletAppleStatusEnum = pgEnum("wallet_apple_status", ["created", "installed", "revoked"]);
+export const walletGoogleStatusEnum = pgEnum("wallet_google_status", ["created", "saved", "revoked", "unknown"]);
+
+// Wallet Event Types Enum
+export const walletEventTypeEnum = pgEnum("wallet_event_type", [
+  "link_open",
+  "ios_offer_view",
+  "android_offer_view", 
+  "desktop_offer_view",
+  "apple_pkpass_download",
+  "apple_device_registered",
+  "apple_device_unregistered",
+  "apple_pass_get",
+  "apple_log",
+  "apple_pass_updated",
+  "apple_pass_error",
+  "google_save_clicked",
+  "google_saved_confirmed",
+  "google_update",
+  "google_error"
+]);
+
+// Wallet Members (linked to contacts or standalone)
+export const walletMembers = pgTable("wallet_members", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  contactId: text("contact_id").references(() => contacts.id, { onDelete: "set null" }),
+  
+  fullName: text("full_name").notNull(),
+  memberId: text("member_id").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  plan: text("plan").default("standard"),
+  memberSince: timestamp("member_since").defaultNow(),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  companyMemberIdx: uniqueIndex("wallet_members_company_member_idx").on(table.companyId, table.memberId),
+  contactIdx: index("wallet_members_contact_idx").on(table.contactId),
+}));
+
+// Wallet Passes - Stores both Apple and Google pass info
+export const walletPasses = pgTable("wallet_passes", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  memberId: text("member_id").notNull().references(() => walletMembers.id, { onDelete: "cascade" }),
+  
+  // Apple Wallet fields
+  serialNumber: text("serial_number").notNull().unique(),
+  passTypeIdentifier: text("pass_type_identifier"),
+  teamIdentifier: text("team_identifier"),
+  authToken: text("auth_token").notNull(),
+  webServiceUrl: text("web_service_url"),
+  appleStatus: walletAppleStatusEnum("apple_status").default("created"),
+  
+  // Google Wallet fields
+  googleClassId: text("google_class_id"),
+  googleObjectId: text("google_object_id"),
+  googleStatus: walletGoogleStatusEnum("google_status").default("created"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  companyIdx: index("wallet_passes_company_idx").on(table.companyId),
+  memberIdx: index("wallet_passes_member_idx").on(table.memberId),
+  serialIdx: index("wallet_passes_serial_idx").on(table.serialNumber),
+}));
+
+// Wallet Links - Smart links for OS detection
+export const walletLinks = pgTable("wallet_links", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  memberId: text("member_id").notNull().references(() => walletMembers.id, { onDelete: "cascade" }),
+  walletPassId: text("wallet_pass_id").references(() => walletPasses.id, { onDelete: "cascade" }),
+  
+  slug: text("slug").notNull().unique(),
+  url: text("url"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  slugIdx: index("wallet_links_slug_idx").on(table.slug),
+  companyIdx: index("wallet_links_company_idx").on(table.companyId),
+}));
+
+// Wallet Events - Core Analytics
+export const walletEvents = pgTable("wallet_events", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  memberId: text("member_id").references(() => walletMembers.id, { onDelete: "set null" }),
+  walletPassId: text("wallet_pass_id").references(() => walletPasses.id, { onDelete: "set null" }),
+  
+  type: walletEventTypeEnum("type").notNull(),
+  
+  // Device/Browser info
+  userAgent: text("user_agent"),
+  os: text("os"),
+  deviceType: text("device_type"),
+  browser: text("browser"),
+  ip: text("ip"),
+  country: text("country"),
+  region: text("region"),
+  referrer: text("referrer"),
+  
+  // Additional metadata as JSON
+  metadata: jsonb("metadata"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+}, (table) => ({
+  companyIdx: index("wallet_events_company_idx").on(table.companyId),
+  memberIdx: index("wallet_events_member_idx").on(table.memberId),
+  typeIdx: index("wallet_events_type_idx").on(table.type),
+  createdAtIdx: index("wallet_events_created_at_idx").on(table.createdAt),
+}));
+
+// Wallet Devices - Apple device registrations
+export const walletDevices = pgTable("wallet_devices", {
+  id: text("id").primaryKey().$defaultFn(() => crypto.randomUUID()),
+  walletPassId: text("wallet_pass_id").notNull().references(() => walletPasses.id, { onDelete: "cascade" }),
+  
+  deviceLibraryIdentifier: text("device_library_identifier").notNull(),
+  pushToken: text("push_token"),
+  deviceInfo: jsonb("device_info"),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  lastSeenAt: timestamp("last_seen_at").defaultNow().notNull(),
+}, (table) => ({
+  passDeviceIdx: uniqueIndex("wallet_devices_pass_device_idx").on(table.walletPassId, table.deviceLibraryIdentifier),
+  deviceIdx: index("wallet_devices_device_idx").on(table.deviceLibraryIdentifier),
+}));
+
+// Insert Schemas
+export const insertWalletMemberSchema = createInsertSchema(walletMembers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertWalletPassSchema = createInsertSchema(walletPasses).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertWalletLinkSchema = createInsertSchema(walletLinks).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertWalletEventSchema = createInsertSchema(walletEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertWalletDeviceSchema = createInsertSchema(walletDevices).omit({
+  id: true,
+  createdAt: true,
+  lastSeenAt: true,
+});
+
+// Types
+export type WalletMember = typeof walletMembers.$inferSelect;
+export type InsertWalletMember = z.infer<typeof insertWalletMemberSchema>;
+
+export type WalletPass = typeof walletPasses.$inferSelect;
+export type InsertWalletPass = z.infer<typeof insertWalletPassSchema>;
+
+export type WalletLink = typeof walletLinks.$inferSelect;
+export type InsertWalletLink = z.infer<typeof insertWalletLinkSchema>;
+
+export type WalletEvent = typeof walletEvents.$inferSelect;
+export type InsertWalletEvent = z.infer<typeof insertWalletEventSchema>;
+
+export type WalletDevice = typeof walletDevices.$inferSelect;
+export type InsertWalletDevice = z.infer<typeof insertWalletDeviceSchema>;

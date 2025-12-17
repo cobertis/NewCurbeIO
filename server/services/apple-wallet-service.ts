@@ -1,0 +1,185 @@
+import { PKPass } from "passkit-generator";
+import path from "path";
+import fs from "fs";
+import { WalletPass, WalletMember } from "@shared/schema";
+import { walletPassService } from "./wallet-pass-service";
+import { db } from "../db";
+import { companies } from "@shared/schema";
+import { eq } from "drizzle-orm";
+
+const APPLE_TEAM_ID = process.env.APPLE_TEAM_ID;
+const APPLE_PASS_TYPE_ID = process.env.APPLE_PASS_TYPE_ID;
+const APPLE_P12_B64 = process.env.APPLE_P12_B64;
+const APPLE_P12_PASSWORD = process.env.APPLE_P12_PASSWORD || "";
+const APPLE_WWDR_B64 = process.env.APPLE_WWDR_B64;
+
+async function getCompanyBranding(companyId: string): Promise<{
+  name: string;
+  logoUrl?: string;
+  primaryColor: string;
+  secondaryColor: string;
+}> {
+  const [company] = await db.select().from(companies).where(eq(companies.id, companyId));
+  return {
+    name: company?.name || "Company",
+    logoUrl: company?.logo || undefined,
+    primaryColor: "#1a1a2e",
+    secondaryColor: "#ffffff",
+  };
+}
+
+function hexToRgb(hex: string): string {
+  const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+  if (result) {
+    return `rgb(${parseInt(result[1], 16)}, ${parseInt(result[2], 16)}, ${parseInt(result[3], 16)})`;
+  }
+  return "rgb(26, 26, 46)";
+}
+
+export interface PassGenerationOptions {
+  pass: WalletPass;
+  member: WalletMember;
+  webServiceUrl: string;
+}
+
+export const appleWalletService = {
+  isConfigured(): boolean {
+    return !!(APPLE_TEAM_ID && APPLE_PASS_TYPE_ID && APPLE_P12_B64);
+  },
+
+  async generatePass(options: PassGenerationOptions): Promise<Buffer> {
+    const { pass, member, webServiceUrl } = options;
+
+    if (!this.isConfigured()) {
+      throw new Error("Apple Wallet is not configured. Missing required environment variables.");
+    }
+
+    const branding = await getCompanyBranding(pass.companyId);
+    const authToken = walletPassService.getDecryptedAuthToken(pass);
+
+    const p12Buffer = Buffer.from(APPLE_P12_B64!, "base64");
+    
+    let wwdrBuffer: Buffer | undefined;
+    if (APPLE_WWDR_B64) {
+      wwdrBuffer = Buffer.from(APPLE_WWDR_B64, "base64");
+    }
+
+    const passData = {
+      formatVersion: 1 as const,
+      passTypeIdentifier: APPLE_PASS_TYPE_ID!,
+      teamIdentifier: APPLE_TEAM_ID!,
+      serialNumber: pass.serialNumber,
+      authenticationToken: authToken,
+      webServiceURL: webServiceUrl,
+      organizationName: branding.name,
+      description: `${branding.name} Member Card`,
+      backgroundColor: hexToRgb(branding.primaryColor || "#1a1a2e"),
+      foregroundColor: hexToRgb(branding.secondaryColor || "#ffffff"),
+      labelColor: hexToRgb(branding.secondaryColor || "#ffffff"),
+      
+      generic: {
+        primaryFields: [
+          {
+            key: "memberName",
+            label: "MEMBER",
+            value: member.fullName,
+          },
+        ],
+        secondaryFields: [
+          {
+            key: "memberId",
+            label: "MEMBER ID",
+            value: member.memberId,
+          },
+          {
+            key: "plan",
+            label: "PLAN",
+            value: member.plan || "Standard",
+          },
+        ],
+        auxiliaryFields: [
+          {
+            key: "memberSince",
+            label: "MEMBER SINCE",
+            value: member.memberSince ? new Date(member.memberSince).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "N/A",
+          },
+        ],
+        backFields: [
+          {
+            key: "terms",
+            label: "Terms & Conditions",
+            value: `This pass is issued by ${branding.name}. For support, contact us through the app.`,
+          },
+        ],
+      },
+      
+      barcodes: [
+        {
+          format: "PKBarcodeFormatQR",
+          message: member.memberId,
+          messageEncoding: "iso-8859-1",
+        },
+      ],
+    };
+
+    const certificates: any = {
+      signerCert: p12Buffer,
+      signerKey: p12Buffer,
+      signerKeyPassphrase: APPLE_P12_PASSWORD,
+    };
+
+    if (wwdrBuffer) {
+      certificates.wwdr = wwdrBuffer;
+    }
+
+    const pkpass = new PKPass({}, certificates, passData);
+
+    const iconPath = path.join(process.cwd(), "attached_assets", "pass-icon.png");
+    const icon2xPath = path.join(process.cwd(), "attached_assets", "pass-icon@2x.png");
+    const logoPath = path.join(process.cwd(), "attached_assets", "pass-logo.png");
+    const logo2xPath = path.join(process.cwd(), "attached_assets", "pass-logo@2x.png");
+
+    if (fs.existsSync(iconPath)) {
+      pkpass.addBuffer("icon.png", fs.readFileSync(iconPath));
+    }
+    if (fs.existsSync(icon2xPath)) {
+      pkpass.addBuffer("icon@2x.png", fs.readFileSync(icon2xPath));
+    }
+    if (fs.existsSync(logoPath)) {
+      pkpass.addBuffer("logo.png", fs.readFileSync(logoPath));
+    }
+    if (fs.existsSync(logo2xPath)) {
+      pkpass.addBuffer("logo@2x.png", fs.readFileSync(logo2xPath));
+    }
+
+    return pkpass.getAsBuffer();
+  },
+
+  async getUpdatedPass(serialNumber: string): Promise<{ pass: Buffer; lastModified: string } | null> {
+    const passRecord = await walletPassService.getPassBySerial(serialNumber);
+    if (!passRecord || passRecord.appleStatus === "revoked") {
+      return null;
+    }
+
+    const member = await walletPassService.getMember(passRecord.memberId);
+    if (!member) {
+      return null;
+    }
+
+    const webServiceUrl = passRecord.webServiceUrl || process.env.BASE_URL || 
+      (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:5000");
+
+    const passBuffer = await this.generatePass({
+      pass: passRecord,
+      member,
+      webServiceUrl: `${webServiceUrl}/api/passkit/v1`,
+    });
+
+    return {
+      pass: passBuffer,
+      lastModified: passRecord.updatedAt.toISOString(),
+    };
+  },
+};
+
+export default appleWalletService;

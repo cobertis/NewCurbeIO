@@ -97,6 +97,7 @@ import ImessageCampaigns from "@/pages/imessage-campaigns";
 import ImessageCampaignDetail from "@/pages/imessage-campaign-detail";
 import WhatsAppPage from "@/pages/whatsapp";
 import NotificationsPage from "@/pages/notifications";
+import WalletAnalyticsPage from "@/pages/wallet-analytics";
 import NotFound from "@/pages/not-found";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 
@@ -1616,6 +1617,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <Settings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/wallet-analytics">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <WalletAnalyticsPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

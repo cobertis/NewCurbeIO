@@ -33,7 +33,7 @@ The backend is an Express.js application with TypeScript, providing a RESTful AP
 - **Communication:** Email, SMS/MMS, iMessage, WhatsApp.
 - **Billing & Integrations:** Stripe, Telnyx Phone System (full white-label telephony, WebRTC, E911 management, call control application routing).
 - **Automation & Analytics:** Birthday Automation, Dashboard Analytics ("Policy Journeys"), Email Processing (IMAP bounce, exponential backoff).
-- **Specialized Systems:** Landing Page Builder, Unified Contacts Directory, Tab Auto-Save, Duplicate Message Prevention, Custom Domain (White Label).
+- **Specialized Systems:** Landing Page Builder, Unified Contacts Directory, Tab Auto-Save, Duplicate Message Prevention, Custom Domain (White Label), Wallet System (Apple Wallet + Google Wallet).
 
 **Telnyx WebRTC Configuration:**
 All WebRTC implementations follow official Telnyx documentation, including programmatic audio element creation, `prefetchIceCandidates: true`, string ID for remote elements, specific call options (`audio: true`, `useStereo: true`, `preferred_codecs`), detailed audio settings, `userMediaError` handling, and `encrypted_media: null` (SRTP disabled) for compatibility. Key optimizations include pre-warming ICE candidates on login, early initialization, and using `iceCandidatePoolSize: 8`. RTCP-MUX is enabled on credential connections for WebRTC browser compatibility.
@@ -52,6 +52,17 @@ Enables internal calls between PBX extensions using pure WebRTC peer-to-peer ove
 
 **SIP Forking Configuration:**
 Implemented via `simultaneous_ringing: "enabled"` in Telnyx credential connection configuration to enable simultaneous ringing on all registered SIP devices. Uses a Dial+Bridge pattern (not transfer) for incoming calls.
+
+**Wallet System Architecture:**
+Supports both Apple Wallet (PKPass) and Google Wallet with Smart Links, analytics dashboard, and security features:
+- **Database Tables:** `wallet_members`, `wallet_passes`, `wallet_links`, `wallet_events`, `wallet_devices`
+- **Services:** `wallet-pass-service.ts` (core CRUD, analytics), `apple-wallet-service.ts` (PKPass generation), `google-wallet-service.ts` (Generic Pass API)
+- **Routes:** Wallet API (`/api/wallet/*`), PassKit Web Service endpoints (`/api/passkit/v1/*`), Smart Links (`/w/:slug`)
+- **Smart Links:** OS detection redirects iOS/Android to appropriate wallet add flows
+- **Analytics:** Event tracking (link opens, downloads, installs), device/browser detection, dashboard with charts
+- **Security:** Encrypted auth tokens and push tokens using AES-256-CBC with `ENCRYPTION_KEY_32BYTES`
+- **Frontend:** `/wallet-analytics` page with member management, pass generation, and real-time analytics
+- **Required ENV vars:** `APPLE_TEAM_ID`, `APPLE_PASS_TYPE_ID`, `APPLE_P12_B64`, `APPLE_P12_PASSWORD`, `APPLE_WWDR_B64`, `GOOGLE_SERVICE_ACCOUNT_JSON_B64`, `GOOGLE_ISSUER_ID`, `ENCRYPTION_KEY_32BYTES`
 
 ## External Dependencies
 
