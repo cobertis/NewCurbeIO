@@ -227,34 +227,33 @@ export const appleWalletService = {
           value: member.fullName.toUpperCase(),
         },
       ],
-      // SECONDARY: Carrier name only - one clear field
-      secondaryFields: pass.lastNotification ? [
-        {
-          key: "msg",
-          label: "ALERT",
-          value: truncate(pass.lastNotification, 40),
-          changeMessage: "%@",
-        },
-      ] : [
+      // SECONDARY: Carrier, Plan Name, Monthly Payment - main info line
+      secondaryFields: [
         {
           key: "ins",
-          label: "INSURER",
+          label: "CARRIER",
           value: shortCarrier(member.carrierName),
         },
-      ],
-      // AUXILIARY: Plan name and ID - two clear items
-      auxiliaryFields: [
         {
           key: "pln",
           label: "PLAN",
-          value: truncate(member.planName || member.plan, 20),
+          value: truncate(member.planName || member.plan, 18),
         },
         {
-          key: "pid",
-          label: "ID",
-          value: truncate(member.planId || member.memberId, 16),
+          key: "pmt",
+          label: "MONTHLY",
+          value: member.monthlyPremium ? `$${member.monthlyPremium}` : "—",
         },
       ],
+      // AUXILIARY: Alert notification - only when active
+      auxiliaryFields: pass.lastNotification ? [
+        {
+          key: "msg",
+          label: "ALERT",
+          value: truncate(pass.lastNotification, 50),
+          changeMessage: "%@",
+        },
+      ] : [],
       // BACK: All complete details
       backFields: [
         {
