@@ -28517,6 +28517,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       const result = await response.json();
+      console.log("[10DLC] Telnyx brands response:", JSON.stringify(result, null, 2));
+      console.log("[10DLC] Managed account ID used:", managedAccountId);
       const telnyxBrandsList = result.data || [];
       
       // Map Telnyx response to our format
