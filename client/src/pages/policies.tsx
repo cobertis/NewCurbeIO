@@ -4253,6 +4253,38 @@ const STATE_MARKETPLACE_NAMES: Record<string, string> = {
   'WA': 'Washington Healthplanfinder',
 };
 
+const INSURANCE_CARRIERS = [
+  "Aetna", "Alliant Health Plans", "Ambetter", "AmeriHealth Caritas", "Anthem Blue Cross Blue Shield",
+  "Arkansas Blue Cross and Blue Shield", "Ascension Personalized Care", "Avera Health Plans", "AvMed",
+  "Baylor Scott & White Health Plan", "Blue Cross and Blue Shield of Alabama", "Blue Cross and Blue Shield of Arizona",
+  "Blue Cross and Blue Shield of Kansas City", "Blue Cross and Blue Shield of Louisiana",
+  "Blue Cross and Blue Shield of Massachusetts", "Blue Cross and Blue Shield of Michigan",
+  "Blue Cross and Blue Shield of Minnesota", "Blue Cross and Blue Shield of Mississippi",
+  "Blue Cross and Blue Shield of Nebraska", "Blue Cross and Blue Shield of New Mexico",
+  "Blue Cross and Blue Shield of North Carolina", "Blue Cross and Blue Shield of North Dakota",
+  "Blue Cross and Blue Shield of Oklahoma", "Blue Cross and Blue Shield of Rhode Island",
+  "Blue Cross and Blue Shield of South Carolina", "Blue Cross and Blue Shield of Tennessee",
+  "Blue Cross and Blue Shield of Texas", "Blue Cross and Blue Shield of Vermont", "Blue Cross of Idaho",
+  "Blue Shield of California", "BridgeSpan Health", "Capital Blue Cross", "CareFirst BlueCross BlueShield",
+  "CareSource", "Chinese Community Health Plan", "Christus Health", "Cigna Healthcare", "Clear Spring Health",
+  "Common Ground Healthcare Cooperative", "Community Health Choice", "Community Health Plan of Washington",
+  "Cox HealthPlans", "Dean Health Plan", "Denver Health Medical Plan", "Driscoll Health Plan", "EmblemHealth",
+  "Excellus BlueCross BlueShield", "Fallon Health", "FirstCare Health Plans", "Florida Blue", "Geisinger Health Plan",
+  "Group Health Cooperative", "HAP (Health Alliance Plan)", "Harvard Pilgrim Health Care",
+  "Hawaii Medical Service Association (HMSA)", "Health Alliance", "Health First", "Health New England",
+  "Health Partners Plans", "Healthfirst", "Highmark Blue Cross Blue Shield", "Home State Health",
+  "Horizon Blue Cross Blue Shield of New Jersey", "Imperial Insurance Companies", "Independence Blue Cross",
+  "Kaiser Permanente", "L.A. Care Health Plan", "Mass General Brigham Health Plan", "McLaren Health Plan",
+  "Medica", "Medical Mutual of Ohio", "MercyCare Health Plans", "MetroPlusHealth", "Moda Health",
+  "Molina Healthcare", "Mountain Health Co-Op", "MVP Health Care", "Network Health", "Oscar Health",
+  "PacificSource Health Plans", "Paramount Insurance Company", "Physicians Health Plan",
+  "Piedmont Community Health Plan", "Premera Blue Cross", "Priority Health", "Providence Health Plan",
+  "Quartz", "Regence BlueCross BlueShield", "Sanford Health Plan", "Security Health Plan", "SelectHealth",
+  "Sendero Health Plans", "Sentara Health", "Sharp Health Plan", "Simply Healthcare", "SummaCare",
+  "Superior HealthPlan", "Sutter Health Plus", "Tufts Health Plan", "UnitedHealthcare", "UPMC Health Plan",
+  "Valley Health Plan", "Vantage Health Plan", "WellSense Health Plan", "Western Health Advantage"
+];
+
 export default function PoliciesPage() {
   const [location, setLocation] = useLocation();
   const { toast} = useToast();
@@ -11209,14 +11241,53 @@ export default function PoliciesPage() {
                 </div>
                 <div>
                   <Label htmlFor="carrier" className="text-sm">Carrier <span className="text-red-500">*</span></Label>
-                  <Input
-                    id="carrier"
-                    value={simplePlanFormData.carrier}
-                    onChange={(e) => setSimplePlanFormData({ ...simplePlanFormData, carrier: e.target.value })}
-                    placeholder="e.g., Blue Cross Blue Shield"
-                    className="mt-1"
-                    data-testid="input-carrier"
-                  />
+                  <Popover open={carrierPopoverOpen} onOpenChange={setCarrierPopoverOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={carrierPopoverOpen}
+                        className="w-full justify-between mt-1 font-normal"
+                        data-testid="input-carrier"
+                      >
+                        {simplePlanFormData.carrier || "Select or type carrier..."}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[300px] p-0" align="start">
+                      <Command>
+                        <CommandInput 
+                          placeholder="Search carrier..." 
+                          value={simplePlanFormData.carrier}
+                          onValueChange={(value) => setSimplePlanFormData({ ...simplePlanFormData, carrier: value })}
+                        />
+                        <CommandList>
+                          <CommandEmpty>
+                            <div className="p-2 text-sm text-center">
+                              No carrier found. Using "{simplePlanFormData.carrier}"
+                            </div>
+                          </CommandEmpty>
+                          <CommandGroup>
+                            {INSURANCE_CARRIERS
+                              .filter(carrier => carrier.toLowerCase().includes(simplePlanFormData.carrier.toLowerCase()))
+                              .map((carrier) => (
+                                <CommandItem
+                                  key={carrier}
+                                  value={carrier}
+                                  onSelect={() => {
+                                    setSimplePlanFormData({ ...simplePlanFormData, carrier });
+                                    setCarrierPopoverOpen(false);
+                                  }}
+                                >
+                                  <Check className={cn("mr-2 h-4 w-4", simplePlanFormData.carrier === carrier ? "opacity-100" : "opacity-0")} />
+                                  {carrier}
+                                </CommandItem>
+                              ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div>
                   <Label htmlFor="planName" className="text-sm">Plan Name <span className="text-red-500">*</span></Label>
