@@ -101,7 +101,8 @@ interface CertificateStatus {
   hasWwdr: boolean;
   certInfo: {
     uploadedAt: string;
-    fileSize: number;
+    expiresAt: string | null;
+    subject: string | null;
   } | null;
 }
 
@@ -1046,11 +1047,20 @@ export default function VipPassPage() {
                   <div className="space-y-4">
                     <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
                       <CheckCircle className="h-5 w-5 text-green-600" />
-                      <div>
+                      <div className="flex-1">
                         <p className="font-medium text-green-800 dark:text-green-200">Certificate Configured</p>
-                        <p className="text-sm text-green-600 dark:text-green-400">
-                          Uploaded {certStatus.certInfo?.uploadedAt ? format(new Date(certStatus.certInfo.uploadedAt), "MMM d, yyyy 'at' h:mm a") : "recently"}
-                        </p>
+                        {certStatus.certInfo?.subject && (
+                          <p className="text-sm text-green-600 dark:text-green-400">{certStatus.certInfo.subject}</p>
+                        )}
+                        <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm text-green-600 dark:text-green-400 mt-1">
+                          <span>Uploaded: {certStatus.certInfo?.uploadedAt ? format(new Date(certStatus.certInfo.uploadedAt), "MMM d, yyyy") : "recently"}</span>
+                          {certStatus.certInfo?.expiresAt && (
+                            <span className={new Date(certStatus.certInfo.expiresAt) < new Date() ? "text-red-600 font-medium" : ""}>
+                              Expires: {format(new Date(certStatus.certInfo.expiresAt), "MMM d, yyyy")}
+                              {new Date(certStatus.certInfo.expiresAt) < new Date() && " (EXPIRED)"}
+                            </span>
+                          )}
+                        </div>
                       </div>
                     </div>
                     

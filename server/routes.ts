@@ -32365,6 +32365,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           signerCertBase64: vipPassDesigns.signerCertBase64,
           signerKeyBase64: vipPassDesigns.signerKeyBase64,
           certUploadedAt: vipPassDesigns.certUploadedAt,
+          certExpiresAt: vipPassDesigns.certExpiresAt,
+          certSubject: vipPassDesigns.certSubject,
         })
         .from(vipPassDesigns)
         .where(and(
@@ -32386,6 +32388,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (hasSignerCert && design?.certUploadedAt) {
         certInfo = {
           uploadedAt: design.certUploadedAt.toISOString(),
+          expiresAt: design.certExpiresAt?.toISOString() || null,
+          subject: design.certSubject || null,
           configured: true,
         };
       }
@@ -32472,6 +32476,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           throw new Error("Invalid certificate format");
         }
         
+        // Extract certificate expiration date and subject
+        let certExpiresAt: Date | null = null;
+        let certSubject: string | null = null;
+        try {
+          const { stdout: expOutput } = await execAsync(`openssl x509 -in "${certTempPath}" -noout -enddate`);
+          const match = expOutput.match(/notAfter=(.+)/);
+          if (match) {
+            certExpiresAt = new Date(match[1].trim());
+          }
+          
+          const { stdout: subjOutput } = await execAsync(`openssl x509 -in "${certTempPath}" -noout -subject`);
+          const subjMatch = subjOutput.match(/CN\s*=\s*([^,\/\n]+)/);
+          if (subjMatch) {
+            certSubject = subjMatch[1].trim();
+          }
+        } catch (e) {
+          console.log("[VIP Pass] Could not extract cert info:", e);
+        }
+        
         // Convert to Base64 for storage
         const signerCertBase64 = Buffer.from(signerCert, "utf-8").toString("base64");
         const signerKeyBase64 = Buffer.from(signerKey, "utf-8").toString("base64");
@@ -32494,6 +32517,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               signerCertBase64,
               signerKeyBase64,
               certUploadedAt: new Date(),
+              certExpiresAt,
+              certSubject,
               updatedAt: new Date(),
             })
             .where(eq(vipPassDesigns.id, existingDesign.id));
@@ -32505,6 +32530,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             signerCertBase64,
             signerKeyBase64,
             certUploadedAt: new Date(),
+            certExpiresAt,
+            certSubject,
             createdAt: new Date(),
             updatedAt: new Date(),
           });
@@ -32514,9 +32541,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         return res.json({ 
           success: true, 
-          message: "Certificate uploaded and stored securely in database" 
+          message: "Certificate uploaded and stored securely in database",
+          expiresAt: certExpiresAt?.toISOString(),
+          subject: certSubject
         });
       } finally {
+        // ALWAYS clean up temp files - critical security requirement
         // ALWAYS clean up temp files - critical security requirement
         try {
           if (fs.existsSync(p12TempPath)) fs.unlinkSync(p12TempPath);

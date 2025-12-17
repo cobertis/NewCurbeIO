@@ -5432,6 +5432,8 @@ export const vipPassDesigns = pgTable("vip_pass_designs", {
   signerCertBase64: text("signer_cert_base64"), // PEM certificate
   signerKeyBase64: text("signer_key_base64"), // PEM private key (encrypted)
   certUploadedAt: timestamp("cert_uploaded_at"),
+  certExpiresAt: timestamp("cert_expires_at"), // Certificate expiration date
+  certSubject: text("cert_subject"), // Certificate subject/CN
   
   // Pass style
   passStyle: text("pass_style").notNull().default("generic"),
