@@ -853,7 +853,7 @@ export default function Billing() {
   });
 
   return (
-    <div className="flex flex-col gap-6 p-6">
+    <div className="flex flex-col gap-6">
       {/* Superadmin Tools */}
       {user?.role === 'superadmin' && (
         <Card className="border-blue-200 bg-blue-50/50 dark:border-blue-800 dark:bg-blue-950/20">
@@ -896,7 +896,7 @@ export default function Billing() {
 
         {/* Subscriptions Tab */}
         <TabsContent value="subscriptions" className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid galg:grid-cols-2">
             {/* Subscription Details */}
             {isLoadingSubscription ? (
               <Card>
@@ -2275,7 +2275,7 @@ export default function Billing() {
 
         {/* Payments Tab */}
         <TabsContent value="payments" className="space-y-6">
-          <div className="grid gap-6 lg:grid-cols-2">
+          <div className="grid galg:grid-cols-2">
             <Card>
             <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-2">
               <div>

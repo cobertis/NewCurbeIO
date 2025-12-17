@@ -174,7 +174,7 @@ export default function FeaturesPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-4">

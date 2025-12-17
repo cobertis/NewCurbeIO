@@ -281,7 +281,7 @@ export function PublicPricingView({
               </p>
             </div>
           ) : (
-            <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto" style={{ alignItems: 'start' }}>
+            <div className="grid gamd:grid-cols-3 max-w-5xl mx-auto" style={{ alignItems: 'start' }}>
               {sortedPlans.map((plan, index) => {
                 const popular = isPopularPlan(plan.name, index, sortedPlans.length);
                 const enterprise = isEnterprisePlan(plan.name, index, sortedPlans.length);
@@ -315,7 +315,7 @@ export function PublicPricingView({
                     
                     {/* Card */}
                     <div 
-                      className="flex-1 flex flex-col p-6"
+                      className="flex-1 flex flex-col"
                       style={{
                         backgroundColor: '#FFFFFF',
                         borderRadius: '16px',
@@ -940,7 +940,7 @@ export default function PlansPage() {
   if (viewMode === "public") {
     return (
       <div className="flex flex-col gap-4">
-        <div className="flex justify-end p-4 sm:p-6">
+        <div className="flex justify-end">
           <Button
             variant="outline"
             onClick={() => setViewMode("admin")}
@@ -957,7 +957,7 @@ export default function PlansPage() {
   const sortedPlanFeatures = [...planFeatures].sort((a, b) => a.sortOrder - b.sortOrder);
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       <Card>
         <CardHeader>
           <div className="flex items-center justify-between gap-4">
@@ -998,7 +998,7 @@ export default function PlansPage() {
 
         <TabsContent value="plans">
           {isLoading ? (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gamd:grid-cols-2 lg:grid-cols-3">
               {[1, 2, 3].map((i) => (
                 <Card key={i} className="animate-pulse">
                   <CardHeader className="h-32 bg-muted rounded-t-lg" />
@@ -1016,7 +1016,7 @@ export default function PlansPage() {
               </CardContent>
             </Card>
           ) : (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gamd:grid-cols-2 lg:grid-cols-3">
               {plans.map((plan) => (
                 <Card key={plan.id} data-testid={`card-plan-${plan.id}`} className="hover-elevate">
                   <CardHeader className="gap-2">

@@ -1274,7 +1274,7 @@ export default function Settings() {
   }
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Left Column - Profile Card */}
         <div className="lg:col-span-4 xl:col-span-3">
@@ -1446,7 +1446,7 @@ export default function Settings() {
                   {companyData?.company?.logo ? (
                     // Show logo with hover overlay
                     <>
-                      <div className="flex items-center justify-center p-6 rounded-md border-2 bg-muted/30">
+                      <div className="flex items-center justify-center rounded-md border-2 bg-muted/30">
                         <img 
                           src={companyData.company.logo} 
                           alt="Company Logo" 

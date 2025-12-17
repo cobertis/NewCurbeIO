@@ -390,7 +390,7 @@ export default function UserDetail() {
   const userCompany = user.companyId && isSuperAdmin ? companies.find(c => c.id === user.companyId) : null;
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       {/* Header */}
       <div className="flex items-center gap-4">
         <Button variant="ghost" size="icon" onClick={() => setLocation("/users")} data-testid="button-back">

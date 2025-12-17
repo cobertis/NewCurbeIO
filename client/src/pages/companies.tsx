@@ -528,7 +528,7 @@ export default function Companies() {
   }
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
+    <div className="flex flex-col gap-4 sm:gap-6">
       <Card className="bg-white dark:bg-gray-800 border-gray-200 dark:border-gray-700">
         <CardHeader>
           <div className="flex items-center justify-between gap-4">
@@ -1121,7 +1121,7 @@ export default function Companies() {
           </DialogHeader>
 
           {loadingImessageSettings ? (
-            <div className="flex items-center justify-center p-6">
+            <div className="flex items-center justify-center">
               <LoadingSpinner data-testid="loading-imessage-settings" />
             </div>
           ) : (

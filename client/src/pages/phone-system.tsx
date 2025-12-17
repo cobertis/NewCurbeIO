@@ -629,7 +629,7 @@ export default function PhoneSystem() {
 
   if (!hasAccount) {
     return (
-      <div className="flex flex-col gap-6 p-6 lg:p-8">
+      <div className="flex flex-col galg:p-8">
         <div>
           <h1 className="text-2xl font-semibold text-slate-900 dark:text-foreground">Phone System</h1>
           <p className="text-slate-500 dark:text-muted-foreground mt-1">Professional business phone lines</p>
@@ -815,7 +815,7 @@ export default function PhoneSystem() {
 
           {/* Overview Tab - Analytics Dashboard */}
           <TabsContent value="overview" className="flex-1 m-0 overflow-auto">
-            <div className="p-6 space-y-6">
+            <div className="space-y-6">
               {/* KPI Cards Row */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 {/* Total Calls */}
@@ -1165,7 +1165,7 @@ export default function PhoneSystem() {
                 </div>
 
                 {/* Right Column: Number Details */}
-                <div className="lg:col-span-2 p-6">
+                <div className="lg:col-span-2">
                   {selectedNumber ? (
                     <div className="space-y-6">
                       {/* Number Header */}
@@ -1656,7 +1656,7 @@ export default function PhoneSystem() {
           </TabsContent>
 
           {/* Call History Tab */}
-          <TabsContent value="calls" className="p-6 m-0">
+          <TabsContent value="calls" className="m-0">
             <CallHistoryWithAutoPolling 
               callLogsData={callLogsData}
               isLoadingCallLogs={isLoadingCallLogs}
@@ -2423,7 +2423,7 @@ function PhoneNumberCard({ number, onConfigureE911 }: PhoneNumberCardProps) {
           </TabsList>
         </div>
 
-        <TabsContent value="voice" className="p-6 m-0">
+        <TabsContent value="voice" className="m-0">
           {isLoading ? (
             <div className="flex justify-center py-6"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
           ) : (
@@ -2465,7 +2465,7 @@ function PhoneNumberCard({ number, onConfigureE911 }: PhoneNumberCardProps) {
           )}
         </TabsContent>
 
-        <TabsContent value="caller-id" className="p-6 m-0">
+        <TabsContent value="caller-id" className="m-0">
           {isLoading ? (
             <div className="flex justify-center py-6"><Loader2 className="h-6 w-6 animate-spin text-slate-400" /></div>
           ) : (

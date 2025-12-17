@@ -232,7 +232,7 @@ export default function AppointmentSettings() {
   if (!availability) return null;
 
   return (
-    <div className="flex flex-col gap-4 sm:gap-6 p-4 sm:p-6">
+    <div className="flex flex-col gamin-h-screen bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <div className="space-y-6">
         {/* General Settings */}
         <Card>
@@ -477,7 +477,7 @@ export default function AppointmentSettings() {
             })}
           </div>
           </CardContent>
-          <div className="flex justify-end gap-3 p-6 pt-0">
+          <div className="flex justify-end gap-3 pt-0">
             <Button
               variant="outline"
               onClick={() => setLocation("/calendar")}
