@@ -785,12 +785,6 @@ export default function PhoneSystem() {
         </div>
       </div>
 
-      {/* PAGE HEADER */}
-      <div className="bg-white/80 dark:bg-slate-900/80 backdrop-blur-sm border-b border-slate-200/80 dark:border-slate-800 px-6 py-5">
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-foreground" data-testid="text-page-title">Phone System</h1>
-        <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Manage your phone numbers, calls, and PBX settings</p>
-      </div>
-
       {/* Main Content with Tabs */}
       <div className="flex-1 overflow-auto">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">

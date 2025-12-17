@@ -1,0 +1,70 @@
+Los cards de Call Direction (Inbound 40 / Outbound 10) se ven muy cuadrados y raros. No se ven bien. Necesito que los rediseñes para que se vean EXACTAMENTE como los cards del Dashboard:
+
+## PROBLEMA:
+Los cards de Call Direction son muy cuadrados y poco atractivos. Parecen botones en lugar de cards informativos.
+
+## SOLUCIÓN - Hazlos como el Dashboard:
+
+Mira cómo se ven los cards en el Dashboard (Today's reminders, Birthdays, Failed login, New leads) - esos son rectangulares, amplios y elegantes.
+
+### Call Direction - REDISEÑO COMPLETO:
+
+```jsx
+// EN LUGAR de 2 cards separados cuadrados, hazlos rectangulares y amplios:
+
+<div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+  {/* Inbound Card */}
+  <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all p-6">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-full bg-blue-50 flex items-center justify-center">
+          <PhoneIncoming className="w-6 h-6 text-blue-600" />
+        </div>
+        <div>
+          <div className="text-sm font-medium text-slate-600 mb-1">Inbound Calls</div>
+          <div className="text-4xl font-bold text-slate-900">40</div>
+        </div>
+      </div>
+      <div className="text-right">
+        <div className="text-xs text-slate-500">Avg Duration</div>
+        <div className="text-lg font-semibold text-slate-700">1 min</div>
+      </div>
+    </div>
+  </div>
+
+  {/* Outbound Card */}
+  <div className="bg-white rounded-xl shadow-sm hover:shadow-md transition-all p-6">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-4">
+        <div className="w-12 h-12 rounded-full bg-green-50 flex items-center justify-center">
+          <PhoneOutgoing className="w-6 h-6 text-green-600" />
+        </div>
+        <div>
+          <div className="text-sm font-medium text-slate-600 mb-1">Outbound Calls</div>
+          <div className="text-4xl font-bold text-slate-900">10</div>
+        </div>
+      </div>
+      <div className="text-right">
+        <div className="text-xs text-slate-500">Avg Duration</div>
+        <div className="text-lg font-semibold text-slate-700">0 min</div>
+      </div>
+    </div>
+  </div>
+</div>
+```
+
+## CARACTERÍSTICAS CLAVE:
+
+1. **Cards RECTANGULARES**: No cuadrados, deben ser amplios como los del Dashboard
+2. **Layout horizontal**: Ícono a la izquierda, número principal en el centro, info adicional a la derecha
+3. **Más padding**: `p-6` para que respire mejor
+4. **Spacing entre elementos**: `gap-4` entre ícono y texto
+5. **Info adicional visible**: Muestra "Avg Duration" claramente
+6. **Grid responsive**: `grid-cols-1 md:grid-cols-2` para que en mobile se vean uno debajo del otro
+
+## ELIMINA:
+- ❌ El layout vertical centrado que los hace ver cuadrados
+- ❌ El número arriba y texto abajo
+- ❌ Cualquier aspecto ratio que los haga cuadrados
+
+**Implementa AHORA este rediseño para que Call Direction se vea profesional como el Dashboard.**
