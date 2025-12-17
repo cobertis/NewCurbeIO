@@ -14,6 +14,26 @@ const ENV_APPLE_P12_B64 = process.env.APPLE_P12_B64;
 const ENV_APPLE_P12_PASSWORD = process.env.APPLE_P12_PASSWORD || "";
 const ENV_APPLE_WWDR_B64 = process.env.APPLE_WWDR_B64;
 
+// WWDR Certificate is global Apple infrastructure - not tenant-specific
+// Priority: 1) ENV variable (backward compat) 2) Static file in server/certs/
+const WWDR_CERT_PATH = path.join(process.cwd(), "server", "certs", "AppleWWDRCAG4.pem");
+let WWDR_BUFFER: Buffer | null = null;
+
+function getWwdrCertificate(): Buffer {
+  if (!WWDR_BUFFER) {
+    // First check environment variable for backward compatibility
+    if (ENV_APPLE_WWDR_B64) {
+      WWDR_BUFFER = Buffer.from(ENV_APPLE_WWDR_B64, "base64");
+    } else if (fs.existsSync(WWDR_CERT_PATH)) {
+      // Use static file as default
+      WWDR_BUFFER = fs.readFileSync(WWDR_CERT_PATH);
+    } else {
+      throw new Error(`WWDR Certificate not found. Either set APPLE_WWDR_B64 env var or ensure ${WWDR_CERT_PATH} exists.`);
+    }
+  }
+  return WWDR_BUFFER;
+}
+
 async function getCompanyBranding(companyId: string): Promise<{
   name: string;
   logoUrl?: string;
@@ -63,7 +83,6 @@ export const appleWalletService = {
     const passTypeId = settings?.applePassTypeIdentifier || ENV_APPLE_PASS_TYPE_ID;
     const p12B64 = settings?.appleP12Base64 || ENV_APPLE_P12_B64;
     const p12Password = settings?.appleP12Password || ENV_APPLE_P12_PASSWORD;
-    const wwdrB64 = settings?.appleWwdrBase64 || ENV_APPLE_WWDR_B64;
 
     if (!teamId || !passTypeId || !p12B64) {
       throw new Error("Apple Wallet is not configured. Missing required credentials.");
@@ -74,10 +93,8 @@ export const appleWalletService = {
 
     const p12Buffer = Buffer.from(p12B64, "base64");
     
-    let wwdrBuffer: Buffer | undefined;
-    if (wwdrB64) {
-      wwdrBuffer = Buffer.from(wwdrB64, "base64");
-    }
+    // WWDR is a global Apple certificate, loaded from static infrastructure file
+    const wwdrBuffer = getWwdrCertificate();
 
     const passData = {
       formatVersion: 1 as const,
@@ -141,11 +158,8 @@ export const appleWalletService = {
       signerCert: p12Buffer,
       signerKey: p12Buffer,
       signerKeyPassphrase: p12Password,
+      wwdr: wwdrBuffer,
     };
-
-    if (wwdrBuffer) {
-      certificates.wwdr = wwdrBuffer;
-    }
 
     const pkpass = new PKPass({}, certificates, passData);
 

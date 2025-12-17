@@ -5991,11 +5991,12 @@ export const walletSettings = pgTable("wallet_settings", {
   companyId: text("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }).unique(),
   
   // Apple Wallet Configuration
+  // Note: WWDR Certificate is global Apple infrastructure, not tenant-specific
+  // It's included as a static file in the backend (server/certs/AppleWWDRCAG4.cer)
   appleTeamId: text("apple_team_id"),
   applePassTypeIdentifier: text("apple_pass_type_identifier"),
   appleP12Base64: text("apple_p12_base64"),
   appleP12Password: text("apple_p12_password"),
-  appleWwdrBase64: text("apple_wwdr_base64"),
   
   // Google Wallet Configuration
   googleServiceAccountJsonBase64: text("google_service_account_json_base64"),

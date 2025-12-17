@@ -63,7 +63,6 @@ interface WalletSettingsResponse {
   applePassTypeIdentifier?: string;
   appleP12Configured?: boolean;
   appleP12PasswordConfigured?: boolean;
-  appleWwdrConfigured?: boolean;
   googleServiceAccountConfigured?: boolean;
   googleIssuerId?: string;
   encryptionKeyConfigured?: boolean;
@@ -78,13 +77,11 @@ export default function WalletAnalyticsPage() {
   const [applePassTypeId, setApplePassTypeId] = useState("");
   const [appleP12Password, setAppleP12Password] = useState("");
   const [appleP12File, setAppleP12File] = useState<File | null>(null);
-  const [appleWwdrFile, setAppleWwdrFile] = useState<File | null>(null);
   const [googleServiceAccountFile, setGoogleServiceAccountFile] = useState<File | null>(null);
   const [googleIssuerId, setGoogleIssuerId] = useState("");
   const [encryptionKey, setEncryptionKey] = useState("");
   
   const appleP12InputRef = useRef<HTMLInputElement>(null);
-  const appleWwdrInputRef = useRef<HTMLInputElement>(null);
   const googleServiceInputRef = useRef<HTMLInputElement>(null);
   
   const form = useForm({
@@ -202,9 +199,6 @@ export default function WalletAnalyticsPage() {
       
       if (appleP12File) {
         payload.appleP12Base64 = await fileToBase64(appleP12File);
-      }
-      if (appleWwdrFile) {
-        payload.appleWwdrBase64 = await fileToBase64(appleWwdrFile);
       }
       if (googleServiceAccountFile) {
         payload.googleServiceAccountJsonBase64 = await fileToBase64(googleServiceAccountFile);
@@ -401,33 +395,6 @@ export default function WalletAnalyticsPage() {
                     </div>
                   </div>
                   
-                  <div className="space-y-2">
-                    <Label htmlFor="appleWwdr">WWDR Certificate File</Label>
-                    <div className="flex items-center gap-2">
-                      <Input 
-                        ref={appleWwdrInputRef}
-                        id="appleWwdr"
-                        type="file"
-                        accept=".cer,.pem"
-                        onChange={(e) => setAppleWwdrFile(e.target.files?.[0] || null)}
-                        className="hidden"
-                        data-testid="input-apple-wwdr"
-                      />
-                      <Button 
-                        variant="outline" 
-                        type="button" 
-                        className="w-full justify-start gap-2"
-                        onClick={() => appleWwdrInputRef.current?.click()}
-                        data-testid="button-upload-wwdr"
-                      >
-                        <Upload className="h-4 w-4" />
-                        {appleWwdrFile ? appleWwdrFile.name : "Choose WWDR file..."}
-                      </Button>
-                      {settings?.appleWwdrConfigured && !appleWwdrFile && (
-                        <FileCheck className="h-5 w-5 text-green-500 flex-shrink-0" />
-                      )}
-                    </div>
-                  </div>
                 </div>
                 
                 <div className="space-y-4">
