@@ -75,13 +75,32 @@ async function getCompanyBranding(companyId: string): Promise<{
   logoUrl?: string;
   primaryColor: string;
   secondaryColor: string;
+  phone?: string;
+  website?: string;
+  address?: string;
 }> {
   const [company] = await db.select().from(companies).where(eq(companies.id, companyId));
+  
+  // Build full address from components
+  let fullAddress = "";
+  if (company) {
+    const parts = [
+      company.address,
+      company.addressLine2,
+      [company.city, company.state, company.postalCode].filter(Boolean).join(", "),
+      company.country
+    ].filter(Boolean);
+    fullAddress = parts.join("\n");
+  }
+  
   return {
     name: company?.name || "Company",
     logoUrl: company?.logo || undefined,
     primaryColor: "#1a1a2e",
     secondaryColor: "#ffffff",
+    phone: company?.phone || undefined,
+    website: company?.website || undefined,
+    address: fullAddress || undefined,
   };
 }
 
@@ -255,13 +274,13 @@ export const appleWalletService = {
         },
         {
           key: "b4",
-          label: "Plan ID",
-          value: member.planId || "—",
+          label: "Plan Name",
+          value: member.planName || member.plan || "—",
         },
         {
           key: "b5",
-          label: "Plan Name",
-          value: member.planName || member.plan || "—",
+          label: "Plan ID",
+          value: member.planId || "—",
         },
         {
           key: "b6",
@@ -270,19 +289,39 @@ export const appleWalletService = {
         },
         {
           key: "b7",
-          label: "Member Since",
-          value: member.memberSince ? new Date(member.memberSince).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "—",
+          label: "Effective Date",
+          value: member.effectiveDate ? new Date(member.effectiveDate).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }) : "—",
         },
         {
           key: "b8",
+          label: "Expiration Date",
+          value: member.expirationDate ? new Date(member.expirationDate).toLocaleDateString("en-US", { month: "2-digit", day: "2-digit", year: "numeric" }) : "—",
+        },
+        {
+          key: "b9",
           label: "Last Notice",
           value: pass.lastNotification || "None",
         },
         {
-          key: "b9",
+          key: "b10",
           label: "Issued By",
           value: branding.name,
         },
+        ...(branding.phone ? [{
+          key: "b11",
+          label: "Phone",
+          value: branding.phone,
+        }] : []),
+        ...(branding.website ? [{
+          key: "b12",
+          label: "Website",
+          value: branding.website,
+        }] : []),
+        ...(branding.address ? [{
+          key: "b13",
+          label: "Address",
+          value: branding.address,
+        }] : []),
       ],
     };
     
