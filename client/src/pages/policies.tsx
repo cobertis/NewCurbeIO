@@ -4914,6 +4914,29 @@ export default function PoliciesPage() {
     }
   }, [manualPlanDialogOpen, viewingQuote?.productType]);
 
+
+  // Load plan data when editing an existing plan
+  useEffect(() => {
+    if (manualPlanDialogOpen && editingPlanId && viewingQuote?.plans) {
+      const existingPlan = viewingQuote.plans.find((p: any) => p.id === editingPlanId);
+      if (existingPlan) {
+        const plan = existingPlan.planData || {};
+        setSimplePlanFormData({
+          planId: plan.id || existingPlan.planId || '',
+          carrier: plan.issuer?.name || existingPlan.carrier || '',
+          planName: plan.name || existingPlan.planName || '',
+          metalLevel: plan.metal_level || existingPlan.metalLevel || '',
+          planType: plan.type || existingPlan.planType || '',
+          monthlyPayment: String(plan.premium_w_credit ?? plan.premium ?? existingPlan.monthlyPayment ?? ''),
+          originalPrice: String(plan.premium ?? existingPlan.originalPrice ?? ''),
+          marketplaceId: plan.marketplaceId || existingPlan.marketplaceId || '',
+          memberId: plan.memberId || existingPlan.memberId || '',
+          effectiveDate: plan.effectiveDate || existingPlan.effectiveDate || '',
+          expirationDate: plan.expirationDate || existingPlan.expirationDate || '',
+        });
+      }
+    }
+  }, [manualPlanDialogOpen, editingPlanId, viewingQuote?.plans]);
   // Fetch quote notes
   const { data: quoteNotesData, isLoading: isLoadingNotes } = useQuery<{ notes: any[] }>({
     queryKey: ['/api/policies', selectedPolicyId, 'notes'],
