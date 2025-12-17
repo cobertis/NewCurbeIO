@@ -241,9 +241,9 @@ export function ComplianceTab() {
     mutationFn: async () => {
       return await apiRequest("POST", "/api/phone-system/messaging-profile", {});
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/phone-system/messaging-profile"] });
       toast({ title: "Messaging Profile created", description: "Your SMS profile has been configured." });
-      queryClient.invalidateQueries({ queryKey: ["/api/phone-system/messaging-profile"] });
     },
     onError: (error: any) => {
       toast({ title: "Failed to create profile", description: error.message, variant: "destructive" });
