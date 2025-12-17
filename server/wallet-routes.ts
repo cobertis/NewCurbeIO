@@ -1,6 +1,8 @@
 import { Express, Request, Response } from "express";
 import { z } from "zod";
 import rateLimit from "express-rate-limit";
+import fs from "fs";
+import path from "path";
 import { walletPassService } from "./services/wallet-pass-service";
 import { appleWalletService } from "./services/apple-wallet-service";
 import { googleWalletService } from "./services/google-wallet-service";
@@ -353,12 +355,16 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
       const companyId = (req as any).user.companyId;
       const settings = await walletPassService.getWalletSettings(companyId);
       
+      const iconPath = path.join(process.cwd(), "attached_assets", "pass-icon.png");
+      const iconExists = fs.existsSync(iconPath) && fs.statSync(iconPath).size > 500;
+      
       if (!settings) {
         return res.json({
           appleTeamId: "",
           applePassTypeIdentifier: "",
           appleP12Configured: false,
           appleP12PasswordConfigured: false,
+          appleIconConfigured: iconExists,
           googleServiceAccountConfigured: false,
           googleIssuerId: "",
           encryptionKeyConfigured: false,
@@ -370,6 +376,7 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
         applePassTypeIdentifier: settings.applePassTypeIdentifier || "",
         appleP12Configured: !!settings.appleP12Base64,
         appleP12PasswordConfigured: !!settings.appleP12Password,
+        appleIconConfigured: iconExists,
         googleServiceAccountConfigured: !!settings.googleServiceAccountJsonBase64,
         googleIssuerId: settings.googleIssuerId || "",
         encryptionKeyConfigured: !!settings.encryptionKey,
@@ -383,7 +390,27 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
   app.put("/api/wallet/settings", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = (req as any).user.companyId;
-      await walletPassService.saveWalletSettings(companyId, req.body);
+      const { appleIconBase64, ...settingsData } = req.body;
+      
+      if (appleIconBase64) {
+        try {
+          const iconBuffer = Buffer.from(appleIconBase64, "base64");
+          const assetsDir = path.join(process.cwd(), "attached_assets");
+          
+          if (!fs.existsSync(assetsDir)) {
+            fs.mkdirSync(assetsDir, { recursive: true });
+          }
+          
+          fs.writeFileSync(path.join(assetsDir, "pass-icon.png"), iconBuffer);
+          fs.writeFileSync(path.join(assetsDir, "pass-icon@2x.png"), iconBuffer);
+          
+          console.log("[Wallet] Saved notification icon (pass-icon.png and pass-icon@2x.png)");
+        } catch (iconError) {
+          console.error("[Wallet] Error saving icon:", iconError);
+        }
+      }
+      
+      await walletPassService.saveWalletSettings(companyId, settingsData);
       res.json({ message: "Settings saved", configured: true });
     } catch (error) {
       console.error("[Wallet] Error saving settings:", error);

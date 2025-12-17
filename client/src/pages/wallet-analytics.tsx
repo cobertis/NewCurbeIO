@@ -80,6 +80,7 @@ interface WalletSettingsResponse {
   applePassTypeIdentifier?: string;
   appleP12Configured?: boolean;
   appleP12PasswordConfigured?: boolean;
+  appleIconConfigured?: boolean;
   googleServiceAccountConfigured?: boolean;
   googleIssuerId?: string;
   encryptionKeyConfigured?: boolean;
@@ -96,11 +97,13 @@ export default function WalletAnalyticsPage() {
   const [applePassTypeId, setApplePassTypeId] = useState("");
   const [appleP12Password, setAppleP12Password] = useState("");
   const [appleP12File, setAppleP12File] = useState<File | null>(null);
+  const [appleIconFile, setAppleIconFile] = useState<File | null>(null);
   const [googleServiceAccountFile, setGoogleServiceAccountFile] = useState<File | null>(null);
   const [googleIssuerId, setGoogleIssuerId] = useState("");
   const [encryptionKey, setEncryptionKey] = useState("");
   
   const appleP12InputRef = useRef<HTMLInputElement>(null);
+  const appleIconInputRef = useRef<HTMLInputElement>(null);
   const googleServiceInputRef = useRef<HTMLInputElement>(null);
   
   const [contactSearch, setContactSearch] = useState("");
@@ -382,6 +385,9 @@ export default function WalletAnalyticsPage() {
       if (appleP12File) {
         payload.appleP12Base64 = await fileToBase64(appleP12File);
       }
+      if (appleIconFile) {
+        payload.appleIconBase64 = await fileToBase64(appleIconFile);
+      }
       if (googleServiceAccountFile) {
         payload.googleServiceAccountJsonBase64 = await fileToBase64(googleServiceAccountFile);
       }
@@ -657,6 +663,35 @@ export default function WalletAnalyticsPage() {
                         data-testid="input-apple-p12-password"
                       />
                       {settings?.appleP12PasswordConfigured && !appleP12Password && (
+                        <FileCheck className="h-5 w-5 text-green-500 flex-shrink-0" />
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="appleIcon">Notification Icon (87x87px PNG)</Label>
+                    <p className="text-xs text-muted-foreground">This icon appears on lock screen notifications</p>
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        ref={appleIconInputRef}
+                        id="appleIcon"
+                        type="file"
+                        accept=".png"
+                        onChange={(e) => setAppleIconFile(e.target.files?.[0] || null)}
+                        className="hidden"
+                        data-testid="input-apple-icon"
+                      />
+                      <Button 
+                        variant="outline" 
+                        type="button" 
+                        className="w-full justify-start gap-2"
+                        onClick={() => appleIconInputRef.current?.click()}
+                        data-testid="button-upload-icon"
+                      >
+                        <Upload className="h-4 w-4" />
+                        {appleIconFile ? appleIconFile.name : "Choose icon PNG..."}
+                      </Button>
+                      {settings?.appleIconConfigured && !appleIconFile && (
                         <FileCheck className="h-5 w-5 text-green-500 flex-shrink-0" />
                       )}
                     </div>
