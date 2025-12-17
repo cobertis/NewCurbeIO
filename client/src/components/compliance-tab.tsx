@@ -327,12 +327,12 @@ export function ComplianceTab() {
   const [sampleMessage5, setSampleMessage5] = useState<string>("");
 
   const CARRIER_TERMS = [
-    { carrier: "AT&T", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "240", mmsTpm: "150", brandTier: "-", dailyLimit: "N/A", messageClass: "P2P" },
-    { carrier: "T-Mobile", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "LOW", dailyLimit: "2,000", messageClass: "Standard" },
-    { carrier: "US Cellular", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "-", dailyLimit: "N/A", messageClass: "Standard" },
-    { carrier: "Verizon Wireless", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "-", dailyLimit: "N/A", messageClass: "Standard" },
-    { carrier: "ClearSky", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "-", dailyLimit: "N/A", messageClass: "Standard" },
-    { carrier: "Interop", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "-", dailyLimit: "N/A", messageClass: "Standard" },
+    { carrier: "AT&T", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "240", mmsTpm: "150", brandTier: "-", dailyLimit: "-", messageClass: "F" },
+    { carrier: "T-Mobile", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "LOW", dailyLimit: "2000", messageClass: "N/A" },
+    { carrier: "US Cellular", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "-", dailyLimit: "-", messageClass: "N/A" },
+    { carrier: "Verizon Wireless", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "-", dailyLimit: "-", messageClass: "N/A" },
+    { carrier: "ClearSky", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "-", dailyLimit: "-", messageClass: "N/A" },
+    { carrier: "Interop", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "N/A", mmsTpm: "N/A", brandTier: "-", dailyLimit: "-", messageClass: "N/A" },
   ];
 
   const resetCampaignForm = () => {
