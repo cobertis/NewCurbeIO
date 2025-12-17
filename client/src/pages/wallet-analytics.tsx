@@ -256,8 +256,22 @@ export default function WalletAnalyticsPage() {
         ...values,
         contactId,
       };
-      await apiRequest("POST", "/api/wallet/members", memberData);
-      toast({ title: "Member created successfully" });
+      const newMember = await apiRequest("POST", "/api/wallet/members", memberData);
+      
+      // Auto-generate pass immediately after creating member
+      try {
+        const passData = await apiRequest("POST", `/api/wallet/members/${newMember.id}/pass`);
+        if (passData.link?.url) {
+          await navigator.clipboard.writeText(passData.link.url);
+          toast({ title: "Member created and pass generated! Link copied to clipboard" });
+        } else {
+          toast({ title: "Member created and pass generated" });
+        }
+      } catch (passError) {
+        console.error("[Wallet] Error auto-generating pass:", passError);
+        toast({ title: "Member created, but pass generation failed", variant: "destructive" });
+      }
+      
       setShowAddMember(false);
       setSelectedContact(null);
       setContactSearch("");
@@ -1198,26 +1212,15 @@ export default function WalletAnalyticsPage() {
                           )}
                         </TableCell>
                         <TableCell className="text-right">
-                          <div className="flex items-center justify-end gap-1">
-                            <Button 
-                              variant="ghost" 
-                              size="sm"
-                              onClick={() => handleGeneratePass(member.id)}
-                              data-testid={`button-generate-pass-${member.id}`}
-                            >
-                              <Wallet className="h-4 w-4 mr-1" />
-                              {member.link ? "Regenerate" : "Generate"}
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                              onClick={() => handleDeleteMember(member.id)}
-                              data-testid={`button-delete-member-${member.id}`}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                            onClick={() => handleDeleteMember(member.id)}
+                            data-testid={`button-delete-member-${member.id}`}
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))
