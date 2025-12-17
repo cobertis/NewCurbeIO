@@ -54,15 +54,16 @@ Enables internal calls between PBX extensions using pure WebRTC peer-to-peer ove
 Implemented via `simultaneous_ringing: "enabled"` in Telnyx credential connection configuration to enable simultaneous ringing on all registered SIP devices. Uses a Dial+Bridge pattern (not transfer) for incoming calls.
 
 **Wallet System Architecture:**
-Supports both Apple Wallet (PKPass) and Google Wallet with Smart Links, analytics dashboard, and security features:
+Supports both Apple Wallet (PKPass) and Google Wallet with Smart Links, analytics dashboard, APNs push notifications, and security features:
 - **Database Tables:** `wallet_members`, `wallet_passes`, `wallet_links`, `wallet_events`, `wallet_devices`
-- **Services:** `wallet-pass-service.ts` (core CRUD, analytics), `apple-wallet-service.ts` (PKPass generation), `google-wallet-service.ts` (Generic Pass API)
+- **Services:** `wallet-pass-service.ts` (core CRUD, analytics), `apple-wallet-service.ts` (PKPass generation), `google-wallet-service.ts` (Generic Pass API), `apns-service.ts` (APNs push notifications)
 - **Routes:** Wallet API (`/api/wallet/*`), PassKit Web Service endpoints (`/api/passkit/v1/*`), Smart Links (`/w/:slug`)
 - **Smart Links:** OS detection redirects iOS/Android to appropriate wallet add flows
 - **Analytics:** Event tracking (link opens, downloads, installs), device/browser detection, dashboard with charts
 - **Security:** Encrypted auth tokens and push tokens using AES-256-CBC with `ENCRYPTION_KEY_32BYTES`
 - **Frontend:** `/wallet-analytics` page with member management, pass generation, and real-time analytics
-- **Required ENV vars:** `APPLE_TEAM_ID`, `APPLE_PASS_TYPE_ID`, `APPLE_P12_B64`, `APPLE_P12_PASSWORD`, `APPLE_WWDR_B64`, `GOOGLE_SERVICE_ACCOUNT_JSON_B64`, `GOOGLE_ISSUER_ID`, `ENCRYPTION_KEY_32BYTES`
+- **APNs Push Notifications:** HTTP/2 based push system for dynamic pass updates using certificate-based auth. Flow: Update `lastNotification` in DB → Send empty APNs push → Device fetches updated pass via webServiceURL. Endpoints: `POST /api/wallet/passes/:id/alert` (single), `POST /api/wallet/alerts/bulk` (company-wide). WWDR certificate at `server/certs/AppleWWDRCAG4.pem`.
+- **All configuration stored in database** via `wallet_settings` table - NO environment variables for wallet credentials
 
 ## External Dependencies
 
