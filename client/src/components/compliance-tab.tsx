@@ -33,6 +33,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import {
+  AlertCircle,
   AlertTriangle,
   Building2,
   CheckCircle2,
@@ -1260,6 +1261,14 @@ export function ComplianceTab() {
             </div>
           )}
         </div>
+      </div>
+
+      {/* Campaign Fee Notice */}
+      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start gap-3">
+        <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+        <p className="text-sm text-blue-800 dark:text-blue-200">
+          Please note that campaigns are charged a $15 review fee by the carriers each time they are submitted for carrier compliance review. This includes resubmissions following carrier rejections.
+        </p>
       </div>
 
       {/* 10DLC Campaigns Section */}
