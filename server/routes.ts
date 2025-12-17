@@ -17738,26 +17738,34 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         },
       });
       
-      // Sync with wallet pass if memberId exists
-      if (updatedPlan.memberId) {
+      
+      // Sync with wallet pass if memberId exists in planData
+      const planDataObj = typeof updatedPlan.planData === 'string' 
+        ? JSON.parse(updatedPlan.planData) 
+        : updatedPlan.planData;
+      const memberIdFromPlan = planDataObj?.memberId;
+      
+      if (memberIdFromPlan) {
         try {
-          const walletMember = await walletPassService.getMemberByMemberId(policy.companyId, updatedPlan.memberId);
+          const walletMember = await walletPassService.getMemberByMemberId(policy.companyId, memberIdFromPlan);
           if (walletMember) {
             // Update wallet member with plan data
             await walletPassService.updateMember(walletMember.id, {
-              carrierName: updatedPlan.carrierName || walletMember.carrierName,
-              planName: updatedPlan.planName || walletMember.planName,
-              planId: updatedPlan.planId || walletMember.planId,
-              monthlyPremium: updatedPlan.monthlyPremium?.toString() || walletMember.monthlyPremium,
-              metalLevel: updatedPlan.metalLevel || walletMember.metalLevel,
-              planType: updatedPlan.planType || walletMember.planType,
-              effectiveDate: updatedPlan.effectiveDate || walletMember.effectiveDate,
-              expirationDate: updatedPlan.expirationDate || walletMember.expirationDate,
+              carrierName: planDataObj.issuer?.name || walletMember.carrierName,
+              planName: planDataObj.name || walletMember.planName,
+              planId: planDataObj.id || walletMember.planId,
+              monthlyPremium: (planDataObj.premium_w_credit ?? planDataObj.premium)?.toString() || walletMember.monthlyPremium,
+              metalLevel: planDataObj.metal_level || walletMember.metalLevel,
+              planType: planDataObj.type || walletMember.planType,
+              effectiveDate: planDataObj.effectiveDate || walletMember.effectiveDate,
+              expirationDate: planDataObj.expirationDate || walletMember.expirationDate,
             });
             
             // Send APNs push notification to refresh the pass
             await apnsService.sendPassAlertByMemberId(walletMember.id, "Plan updated");
-            console.log(`[Wallet Sync] Updated pass for member ${updatedPlan.memberId}`);
+            console.log(`[Wallet Sync] Updated pass for member ${memberIdFromPlan}`);
+          } else {
+            console.log(`[Wallet Sync] No wallet member found for memberId: ${memberIdFromPlan}`);
           }
         } catch (walletError) {
           console.error("[Wallet Sync] Error syncing wallet pass:", walletError);
