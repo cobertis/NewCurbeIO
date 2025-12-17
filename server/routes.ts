@@ -34703,7 +34703,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const isAndroid = /android/.test(userAgent);
       const isMobile = isIOS || isAndroid;
       
-      console.log(\`[UniversalPass] Token: \${token}, UA: \${userAgent.substring(0, 50)}..., iOS: \${isIOS}, Android: \${isAndroid}\`);
+      console.log(`[UniversalPass] Platform detected: ${isIOS ? "iOS" : isAndroid ? "Android" : "Other"}`);
       
       if (isIOS) {
         // iOS - Serve Apple Wallet .pkpass directly
@@ -34714,7 +34714,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           
           res.set({
             "Content-Type": "application/vnd.apple.pkpass",
-            "Content-Disposition": \`attachment; filename="\${filename}"\`,
+            "Content-Disposition": `attachment; filename="${filename}"`,
             "Content-Length": buffer.length.toString(),
           });
           
@@ -34746,8 +34746,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
   
   // Helper functions for HTML responses
+  function escapeHtml(str: string | null | undefined): string {
+    if (!str) return "";
+    return str
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
   function getPassNotFoundHtml(): string {
-    return \`<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -34769,11 +34779,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     <p>This VIP Pass link is invalid or has expired.</p>
   </div>
 </body>
-</html>\`;
+</html>`;
   }
   
   function getPassExpiredHtml(): string {
-    return \`<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -34795,11 +34805,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     <p>This VIP Pass has been deactivated or has expired.</p>
   </div>
 </body>
-</html>\`;
+</html>`;
   }
   
   function getErrorHtml(message: string): string {
-    return \`<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -34818,14 +34828,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   <div class="container">
     <div class="icon">⚠️</div>
     <h1>Something Went Wrong</h1>
-    <p>\${message}</p>
+    <p>${message}</p>
   </div>
 </body>
-</html>\`;
+</html>`;
   }
   
   function getAndroidFallbackHtml(passInstance: any): string {
-    return \`<!DOCTYPE html>
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -34847,19 +34857,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   <div class="container">
     <div class="card">
       <div class="icon">🎫</div>
-      <h1>\${passInstance.recipientName || 'VIP Member'}</h1>
-      <p class="member">Member ID: \${passInstance.memberId || passInstance.serialNumber}</p>
-      <div class="tier">\${passInstance.tierLevel || 'Gold'}</div>
+      <h1>${escapeHtml(passInstance.recipientName) || "VIP Member"}</h1>
+      <p class="member">Member ID: ${escapeHtml(passInstance.memberId || passInstance.serialNumber)}</p>
+      <div class="tier">${escapeHtml(passInstance.tierLevel) || "Gold"}</div>
     </div>
     <p>Google Wallet integration is being configured. Your VIP pass details are shown above.</p>
   </div>
 </body>
-</html>\`;
+</html>`;
   }
   
   function getDesktopFallbackHtml(passInstance: any, token: string): string {
-    const passUrl = \`\${process.env.REPLIT_DOMAINS?.split(',')[0] ? 'https://' + process.env.REPLIT_DOMAINS.split(',')[0] : ''}/p/\${token}\`;
-    return \`<!DOCTYPE html>
+    const passUrl = `${process.env.REPLIT_DOMAINS?.split(',')[0] ? 'https://' + process.env.REPLIT_DOMAINS.split(',')[0] : ''}/p/${token}`;
+    return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
@@ -34884,9 +34894,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   <div class="container">
     <div class="card">
       <div class="icon">🎫</div>
-      <h1>\${passInstance.recipientName || 'VIP Member'}</h1>
-      <p class="member">Member ID: \${passInstance.memberId || passInstance.serialNumber}</p>
-      <div class="tier">\${passInstance.tierLevel || 'Gold'}</div>
+      <h1>${escapeHtml(passInstance.recipientName) || "VIP Member"}</h1>
+      <p class="member">Member ID: ${escapeHtml(passInstance.memberId || passInstance.serialNumber)}</p>
+      <div class="tier">${escapeHtml(passInstance.tierLevel) || "Gold"}</div>
     </div>
     <div class="instruction">
       <h2>📱 Open on Your Phone</h2>
@@ -34895,7 +34905,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     </div>
   </div>
 </body>
-</html>\`;
+</html>`;
   }
   // ============================================================
   // ONBOARDING - Complete user profile after registration
