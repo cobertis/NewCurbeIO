@@ -6,6 +6,8 @@ import { randomBytes } from "crypto";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import { storage } from "./storage";
+import { walletPassService } from "./services/wallet-pass-service";
+import { apnsService } from "./services/apns-service";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
@@ -17735,6 +17737,34 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           policyId: id,
         },
       });
+      
+      // Sync with wallet pass if memberId exists
+      if (updatedPlan.memberId) {
+        try {
+          const walletMember = await walletPassService.getMemberByMemberId(policy.companyId, updatedPlan.memberId);
+          if (walletMember) {
+            // Update wallet member with plan data
+            await walletPassService.updateMember(walletMember.id, {
+              carrierName: updatedPlan.carrierName || walletMember.carrierName,
+              planName: updatedPlan.planName || walletMember.planName,
+              planId: updatedPlan.planId || walletMember.planId,
+              monthlyPremium: updatedPlan.monthlyPremium?.toString() || walletMember.monthlyPremium,
+              metalLevel: updatedPlan.metalLevel || walletMember.metalLevel,
+              planType: updatedPlan.planType || walletMember.planType,
+              effectiveDate: updatedPlan.effectiveDate || walletMember.effectiveDate,
+              expirationDate: updatedPlan.expirationDate || walletMember.expirationDate,
+            });
+            
+            // Send APNs push notification to refresh the pass
+            await apnsService.sendPassAlertByMemberId(walletMember.id, "Plan updated");
+            console.log(`[Wallet Sync] Updated pass for member ${updatedPlan.memberId}`);
+          }
+        } catch (walletError) {
+          console.error("[Wallet Sync] Error syncing wallet pass:", walletError);
+          // Don't fail the policy update if wallet sync fails
+        }
+      }
+
       res.json({ plan: updatedPlan });
     } catch (error: any) {
       console.error("Error updating policy plan:", error);
