@@ -31,6 +31,8 @@ interface AnalyticsSummary {
   googleClicks: number;
   googleSaved: number;
   errors: number;
+  installedPassesCount: number;
+  registeredDevicesCount: number;
 }
 
 interface WalletMember {
@@ -267,7 +269,9 @@ export default function WalletAnalyticsPage() {
   };
 
   const totalDownloads = (summary?.appleDownloads || 0) + (summary?.googleClicks || 0);
-  const totalInstalls = (summary?.appleInstalls || 0) + (summary?.googleSaved || 0);
+  // Use registeredDevicesCount (actual confirmed installs) plus installed passes
+  const actualInstalls = (summary?.registeredDevicesCount || 0) + (summary?.installedPassesCount || 0);
+  const totalInstalls = actualInstalls > 0 ? actualInstalls : (summary?.appleInstalls || 0) + (summary?.googleSaved || 0);
   const conversionRate = (summary?.totalOpens || 0) > 0 
     ? ((totalInstalls / (summary?.totalOpens || 1)) * 100).toFixed(1) 
     : "0";
@@ -290,7 +294,7 @@ export default function WalletAnalyticsPage() {
       iconColor: "text-purple-600 dark:text-purple-400",
     },
     {
-      count: summary?.appleInstalls || 0,
+      count: (summary?.registeredDevicesCount || 0) + (summary?.appleInstalls || 0),
       title: "Apple Installs",
       subtitle: `${summary?.appleDownloads || 0} downloads`,
       icon: Apple,
@@ -298,7 +302,7 @@ export default function WalletAnalyticsPage() {
       iconColor: "text-gray-800 dark:text-gray-200",
     },
     {
-      count: summary?.googleSaved || 0,
+      count: (summary?.installedPassesCount || 0) + (summary?.googleSaved || 0),
       title: "Google Saved",
       subtitle: `${summary?.googleClicks || 0} clicks`,
       icon: Chrome,

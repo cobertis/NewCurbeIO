@@ -4,7 +4,7 @@ import {
   InsertWalletMember, InsertWalletPass, InsertWalletLink, InsertWalletEvent, InsertWalletDevice, InsertWalletSettings,
   WalletMember, WalletPass, WalletLink, WalletEvent, WalletDevice, WalletSettings
 } from "@shared/schema";
-import { eq, and, desc, gte, lte, sql, count } from "drizzle-orm";
+import { eq, and, or, desc, gte, lte, sql, count } from "drizzle-orm";
 import { nanoid } from "nanoid";
 import crypto from "crypto";
 import * as UAParser from "ua-parser-js";
@@ -316,6 +316,8 @@ export const walletPassService = {
     googleClicks: number;
     googleSaved: number;
     errors: number;
+    installedPassesCount: number;
+    registeredDevicesCount: number;
   }> {
     const conditions = [eq(walletEvents.companyId, companyId)];
     if (from) conditions.push(gte(walletEvents.createdAt, from));
@@ -340,6 +342,25 @@ export const walletPassService = {
       .from(walletMembers)
       .where(eq(walletMembers.companyId, companyId));
 
+    // Count passes with "installed" status (Apple) or "saved" status (Google)
+    const [installedPassesResult] = await db.select({ count: count() })
+      .from(walletPasses)
+      .where(and(
+        eq(walletPasses.companyId, companyId),
+        or(
+          eq(walletPasses.appleStatus, "installed"),
+          eq(walletPasses.googleStatus, "saved")
+        )
+      ));
+
+    // Count unique registered devices (actual installs confirmed by Apple callback)
+    const registeredDevicesResult = await db.execute(sql`
+      SELECT COUNT(DISTINCT wd.id) as count
+      FROM wallet_devices wd
+      JOIN wallet_passes wp ON wp.id = wd.wallet_pass_id
+      WHERE wp.company_id = ${companyId}
+    `);
+
     return {
       totalMembers: Number(membersResult?.count || 0),
       totalLinks: Number(linksResult?.count || 0),
@@ -349,6 +370,8 @@ export const walletPassService = {
       googleClicks: counts["google_save_clicked"] || 0,
       googleSaved: counts["google_saved_confirmed"] || 0,
       errors: (counts["apple_pass_error"] || 0) + (counts["google_error"] || 0),
+      installedPassesCount: Number(installedPassesResult?.count || 0),
+      registeredDevicesCount: Number((registeredDevicesResult.rows[0] as any)?.count || 0),
     };
   },
 
