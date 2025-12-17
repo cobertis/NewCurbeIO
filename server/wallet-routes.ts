@@ -454,7 +454,10 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
         return res.status(404).send("Pass not found or revoked");
       }
 
-      if (!appleWalletService.isConfigured()) {
+      // Load tenant-specific wallet settings from database
+      const settings = await walletPassService.getWalletSettings(link.companyId);
+      
+      if (!appleWalletService.isConfiguredWithSettings(settings)) {
         return res.status(503).send("Apple Wallet not configured");
       }
 
@@ -465,6 +468,7 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
         pass,
         member,
         webServiceUrl: `${getBaseUrl()}/api/passkit/v1`,
+        settings,
       });
 
       res.setHeader("Content-Type", "application/vnd.apple.pkpass");
