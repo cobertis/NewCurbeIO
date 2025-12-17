@@ -12210,7 +12210,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             description: reminder.description,
             priority: reminder.priority,
             status: 'pending', // Reset to pending for duplicated quote
-            category: reminder.category,
+            timezone: reminder.timezone,
+            reminderType: reminder.reminderType || "other",
           });
         }
 
@@ -16989,7 +16990,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             description: reminder.description,
             priority: reminder.priority,
             status: 'pending', // Reset to pending for duplicated policy
-            category: reminder.category,
+            timezone: reminder.timezone,
+            reminderType: reminder.reminderType || "other",
           });
         }
 
