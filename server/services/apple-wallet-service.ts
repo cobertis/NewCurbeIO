@@ -167,46 +167,33 @@ export const appleWalletService = {
       wwdr: wwdrBuffer,
     };
 
-    // Create PKPass with empty buffers and certificates
-    // Then set ALL properties directly on the instance including type
-    const pkpass = new PKPass({}, certificates);
-    
-    // Set all required pass properties directly on the instance
-    (pkpass as any).formatVersion = 1;
-    (pkpass as any).passTypeIdentifier = passTypeId;
-    (pkpass as any).teamIdentifier = teamId;
-    (pkpass as any).serialNumber = pass.serialNumber;
-    (pkpass as any).authenticationToken = authToken;
-    (pkpass as any).webServiceURL = webServiceUrl;
-    (pkpass as any).organizationName = branding.name;
-    (pkpass as any).description = `${branding.name} Member Card`;
-    (pkpass as any).backgroundColor = hexToRgb(branding.primaryColor || "#1a1a2e");
-    (pkpass as any).foregroundColor = hexToRgb(branding.secondaryColor || "#ffffff");
-    (pkpass as any).labelColor = hexToRgb(branding.secondaryColor || "#ffffff");
-    (pkpass as any).barcodes = passData.barcodes;
-    
-    // Set the pass type (generic) - this is required for type detection
-    (pkpass as any).type = "generic";
-    (pkpass as any).generic = passData.generic;
+    // Build the template with pass.json as a buffer - this is REQUIRED for type detection
+    // passkit-generator v3.5.6 reads the type from the template's pass.json, not from overrides
+    const template: Record<string, Buffer> = {
+      "pass.json": Buffer.from(JSON.stringify(passData)),
+    };
 
-    // Add images if they exist
+    // Add images to the template if they exist
     const iconPath = path.join(process.cwd(), "attached_assets", "pass-icon.png");
     const icon2xPath = path.join(process.cwd(), "attached_assets", "pass-icon@2x.png");
     const logoPath = path.join(process.cwd(), "attached_assets", "pass-logo.png");
     const logo2xPath = path.join(process.cwd(), "attached_assets", "pass-logo@2x.png");
 
     if (fs.existsSync(iconPath)) {
-      pkpass.addBuffer("icon.png", fs.readFileSync(iconPath));
+      template["icon.png"] = fs.readFileSync(iconPath);
     }
     if (fs.existsSync(icon2xPath)) {
-      pkpass.addBuffer("icon@2x.png", fs.readFileSync(icon2xPath));
+      template["icon@2x.png"] = fs.readFileSync(icon2xPath);
     }
     if (fs.existsSync(logoPath)) {
-      pkpass.addBuffer("logo.png", fs.readFileSync(logoPath));
+      template["logo.png"] = fs.readFileSync(logoPath);
     }
     if (fs.existsSync(logo2xPath)) {
-      pkpass.addBuffer("logo@2x.png", fs.readFileSync(logo2xPath));
+      template["logo@2x.png"] = fs.readFileSync(logo2xPath);
     }
+
+    // Create PKPass with template (containing pass.json) and certificates
+    const pkpass = new PKPass(template, certificates);
 
     return pkpass.getAsBuffer();
   },
