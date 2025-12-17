@@ -50,7 +50,6 @@ import ActivateAccount from "@/pages/activate-account";
 import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
 import Onboarding from "@/pages/onboarding";
-import PublicCard from "@/pages/public-card";
 import Dashboard from "@/pages/dashboard";
 import Analytics from "@/pages/analytics";
 import Users from "@/pages/users";
@@ -1419,7 +1418,6 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/onboarding" component={Onboarding} />
-      <Route path="/p/:token" component={PublicCard} />
       <Route path="/dashboard">
         <ProtectedRoute>
           <DashboardLayout>
