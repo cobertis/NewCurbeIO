@@ -3465,6 +3465,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Don't manually save - let express-session middleware handle it automatically
       res.json({
         success: true,
+        requiresOtp: true,
         user: {
           id: user.id,
           email: user.email,
