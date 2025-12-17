@@ -8415,18 +8415,19 @@ export default function PoliciesPage() {
                                 <div className="px-4 py-2 border-t border-border/40 flex items-center justify-end gap-1.5 bg-muted/10">
                                   <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => { 
                                     setEditingPlanId(policyPlan.id); 
+                                    const premiumValue = plan.premium_w_credit !== undefined ? plan.premium_w_credit : plan.premium;
                                     setSimplePlanFormData({
-                                      planId: policyPlan.planId || '',
-                                      carrier: policyPlan.carrierName || '',
-                                      planName: policyPlan.planName || '',
-                                      metalLevel: policyPlan.metalLevel || '',
-                                      planType: policyPlan.planType || '',
-                                      monthlyPayment: policyPlan.monthlyPremium?.toString() || '',
-                                      originalPrice: policyPlan.originalPrice?.toString() || '',
-                                      marketplaceId: policyPlan.marketplaceId || '',
-                                      memberId: policyPlan.memberId || '',
-                                      effectiveDate: policyPlan.effectiveDate || '',
-                                      expirationDate: policyPlan.expirationDate || '',
+                                      planId: plan.id || policyPlan.planId || '',
+                                      carrier: plan.issuer?.name || policyPlan.carrierName || '',
+                                      planName: plan.name || policyPlan.planName || '',
+                                      metalLevel: plan.metal_level || policyPlan.metalLevel || '',
+                                      planType: plan.type || policyPlan.planType || '',
+                                      monthlyPayment: premiumValue?.toString() || policyPlan.monthlyPremium?.toString() || '',
+                                      originalPrice: plan.premium?.toString() || policyPlan.originalPrice?.toString() || '',
+                                      marketplaceId: plan.marketplaceId || policyPlan.marketplaceId || '',
+                                      memberId: plan.memberId || policyPlan.memberId || '',
+                                      effectiveDate: plan.effectiveDate || policyPlan.effectiveDate || '',
+                                      expirationDate: plan.expirationDate || policyPlan.expirationDate || '',
                                     });
                                     setManualPlanDialogOpen(true); 
                                   }} data-testid={`button-edit-plan-${policyPlan.id}`}>
