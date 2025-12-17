@@ -268,6 +268,7 @@ async function generateAudioWaveform(audioPath: string, targetSamples: number = 
         // Sustain phase (10-80%) - vary around 160
         amplitude = 160 + Math.floor(Math.sin(position * 20) * 40);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Decay phase (80-100%)
         amplitude = Math.floor(((1 - position) / 0.2) * 160);
       }
@@ -307,6 +308,7 @@ async function convertWebMToCAF(inputPath: string, tryOpus: boolean = true): Pro
         ]);
       console.log('[FFmpeg] Converting to Opus @ 24kHz (iMessage native format)');
     } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
       // AAC-LC @ 44.1kHz - fallback format
       ffmpegCommand
         .audioCodec('aac')
@@ -367,6 +369,7 @@ async function convertWebMToCAF(inputPath: string, tryOpus: boolean = true): Pro
           }
 
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           reject(new Error(`FFmpeg conversion failed: ${err.message}`));
         }
 
@@ -420,6 +423,7 @@ async function ensureUserSlug(userId: string, companyId: string): Promise<string
       if (error.message === "No values to set") {
         console.log(`[ensureUserSlug] ✓ Slug already correct in DB: ${finalSlug}`);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         throw error;
       }
     }
@@ -514,6 +518,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.log(`[EMAIL] Payment confirmation sent to ${user.email}`);
           successCount++;
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           console.error(`[EMAIL] Failed to send payment confirmation to ${user.email}`);
         }
 
@@ -605,6 +610,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.log(`[EMAIL] Payment failed notification sent to ${user.email}`);
           successCount++;
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           console.error(`[EMAIL] Failed to send payment failed notification to ${user.email}`);
         }
 
@@ -883,10 +889,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
 
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           console.warn(`[BIRTHDAY MMS] Pending message not found or ID mismatch for MMS SID: ${MessageSid}`);
         }
 
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Regular campaign SMS status update
         await storage.updateCampaignSmsMessageStatus(
           MessageSid, 
@@ -970,6 +978,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
             console.log(`[TWILIO STOP] Created ${adminUsers.length} admin notification(s) for blacklist action`);
           } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
             console.log(`[TWILIO STOP] No company context for ${From}, blacklist skipped`);
           }
 
@@ -986,6 +995,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (superadmins.length === 0) {
           console.log("[TWILIO INCOMING] No superadmins found for notifications");
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           // Get sender name or format phone number
           const senderName = matchedUser && matchedUser.firstName && matchedUser.lastName
             ? `${matchedUser.firstName} ${matchedUser.lastName}` 
@@ -1074,6 +1084,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           ext = normalizedExt;
           console.log(`[iMessage Attachment] Normalized MIME type ${attachment.mimeType} → .${ext}`);
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           // Fallback to MIME subtype (e.g., "image/png" → "png")
           const parts = attachment.mimeType.split('/');
           ext = parts[1] || 'bin';
@@ -1218,6 +1229,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                   }
 
                 } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
                   // Remove reaction (type 2005)
                   await storage.removeImessageReaction({
                     companyId: company.id,
@@ -1235,10 +1247,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 }
 
               } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
                 console.log(`[BlueBubbles Webhook] Original message not found for reaction: ${associatedMessageGuid}`);
               }
 
             } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
               console.log(`[BlueBubbles Webhook] Could not parse reaction emoji from: "${reactionText}"`);
             }
 
@@ -1312,6 +1326,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               console.log(`[BlueBubbles Webhook] Found pending message with clientGuid: ${tempGuid || 'text-based match'}`);
               existingMessage = pendingMessage;
             } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
               console.log(`[BlueBubbles Webhook] ⚠ No pending message found for tempGuid: ${tempGuid}`);
             }
 
@@ -1385,6 +1400,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
 
           } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
             // CRITICAL: Check if message is from us BEFORE creating to prevent duplicate broadcasts
             if (messageData.isFromMe) {
               shouldBroadcastAsNew = false;
@@ -1469,6 +1485,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 // Skip the rest - don't broadcast duplicates
                 break;
               } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
                 // Re-throw other errors
                 throw createError;
               }
@@ -1552,6 +1569,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               } else if (firstAttachment?.mimeType?.startsWith('audio/')) {
                 previewText = '🎵 Audio';
               } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
                 previewText = '📎 Attachment';
               }
 
@@ -1592,6 +1610,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               }
 
             } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
               // For our own messages (echoed by BlueBubbles), just broadcast a status update
               // This updates the existing message in the UI without duplicating it
               console.log(`[BlueBubbles Webhook] Broadcasting status update for our own message`);
@@ -1753,6 +1772,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
 
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         console.log('[iMessage] Non-audio file uploaded:', file.filename, 'Type:', file.mimetype);
       }
       // Return file info for sending via BlueBubbles
@@ -1889,6 +1909,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           ext = normalizedExt;
           console.log(`[iMessage Attachment] Normalized MIME type ${contentType} → .${ext}`);
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           // Fallback to MIME subtype (e.g., "image/png" → "png")
           const parts = contentType.split('/');
           ext = parts[1]?.split(';')[0] || 'bin'; // Remove any charset or other params
@@ -2023,6 +2044,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (allowedMimes.includes(file.mimetype)) {
         cb(null, true);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         cb(new Error('Invalid file type for iMessage'));
       }
     }
@@ -2061,15 +2083,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
 
       } else {
-        // Check if conversation already exists for this handle
-        conversation = await storage.getImessageConversationByHandle(user.companyId, to);
+        // Normalize phone number to E.164 for BlueBubbles compatibility
+        const normalizedTo = formatE164(to) || to;
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
+        // Check if conversation already exists for this handle (try both normalized and original)
+        conversation = await storage.getImessageConversationByHandle(user.companyId, normalizedTo);
         if (!conversation) {
-          // Create new conversation
+          conversation = await storage.getImessageConversationByHandle(user.companyId, to);
+        }
+        if (!conversation) {
+          // Create new conversation with normalized phone
           conversation = await storage.createImessageConversation({
             companyId: user.companyId,
-            chatGuid: `iMessage;-;${to}`,
+            chatGuid: `iMessage;-;${normalizedTo}`,
             displayName: to,
-            participants: [to],
+            participants: [normalizedTo],
             isGroup: false,
             isImessage: true,
             status: 'active',
@@ -3091,6 +3119,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           });
           await storage.createPolicyConsentEvent(consent.id, 'viewed', {});
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           await storage.updateConsentDocument(consent.id, {
             status: 'viewed',
             viewedAt: new Date(),
@@ -3168,6 +3197,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
 
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           const quote = await storage.getQuote((signedConsent as any).quoteId);
           if (quote && signedConsent.signedAt && signedConsent.createdBy) {
             const clientName = `${quote.clientFirstName || ''} ${quote.clientLastName || ''}`.trim() || 'Client';
@@ -3622,6 +3652,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } else if (resultFilter === "failed") {
         actions.push("auth_login_failed");
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         actions.push("auth_login_no_2fa", "auth_login_with_otp", "auth_login_trusted_device", "auth_login_failed");
       }
       // Get all activity logs matching criteria (last 1000)
@@ -4411,6 +4442,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.log("[GOOGLE_AUTH] Existing user logged in:", user.email);
         return res.redirect('/dashboard');
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // New user - redirect to register with pre-filled data
         const registerParams = new URLSearchParams({
           email: googleUser.email,
@@ -5189,6 +5221,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } else if (currentUser.companyId) {
         users = await storage.getUsersByCompany(currentUser.companyId);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         users = [];
       }
       res.json({ users });
@@ -5370,6 +5403,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } else if (currentUser.companyId) {
       users = await storage.getUsersByCompany(currentUser.companyId);
     } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
       users = [];
     }
     const stats = {
@@ -5413,6 +5447,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Superadmin without companyId gets global stats
         users = await storage.getAllUsers();
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         users = [];
       }
       // Get company count (superadmin only, when viewing global stats)
@@ -5530,6 +5565,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           month = parseInt(parts[1], 10) - 1; // Month is 0-indexed in JS
           day = parseInt(parts[2], 10);
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           // If it's a Date object
           month = dateOfBirth.getMonth();
           day = dateOfBirth.getDate();
@@ -6319,6 +6355,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         } else if (!findResult.success) {
           console.warn(`[Custom Domain] Failed to search Cloudflare: ${findResult.error}`);
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           console.log(`[Custom Domain] Hostname not found in Cloudflare, may already be deleted`);
         }
       }
@@ -6331,6 +6368,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.warn("[Custom Domain] Failed to delete from Cloudflare:", result.error);
           // Continue anyway to clean up DB
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           console.log(`[Custom Domain] Successfully deleted from Cloudflare: ${hostnameIdToDelete}`);
         }
       }
@@ -6804,6 +6842,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             const updated = await storage.updatePlan(existingPlan.id, product.planData);
             results.updated.push(updated);
           } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
             // Create new plan
             console.log(`[SYNC-FROM-STRIPE] Creating new plan: ${product.productName}`);
             const created = await storage.createPlan(product.planData);
@@ -6947,11 +6986,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const invoices = await storage.getInvoicesByCompany(companyId);
         res.json({ invoices });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Get ALL invoices from ALL companies
         const invoices = await storage.getAllInvoices();
         res.json({ invoices });
       }
     } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
       // Non-superadmins can only see their company's invoices
       const companyId = currentUser.companyId;
       if (!companyId) {
@@ -7051,6 +7092,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         await storage.updateCompany(companyId, { stripeCustomerId });
         console.log('[SUBSCRIPTION] Stripe customer created:', stripeCustomerId);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         console.log('[SUBSCRIPTION] Using existing Stripe customer:', stripeCustomerId);
       }
       // Check if company already has a subscription
@@ -7138,6 +7180,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
         res.json({ subscription: updatedSubscription });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Create new subscription
         const newSubscription = await storage.createSubscription({
           companyId,
@@ -7198,6 +7241,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
 
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         stripePriceId = plan.stripePriceId;
       }
       // Verify plan has Stripe price configured
@@ -7231,6 +7275,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!stripeCustomerId) {
         stripeCustomerId = await createNewStripeCustomer();
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Verify the Stripe customer still exists
         try {
           const { getStripeClient } = await import("./stripe");
@@ -7245,6 +7290,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             console.log('[SELECT-PLAN] Stripe customer not found, creating new one');
             stripeCustomerId = await createNewStripeCustomer();
           } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
             throw stripeError;
           }
         }
@@ -7262,6 +7308,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           if (cancelError.code === 'resource_missing') {
             console.log('[SELECT-PLAN] Subscription already canceled in Stripe, continuing...');
           } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
             throw cancelError; // Re-throw if it's a different error
           }
 
@@ -7343,6 +7390,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // NOT when changing plans, NOT when updating, ONLY on initial creation
         res.json({ subscription: updatedSubscription });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Create new subscription
         const newSubscription = await storage.createSubscription({
           companyId,
@@ -7592,6 +7640,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (emailSent) {
         res.json({ success: true, message: "Invoice sent successfully" });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         res.status(500).json({ message: "Failed to send invoice email" });
       }
     } catch (error: any) {
@@ -7677,6 +7726,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
         });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Manual subscription (no Stripe), return local data only
         res.json({ 
           subscription: {
@@ -7801,6 +7851,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             oneYearFromNow.setFullYear(oneYearFromNow.getFullYear() + 1);
             updateData.currentPeriodEnd = oneYearFromNow;
           } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
             updateData.currentPeriodEnd = toDate(updatedSubscription.current_period_end);
           }
         }
@@ -8158,6 +8209,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
           });
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           // No discount in Stripe - update local status if needed
           if (activeDiscount) {
             await storage.updateDiscountStatus(activeDiscount.id, 'expired');
@@ -8167,6 +8219,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
 
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         res.json({ discount: null });
       }
     } catch (error: any) {
@@ -8620,6 +8673,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           postalCode,
         }, userId);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Create new address for this user
         billingAddress = await storage.createBillingAddress({
           companyId,
@@ -8892,6 +8946,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                   stripeInvoice.payment_method_types?.[0] || 'card'
                 );
               } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
                 console.log('[WEBHOOK] No payment intent found, skipping payment record creation');
               }
 
@@ -8899,6 +8954,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               if (amountInCents === 0) {
                 console.log('[WEBHOOK] Skipping notifications and emails for $0.00 invoice:', invoice.invoiceNumber);
               } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
                 // Send notification and email (only once per payment)
                 console.log('[WEBHOOK] Sending payment success notification to company:', invoice.companyId);
                 const { notificationService } = await import("./notification-service");
@@ -8921,12 +8977,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 if (emailSent) {
                   console.log('[EMAIL] Payment confirmation email sent successfully');
                 } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
                   console.error('[EMAIL] Failed to send payment confirmation email');
                 }
 
               }
 
             } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
               console.error('[WEBHOOK] Invoice sync failed - invoice is null');
             }
 
@@ -8948,6 +9006,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               if (amountInCents === 0) {
                 console.log('[WEBHOOK] Skipping notifications and emails for $0.00 failed invoice:', invoice.invoiceNumber);
               } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
                 // Use deduplication to prevent duplicate notifications if webhook retries
                 const notificationKey = `payment_failed_notification_${invoice.id}`;
                 const now = Date.now();
@@ -8975,12 +9034,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                   if (emailSent) {
                     console.log('[EMAIL] Payment failed email sent successfully');
                   } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
                     console.error('[EMAIL] Failed to send payment failed email');
                   }
 
                   // Mark as sent
                   (global as any)[notificationKey] = now;
                 } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
                   console.log('[WEBHOOK] Skipping duplicate payment failed notification for invoice:', invoice.id);
                 }
 
@@ -9025,6 +9086,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             if (amountInCents === 0) {
               console.log('[WEBHOOK] Skipping notifications and emails for $0.00 payment intent:', paymentIntent.id);
             } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
               // Use deduplication to prevent duplicate notifications if webhook retries
               const notificationKey = `payment_intent_failed_${paymentIntent.id}`;
               const now = Date.now();
@@ -9042,12 +9104,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 if (emailSent) {
                   console.log('[EMAIL] Payment failed email sent successfully for payment intent');
                 } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
                   console.error('[EMAIL] Failed to send payment failed email for payment intent');
                 }
 
                 // Mark as sent
                 (global as any)[notificationKey] = now;
               } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
                 console.log('[WEBHOOK] Skipping duplicate payment failed notification for payment intent:', paymentIntent.id);
               }
 
@@ -9096,6 +9160,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "Email service connected successfully" 
         });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         res.status(500).json({ 
           success: false, 
           message: "Email service not configured or connection failed" 
@@ -9131,6 +9196,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: `Test email sent successfully to ${to}` 
         });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         res.status(500).json({ 
           success: false, 
           message: "Failed to send test email" 
@@ -9168,6 +9234,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (success) {
         res.json({ success: true });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         res.status(404).json({ message: "Notification not found" });
       }
     } catch (error) {
@@ -9198,6 +9265,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (success) {
         res.json({ success: true });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         res.status(500).json({ message: "Failed to delete notification" });
       }
     } catch (error) {
@@ -9641,11 +9709,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (companyId) {
           logs = await storage.getActivityLogsByCompany(companyId, limit);
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           // Get all logs (we need to add this method to storage)
           logs = await storage.getAllActivityLogs(limit);
         }
 
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Regular users can only see their company's logs
         if (!currentUser.companyId) {
           return res.status(403).json({ message: "No company associated" });
@@ -9718,6 +9788,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (success) {
         res.json({ success: true, message: "Email resent successfully" });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         res.status(500).json({ message: "Failed to resend email" });
       }
     } catch (error: any) {
@@ -9980,6 +10051,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const listMembers = await storage.getListMembers(campaign.targetListId);
         recipients = listMembers.filter(u => u.phone);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         const allUsers = await storage.getAllUsers();
         recipients = allUsers.filter(u => u.phone);
       }
@@ -10216,6 +10288,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (error.code === '23505') {
         res.status(409).json({ message: "Contact with this email or phone already exists" });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         res.status(500).json({ message: "Failed to create contact" });
       }
     }
@@ -10262,6 +10335,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (error.code === '23505') {
         res.status(409).json({ message: "Contact with this email or phone already exists" });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         res.status(500).json({ message: "Failed to update contact" });
       }
     }
@@ -10743,6 +10817,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         );
         console.log(`[TRACKING] First open recorded for user ${userId} in campaign ${campaignId}`);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         console.log(`[TRACKING] Duplicate open ignored for user ${userId} in campaign ${campaignId}`);
       }
       // Return transparent 1x1 pixel GIF
@@ -11119,6 +11194,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentUser.role === "superadmin") {
         companyId = req.query.companyId as string | undefined;
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         companyId = currentUser.companyId || undefined;
       }
       const conversations = await storage.getChatConversations(companyId);
@@ -11142,6 +11218,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentUser.role === "superadmin") {
         companyId = req.query.companyId as string | undefined;
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         companyId = currentUser.companyId || undefined;
       }
       const conversations = await storage.getChatConversations(companyId);
@@ -11239,6 +11316,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             twilioSid: twilioResult.sid
           });
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           throw new Error("Failed to send SMS");
         }
 
@@ -11385,6 +11463,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (companyId) {
         await storage.deleteConversation(phoneNumber, companyId);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Delete conversation for all companies (superadmin only)
         await storage.deleteConversationAll(phoneNumber);
       }
@@ -11424,6 +11503,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // First quote for this client
           uniqueQuotesMap.set(clientIdentifier, quote);
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           // Keep the most recent quote (by updatedAt or createdAt)
           const existingDate = new Date(existing.updatedAt || existing.createdAt);
           const currentDate = new Date(quote.updatedAt || quote.createdAt);
@@ -11634,6 +11714,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
 
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // User does NOT have viewAllCompanyData permission - filter by their agentId
         options.agentId = currentUser.id;
       }
@@ -14001,6 +14082,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         cb(new Error('Invalid file type. Allowed types: PDF, images (JPEG, PNG, GIF, WebP), and Office documents (DOCX, XLSX, PPTX).'));
       }
     }
@@ -16301,6 +16383,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // First policy for this client
           uniquePoliciesMap.set(clientIdentifier, policy);
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           // Keep the most recent policy (by effective date)
           const existingDate = new Date(existing.effectiveDate);
           const currentDate = new Date(policy.effectiveDate);
@@ -16491,6 +16574,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
 
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // User does NOT have viewAllCompanyData permission - filter by their agentId
         options.agentId = currentUser.id;
       }
@@ -17285,6 +17369,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.log(`[RENEWAL] Skipping CMS API call - missing required fields (ZIP: ${!!quoteData.zipCode}, County: ${!!quoteData.county}, State: ${!!quoteData.state}, DOB: ${!!quoteData.client.dateOfBirth})`);
         plansFetchWarning = "Missing required policy information for automatic plan search. Please complete the policy details and search for 2026 plans manually.";
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Best-effort attempt to fetch plans - don't fail renewal if this fails
         try {
           plans2026Data = await fetchMarketplacePlans(quoteData, undefined, undefined, 2026);
@@ -17784,6 +17869,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             await apnsService.sendPassAlertByMemberId(walletMember.id, `Plan updated at ${timestamp}`);
             console.log(`[Wallet Sync] Updated pass for member ${walletMember.memberId}`);
           } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
             console.log(`[Wallet Sync] No wallet member found for planId: ${planId} or memberId: ${memberIdFromPlan}`);
           }
         } catch (walletError) {
@@ -19958,6 +20044,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (policy.annualHouseholdIncome) {
         totalIncome = Number(policy.annualHouseholdIncome);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         const incomePromises = members.map(member => 
           storage.getPolicyMemberIncome(member.id, policy.companyId)
         );
@@ -20130,6 +20217,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         totalIncome = Number(policy.annualHouseholdIncome);
         console.log(`[MARKETPLACE_PLANS] Using policy annualHouseholdIncome: $${totalIncome}`);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Calculate from policy members' income records
         const incomePromises = members.map(member => 
           storage.getPolicyMemberIncome(member.id, policy.companyId)
@@ -21472,6 +21560,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               // USA number without country code
               e164Phone = `+1${cleanPhone}`;
             } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
               // Invalid format - log and skip
               console.error(`Invalid phone number format: ${data.phone} (${cleanPhone})`);
               throw new Error('Invalid phone number format');
@@ -21500,6 +21589,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             if (smsResult) {
               console.log(`✅ SMS confirmation sent successfully to ${e164Phone}`);
             } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
               console.error(`❌ SMS confirmation failed for ${e164Phone}`);
             }
 
@@ -21728,6 +21818,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Update existing
         availability = await storage.updateAppointmentAvailability(currentUser.id, data);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Create new
         availability = await storage.createAppointmentAvailability({
           ...data,
@@ -22159,6 +22250,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             if (cnamResult.success) {
               console.log(`[BulkVS] CNAM updated successfully for ${phoneNumber.did}: "${cnamResult.cnam}"`);
             } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
               console.warn(`[BulkVS] CNAM saved locally but not updated in portal: ${cnamResult.message}`);
             }
 
@@ -22184,6 +22276,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             const forwardResult = await bulkVSClient.updateCallForwarding(phoneNumber.did, forwardTo);
             console.log(`[BulkVS] Call forwarding updated successfully for ${phoneNumber.did}:`, forwardResult.message);
           } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
             // Disable call forwarding
             const forwardResult = await bulkVSClient.updateCallForwarding(phoneNumber.did, null);
             console.log(`[BulkVS] Call forwarding disabled for ${phoneNumber.did}`);
@@ -22388,6 +22481,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
 
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         console.log(`[REACTIVATION] ✓ Reusing existing webhook: ${webhookName}`);
         // Reconstruct webhookUrl from existing token
         webhookUrl = `${baseDomain}/${company.slug}/${webhookToken}`;
@@ -22445,6 +22539,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (products.data.length > 0) {
           product = products.data[0];
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           product = await stripe.products.create({
             name: "BulkVS Phone Number",
             description: "Dedicated phone number for SMS/MMS messaging",
@@ -22465,6 +22560,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (prices.data.length > 0) {
           price = prices.data[0];
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           price = await stripe.prices.create({
             product: product.id,
             unit_amount: Math.round(monthlyPrice * 100),
@@ -22575,6 +22671,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (isNewFormat) {
         console.log("[BulkVS Webhook] Detected NEW format with structured data");
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         console.log("[BulkVS Webhook] Detected OLD/legacy format");
       }
       // Handle incoming message - Support BOTH webhook formats
@@ -22594,6 +22691,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
         mediaType = data.type; // "SMS" or "MMS"
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // OLD FORMAT: { From, To, Message, RefId, MediaUrl, DeliveryReceipt }
         rawFrom = payload.From || payload.from;
         rawTo = (payload.To || payload.to)?.[0] || phoneNumber.did;
@@ -22640,6 +22738,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           mediaUrl = payload.mediaUrl;
           console.log("[BulkVS Webhook] OLD FORMAT - mediaUrl lowercase:", payload.mediaUrl);
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           mediaUrl = null;
         }
 
@@ -22703,6 +22802,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             lastMessagePreview: body?.substring(0, 100) || "[Media]",
           });
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           // Update thread with latest message info
           await storage.updateBulkvsThread(thread.id, {
             lastMessageAt: new Date(),
@@ -22768,6 +22868,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         broadcastBulkvsThreadUpdate(thread.userId, updatedThread);
         console.log(`[BulkVS Webhook] Message saved: ${message.id}`);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         console.log("[BulkVS Webhook] Skipping - no valid message data");
       }
       // Handle DLR (Delivery Receipt)
@@ -22836,6 +22937,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             lastMessagePreview: body?.substring(0, 100) || "[Media]",
           });
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           // Update thread with latest message info
           await storage.updateBulkvsThread(thread.id, {
             lastMessageAt: new Date(),
@@ -22901,6 +23003,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         broadcastBulkvsThreadUpdate(thread.userId, updatedThread);
         console.log(`[BulkVS Webhook] Message saved: ${message.id}`);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         console.log("[BulkVS Webhook] Skipping - no valid message data");
       }
       // Handle DLR (Delivery Receipt)
@@ -23010,6 +23113,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
         phoneNumber = await storage.getBulkvsPhoneNumber(thread.phoneNumberId);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Create new thread - need to get user's phone number
         const userPhones = await storage.getBulkvsPhoneNumbersByUser(user.id);
         if (userPhones.length === 0) {
@@ -23570,10 +23674,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               const appUrl = replitDomain ? `https://${replitDomain}` : (process.env.APP_URL || 'https://app.curbe.io');
               imageUrl = `${appUrl}${rawUrl}`;
             } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
               imageUrl = rawUrl;
             }
 
           } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
             const image = await storage.getBirthdayImage(settings.selectedImageId);
             if (image && image.isActive) {
               let rawUrl = image.imageUrl;
@@ -23647,6 +23753,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
 
           } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
             // No image, send SMS directly
             console.log(`[TEST] Sending SMS (no image)`);
             const smsResult = await twilioService.sendSMS(birthday.phone, messageBody, undefined, user.companyId);
@@ -23926,6 +24033,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           customMessage: customMessage ?? "🎉 ¡Feliz Cumpleaños {CLIENT_NAME}! 🎂\n\nTe deseamos el mejor de los éxitos en este nuevo año de vida.\n\nTe saluda {AGENT_NAME}, tu agente de seguros. 🎊",
         });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Update existing settings
         settings = await storage.updateUserBirthdaySettings(user.id, {
           isEnabled,
@@ -25051,6 +25159,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           .where(eq(whatsappContacts.id, existingContact.id));
         contactId = existingContact.id;
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         const [newContact] = await db.insert(whatsappContacts).values({
           instanceId: instance.id,
           companyId: user.companyId,
@@ -25110,6 +25219,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           .where(eq(whatsappContacts.id, existingContact.id));
         contactId = existingContact.id;
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         const [newContact] = await db.insert(whatsappContacts).values({
           instanceId: instance.id,
           companyId: user.companyId,
@@ -25304,6 +25414,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }).returning();
         conversation = newConvo;
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         await db.update(whatsappConversations)
           .set({ 
             lastMessageAt: new Date(),
@@ -25391,6 +25502,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }).returning();
         conversation = newConvo;
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         await db.update(whatsappConversations)
           .set({ 
             lastMessageAt: new Date(),
@@ -25466,6 +25578,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }).returning();
         conversation = newConvo;
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         await db.update(whatsappConversations)
           .set({ 
             lastMessageAt: new Date(),
@@ -25533,6 +25646,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // Use the phone-based remoteJid
           remoteJid = contactWithLid.remoteJid;
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           // Check if this @lid is stored as a remoteJid with businessPhone
           const contactByRemoteJid = await db.query.whatsappContacts.findFirst({
             where: and(
@@ -25546,6 +25660,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             const phoneNumber = contactByRemoteJid.businessPhone.replace(/\D/g, '');
             remoteJid = `${phoneNumber}@s.whatsapp.net`;
           } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
             // Cannot send typing to @lid without phone mapping - skip silently
             return res.json({ success: true, skipped: true });
           }
@@ -25742,6 +25857,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                   });
                   synced++;
                 } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
                   // Update existing conversation with latest message info
                   await db.update(whatsappConversations)
                     .set({
@@ -25921,6 +26037,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               }
 
             } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
               // Update with senderPn phone immediately
               await db.update(whatsappContacts)
                 .set({
@@ -25954,6 +26071,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }).returning();
             conversation = newConvo;
           } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
             // Only update conversation if this message is newer
             if (!conversation.lastMessageAt || timestamp > new Date(conversation.lastMessageAt)) {
               await db.update(whatsappConversations)
@@ -25993,6 +26111,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 mediaUrl = `data:${mediaData.mimetype};base64,${mediaData.base64}`;
                 console.log(`[WhatsApp Webhook] Media saved as Data URI: ${mediaData.mimetype}`);
               } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
                 console.log(`[WhatsApp Webhook] No media data returned for ${messageId}`);
               }
 
@@ -26092,6 +26211,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               remoteJid = contactWithLid.remoteJid;
               console.log(`[WhatsApp Webhook] Mapped @lid ${presenceData.id} to remoteJid ${remoteJid} via lid column`);
             } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
               // LID not in database yet - try to fetch from Evolution API whatsappNumbers endpoint
               try {
                 console.log(`[WhatsApp Webhook] LID ${presenceData.id} not found in DB, querying Evolution API...`);
@@ -26213,6 +26333,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           });
           synced++;
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           // Update existing conversation with latest message info
           await db.update(whatsappConversations)
             .set({
@@ -26601,6 +26722,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             broadcastNewVoicemailToUser(phoneNumber.ownerUserId, fromNumber, callerName);
           }
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           console.warn("[Telnyx Voicemail] No phone number found for", toNumber);
         }
       }
@@ -27300,6 +27422,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   </Dial>
 </Response>`;
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Route to WebRTC client using <Client> tag (NOT <Sip>)
         // <Client> connects to registered SIP/WebRTC users on the same account
         console.log("[Telnyx Voice] Sending TeXML to ring WebRTC client");
@@ -28010,6 +28133,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             metadata: success ? null : { reason },
           });
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           const credential = await db.query.systemApiCredentials.findFirst({
             where: eq(systemApiCredentials.id, id),
           });
@@ -28690,6 +28814,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Don't fail the purchase, but log the error - number is already purchased from Telnyx
         // The monthly billing job will pick it up later if local record is missing
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         console.log(`[Billing] Successfully charged $${billingResult.amountCharged?.toFixed(2)} for ${phoneNumber}`);
       }
       // Auto-enable CNAM listing with company name (truncated to 15 chars)
@@ -28704,6 +28829,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               if (cnamResult.success) {
                 console.log(`[Telnyx CNAM] Auto-enabled CNAM successfully for ${phoneNumber}`);
               } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
                 console.warn(`[Telnyx CNAM] Failed to auto-enable CNAM: ${cnamResult.error}`);
               }
             }
@@ -28737,6 +28863,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               if (provResult.success) {
                 console.log("[Provisioning] WebRTC infrastructure auto-provisioned for company:", user.companyId);
               } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
                 console.error("[Provisioning] Auto-provision failed for company:", user.companyId, "error:", provResult.error);
               }
             })
@@ -28744,11 +28871,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               console.error("[Provisioning] Auto-provision error for company:", user.companyId, err);
             });
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           console.warn("[Provisioning] Cannot auto-provision - no managed account ID found for company:", user.companyId, "- phone system setup may be incomplete");
         }
       } else if (existingStatus?.status === "pending" || existingStatus?.status === "in_progress") {
         console.log("[Provisioning] Skipping auto-provision for company:", user.companyId, "- provisioning job already running (status:", existingStatus.status, ")");
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         console.log("[Provisioning] Skipping auto-provision for company:", user.companyId, "- already completed");
       }
 
@@ -28980,6 +29109,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           targetConnectionId = userExtension.connectionId;
         }
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // User is being unassigned - use the company's main credential connection
         const [settings] = await db
           .select({ credentialConnectionId: telephonySettings.credentialConnectionId })
@@ -29013,6 +29143,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               const errorText = await response.text();
               console.error(`[Telnyx Assign] Failed to update connection in Telnyx: ${response.status} - ${errorText}`);
             } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
               console.log(`[Telnyx Assign] Successfully updated connection in Telnyx to ${targetConnectionId}`);
               
               // Update local database with new connection ID
@@ -29520,6 +29651,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (direction === "both") {
           noiseSuppressionLevel = "both";
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           noiseSuppressionLevel = direction;
         }
       }
@@ -29639,6 +29771,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           .where(eq(telephonySettings.companyId, user.companyId))
           .returning();
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Insert new settings with billing features
         [updatedSettings] = await db.insert(telephonySettings)
           .values({
@@ -29663,6 +29796,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!syncResult.success) {
         console.warn(`[Billing Features] Sync to Telnyx had errors: ${syncResult.errors.join(", ")}`);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         console.log(`[Billing Features] Synced ${syncResult.syncedCount} phone numbers to Telnyx`);
       }
       
@@ -30036,6 +30170,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           .set(pricingData)
           .where(eq(telnyxGlobalPricing.id, existing.id));
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         await db.insert(telnyxGlobalPricing).values(pricingData);
       }
 
@@ -30086,6 +30221,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           if (result.success) {
             console.log("[Provisioning] WebRTC infrastructure provisioned for company:", user.companyId);
           } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
             console.error("[Provisioning] Failed for company:", user.companyId, result.error);
           }
         })
@@ -30179,6 +30315,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
         });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         res.status(500).json({ 
           success: false, 
           message: result.error || "Provisioning failed" 
@@ -30208,6 +30345,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           repairedCount: result.repairedCount
         });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         res.status(500).json({ 
           success: false, 
           message: result.errors.join(", ") || "Repair failed",
@@ -30237,6 +30375,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "TeXML webhooks fixed successfully. Inbound calls will now route to WebRTC clients."
         });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         res.status(500).json({ 
           success: false, 
           message: result.error || "Failed to fix TeXML webhooks"
@@ -30262,6 +30401,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (sipRepairResult.success) {
         console.log("[Provisioning] SIP connection settings repaired (ANI override + simultaneous ringing)");
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         console.warn("[Provisioning] SIP connection repair warning:", sipRepairResult.error);
       }
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
@@ -30273,6 +30413,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "SIP URI calling enabled successfully. Inbound calls can now reach WebRTC clients."
         });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         res.status(500).json({ 
           success: false, 
           message: result.error || "Failed to enable SIP URI calling"
@@ -30302,6 +30443,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "SRTP disabled successfully. Outbound WebRTC calls should now work."
         });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         res.status(500).json({ 
           success: false, 
           message: result.error || "Failed to disable SRTP"
@@ -30331,6 +30473,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "HD codecs configured successfully. Voice quality will now use G.722 HD audio."
         });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         res.status(500).json({ 
           success: false, 
           message: result.error || "Failed to configure HD codecs"
@@ -30361,6 +30504,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           migratedCount: result.migratedCount,
         });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         res.status(500).json({
           success: false,
           message: result.errors.join(", ") || "Migration failed",
@@ -30397,6 +30541,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Admin without specific user - get any company credentials
         targetUserId = undefined;
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Regular user - only their own credentials
         targetUserId = user.id;
       }
@@ -30503,6 +30648,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "WebRTC configuration updated successfully. Codecs: OPUS, G722, G711U, G711A. Encryption: SRTP enabled." 
         });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         res.status(500).json({ 
           success: false, 
           message: result.error || "Failed to update WebRTC configuration" 
@@ -30605,6 +30751,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.log(`[Telnyx Sync] Updated call ${matchingCalls[0].id} with recording`);
           synced++;
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           skipped++;
         }
       }
@@ -31176,6 +31323,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
         return res.json({ success: false, message: "API error: " + primaryResult.value.status });
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         console.error("[Call Control Hangup] Request failed:", primaryResult.reason);
         return res.json({ success: false, message: "Request failed" });
       }
@@ -31260,6 +31408,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           activeCallsMap.delete(credential.sipUsername);
           return res.json({ success: true, message: "PSTN call terminated" });
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           const errorText = await hangupResponse.text();
           console.error("[WebRTC Server Hangup] Telnyx API error:", hangupResponse.status, errorText);
           // Keep the call in activeCallsMap for retry
@@ -31547,6 +31696,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           .orderBy(desc(callLogs.startedAt))
           .limit(parsedLimit);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Regular users only see their own call logs (user-scoped)
         logs = await db
           .select()
@@ -31785,6 +31935,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           updateData.cost = "0.0000";
           updateData.costCurrency = "USD";
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           console.error(`[Call Logs] Failed to charge WebRTC call: ${chargeResult.error}`);
         }
       }
@@ -31844,6 +31995,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           .delete(callLogs)
           .where(eq(callLogs.companyId, user.companyId));
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Regular users can only clear their own call logs (user-scoped)
         await db
           .delete(callLogs)
@@ -32025,6 +32177,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             if (code === 0) {
               resolve(output + errorOutput);
             } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
               reject(new Error(`Command failed with code ${code}: ${errorOutput || output}`));
             }
           });
@@ -32050,6 +32203,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           const gitOutput = await runCommand("git", ["pull", "origin", "main"], appDir);
           await appendLog(gitOutput.trim() || "Git pull completed after cleanup");
         } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
           throw err;
         }
       }
@@ -32243,6 +32397,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         cb(new Error('Only MP3 and WAV audio files are allowed'));
       }
     }
@@ -32646,6 +32801,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           return res.status(400).json({ error: validation.error });
         }
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         // Auto-assign next available extension
         req.body.extension = await pbxService.getNextExtensionNumber(user.companyId);
       }
@@ -32665,6 +32821,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           if (sipResult.success) {
             console.log(`[PBX] Auto-provisioned SIP credentials for extension ${extension.extension}: ${sipResult.sipUsername}`);
           } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
             console.warn(`[PBX] Failed to auto-provision SIP credentials: ${sipResult.error}`);
           }
         } catch (sipError) {
@@ -32875,6 +33032,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           if (sipResult.success) {
             console.log(`[PBX] Auto-provisioned SIP credentials for updated extension ${extension.extension}: ${sipResult.sipUsername}`);
           } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
             console.warn(`[PBX] Failed to auto-provision SIP credentials on update: ${sipResult.error}`);
           }
         } catch (sipError) {
@@ -33492,6 +33650,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (allowedTypes.includes(file.mimetype)) {
         cb(null, true);
       } else {
+        console.log(`[iMessage] Normalizing phone: "${to}" -> "${normalizedTo}"`);
         cb(new Error("Invalid file type. Only audio files (mp3, wav, ogg, aac) are allowed."));
       }
     },
