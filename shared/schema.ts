@@ -5894,7 +5894,11 @@ export const walletMembers = pgTable("wallet_members", {
   planId: text("plan_id"),
   planName: text("plan_name"),
   monthlyPremium: text("monthly_premium"),
+  metalLevel: text("metal_level"),
+  planType: text("plan_type"),
+  effectiveDate: text("effective_date"),
   expirationDate: text("expiration_date"),
+  marketplaceId: text("marketplace_id"),
   
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),

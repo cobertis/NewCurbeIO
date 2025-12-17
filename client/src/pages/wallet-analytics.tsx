@@ -118,8 +118,12 @@ export default function WalletAnalyticsPage() {
       planId: "",
       planName: "",
       monthlyPremium: "",
-      contactId: "",
+      metalLevel: "",
+      planType: "",
+      effectiveDate: "",
       expirationDate: "",
+      marketplaceId: "",
+      contactId: "",
     },
   });
 
@@ -172,10 +176,20 @@ export default function WalletAnalyticsPage() {
     return policiesData.items.map((policy: any) => {
       // Extract insurance info from the selectedPlan JSONB field
       const selectedPlan = policy.selectedPlan || {};
-      const carrierName = selectedPlan?.issuer?.name || policy.carrierName || "";
-      const planName = selectedPlan?.name || policy.planName || "";
-      const planId = selectedPlan?.id || policy.planId || "";
-      const monthlyPremium = selectedPlan?.premium || selectedPlan?.premium_w_credit || policy.estimatedPremium || "";
+      // Get plan data from policyPlans array if available (manual entry system)
+      const policyPlan = policy.policyPlans?.[0] || {};
+      const planData = policyPlan.planData || {};
+      
+      const carrierName = planData?.issuer?.name || selectedPlan?.issuer?.name || policyPlan.carrierName || policy.carrierName || "";
+      const planName = planData?.name || selectedPlan?.name || policyPlan.planName || policy.planName || "";
+      const planId = planData?.id || selectedPlan?.id || policyPlan.planId || policy.planId || "";
+      const monthlyPremium = planData?.premium_w_credit || planData?.premium || selectedPlan?.premium_w_credit || selectedPlan?.premium || policyPlan.monthlyPremium || policy.estimatedPremium || "";
+      const memberId = planData?.memberId || policyPlan.memberId || policy.memberId || "";
+      const metalLevel = planData?.metal_level || selectedPlan?.metal_level || policyPlan.metalLevel || "";
+      const planType = planData?.plan_type || selectedPlan?.plan_type || policyPlan.planType || "";
+      const effectiveDate = planData?.effectiveDate || policyPlan.effectiveDate || policy.effectiveDate || "";
+      const expirationDate = planData?.expirationDate || policyPlan.expirationDate || policy.expirationDate || "";
+      const marketplaceId = planData?.marketplaceId || policyPlan.marketplaceId || policy.marketplaceId || "";
       
       return {
         id: policy.id, // Policy ID for display purposes only
@@ -184,11 +198,17 @@ export default function WalletAnalyticsPage() {
         lastName: policy.clientLastName || "",
         email: policy.clientEmail || "",
         phone: policy.clientPhone || "",
-        // Include policy info extracted from selectedPlan
+        // Include ALL policy info extracted from selectedPlan and policyPlans
         carrierName,
         planName,
         planId,
         monthlyPremium: String(monthlyPremium),
+        memberId,
+        metalLevel,
+        planType,
+        effectiveDate,
+        expirationDate,
+        marketplaceId,
         productType: policy.productType || "",
       };
     }).slice(0, 10);
@@ -243,7 +263,18 @@ export default function WalletAnalyticsPage() {
     }
   };
 
-  const handleSelectContact = (contact: Contact & { carrierName?: string; planName?: string; planId?: string; monthlyPremium?: string; memberId?: string; expirationDate?: string }) => {
+  const handleSelectContact = (contact: Contact & { 
+    carrierName?: string; 
+    planName?: string; 
+    planId?: string; 
+    monthlyPremium?: string; 
+    memberId?: string; 
+    metalLevel?: string;
+    planType?: string;
+    effectiveDate?: string;
+    expirationDate?: string;
+    marketplaceId?: string;
+  }) => {
     setSelectedContact(contact);
     setContactSearch("");
     form.setValue("fullName", `${contact.firstName} ${contact.lastName}`.trim());
@@ -256,7 +287,11 @@ export default function WalletAnalyticsPage() {
     if (contact.planId) form.setValue("planId", contact.planId);
     if (contact.monthlyPremium) form.setValue("monthlyPremium", String(contact.monthlyPremium));
     if (contact.memberId) form.setValue("memberId", contact.memberId);
+    if (contact.metalLevel) form.setValue("metalLevel", contact.metalLevel);
+    if (contact.planType) form.setValue("planType", contact.planType);
+    if (contact.effectiveDate) form.setValue("effectiveDate", contact.effectiveDate);
     if (contact.expirationDate) form.setValue("expirationDate", contact.expirationDate);
+    if (contact.marketplaceId) form.setValue("marketplaceId", contact.marketplaceId);
   };
 
   const handleGeneratePass = async (memberId: string) => {
@@ -915,35 +950,20 @@ export default function WalletAnalyticsPage() {
                         </div>
                       )}
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <FormField
-                          control={form.control}
-                          name="fullName"
-                          rules={{ required: "Name is required" }}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Full Name</FormLabel>
-                              <FormControl>
-                                <Input {...field} data-testid="input-member-name" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name="memberId"
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>Member ID</FormLabel>
-                              <FormControl>
-                                <Input {...field} placeholder="Auto-generated" data-testid="input-member-id" />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
+                      <FormField
+                        control={form.control}
+                        name="fullName"
+                        rules={{ required: "Name is required" }}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Full Name</FormLabel>
+                            <FormControl>
+                              <Input {...field} data-testid="input-member-name" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
 
                       <div className="grid grid-cols-2 gap-4">
                         <FormField
@@ -976,6 +996,35 @@ export default function WalletAnalyticsPage() {
 
                       <Separator />
                       <p className="text-sm font-medium text-muted-foreground">Insurance Information (for Apple Wallet)</p>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="memberId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Member ID</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="e.g., UZ120675001" data-testid="input-member-id" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="marketplaceId"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Marketplace ID</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="e.g., 6148775766" data-testid="input-marketplace-id" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
                       <FormField
                         control={form.control}
@@ -1026,7 +1075,7 @@ export default function WalletAnalyticsPage() {
                             <FormItem>
                               <FormLabel>Monthly Payment</FormLabel>
                               <FormControl>
-                                <Input {...field} placeholder="e.g., 132.44" data-testid="input-monthly-premium" />
+                                <Input {...field} placeholder="e.g., 17.25" data-testid="input-monthly-premium" />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -1034,19 +1083,63 @@ export default function WalletAnalyticsPage() {
                         />
                       </div>
 
-                      <FormField
-                        control={form.control}
-                        name="expirationDate"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Expiration Date</FormLabel>
-                            <FormControl>
-                              <Input type="date" {...field} data-testid="input-expiration-date" />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="metalLevel"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Metal Level</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="e.g., Silver, Gold, Bronze" data-testid="input-metal-level" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="planType"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Plan Type</FormLabel>
+                              <FormControl>
+                                <Input {...field} placeholder="e.g., HMO, PPO, EPO" data-testid="input-plan-type" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <FormField
+                          control={form.control}
+                          name="effectiveDate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Effective Date</FormLabel>
+                              <FormControl>
+                                <Input type="date" {...field} data-testid="input-effective-date" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="expirationDate"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Expiration Date</FormLabel>
+                              <FormControl>
+                                <Input type="date" {...field} data-testid="input-expiration-date" />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
 
                       <div className="flex gap-2 pt-2">
                         {createNewMember && !selectedContact && (
