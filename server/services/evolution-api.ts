@@ -482,13 +482,15 @@ class EvolutionApiService {
 
   async setGlobalPresence(instanceName: string, presence: "available" | "unavailable"): Promise<void> {
     try {
-      console.log(`[Evolution API] Setting GLOBAL presence to ${presence} via ${instanceName}`);
       await this.request("POST", `/instance/setPresence/${instanceName}`, {
         presence
       });
-      console.log(`[Evolution API] Global presence set to ${presence}`);
     } catch (error: any) {
-      console.error(`[Evolution API] Failed to set global presence:`, error.message);
+      // Silently ignore "Connection Closed" errors - this is a known Evolution API bug
+      // that doesn't affect actual message sending/receiving functionality
+      if (!error.message?.includes("Connection Closed")) {
+        console.error(`[Evolution API] Failed to set global presence:`, error.message);
+      }
     }
   }
 
