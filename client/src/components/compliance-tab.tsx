@@ -70,6 +70,36 @@ interface TollFreeVerificationsResponse {
   meta?: any;
 }
 
+interface TenDLCCampaign {
+  campaignId: string;
+  brandId: string;
+  usecase: string;
+  description?: string;
+  status: string;
+  createDate?: string;
+  sample1?: string;
+  sample2?: string;
+}
+
+interface CampaignsResponse {
+  campaigns: TenDLCCampaign[];
+}
+
+const USE_CASES = [
+  { value: "2FA", label: "Two-Factor Authentication", description: "OTP/verification codes" },
+  { value: "ACCOUNT_NOTIFICATION", label: "Account Notifications", description: "Account alerts and updates" },
+  { value: "CUSTOMER_CARE", label: "Customer Care", description: "Support and service messages" },
+  { value: "DELIVERY_NOTIFICATION", label: "Delivery Notifications", description: "Shipping and delivery updates" },
+  { value: "FRAUD_ALERT", label: "Fraud Alerts", description: "Security and fraud notifications" },
+  { value: "HIGHER_EDUCATION", label: "Higher Education", description: "College/university messaging" },
+  { value: "LOW_VOLUME", label: "Low Volume Mixed", description: "General low-volume messaging" },
+  { value: "MARKETING", label: "Marketing", description: "Promotional messages" },
+  { value: "MIXED", label: "Mixed", description: "Multiple use case types" },
+  { value: "POLLING_VOTING", label: "Polling & Voting", description: "Surveys and polls" },
+  { value: "PUBLIC_SERVICE_ANNOUNCEMENT", label: "Public Service Announcement", description: "PSA messages" },
+  { value: "SECURITY_ALERT", label: "Security Alerts", description: "Security notifications" },
+] as const;
+
 const ENTITY_TYPES = [
   { value: "PRIVATE_PROFIT", label: "Private For-Profit Company" },
   { value: "PUBLIC_PROFIT", label: "Public For-Profit Company" },
@@ -235,6 +265,44 @@ export function ComplianceTab() {
 
   const { data: tollFreeData, isLoading: isLoadingTollFree } = useQuery<TollFreeVerificationsResponse>({
     queryKey: ["/api/phone-system/toll-free/verifications"],
+  });
+
+  const { data: campaignsData, isLoading: isLoadingCampaigns } = useQuery<CampaignsResponse>({
+    queryKey: ["/api/phone-system/campaigns"],
+  });
+
+  const [campaignSheetOpen, setCampaignSheetOpen] = useState(false);
+  const [selectedBrandForCampaign, setSelectedBrandForCampaign] = useState<string>("");
+  const [selectedUseCase, setSelectedUseCase] = useState<string>("");
+  const [campaignDescription, setCampaignDescription] = useState<string>("");
+  const [sampleMessage1, setSampleMessage1] = useState<string>("");
+  const [sampleMessage2, setSampleMessage2] = useState<string>("");
+  const [messageFlow, setMessageFlow] = useState<string>("Customers opt-in via our website or in-person sign-up form. They can opt-out at any time by replying STOP.");
+
+  const createCampaignMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/phone-system/campaigns", {
+        brandId: selectedBrandForCampaign,
+        useCase: selectedUseCase,
+        description: campaignDescription,
+        sampleMessage1,
+        sampleMessage2,
+        messageFlow,
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/phone-system/campaigns"] });
+      toast({ title: "Campaign created", description: "Your 10DLC campaign has been submitted for approval." });
+      setCampaignSheetOpen(false);
+      setSelectedBrandForCampaign("");
+      setSelectedUseCase("");
+      setCampaignDescription("");
+      setSampleMessage1("");
+      setSampleMessage2("");
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to create campaign", description: error.message, variant: "destructive" });
+    },
   });
 
   const createProfileMutation = useMutation({
@@ -754,6 +822,169 @@ export function ComplianceTab() {
                   <><Plus className="h-4 w-4 mr-2" />Create Messaging Profile</>
                 )}
               </Button>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 10DLC Campaigns Section */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">10DLC Campaigns</h3>
+            <p className="text-sm text-slate-500 mt-1">Register messaging campaigns to enable A2P SMS on your phone numbers</p>
+          </div>
+          {brands.some(b => b.status === "OK" || b.identityStatus === "VERIFIED") && (
+            <Sheet open={campaignSheetOpen} onOpenChange={setCampaignSheetOpen}>
+              <SheetTrigger asChild>
+                <Button size="sm" data-testid="btn-open-create-campaign">
+                  <Plus className="h-4 w-4 mr-2" />Create Campaign
+                </Button>
+              </SheetTrigger>
+              <SheetContent className="w-[500px] sm:max-w-[500px] overflow-y-auto">
+                <SheetHeader>
+                  <SheetTitle>Create 10DLC Campaign</SheetTitle>
+                  <SheetDescription>
+                    Register a messaging campaign with The Campaign Registry. One-time fee: $2-10 + monthly fee.
+                  </SheetDescription>
+                </SheetHeader>
+                <div className="space-y-4 mt-6">
+                  <div className="space-y-2">
+                    <Label>Select Brand</Label>
+                    <Select value={selectedBrandForCampaign} onValueChange={setSelectedBrandForCampaign}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Choose a verified brand" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {brands.filter(b => b.status === "OK" || b.identityStatus === "VERIFIED").map(brand => (
+                          <SelectItem key={brand.brandId} value={brand.brandId || ""}>
+                            {brand.displayName}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Use Case</Label>
+                    <Select value={selectedUseCase} onValueChange={setSelectedUseCase}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select messaging use case" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {USE_CASES.map(uc => (
+                          <SelectItem key={uc.value} value={uc.value}>
+                            <div className="flex flex-col">
+                              <span>{uc.label}</span>
+                              <span className="text-xs text-slate-500">{uc.description}</span>
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Campaign Description</Label>
+                    <Input 
+                      value={campaignDescription}
+                      onChange={(e) => setCampaignDescription(e.target.value)}
+                      placeholder="Brief description of your messaging campaign"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Sample Message 1</Label>
+                    <Input 
+                      value={sampleMessage1}
+                      onChange={(e) => setSampleMessage1(e.target.value)}
+                      placeholder="Hi, this is a reminder about your appointment tomorrow at 2pm."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Sample Message 2</Label>
+                    <Input 
+                      value={sampleMessage2}
+                      onChange={(e) => setSampleMessage2(e.target.value)}
+                      placeholder="Reply STOP to unsubscribe from these messages."
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Message Flow Description</Label>
+                    <Input 
+                      value={messageFlow}
+                      onChange={(e) => setMessageFlow(e.target.value)}
+                      placeholder="Describe how customers opt-in and opt-out"
+                    />
+                    <p className="text-xs text-slate-500">Explain how users consent to receive messages and how they can stop.</p>
+                  </div>
+                  <Button 
+                    className="w-full mt-4"
+                    onClick={() => createCampaignMutation.mutate()}
+                    disabled={createCampaignMutation.isPending || !selectedBrandForCampaign || !selectedUseCase}
+                    data-testid="btn-submit-create-campaign"
+                  >
+                    {createCampaignMutation.isPending ? (
+                      <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating Campaign...</>
+                    ) : (
+                      "Submit Campaign Registration"
+                    )}
+                  </Button>
+                </div>
+              </SheetContent>
+            </Sheet>
+          )}
+        </div>
+
+        <div className="p-6">
+          {isLoadingCampaigns ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+            </div>
+          ) : campaignsData?.campaigns && campaignsData.campaigns.length > 0 ? (
+            <div className="divide-y divide-slate-100 dark:divide-slate-800">
+              {campaignsData.campaigns.map((campaign) => {
+                const status = campaign.status?.toUpperCase();
+                let statusBadge;
+                if (status === "ACTIVE" || status === "APPROVED") {
+                  statusBadge = <Badge className="bg-green-100 text-green-800 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" />Active</Badge>;
+                } else if (status === "PENDING" || status === "IN_REVIEW") {
+                  statusBadge = <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+                } else if (status === "REJECTED" || status === "FAILED") {
+                  statusBadge = <Badge className="bg-red-100 text-red-800 border-red-200"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+                } else {
+                  statusBadge = <Badge variant="outline">{campaign.status || "Unknown"}</Badge>;
+                }
+
+                return (
+                  <div key={campaign.campaignId} className="py-4 first:pt-0 last:pb-0">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-4">
+                        <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
+                          <MessageSquare className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div>
+                          <h4 className="font-semibold text-slate-900 dark:text-white">
+                            {USE_CASES.find(uc => uc.value === campaign.usecase)?.label || campaign.usecase}
+                          </h4>
+                          <p className="text-sm text-slate-500 mt-0.5">{campaign.description}</p>
+                          <p className="text-xs text-slate-400 mt-1 font-mono">Campaign ID: {campaign.campaignId}</p>
+                        </div>
+                      </div>
+                      <div className="flex flex-col items-end gap-2">
+                        {statusBadge}
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <MessageSquare className="h-12 w-12 text-slate-300 mb-4" />
+              <h4 className="text-lg font-medium text-slate-700 dark:text-slate-300">No 10DLC campaigns</h4>
+              <p className="text-sm text-slate-500 mt-1 max-w-md">
+                {brands.some(b => b.status === "OK" || b.identityStatus === "VERIFIED") 
+                  ? "Create a campaign to start sending A2P messages through your phone numbers."
+                  : "You need a verified brand before you can create a campaign."}
+              </p>
             </div>
           )}
         </div>

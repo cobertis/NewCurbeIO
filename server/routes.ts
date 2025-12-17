@@ -28904,6 +28904,142 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // ========== TOLL-FREE VERIFICATION ENDPOINTS ==========
 
+
+  // 10DLC Campaign Management
+  // GET /api/phone-system/campaigns - List 10DLC campaigns
+  app.get("/api/phone-system/campaigns", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session.user?.companyId;
+      
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey || !managedAccountId) {
+        return res.json({ campaigns: [] });
+      }
+      
+      const response = await fetch("https://api.telnyx.com/10dlc/campaign", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${telnyxApiKey}`,
+          "x-managed-account-id": managedAccountId,
+        },
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        console.error("[10DLC Campaigns] Error fetching campaigns:", error);
+        return res.json({ campaigns: [] });
+      }
+      
+      const result = await response.json();
+      console.log("[10DLC Campaigns] Response:", JSON.stringify(result, null, 2));
+      
+      res.json({ campaigns: result.records || result.data || [] });
+    } catch (error: any) {
+      console.error("Error fetching 10DLC campaigns:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/phone-system/campaigns - Create 10DLC campaign
+  app.post("/api/phone-system/campaigns", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session.user?.companyId;
+      const { brandId, useCase, description, sampleMessage1, sampleMessage2, embeddedLink, embeddedPhone, numberPool, ageGated, directLending, subscriberOptIn, subscriberOptOut, subscriberHelp, messageFlow } = req.body;
+      
+      if (!brandId || !useCase) {
+        return res.status(400).json({ message: "Brand ID and use case are required" });
+      }
+      
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey || !managedAccountId) {
+        return res.status(400).json({ message: "Telnyx not configured" });
+      }
+      
+      const campaignData = {
+        brandId,
+        usecase: useCase,
+        description: description || `${useCase} messaging campaign`,
+        sample1: sampleMessage1 || "Hi, this is a reminder about your appointment.",
+        sample2: sampleMessage2 || "Reply STOP to unsubscribe.",
+        embeddedLink: embeddedLink ?? false,
+        embeddedPhone: embeddedPhone ?? false,
+        numberPool: numberPool ?? false,
+        ageGated: ageGated ?? false,
+        directLending: directLending ?? false,
+        subscriberOptin: subscriberOptIn ?? true,
+        subscriberOptout: subscriberOptOut ?? true,
+        subscriberHelp: subscriberHelp ?? true,
+        messageFlow: messageFlow || "Customers opt-in via our website or in-person sign-up form. They can opt-out at any time by replying STOP.",
+      };
+      
+      console.log("[10DLC Campaign] Creating campaign:", campaignData);
+      
+      const response = await fetch("https://api.telnyx.com/10dlc/campaign", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${telnyxApiKey}`,
+          "x-managed-account-id": managedAccountId,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(campaignData),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        console.error("[10DLC Campaign] Error creating campaign:", result);
+        return res.status(response.status).json({ message: result.errors?.[0]?.detail || result.message || "Failed to create campaign" });
+      }
+      
+      console.log("[10DLC Campaign] Created:", result);
+      res.json({ success: true, campaign: result.data || result });
+    } catch (error: any) {
+      console.error("Error creating 10DLC campaign:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/phone-system/campaigns/:id - Get campaign details
+  app.get("/api/phone-system/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session.user?.companyId;
+      const { id } = req.params;
+      
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey || !managedAccountId) {
+        return res.status(400).json({ message: "Telnyx not configured" });
+      }
+      
+      const response = await fetch(`https://api.telnyx.com/10dlc/campaign/${id}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${telnyxApiKey}`,
+          "x-managed-account-id": managedAccountId,
+        },
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        return res.status(response.status).json({ message: error.errors?.[0]?.detail || "Campaign not found" });
+      }
+      
+      const result = await response.json();
+      res.json({ campaign: result.data || result });
+    } catch (error: any) {
+      console.error("Error fetching 10DLC campaign:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // GET /api/phone-system/toll-free/verifications - List toll-free verification requests
   app.get("/api/phone-system/toll-free/verifications", requireActiveCompany, async (req: Request, res: Response) => {
     try {
