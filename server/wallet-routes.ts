@@ -179,10 +179,9 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
         });
       }
 
-      // Build dynamic URL based on request domain (works for dev and production)
-      const protocol = req.headers["x-forwarded-proto"] || req.protocol || "https";
-      const host = req.headers["x-forwarded-host"] || req.headers.host;
-      const dynamicLinkUrl = `${protocol}://${host}/w/${link.slug}`;
+      // Use BASE_URL for production, or current request domain as fallback for dev
+      const baseUrl = process.env.BASE_URL || `${req.headers["x-forwarded-proto"] || req.protocol || "https"}://${req.headers["x-forwarded-host"] || req.headers.host}`;
+      const dynamicLinkUrl = `${baseUrl}/w/${link.slug}`;
 
       // Auto-send iMessage with wallet link if company has iMessage enabled and member has phone
       let iMessageSent = false;
