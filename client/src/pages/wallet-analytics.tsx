@@ -280,7 +280,6 @@ export default function WalletAnalyticsPage() {
     {
       count: summary?.totalMembers || 0,
       title: "Total Members",
-      subtitle: "Registered wallet users",
       icon: Users,
       iconBg: "bg-blue-100 dark:bg-blue-900",
       iconColor: "text-blue-600 dark:text-blue-400",
@@ -288,7 +287,6 @@ export default function WalletAnalyticsPage() {
     {
       count: summary?.totalOpens || 0,
       title: "Link Opens",
-      subtitle: "Total page views",
       icon: Link,
       iconBg: "bg-purple-100 dark:bg-purple-900",
       iconColor: "text-purple-600 dark:text-purple-400",
@@ -296,7 +294,6 @@ export default function WalletAnalyticsPage() {
     {
       count: (summary?.registeredDevicesCount || 0) + (summary?.appleInstalls || 0),
       title: "Apple Installs",
-      subtitle: `${summary?.appleDownloads || 0} downloads`,
       icon: Apple,
       iconBg: "bg-gray-100 dark:bg-gray-800",
       iconColor: "text-gray-800 dark:text-gray-200",
@@ -304,7 +301,6 @@ export default function WalletAnalyticsPage() {
     {
       count: (summary?.installedPassesCount || 0) + (summary?.googleSaved || 0),
       title: "Google Saved",
-      subtitle: `${summary?.googleClicks || 0} clicks`,
       icon: Chrome,
       iconBg: "bg-green-100 dark:bg-green-900",
       iconColor: "text-green-600 dark:text-green-400",
@@ -540,8 +536,7 @@ export default function WalletAnalyticsPage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <h3 className="text-3xl font-bold text-gray-900 dark:text-white mb-1" data-testid={`text-stat-count-${index}`}>{stat.count}</h3>
-                    <p className="text-sm font-medium text-gray-900 dark:text-white mb-0.5">{stat.title}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{stat.subtitle}</p>
+                    <p className="text-sm font-medium text-gray-900 dark:text-white">{stat.title}</p>
                   </div>
                 </div>
                 <ChevronRight className="h-5 w-5 text-gray-400 flex-shrink-0 mt-1" />
