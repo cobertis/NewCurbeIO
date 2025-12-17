@@ -28475,15 +28475,67 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // ==================== 10DLC Brand Registration ====================
 
-  // GET /api/phone-system/brands - List all brands for company
+  // GET /api/phone-system/brands - List all brands for company from Telnyx API
   app.get("/api/phone-system/brands", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = req.session.user?.companyId;
-      const brands = await db
-        .select()
-        .from(telnyxBrands)
-        .where(eq(telnyxBrands.companyId, companyId!))
-        .orderBy(desc(telnyxBrands.createdAt));
+      
+      // Get Telnyx API key and managed account
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey || !managedAccountId) {
+        // Fall back to local database if Telnyx not configured
+        const brands = await db
+          .select()
+          .from(telnyxBrands)
+          .where(eq(telnyxBrands.companyId, companyId!))
+          .orderBy(desc(telnyxBrands.createdAt));
+        return res.json(brands);
+      }
+      
+      // Fetch brands from Telnyx API
+      const response = await fetch("https://api.telnyx.com/v2/10dlc/brand", {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${telnyxApiKey}`,
+          "x-managed-account-id": managedAccountId,
+          "Content-Type": "application/json",
+        },
+      });
+      
+      if (!response.ok) {
+        console.error("[10DLC] Error fetching brands from Telnyx:", await response.text());
+        // Fall back to local database
+        const brands = await db
+          .select()
+          .from(telnyxBrands)
+          .where(eq(telnyxBrands.companyId, companyId!))
+          .orderBy(desc(telnyxBrands.createdAt));
+        return res.json(brands);
+      }
+      
+      const result = await response.json();
+      const telnyxBrandsList = result.data || [];
+      
+      // Map Telnyx response to our format
+      const brands = telnyxBrandsList.map((brand: any) => ({
+        id: brand.brandId,
+        brandId: brand.brandId,
+        tcrBrandId: brand.tcrBrandId,
+        displayName: brand.displayName,
+        companyName: brand.companyName,
+        email: brand.email,
+        entityType: brand.entityType,
+        vertical: brand.vertical,
+        status: brand.brandStatus || brand.status || "pending",
+        identityStatus: brand.identityStatus,
+        country: brand.country,
+        website: brand.website,
+        createdAt: brand.createdAt,
+      }));
+      
       res.json(brands);
     } catch (error: any) {
       console.error("Error fetching brands:", error);
