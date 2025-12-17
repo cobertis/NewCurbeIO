@@ -53,6 +53,9 @@ export default function CompanyDetail() {
   const [imessageConfigOpen, setImessageConfigOpen] = useState(false);
   const [showImessagePassword, setShowImessagePassword] = useState(false);
   const [imessageWebhookUrl, setImessageWebhookUrl] = useState("");
+  const [imessageServerUrl, setImessageServerUrl] = useState("");
+  const [imessagePassword, setImessagePassword] = useState("");
+  const [imessageEnabled, setImessageEnabled] = useState(false);
   const companyId = params.id;
 
   const { data: companyData, isLoading: isLoadingCompany } = useQuery<{ company: Company }>({
@@ -263,6 +266,15 @@ export default function CompanyDetail() {
       setImessageWebhookUrl(`${domain}/api/imessage/webhook/${company.slug}`);
     }
   }, [company?.slug]);
+
+  // Update iMessage form values when settings load
+  useEffect(() => {
+    if (currentImessageSettings) {
+      setImessageServerUrl(currentImessageSettings.serverUrl || "");
+      setImessagePassword(currentImessageSettings.password || "");
+      setImessageEnabled(currentImessageSettings.isEnabled || false);
+    }
+  }, [currentImessageSettings]);
 
   // Check if imessage feature is assigned
   const hasImessageFeature = companyFeatures.some((f: any) => f.key === "imessage");
@@ -1691,7 +1703,8 @@ export default function CompanyDetail() {
                 <Input
                   id="serverUrl"
                   placeholder="http://192.168.1.100:1234 or https://your-tunnel.trycloudflare.com"
-                  defaultValue={currentImessageSettings.serverUrl || ""}
+                  value={imessageServerUrl}
+                  onChange={(e) => setImessageServerUrl(e.target.value)}
                   data-testid="input-imessage-server-url"
                 />
                 <p className="text-xs text-muted-foreground">
@@ -1707,7 +1720,8 @@ export default function CompanyDetail() {
                     id="password"
                     type={showImessagePassword ? "text" : "password"}
                     placeholder="Your BlueBubbles password"
-                    defaultValue={currentImessageSettings.password || ""}
+                    value={imessagePassword}
+                    onChange={(e) => setImessagePassword(e.target.value)}
                     data-testid="input-imessage-password"
                     className="flex-1"
                   />
@@ -1734,8 +1748,8 @@ export default function CompanyDetail() {
                   </p>
                 </div>
                 <Switch
-                  id="isEnabled"
-                  defaultChecked={currentImessageSettings.isEnabled || false}
+                  checked={imessageEnabled}
+                  onCheckedChange={setImessageEnabled}
                   data-testid="switch-imessage-enabled"
                 />
               </div>
@@ -1792,14 +1806,10 @@ export default function CompanyDetail() {
             </Button>
             <Button
               onClick={() => {
-                const serverUrl = (document.getElementById("serverUrl") as HTMLInputElement)?.value || "";
-                const password = (document.getElementById("password") as HTMLInputElement)?.value || "";
-                const isEnabled = (document.getElementById("isEnabled") as HTMLInputElement)?.checked || false;
-                
                 saveImessageSettingsMutation.mutate({
-                  serverUrl,
-                  password,
-                  isEnabled,
+                  serverUrl: imessageServerUrl,
+                  password: imessagePassword,
+                  isEnabled: imessageEnabled,
                 });
               }}
               disabled={saveImessageSettingsMutation.isPending}
