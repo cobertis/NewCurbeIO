@@ -184,6 +184,12 @@ export const appleWalletService = {
       ],
       backFields: [
         {
+          key: "notification_channel",
+          label: "Avisos",
+          value: pass.lastNotification || "Sin novedades",
+          changeMessage: "%@",
+        },
+        {
           key: "terms",
           label: "Terms & Conditions",
           value: `This pass is issued by ${branding.name}. For support, contact us through the app.`,

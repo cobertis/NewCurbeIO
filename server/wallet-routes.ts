@@ -4,6 +4,7 @@ import rateLimit from "express-rate-limit";
 import { walletPassService } from "./services/wallet-pass-service";
 import { appleWalletService } from "./services/apple-wallet-service";
 import { googleWalletService } from "./services/google-wallet-service";
+import { apnsService } from "./services/apns-service";
 import { insertWalletMemberSchema } from "@shared/schema";
 
 const passkitRateLimiter = rateLimit({
@@ -204,6 +205,72 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
     } catch (error) {
       console.error("[Wallet] Error regenerating pass:", error);
       res.status(500).json({ message: "Failed to regenerate pass" });
+    }
+  });
+
+  const sendAlertSchema = z.object({
+    message: z.string().min(1, "Message is required").max(200, "Message too long"),
+    useSandbox: z.boolean().optional().default(false),
+  });
+
+  app.post("/api/wallet/passes/:id/alert", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = (req as any).user.companyId;
+      const pass = await walletPassService.getPass(req.params.id);
+      if (!pass || pass.companyId !== companyId) {
+        return res.status(404).json({ message: "Pass not found" });
+      }
+      
+      const { message, useSandbox } = sendAlertSchema.parse(req.body);
+      
+      const result = await apnsService.sendPassAlertByPassId(pass.id, message, useSandbox);
+      
+      if (!result.success && !result.passUpdated) {
+        return res.status(500).json({ 
+          message: "Failed to send alert",
+          errors: result.errors,
+        });
+      }
+      
+      res.json({
+        success: result.success,
+        passUpdated: result.passUpdated,
+        devicesNotified: result.devicesNotified,
+        message: result.devicesNotified > 0 
+          ? `Alert sent to ${result.devicesNotified} device(s)` 
+          : "Pass updated. No devices registered for push notifications.",
+        errors: result.errors,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("[Wallet] Error sending pass alert:", error);
+      res.status(500).json({ message: "Failed to send pass alert" });
+    }
+  });
+
+  app.post("/api/wallet/alerts/bulk", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = (req as any).user.companyId;
+      const { message, useSandbox } = sendAlertSchema.parse(req.body);
+      
+      const result = await apnsService.sendBulkAlert(companyId, message, useSandbox);
+      
+      res.json({
+        success: result.successfulUpdates > 0,
+        totalPasses: result.totalPasses,
+        passesUpdated: result.successfulUpdates,
+        devicesNotified: result.devicesNotified,
+        message: `Updated ${result.successfulUpdates}/${result.totalPasses} passes. Notified ${result.devicesNotified} device(s).`,
+        errors: result.errors.length > 0 ? result.errors : undefined,
+      });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid data", errors: error.errors });
+      }
+      console.error("[Wallet] Error sending bulk alert:", error);
+      res.status(500).json({ message: "Failed to send bulk alert" });
     }
   });
 

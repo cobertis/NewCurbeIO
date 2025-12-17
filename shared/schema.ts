@@ -5915,6 +5915,9 @@ export const walletPasses = pgTable("wallet_passes", {
   googleObjectId: text("google_object_id"),
   googleStatus: walletGoogleStatusEnum("google_status").default("created"),
   
+  // Dynamic notification field for APNs push updates
+  lastNotification: text("last_notification"),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 }, (table) => ({
