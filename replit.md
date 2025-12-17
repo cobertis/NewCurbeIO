@@ -55,15 +55,70 @@ Implemented via `simultaneous_ringing: "enabled"` in Telnyx credential connectio
 
 **Wallet System Architecture:**
 Supports both Apple Wallet (PKPass) and Google Wallet with Smart Links, analytics dashboard, APNs push notifications, and security features:
-- **Database Tables:** `wallet_members`, `wallet_passes`, `wallet_links`, `wallet_events`, `wallet_devices`
-- **Services:** `wallet-pass-service.ts` (core CRUD, analytics), `apple-wallet-service.ts` (PKPass generation), `google-wallet-service.ts` (Generic Pass API), `apns-service.ts` (APNs push notifications)
-- **Routes:** Wallet API (`/api/wallet/*`), PassKit Web Service endpoints (`/api/passkit/v1/*`), Smart Links (`/w/:slug`)
-- **Smart Links:** OS detection redirects iOS/Android to appropriate wallet add flows
-- **Analytics:** Event tracking (link opens, downloads, installs), device/browser detection, dashboard with charts
-- **Security:** Encrypted auth tokens and push tokens using AES-256-CBC with `ENCRYPTION_KEY_32BYTES`
-- **Frontend:** `/wallet-analytics` page with member management, pass generation, and real-time analytics
-- **APNs Push Notifications:** HTTP/2 based push system for dynamic pass updates using certificate-based auth. Flow: Update `lastNotification` in DB → Send empty APNs push → Device fetches updated pass via webServiceURL. Endpoints: `POST /api/wallet/passes/:id/alert` (single), `POST /api/wallet/alerts/bulk` (company-wide). WWDR certificate at `server/certs/AppleWWDRCAG4.pem`.
-- **All configuration stored in database** via `wallet_settings` table - NO environment variables for wallet credentials
+
+- **Database Tables:** `wallet_members`, `wallet_passes`, `wallet_links`, `wallet_events`, `wallet_devices`, `wallet_settings`
+- **Services:** 
+  - `wallet-pass-service.ts` - Core CRUD, analytics, member/pass management
+  - `apple-wallet-service.ts` - PKPass generation using `passkit-generator`
+  - `google-wallet-service.ts` - Generic Pass API integration
+  - `apns-service.ts` - HTTP/2 APNs push notifications for dynamic pass updates
+- **Routes:** 
+  - Wallet API: `/api/wallet/*` (members, passes, analytics, settings)
+  - PassKit Web Service: `/api/passkit/v1/*` (device registration, pass updates)
+  - Smart Links: `/w/:slug` (OS detection for iOS/Android)
+- **Frontend:** `/wallet-analytics` page with member management, pass generation, bulk alerts, and real-time analytics
+
+**Apple Wallet Pass Structure (storeCard type):**
+```
+Pass Layout:
+┌─────────────────────────────────┐
+│ [LOGO]              STATUS: NEW │  ← headerFields (changeMessage here!)
+├─────────────────────────────────┤
+│      [STRIP IMAGE]              │  ← strip.png (1280x168 @2x)
+│         MEMBER                  │
+│     JAVIER LAZO                 │  ← primaryFields (large name)
+├─────────────────────────────────┤
+│ AVISO URGENTE                   │
+│ Tu pago ha vencido...           │  ← secondaryFields (alert, full width)
+├─────────────────────────────────┤
+│           ID: 123456            │  ← auxiliaryFields (minimal)
+└─────────────────────────────────┘
+   (NO BARCODE - clean design)
+```
+
+**CRITICAL: Apple Wallet Notification Rules:**
+1. **changeMessage MUST be in headerFields or primaryFields** for lock-screen preview to appear
+2. **Never send the same text twice** - Apple suppresses duplicate notifications silently
+3. **webServiceURL must be `/api/passkit`** (NOT `/api/passkit/v1`) - Apple appends `/v1/` automatically
+4. **If-Modified-Since header** must be respected - return 304 if pass unchanged
+5. **Each notification must have unique text** - append timestamp or ID for testing
+
+**APNs Push Notification Flow:**
+1. Update `lastNotification` field in database (`wallet_passes` table)
+2. Update `updatedAt` timestamp (triggers pass refresh)
+3. Send empty APNs push to device token (HTTP/2 to `api.push.apple.com`)
+4. iOS queries `/api/passkit/v1/devices/.../registrations/...` for updated serials
+5. iOS fetches updated pass from `/api/passkit/v1/passes/.../[serialNumber]`
+6. If field with `changeMessage: "%@"` changed, lock-screen preview appears
+
+**Endpoints:**
+- `POST /api/wallet/passes/:id/alert` - Send alert to single pass
+- `POST /api/wallet/alerts/bulk` - Send alert to all company passes
+- `POST /api/passkit/v1/devices/:deviceId/registrations/:passTypeId/:serial` - Device registration
+- `GET /api/passkit/v1/devices/:deviceId/registrations/:passTypeId` - List updated passes
+- `GET /api/passkit/v1/passes/:passTypeId/:serial` - Download updated pass
+- `DELETE /api/passkit/v1/devices/:deviceId/registrations/:passTypeId/:serial` - Unregister device
+
+**Pass Images:**
+- `attached_assets/pass-icon.png` / `pass-icon@2x.png` - Pass icon
+- `attached_assets/pass-logo.png` / `pass-logo@2x.png` - Company logo
+- `attached_assets/strip.png` / `strip@2x.png` - Header strip image (1280x168 for @2x)
+
+**Security:**
+- Encrypted auth tokens using AES-256-CBC with `ENCRYPTION_KEY_32BYTES`
+- Push tokens encrypted in database
+- All configuration stored in `wallet_settings` table (NO environment variables)
+- WWDR certificate at `server/certs/AppleWWDRCAG4.pem`
 
 ## External Dependencies
 
