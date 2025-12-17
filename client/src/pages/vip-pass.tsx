@@ -156,29 +156,35 @@ const replaceTemplateVars = (value: string): string => {
 };
 
 function PassPreview({ design, showBack = false }: { design: VipPassDesignFormData; showBack?: boolean }) {
-  const bgColor = design.backgroundColor?.startsWith('#') ? design.backgroundColor : (design.backgroundColor || '#f5f5f5');
-  const fgColor = design.foregroundColor?.startsWith('#') ? design.foregroundColor : (design.foregroundColor || '#1a1a1a');
-  const lblColor = design.labelColor?.startsWith('#') ? design.labelColor : (design.labelColor || '#666666');
+  const bgColor = design.backgroundColor?.startsWith('#') ? design.backgroundColor : (design.backgroundColor || '#1a2744');
+  const fgColor = design.foregroundColor?.startsWith('#') ? design.foregroundColor : (design.foregroundColor || '#ffffff');
+  const lblColor = design.labelColor?.startsWith('#') ? design.labelColor : (design.labelColor || '#e87722');
+
+  const headerField = design.headerFields?.[0];
+  const primaryField = design.primaryFields?.[0];
+  const secondaryFields = design.secondaryFields || [];
+  const auxiliaryFields = design.auxiliaryFields || [];
 
   if (showBack) {
     return (
       <div className="flex flex-col items-center">
         <div 
-          className="w-[280px] min-h-[380px] rounded-2xl overflow-hidden p-5"
-          style={{ backgroundColor: bgColor, color: fgColor, boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}
+          className="w-[300px] min-h-[420px] rounded-2xl overflow-hidden p-5"
+          style={{ backgroundColor: bgColor, color: fgColor, boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}
           data-testid="pass-preview-back"
         >
-          <div className="text-sm font-semibold mb-4 pb-2 border-b" style={{ borderColor: `${fgColor}20` }}>
+          <div className="text-sm font-semibold mb-4 pb-2 border-b border-white/20">
             Pass Information
           </div>
           <div className="space-y-3">
             {(design.backFields?.length > 0 ? design.backFields : [
-              { key: "portal", label: "Member Portal", value: "https://insurance.curbe.io/member" },
-              { key: "support", label: "Customer Support", value: "1-800-CURBE-00" },
+              { key: "portal", label: "Member Portal", value: "https://member.insurance.com" },
+              { key: "support", label: "Customer Support", value: "1-800-555-0100" },
+              { key: "claims", label: "Claims", value: "claims@insurance.com" },
             ]).map((field, i) => (
-              <div key={i} className="py-2 border-b" style={{ borderColor: `${fgColor}10` }}>
+              <div key={i} className="py-2 border-b border-white/10">
                 <div className="text-xs font-medium mb-1" style={{ color: lblColor }}>{field.label}</div>
-                <div className="text-sm" style={{ color: field.value.startsWith('http') || field.value.startsWith('tel:') ? '#007AFF' : fgColor }}>
+                <div className="text-sm" style={{ color: field.value.startsWith('http') || field.value.includes('@') ? '#4da6ff' : fgColor }}>
                   {field.value}
                 </div>
               </div>
@@ -192,89 +198,109 @@ function PassPreview({ design, showBack = false }: { design: VipPassDesignFormDa
   return (
     <div className="flex flex-col items-center">
       <div 
-        className="w-[280px] h-[400px] rounded-2xl overflow-hidden flex flex-col"
-        style={{ backgroundColor: bgColor, color: fgColor, boxShadow: '0 4px 20px rgba(0,0,0,0.15)' }}
+        className="w-[300px] rounded-2xl overflow-hidden flex flex-col"
+        style={{ backgroundColor: bgColor, color: fgColor, boxShadow: '0 8px 32px rgba(0,0,0,0.25)' }}
         data-testid="pass-preview"
       >
+        {/* Header Row: Logo + Header Field */}
         <div className="p-4 flex justify-between items-start">
-          <div className="flex items-center gap-3">
+          <div className="flex-shrink-0">
             {design.logoBase64 ? (
-              <img src={design.logoBase64} alt="Logo" className="w-10 h-10 object-contain rounded" />
+              <img 
+                src={design.logoBase64} 
+                alt="Logo" 
+                className="max-h-10 object-contain" 
+                style={{ maxWidth: '100px' }}
+              />
             ) : (
-              <div className="w-10 h-10 rounded bg-gray-200 flex items-center justify-center">
-                <CreditCard className="h-5 w-5 text-gray-400" />
+              <div className="text-lg font-bold" style={{ color: fgColor }}>
+                {design.logoText || "LOGO"}
               </div>
             )}
-            <div className="text-base font-bold tracking-wide uppercase" data-testid="preview-logo-text">
-              {design.logoText || "INSURANCE CARD"}
-            </div>
           </div>
-        </div>
-
-        <div className="px-4 py-3 flex-1">
-          {design.primaryFields?.length > 0 ? (
-            design.primaryFields.map((field, i) => (
-              <div key={i} className="mb-4" data-testid={`preview-primary-field-${i}`}>
-                <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: lblColor }}>
-                  {field.label}
-                </div>
-                <div className="text-2xl font-bold tracking-tight">
-                  {replaceTemplateVars(field.value)}
-                </div>
+          {headerField && (
+            <div className="text-right">
+              <div className="text-[9px] uppercase tracking-wide" style={{ color: lblColor }}>
+                {headerField.label}
               </div>
-            ))
-          ) : (
-            <div className="mb-4">
-              <div className="text-[10px] uppercase tracking-wider font-semibold mb-1" style={{ color: lblColor }}>MEMBER ID</div>
-              <div className="text-2xl font-bold tracking-tight">MIM-6546</div>
+              <div className="text-base font-bold">
+                {replaceTemplateVars(headerField.value)}
+              </div>
             </div>
           )}
+        </div>
 
-          <div className="grid grid-cols-2 gap-3 mb-4">
-            {(design.secondaryFields?.length > 0 ? design.secondaryFields : [
-              { key: "name", label: "NAME", value: "John Doe" },
-              { key: "insurance", label: "INSURANCE", value: "Curbe Insurance" }
-            ]).slice(0, 2).map((field, i) => (
-              <div key={i} data-testid={`preview-secondary-field-${i}`}>
-                <div className="text-[9px] uppercase tracking-wider font-semibold mb-0.5" style={{ color: lblColor }}>
-                  {field.label}
-                </div>
-                <div className="text-sm font-medium truncate">
-                  {replaceTemplateVars(field.value)}
-                </div>
+        {/* Primary Field with Thumbnail */}
+        <div className="px-4 pb-3">
+          <div className="flex justify-between items-start">
+            <div className="flex-1">
+              {primaryField ? (
+                <>
+                  <div className="text-[10px] uppercase tracking-wide font-semibold mb-1" style={{ color: lblColor }}>
+                    {primaryField.label}
+                  </div>
+                  <div className="text-2xl font-bold leading-tight">
+                    {replaceTemplateVars(primaryField.value)}
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="text-[10px] uppercase tracking-wide font-semibold mb-1" style={{ color: lblColor }}>
+                    POLICYHOLDER
+                  </div>
+                  <div className="text-2xl font-bold leading-tight">
+                    John Doe
+                  </div>
+                </>
+              )}
+            </div>
+            {design.stripBase64 && (
+              <div className="flex-shrink-0 ml-3">
+                <img 
+                  src={design.stripBase64} 
+                  alt="Thumbnail" 
+                  className="h-16 w-auto object-contain rounded"
+                />
               </div>
-            ))}
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            {(design.auxiliaryFields?.length > 0 ? design.auxiliaryFields : [
-              { key: "plan", label: "PLAN", value: "Gold PPO" },
-              { key: "since", label: "MEMBER SINCE", value: "Jan 2024" }
-            ]).slice(0, 2).map((field, i) => (
-              <div key={i} data-testid={`preview-auxiliary-field-${i}`}>
-                <div className="text-[9px] uppercase tracking-wider font-semibold mb-0.5" style={{ color: lblColor }}>
-                  {field.label}
-                </div>
-                <div className="text-sm font-medium truncate">
-                  {replaceTemplateVars(field.value)}
-                </div>
-              </div>
-            ))}
+            )}
           </div>
         </div>
 
-        <div className="p-4 flex justify-center items-center bg-white">
-          <div className="text-center">
-            <div className="w-20 h-20 flex items-center justify-center" data-testid="preview-barcode">
-              {design.barcodeFormat === "PKBarcodeFormatQR" || design.barcodeFormat === "PKBarcodeFormatAztec" ? (
-                <QrCode className="h-16 w-16 text-gray-800" />
-              ) : (
-                <BarChart3 className="h-12 w-16 text-gray-800" />
-              )}
+        {/* Secondary Fields */}
+        {secondaryFields.length > 0 && (
+          <div className="px-4 pb-3 space-y-2">
+            {secondaryFields.map((field, i) => (
+              <div key={i}>
+                <div className="text-[9px] uppercase tracking-wide font-semibold" style={{ color: lblColor }}>
+                  {field.label}
+                </div>
+                <div className="text-sm font-medium">
+                  {replaceTemplateVars(field.value)}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Auxiliary Fields */}
+        {auxiliaryFields.length > 0 && (
+          <div className="px-4 pb-3">
+            <div className="text-[9px] uppercase tracking-wide font-semibold mb-0.5" style={{ color: lblColor }}>
+              {auxiliaryFields[0]?.label || "COVERAGE"}
             </div>
-            <div className="text-[8px] text-gray-500 mt-1 font-mono">
-              Scan to verify
+            <div className="text-sm">
+              {auxiliaryFields.map(f => replaceTemplateVars(f.value)).join(", ")}
             </div>
+          </div>
+        )}
+
+        {/* QR Code Section */}
+        <div className="mt-auto p-4 flex flex-col items-center bg-white rounded-t-xl">
+          <div className="w-24 h-24 flex items-center justify-center mb-2" data-testid="preview-barcode">
+            <QrCode className="h-20 w-20 text-gray-800" />
+          </div>
+          <div className="text-[10px] text-gray-600 font-medium">
+            {design.passDescription || "Scan for verification"}
           </div>
         </div>
       </div>
@@ -438,29 +464,28 @@ export default function VipPassPage() {
     resolver: zodResolver(vipPassDesignSchema),
     defaultValues: {
       passName: "Insurance Card", 
-      passDescription: "Member Insurance Card", 
-      logoText: "INSURANCE CARD",
-      backgroundColor: "#f5f5f5", 
-      foregroundColor: "#1a1a1a", 
-      labelColor: "#666666",
+      passDescription: "Scan for verification", 
+      logoText: "INSURANCE",
+      backgroundColor: "#1a2744", 
+      foregroundColor: "#ffffff", 
+      labelColor: "#e87722",
       passTypeIdentifier: "", 
       teamIdentifier: "", 
       passStyle: "storeCard",
       barcodeFormat: "PKBarcodeFormatQR", 
-      barcodeMessage: "https://insurance.curbe.io/verify?token={{serialNumber}}",
-      headerFields: [],
-      primaryFields: [{ key: "memberId", label: "MEMBER ID", value: "{{memberId}}" }],
+      barcodeMessage: "{{serialNumber}}",
+      headerFields: [{ key: "policyNumber", label: "POLICY", value: "{{memberId}}" }],
+      primaryFields: [{ key: "name", label: "POLICYHOLDER", value: "{{recipientName}}" }],
       secondaryFields: [
-        { key: "name", label: "NAME", value: "{{recipientName}}" },
-        { key: "insurance", label: "INSURANCE", value: "{{companyName}}" }
+        { key: "plan", label: "PLAN TYPE", value: "{{tierLevel}}" },
+        { key: "company", label: "INSURER", value: "{{companyName}}" }
       ],
       auxiliaryFields: [
-        { key: "plan", label: "PLAN", value: "{{tierLevel}}" },
-        { key: "memberSince", label: "MEMBER SINCE", value: "{{memberSince}}" }
+        { key: "coverage", label: "COVERAGE", value: "Auto, Liability, Comprehensive" }
       ],
       backFields: [
-        { key: "portal", label: "Member Portal", value: "https://insurance.curbe.io/member" },
-        { key: "coverage", label: "Coverage Details", value: "https://insurance.curbe.io/coverage" },
+        { key: "portal", label: "Member Portal", value: "https://member.curbe.io" },
+        { key: "claims", label: "Claims", value: "claims@curbe.io" },
         { key: "support", label: "Customer Support", value: "1-800-CURBE-00" },
         { key: "terms", label: "Terms & Conditions", value: "https://insurance.curbe.io/terms" }
       ],
@@ -821,11 +846,13 @@ export default function VipPassPage() {
                           <div className="text-sm text-muted-foreground mb-2">
                             Configure the fields displayed on your pass. Use template variables like {"{{memberId}}"} for dynamic content.
                           </div>
-                          <FieldArraySection title="Primary Fields (Main Info)" name="primaryFields" fields={primaryFieldsArray.fields as PassField[]} append={primaryFieldsArray.append} remove={primaryFieldsArray.remove} form={form} />
+                          <FieldArraySection title="Header Fields (Top Right)" name="headerFields" fields={headerFieldsArray.fields as PassField[]} append={headerFieldsArray.append} remove={headerFieldsArray.remove} form={form} />
                           <Separator />
-                          <FieldArraySection title="Secondary Fields (Name, Company)" name="secondaryFields" fields={secondaryFieldsArray.fields as PassField[]} append={secondaryFieldsArray.append} remove={secondaryFieldsArray.remove} form={form} />
+                          <FieldArraySection title="Primary Fields (Name, Main Info)" name="primaryFields" fields={primaryFieldsArray.fields as PassField[]} append={primaryFieldsArray.append} remove={primaryFieldsArray.remove} form={form} />
                           <Separator />
-                          <FieldArraySection title="Auxiliary Fields (Plan, Date)" name="auxiliaryFields" fields={auxiliaryFieldsArray.fields as PassField[]} append={auxiliaryFieldsArray.append} remove={auxiliaryFieldsArray.remove} form={form} />
+                          <FieldArraySection title="Secondary Fields (Details)" name="secondaryFields" fields={secondaryFieldsArray.fields as PassField[]} append={secondaryFieldsArray.append} remove={secondaryFieldsArray.remove} form={form} />
+                          <Separator />
+                          <FieldArraySection title="Auxiliary Fields (Coverage)" name="auxiliaryFields" fields={auxiliaryFieldsArray.fields as PassField[]} append={auxiliaryFieldsArray.append} remove={auxiliaryFieldsArray.remove} form={form} />
                           <Separator />
                           <FieldArraySection title="Back Fields (Info when tapping i)" name="backFields" fields={backFieldsArray.fields as PassField[]} append={backFieldsArray.append} remove={backFieldsArray.remove} form={form} />
                         </TabsContent>
