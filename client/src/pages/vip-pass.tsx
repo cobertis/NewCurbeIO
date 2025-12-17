@@ -22,7 +22,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Loader2, Plus, Trash2, Save, Smartphone, QrCode, CreditCard, 
   Palette, Settings2, BarChart3, Eye, Download, Bell, Users, RefreshCw, Send, Copy, Link,
-  Shield, Upload, CheckCircle, XCircle, Key
+  Shield, Upload, CheckCircle, XCircle, Key, AlertCircle
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -1025,6 +1025,135 @@ export default function VipPassPage() {
                 </Card>
               </TabsContent>
             </Tabs>
+          </TabsContent>
+
+          <TabsContent value="certificates" className="space-y-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Shield className="h-5 w-5" />
+                  Apple Wallet Certificates
+                </CardTitle>
+                <CardDescription>
+                  Upload your Apple Developer .p12 certificate to enable signed VIP Pass generation.
+                  Certificates are stored securely in the database and used only in memory.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-6">
+                {certLoading ? (
+                  <LoadingSpinner fullScreen={false} />
+                ) : certStatus?.configured ? (
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3 p-4 bg-green-50 dark:bg-green-950 border border-green-200 dark:border-green-800 rounded-lg">
+                      <CheckCircle className="h-5 w-5 text-green-600" />
+                      <div>
+                        <p className="font-medium text-green-800 dark:text-green-200">Certificate Configured</p>
+                        <p className="text-sm text-green-600 dark:text-green-400">
+                          Uploaded {certStatus.certInfo?.uploadedAt ? format(new Date(certStatus.certInfo.uploadedAt), "MMM d, yyyy 'at' h:mm a") : "recently"}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="grid grid-cols-3 gap-4 text-sm">
+                      <div className="flex items-center gap-2">
+                        {certStatus.hasSignerCert ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
+                        <span>Signer Certificate</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {certStatus.hasSignerKey ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
+                        <span>Private Key</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {certStatus.hasWwdr ? <CheckCircle className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
+                        <span>WWDR Certificate</span>
+                      </div>
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div className="flex gap-3">
+                      <Button
+                        variant="destructive"
+                        onClick={() => deleteCertMutation.mutate()}
+                        disabled={deleteCertMutation.isPending}
+                        data-testid="button-delete-certificate"
+                      >
+                        {deleteCertMutation.isPending ? <RefreshCw className="h-4 w-4 mr-2 animate-spin" /> : <Trash2 className="h-4 w-4 mr-2" />}
+                        Remove Certificate
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    <div className="flex items-center gap-3 p-4 bg-amber-50 dark:bg-amber-950 border border-amber-200 dark:border-amber-800 rounded-lg">
+                      <AlertCircle className="h-5 w-5 text-amber-600" />
+                      <div>
+                        <p className="font-medium text-amber-800 dark:text-amber-200">Certificate Required</p>
+                        <p className="text-sm text-amber-600 dark:text-amber-400">
+                          Upload your .p12 certificate from Apple Developer Portal to generate signed passes.
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="cert-file">Certificate File (.p12)</Label>
+                        <Input
+                          id="cert-file"
+                          type="file"
+                          accept=".p12,.pfx"
+                          onChange={(e) => setCertFile(e.target.files?.[0] || null)}
+                          data-testid="input-certificate-file"
+                        />
+                        {certFile && (
+                          <p className="text-sm text-muted-foreground">
+                            Selected: {certFile.name} ({(certFile.size / 1024).toFixed(1)} KB)
+                          </p>
+                        )}
+                      </div>
+                      
+                      <div className="space-y-2">
+                        <Label htmlFor="cert-password">Certificate Password</Label>
+                        <Input
+                          id="cert-password"
+                          type="password"
+                          placeholder="Enter the .p12 password"
+                          value={certPassword}
+                          onChange={(e) => setCertPassword(e.target.value)}
+                          data-testid="input-certificate-password"
+                        />
+                      </div>
+                      
+                      <Button
+                        onClick={() => certFile && uploadCertMutation.mutate({ file: certFile, password: certPassword })}
+                        disabled={!certFile || !certPassword || uploadCertMutation.isPending}
+                        data-testid="button-upload-certificate"
+                      >
+                        {uploadCertMutation.isPending ? (
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4 mr-2" />
+                        )}
+                        Upload Certificate
+                      </Button>
+                    </div>
+                    
+                    <Separator />
+                    
+                    <div className="text-sm text-muted-foreground space-y-2">
+                      <p className="font-medium">How to get your certificate:</p>
+                      <ol className="list-decimal list-inside space-y-1 ml-2">
+                        <li>Go to Apple Developer Portal → Certificates, IDs & Profiles</li>
+                        <li>Create a Pass Type ID under Identifiers</li>
+                        <li>Create a Pass Type ID Certificate under Certificates</li>
+                        <li>Download and export as .p12 from Keychain Access</li>
+                        <li>Also download the Apple WWDR certificate (G4) from Apple's Certificate Authority page</li>
+                      </ol>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
         </Tabs>
 

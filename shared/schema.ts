@@ -5428,6 +5428,11 @@ export const vipPassDesigns = pgTable("vip_pass_designs", {
   passTypeIdentifier: text("pass_type_identifier"),
   teamIdentifier: text("team_identifier"),
   
+  // Apple signing certificates (encrypted Base64 storage in database)
+  signerCertBase64: text("signer_cert_base64"), // PEM certificate
+  signerKeyBase64: text("signer_key_base64"), // PEM private key (encrypted)
+  certUploadedAt: timestamp("cert_uploaded_at"),
+  
   // Pass style
   passStyle: text("pass_style").notNull().default("generic"),
   

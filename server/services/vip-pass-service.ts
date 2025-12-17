@@ -355,14 +355,7 @@ export class VipPassService {
 
     passJson[styleKey] = styleData;
 
-    const certPath = path.join(process.cwd(), "certificates", `company_${instance.companyId}`);
-    const signerCertPath = path.join(certPath, "pass-cert.pem");
-    const signerKeyPath = path.join(certPath, "pass-key.pem");
-    
-    const demoCertPath = path.join(process.cwd(), "certificates", "demo");
-    const demoSignerCertPath = path.join(demoCertPath, "pass-cert.pem");
-    const demoSignerKeyPath = path.join(demoCertPath, "pass-key.pem");
-    
+    // Load certificates from database (in-memory only, never stored on filesystem)
     const wwdrCert = getWWDRCertificate();
     if (!wwdrCert) {
       throw new Error(
@@ -373,23 +366,45 @@ export class VipPassService {
 
     let certificates: { signerCert: string; signerKey: string; wwdr: string };
     
-    if (fs.existsSync(signerCertPath) && fs.existsSync(signerKeyPath)) {
+    // First try to load from database (preferred - secure storage)
+    if (design.signerCertBase64 && design.signerKeyBase64) {
+      // Decode Base64 certificates from database
+      const signerCert = Buffer.from(design.signerCertBase64, "base64").toString("utf-8");
+      const signerKey = Buffer.from(design.signerKeyBase64, "base64").toString("utf-8");
+      
       certificates = {
-        signerCert: fs.readFileSync(signerCertPath, "utf-8"),
-        signerKey: fs.readFileSync(signerKeyPath, "utf-8"),
-        wwdr: wwdrCert,
-      };
-    } else if (fs.existsSync(demoSignerCertPath) && fs.existsSync(demoSignerKeyPath)) {
-      certificates = {
-        signerCert: fs.readFileSync(demoSignerCertPath, "utf-8"),
-        signerKey: fs.readFileSync(demoSignerKeyPath, "utf-8"),
+        signerCert,
+        signerKey,
         wwdr: wwdrCert,
       };
     } else {
-      throw new Error(
-        "Apple Wallet certificates not configured. Please add your pass certificates to enable .pkpass generation. " +
-        "Required files: pass-cert.pem, pass-key.pem, and wwdr.pem in the certificates folder."
-      );
+      // Fallback to filesystem (legacy support or demo mode)
+      const certPath = path.join(process.cwd(), "certificates", `company_${instance.companyId}`);
+      const signerCertPath = path.join(certPath, "pass-cert.pem");
+      const signerKeyPath = path.join(certPath, "pass-key.pem");
+      
+      const demoCertPath = path.join(process.cwd(), "certificates", "demo");
+      const demoSignerCertPath = path.join(demoCertPath, "pass-cert.pem");
+      const demoSignerKeyPath = path.join(demoCertPath, "pass-key.pem");
+      
+      if (fs.existsSync(signerCertPath) && fs.existsSync(signerKeyPath)) {
+        certificates = {
+          signerCert: fs.readFileSync(signerCertPath, "utf-8"),
+          signerKey: fs.readFileSync(signerKeyPath, "utf-8"),
+          wwdr: wwdrCert,
+        };
+      } else if (fs.existsSync(demoSignerCertPath) && fs.existsSync(demoSignerKeyPath)) {
+        certificates = {
+          signerCert: fs.readFileSync(demoSignerCertPath, "utf-8"),
+          signerKey: fs.readFileSync(demoSignerKeyPath, "utf-8"),
+          wwdr: wwdrCert,
+        };
+      } else {
+        throw new Error(
+          "Apple Wallet certificates not configured. Please upload your .p12 certificate in the Certificates tab " +
+          "or add pass-cert.pem and pass-key.pem files to the certificates folder."
+        );
+      }
     }
 
     const pass = new PKPass({}, certificates, passJson);

@@ -32359,28 +32359,35 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ error: "No company associated with user" });
       }
       
+      // Check design for certificate data stored in database
+      const [design] = await db
+        .select({
+          signerCertBase64: vipPassDesigns.signerCertBase64,
+          signerKeyBase64: vipPassDesigns.signerKeyBase64,
+          certUploadedAt: vipPassDesigns.certUploadedAt,
+        })
+        .from(vipPassDesigns)
+        .where(and(
+          eq(vipPassDesigns.companyId, user.companyId),
+          eq(vipPassDesigns.isActive, true)
+        ))
+        .limit(1);
+      
+      const hasSignerCert = !!(design?.signerCertBase64);
+      const hasSignerKey = !!(design?.signerKeyBase64);
+      
+      // WWDR cert is global - check if exists in filesystem or env
       const fs = await import("fs");
       const path = await import("path");
-      
-      const certPath = path.join(process.cwd(), "certificates", `company_${user.companyId}`);
-      const signerCertPath = path.join(certPath, "pass-cert.pem");
-      const signerKeyPath = path.join(certPath, "pass-key.pem");
       const wwdrPath = path.join(process.cwd(), "certificates", "wwdr.pem");
+      const hasWwdr = fs.existsSync(wwdrPath) || !!process.env.APPLE_WWDR_CERT;
       
-      const hasSignerCert = fs.existsSync(signerCertPath);
-      const hasSignerKey = fs.existsSync(signerKeyPath);
-      const hasWwdr = fs.existsSync(wwdrPath);
-      
-      // Get certificate info if it exists
       let certInfo = null;
-      if (hasSignerCert) {
-        try {
-          const stats = fs.statSync(signerCertPath);
-          certInfo = {
-            uploadedAt: stats.mtime.toISOString(),
-            fileSize: stats.size,
-          };
-        } catch (e) {}
+      if (hasSignerCert && design?.certUploadedAt) {
+        certInfo = {
+          uploadedAt: design.certUploadedAt.toISOString(),
+          configured: true,
+        };
       }
       
       return res.json({
@@ -32396,7 +32403,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // POST /api/vip-pass/certificate - Upload .p12 certificate
+  // POST /api/vip-pass/certificate - Upload .p12 certificate (stores in database)
   app.post("/api/vip-pass/certificate", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -32411,6 +32418,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const fs = await import("fs");
       const path = await import("path");
+      const os = await import("os");
       const { exec } = await import("child_process");
       const { promisify } = await import("util");
       const execAsync = promisify(exec);
@@ -32425,60 +32433,109 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ error: "Certificate password is required" });
       }
       
-      const certPath = path.join(process.cwd(), "certificates", `company_${user.companyId}`);
-      
-      // Create directory if it doesn't exist
-      if (!fs.existsSync(certPath)) {
-        fs.mkdirSync(certPath, { recursive: true });
-      }
-      
-      // Decode base64 and save .p12 file temporarily
-      const p12Buffer = Buffer.from(p12Base64, "base64");
-      const p12TempPath = path.join(certPath, "temp.p12");
-      fs.writeFileSync(p12TempPath, p12Buffer);
+      // Create temp directory for processing
+      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), "vip-pass-cert-"));
+      const p12TempPath = path.join(tempDir, "temp.p12");
+      const certTempPath = path.join(tempDir, "cert.pem");
+      const keyTempPath = path.join(tempDir, "key.pem");
       
       try {
+        // Decode base64 and save .p12 file temporarily
+        const p12Buffer = Buffer.from(p12Base64, "base64");
+        fs.writeFileSync(p12TempPath, p12Buffer);
+        
         // Extract certificate and key from .p12 using openssl
-        const signerCertPath = path.join(certPath, "pass-cert.pem");
-        const signerKeyPath = path.join(certPath, "pass-key.pem");
+        // Try with -legacy flag first (for newer OpenSSL), then without
+        try {
+          await execAsync(`openssl pkcs12 -in "${p12TempPath}" -clcerts -nokeys -out "${certTempPath}" -password pass:"${password}" -legacy 2>/dev/null`);
+        } catch {
+          await execAsync(`openssl pkcs12 -in "${p12TempPath}" -clcerts -nokeys -out "${certTempPath}" -password pass:"${password}"`);
+        }
         
-        // Extract certificate
-        await execAsync(`openssl pkcs12 -in "${p12TempPath}" -clcerts -nokeys -out "${signerCertPath}" -password pass:"${password}" -legacy 2>/dev/null || openssl pkcs12 -in "${p12TempPath}" -clcerts -nokeys -out "${signerCertPath}" -password pass:"${password}"`);
-        
-        // Extract private key (no password protection on output)
-        await execAsync(`openssl pkcs12 -in "${p12TempPath}" -nocerts -nodes -out "${signerKeyPath}" -password pass:"${password}" -legacy 2>/dev/null || openssl pkcs12 -in "${p12TempPath}" -nocerts -nodes -out "${signerKeyPath}" -password pass:"${password}"`);
-        
-        // Clean up temp file
-        fs.unlinkSync(p12TempPath);
+        try {
+          await execAsync(`openssl pkcs12 -in "${p12TempPath}" -nocerts -nodes -out "${keyTempPath}" -password pass:"${password}" -legacy 2>/dev/null`);
+        } catch {
+          await execAsync(`openssl pkcs12 -in "${p12TempPath}" -nocerts -nodes -out "${keyTempPath}" -password pass:"${password}"`);
+        }
         
         // Verify the files were created
-        if (!fs.existsSync(signerCertPath) || !fs.existsSync(signerKeyPath)) {
+        if (!fs.existsSync(certTempPath) || !fs.existsSync(keyTempPath)) {
           throw new Error("Failed to extract certificate files");
         }
         
-        console.log("[VIP Pass] Certificate uploaded successfully for company:", user.companyId);
+        // Read extracted PEM files
+        const signerCert = fs.readFileSync(certTempPath, "utf-8");
+        const signerKey = fs.readFileSync(keyTempPath, "utf-8");
+        
+        // Validate the certificate content
+        if (!signerCert.includes("BEGIN CERTIFICATE") || !signerKey.includes("BEGIN")) {
+          throw new Error("Invalid certificate format");
+        }
+        
+        // Convert to Base64 for storage
+        const signerCertBase64 = Buffer.from(signerCert, "utf-8").toString("base64");
+        const signerKeyBase64 = Buffer.from(signerKey, "utf-8").toString("base64");
+        
+        // Check if design exists, create if not
+        const [existingDesign] = await db
+          .select()
+          .from(vipPassDesigns)
+          .where(and(
+            eq(vipPassDesigns.companyId, user.companyId),
+            eq(vipPassDesigns.isActive, true)
+          ))
+          .limit(1);
+        
+        if (existingDesign) {
+          // Update existing design with certificate data
+          await db
+            .update(vipPassDesigns)
+            .set({
+              signerCertBase64,
+              signerKeyBase64,
+              certUploadedAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(eq(vipPassDesigns.id, existingDesign.id));
+        } else {
+          // Create new design with certificate data
+          await db.insert(vipPassDesigns).values({
+            id: crypto.randomUUID(),
+            companyId: user.companyId,
+            signerCertBase64,
+            signerKeyBase64,
+            certUploadedAt: new Date(),
+            createdAt: new Date(),
+            updatedAt: new Date(),
+          });
+        }
+        
+        console.log("[VIP Pass] Certificate uploaded to database for company:", user.companyId);
         
         return res.json({ 
           success: true, 
-          message: "Certificate uploaded and configured successfully" 
+          message: "Certificate uploaded and stored securely in database" 
         });
-      } catch (extractError: any) {
-        // Clean up temp file on error
-        if (fs.existsSync(p12TempPath)) {
-          fs.unlinkSync(p12TempPath);
+      } finally {
+        // ALWAYS clean up temp files - critical security requirement
+        try {
+          if (fs.existsSync(p12TempPath)) fs.unlinkSync(p12TempPath);
+          if (fs.existsSync(certTempPath)) fs.unlinkSync(certTempPath);
+          if (fs.existsSync(keyTempPath)) fs.unlinkSync(keyTempPath);
+          if (fs.existsSync(tempDir)) fs.rmdirSync(tempDir);
+        } catch (cleanupErr) {
+          console.error("[VIP Pass] Error cleaning up temp files:", cleanupErr);
         }
-        console.error("[VIP Pass] Error extracting certificate:", extractError);
-        return res.status(400).json({ 
-          error: "Failed to extract certificate. Please check the password and file format." 
-        });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("[VIP Pass] Error uploading certificate:", error);
-      return res.status(500).json({ error: "Failed to upload certificate" });
+      return res.status(400).json({ 
+        error: error.message || "Failed to upload certificate. Please check the password and file format." 
+      });
     }
   });
 
-  // DELETE /api/vip-pass/certificate - Remove certificate
+  // DELETE /api/vip-pass/certificate - Remove certificate from database
   app.delete("/api/vip-pass/certificate", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -32490,25 +32547,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(403).json({ error: "Only admins can delete certificates" });
       }
       
-      const fs = await import("fs");
-      const path = await import("path");
+      // Clear certificate data from database
+      await db
+        .update(vipPassDesigns)
+        .set({
+          signerCertBase64: null,
+          signerKeyBase64: null,
+          certUploadedAt: null,
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(vipPassDesigns.companyId, user.companyId),
+          eq(vipPassDesigns.isActive, true)
+        ));
       
-      const certPath = path.join(process.cwd(), "certificates", `company_${user.companyId}`);
-      const signerCertPath = path.join(certPath, "pass-cert.pem");
-      const signerKeyPath = path.join(certPath, "pass-key.pem");
+      console.log("[VIP Pass] Certificate removed from database for company:", user.companyId);
       
-      if (fs.existsSync(signerCertPath)) fs.unlinkSync(signerCertPath);
-      if (fs.existsSync(signerKeyPath)) fs.unlinkSync(signerKeyPath);
-      
-      console.log("[VIP Pass] Certificate deleted for company:", user.companyId);
-      
-      return res.json({ success: true, message: "Certificate removed" });
+      return res.json({ success: true, message: "Certificate removed from database" });
     } catch (error) {
       console.error("[VIP Pass] Error deleting certificate:", error);
       return res.status(500).json({ error: "Failed to delete certificate" });
     }
   });
-
   // ========================================
   // APPLE WALLET PASSKIT WEB SERVICE ENDPOINTS
   // Per Apple PassKit Web Service Reference
