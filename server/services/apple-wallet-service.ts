@@ -191,12 +191,12 @@ export const appleWalletService = {
     };
 
     passData.storeCard = {
-      // HEADER: Premium amount (top right) - highly visible
+      // HEADER: Member ID (top right) - for quick identification
       headerFields: [
         {
-          key: "cost",
-          label: "COST",
-          value: fmtPremium(member.monthlyPremium),
+          key: "mid",
+          label: "MEMBER ID",
+          value: member.memberId || "—",
           changeMessage: "%@",
         },
       ],
@@ -303,10 +303,22 @@ export const appleWalletService = {
     // Add images to the template if they exist
     const iconPath = path.join(process.cwd(), "attached_assets", "pass-icon.png");
     const icon2xPath = path.join(process.cwd(), "attached_assets", "pass-icon@2x.png");
-    const logoPath = path.join(process.cwd(), "attached_assets", "pass-logo.png");
-    const logo2xPath = path.join(process.cwd(), "attached_assets", "pass-logo@2x.png");
     const stripPath = path.join(process.cwd(), "attached_assets", "strip.png");
     const strip2xPath = path.join(process.cwd(), "attached_assets", "strip@2x.png");
+    
+    // Dynamic carrier logo selection based on carrier name
+    const carrierName = (member.carrierName || "").toLowerCase();
+    let logoPath = path.join(process.cwd(), "attached_assets", "pass-logo.png");
+    let logo2xPath = path.join(process.cwd(), "attached_assets", "pass-logo@2x.png");
+    
+    // Use carrier-specific logos when available
+    if (carrierName.includes("ambetter")) {
+      const ambetterLogoPath = path.join(process.cwd(), "attached_assets", "ambetter_1765960250992.png");
+      if (fs.existsSync(ambetterLogoPath)) {
+        logoPath = ambetterLogoPath;
+        logo2xPath = ambetterLogoPath; // Use same image for @2x
+      }
+    }
 
     if (fs.existsSync(iconPath)) {
       template["icon.png"] = fs.readFileSync(iconPath);
