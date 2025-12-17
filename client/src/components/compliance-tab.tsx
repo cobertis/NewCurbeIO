@@ -101,7 +101,7 @@ const STOCK_EXCHANGES = [
   { value: "OTHER", label: "Other" },
 ] as const;
 
-const brandFormSchema = z.object({
+const baseFormSchema = z.object({
   entityType: z.enum(["PRIVATE_PROFIT", "PUBLIC_PROFIT", "NON_PROFIT", "GOVERNMENT", "SOLE_PROPRIETOR"]),
   displayName: z.string().min(1, "Display name is required").max(100),
   email: z.string().email("Valid email is required"),
@@ -119,6 +119,58 @@ const brandFormSchema = z.object({
   state: z.string().max(20).optional(),
   postalCode: z.string().max(10).optional(),
   website: z.string().max(100).optional(),
+});
+
+const brandFormSchema = baseFormSchema.superRefine((data, ctx) => {
+  const { entityType, companyName, ein, businessContactEmail, stockSymbol, stockExchange, firstName, lastName, phone, street, city, state, postalCode } = data;
+  
+  if (["PRIVATE_PROFIT", "PUBLIC_PROFIT", "NON_PROFIT", "GOVERNMENT"].includes(entityType)) {
+    if (!companyName || companyName.trim().length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Legal company name is required", path: ["companyName"] });
+    }
+  }
+  
+  if (entityType === "NON_PROFIT") {
+    if (!ein || ein.trim().length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "EIN (Tax ID) is required for non-profits", path: ["ein"] });
+    }
+  }
+  
+  if (entityType === "PUBLIC_PROFIT") {
+    if (!businessContactEmail || businessContactEmail.trim().length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Business contact email is required", path: ["businessContactEmail"] });
+    }
+    if (!stockSymbol || stockSymbol.trim().length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Stock symbol is required for public companies", path: ["stockSymbol"] });
+    }
+    if (!stockExchange || stockExchange.trim().length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Stock exchange is required for public companies", path: ["stockExchange"] });
+    }
+  }
+  
+  if (entityType === "SOLE_PROPRIETOR") {
+    if (!firstName || firstName.trim().length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "First name is required for sole proprietors", path: ["firstName"] });
+    }
+    if (!lastName || lastName.trim().length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Last name is required for sole proprietors", path: ["lastName"] });
+    }
+    if (!phone || phone.trim().length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Phone number is required for sole proprietors", path: ["phone"] });
+    }
+    if (!street || street.trim().length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "Street address is required for sole proprietors", path: ["street"] });
+    }
+    if (!city || city.trim().length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "City is required for sole proprietors", path: ["city"] });
+    }
+    if (!state || state.trim().length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "State is required for sole proprietors", path: ["state"] });
+    }
+    if (!postalCode || postalCode.trim().length === 0) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, message: "ZIP code is required for sole proprietors", path: ["postalCode"] });
+    }
+  }
 });
 
 type BrandFormValues = z.infer<typeof brandFormSchema>;
@@ -196,9 +248,10 @@ export function ComplianceTab() {
     createBrandMutation.mutate(data);
   };
 
-  const needsCompanyName = ["PRIVATE_PROFIT", "PUBLIC_PROFIT", "NON_PROFIT"].includes(entityType);
+  const needsCompanyName = ["PRIVATE_PROFIT", "PUBLIC_PROFIT", "NON_PROFIT", "GOVERNMENT"].includes(entityType);
   const needsEin = entityType === "NON_PROFIT";
   const needsPublicFields = entityType === "PUBLIC_PROFIT";
+  const isSoleProprietor = entityType === "SOLE_PROPRIETOR";
 
   return (
     <div className="p-6 space-y-6">
@@ -400,7 +453,9 @@ export function ComplianceTab() {
                 </div>
 
                 <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white border-b pb-2">Contact Information (Optional)</h3>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white border-b pb-2">
+                    Contact Information {isSoleProprietor ? "(Required)" : "(Optional)"}
+                  </h3>
                   
                   <div className="grid grid-cols-2 gap-4">
                     <FormField
@@ -408,10 +463,11 @@ export function ComplianceTab() {
                       name="firstName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>First Name</FormLabel>
+                          <FormLabel>First Name {isSoleProprietor && "*"}</FormLabel>
                           <FormControl>
                             <Input placeholder="John" {...field} data-testid="input-first-name" />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -420,10 +476,11 @@ export function ComplianceTab() {
                       name="lastName"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Last Name</FormLabel>
+                          <FormLabel>Last Name {isSoleProprietor && "*"}</FormLabel>
                           <FormControl>
                             <Input placeholder="Doe" {...field} data-testid="input-last-name" />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -434,27 +491,31 @@ export function ComplianceTab() {
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Phone Number</FormLabel>
+                        <FormLabel>Phone Number {isSoleProprietor && "*"}</FormLabel>
                         <FormControl>
                           <Input placeholder="+12024567890" {...field} data-testid="input-phone" />
                         </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
                 </div>
 
                 <div className="space-y-4">
-                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white border-b pb-2">Address (Optional)</h3>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-white border-b pb-2">
+                    Address {isSoleProprietor ? "(Required)" : "(Optional)"}
+                  </h3>
                   
                   <FormField
                     control={form.control}
                     name="street"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Street Address</FormLabel>
+                        <FormLabel>Street Address {isSoleProprietor && "*"}</FormLabel>
                         <FormControl>
                           <Input placeholder="123 Main St" {...field} data-testid="input-street" />
                         </FormControl>
+                        <FormMessage />
                       </FormItem>
                     )}
                   />
@@ -465,10 +526,11 @@ export function ComplianceTab() {
                       name="city"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>City</FormLabel>
+                          <FormLabel>City {isSoleProprietor && "*"}</FormLabel>
                           <FormControl>
                             <Input placeholder="Miami" {...field} data-testid="input-city" />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -477,10 +539,11 @@ export function ComplianceTab() {
                       name="state"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>State</FormLabel>
+                          <FormLabel>State {isSoleProprietor && "*"}</FormLabel>
                           <FormControl>
                             <Input placeholder="FL" maxLength={2} {...field} data-testid="input-state" />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
@@ -489,10 +552,11 @@ export function ComplianceTab() {
                       name="postalCode"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>ZIP Code</FormLabel>
+                          <FormLabel>ZIP Code {isSoleProprietor && "*"}</FormLabel>
                           <FormControl>
                             <Input placeholder="33101" {...field} data-testid="input-zip" />
                           </FormControl>
+                          <FormMessage />
                         </FormItem>
                       )}
                     />
