@@ -842,8 +842,32 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
 
   app.get("/api/passkit/v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier", passkitRateLimiter, async (req: Request, res: Response) => {
     try {
+      const { deviceLibraryIdentifier } = req.params;
       const { passesUpdatedSince } = req.query;
-      res.json({ serialNumbers: [], lastUpdated: new Date().toISOString() });
+      
+      // Get passes associated with this device that have been updated
+      const updatedPasses = await walletPassService.getUpdatedPassesForDevice(
+        deviceLibraryIdentifier,
+        passesUpdatedSince ? new Date(passesUpdatedSince as string) : undefined
+      );
+      
+      console.log("[PassKit] Device checking for updates:", {
+        deviceLibraryIdentifier,
+        passesUpdatedSince,
+        foundPasses: updatedPasses.length,
+      });
+      
+      if (updatedPasses.length === 0) {
+        return res.status(204).send();
+      }
+      
+      const serialNumbers = updatedPasses.map(p => p.serialNumber);
+      const lastUpdated = Math.max(...updatedPasses.map(p => new Date(p.updatedAt).getTime()));
+      
+      res.json({ 
+        serialNumbers, 
+        lastUpdated: new Date(lastUpdated).toISOString() 
+      });
     } catch (error) {
       console.error("[PassKit] List passes error:", error);
       res.status(500).send("Failed");

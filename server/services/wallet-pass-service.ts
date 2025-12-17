@@ -307,6 +307,27 @@ export const walletPassService = {
     return db.select().from(walletDevices).where(eq(walletDevices.walletPassId, walletPassId));
   },
 
+  async getUpdatedPassesForDevice(deviceLibraryIdentifier: string, updatedSince?: Date): Promise<WalletPass[]> {
+    const devices = await db.select().from(walletDevices)
+      .where(eq(walletDevices.deviceLibraryIdentifier, deviceLibraryIdentifier));
+    
+    if (devices.length === 0) {
+      return [];
+    }
+    
+    const passIds = devices.map(d => d.walletPassId);
+    
+    const passes = await db.select().from(walletPasses)
+      .where(
+        and(
+          sql`${walletPasses.id} IN ${passIds}`,
+          updatedSince ? gte(walletPasses.updatedAt, updatedSince) : sql`1=1`
+        )
+      );
+    
+    return passes;
+  },
+
   async getAnalyticsSummary(companyId: string, from?: Date, to?: Date): Promise<{
     totalMembers: number;
     totalLinks: number;
