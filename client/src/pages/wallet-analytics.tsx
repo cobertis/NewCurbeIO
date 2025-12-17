@@ -11,7 +11,7 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Separator } from "@/components/ui/separator";
 import { 
   Wallet, Smartphone, Users, Link, Download, AlertCircle,
-  BarChart3, Apple, Chrome, Eye, Plus, RefreshCw, Copy, ExternalLink, ChevronRight, Settings, Upload, Key, FileCheck
+  BarChart3, Apple, Chrome, Eye, Plus, RefreshCw, Copy, ExternalLink, ChevronRight, Settings, Upload, Key, FileCheck, Trash2
 } from "lucide-react";
 import { useState, useMemo, useRef } from "react";
 import { format } from "date-fns";
@@ -152,16 +152,33 @@ export default function WalletAnalyticsPage() {
 
   const handleGeneratePass = async (memberId: string) => {
     try {
-      const result = await apiRequest("POST", `/api/wallet/members/${memberId}/pass`);
-      const data = await result.json();
-      toast({ title: "Pass and link generated" });
+      const data = await apiRequest("POST", `/api/wallet/members/${memberId}/pass`);
       queryClient.invalidateQueries({ queryKey: ["/api/wallet/members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet/analytics"] });
       if (data.link?.url) {
-        navigator.clipboard.writeText(data.link.url);
-        toast({ title: "Link copied to clipboard" });
+        await navigator.clipboard.writeText(data.link.url);
+        toast({ title: "Pass generated! Link copied to clipboard" });
+      } else {
+        toast({ title: "Pass generated" });
       }
     } catch (error) {
+      console.error("[Wallet] Error generating pass:", error);
       toast({ title: "Failed to generate pass", variant: "destructive" });
+    }
+  };
+
+  const handleDeleteMember = async (memberId: string) => {
+    if (!confirm("Are you sure you want to delete this member? This will also delete their pass and link.")) {
+      return;
+    }
+    try {
+      await apiRequest("DELETE", `/api/wallet/members/${memberId}`);
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet/members"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/wallet/analytics"] });
+      toast({ title: "Member deleted" });
+    } catch (error) {
+      console.error("[Wallet] Error deleting member:", error);
+      toast({ title: "Failed to delete member", variant: "destructive" });
     }
   };
 
@@ -741,34 +758,75 @@ export default function WalletAnalyticsPage() {
                     <TableHead>Name</TableHead>
                     <TableHead>Member ID</TableHead>
                     <TableHead>Plan</TableHead>
+                    <TableHead>Smart Link</TableHead>
                     <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {members?.length === 0 ? (
                     <TableRow>
-                      <TableCell colSpan={4} className="text-center text-muted-foreground py-8">
+                      <TableCell colSpan={5} className="text-center text-muted-foreground py-8">
                         No members yet. Add your first member to get started.
                       </TableCell>
                     </TableRow>
                   ) : (
-                    members?.slice(0, 10).map((member) => (
+                    members?.slice(0, 10).map((member: any) => (
                       <TableRow key={member.id} data-testid={`row-member-${member.id}`}>
                         <TableCell className="font-medium">{member.fullName}</TableCell>
                         <TableCell className="font-mono text-sm">{member.memberId}</TableCell>
                         <TableCell>
                           <Badge variant="secondary">{member.plan || "standard"}</Badge>
                         </TableCell>
+                        <TableCell>
+                          {member.link?.url ? (
+                            <div className="flex items-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-7 px-2 text-xs"
+                                onClick={async () => {
+                                  await navigator.clipboard.writeText(member.link.url);
+                                  toast({ title: "Link copied!" });
+                                }}
+                                data-testid={`button-copy-link-${member.id}`}
+                              >
+                                <Copy className="h-3 w-3 mr-1" />
+                                Copy
+                              </Button>
+                              <a 
+                                href={member.link.url} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-blue-600 hover:underline text-xs"
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                              </a>
+                            </div>
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Not generated</span>
+                          )}
+                        </TableCell>
                         <TableCell className="text-right">
-                          <Button 
-                            variant="ghost" 
-                            size="sm"
-                            onClick={() => handleGeneratePass(member.id)}
-                            data-testid={`button-generate-pass-${member.id}`}
-                          >
-                            <Wallet className="h-4 w-4 mr-1" />
-                            Generate
-                          </Button>
+                          <div className="flex items-center justify-end gap-1">
+                            <Button 
+                              variant="ghost" 
+                              size="sm"
+                              onClick={() => handleGeneratePass(member.id)}
+                              data-testid={`button-generate-pass-${member.id}`}
+                            >
+                              <Wallet className="h-4 w-4 mr-1" />
+                              {member.link ? "Regenerate" : "Generate"}
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700 hover:bg-red-50"
+                              onClick={() => handleDeleteMember(member.id)}
+                              data-testid={`button-delete-member-${member.id}`}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))

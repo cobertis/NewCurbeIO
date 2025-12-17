@@ -39,7 +39,15 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
     try {
       const companyId = (req as any).user.companyId;
       const members = await walletPassService.listMembers(companyId);
-      res.json(members);
+      
+      const membersWithLinks = await Promise.all(
+        members.map(async (member) => {
+          const link = await walletPassService.getLinkByMember(member.id);
+          return { ...member, link: link || null };
+        })
+      );
+      
+      res.json(membersWithLinks);
     } catch (error) {
       console.error("[Wallet] Error listing members:", error);
       res.status(500).json({ message: "Failed to list members" });
