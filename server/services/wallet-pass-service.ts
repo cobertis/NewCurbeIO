@@ -9,15 +9,14 @@ import { nanoid } from "nanoid";
 import crypto from "crypto";
 import * as UAParser from "ua-parser-js";
 
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY_32BYTES;
-if (!ENCRYPTION_KEY) {
-  console.warn("[Wallet] WARNING: ENCRYPTION_KEY_32BYTES not set - wallet token encryption will not work properly");
-}
-const FALLBACK_KEY = crypto.randomBytes(32).toString("hex").slice(0, 32);
-const getEncryptionKey = () => ENCRYPTION_KEY || FALLBACK_KEY;
+// Encryption key is stored per-tenant in walletSettings table
+// These functions require a 32-character key from the database
 
-function encrypt(text: string): string {
-  const key = getEncryptionKey();
+function encrypt(text: string, encryptionKey: string): string {
+  if (!encryptionKey || encryptionKey.length < 32) {
+    throw new Error("Encryption key must be at least 32 characters. Configure it in Wallet Settings.");
+  }
+  const key = encryptionKey.slice(0, 32);
   const iv = crypto.randomBytes(16);
   const cipher = crypto.createCipheriv("aes-256-cbc", Buffer.from(key, "utf8"), iv);
   let encrypted = cipher.update(text, "utf8", "hex");
@@ -25,8 +24,11 @@ function encrypt(text: string): string {
   return iv.toString("hex") + ":" + encrypted;
 }
 
-function decrypt(encryptedText: string): string {
-  const key = getEncryptionKey();
+function decrypt(encryptedText: string, encryptionKey: string): string {
+  if (!encryptionKey || encryptionKey.length < 32) {
+    throw new Error("Encryption key must be at least 32 characters. Configure it in Wallet Settings.");
+  }
+  const key = encryptionKey.slice(0, 32);
   const parts = encryptedText.split(":");
   const iv = Buffer.from(parts[0], "hex");
   const encrypted = parts[1];
@@ -118,9 +120,9 @@ export const walletPassService = {
     return true;
   },
 
-  async createPass(data: Omit<InsertWalletPass, "serialNumber" | "authToken">): Promise<WalletPass> {
+  async createPass(data: Omit<InsertWalletPass, "serialNumber" | "authToken">, encryptionKey: string): Promise<WalletPass> {
     const serialNumber = generateSerialNumber();
-    const authToken = encrypt(generateAuthToken());
+    const authToken = encrypt(generateAuthToken(), encryptionKey);
     
     const [pass] = await db.insert(walletPasses).values({
       ...data,
@@ -177,9 +179,9 @@ export const walletPassService = {
     }).where(eq(walletPasses.id, id));
   },
 
-  async regeneratePass(id: string): Promise<WalletPass | undefined> {
+  async regeneratePass(id: string, encryptionKey: string): Promise<WalletPass | undefined> {
     const newSerialNumber = generateSerialNumber();
-    const newAuthToken = encrypt(generateAuthToken());
+    const newAuthToken = encrypt(generateAuthToken(), encryptionKey);
     const [pass] = await db.update(walletPasses)
       .set({
         serialNumber: newSerialNumber,
@@ -197,17 +199,17 @@ export const walletPassService = {
     return pass;
   },
 
-  validateAuthToken(pass: WalletPass, token: string): boolean {
+  validateAuthToken(pass: WalletPass, token: string, encryptionKey: string): boolean {
     try {
-      const decrypted = decrypt(pass.authToken);
+      const decrypted = decrypt(pass.authToken, encryptionKey);
       return decrypted === token;
     } catch {
       return false;
     }
   },
 
-  getDecryptedAuthToken(pass: WalletPass): string {
-    return decrypt(pass.authToken);
+  getDecryptedAuthToken(pass: WalletPass, encryptionKey: string): string {
+    return decrypt(pass.authToken, encryptionKey);
   },
 
   async createLink(data: Omit<InsertWalletLink, "slug">): Promise<WalletLink> {
@@ -264,7 +266,7 @@ export const walletPassService = {
     return event;
   },
 
-  async registerDevice(walletPassId: string, deviceLibraryIdentifier: string, pushToken?: string, deviceInfo?: Record<string, unknown>): Promise<WalletDevice> {
+  async registerDevice(walletPassId: string, deviceLibraryIdentifier: string, pushToken?: string, deviceInfo?: Record<string, unknown>, encryptionKey?: string): Promise<WalletDevice> {
     const existing = await db.select().from(walletDevices)
       .where(and(
         eq(walletDevices.walletPassId, walletPassId),
@@ -274,7 +276,7 @@ export const walletPassService = {
     if (existing.length > 0) {
       const [device] = await db.update(walletDevices)
         .set({ 
-          pushToken: pushToken ? encrypt(pushToken) : existing[0].pushToken,
+          pushToken: pushToken && encryptionKey ? encrypt(pushToken, encryptionKey) : existing[0].pushToken,
           deviceInfo,
           lastSeenAt: new Date() 
         })
@@ -286,7 +288,7 @@ export const walletPassService = {
     const [device] = await db.insert(walletDevices).values({
       walletPassId,
       deviceLibraryIdentifier,
-      pushToken: pushToken ? encrypt(pushToken) : null,
+      pushToken: pushToken && encryptionKey ? encrypt(pushToken, encryptionKey) : null,
       deviceInfo,
     }).returning();
     return device;

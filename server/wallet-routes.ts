@@ -133,6 +133,11 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
       const settings = await walletPassService.getWalletSettings(companyId);
       const passTypeIdentifier = settings?.applePassTypeIdentifier || process.env.APPLE_PASS_TYPE_ID;
       const teamIdentifier = settings?.appleTeamId || process.env.APPLE_TEAM_ID;
+      const encryptionKey = settings?.encryptionKey;
+
+      if (!encryptionKey || encryptionKey.length < 32) {
+        return res.status(400).json({ message: "Encryption key not configured. Please set it in Wallet Settings (minimum 32 characters)." });
+      }
 
       let pass = await walletPassService.getPassByMember(member.id);
       if (!pass) {
@@ -142,7 +147,10 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
           passTypeIdentifier,
           teamIdentifier,
           webServiceUrl: `${getBaseUrl()}/api/passkit/v1`,
-        });
+        }, encryptionKey);
+      } else {
+        // Regenerate pass with new encryption key to ensure tokens are valid
+        pass = await walletPassService.regeneratePass(pass.id, encryptionKey) || pass;
       }
 
       let link = await walletPassService.getLinkByMember(member.id);
@@ -186,7 +194,12 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
       if (!pass || pass.companyId !== companyId) {
         return res.status(404).json({ message: "Pass not found" });
       }
-      const newPass = await walletPassService.regeneratePass(pass.id);
+      const settings = await walletPassService.getWalletSettings(companyId);
+      const encryptionKey = settings?.encryptionKey;
+      if (!encryptionKey || encryptionKey.length < 32) {
+        return res.status(400).json({ message: "Encryption key not configured. Please set it in Wallet Settings." });
+      }
+      const newPass = await walletPassService.regeneratePass(pass.id, encryptionKey);
       res.json(newPass);
     } catch (error) {
       console.error("[Wallet] Error regenerating pass:", error);
@@ -681,7 +694,14 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
       const token = authHeader.slice(10);
       const pass = await walletPassService.getPassBySerial(serialNumber);
       
-      if (!pass || !walletPassService.validateAuthToken(pass, token)) {
+      if (!pass) {
+        return res.status(401).send("Unauthorized");
+      }
+
+      const settings = await walletPassService.getWalletSettings(pass.companyId);
+      const encryptionKey = settings?.encryptionKey || "";
+      
+      if (!walletPassService.validateAuthToken(pass, token, encryptionKey)) {
         return res.status(401).send("Unauthorized");
       }
 
@@ -690,7 +710,7 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
       }
 
       const pushToken = req.body?.pushToken;
-      await walletPassService.registerDevice(pass.id, deviceLibraryIdentifier, pushToken);
+      await walletPassService.registerDevice(pass.id, deviceLibraryIdentifier, pushToken, undefined, encryptionKey);
       await walletPassService.updatePassStatus(pass.id, "installed");
 
       const deviceInfo = getDeviceInfo(req);
@@ -715,7 +735,14 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
       const token = authHeader.slice(10);
       const pass = await walletPassService.getPassBySerial(serialNumber);
       
-      if (!pass || !walletPassService.validateAuthToken(pass, token)) {
+      if (!pass) {
+        return res.status(401).send("Unauthorized");
+      }
+
+      const settings = await walletPassService.getWalletSettings(pass.companyId);
+      const encryptionKey = settings?.encryptionKey || "";
+      
+      if (!walletPassService.validateAuthToken(pass, token, encryptionKey)) {
         return res.status(401).send("Unauthorized");
       }
 

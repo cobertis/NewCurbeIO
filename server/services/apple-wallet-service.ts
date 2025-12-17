@@ -88,16 +88,21 @@ export const appleWalletService = {
       throw new Error("Apple Wallet is not configured. Missing required credentials.");
     }
 
+    const encryptionKey = settings?.encryptionKey;
+    if (!encryptionKey || encryptionKey.length < 32) {
+      throw new Error("Encryption key not configured. Please set it in Wallet Settings.");
+    }
+
     const branding = await getCompanyBranding(pass.companyId);
-    const authToken = walletPassService.getDecryptedAuthToken(pass);
+    const authToken = walletPassService.getDecryptedAuthToken(pass, encryptionKey);
 
     const p12Buffer = Buffer.from(p12B64, "base64");
     
     // WWDR is a global Apple certificate, loaded from static infrastructure file
     const wwdrBuffer = getWwdrCertificate();
 
-    const passData = {
-      formatVersion: 1 as const,
+    const passData: Record<string, any> = {
+      formatVersion: 1,
       passTypeIdentifier: passTypeId,
       teamIdentifier: teamId,
       serialNumber: pass.serialNumber,
@@ -108,51 +113,52 @@ export const appleWalletService = {
       backgroundColor: hexToRgb(branding.primaryColor || "#1a1a2e"),
       foregroundColor: hexToRgb(branding.secondaryColor || "#ffffff"),
       labelColor: hexToRgb(branding.secondaryColor || "#ffffff"),
-      
-      generic: {
-        primaryFields: [
-          {
-            key: "memberName",
-            label: "MEMBER",
-            value: member.fullName,
-          },
-        ],
-        secondaryFields: [
-          {
-            key: "memberId",
-            label: "MEMBER ID",
-            value: member.memberId,
-          },
-          {
-            key: "plan",
-            label: "PLAN",
-            value: member.plan || "Standard",
-          },
-        ],
-        auxiliaryFields: [
-          {
-            key: "memberSince",
-            label: "MEMBER SINCE",
-            value: member.memberSince ? new Date(member.memberSince).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "N/A",
-          },
-        ],
-        backFields: [
-          {
-            key: "terms",
-            label: "Terms & Conditions",
-            value: `This pass is issued by ${branding.name}. For support, contact us through the app.`,
-          },
-        ],
-      },
-      
-      barcodes: [
+    };
+    
+    // Add generic pass fields
+    passData.generic = {
+      primaryFields: [
         {
-          format: "PKBarcodeFormatQR",
-          message: member.memberId,
-          messageEncoding: "iso-8859-1",
+          key: "memberName",
+          label: "MEMBER",
+          value: member.fullName,
+        },
+      ],
+      secondaryFields: [
+        {
+          key: "memberId",
+          label: "MEMBER ID",
+          value: member.memberId,
+        },
+        {
+          key: "plan",
+          label: "PLAN",
+          value: member.plan || "Standard",
+        },
+      ],
+      auxiliaryFields: [
+        {
+          key: "memberSince",
+          label: "MEMBER SINCE",
+          value: member.memberSince ? new Date(member.memberSince).toLocaleDateString("en-US", { month: "short", year: "numeric" }) : "N/A",
+        },
+      ],
+      backFields: [
+        {
+          key: "terms",
+          label: "Terms & Conditions",
+          value: `This pass is issued by ${branding.name}. For support, contact us through the app.`,
         },
       ],
     };
+    
+    passData.barcodes = [
+      {
+        format: "PKBarcodeFormatQR",
+        message: member.memberId,
+        messageEncoding: "iso-8859-1",
+      },
+    ];
 
     const certificates: any = {
       signerCert: p12Buffer,
