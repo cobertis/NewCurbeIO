@@ -153,18 +153,19 @@ export default function WalletAnalyticsPage() {
 
   const filteredContacts = useMemo(() => {
     if (!policiesData?.items || contactSearch.length < 2) return [];
-    // Transform policies to contact-like objects using applicant info
+    // Transform policies to contact-like objects using client info
     return policiesData.items.map((policy: any) => ({
       id: policy.id,
-      firstName: policy.applicantFirstName || "",
-      lastName: policy.applicantLastName || "",
-      email: policy.applicantEmail || "",
-      phone: policy.applicantPhone || "",
+      firstName: policy.clientFirstName || "",
+      lastName: policy.clientLastName || "",
+      email: policy.clientEmail || "",
+      phone: policy.clientPhone || "",
       // Include policy info for display
       carrierName: policy.carrierName || policy.insuranceCarrier || "",
       planName: policy.planName || "",
-      planId: policy.planId || policy.policyNumber || "",
+      planId: policy.planId || policy.id || "",
       monthlyPremium: policy.monthlyPremium || policy.premium || "",
+      productType: policy.productType || "",
     })).slice(0, 10);
   }, [policiesData, contactSearch]);
 
