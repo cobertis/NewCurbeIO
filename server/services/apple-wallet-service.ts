@@ -253,13 +253,15 @@ export const appleWalletService = {
       return null;
     }
 
-    const webServiceUrl = passRecord.webServiceUrl || process.env.BASE_URL || 
-      (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:5000");
+    // passRecord.webServiceUrl already contains the full path including /api/passkit
+    // Only append /api/passkit if using fallback base URL
+    const webServiceUrl = passRecord.webServiceUrl || 
+      `${process.env.BASE_URL || (process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : "http://localhost:5000")}/api/passkit`;
 
     const passBuffer = await this.generatePass({
       pass: passRecord,
       member,
-      webServiceUrl: `${webServiceUrl}/api/passkit/v1`,
+      webServiceUrl,
     });
 
     return {

@@ -1,0 +1,160 @@
+LA VERDAD CLAVE (ESTO ES LO QUE CASI TODOS FALLAN)
+
+Apple NO te avisa “oye, alguien instaló el pase”.
+
+El dispositivo solo aparece en tu base de datos si TU BACKEND IMPLEMENTA Y RECIBE ESTE CALLBACK:
+
+POST /v1/devices/{deviceLibraryIdentifier}/registrations/{passTypeIdentifier}/{serialNumber}
+
+
+Si ese endpoint:
+
+no existe
+
+no responde 200
+
+no valida bien
+
+no guarda datos
+
+👉 Apple considera el pass instalado, pero tú nunca te enteras.
+
+Por eso ves el pase en el teléfono pero no en la DB.
+
+FLUJO REAL DE APPLE WALLET (SIN FANTASÍAS)
+1️⃣ Usuario instala el pass
+
+iOS descarga el .pkpass
+
+iOS lo guarda localmente
+
+NO hay push
+
+NO hay webhook genérico
+
+2️⃣ iOS intenta registrar el dispositivo (ESTE ES EL PASO CRÍTICO)
+
+Apple hace un HTTP POST a tu backend:
+
+POST https://api.tudominio.com/v1/devices/{deviceLibraryIdentifier}/registrations/{passTypeIdentifier}/{serialNumber}
+Authorization: ApplePass <authenticationToken>
+
+
+Con body:
+
+{
+  "pushToken": "abcdef123456..."
+}
+
+
+📌 SI ESTE REQUEST FALLA → NO HAY REGISTRO
+📌 Apple NO reintenta infinitamente
+📌 Apple NO te avisa del error
+
+3️⃣ QUÉ DEBES GUARDAR (OBLIGATORIO)
+
+Cuando recibes ese POST, debes guardar:
+
+deviceLibraryIdentifier ← ID único del dispositivo
+
+pushToken ← para updates
+
+serialNumber ← pass específico
+
+passTypeIdentifier
+
+installedAt
+
+userId (si lo asocias)
+
+notificationsEnabled = true (por defecto)
+
+Si no guardas eso → no sabes quién instaló el pass.
+
+POR QUÉ AHORA MISMO NO TE APARECE EL DEVICE
+
+Uno (o varios) de estos es cierto en tu sistema:
+
+❌ No existe el endpoint /v1/devices/.../registrations/...
+
+❌ Existe pero responde ≠ 200
+
+❌ Falla autenticación del authenticationToken
+
+❌ Tu backend no está guardando nada
+
+❌ Estás probando con un pass viejo sin webServiceURL
+
+❌ El dominio del webServiceURL no coincide con el del pass
+
+❌ Estás en HTTPS inválido (Apple es implacable)
+
+Con uno solo que falle → no hay device en DB.
+
+CHECKLIST TÉCNICO (REVÍSALO SIN EXCUSAS)
+
+En tu pass.json DEBE existir:
+
+"webServiceURL": "https://api.curbe.io/wallet",
+"authenticationToken": "RANDOM_LONG_TOKEN"
+
+
+Y tu backend DEBE tener:
+
+POST /wallet/v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier/:serialNumber
+
+
+Con lógica:
+
+validar token
+
+guardar device
+
+responder 200 OK
+
+PRUEBA DEFINITIVA (EN 30 SEGUNDOS)
+
+Haz esto:
+
+Borra el pass del iPhone
+
+Instálalo de nuevo
+
+Mira logs del backend
+
+Si NO ves un POST /v1/devices/.../registrations/...:
+👉 Apple no puede hablar con tu backend.
+
+Si lo ves pero no se guarda:
+👉 bug de backend, no de Apple.
+
+VERDAD INCÓMODA (PERO NECESARIA)
+
+Mucha gente cree:
+
+“Apple me avisará cuando instalen el pass”
+
+Eso NO EXISTE.
+
+Apple dice:
+
+“Si quieres saberlo, implementa el endpoint. Si no, es tu problema.”
+
+LO QUE TE RECOMIENDO HACER AHORA
+
+Loguear todas las requests entrantes al webServiceURL
+
+Confirmar que el endpoint de registrations responde 200
+
+Forzar reinstall del pass
+
+Verificar que guardas deviceLibraryIdentifier
+
+Si quieres, en el próximo mensaje:
+
+te doy el handler exacto en Node/Express
+
+o el prompt para Replit para arreglarlo en una pasada
+
+Pero el diagnóstico ya está claro:
+👉 el pass está instalado, pero tu backend no está escuchando correctamente a Apple.

@@ -147,7 +147,7 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
           memberId: member.id,
           passTypeIdentifier,
           teamIdentifier,
-          webServiceUrl: `${getBaseUrl()}/api/passkit/v1`,
+          webServiceUrl: `${getBaseUrl()}/api/passkit`,
         }, encryptionKey);
       } else {
         // Regenerate pass with new encryption key to ensure tokens are valid
@@ -552,7 +552,7 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
       const pkpassBuffer = await appleWalletService.generatePass({
         pass,
         member,
-        webServiceUrl: `${getBaseUrl()}/api/passkit/v1`,
+        webServiceUrl: `${getBaseUrl()}/api/passkit`,
         settings,
       });
 
@@ -729,7 +729,7 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
       const pkpassBuffer = await appleWalletService.generatePass({
         pass,
         member,
-        webServiceUrl: `${getBaseUrl()}/api/passkit/v1`,
+        webServiceUrl: `${getBaseUrl()}/api/passkit`,
       });
 
       res.setHeader("Content-Type", "application/vnd.apple.pkpass");
@@ -755,11 +755,19 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
   });
 
   app.post("/api/passkit/v1/devices/:deviceLibraryIdentifier/registrations/:passTypeIdentifier/:serialNumber", passkitRateLimiter, async (req: Request, res: Response) => {
+    console.log("[PassKit] Device registration attempt:", {
+      deviceLibraryIdentifier: req.params.deviceLibraryIdentifier,
+      passTypeIdentifier: req.params.passTypeIdentifier,
+      serialNumber: req.params.serialNumber,
+      hasAuth: !!req.headers.authorization,
+      body: req.body,
+    });
     try {
       const { deviceLibraryIdentifier, passTypeIdentifier, serialNumber } = req.params;
       const authHeader = req.headers.authorization;
       
       if (!authHeader?.startsWith("ApplePass ")) {
+        console.log("[PassKit] Registration rejected: missing or invalid auth header");
         return res.status(401).send("Unauthorized");
       }
       
@@ -782,12 +790,14 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
       }
 
       const pushToken = req.body?.pushToken;
+      console.log("[PassKit] Registering device with pushToken:", pushToken ? "present" : "missing");
       await walletPassService.registerDevice(pass.id, deviceLibraryIdentifier, pushToken, undefined, encryptionKey);
       await walletPassService.updatePassStatus(pass.id, "installed");
 
       const deviceInfo = getDeviceInfo(req);
       await walletPassService.logEvent(pass.companyId, "apple_device_registered", deviceInfo, pass.memberId, pass.id, { deviceLibraryIdentifier });
 
+      console.log("[PassKit] Device registered successfully:", { passId: pass.id, deviceLibraryIdentifier });
       res.status(201).send();
     } catch (error) {
       console.error("[PassKit] Register error:", error);
