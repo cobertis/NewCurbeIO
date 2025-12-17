@@ -11,8 +11,9 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Separator } from "@/components/ui/separator";
 import { 
   Wallet, Smartphone, Users, Link, Download, AlertCircle,
-  BarChart3, Apple, Chrome, Eye, Plus, RefreshCw, Copy, ExternalLink, ChevronRight, Settings, Upload, Key, FileCheck, Trash2
+  BarChart3, Apple, Chrome, Eye, Plus, RefreshCw, Copy, ExternalLink, ChevronRight, Settings, Upload, Key, FileCheck, Trash2, Bell, Send
 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
 import { useState, useMemo, useRef } from "react";
 import { format } from "date-fns";
 import { useToast } from "@/hooks/use-toast";
@@ -74,6 +75,8 @@ export default function WalletAnalyticsPage() {
   const { toast } = useToast();
   const [showAddMember, setShowAddMember] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
+  const [notificationMessage, setNotificationMessage] = useState("");
   
   const [appleTeamId, setAppleTeamId] = useState("");
   const [applePassTypeId, setApplePassTypeId] = useState("");
@@ -243,6 +246,37 @@ export default function WalletAnalyticsPage() {
     setShowSettings(true);
   };
 
+  const [sendingNotification, setSendingNotification] = useState(false);
+  
+  const handleSendBulkNotification = async () => {
+    if (!notificationMessage.trim()) {
+      toast({ title: "Please enter a message", variant: "destructive" });
+      return;
+    }
+    
+    setSendingNotification(true);
+    try {
+      const result = await apiRequest("POST", "/api/wallet/alerts/bulk", {
+        message: notificationMessage.trim(),
+      });
+      toast({ 
+        title: "Notification sent",
+        description: result.message || `Updated ${result.passesUpdated} passes, notified ${result.devicesNotified} devices`,
+      });
+      setShowNotification(false);
+      setNotificationMessage("");
+    } catch (error: any) {
+      console.error("[Wallet] Error sending notification:", error);
+      toast({ 
+        title: "Failed to send notification", 
+        description: error.message || "An error occurred",
+        variant: "destructive" 
+      });
+    } finally {
+      setSendingNotification(false);
+    }
+  };
+
   const getEventTypeIcon = (type: string) => {
     if (type.includes("apple")) return <Apple className="h-4 w-4" />;
     if (type.includes("google")) return <Chrome className="h-4 w-4" />;
@@ -329,6 +363,52 @@ export default function WalletAnalyticsPage() {
               {config?.googleConfigured ? "Configured" : "Not Configured"}
             </Badge>
           </div>
+          <Dialog open={showNotification} onOpenChange={setShowNotification}>
+            <DialogTrigger asChild>
+              <Button variant="outline" size="icon" data-testid="button-send-notification">
+                <Bell className="h-4 w-4" />
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px]" aria-describedby="notification-description">
+              <DialogHeader>
+                <DialogTitle>Send Push Notification</DialogTitle>
+              </DialogHeader>
+              <p id="notification-description" className="sr-only">Send a push notification to all registered wallet pass holders</p>
+              <div className="space-y-4 pt-4">
+                <div className="space-y-2">
+                  <Label htmlFor="notification-message">Message</Label>
+                  <Textarea
+                    id="notification-message"
+                    placeholder="Enter notification message..."
+                    value={notificationMessage}
+                    onChange={(e) => setNotificationMessage(e.target.value)}
+                    rows={3}
+                    maxLength={200}
+                    data-testid="input-notification-message"
+                  />
+                  <p className="text-xs text-muted-foreground">{notificationMessage.length}/200 characters</p>
+                </div>
+                <p className="text-sm text-muted-foreground">
+                  This will update all active passes and send a push notification to registered devices.
+                </p>
+                <Button 
+                  onClick={handleSendBulkNotification} 
+                  disabled={sendingNotification || !notificationMessage.trim()}
+                  className="w-full gap-2"
+                  data-testid="button-confirm-notification"
+                >
+                  {sendingNotification ? (
+                    <LoadingSpinner fullScreen={false} />
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4" />
+                      Send to All Passes
+                    </>
+                  )}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
           <Sheet open={showSettings} onOpenChange={setShowSettings}>
             <SheetTrigger asChild>
               <Button variant="outline" size="icon" onClick={handleOpenSettings} data-testid="button-settings">
