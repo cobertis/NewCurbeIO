@@ -943,6 +943,19 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             <TooltipContent side="right" className="font-medium">Landing Page</TooltipContent>
           </Tooltip>
 
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setLocation("/wallet-analytics")}
+                data-testid="sidebar-button-wallet"
+                className={circularButtonClass}
+              >
+                <Wallet className="h-[18px] w-[18px] text-amber-600" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">Wallet Passes</TooltipContent>
+          </Tooltip>
+
           {/* Spacer to push bottom icons down */}
           <div className="flex-1" />
 
