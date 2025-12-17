@@ -315,6 +315,17 @@ export class BlueBubblesClient {
     return this.request<{ data: Chat }>(`/api/v1/chat/${encodeURIComponent(chatGuid)}?with=participants,lastMessage`);
   }
 
+  async createChat(addresses: string[], service: string = 'iMessage'): Promise<{ data: Chat }> {
+    console.log(`[BlueBubbles] Creating new chat with addresses: ${addresses.join(', ')}, service: ${service}`);
+    return this.request<{ data: Chat }>('/api/v1/chat/new', {
+      method: 'POST',
+      body: JSON.stringify({
+        addresses,
+        service,
+      }),
+    });
+  }
+
   async getChatMessages(
     chatGuid: string,
     offset = 0,
@@ -468,6 +479,11 @@ class BlueBubblesClientManager {
     return client.getChat(chatGuid);
   }
 
+  async createChat(companyId: string, addresses: string[], service: string = 'iMessage'): Promise<{ data: Chat }> {
+    const client = await this.getClient(companyId);
+    return client.createChat(addresses, service);
+  }
+
   async getChatMessages(companyId: string, chatGuid: string, offset = 0, limit = 100): Promise<{ data: Message[] }> {
     const client = await this.getClient(companyId);
     return client.getChatMessages(chatGuid, offset, limit);
@@ -544,6 +560,13 @@ export const blueBubblesClient = {
       throw new Error('companyId is required for multi-tenant support');
     }
     return blueBubblesManager.getChat(companyId, chatGuid);
+  },
+  
+  createChat: async (companyId: string, addresses: string[], service: string = 'iMessage'): Promise<{ data: Chat }> => {
+    if (!companyId) {
+      throw new Error('companyId is required for multi-tenant support');
+    }
+    return blueBubblesManager.createChat(companyId, addresses, service);
   },
   
   getChatMessages: async (companyId: string, chatGuid: string, offset = 0, limit = 100): Promise<{ data: Message[] }> => {

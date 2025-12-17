@@ -2069,6 +2069,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           conversation = await storage.getImessageConversationByHandle(user.companyId, to);
         }
         if (!conversation) {
+          // FIRST: Create the chat in BlueBubbles before creating local conversation
+          // This is required because BlueBubbles needs the chat to exist before sending messages
+          console.log(`[iMessage] Creating new chat in BlueBubbles for: ${normalizedTo}`);
+          const { blueBubblesManager } = await import("./bluebubbles");
+          try {
+            const chatResult = await blueBubblesManager.createChat(user.companyId, [normalizedTo], 'iMessage');
+            console.log(`[iMessage] BlueBubbles chat created:`, chatResult.data?.guid || 'no guid returned');
+          } catch (createChatError: any) {
+            console.error(`[iMessage] Failed to create BlueBubbles chat:`, createChatError.message);
+            // Continue anyway - the chat might already exist or will be created on first message
+          }
           // Create new conversation with normalized phone
           conversation = await storage.createImessageConversation({
             companyId: user.companyId,
