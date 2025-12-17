@@ -6027,6 +6027,9 @@ export const walletSettings = pgTable("wallet_settings", {
   // Encryption key for tokens (32 bytes)
   encryptionKey: text("encryption_key"),
   
+  // Auto-send wallet link message template
+  walletLinkMessage: text("wallet_link_message"),
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

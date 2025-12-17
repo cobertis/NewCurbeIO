@@ -9,6 +9,8 @@ import { googleWalletService } from "./services/google-wallet-service";
 import { apnsService } from "./services/apns-service";
 import { insertWalletMemberSchema } from "@shared/schema";
 import { broadcastWalletAnalyticsUpdate } from "./websocket";
+import { blueBubblesManager } from "./bluebubbles";
+import { storage } from "./storage";
 
 const passkitRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000,
@@ -167,6 +169,7 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
       }
 
       let link = await walletPassService.getLinkByMember(member.id);
+      const isNewLink = !link;
       if (!link) {
         link = await walletPassService.createLink({
           companyId,
@@ -175,7 +178,43 @@ export function registerWalletRoutes(app: Express, requireAuth: any, requireActi
         });
       }
 
-      res.json({ pass, link });
+      // Build dynamic URL based on request domain (works for dev and production)
+      const protocol = req.headers["x-forwarded-proto"] || req.protocol || "https";
+      const host = req.headers["x-forwarded-host"] || req.headers.host;
+      const dynamicLinkUrl = `${protocol}://${host}/w/${link.slug}`;
+
+      // Auto-send iMessage with wallet link if company has iMessage enabled and member has phone
+      let iMessageSent = false;
+      if (isNewLink && member.phone) {
+        try {
+          const companySettings = await storage.getCompanySettings(companyId);
+          const imessageSettings = companySettings?.imessageSettings as {
+            serverUrl?: string;
+            password?: string;
+            isEnabled?: boolean;
+          } | undefined;
+
+          if (imessageSettings?.isEnabled && imessageSettings.serverUrl && imessageSettings.password) {
+            const walletSettings = await walletPassService.getWalletSettings(companyId);
+            const messageTpl = walletSettings?.walletLinkMessage || "Hi {name}! Here's your digital wallet card: {link}";
+            const messageText = messageTpl
+              .replace("{name}", member.fullName.split(" ")[0])
+              .replace("{link}", dynamicLinkUrl);
+
+            await blueBubblesManager.sendMessage(companyId, {
+              chatGuid: `iMessage;-;${member.phone}`,
+              message: messageText,
+            });
+            iMessageSent = true;
+            console.log(`[Wallet] iMessage sent to ${member.phone} with wallet link`);
+          }
+        } catch (imError) {
+          console.error("[Wallet] Failed to send iMessage with wallet link:", imError);
+          // Don't fail the whole request if iMessage fails
+        }
+      }
+
+      res.json({ pass, link, url: dynamicLinkUrl, iMessageSent });
     } catch (error) {
       console.error("[Wallet] Error creating pass:", error);
       res.status(500).json({ message: "Failed to create pass" });
