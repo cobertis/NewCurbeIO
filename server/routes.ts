@@ -34676,6 +34676,227 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+
+  // ============================================================
+  // UNIVERSAL PASS DELIVERY - Smart OS detection for Apple/Android
+  // ============================================================
+  
+  // GET /p/:token - Universal pass delivery with automatic OS detection
+  app.get("/p/:token", async (req: Request, res: Response) => {
+    try {
+      const { token } = req.params;
+      const userAgent = (req.headers["user-agent"] || "").toLowerCase();
+      
+      // Find pass by universal token
+      const passInstance = await vipPassService.getPassByUniversalToken(token);
+      
+      if (!passInstance) {
+        return res.status(404).send(getPassNotFoundHtml());
+      }
+      
+      if (passInstance.status !== "active") {
+        return res.status(410).send(getPassExpiredHtml());
+      }
+      
+      // OS Detection
+      const isIOS = /iphone|ipad|ipod/.test(userAgent);
+      const isAndroid = /android/.test(userAgent);
+      const isMobile = isIOS || isAndroid;
+      
+      console.log(\`[UniversalPass] Token: \${token}, UA: \${userAgent.substring(0, 50)}..., iOS: \${isIOS}, Android: \${isAndroid}\`);
+      
+      if (isIOS) {
+        // iOS - Serve Apple Wallet .pkpass directly
+        try {
+          const { buffer, filename } = await vipPassService.generatePkpassFile(passInstance.id, passInstance.companyId);
+          
+          await vipPassService.incrementAppleDownloads(passInstance.id);
+          
+          res.set({
+            "Content-Type": "application/vnd.apple.pkpass",
+            "Content-Disposition": \`attachment; filename="\${filename}"\`,
+            "Content-Length": buffer.length.toString(),
+          });
+          
+          return res.send(buffer);
+        } catch (error: any) {
+          console.error("[UniversalPass] iOS pkpass error:", error);
+          return res.status(500).send(getErrorHtml("Unable to generate your VIP Pass. Please try again."));
+        }
+      }
+      
+      if (isAndroid) {
+        // Android - Redirect to Google Wallet
+        if (passInstance.googleWalletUrl) {
+          await vipPassService.incrementGoogleDownloads(passInstance.id);
+          return res.redirect(302, passInstance.googleWalletUrl);
+        } else {
+          // Google Wallet not configured - show fallback page
+          return res.send(getAndroidFallbackHtml(passInstance));
+        }
+      }
+      
+      // Desktop/Other - Show instruction page
+      return res.send(getDesktopFallbackHtml(passInstance, token));
+      
+    } catch (error: any) {
+      console.error("[UniversalPass] Error:", error);
+      return res.status(500).send(getErrorHtml("Something went wrong. Please try again."));
+    }
+  });
+  
+  // Helper functions for HTML responses
+  function getPassNotFoundHtml(): string {
+    return \`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pass Not Found</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 20px; }
+    .container { text-align: center; max-width: 400px; }
+    .icon { font-size: 64px; margin-bottom: 20px; }
+    h1 { font-size: 24px; margin-bottom: 12px; }
+    p { color: #a0a0a0; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">🔍</div>
+    <h1>Pass Not Found</h1>
+    <p>This VIP Pass link is invalid or has expired.</p>
+  </div>
+</body>
+</html>\`;
+  }
+  
+  function getPassExpiredHtml(): string {
+    return \`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pass Expired</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 20px; }
+    .container { text-align: center; max-width: 400px; }
+    .icon { font-size: 64px; margin-bottom: 20px; }
+    h1 { font-size: 24px; margin-bottom: 12px; }
+    p { color: #a0a0a0; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">⏰</div>
+    <h1>Pass No Longer Active</h1>
+    <p>This VIP Pass has been deactivated or has expired.</p>
+  </div>
+</body>
+</html>\`;
+  }
+  
+  function getErrorHtml(message: string): string {
+    return \`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Error</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 20px; }
+    .container { text-align: center; max-width: 400px; }
+    .icon { font-size: 64px; margin-bottom: 20px; }
+    h1 { font-size: 24px; margin-bottom: 12px; }
+    p { color: #a0a0a0; font-size: 16px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="icon">⚠️</div>
+    <h1>Something Went Wrong</h1>
+    <p>\${message}</p>
+  </div>
+</body>
+</html>\`;
+  }
+  
+  function getAndroidFallbackHtml(passInstance: any): string {
+    return \`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>VIP Pass</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 20px; }
+    .container { text-align: center; max-width: 400px; }
+    .card { background: rgba(255,255,255,0.1); border-radius: 16px; padding: 32px; backdrop-filter: blur(10px); margin-bottom: 24px; }
+    .icon { font-size: 64px; margin-bottom: 20px; }
+    h1 { font-size: 24px; margin-bottom: 8px; }
+    .member { color: #a0a0a0; font-size: 14px; margin-bottom: 24px; }
+    .tier { background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%); color: #1a1a2e; padding: 8px 24px; border-radius: 20px; display: inline-block; font-weight: 600; font-size: 14px; }
+    p { color: #a0a0a0; font-size: 14px; line-height: 1.6; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="icon">🎫</div>
+      <h1>\${passInstance.recipientName || 'VIP Member'}</h1>
+      <p class="member">Member ID: \${passInstance.memberId || passInstance.serialNumber}</p>
+      <div class="tier">\${passInstance.tierLevel || 'Gold'}</div>
+    </div>
+    <p>Google Wallet integration is being configured. Your VIP pass details are shown above.</p>
+  </div>
+</body>
+</html>\`;
+  }
+  
+  function getDesktopFallbackHtml(passInstance: any, token: string): string {
+    const passUrl = \`\${process.env.REPLIT_DOMAINS?.split(',')[0] ? 'https://' + process.env.REPLIT_DOMAINS.split(',')[0] : ''}/p/\${token}\`;
+    return \`<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Add to Wallet - VIP Pass</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; min-height: 100vh; display: flex; align-items: center; justify-content: center; background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%); color: white; padding: 20px; }
+    .container { text-align: center; max-width: 500px; }
+    .card { background: rgba(255,255,255,0.1); border-radius: 16px; padding: 32px; backdrop-filter: blur(10px); margin-bottom: 24px; }
+    .icon { font-size: 64px; margin-bottom: 20px; }
+    h1 { font-size: 28px; margin-bottom: 8px; }
+    .member { color: #a0a0a0; font-size: 14px; margin-bottom: 24px; }
+    .tier { background: linear-gradient(135deg, #ffd700 0%, #ffb700 100%); color: #1a1a2e; padding: 8px 24px; border-radius: 20px; display: inline-block; font-weight: 600; font-size: 14px; }
+    .instruction { background: rgba(255,255,255,0.05); border-radius: 12px; padding: 24px; margin-top: 24px; }
+    .instruction h2 { font-size: 18px; margin-bottom: 12px; }
+    .instruction p { color: #a0a0a0; font-size: 14px; line-height: 1.6; }
+    .qr-placeholder { width: 150px; height: 150px; background: white; border-radius: 8px; margin: 20px auto; display: flex; align-items: center; justify-content: center; color: #1a1a2e; font-size: 12px; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="card">
+      <div class="icon">🎫</div>
+      <h1>\${passInstance.recipientName || 'VIP Member'}</h1>
+      <p class="member">Member ID: \${passInstance.memberId || passInstance.serialNumber}</p>
+      <div class="tier">\${passInstance.tierLevel || 'Gold'}</div>
+    </div>
+    <div class="instruction">
+      <h2>📱 Open on Your Phone</h2>
+      <p>Scan this QR code or open this link on your mobile device to add this pass to your Apple Wallet or Google Wallet.</p>
+      <div class="qr-placeholder">Scan with phone</div>
+    </div>
+  </div>
+</body>
+</html>\`;
+  }
   // ============================================================
   // ONBOARDING - Complete user profile after registration
   // ============================================================

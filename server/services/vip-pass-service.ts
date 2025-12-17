@@ -112,6 +112,10 @@ export class VipPassService {
     return crypto.randomBytes(32).toString("hex");
   }
 
+  generateUniversalToken(): string {
+    return crypto.randomBytes(16).toString("base64url");
+  }
+
   async createPassInstance(companyId: string, data: {
     contactId?: string;
     recipientName?: string;
@@ -148,12 +152,15 @@ export class VipPassService {
       }
     }
 
+    const universalToken = this.generateUniversalToken();
+    
     await db.insert(vipPassInstances).values({
       id,
       companyId,
       designId: design.id,
       serialNumber,
       authenticationToken,
+      universalToken,
       contactId: data.contactId || null,
       recipientName: recipientName || null,
       recipientEmail: recipientEmail || null,
@@ -162,16 +169,80 @@ export class VipPassService {
       tierLevel: data.tierLevel || "Gold",
       status: "active",
       downloadCount: 0,
+      appleDownloads: 0,
+      googleDownloads: 0,
       createdAt: now,
       updatedAt: now,
+    });
+
+    // Generate Google Wallet URL asynchronously (don't block pass creation)
+    this.generateGoogleWalletUrl(id, companyId).catch(err => {
+      console.error("[VIP Pass] Error generating Google Wallet URL:", err);
     });
 
     return {
       id,
       serialNumber,
       authenticationToken,
+      universalToken,
       designId: design.id,
     };
+  }
+  
+  async generateGoogleWalletUrl(passInstanceId: string, companyId: string): Promise<string | null> {
+    try {
+      const { googleWalletService } = await import("./google-wallet-service");
+      
+      if (!googleWalletService.isConfigured()) {
+        return null;
+      }
+      
+      const googleWalletUrl = await googleWalletService.generateWalletUrl(passInstanceId, companyId);
+      
+      if (googleWalletUrl) {
+        await db
+          .update(vipPassInstances)
+          .set({ googleWalletUrl })
+          .where(eq(vipPassInstances.id, passInstanceId));
+      }
+      
+      return googleWalletUrl;
+    } catch (error) {
+      console.error("[VIP Pass] Error generating Google Wallet URL:", error);
+      return null;
+    }
+  }
+
+  async getPassByUniversalToken(token: string) {
+    const [instance] = await db
+      .select()
+      .from(vipPassInstances)
+      .where(eq(vipPassInstances.universalToken, token))
+      .limit(1);
+    
+    return instance;
+  }
+
+  async incrementAppleDownloads(passInstanceId: string) {
+    await db
+      .update(vipPassInstances)
+      .set({ 
+        appleDownloads: sql`${vipPassInstances.appleDownloads} + 1`,
+        lastDownloadAt: new Date(),
+        downloadCount: sql`${vipPassInstances.downloadCount} + 1`
+      })
+      .where(eq(vipPassInstances.id, passInstanceId));
+  }
+
+  async incrementGoogleDownloads(passInstanceId: string) {
+    await db
+      .update(vipPassInstances)
+      .set({ 
+        googleDownloads: sql`${vipPassInstances.googleDownloads} + 1`,
+        lastDownloadAt: new Date(),
+        downloadCount: sql`${vipPassInstances.downloadCount} + 1`
+      })
+      .where(eq(vipPassInstances.id, passInstanceId));
   }
 
   async getPassInstanceBySerialNumber(serialNumber: string) {
