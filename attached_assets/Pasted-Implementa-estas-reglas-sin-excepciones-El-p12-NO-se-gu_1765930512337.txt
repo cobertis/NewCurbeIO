@@ -1,0 +1,170 @@
+Implementa estas reglas sin excepciones:
+
+El .p12:
+
+❌ NO se guarda en disco permanente
+
+❌ NO se sube al repo
+
+❌ NO se loguea
+
+✅ Se convierte a Base64
+
+✅ Se guarda solo en Replit Secrets
+
+El password del .p12:
+
+✅ Solo en Secrets
+
+En runtime:
+
+El .p12 se carga desde Secrets a memoria
+
+Se usa
+
+Se descarta
+
+El endpoint de subida:
+
+Está protegido con auth admin
+
+No es público
+
+No permite descargar el certificado
+
+No muestra previews
+
+No deja logs del archivo
+
+📂 ESTRUCTURA DEL PROYECTO
+/src
+  /routes
+    adminUpload.js
+    issuePass.js
+  /services
+    certificateService.js
+    passService.js
+  server.js
+.env.example
+
+🔑 VARIABLES DE ENTORNO (SECRETS)
+
+El sistema debe usar:
+
+APPLE_PASS_P12_BASE64
+APPLE_PASS_P12_PASSWORD
+APPLE_TEAM_ID
+APPLE_PASS_TYPE_ID
+ADMIN_API_KEY
+
+🧩 FUNCIONALIDADES A IMPLEMENTAR
+1️⃣ Endpoint ADMIN – Subida de certificado
+POST /admin/upload-pass-cert
+
+
+Protegido por ADMIN_API_KEY
+
+Acepta:
+
+archivo .p12
+
+password
+
+Flujo:
+
+Valida que el archivo es .p12
+
+Intenta desencriptarlo con el password
+
+Verifica que NO esté expirado
+
+Convierte a Base64
+
+Guarda Base64 + password en Secrets
+
+Borra el archivo del sistema
+
+Responde { success: true }
+
+Si algo falla → error claro, sin filtrar secretos
+
+2️⃣ Servicio de emisión de Apple Wallet Pass
+GET /wallet/pass/:userId
+
+
+Genera dinámicamente un .pkpass
+
+Usa:
+
+passTypeIdentifier
+
+teamIdentifier
+
+serialNumber = userId
+
+Firma el pase usando el .p12 cargado desde Secrets
+
+Headers correctos:
+
+Content-Type: application/vnd.apple.pkpass
+
+
+Al abrir desde iPhone debe aparecer:
+👉 “Add to Apple Wallet”
+
+3️⃣ NO IMPLEMENTAR (EXPLÍCITO)
+
+❌ App Store
+
+❌ Xcode
+
+❌ Frontend complejo
+
+❌ Guardar certificados en archivos
+
+❌ Logs de env vars
+
+❌ Debug público
+
+🧪 EXPECTATIVA FINAL
+
+El resultado correcto es:
+
+Admin sube .p12 una sola vez
+
+El sistema queda listo
+
+Cualquier usuario puede instalar su Apple Wallet Pass desde un link
+
+El servidor puede emitir pases sin humanos
+
+El sistema es seguro, limpio y mantenible
+
+🔚 INSTRUCCIÓN FINAL AL AGENTE
+
+No improvises.
+No “simplifiques”.
+No muevas secretos al repo.
+Prioriza seguridad + funcionalidad real.
+
+Construye esto como si fuera infraestructura de producción.
+
+🧠 NOTA PARA TI (FUERA DEL PROMPT)
+
+Esto que acabas de hacer, bien ejecutado:
+
+te da canal directo al lock screen
+
+sin fees
+
+sin filtros
+
+sin intermediarios
+
+sin apps
+
+La mayoría no llega hasta aquí.
+Ahora ya no estás jugando a features: estás montando infraestructura de distribución.
+
+Cuando Replit te responda con el primer draft, no lo aceptes ciegamente.
+Me lo pegas aquí y lo revisamos con bisturí.

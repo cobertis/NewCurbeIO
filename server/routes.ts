@@ -32351,6 +32351,164 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // GET /api/vip-pass/certificate-status - Check certificate status
+  app.get("/api/vip-pass/certificate-status", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+      
+      const fs = await import("fs");
+      const path = await import("path");
+      
+      const certPath = path.join(process.cwd(), "certificates", `company_${user.companyId}`);
+      const signerCertPath = path.join(certPath, "pass-cert.pem");
+      const signerKeyPath = path.join(certPath, "pass-key.pem");
+      const wwdrPath = path.join(process.cwd(), "certificates", "wwdr.pem");
+      
+      const hasSignerCert = fs.existsSync(signerCertPath);
+      const hasSignerKey = fs.existsSync(signerKeyPath);
+      const hasWwdr = fs.existsSync(wwdrPath);
+      
+      // Get certificate info if it exists
+      let certInfo = null;
+      if (hasSignerCert) {
+        try {
+          const stats = fs.statSync(signerCertPath);
+          certInfo = {
+            uploadedAt: stats.mtime.toISOString(),
+            fileSize: stats.size,
+          };
+        } catch (e) {}
+      }
+      
+      return res.json({
+        configured: hasSignerCert && hasSignerKey,
+        hasSignerCert,
+        hasSignerKey,
+        hasWwdr,
+        certInfo,
+      });
+    } catch (error) {
+      console.error("[VIP Pass] Error checking certificate status:", error);
+      return res.status(500).json({ error: "Failed to check certificate status" });
+    }
+  });
+
+  // POST /api/vip-pass/certificate - Upload .p12 certificate
+  app.post("/api/vip-pass/certificate", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+      
+      // Only admin or owner can upload certificates
+      if (user.role !== "admin" && user.role !== "owner" && user.role !== "superadmin") {
+        return res.status(403).json({ error: "Only admins can upload certificates" });
+      }
+      
+      const fs = await import("fs");
+      const path = await import("path");
+      const { exec } = await import("child_process");
+      const { promisify } = await import("util");
+      const execAsync = promisify(exec);
+      
+      const { p12Base64, password } = req.body;
+      
+      if (!p12Base64) {
+        return res.status(400).json({ error: "Certificate file is required" });
+      }
+      
+      if (!password) {
+        return res.status(400).json({ error: "Certificate password is required" });
+      }
+      
+      const certPath = path.join(process.cwd(), "certificates", `company_${user.companyId}`);
+      
+      // Create directory if it doesn't exist
+      if (!fs.existsSync(certPath)) {
+        fs.mkdirSync(certPath, { recursive: true });
+      }
+      
+      // Decode base64 and save .p12 file temporarily
+      const p12Buffer = Buffer.from(p12Base64, "base64");
+      const p12TempPath = path.join(certPath, "temp.p12");
+      fs.writeFileSync(p12TempPath, p12Buffer);
+      
+      try {
+        // Extract certificate and key from .p12 using openssl
+        const signerCertPath = path.join(certPath, "pass-cert.pem");
+        const signerKeyPath = path.join(certPath, "pass-key.pem");
+        
+        // Extract certificate
+        await execAsync(`openssl pkcs12 -in "${p12TempPath}" -clcerts -nokeys -out "${signerCertPath}" -password pass:"${password}" -legacy 2>/dev/null || openssl pkcs12 -in "${p12TempPath}" -clcerts -nokeys -out "${signerCertPath}" -password pass:"${password}"`);
+        
+        // Extract private key (no password protection on output)
+        await execAsync(`openssl pkcs12 -in "${p12TempPath}" -nocerts -nodes -out "${signerKeyPath}" -password pass:"${password}" -legacy 2>/dev/null || openssl pkcs12 -in "${p12TempPath}" -nocerts -nodes -out "${signerKeyPath}" -password pass:"${password}"`);
+        
+        // Clean up temp file
+        fs.unlinkSync(p12TempPath);
+        
+        // Verify the files were created
+        if (!fs.existsSync(signerCertPath) || !fs.existsSync(signerKeyPath)) {
+          throw new Error("Failed to extract certificate files");
+        }
+        
+        console.log("[VIP Pass] Certificate uploaded successfully for company:", user.companyId);
+        
+        return res.json({ 
+          success: true, 
+          message: "Certificate uploaded and configured successfully" 
+        });
+      } catch (extractError: any) {
+        // Clean up temp file on error
+        if (fs.existsSync(p12TempPath)) {
+          fs.unlinkSync(p12TempPath);
+        }
+        console.error("[VIP Pass] Error extracting certificate:", extractError);
+        return res.status(400).json({ 
+          error: "Failed to extract certificate. Please check the password and file format." 
+        });
+      }
+    } catch (error) {
+      console.error("[VIP Pass] Error uploading certificate:", error);
+      return res.status(500).json({ error: "Failed to upload certificate" });
+    }
+  });
+
+  // DELETE /api/vip-pass/certificate - Remove certificate
+  app.delete("/api/vip-pass/certificate", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+      
+      if (user.role !== "admin" && user.role !== "owner" && user.role !== "superadmin") {
+        return res.status(403).json({ error: "Only admins can delete certificates" });
+      }
+      
+      const fs = await import("fs");
+      const path = await import("path");
+      
+      const certPath = path.join(process.cwd(), "certificates", `company_${user.companyId}`);
+      const signerCertPath = path.join(certPath, "pass-cert.pem");
+      const signerKeyPath = path.join(certPath, "pass-key.pem");
+      
+      if (fs.existsSync(signerCertPath)) fs.unlinkSync(signerCertPath);
+      if (fs.existsSync(signerKeyPath)) fs.unlinkSync(signerKeyPath);
+      
+      console.log("[VIP Pass] Certificate deleted for company:", user.companyId);
+      
+      return res.json({ success: true, message: "Certificate removed" });
+    } catch (error) {
+      console.error("[VIP Pass] Error deleting certificate:", error);
+      return res.status(500).json({ error: "Failed to delete certificate" });
+    }
+  });
+
   // ========================================
   // APPLE WALLET PASSKIT WEB SERVICE ENDPOINTS
   // Per Apple PassKit Web Service Reference

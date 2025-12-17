@@ -21,7 +21,8 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { 
   Loader2, Plus, Trash2, Save, Smartphone, QrCode, CreditCard, 
-  Palette, Settings2, BarChart3, Eye, Download, Bell, Users, RefreshCw, Send, Copy, Link
+  Palette, Settings2, BarChart3, Eye, Download, Bell, Users, RefreshCw, Send, Copy, Link,
+  Shield, Upload, CheckCircle, XCircle, Key
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { Tooltip, TooltipContent, TooltipTrigger, TooltipProvider } from "@/components/ui/tooltip";
@@ -91,6 +92,17 @@ interface NotificationHistory {
   successCount: number;
   failedCount: number;
   createdAt: string;
+}
+
+interface CertificateStatus {
+  configured: boolean;
+  hasSignerCert: boolean;
+  hasSignerKey: boolean;
+  hasWwdr: boolean;
+  certInfo: {
+    uploadedAt: string;
+    fileSize: number;
+  } | null;
 }
 
 const hexToRgb = (hex: string): string => {
@@ -396,8 +408,11 @@ export default function VipPassPage() {
     actions: [] as { action: string; title: string; icon?: string }[]
   });
   const [newPass, setNewPass] = useState({ recipientName: "", recipientEmail: "", recipientPhone: "", memberId: "", tierLevel: "Gold" });
+  const [certFile, setCertFile] = useState<File | null>(null);
+  const [certPassword, setCertPassword] = useState("");
 
   const { data: existingDesign, isLoading: designLoading } = useQuery<VipPassDesignFormData>({ queryKey: ["/api/vip-pass/design"] });
+  const { data: certStatus, isLoading: certLoading } = useQuery<CertificateStatus>({ queryKey: ["/api/vip-pass/certificate-status"] });
   const { data: stats, isLoading: statsLoading } = useQuery<VipPassStats>({ queryKey: ["/api/vip-pass/stats"] });
   const { data: instances, isLoading: instancesLoading } = useQuery<VipPassInstance[]>({ queryKey: ["/api/vip-pass/instances"] });
   const { data: notificationHistory, isLoading: historyLoading } = useQuery<NotificationHistory[]>({ queryKey: ["/api/vip-pass/notifications/history"] });
@@ -467,6 +482,37 @@ export default function VipPassPage() {
       toast({ title: "Pass Deleted" });
       queryClient.invalidateQueries({ queryKey: ["/api/vip-pass/instances"] });
       queryClient.invalidateQueries({ queryKey: ["/api/vip-pass/stats"] });
+    },
+    onError: (error: Error) => { toast({ title: "Error", description: error.message, variant: "destructive" }); },
+  });
+
+  const uploadCertMutation = useMutation({
+    mutationFn: async ({ file, password }: { file: File; password: string }) => {
+      const reader = new FileReader();
+      const base64 = await new Promise<string>((resolve, reject) => {
+        reader.onload = () => {
+          const result = reader.result as string;
+          resolve(result.split(",")[1]);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      return await apiRequest("POST", "/api/vip-pass/certificate", { p12Base64: base64, password });
+    },
+    onSuccess: () => {
+      toast({ title: "Certificate Uploaded", description: "Your Apple certificate has been configured successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/vip-pass/certificate-status"] });
+      setCertFile(null);
+      setCertPassword("");
+    },
+    onError: (error: Error) => { toast({ title: "Upload Failed", description: error.message, variant: "destructive" }); },
+  });
+
+  const deleteCertMutation = useMutation({
+    mutationFn: async () => await apiRequest("DELETE", "/api/vip-pass/certificate"),
+    onSuccess: () => {
+      toast({ title: "Certificate Removed" });
+      queryClient.invalidateQueries({ queryKey: ["/api/vip-pass/certificate-status"] });
     },
     onError: (error: Error) => { toast({ title: "Error", description: error.message, variant: "destructive" }); },
   });
@@ -549,12 +595,15 @@ export default function VipPassPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          <TabsList className="grid w-full max-w-md grid-cols-2">
+          <TabsList className="grid w-full max-w-lg grid-cols-3">
             <TabsTrigger value="management" data-testid="tab-management">
               <CreditCard className="h-4 w-4 mr-2" /> Management
             </TabsTrigger>
             <TabsTrigger value="designer" data-testid="tab-designer">
               <Palette className="h-4 w-4 mr-2" /> Designer
+            </TabsTrigger>
+            <TabsTrigger value="certificates" data-testid="tab-certificates">
+              <Shield className="h-4 w-4 mr-2" /> Certificates
             </TabsTrigger>
           </TabsList>
 
