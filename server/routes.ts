@@ -28947,9 +28947,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.post("/api/phone-system/campaigns", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = req.session.user?.companyId;
-      const { brandId, useCase, description, sampleMessage1, sampleMessage2, embeddedLink, embeddedPhone, numberPool, ageGated, directLending, subscriberOptIn, subscriberOptOut, subscriberHelp, messageFlow } = req.body;
+      const { 
+        brandId, usecase, subUsecases, description, 
+        sample1, sample2, sample3, sample4, sample5,
+        messageFlow, optinKeywords, optinMessage, optoutKeywords, optoutMessage,
+        helpKeywords, helpMessage, subscriberOptin, subscriberOptout, subscriberHelp,
+        embeddedLink, embeddedPhone, numberPool, ageGated, directLending,
+        privacyPolicyLink, termsAndConditionsLink, embeddedLinkSample,
+        webhookURL, webhookFailoverURL, termsAndConditions
+      } = req.body;
       
-      if (!brandId || !useCase) {
+      if (!brandId || !usecase) {
         return res.status(400).json({ message: "Brand ID and use case are required" });
       }
       
@@ -28961,26 +28969,45 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
-      const campaignData = {
+      const campaignData: Record<string, any> = {
         brandId,
-        usecase: useCase,
-        description: description || `${useCase} messaging campaign`,
-        sample1: sampleMessage1 || "Hi, this is a reminder about your appointment.",
-        sample2: sampleMessage2 || "Reply STOP to unsubscribe.",
+        usecase,
+        description: description || `${usecase} messaging campaign`,
+        messageFlow: messageFlow || "Customers opt-in via our website. Reply STOP to opt-out.",
+        sample1: sample1 || "Hi, this is a reminder about your appointment.",
+        subscriberOptin: subscriberOptin ?? true,
+        subscriberOptout: subscriberOptout ?? true,
+        subscriberHelp: subscriberHelp ?? true,
         embeddedLink: embeddedLink ?? false,
         embeddedPhone: embeddedPhone ?? false,
         numberPool: numberPool ?? false,
         ageGated: ageGated ?? false,
         directLending: directLending ?? false,
-        subscriberOptin: subscriberOptIn ?? true,
-        subscriberOptout: subscriberOptOut ?? true,
-        subscriberHelp: subscriberHelp ?? true,
-        messageFlow: messageFlow || "Customers opt-in via our website or in-person sign-up form. They can opt-out at any time by replying STOP.",
+        termsAndConditions: termsAndConditions ?? true,
       };
       
-      console.log("[10DLC Campaign] Creating campaign:", campaignData);
+      if (subUsecases && Array.isArray(subUsecases) && subUsecases.length > 0) {
+        campaignData.subUsecases = subUsecases;
+      }
+      if (sample2) campaignData.sample2 = sample2;
+      if (sample3) campaignData.sample3 = sample3;
+      if (sample4) campaignData.sample4 = sample4;
+      if (sample5) campaignData.sample5 = sample5;
+      if (optinKeywords) campaignData.optinKeywords = optinKeywords;
+      if (optinMessage) campaignData.optinMessage = optinMessage;
+      if (optoutKeywords) campaignData.optoutKeywords = optoutKeywords;
+      if (optoutMessage) campaignData.optoutMessage = optoutMessage;
+      if (helpKeywords) campaignData.helpKeywords = helpKeywords;
+      if (helpMessage) campaignData.helpMessage = helpMessage;
+      if (privacyPolicyLink) campaignData.privacyPolicyLink = privacyPolicyLink;
+      if (termsAndConditionsLink) campaignData.termsAndConditionsLink = termsAndConditionsLink;
+      if (embeddedLinkSample) campaignData.embeddedLinkSample = embeddedLinkSample;
+      if (webhookURL) campaignData.webhookURL = webhookURL;
+      if (webhookFailoverURL) campaignData.webhookFailoverURL = webhookFailoverURL;
       
-      const response = await fetch("https://api.telnyx.com/10dlc/campaign", {
+      console.log("[10DLC Campaign] Creating campaign:", JSON.stringify(campaignData, null, 2));
+      
+      const response = await fetch("https://api.telnyx.com/v2/10dlc/campaignBuilder", {
         method: "POST",
         headers: {
           "Authorization": `Bearer ${telnyxApiKey}`,
@@ -29004,6 +29031,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: error.message });
     }
   });
+
 
   // GET /api/phone-system/campaigns/:id - Get campaign details
   app.get("/api/phone-system/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {

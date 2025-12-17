@@ -302,12 +302,28 @@ export function ComplianceTab() {
   const [sampleMessage1, setSampleMessage1] = useState<string>("");
   const [sampleMessage2, setSampleMessage2] = useState<string>("");
   const [messageFlow, setMessageFlow] = useState<string>("Customers opt-in via our website or in-person sign-up form. They can opt-out at any time by replying STOP.");
-  const [optInKeywords, setOptInKeywords] = useState<string>("START, YES");
-  const [optOutKeywords, setOptOutKeywords] = useState<string>("STOP, UNSUBSCRIBE");
+  const [optInKeywords, setOptInKeywords] = useState<string>("START,YES");
+  const [optOutKeywords, setOptOutKeywords] = useState<string>("STOP,UNSUBSCRIBE");
   const [helpKeywords, setHelpKeywords] = useState<string>("HELP");
   const [optInMessage, setOptInMessage] = useState<string>("");
   const [optOutMessage, setOptOutMessage] = useState<string>("");
   const [helpMessage, setHelpMessage] = useState<string>("");
+  const [privacyPolicyLink, setPrivacyPolicyLink] = useState<string>("");
+  const [termsAndConditionsLink, setTermsAndConditionsLink] = useState<string>("");
+  const [embeddedLinkSample, setEmbeddedLinkSample] = useState<string>("");
+  const [embeddedLink, setEmbeddedLink] = useState<boolean>(false);
+  const [embeddedPhone, setEmbeddedPhone] = useState<boolean>(false);
+  const [numberPool, setNumberPool] = useState<boolean>(false);
+  const [ageGated, setAgeGated] = useState<boolean>(false);
+  const [directLending, setDirectLending] = useState<boolean>(false);
+  const [subscriberOptin, setSubscriberOptin] = useState<boolean>(true);
+  const [subscriberOptout, setSubscriberOptout] = useState<boolean>(true);
+  const [subscriberHelp, setSubscriberHelp] = useState<boolean>(true);
+  const [webhookURL, setWebhookURL] = useState<string>("");
+  const [webhookFailoverURL, setWebhookFailoverURL] = useState<string>("");
+  const [sampleMessage3, setSampleMessage3] = useState<string>("");
+  const [sampleMessage4, setSampleMessage4] = useState<string>("");
+  const [sampleMessage5, setSampleMessage5] = useState<string>("");
 
   const CARRIER_TERMS = [
     { carrier: "AT&T", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "240", mmsTpm: "150", brandTier: "-" },
@@ -326,13 +342,29 @@ export function ComplianceTab() {
     setCampaignDescription("");
     setSampleMessage1("");
     setSampleMessage2("");
+    setSampleMessage3("");
+    setSampleMessage4("");
+    setSampleMessage5("");
     setMessageFlow("Customers opt-in via our website or in-person sign-up form. They can opt-out at any time by replying STOP.");
-    setOptInKeywords("START, YES");
-    setOptOutKeywords("STOP, UNSUBSCRIBE");
+    setOptInKeywords("START,YES");
+    setOptOutKeywords("STOP,UNSUBSCRIBE");
     setHelpKeywords("HELP");
     setOptInMessage("");
     setOptOutMessage("");
     setHelpMessage("");
+    setPrivacyPolicyLink("");
+    setTermsAndConditionsLink("");
+    setEmbeddedLinkSample("");
+    setEmbeddedLink(false);
+    setEmbeddedPhone(false);
+    setNumberPool(false);
+    setAgeGated(false);
+    setDirectLending(false);
+    setSubscriberOptin(true);
+    setSubscriberOptout(true);
+    setSubscriberHelp(true);
+    setWebhookURL("");
+    setWebhookFailoverURL("");
   };
 
   const needsSubUseCases = selectedUseCase === "MIXED" || selectedUseCase === "LOW_VOLUME";
@@ -355,12 +387,35 @@ export function ComplianceTab() {
     mutationFn: async () => {
       return await apiRequest("POST", "/api/phone-system/campaigns", {
         brandId: selectedBrandForCampaign,
-        useCase: selectedUseCase,
-        subUseCases: needsSubUseCases ? selectedSubUseCases : undefined,
+        usecase: selectedUseCase,
+        subUsecases: needsSubUseCases ? selectedSubUseCases : undefined,
         description: campaignDescription,
-        sampleMessage1,
-        sampleMessage2,
+        sample1: sampleMessage1,
+        sample2: sampleMessage2,
+        sample3: sampleMessage3 || undefined,
+        sample4: sampleMessage4 || undefined,
+        sample5: sampleMessage5 || undefined,
         messageFlow,
+        optinKeywords: optInKeywords,
+        optinMessage: optInMessage,
+        optoutKeywords: optOutKeywords,
+        optoutMessage: optOutMessage,
+        helpKeywords: helpKeywords,
+        helpMessage: helpMessage,
+        subscriberOptin,
+        subscriberOptout,
+        subscriberHelp,
+        embeddedLink,
+        embeddedPhone,
+        numberPool,
+        ageGated,
+        directLending,
+        privacyPolicyLink: privacyPolicyLink || undefined,
+        termsAndConditionsLink: termsAndConditionsLink || undefined,
+        embeddedLinkSample: embeddedLinkSample || undefined,
+        webhookURL: webhookURL || undefined,
+        webhookFailoverURL: webhookFailoverURL || undefined,
+        termsAndConditions: true,
       });
     },
     onSuccess: async () => {
@@ -1004,43 +1059,147 @@ export function ComplianceTab() {
                     {campaignStep === 3 && (
                       <div className="space-y-6">
                         <h3 className="font-semibold text-lg">Campaign details</h3>
+                        
                         <div className="space-y-4">
-                          <div className="space-y-2">
-                            <Label>Campaign Description <span className="text-red-500">*</span></Label>
-                            <Input value={campaignDescription} onChange={(e) => setCampaignDescription(e.target.value)} placeholder="Describe your messaging campaign" />
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Message Flow (Opt-in Description) <span className="text-red-500">*</span></Label>
-                            <Input value={messageFlow} onChange={(e) => setMessageFlow(e.target.value)} placeholder="How customers opt-in and opt-out" />
-                          </div>
+                          <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300">Content details</h4>
                           <div className="grid grid-cols-2 gap-4">
                             <div className="space-y-2">
-                              <Label>Opt-in Keywords <span className="text-red-500">*</span></Label>
-                              <Input value={optInKeywords} onChange={(e) => setOptInKeywords(e.target.value)} placeholder="START, YES" />
+                              <Label>Campaign Description <span className="text-red-500">*</span></Label>
+                              <textarea className="w-full min-h-[80px] p-2 border rounded-md text-sm" value={campaignDescription} onChange={(e) => setCampaignDescription(e.target.value)} placeholder="Your selected Use Case(s) from Brand Name. EX: Customer care Messages for Telnyx" />
                             </div>
                             <div className="space-y-2">
-                              <Label>Opt-out Keywords <span className="text-red-500">*</span></Label>
-                              <Input value={optOutKeywords} onChange={(e) => setOptOutKeywords(e.target.value)} placeholder="STOP, UNSUBSCRIBE" />
-                            </div>
-                          </div>
-                          <div className="space-y-2">
-                            <Label>Help Keywords <span className="text-red-500">*</span></Label>
-                            <Input value={helpKeywords} onChange={(e) => setHelpKeywords(e.target.value)} placeholder="HELP" />
-                          </div>
-                          <h4 className="font-medium pt-4">Sample messages</h4>
-                          <div className="grid grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label>Message 1 <span className="text-red-500">*</span></Label>
-                              <Input value={sampleMessage1} onChange={(e) => setSampleMessage1(e.target.value)} placeholder="Sample message 1" />
-                            </div>
-                            <div className="space-y-2">
-                              <Label>Message 2 <span className="text-red-500">*</span></Label>
-                              <Input value={sampleMessage2} onChange={(e) => setSampleMessage2(e.target.value)} placeholder="Sample message 2" />
+                              <Label>Opt In Workflow Description (Message Flow/Call To Action) <span className="text-red-500">*</span></Label>
+                              <textarea className="w-full min-h-[80px] p-2 border rounded-md text-sm" value={messageFlow} onChange={(e) => setMessageFlow(e.target.value)} placeholder="Digital: Customer opt in via the following LINK which they get to via (describe path). Paper: Customer signs the following form: HOSTED IMAGE which they get via (describe path)." />
                             </div>
                           </div>
                         </div>
+
+                        <div className="space-y-4">
+                          <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300">Keywords</h4>
+                          <div className="grid grid-cols-3 gap-4">
+                            <div className="space-y-2">
+                              <Label>Opt in keywords <span className="text-red-500">*</span></Label>
+                              <Input value={optInKeywords} onChange={(e) => setOptInKeywords(e.target.value)} placeholder="START,YES" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Opt out keywords <span className="text-red-500">*</span></Label>
+                              <Input value={optOutKeywords} onChange={(e) => setOptOutKeywords(e.target.value)} placeholder="STOP,UNSUBSCRIBE" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Help keywords <span className="text-red-500">*</span></Label>
+                              <Input value={helpKeywords} onChange={(e) => setHelpKeywords(e.target.value)} placeholder="HELP" />
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300">Auto-responses</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Opt in message <span className="text-red-500">*</span></Label>
+                              <textarea className="w-full min-h-[60px] p-2 border rounded-md text-sm" value={optInMessage} onChange={(e) => setOptInMessage(e.target.value)} placeholder="[Brand name]: Thanks for subscribing to [use case(s)]! Reply HELP for help. Message frequency may vary. Msg&data rates may apply. Consent is not a condition of purchase. Reply STOP to opt out." />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Opt out message <span className="text-red-500">*</span></Label>
+                              <textarea className="w-full min-h-[60px] p-2 border rounded-md text-sm" value={optOutMessage} onChange={(e) => setOptOutMessage(e.target.value)} placeholder="[Brand Name]: You are unsubscribed and will receive no further messages." />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Help message <span className="text-red-500">*</span></Label>
+                            <textarea className="w-full min-h-[60px] p-2 border rounded-md text-sm" value={helpMessage} onChange={(e) => setHelpMessage(e.target.value)} placeholder="[Brand name]: Please reach out to us at [website/email/toll free number] for help." />
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300">Sample messages</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Message 1 <span className="text-red-500">*</span></Label>
+                              <textarea className="w-full min-h-[60px] p-2 border rounded-md text-sm" value={sampleMessage1} onChange={(e) => setSampleMessage1(e.target.value)} placeholder="Marketing: Thanks for subscribing to our promotional program! Use promo code: 20OFF for $20 off your next order! Reply STOP to opt out." />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Message 2 {(selectedUseCase === "MARKETING" || selectedUseCase === "MIXED") && <span className="text-red-500">*</span>}</Label>
+                              <textarea className="w-full min-h-[60px] p-2 border rounded-md text-sm" value={sampleMessage2} onChange={(e) => setSampleMessage2(e.target.value)} placeholder="Account Notification: Your Password has been reset." />
+                              {(selectedUseCase === "MARKETING" || selectedUseCase === "MIXED") && <p className="text-xs text-amber-600">Required for Marketing or Mixed campaigns</p>}
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300">Compliance links</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Privacy policy</Label>
+                              <Input value={privacyPolicyLink} onChange={(e) => setPrivacyPolicyLink(e.target.value)} placeholder="Link to the campaign's privacy policy" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Terms and conditions</Label>
+                              <Input value={termsAndConditionsLink} onChange={(e) => setTermsAndConditionsLink(e.target.value)} placeholder="Link to the campaign's terms and conditions" />
+                            </div>
+                          </div>
+                          <div className="space-y-2">
+                            <Label>Embedded link</Label>
+                            <Input value={embeddedLinkSample} onChange={(e) => setEmbeddedLinkSample(e.target.value)} placeholder="Sample of a link that will be sent to subscribers" />
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300">Campaign and content attributes</h4>
+                          <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div className="flex items-center justify-between p-2 border rounded">
+                              <span>Embedded Link</span>
+                              <div className="flex gap-4">
+                                <label className="flex items-center gap-1"><input type="radio" checked={embeddedLink} onChange={() => setEmbeddedLink(true)} /> Yes</label>
+                                <label className="flex items-center gap-1"><input type="radio" checked={!embeddedLink} onChange={() => setEmbeddedLink(false)} /> No</label>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between p-2 border rounded">
+                              <span>Embedded Phone Number</span>
+                              <div className="flex gap-4">
+                                <label className="flex items-center gap-1"><input type="radio" checked={embeddedPhone} onChange={() => setEmbeddedPhone(true)} /> Yes</label>
+                                <label className="flex items-center gap-1"><input type="radio" checked={!embeddedPhone} onChange={() => setEmbeddedPhone(false)} /> No</label>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between p-2 border rounded">
+                              <span>Number Pooling</span>
+                              <div className="flex gap-4">
+                                <label className="flex items-center gap-1"><input type="radio" checked={numberPool} onChange={() => setNumberPool(true)} /> Yes</label>
+                                <label className="flex items-center gap-1"><input type="radio" checked={!numberPool} onChange={() => setNumberPool(false)} /> No</label>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between p-2 border rounded">
+                              <span>Age-Gated Content</span>
+                              <div className="flex gap-4">
+                                <label className="flex items-center gap-1"><input type="radio" checked={ageGated} onChange={() => setAgeGated(true)} /> Yes</label>
+                                <label className="flex items-center gap-1"><input type="radio" checked={!ageGated} onChange={() => setAgeGated(false)} /> No</label>
+                              </div>
+                            </div>
+                            <div className="flex items-center justify-between p-2 border rounded col-span-2">
+                              <span>Direct Lending or Loan Arrangement</span>
+                              <div className="flex gap-4">
+                                <label className="flex items-center gap-1"><input type="radio" checked={directLending} onChange={() => setDirectLending(true)} /> Yes</label>
+                                <label className="flex items-center gap-1"><input type="radio" checked={!directLending} onChange={() => setDirectLending(false)} /> No</label>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="space-y-4">
+                          <h4 className="font-medium text-sm text-slate-700 dark:text-slate-300">Webhooks</h4>
+                          <div className="grid grid-cols-2 gap-4">
+                            <div className="space-y-2">
+                              <Label>Webhook URL</Label>
+                              <Input value={webhookURL} onChange={(e) => setWebhookURL(e.target.value)} placeholder="Where you will receive provisioning status updates" />
+                            </div>
+                            <div className="space-y-2">
+                              <Label>Webhook Failover URL</Label>
+                              <Input value={webhookFailoverURL} onChange={(e) => setWebhookFailoverURL(e.target.value)} placeholder="Failover webhook URL" />
+                            </div>
+                          </div>
+                        </div>
+
                         <div className="flex gap-2 pt-4">
-                          <Button onClick={() => setCampaignStep(4)}>Next</Button>
+                          <Button onClick={() => setCampaignStep(4)} disabled={!campaignDescription || !messageFlow || !optInMessage || !optOutMessage || !helpMessage || !sampleMessage1}>Next</Button>
                           <Button variant="outline" onClick={() => setCampaignStep(2)}>Back</Button>
                         </div>
                       </div>
