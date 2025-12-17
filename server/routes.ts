@@ -32017,6 +32017,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         secondaryFields: design.secondaryFields ? JSON.parse(design.secondaryFields) : [],
         auxiliaryFields: design.auxiliaryFields ? JSON.parse(design.auxiliaryFields) : [],
         backFields: design.backFields ? JSON.parse(design.backFields) : [],
+        headerFields: design.headerFields ? JSON.parse(design.headerFields) : [],
       });
     } catch (error) {
       console.error("[VIP Pass] Error getting design:", error);

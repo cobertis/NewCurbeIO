@@ -61,10 +61,15 @@ export class VipPassService {
     secondaryFields?: PassField[];
     auxiliaryFields?: PassField[];
     backFields?: PassField[];
+    headerFields?: PassField[];
     iconUrl?: string;
     logoUrl?: string;
     stripUrl?: string;
     backgroundUrl?: string;
+    iconBase64?: string;
+    logoBase64?: string;
+    stripBase64?: string;
+    thumbnailBase64?: string;
     passTypeIdentifier?: string;
     teamIdentifier?: string;
     passStyle?: string;
@@ -86,10 +91,15 @@ export class VipPassService {
       secondaryFields: designData.secondaryFields ? JSON.stringify(designData.secondaryFields) : null,
       auxiliaryFields: designData.auxiliaryFields ? JSON.stringify(designData.auxiliaryFields) : null,
       backFields: designData.backFields ? JSON.stringify(designData.backFields) : null,
+      headerFields: designData.headerFields ? JSON.stringify(designData.headerFields) : null,
       iconUrl: designData.iconUrl,
       logoUrl: designData.logoUrl,
       stripUrl: designData.stripUrl,
       backgroundUrl: designData.backgroundUrl,
+      iconBase64: designData.iconBase64 || null,
+      logoBase64: designData.logoBase64 || null,
+      stripBase64: designData.stripBase64 || null,
+      thumbnailBase64: designData.thumbnailBase64 || null,
       passTypeIdentifier: designData.passTypeIdentifier,
       teamIdentifier: designData.teamIdentifier,
       passStyle: designData.passStyle || "generic",
