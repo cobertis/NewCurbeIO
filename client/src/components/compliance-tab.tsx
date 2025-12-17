@@ -990,6 +990,44 @@ export function ComplianceTab() {
                     />
                     <p className="text-xs text-slate-500">Explain how users consent to receive messages and how they can stop.</p>
                   </div>
+
+                  {selectedUseCase && (
+                    <div className="mt-4 p-4 bg-slate-50 dark:bg-slate-800 rounded-lg border">
+                      <h4 className="font-semibold text-sm text-slate-900 dark:text-white mb-3">Carrier Terms Preview</h4>
+                      <div className="space-y-3 text-sm">
+                        <div className="flex justify-between">
+                          <span className="text-slate-600 dark:text-slate-400">Registration Fee (3 months):</span>
+                          <span className="font-medium">
+                            {selectedUseCase === "LOW_VOLUME" ? "$6.00" : "$30.00"}
+                          </span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-600 dark:text-slate-400">Monthly Fee (after 3 months):</span>
+                          <span className="font-medium">
+                            {selectedUseCase === "LOW_VOLUME" ? "$2.00/mo" : "$10.00/mo"}
+                          </span>
+                        </div>
+                        <div className="border-t pt-3 mt-3">
+                          <p className="text-xs text-slate-500 font-medium mb-2">Carrier Throughput Limits:</p>
+                          <div className="grid grid-cols-2 gap-2 text-xs">
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">T-Mobile:</span>
+                              <span>{selectedUseCase === "LOW_VOLUME" ? "0.2 MPS" : "4+ MPS"}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">AT&T:</span>
+                              <span>{selectedUseCase === "LOW_VOLUME" ? "75 TPM" : "4,500 TPM"}</span>
+                            </div>
+                            <div className="flex justify-between">
+                              <span className="text-slate-500">Verizon:</span>
+                              <span>Varies by trust score</span>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   <Button 
                     className="w-full mt-4"
                     onClick={() => createCampaignMutation.mutate()}
