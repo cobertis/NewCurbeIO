@@ -20,6 +20,20 @@ const getWWDRCertificate = (): string | undefined => {
   return undefined;
 };
 
+// Generate a simple default icon PNG (29x29 black square with white border)
+const generateDefaultIcon = (): Buffer => {
+  // Minimal valid PNG - 29x29 solid color (black with slight gradient effect)
+  // This is a pre-generated minimal PNG for fallback
+  const pngBase64 = "iVBORw0KGgoAAAANSUhEUgAAAB0AAAAdCAYAAABWk2cPAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAABWSURBVEiJ7c4xDQAwDMOweNqfZ1s4BlQWCRKCi/8eCFdVr8fRTgQAAAAA4J9reyoAAAAAAB/b9lQAAAAAwIfW9lQAAAAA8K21PRUAAAAA8K21PRUAAADgEweBLgHx7xlqzgAAAABJRU5ErkJggg==";
+  return Buffer.from(pngBase64, "base64");
+};
+
+const generateDefaultLogo = (): Buffer => {
+  // Minimal valid PNG - 160x50 size for logo
+  const pngBase64 = "iVBORw0KGgoAAAANSUhEUgAAAKAAAAAwCAYAAABJX6iWAAAABHNCSVQICAgIfAhkiAAAAAlwSFlzAAAAdgAAAHYBTnsmCAAAABl0RVh0U29mdHdhcmUAd3d3Lmlua3NjYXBlLm9yZ5vuPBoAAABDSURBVHic7cEBAQAAAIIg/69uSEABAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANwMHV0AAT5ZxhgAAAAASUVORK5CYII=";
+  return Buffer.from(pngBase64, "base64");
+};
+
 export class VipPassService {
   async getPassDesign(companyId: string) {
     const [design] = await db
@@ -481,7 +495,19 @@ export class VipPassService {
       }
     }
 
-    const pass = new PKPass({}, certificates, passJson);
+    // Create pass bundle with required icon files
+    const iconBuffer = generateDefaultIcon();
+    const logoBuffer = generateDefaultLogo();
+    
+    const passBuffers: Record<string, Buffer> = {
+      "icon.png": iconBuffer,
+      "icon@2x.png": iconBuffer,
+      "icon@3x.png": iconBuffer,
+      "logo.png": logoBuffer,
+      "logo@2x.png": logoBuffer,
+    };
+
+    const pass = new PKPass(passBuffers, certificates, passJson);
     pass.type = styleKey as "boardingPass" | "coupon" | "eventTicket" | "generic" | "storeCard";
     const buffer = pass.getAsBuffer();
     

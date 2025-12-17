@@ -79,6 +79,7 @@ interface VipPassInstance {
   downloadCount: number;
   createdAt: string;
   authenticationToken: string;
+  universalToken: string | null;
   pushSubscriptionCount: number;
   pushEnabledAt: string | null;
   notificationCount: number;
@@ -899,11 +900,11 @@ export default function VipPassPage() {
                                           variant="outline" 
                                           size="sm" 
                                           onClick={() => {
-                                            const publicUrl = `${window.location.origin}/p/${instance.authenticationToken}`;
+                                            const publicUrl = `${window.location.origin}/p/${instance.universalToken}`;
                                             navigator.clipboard.writeText(publicUrl);
                                             toast({ title: "Link Copied", description: "Public link copied to clipboard" });
                                           }}
-                                          disabled={instance.status !== "active"}
+                                          disabled={instance.status !== "active" || !instance.universalToken}
                                           data-testid={`button-copy-link-${instance.id}`}
                                         >
                                           <Copy className="h-4 w-4" />
@@ -916,8 +917,8 @@ export default function VipPassPage() {
                                         <Button 
                                           variant="outline" 
                                           size="sm" 
-                                          onClick={() => window.open(`/p/${instance.authenticationToken}`, "_blank")}
-                                          disabled={instance.status !== "active"}
+                                          onClick={() => window.open(`/p/${instance.universalToken}`, "_blank")}
+                                          disabled={instance.status !== "active" || !instance.universalToken}
                                           data-testid={`button-open-link-${instance.id}`}
                                         >
                                           <Link className="h-4 w-4" />
