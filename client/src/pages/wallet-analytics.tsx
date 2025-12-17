@@ -174,22 +174,21 @@ export default function WalletAnalyticsPage() {
     // Transform policies to contact-like objects using client info
     // Note: These are policy-based entries, NOT real contacts - contactId should be null
     return policiesData.items.map((policy: any) => {
-      // Extract insurance info from the selectedPlan JSONB field
-      const selectedPlan = policy.selectedPlan || {};
-      // Get plan data from policyPlans array if available (manual entry system)
-      const policyPlan = policy.policyPlans?.[0] || {};
-      const planData = policyPlan.planData || {};
+      // selectedPlan contains planData from policy_plans (merged in getPoliciesList)
+      // The plan data includes all manual entry fields stored in JSONB
+      const plan = policy.selectedPlan || {};
       
-      const carrierName = planData?.issuer?.name || selectedPlan?.issuer?.name || policyPlan.carrierName || policy.carrierName || "";
-      const planName = planData?.name || selectedPlan?.name || policyPlan.planName || policy.planName || "";
-      const planId = planData?.id || selectedPlan?.id || policyPlan.planId || policy.planId || "";
-      const monthlyPremium = planData?.premium_w_credit || planData?.premium || selectedPlan?.premium_w_credit || selectedPlan?.premium || policyPlan.monthlyPremium || policy.estimatedPremium || "";
-      const memberId = planData?.memberId || policyPlan.memberId || policy.memberId || "";
-      const metalLevel = planData?.metal_level || selectedPlan?.metal_level || policyPlan.metalLevel || "";
-      const planType = planData?.plan_type || selectedPlan?.plan_type || policyPlan.planType || "";
-      const effectiveDate = planData?.effectiveDate || policyPlan.effectiveDate || policy.effectiveDate || "";
-      const expirationDate = planData?.expirationDate || policyPlan.expirationDate || policy.expirationDate || "";
-      const marketplaceId = planData?.marketplaceId || policyPlan.marketplaceId || policy.marketplaceId || "";
+      // Extract ALL fields from the plan data (stored in planData JSONB)
+      const carrierName = plan?.issuer?.name || plan?.carrierName || "";
+      const planName = plan?.name || plan?.planName || "";
+      const planId = plan?.id || plan?.planId || "";
+      const monthlyPremium = plan?.premium_w_credit ?? plan?.premium ?? plan?.monthlyPremium ?? "";
+      const memberId = plan?.memberId || "";
+      const metalLevel = plan?.metal_level || plan?.metalLevel || "";
+      const planType = plan?.type || plan?.plan_type || plan?.planType || "";
+      const effectiveDate = plan?.effectiveDate || policy.effectiveDate || "";
+      const expirationDate = plan?.expirationDate || "";
+      const marketplaceId = plan?.marketplaceId || "";
       
       return {
         id: policy.id, // Policy ID for display purposes only
@@ -198,7 +197,7 @@ export default function WalletAnalyticsPage() {
         lastName: policy.clientLastName || "",
         email: policy.clientEmail || "",
         phone: policy.clientPhone || "",
-        // Include ALL policy info extracted from selectedPlan and policyPlans
+        // Include ALL policy info extracted from selectedPlan (planData JSONB)
         carrierName,
         planName,
         planId,
