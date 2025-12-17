@@ -9,6 +9,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Form,
   FormControl,
@@ -180,6 +183,38 @@ const STOCK_EXCHANGES = [
   { value: "OTHER", label: "Other" },
 ] as const;
 
+const TOLL_FREE_USE_CASES = [
+  { value: "2FA", label: "2FA" },
+  { value: "ACCOUNT_NOTIFICATIONS", label: "Account Notifications" },
+  { value: "CUSTOMER_CARE", label: "Customer Care" },
+  { value: "DELIVERY_NOTIFICATIONS", label: "Delivery Notifications" },
+  { value: "FRAUD_ALERTS", label: "Fraud Alerts" },
+  { value: "HIGHER_EDUCATION", label: "Higher Education" },
+  { value: "MARKETING", label: "Marketing" },
+  { value: "MIXED", label: "Mixed" },
+  { value: "POLLING_AND_VOTING", label: "Polling and Voting" },
+  { value: "PUBLIC_SERVICE_ANNOUNCEMENTS", label: "Public Service Announcements" },
+  { value: "SECURITY_ALERTS", label: "Security Alerts" },
+] as const;
+
+const MESSAGE_VOLUME_OPTIONS = [
+  { value: "10", label: "10" },
+  { value: "100", label: "100" },
+  { value: "1,000", label: "1,000" },
+  { value: "10,000", label: "10,000" },
+  { value: "100,000", label: "100,000" },
+  { value: "250,000", label: "250,000" },
+  { value: "500,000", label: "500,000" },
+  { value: "750,000", label: "750,000" },
+  { value: "1,000,000+", label: "1,000,000+" },
+] as const;
+
+const BRN_TYPES = [
+  { value: "EIN", label: "EIN (Employer Identification Number)" },
+  { value: "SSN", label: "SSN (Social Security Number)" },
+  { value: "DUNS", label: "DUNS (Data Universal Numbering System)" },
+] as const;
+
 const baseFormSchema = z.object({
   entityType: z.enum(["PRIVATE_PROFIT", "PUBLIC_PROFIT", "NON_PROFIT", "GOVERNMENT", "SOLE_PROPRIETOR"]),
   displayName: z.string().min(1, "Display name is required").max(100),
@@ -294,6 +329,16 @@ export function ComplianceTab() {
     queryKey: ["/api/phone-system/campaigns"],
   });
 
+  const { data: phoneNumbersData } = useQuery<{ numbers: { phoneNumber: string; type?: string }[] }>({
+    queryKey: ["/api/phone-system/phone-numbers"],
+  });
+
+  const tollFreeNumbers = (phoneNumbersData?.numbers || []).filter(n => {
+    const cleaned = n.phoneNumber?.replace(/\D/g, '') || '';
+    const areaCode = cleaned.length === 11 ? cleaned.substring(1, 4) : cleaned.substring(0, 3);
+    return ["800", "888", "877", "866", "855", "844", "833"].includes(areaCode);
+  });
+
   const [showCampaignWizard, setShowCampaignWizard] = useState(false);
   const [campaignStep, setCampaignStep] = useState(1);
   const [selectedBrandForCampaign, setSelectedBrandForCampaign] = useState<string>("");
@@ -326,6 +371,31 @@ export function ComplianceTab() {
   const [sampleMessage3, setSampleMessage3] = useState<string>("");
   const [sampleMessage4, setSampleMessage4] = useState<string>("");
   const [sampleMessage5, setSampleMessage5] = useState<string>("");
+
+  // Toll-Free Verification Form State
+  const [showTollFreeForm, setShowTollFreeForm] = useState(false);
+  const [tfBusinessName, setTfBusinessName] = useState<string>("");
+  const [tfCorporateWebsite, setTfCorporateWebsite] = useState<string>("");
+  const [tfBusinessAddr1, setTfBusinessAddr1] = useState<string>("");
+  const [tfBusinessAddr2, setTfBusinessAddr2] = useState<string>("");
+  const [tfBusinessCity, setTfBusinessCity] = useState<string>("");
+  const [tfBusinessState, setTfBusinessState] = useState<string>("");
+  const [tfBusinessZip, setTfBusinessZip] = useState<string>("");
+  const [tfBusinessContactFirstName, setTfBusinessContactFirstName] = useState<string>("");
+  const [tfBusinessContactLastName, setTfBusinessContactLastName] = useState<string>("");
+  const [tfBusinessContactEmail, setTfBusinessContactEmail] = useState<string>("");
+  const [tfBusinessContactPhone, setTfBusinessContactPhone] = useState<string>("");
+  const [tfMessageVolume, setTfMessageVolume] = useState<string>("");
+  const [tfSelectedPhoneNumbers, setTfSelectedPhoneNumbers] = useState<string[]>([]);
+  const [tfUseCase, setTfUseCase] = useState<string>("");
+  const [tfUseCaseSummary, setTfUseCaseSummary] = useState<string>("");
+  const [tfProductionMessageContent, setTfProductionMessageContent] = useState<string>("");
+  const [tfOptInWorkflow, setTfOptInWorkflow] = useState<string>("");
+  const [tfOptInWorkflowImageURLs, setTfOptInWorkflowImageURLs] = useState<string[]>([]);
+  const [tfAdditionalInformation, setTfAdditionalInformation] = useState<string>("");
+  const [tfBusinessRegistrationNumber, setTfBusinessRegistrationNumber] = useState<string>("");
+  const [tfBusinessRegistrationType, setTfBusinessRegistrationType] = useState<string>("EIN");
+  const [tfBusinessRegistrationCountry, setTfBusinessRegistrationCountry] = useState<string>("US");
 
   const CARRIER_TERMS = [
     { carrier: "AT&T", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "240", mmsTpm: "150", brandTier: "-", dailyLimit: "-", messageClass: "F" },
@@ -368,6 +438,100 @@ export function ComplianceTab() {
     setSubscriberHelp(true);
     setWebhookURL("");
     setWebhookFailoverURL("");
+  };
+
+  const resetTollFreeForm = () => {
+    setTfBusinessName("");
+    setTfCorporateWebsite("");
+    setTfBusinessAddr1("");
+    setTfBusinessAddr2("");
+    setTfBusinessCity("");
+    setTfBusinessState("");
+    setTfBusinessZip("");
+    setTfBusinessContactFirstName("");
+    setTfBusinessContactLastName("");
+    setTfBusinessContactEmail("");
+    setTfBusinessContactPhone("");
+    setTfMessageVolume("");
+    setTfSelectedPhoneNumbers([]);
+    setTfUseCase("");
+    setTfUseCaseSummary("");
+    setTfProductionMessageContent("");
+    setTfOptInWorkflow("");
+    setTfOptInWorkflowImageURLs([]);
+    setTfAdditionalInformation("");
+    setTfBusinessRegistrationNumber("");
+    setTfBusinessRegistrationType("EIN");
+    setTfBusinessRegistrationCountry("US");
+  };
+
+  const toggleTollFreePhoneNumber = (phoneNumber: string) => {
+    setTfSelectedPhoneNumbers(prev => {
+      if (prev.includes(phoneNumber)) {
+        return prev.filter(p => p !== phoneNumber);
+      }
+      return [...prev, phoneNumber];
+    });
+  };
+
+  const tollFreeVerificationMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/phone-system/toll-free/verifications", {
+        businessName: tfBusinessName,
+        corporateWebsite: tfCorporateWebsite,
+        businessAddr1: tfBusinessAddr1,
+        businessAddr2: tfBusinessAddr2 || undefined,
+        businessCity: tfBusinessCity,
+        businessState: tfBusinessState,
+        businessZip: tfBusinessZip,
+        businessContactFirstName: tfBusinessContactFirstName,
+        businessContactLastName: tfBusinessContactLastName,
+        businessContactEmail: tfBusinessContactEmail,
+        businessContactPhone: tfBusinessContactPhone,
+        messageVolume: tfMessageVolume,
+        phoneNumbers: tfSelectedPhoneNumbers,
+        useCase: tfUseCase,
+        useCaseSummary: tfUseCaseSummary,
+        productionMessageContent: tfProductionMessageContent,
+        optInWorkflow: tfOptInWorkflow,
+        optInWorkflowImageURLs: tfOptInWorkflowImageURLs.filter(url => url.trim() !== ""),
+        additionalInformation: tfAdditionalInformation || undefined,
+        businessRegistrationNumber: tfBusinessRegistrationNumber,
+        businessRegistrationType: tfBusinessRegistrationType,
+        businessRegistrationCountry: tfBusinessRegistrationCountry,
+      });
+    },
+    onSuccess: async () => {
+      await queryClient.invalidateQueries({ queryKey: ["/api/phone-system/toll-free/verifications"] });
+      toast({ title: "Verification submitted", description: "Your toll-free verification request has been submitted for review." });
+      setShowTollFreeForm(false);
+      resetTollFreeForm();
+    },
+    onError: (error: any) => {
+      toast({ title: "Verification failed", description: error.message || "Failed to submit verification request", variant: "destructive" });
+    },
+  });
+
+  const isTollFreeFormValid = () => {
+    return (
+      tfBusinessName.trim() !== "" &&
+      tfCorporateWebsite.trim() !== "" &&
+      tfBusinessAddr1.trim() !== "" &&
+      tfBusinessCity.trim() !== "" &&
+      tfBusinessState.trim() !== "" &&
+      tfBusinessZip.trim() !== "" &&
+      tfBusinessContactFirstName.trim() !== "" &&
+      tfBusinessContactLastName.trim() !== "" &&
+      tfBusinessContactEmail.trim() !== "" &&
+      tfBusinessContactPhone.trim() !== "" &&
+      tfMessageVolume !== "" &&
+      tfSelectedPhoneNumbers.length > 0 &&
+      tfUseCase !== "" &&
+      tfUseCaseSummary.trim() !== "" &&
+      tfProductionMessageContent.trim() !== "" &&
+      tfOptInWorkflow.trim() !== "" &&
+      tfBusinessRegistrationNumber.trim() !== ""
+    );
   };
 
   const needsSubUseCases = selectedUseCase === "MIXED" || selectedUseCase === "LOW_VOLUME";
@@ -1356,14 +1520,363 @@ export function ComplianceTab() {
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Toll-Free Verification</h3>
             <p className="text-sm text-slate-500 mt-1">Verify toll-free numbers (800, 888, 877, etc.) for SMS/MMS messaging</p>
           </div>
-          {!isLoadingTollFree && (!tollFreeData?.verifications || tollFreeData.verifications.length === 0) && (
-            <Button 
-              disabled
-              data-testid="btn-submit-toll-free-verification"
-            >
-              <Plus className="h-4 w-4 mr-2" />Submit Verification
-            </Button>
-          )}
+          <Sheet open={showTollFreeForm} onOpenChange={setShowTollFreeForm}>
+            <SheetTrigger asChild>
+              <Button 
+                data-testid="btn-submit-toll-free-verification"
+                onClick={() => setShowTollFreeForm(true)}
+              >
+                <Plus className="h-4 w-4 mr-2" />Submit Verification
+              </Button>
+            </SheetTrigger>
+            <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+              <SheetHeader>
+                <SheetTitle>Submit Toll-Free Verification</SheetTitle>
+                <SheetDescription>
+                  Complete this form to verify your toll-free numbers for SMS/MMS messaging
+                </SheetDescription>
+              </SheetHeader>
+              
+              <ScrollArea className="h-[calc(100vh-180px)] pr-4 mt-6">
+                <div className="space-y-8">
+                  {/* Business Information Section */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                      <Building2 className="h-4 w-4" />
+                      Business Information
+                    </h3>
+                    <div className="grid gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="tf-business-name">Business Name <span className="text-red-500">*</span></Label>
+                        <Input 
+                          id="tf-business-name"
+                          data-testid="input-tf-business-name"
+                          value={tfBusinessName}
+                          onChange={(e) => setTfBusinessName(e.target.value)}
+                          placeholder="Your company name"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tf-corporate-website">Corporate Website <span className="text-red-500">*</span></Label>
+                        <Input 
+                          id="tf-corporate-website"
+                          data-testid="input-tf-corporate-website"
+                          value={tfCorporateWebsite}
+                          onChange={(e) => setTfCorporateWebsite(e.target.value)}
+                          placeholder="https://example.com"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tf-business-addr1">Street Address <span className="text-red-500">*</span></Label>
+                        <Input 
+                          id="tf-business-addr1"
+                          data-testid="input-tf-business-addr1"
+                          value={tfBusinessAddr1}
+                          onChange={(e) => setTfBusinessAddr1(e.target.value)}
+                          placeholder="123 Main Street"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tf-business-addr2">Address Line 2</Label>
+                        <Input 
+                          id="tf-business-addr2"
+                          data-testid="input-tf-business-addr2"
+                          value={tfBusinessAddr2}
+                          onChange={(e) => setTfBusinessAddr2(e.target.value)}
+                          placeholder="Suite 100 (optional)"
+                        />
+                      </div>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="tf-business-city">City <span className="text-red-500">*</span></Label>
+                          <Input 
+                            id="tf-business-city"
+                            data-testid="input-tf-business-city"
+                            value={tfBusinessCity}
+                            onChange={(e) => setTfBusinessCity(e.target.value)}
+                            placeholder="City"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="tf-business-state">State <span className="text-red-500">*</span></Label>
+                          <Input 
+                            id="tf-business-state"
+                            data-testid="input-tf-business-state"
+                            value={tfBusinessState}
+                            onChange={(e) => setTfBusinessState(e.target.value)}
+                            placeholder="FL"
+                            maxLength={2}
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="tf-business-zip">ZIP Code <span className="text-red-500">*</span></Label>
+                          <Input 
+                            id="tf-business-zip"
+                            data-testid="input-tf-business-zip"
+                            value={tfBusinessZip}
+                            onChange={(e) => setTfBusinessZip(e.target.value)}
+                            placeholder="33101"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Contact Information Section */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-slate-900 dark:text-white">Contact Information</h3>
+                    <div className="grid gap-4">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="tf-contact-first-name">First Name <span className="text-red-500">*</span></Label>
+                          <Input 
+                            id="tf-contact-first-name"
+                            data-testid="input-tf-contact-first-name"
+                            value={tfBusinessContactFirstName}
+                            onChange={(e) => setTfBusinessContactFirstName(e.target.value)}
+                            placeholder="John"
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="tf-contact-last-name">Last Name <span className="text-red-500">*</span></Label>
+                          <Input 
+                            id="tf-contact-last-name"
+                            data-testid="input-tf-contact-last-name"
+                            value={tfBusinessContactLastName}
+                            onChange={(e) => setTfBusinessContactLastName(e.target.value)}
+                            placeholder="Doe"
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tf-contact-email">Email <span className="text-red-500">*</span></Label>
+                        <Input 
+                          id="tf-contact-email"
+                          data-testid="input-tf-contact-email"
+                          type="email"
+                          value={tfBusinessContactEmail}
+                          onChange={(e) => setTfBusinessContactEmail(e.target.value)}
+                          placeholder="john@example.com"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tf-contact-phone">Phone <span className="text-red-500">*</span></Label>
+                        <Input 
+                          id="tf-contact-phone"
+                          data-testid="input-tf-contact-phone"
+                          value={tfBusinessContactPhone}
+                          onChange={(e) => setTfBusinessContactPhone(e.target.value)}
+                          placeholder="+1 (555) 123-4567"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Messaging Details Section */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-slate-900 dark:text-white flex items-center gap-2">
+                      <MessageSquare className="h-4 w-4" />
+                      Messaging Details
+                    </h3>
+                    <div className="grid gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="tf-message-volume">Monthly Message Volume <span className="text-red-500">*</span></Label>
+                        <Select value={tfMessageVolume} onValueChange={setTfMessageVolume}>
+                          <SelectTrigger data-testid="select-tf-message-volume">
+                            <SelectValue placeholder="Select volume" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {MESSAGE_VOLUME_OPTIONS.map((opt) => (
+                              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Phone Numbers <span className="text-red-500">*</span></Label>
+                        <div className="text-xs text-slate-500 mb-2">Select the toll-free numbers to verify</div>
+                        {tollFreeNumbers.length > 0 ? (
+                          <div className="grid gap-2 max-h-40 overflow-y-auto border rounded-md p-3">
+                            {tollFreeNumbers.map((num) => (
+                              <div 
+                                key={num.phoneNumber} 
+                                className={`flex items-center gap-2 p-2 rounded cursor-pointer ${tfSelectedPhoneNumbers.includes(num.phoneNumber) ? "bg-primary/10 border border-primary" : "hover:bg-slate-50 dark:hover:bg-slate-800"}`}
+                                onClick={() => toggleTollFreePhoneNumber(num.phoneNumber)}
+                              >
+                                <Checkbox 
+                                  checked={tfSelectedPhoneNumbers.includes(num.phoneNumber)}
+                                  onCheckedChange={() => toggleTollFreePhoneNumber(num.phoneNumber)}
+                                />
+                                <span className="text-sm font-mono">{num.phoneNumber}</span>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="text-sm text-slate-500 p-4 border rounded-md bg-slate-50 dark:bg-slate-800">
+                            No toll-free numbers available. Please purchase toll-free numbers first.
+                          </div>
+                        )}
+                        {tfSelectedPhoneNumbers.length > 0 && (
+                          <div className="text-xs text-slate-500 mt-1">{tfSelectedPhoneNumbers.length} number(s) selected</div>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tf-use-case">Use Case <span className="text-red-500">*</span></Label>
+                        <Select value={tfUseCase} onValueChange={setTfUseCase}>
+                          <SelectTrigger data-testid="select-tf-use-case">
+                            <SelectValue placeholder="Select use case" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {TOLL_FREE_USE_CASES.map((uc) => (
+                              <SelectItem key={uc.value} value={uc.value}>{uc.label}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tf-use-case-summary">Use Case Summary <span className="text-red-500">*</span></Label>
+                        <Textarea 
+                          id="tf-use-case-summary"
+                          data-testid="textarea-tf-use-case-summary"
+                          value={tfUseCaseSummary}
+                          onChange={(e) => setTfUseCaseSummary(e.target.value)}
+                          placeholder="Describe how you will use toll-free messaging..."
+                          rows={3}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tf-production-message-content">Sample Message Content <span className="text-red-500">*</span></Label>
+                        <Textarea 
+                          id="tf-production-message-content"
+                          data-testid="textarea-tf-production-message-content"
+                          value={tfProductionMessageContent}
+                          onChange={(e) => setTfProductionMessageContent(e.target.value)}
+                          placeholder="Provide an example of messages you'll send..."
+                          rows={3}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Opt-in Documentation Section */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-slate-900 dark:text-white">Opt-in Documentation</h3>
+                    <div className="grid gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="tf-optin-workflow">Opt-in Workflow Description <span className="text-red-500">*</span></Label>
+                        <Textarea 
+                          id="tf-optin-workflow"
+                          data-testid="textarea-tf-optin-workflow"
+                          value={tfOptInWorkflow}
+                          onChange={(e) => setTfOptInWorkflow(e.target.value)}
+                          placeholder="Describe how customers opt-in to receive messages..."
+                          rows={4}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="tf-optin-image-url">Opt-in Documentation URL</Label>
+                        <Input 
+                          id="tf-optin-image-url"
+                          data-testid="input-tf-optin-image-url"
+                          value={tfOptInWorkflowImageURLs[0] || ""}
+                          onChange={(e) => setTfOptInWorkflowImageURLs([e.target.value])}
+                          placeholder="https://example.com/optin-screenshot.png"
+                        />
+                        <p className="text-xs text-slate-500">URL to screenshot or image showing opt-in process</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Business Registration Section */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-slate-900 dark:text-white">Business Registration</h3>
+                    <div className="grid gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="tf-brn-number">Registration Number <span className="text-red-500">*</span></Label>
+                        <Input 
+                          id="tf-brn-number"
+                          data-testid="input-tf-brn-number"
+                          value={tfBusinessRegistrationNumber}
+                          onChange={(e) => setTfBusinessRegistrationNumber(e.target.value)}
+                          placeholder="XX-XXXXXXX"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="tf-brn-type">Registration Type <span className="text-red-500">*</span></Label>
+                          <Select value={tfBusinessRegistrationType} onValueChange={setTfBusinessRegistrationType}>
+                            <SelectTrigger data-testid="select-tf-brn-type">
+                              <SelectValue placeholder="Select type" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {BRN_TYPES.map((type) => (
+                                <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="tf-brn-country">Country</Label>
+                          <Input 
+                            id="tf-brn-country"
+                            data-testid="input-tf-brn-country"
+                            value={tfBusinessRegistrationCountry}
+                            onChange={(e) => setTfBusinessRegistrationCountry(e.target.value)}
+                            placeholder="US"
+                            maxLength={2}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Additional Information Section */}
+                  <div className="space-y-4">
+                    <h3 className="font-semibold text-slate-900 dark:text-white">Additional Information</h3>
+                    <div className="space-y-2">
+                      <Textarea 
+                        id="tf-additional-info"
+                        data-testid="textarea-tf-additional-info"
+                        value={tfAdditionalInformation}
+                        onChange={(e) => setTfAdditionalInformation(e.target.value)}
+                        placeholder="Any additional information relevant to your verification request..."
+                        rows={4}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Submit Button */}
+                  <div className="flex gap-3 pt-4 border-t">
+                    <Button
+                      variant="outline"
+                      className="flex-1"
+                      onClick={() => {
+                        setShowTollFreeForm(false);
+                        resetTollFreeForm();
+                      }}
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      className="flex-1"
+                      data-testid="btn-submit-tf-verification"
+                      disabled={!isTollFreeFormValid() || tollFreeVerificationMutation.isPending}
+                      onClick={() => tollFreeVerificationMutation.mutate()}
+                    >
+                      {tollFreeVerificationMutation.isPending ? (
+                        <>
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        "Submit Verification"
+                      )}
+                    </Button>
+                  </div>
+                </div>
+              </ScrollArea>
+            </SheetContent>
+          </Sheet>
         </div>
 
         <div className="p-6">
