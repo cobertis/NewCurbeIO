@@ -28693,7 +28693,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const [wallet] = await db
         .select()
         .from(wallets)
-        .where(eq(wallets.companyId, companyId!));
+        .where(and(eq(wallets.companyId, companyId!), isNotNull(wallets.telnyxAccountId)));
       
       if (!wallet?.telnyxMessagingProfileId) {
         return res.json({ exists: false, profile: null });
@@ -28761,7 +28761,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const [wallet] = await db
         .select()
         .from(wallets)
-        .where(eq(wallets.companyId, companyId!));
+        .where(and(eq(wallets.companyId, companyId!), isNotNull(wallets.telnyxAccountId)));
       
       if (wallet?.telnyxMessagingProfileId) {
         return res.status(400).json({ message: "Messaging profile already exists" });
@@ -28827,7 +28827,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const [wallet] = await db
         .select()
         .from(wallets)
-        .where(eq(wallets.companyId, companyId!));
+        .where(and(eq(wallets.companyId, companyId!), isNotNull(wallets.telnyxAccountId)));
       
       if (!wallet?.telnyxMessagingProfileId) {
         return res.status(404).json({ message: "No messaging profile found" });
