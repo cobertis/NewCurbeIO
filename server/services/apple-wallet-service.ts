@@ -155,16 +155,18 @@ export const appleWalletService = {
     };
     
     // Use storeCard for clean airline-style layout with strip image support
+    // NOTE: For visible lock-screen notifications, changeMessage must be in headerFields or primaryFields
     passData.storeCard = {
-      // 1. HEADER: Status only (top right corner)
+      // 1. HEADER: Status with changeMessage for visible notifications
       headerFields: [
         {
-          key: "status",
-          label: "STATUS",
-          value: (member.plan || "MEMBER").toUpperCase(),
+          key: "alert",
+          label: "NOTICE",
+          value: pass.lastNotification || (member.plan || "MEMBER").toUpperCase(),
+          changeMessage: "%@",
         },
       ],
-      // 2. PRIMARY: Client name only (large and prominent)
+      // 2. PRIMARY: Client name (large and prominent)
       primaryFields: [
         {
           key: "memberName",
@@ -172,32 +174,25 @@ export const appleWalletService = {
           value: member.fullName.toUpperCase(),
         },
       ],
-      // 3. SECONDARY: ONLY alert/notification (full width when alone)
+      // 3. SECONDARY: Member info
       secondaryFields: [
-        {
-          key: "alert",
-          label: "NOTIFICATION",
-          value: pass.lastNotification || "No pending notifications",
-          changeMessage: "%@",
-        },
-      ],
-      // 4. AUXILIARY: All technical data (centered, above barcode)
-      auxiliaryFields: [
         {
           key: "memberId",
           label: "MEMBER ID",
           value: member.memberId,
-          textAlignment: "PKTextAlignmentCenter",
         },
         {
           key: "plan",
           label: "PLAN",
           value: member.plan || "Standard",
-          textAlignment: "PKTextAlignmentCenter",
+          textAlignment: "PKTextAlignmentRight",
         },
+      ],
+      // 4. AUXILIARY: Additional data (above barcode)
+      auxiliaryFields: [
         {
           key: "memberSince",
-          label: "SINCE",
+          label: "MEMBER SINCE",
           value: member.memberSince ? new Date(member.memberSince).toLocaleDateString("en-US", { month: "2-digit", year: "2-digit" }) : "N/A",
           textAlignment: "PKTextAlignmentCenter",
         },
