@@ -297,7 +297,7 @@ export function ComplianceTab() {
   };
 
   const needsCompanyName = ["PRIVATE_PROFIT", "PUBLIC_PROFIT", "NON_PROFIT", "GOVERNMENT"].includes(entityType);
-  const needsEin = entityType === "NON_PROFIT";
+  const needsEin = ["PRIVATE_PROFIT", "PUBLIC_PROFIT", "NON_PROFIT"].includes(entityType);
   const needsPublicFields = entityType === "PUBLIC_PROFIT";
   const isSoleProprietor = entityType === "SOLE_PROPRIETOR";
 
