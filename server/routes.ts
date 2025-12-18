@@ -1966,7 +1966,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         options.search = search as string;
       }
       const conversations = await storage.getImessageConversationsByCompany(user.companyId, options);
-      res.json(conversations);
+      res.json({ conversations });
     } catch (error: any) {
       console.error("Error fetching iMessage conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
@@ -35156,7 +35156,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .from(telnyxConversations)
         .where(eq(telnyxConversations.companyId, companyId))
         .orderBy(desc(telnyxConversations.lastMessageAt));
-      res.json(conversations);
+      res.json({ conversations });
     } catch (error: any) {
       console.error("[Inbox] Error fetching conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
