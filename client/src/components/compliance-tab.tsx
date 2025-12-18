@@ -390,6 +390,7 @@ export function ComplianceTab() {
     },
     onSuccess: () => {
       toast({ title: "Number removed successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/phone-system/campaigns"] });
       if (selectedCampaign) {
         fetchCampaignNumbers(selectedCampaign.campaignId, selectedCampaign.tcrCampaignId);
       }
