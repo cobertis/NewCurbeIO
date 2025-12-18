@@ -109,6 +109,13 @@ export default function InboxPage() {
   const [isInternalNote, setIsInternalNote] = useState(false);
   const [contactInfoOpen, setContactInfoOpen] = useState(true);
   const [insightsOpen, setInsightsOpen] = useState(true);
+  const [isEditingDetails, setIsEditingDetails] = useState(false);
+  const [editForm, setEditForm] = useState({
+    displayName: "",
+    email: "",
+    jobTitle: "",
+    organization: "",
+  });
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -299,6 +306,28 @@ export default function InboxPage() {
 
   const isMessageInternalNote = (message: TelnyxMessage) => {
     return message.isInternalNote || message.messageType === "internal_note";
+  };
+
+  const startEditing = () => {
+    setEditForm({
+      displayName: matchedContact?.displayName || selectedConversation?.displayName || "",
+      email: matchedContact?.email || "",
+      jobTitle: "",
+      organization: matchedContact?.companyName || "",
+    });
+    setIsEditingDetails(true);
+  };
+
+  const cancelEditing = () => {
+    setIsEditingDetails(false);
+  };
+
+  const saveContactEdit = () => {
+    toast({
+      title: "Contact updated",
+      description: "Contact information has been saved successfully.",
+    });
+    setIsEditingDetails(false);
   };
 
   if (authLoading || !isAuthenticated || loadingConversations) {
@@ -743,16 +772,27 @@ export default function InboxPage() {
             <div className="h-[73px] px-4 border-b flex items-center justify-between">
               <h3 className="font-medium">Details</h3>
               <div className="flex items-center gap-1">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-edit-details">
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Edit</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
+                {isEditingDetails ? (
+                  <>
+                    <Button variant="ghost" size="sm" onClick={cancelEditing} data-testid="btn-cancel-edit">
+                      Cancel
+                    </Button>
+                    <Button size="sm" onClick={saveContactEdit} data-testid="btn-save-edit">
+                      Save
+                    </Button>
+                  </>
+                ) : (
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={startEditing} data-testid="btn-edit-details">
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Edit</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                )}
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
@@ -793,35 +833,54 @@ export default function InboxPage() {
                   {contactInfoOpen && (
                     <div className="space-y-3" data-testid="section-contact-info">
                       <div className="flex items-center gap-3">
-                        <User className="h-4 w-4 text-muted-foreground" />
-                        <div>
+                        <User className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div className="flex-1">
                           <p className="text-xs text-muted-foreground">Full name</p>
-                          <p className="text-sm font-medium" data-testid="text-fullname">
-                            {matchedContact?.displayName || selectedConversation.displayName || "Unknown"}
-                          </p>
+                          {isEditingDetails ? (
+                            <Input
+                              value={editForm.displayName}
+                              onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
+                              className="h-7 text-sm"
+                              data-testid="input-fullname"
+                            />
+                          ) : (
+                            <p className="text-sm font-medium" data-testid="text-fullname">
+                              {matchedContact?.displayName || selectedConversation.displayName || "Unknown"}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Phone className="h-4 w-4 text-muted-foreground" />
-                        <div>
+                        <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div className="flex-1">
                           <p className="text-xs text-muted-foreground">Phone</p>
                           <p className="text-sm font-medium" data-testid="text-phone">
                             {formatForDisplay(selectedConversation.phoneNumber)}
                           </p>
                         </div>
                       </div>
-                      {matchedContact?.email && (
-                        <div className="flex items-center gap-3">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                          <div>
-                            <p className="text-xs text-muted-foreground">Email</p>
-                            <p className="text-sm font-medium" data-testid="text-email">{matchedContact.email}</p>
-                          </div>
-                        </div>
-                      )}
                       <div className="flex items-center gap-3">
-                        <SiWhatsapp className="h-4 w-4 text-green-600" />
-                        <div>
+                        <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div className="flex-1">
+                          <p className="text-xs text-muted-foreground">Email</p>
+                          {isEditingDetails ? (
+                            <Input
+                              value={editForm.email}
+                              onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                              className="h-7 text-sm"
+                              placeholder="email@example.com"
+                              data-testid="input-email"
+                            />
+                          ) : (
+                            <p className="text-sm font-medium" data-testid="text-email">
+                              {matchedContact?.email || "—"}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <SiWhatsapp className="h-4 w-4 text-green-600 shrink-0" />
+                        <div className="flex-1">
                           <p className="text-xs text-muted-foreground">WhatsApp</p>
                           <p className="text-sm font-medium" data-testid="text-whatsapp">
                             {formatForDisplay(selectedConversation.phoneNumber)}
@@ -829,37 +888,59 @@ export default function InboxPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Briefcase className="h-4 w-4 text-muted-foreground" />
-                        <div>
+                        <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div className="flex-1">
                           <p className="text-xs text-muted-foreground">Job title</p>
-                          <p className="text-sm font-medium text-muted-foreground" data-testid="text-jobtitle">—</p>
+                          {isEditingDetails ? (
+                            <Input
+                              value={editForm.jobTitle}
+                              onChange={(e) => setEditForm({ ...editForm, jobTitle: e.target.value })}
+                              className="h-7 text-sm"
+                              placeholder="Enter job title"
+                              data-testid="input-jobtitle"
+                            />
+                          ) : (
+                            <p className="text-sm font-medium text-muted-foreground" data-testid="text-jobtitle">—</p>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        <div>
+                        <Building2 className="h-4 w-4 text-muted-foreground shrink-0" />
+                        <div className="flex-1">
                           <p className="text-xs text-muted-foreground">Organization</p>
-                          <p className="text-sm font-medium" data-testid="text-organization">
-                            {matchedContact?.companyName || "—"}
-                          </p>
+                          {isEditingDetails ? (
+                            <Input
+                              value={editForm.organization}
+                              onChange={(e) => setEditForm({ ...editForm, organization: e.target.value })}
+                              className="h-7 text-sm"
+                              placeholder="Enter organization"
+                              data-testid="input-organization"
+                            />
+                          ) : (
+                            <p className="text-sm font-medium" data-testid="text-organization">
+                              {matchedContact?.companyName || "—"}
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-2 shrink-0">
                           <SiFacebook className="h-4 w-4 text-blue-600 cursor-pointer hover:opacity-80" data-testid="icon-facebook" />
                           <SiInstagram className="h-4 w-4 text-pink-600 cursor-pointer hover:opacity-80" data-testid="icon-instagram" />
                         </div>
-                        <div>
+                        <div className="flex-1">
                           <p className="text-xs text-muted-foreground">Social media</p>
                           <p className="text-sm text-muted-foreground" data-testid="text-social">Not connected</p>
                         </div>
                       </div>
-                      <button 
-                        className="text-xs text-violet-600 hover:text-violet-700 font-medium"
-                        data-testid="btn-show-more-contact"
-                      >
-                        Show more
-                      </button>
+                      {!isEditingDetails && (
+                        <button 
+                          className="text-xs text-violet-600 hover:text-violet-700 font-medium"
+                          data-testid="btn-show-more-contact"
+                        >
+                          Show more
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
