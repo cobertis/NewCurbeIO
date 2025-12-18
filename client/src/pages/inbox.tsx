@@ -616,25 +616,10 @@ export default function InboxPage() {
                       <div
                         key={message.id}
                         className={cn(
-                          "flex flex-col group",
-                          isOutbound || isNote ? "items-end" : "items-start"
+                          "flex group",
+                          isOutbound || isNote ? "justify-end" : "justify-start"
                         )}
                       >
-                        {/* Sender name above bubble for outbound and notes */}
-                        {(isOutbound || isNote) && (
-                          <div className="flex items-center gap-1 mb-1">
-                            <span className="text-xs font-medium text-blue-600">
-                              {user?.firstName && user?.lastName 
-                                ? `${user.firstName} ${user.lastName}` 
-                                : user?.email?.split('@')[0] || 'You'}
-                            </span>
-                            {isNote && (
-                              <span className="text-xs text-muted-foreground">(internal note)</span>
-                            )}
-                          </div>
-                        )}
-                        
-                        {/* Message bubble */}
                         <div
                           className={cn(
                             "max-w-[70%] rounded-2xl px-4 py-2",
@@ -645,28 +630,50 @@ export default function InboxPage() {
                                 : "bg-white dark:bg-gray-800 shadow-sm rounded-tl-sm"
                           )}
                         >
-                          <p className="text-sm whitespace-pre-wrap">{message.text}</p>
-                        </div>
-                        
-                        {/* Timestamp and status outside bubble */}
-                        <div className={cn(
-                          "flex items-center gap-1 mt-1",
-                          isOutbound || isNote ? "justify-end" : "justify-start"
-                        )}>
-                          <span className="text-[11px] text-muted-foreground">
-                            {format(new Date(message.createdAt), "h:mm a")}
-                          </span>
-                          {isOutbound && !isNote && (
-                            <span className="text-blue-600">
-                              {message.status === "delivered" ? (
-                                <CheckCheck className="h-3.5 w-3.5" />
-                              ) : message.status === "sent" ? (
-                                <CheckCheck className="h-3.5 w-3.5 opacity-50" />
-                              ) : (
-                                <Clock className="h-3.5 w-3.5" />
+                          {/* Sender name inside bubble for outbound and notes */}
+                          {(isOutbound || isNote) && (
+                            <div className="flex items-center gap-1 mb-1">
+                              <span className={cn(
+                                "text-xs font-medium",
+                                isNote ? "text-blue-600" : "text-blue-300"
+                              )}>
+                                {user?.firstName && user?.lastName 
+                                  ? `${user.firstName} ${user.lastName}` 
+                                  : user?.email?.split('@')[0] || 'You'}
+                              </span>
+                              {isNote && (
+                                <span className="text-xs text-yellow-600">(internal note)</span>
                               )}
-                            </span>
+                            </div>
                           )}
+                          
+                          {/* Message text */}
+                          <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                          
+                          {/* Timestamp and status inside bubble at bottom right */}
+                          <div className="flex items-center gap-1 mt-1 justify-end">
+                            <span className={cn(
+                              "text-[11px]",
+                              isNote 
+                                ? "text-yellow-600"
+                                : isOutbound 
+                                  ? "text-blue-200" 
+                                  : "text-muted-foreground"
+                            )}>
+                              {format(new Date(message.createdAt), "h:mm a")}
+                            </span>
+                            {isOutbound && !isNote && (
+                              <span className="text-green-400">
+                                {message.status === "delivered" ? (
+                                  <CheckCheck className="h-3.5 w-3.5" />
+                                ) : message.status === "sent" ? (
+                                  <CheckCheck className="h-3.5 w-3.5 opacity-50" />
+                                ) : (
+                                  <Clock className="h-3.5 w-3.5" />
+                                )}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
