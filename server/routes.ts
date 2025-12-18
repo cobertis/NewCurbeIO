@@ -35156,6 +35156,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .from(telnyxConversations)
         .where(eq(telnyxConversations.companyId, companyId))
         .orderBy(desc(telnyxConversations.lastMessageAt));
+      console.log("[Inbox] Returning", conversations.length, "conversations for company", companyId, JSON.stringify(conversations[0] || {}));
       res.json({ conversations });
     } catch (error: any) {
       console.error("[Inbox] Error fetching conversations:", error);
