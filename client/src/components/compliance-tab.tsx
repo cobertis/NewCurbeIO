@@ -1317,7 +1317,7 @@ export function ComplianceTab() {
   return (
     <div className="p-6 space-y-6">
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-t-xl">
           <div>
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Registered Brands</h3>
             <p className="text-sm text-slate-500 mt-1">Your 10DLC brands registered with The Campaign Registry</p>
@@ -1392,7 +1392,7 @@ export function ComplianceTab() {
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-t-xl">
           <div>
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Messaging Profile</h3>
             <p className="text-sm text-slate-500 mt-1">Required for sending SMS/MMS messages through your phone numbers</p>
@@ -1450,7 +1450,7 @@ export function ComplianceTab() {
 
       {/* 10DLC Campaigns Section */}
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-t-xl">
           <div>
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">10DLC Campaigns</h3>
             <p className="text-sm text-slate-500 mt-1">Register messaging campaigns to enable A2P SMS on your phone numbers</p>
@@ -1528,7 +1528,7 @@ export function ComplianceTab() {
       </div>
 
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-t-xl">
           <div>
             <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Toll-Free Verification</h3>
             <p className="text-sm text-slate-500 mt-1">Verify toll-free numbers (800, 888, 877, etc.) for SMS/MMS messaging</p>
