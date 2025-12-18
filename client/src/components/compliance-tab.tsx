@@ -1513,6 +1513,7 @@ export function ComplianceTab() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead>Campaign ID</TableHead>
                   <TableHead>TCR ID</TableHead>
                   <TableHead>Use Case</TableHead>
                   <TableHead>Numbers</TableHead>
@@ -1546,7 +1547,8 @@ export function ComplianceTab() {
                   
                   return (
                     <TableRow key={campaign.campaignId}>
-                      <TableCell className="font-mono text-xs text-muted-foreground">{campaign.tcrCampaignId || campaign.campaignId}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{campaign.campaignId}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{campaign.tcrCampaignId || "-"}</TableCell>
                       <TableCell>{USE_CASES.find(uc => uc.value === campaign.usecase)?.label || campaign.usecase}</TableCell>
                       <TableCell>
                         {assignedNumbers.length > 0 ? (
