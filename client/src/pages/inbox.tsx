@@ -104,7 +104,7 @@ export default function InboxPage() {
   const conversations = conversationsData?.conversations || [];
 
   const { data: messagesData, isLoading: loadingMessages } = useQuery<{ messages: TelnyxMessage[] }>({
-    queryKey: ["/api/inbox/conversations", selectedConversationId, "messages"],
+    queryKey: [`/api/inbox/conversations/${selectedConversationId}/messages`],
     enabled: !!selectedConversationId,
   });
   const messages = messagesData?.messages || [];
@@ -136,7 +136,7 @@ export default function InboxPage() {
       setNewMessage("");
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
       queryClient.invalidateQueries({ 
-        queryKey: ["/api/inbox/conversations", selectedConversationId, "messages"] 
+        queryKey: [`/api/inbox/conversations/${selectedConversationId}/messages`] 
       });
     },
     onError: (error: any) => {
