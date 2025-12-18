@@ -4016,6 +4016,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const url = "https://places.googleapis.com/v1/places:autocomplete";
       const headers = {
         "Content-Type": "application/json",
+      "Accept": "application/json",
         "X-Goog-Api-Key": apiKey
       };
       const body = {
@@ -4079,6 +4080,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const url = `https://places.googleapis.com/v1/places/${placeId}`;
       const headers = {
         "Content-Type": "application/json",
+      "Accept": "application/json",
         "X-Goog-Api-Key": apiKey,
         "X-Goog-FieldMask": "id,formattedAddress,addressComponents,location"
       };
@@ -4183,6 +4185,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const url = "https://places.googleapis.com/v1/places:searchText";
       const headers = {
         "Content-Type": "application/json",
+      "Accept": "application/json",
         "X-Goog-Api-Key": apiKey,
         "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress,places.nationalPhoneNumber,places.websiteUri,places.primaryTypeDisplayName,places.shortFormattedAddress,places.addressComponents"
       };
@@ -28380,6 +28383,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         headers: {
           "Authorization": `Bearer ${accessToken}`,
           "Content-Type": "application/json",
+      "Accept": "application/json",
           "Intercom-Version": "2.11",
         },
         body: JSON.stringify(eventPayload),
@@ -28493,6 +28497,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     const headers = {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
+      "Accept": "application/json",
     };
     // MASTER_ACCOUNT means use main Telnyx account directly (no managed account header needed)
     if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
@@ -28946,6 +28951,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   app.get("/api/phone-system/campaigns", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = req.session.user?.companyId;
+      const { brandId } = req.query;
       
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
@@ -28955,7 +28961,49 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.json({ campaigns: [] });
       }
       
-      const response = await fetch("https://api.telnyx.com/v2/10dlc/campaign", {
+      // If no brandId provided, first fetch all brands for this account
+      let targetBrandId = brandId as string;
+      if (!targetBrandId) {
+        const brandsResponse = await fetch("https://api.telnyx.com/v2/10dlc/brand", {
+          method: "GET",
+          headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
+        });
+        
+        if (brandsResponse.ok) {
+          const brandsResult = await brandsResponse.json();
+          const brands = brandsResult.records || brandsResult.data || [];
+          // Get campaigns for all brands
+          const allCampaigns: any[] = [];
+          
+          for (const brand of brands) {
+            if (brand.assignedCampaignsCount > 0) {
+              const campaignsUrl = `https://api.telnyx.com/v2/10dlc/campaign?brandId=${brand.brandId}`;
+              console.log("[10DLC Campaigns] Fetching campaigns for brand:", brand.brandId);
+              
+              const response = await fetch(campaignsUrl, {
+                method: "GET",
+                headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
+              });
+              
+              if (response.ok) {
+                const result = await response.json();
+                const campaigns = result.records || result.data || [];
+                allCampaigns.push(...campaigns);
+              } else {
+                const error = await response.json();
+                console.error("[10DLC Campaigns] Error fetching campaigns for brand", brand.brandId, ":", error);
+              }
+            }
+          }
+          
+          console.log("[10DLC Campaigns] Total campaigns found:", allCampaigns.length);
+          return res.json({ campaigns: allCampaigns });
+        }
+      }
+      
+      // If brandId was provided, fetch campaigns for that specific brand
+      const campaignsUrl = `https://api.telnyx.com/v2/10dlc/campaign?brandId=${targetBrandId}`;
+      const response = await fetch(campaignsUrl, {
         method: "GET",
         headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
       });
@@ -29913,6 +29961,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               method: "PATCH",
               headers: {
                 "Content-Type": "application/json",
+      "Accept": "application/json",
                 "Authorization": `Bearer ${config.apiKey}`,
                 ...(config.managedAccountId && config.managedAccountId !== "MASTER_ACCOUNT" && { "X-Managed-Account-Id": config.managedAccountId }),
               },
@@ -30170,6 +30219,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const headers = {
         "Authorization": `Bearer ${apiKey}`,
         "Content-Type": "application/json",
+      "Accept": "application/json",
         "x-managed-account-id": wallet.telnyxAccountId,
       };
 
@@ -32051,6 +32101,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           method: "POST",
           headers: {
             "Content-Type": "application/json",
+      "Accept": "application/json",
             "Authorization": `Bearer ${telnyxApiKey}`
           },
           body: JSON.stringify({})
@@ -32065,6 +32116,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+      "Accept": "application/json",
               "Authorization": `Bearer ${telnyxApiKey}`
             },
             body: JSON.stringify({})
@@ -32169,6 +32221,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             method: "POST",
             headers: {
               "Content-Type": "application/json",
+      "Accept": "application/json",
               "Authorization": `Bearer ${telnyxApiKey}`
             },
             body: JSON.stringify({})
@@ -34296,6 +34349,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         headers: {
           Authorization: `Bearer ${TELNYX_API_KEY}`,
           "Content-Type": "application/json",
+      "Accept": "application/json",
         },
         body: JSON.stringify({
           to: userSipUri,  // Call TO the user
