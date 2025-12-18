@@ -98,9 +98,16 @@ export default function InboxPage() {
   });
   const companyNumbers = phoneNumbersData?.numbers || [];
 
-  const { data: conversationsData, isLoading: loadingConversations, error: conversationsError } = useQuery<{ conversations: TelnyxConversation[] }>({
+  const { data: conversationsData, isLoading: loadingConversations, error: conversationsError, isFetching: fetchingConversations } = useQuery<{ conversations: TelnyxConversation[] }>({
     queryKey: ["/api/inbox/conversations"],
     enabled: !!userId,
+    staleTime: 30000,
+    retry: (failureCount, error: any) => {
+      if (error?.message?.includes('401') || error?.message?.includes('Unauthorized')) {
+        return false;
+      }
+      return failureCount < 2;
+    },
   });
   const conversations = conversationsData?.conversations || [];
 
@@ -233,16 +240,8 @@ export default function InboxPage() {
     });
   };
 
-  if (!userId || loadingConversations) {
+  if (!userId || loadingConversations || (fetchingConversations && !conversationsData)) {
     return <LoadingSpinner message="Loading conversations..." />;
-  }
-
-  if (conversationsError) {
-    return (
-      <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
-        <p className="text-muted-foreground">Error loading conversations. Please refresh the page.</p>
-      </div>
-    );
   }
 
   return (
