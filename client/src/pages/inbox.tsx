@@ -80,29 +80,25 @@ export default function InboxPage() {
   const [selectedFromNumber, setSelectedFromNumber] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { data: userData, status: sessionStatus } = useQuery<{ user: UserType }>({
+  const { data: userData } = useQuery<{ user: UserType }>({
     queryKey: ["/api/session"],
-    staleTime: 0,
-    refetchOnMount: "always",
   });
   const userTimezone = userData?.user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const isAuthenticated = sessionStatus === "success" && !!userData?.user;
 
   const { data: contactsData } = useQuery<{ contacts: UnifiedContact[] }>({
     queryKey: ["/api/contacts/unified"],
-    enabled: isAuthenticated,
   });
   const contacts = contactsData?.contacts || [];
 
   const { data: phoneNumbersData } = useQuery<{ numbers: Array<{ phoneNumber: string; friendlyName?: string }> }>({
     queryKey: ["/api/telnyx/my-numbers"],
-    enabled: isAuthenticated,
   });
   const companyNumbers = phoneNumbersData?.numbers || [];
 
-  const { data: conversationsData, isLoading: loadingConversations } = useQuery<{ conversations: TelnyxConversation[] }>({
+  const { data: conversationsData, isLoading: loadingConversations, error: conversationsError } = useQuery<{ conversations: TelnyxConversation[] }>({
     queryKey: ["/api/inbox/conversations"],
-    enabled: isAuthenticated,
+    retry: 3,
+    retryDelay: 1000,
   });
   const conversations = conversationsData?.conversations || [];
 
@@ -235,11 +231,11 @@ export default function InboxPage() {
     });
   };
 
-  if (sessionStatus === "pending" || loadingConversations) {
+  if (loadingConversations) {
     return <LoadingSpinner message="Loading conversations..." />;
   }
 
-  if (!userData?.user) {
+  if (conversationsError || !userData?.user) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
         <p className="text-muted-foreground">Please log in to view your inbox.</p>
