@@ -359,7 +359,7 @@ export function PublicPricingView({
                       
                       {/* Plan Description */}
                       <p 
-                        className="text-sm mb-5 leading-relaxed"
+                        className="text-sm mb-5 leading-relaxed line-clamp-3 min-h-[4.5rem]"
                         style={{ color: pricingTheme.colors.textSecondary }}
                       >
                         {planDescription}
