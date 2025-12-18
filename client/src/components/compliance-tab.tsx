@@ -1423,7 +1423,7 @@ export function ComplianceTab() {
                           <span className="font-medium text-slate-900 dark:text-white">{brand.displayName}</span>
                         </td>
                         <td className="py-3 px-4">
-                          <span className="text-xs text-slate-500 font-mono">{brand.id?.slice(0, 13)}...</span>
+                          <span className="text-xs text-slate-500 font-mono">{brand.id}</span>
                         </td>
                         <td className="py-3 px-4">
                           <span className="text-xs text-slate-500 font-mono">{brand.brandId || '-'}</span>
@@ -1497,7 +1497,7 @@ export function ComplianceTab() {
                         </Badge>
                       </td>
                       <td className="py-3 px-4">
-                        <span className="text-xs text-slate-500 font-mono">{messagingProfile.profile?.id?.slice(0, 13)}...</span>
+                        <span className="text-xs text-slate-500 font-mono">{messagingProfile.profile?.id}</span>
                       </td>
                     </tr>
                   </tbody>
@@ -1568,13 +1568,13 @@ export function ComplianceTab() {
                       return (
                         <tr key={campaign.campaignId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                           <td className="py-3 px-4">
-                            <span className="text-xs text-slate-500 font-mono">{campaign.campaignId?.slice(0, 16)}...</span>
+                            <span className="text-xs text-slate-500 font-mono">{campaign.campaignId}</span>
                           </td>
                           <td className="py-3 px-4">
                             <span className="text-xs text-slate-500 font-mono">{campaign.tcrCampaignId || '-'}</span>
                           </td>
                           <td className="py-3 px-4">
-                            <span className="font-medium text-slate-900 dark:text-white">{campaign.brandId?.slice(0, 10) || '-'}</span>
+                            <span className="font-medium text-slate-900 dark:text-white">{campaign.brandId || '-'}</span>
                           </td>
                           <td className="py-3 px-4">
                             <span className="text-slate-700 dark:text-slate-300">{USE_CASES.find(uc => uc.value === campaign.usecase)?.label || campaign.usecase}</span>
