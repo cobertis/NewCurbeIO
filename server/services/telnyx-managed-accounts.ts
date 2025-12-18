@@ -462,7 +462,7 @@ async function ensureMessagingProfileForCompany(
       method: "GET",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "x-managed-account-id": managedAccountId,
+        ...(managedAccountId && managedAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": managedAccountId} : {}),
       },
     });
     
@@ -501,7 +501,7 @@ async function ensureMessagingProfileForCompany(
       method: "POST",
       headers: {
         "Authorization": `Bearer ${apiKey}`,
-        "x-managed-account-id": managedAccountId,
+        ...(managedAccountId && managedAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": managedAccountId} : {}),
         "Content-Type": "application/json",
       },
       body: JSON.stringify(profilePayload),

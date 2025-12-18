@@ -19,6 +19,16 @@ export async function getTelnyxMasterApiKey(): Promise<string> {
   return apiKey;
 }
 
+// Helper function to check if managed account header should be included
+// Returns null if MASTER_ACCOUNT (use main account), otherwise returns the account ID
+export function getManagedAccountHeader(accountId: string | null | undefined): string | null {
+  if (!accountId || accountId === "MASTER_ACCOUNT") {
+    return null;
+  }
+  return accountId;
+}
+
+
 export interface AvailablePhoneNumber {
   phone_number: string;
   record_type: string;
@@ -246,7 +256,7 @@ export async function purchasePhoneNumber(
       "Content-Type": "application/json",
     };
     
-    if (managedAccountId) {
+    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
       headers["x-managed-account-id"] = managedAccountId;
     }
 
@@ -430,7 +440,7 @@ export async function updateCnamListing(
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "x-managed-account-id": telnyxAccountId,
+      ...(telnyxAccountId && telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": telnyxAccountId} : {}),
     };
     
     // Get the actual cnam_listing_details value
@@ -548,7 +558,7 @@ export async function getCnamSettings(
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Accept": "application/json",
-      "x-managed-account-id": telnyxAccountId,
+      ...(telnyxAccountId && telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": telnyxAccountId} : {}),
     };
     
     // First get basic phone number info
@@ -658,7 +668,7 @@ export async function getVoiceSettings(
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Accept": "application/json",
-      "x-managed-account-id": telnyxAccountId,
+      ...(telnyxAccountId && telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": telnyxAccountId} : {}),
     };
     
     const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${telnyxPhoneId}/voice`, {
@@ -753,7 +763,7 @@ export async function getPhoneNumberRoutingConfig(
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Accept": "application/json",
-      "x-managed-account-id": telnyxAccountId,
+      ...(telnyxAccountId && telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": telnyxAccountId} : {}),
     };
     
     const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
@@ -811,7 +821,7 @@ export async function updateCallRecording(
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "x-managed-account-id": wallet.telnyxAccountId,
+      ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
     // Update inbound call recording on the phone number
@@ -920,7 +930,7 @@ export async function updateSpamProtection(
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "x-managed-account-id": wallet.telnyxAccountId,
+      ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
     const payload = {
@@ -1019,7 +1029,7 @@ export async function updateCallForwarding(
       const headers: Record<string, string> = {
         "Authorization": `Bearer ${apiKey}`,
         "Accept": "application/json",
-        "x-managed-account-id": wallet.telnyxAccountId,
+        ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
       };
       
       // Fetch the phone number details from Telnyx
@@ -1084,7 +1094,7 @@ export async function getVoicemailSettings(
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Accept": "application/json",
-      "x-managed-account-id": wallet.telnyxAccountId,
+      ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
     const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}/voicemail`, {
@@ -1143,7 +1153,7 @@ export async function updateVoicemailSettings(
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "x-managed-account-id": wallet.telnyxAccountId,
+      ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
     // Telnyx API expects pin as string "1234", not integer
@@ -1218,7 +1228,7 @@ export async function getCompanyPhoneNumbers(companyId: string): Promise<{
       "Accept": "application/json",
     };
     
-    if (wallet.telnyxAccountId) {
+    if (wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT") {
       headers["x-managed-account-id"] = wallet.telnyxAccountId;
     }
 
@@ -1361,7 +1371,7 @@ export async function syncPhoneNumbersFromTelnyx(companyId: string): Promise<{
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Accept": "application/json",
-      "x-managed-account-id": wallet.telnyxAccountId,
+      ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
 
     // Get all numbers from Telnyx
@@ -1451,7 +1461,7 @@ export async function syncBillingFeaturesToTelnyx(
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
-      "x-managed-account-id": wallet.telnyxAccountId,
+      ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
     const errors: string[] = [];
@@ -1579,7 +1589,7 @@ export async function updateNumberVoiceSettings(
         const headers: Record<string, string> = {
           "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json",
-          "x-managed-account-id": wallet.telnyxAccountId,
+          ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
         };
         
         const payload: Record<string, any> = {};
@@ -1628,7 +1638,7 @@ export async function updateNumberVoiceSettings(
         const headers: Record<string, string> = {
           "Authorization": `Bearer ${apiKey}`,
           "Content-Type": "application/json",
-          "x-managed-account-id": wallet.telnyxAccountId,
+          ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
         };
         
         // Get current voicemail settings from local DB (just updated)
@@ -1736,7 +1746,7 @@ export async function updateNumberVoiceSettings(
             const headers: Record<string, string> = {
               "Authorization": `Bearer ${apiKey}`,
               "Content-Type": "application/json",
-              "x-managed-account-id": wallet.telnyxAccountId,
+              ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
             };
             
             // CRITICAL: When IVR is enabled, use call_control_application_id (not connection_id)
@@ -1829,7 +1839,7 @@ export async function syncVoiceSettingsFromTelnyx(
     const headers: Record<string, string> = {
       "Authorization": `Bearer ${apiKey}`,
       "Accept": "application/json",
-      "x-managed-account-id": wallet.telnyxAccountId,
+      ...(wallet.telnyxAccountId && wallet.telnyxAccountId !== "MASTER_ACCOUNT" ? {"x-managed-account-id": wallet.telnyxAccountId} : {}),
     };
     
     // Get voice settings from Telnyx

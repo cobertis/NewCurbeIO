@@ -253,7 +253,7 @@ export class TelephonyProvisioningService {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
       "Accept": "application/json",
-      "X-Managed-Account-Id": managedAccountId,
+      ...(managedAccountId && managedAccountId !== "MASTER_ACCOUNT" ? {"X-Managed-Account-Id": managedAccountId} : {}),
     };
 
     const options: RequestInit = {

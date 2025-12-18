@@ -57,7 +57,7 @@ export async function uploadMediaToTelnyx(
       "Accept": "application/json",
     };
     
-    if (managedAccountId) {
+    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
       headers["X-Managed-Account-Id"] = managedAccountId;
     }
     
@@ -135,7 +135,7 @@ export async function deleteMediaFromTelnyx(mediaId: string, companyId?: string)
       "Content-Type": "application/json",
     };
     
-    if (managedAccountId) {
+    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
       headers["X-Managed-Account-Id"] = managedAccountId;
     }
     

@@ -30675,6 +30675,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "No managed account configured for this company" 
         });
       }
+      
+      // Special case: MASTER_ACCOUNT means this company uses the main Telnyx account directly
+      if (managedAccountId === "MASTER_ACCOUNT") {
+        return res.json({
+          configured: true,
+          isMasterAccount: true,
+          message: "Using main Telnyx account"
+        });
+      }
       // Get account details from Telnyx
       const accountDetails = await getManagedAccount(managedAccountId);
 

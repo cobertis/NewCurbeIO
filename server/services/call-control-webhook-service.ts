@@ -451,7 +451,7 @@ export async function uploadAudioToTelnyxMedia(audioUrl: string, mediaName: stri
     let managedAccountId: string | null = null;
     if (companyId) {
       managedAccountId = await getCompanyManagedAccountId(companyId);
-      if (managedAccountId) {
+      if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
         headers["X-Managed-Account-Id"] = managedAccountId;
         console.log(`[TelnyxMedia] Using managed account: ${managedAccountId}`);
       }
@@ -1154,7 +1154,7 @@ export class CallControlWebhookService {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     };
-    if (managedAccountId) {
+    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
       headers["X-Managed-Account-Id"] = managedAccountId;
     }
 
@@ -1437,7 +1437,7 @@ export class CallControlWebhookService {
       "Content-Type": "application/json",
     };
 
-    if (managedAccountId) {
+    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
       headers["X-Managed-Account-Id"] = managedAccountId;
     }
 
@@ -1604,7 +1604,7 @@ export class CallControlWebhookService {
       "Authorization": `Bearer ${apiKey}`,
       "Content-Type": "application/json",
     };
-    if (managedAccountId) {
+    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
       headers["X-Managed-Account-Id"] = managedAccountId;
     }
 
@@ -2275,7 +2275,7 @@ export class CallControlWebhookService {
       };
       
       // CRITICAL: Include managed account header for multi-tenant routing
-      if (managedAccountId) {
+      if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
         headers["X-Managed-Account-Id"] = managedAccountId;
         console.log(`[CallControl] API call with managed account: ${managedAccountId}`);
       }
