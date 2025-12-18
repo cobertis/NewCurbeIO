@@ -1514,13 +1514,27 @@ export function WebPhoneFloatingWindow() {
     },
   });
 
+  // Query for user's assigned phone number (prioritizes number assigned to this specific user)
+  const { data: userPhoneStatusData } = useQuery<{ 
+    hasAssignedNumber: boolean; 
+    canMakeCalls: boolean; 
+    phoneNumber?: string; 
+    reason?: string;
+  }>({
+    queryKey: ['/api/telnyx/user-phone-status'],
+  });
+  
   // Query for Telnyx phone numbers
   const { data: telnyxNumbersData } = useQuery<{ numbers: any[] }>({
     queryKey: ['/api/telnyx/my-numbers'],
   });
   
   const hasTelnyxNumber = (telnyxNumbersData?.numbers?.length || 0) > 0;
-  const primaryTelnyxNumberId = telnyxNumbersData?.numbers?.[0]?.id;
+  // Use the number assigned to the user (from user-phone-status), or fall back to first company number
+  const userAssignedNumber = userPhoneStatusData?.phoneNumber;
+  const primaryTelnyxNumberId = userAssignedNumber 
+    ? telnyxNumbersData?.numbers?.find((n: any) => n.phoneNumber === userAssignedNumber || n.phone_number === userAssignedNumber)?.id
+    : telnyxNumbersData?.numbers?.[0]?.id;
 
   // Query for voice settings to check callerIdNameEnabled
   // Use array format to match phone-system.tsx invalidation pattern
@@ -1588,7 +1602,8 @@ export function WebPhoneFloatingWindow() {
   });
   const voicemailList = voicemailsData?.voicemails || [];
   const voicemailUnreadCount = voicemailsData?.unreadCount || 0;
-  const telnyxCallerIdNumber = telnyxNumbersData?.numbers?.[0]?.phone_number || telnyxNumbersData?.numbers?.[0]?.phoneNumber || '';
+  // Use the user's assigned number as caller ID (from user-phone-status endpoint)
+  const telnyxCallerIdNumber = userAssignedNumber || telnyxNumbersData?.numbers?.[0]?.phone_number || telnyxNumbersData?.numbers?.[0]?.phoneNumber || '';
   
   // Query for PBX special extensions (IVR and queues)
   const { data: pbxSpecialExtensions } = useQuery<{ 
