@@ -371,6 +371,10 @@ export async function setupCompanyManagedAccount(companyId: string): Promise<{
         }
 
         console.log(`[Telnyx Managed] Linked existing account ${matchingAccount.id} to company ${companyId}`);
+        
+        // Auto-create messaging profile for the linked account
+        await ensureMessagingProfileForCompany(companyId, matchingAccount.id, company.name);
+        
         return { success: true, managedAccountId: matchingAccount.id };
       }
     }
@@ -408,6 +412,9 @@ export async function setupCompanyManagedAccount(companyId: string): Promise<{
 
     console.log(`[Telnyx Managed] Company ${companyId} now has managed account: ${managedAccountId}`);
 
+    // Auto-create messaging profile for the managed account
+    await ensureMessagingProfileForCompany(companyId, managedAccountId, company.name);
+
     return {
       success: true,
       managedAccountId: managedAccountId,
@@ -428,6 +435,99 @@ export async function getCompanyManagedAccountId(companyId: string): Promise<str
     .where(eq(wallets.companyId, companyId));
 
   return wallet?.telnyxAccountId || null;
+}
+
+// Auto-create messaging profile for a managed account if it doesn't exist
+async function ensureMessagingProfileForCompany(
+  companyId: string,
+  managedAccountId: string,
+  companyName: string
+): Promise<void> {
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    
+    // Check if company already has a messaging profile
+    const [wallet] = await db
+      .select()
+      .from(wallets)
+      .where(eq(wallets.companyId, companyId));
+    
+    if (wallet?.telnyxMessagingProfileId) {
+      console.log(`[Messaging Profile] Company ${companyId} already has profile: ${wallet.telnyxMessagingProfileId}`);
+      return;
+    }
+    
+    // Check if there's already a messaging profile in Telnyx for this managed account
+    const listResponse = await fetch(`${TELNYX_API_BASE}/messaging_profiles`, {
+      method: "GET",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "x-managed-account-id": managedAccountId,
+      },
+    });
+    
+    if (listResponse.ok) {
+      const listResult = await listResponse.json();
+      const profiles = listResult.data || [];
+      
+      if (profiles.length > 0) {
+        // Use existing profile
+        const existingProfile = profiles[0];
+        console.log(`[Messaging Profile] Found existing profile in Telnyx: ${existingProfile.id}`);
+        
+        await db.update(wallets).set({
+          telnyxMessagingProfileId: existingProfile.id,
+          updatedAt: new Date(),
+        }).where(eq(wallets.companyId, companyId));
+        
+        return;
+      }
+    }
+    
+    // Create new messaging profile
+    console.log(`[Messaging Profile] Creating new profile for company ${companyId}`);
+    
+    const profilePayload = {
+      name: `SMS Profile - ${companyName}`,
+      enabled: true,
+      number_pool_settings: {
+        geomatch: true,
+        sticky_sender: true,
+        skip_unhealthy: true,
+      },
+    };
+    
+    const createResponse = await fetch(`${TELNYX_API_BASE}/messaging_profiles`, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "x-managed-account-id": managedAccountId,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify(profilePayload),
+    });
+    
+    if (!createResponse.ok) {
+      const errorText = await createResponse.text();
+      console.error(`[Messaging Profile] Create error: ${createResponse.status} - ${errorText}`);
+      return;
+    }
+    
+    const createResult = await createResponse.json();
+    const profileId = createResult.data?.id;
+    
+    if (profileId) {
+      console.log(`[Messaging Profile] Created profile: ${profileId}`);
+      
+      await db.update(wallets).set({
+        telnyxMessagingProfileId: profileId,
+        updatedAt: new Date(),
+      }).where(eq(wallets.companyId, companyId));
+    }
+  } catch (error) {
+    console.error("[Messaging Profile] Error ensuring profile:", error);
+    // Don't throw - messaging profile creation failure shouldn't block account setup
+  }
 }
 
 export async function recreateCompanyManagedAccount(companyId: string, newEmail: string): Promise<{
@@ -534,7 +634,6 @@ export async function clearCompanyTelnyxConfig(companyId: string): Promise<void>
         .set({
           telnyxAccountId: null,
           telnyxApiToken: null,
-          telnyxOutboundProfileId: null,
           telnyxMessagingProfileId: null,
           updatedAt: new Date(),
         })

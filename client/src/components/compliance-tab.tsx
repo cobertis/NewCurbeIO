@@ -1316,7 +1316,6 @@ export function ComplianceTab() {
 
   // Calculate compliance status
   const hasBrand = brands.some(b => b.status === "OK" || b.identityStatus === "VERIFIED");
-  const hasProfile = messagingProfile?.exists;
   const hasCampaign = campaignsData?.campaigns && campaignsData.campaigns.length > 0;
   const hasTollFree = false; // Would need toll-free verification data
 
@@ -1325,7 +1324,7 @@ export function ComplianceTab() {
       {/* Compliance Progress Overview */}
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 p-6">
         <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Compliance Progress</h2>
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-3 gap-4">
           <div className={`p-4 rounded-lg border-2 ${hasBrand ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50'}`}>
             <div className="flex items-center gap-3">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${hasBrand ? 'bg-green-500 text-white' : 'bg-slate-300 dark:bg-slate-600 text-slate-600 dark:text-slate-300'}`}>
@@ -1337,21 +1336,10 @@ export function ComplianceTab() {
               </div>
             </div>
           </div>
-          <div className={`p-4 rounded-lg border-2 ${hasProfile ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50'}`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${hasProfile ? 'bg-green-500 text-white' : 'bg-slate-300 dark:bg-slate-600 text-slate-600 dark:text-slate-300'}`}>
-                {hasProfile ? <CheckCircle2 className="h-4 w-4" /> : '2'}
-              </div>
-              <div>
-                <p className={`text-sm font-medium ${hasProfile ? 'text-green-700 dark:text-green-400' : 'text-slate-600 dark:text-slate-400'}`}>Profile</p>
-                <p className="text-xs text-slate-500">{hasProfile ? 'Active' : 'Required'}</p>
-              </div>
-            </div>
-          </div>
           <div className={`p-4 rounded-lg border-2 ${hasCampaign ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50'}`}>
             <div className="flex items-center gap-3">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${hasCampaign ? 'bg-green-500 text-white' : 'bg-slate-300 dark:bg-slate-600 text-slate-600 dark:text-slate-300'}`}>
-                {hasCampaign ? <CheckCircle2 className="h-4 w-4" /> : '3'}
+                {hasCampaign ? <CheckCircle2 className="h-4 w-4" /> : '2'}
               </div>
               <div>
                 <p className={`text-sm font-medium ${hasCampaign ? 'text-green-700 dark:text-green-400' : 'text-slate-600 dark:text-slate-400'}`}>Campaign</p>
@@ -1362,7 +1350,7 @@ export function ComplianceTab() {
           <div className={`p-4 rounded-lg border-2 ${hasTollFree ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50'}`}>
             <div className="flex items-center gap-3">
               <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${hasTollFree ? 'bg-green-500 text-white' : 'bg-slate-300 dark:bg-slate-600 text-slate-600 dark:text-slate-300'}`}>
-                {hasTollFree ? <CheckCircle2 className="h-4 w-4" /> : '4'}
+                {hasTollFree ? <CheckCircle2 className="h-4 w-4" /> : '3'}
               </div>
               <div>
                 <p className={`text-sm font-medium ${hasTollFree ? 'text-green-700 dark:text-green-400' : 'text-slate-600 dark:text-slate-400'}`}>Toll-Free</p>
@@ -1452,83 +1440,14 @@ export function ComplianceTab() {
         </div>
       </div>
 
-      {/* Step 2: Messaging Profile */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
-        <div className="flex">
-          <div className="w-1.5 bg-emerald-500 flex-shrink-0"></div>
-          <div className="flex-1">
-            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-              <div className="flex items-center gap-3">
-                <div className="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-xs font-bold text-emerald-600 dark:text-emerald-400">2</div>
-                <div>
-                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">Messaging Profile</h3>
-                  <p className="text-xs text-slate-500">Required for sending SMS/MMS messages</p>
-                </div>
-              </div>
-              {!isLoadingProfile && !messagingProfile?.exists && (
-                <Button 
-                  size="sm"
-                  onClick={() => createProfileMutation.mutate()}
-                  disabled={createProfileMutation.isPending}
-                  data-testid="btn-create-messaging-profile"
-                >
-                  {createProfileMutation.isPending ? (
-                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>
-                  ) : (
-                    <><Plus className="h-4 w-4 mr-2" />Create Profile</>
-                  )}
-                </Button>
-              )}
-            </div>
-            {isLoadingProfile ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-              </div>
-            ) : messagingProfile?.exists ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Name</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Status</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">ID</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                      <td className="py-3 px-4">
-                        <span className="font-medium text-slate-900 dark:text-white">{messagingProfile.profile?.name || "SMS Profile"}</span>
-                      </td>
-                      <td className="py-3 px-4">
-                        <Badge className="bg-green-100 text-green-800 border-green-200">
-                          <CheckCircle2 className="h-3 w-3 mr-1" />Active
-                        </Badge>
-                      </td>
-                      <td className="py-3 px-4">
-                        <span className="text-xs text-slate-500 font-mono">{messagingProfile.profile?.id}</span>
-                      </td>
-                    </tr>
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center px-6">
-                <MessageSquare className="h-10 w-10 text-slate-300 mb-3" />
-                <p className="text-sm text-slate-500">No messaging profile. Create one to enable SMS/MMS.</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </div>
-
-      {/* Step 3: 10DLC Campaigns */}
+      {/* Step 2: 10DLC Campaigns */}
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
         <div className="flex">
           <div className="w-1.5 bg-blue-500 flex-shrink-0"></div>
           <div className="flex-1">
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
               <div className="flex items-center gap-3">
-                <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-xs font-bold text-blue-600 dark:text-blue-400">3</div>
+                <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-xs font-bold text-blue-600 dark:text-blue-400">2</div>
                 <div>
                   <h3 className="text-base font-semibold text-slate-900 dark:text-white">10DLC Campaign</h3>
                   <p className="text-xs text-slate-500">A2P messaging registration for carrier compliance</p>
@@ -1610,14 +1529,14 @@ export function ComplianceTab() {
         </div>
       </div>
 
-      {/* Step 4: Toll-Free Verification */}
+      {/* Step 3: Toll-Free Verification */}
       <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
         <div className="flex">
           <div className="w-1.5 bg-amber-500 flex-shrink-0"></div>
           <div className="flex-1">
             <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
               <div className="flex items-center gap-3">
-                <div className="w-7 h-7 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-xs font-bold text-amber-600 dark:text-amber-400">4</div>
+                <div className="w-7 h-7 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-xs font-bold text-amber-600 dark:text-amber-400">3</div>
                 <div>
                   <h3 className="text-base font-semibold text-slate-900 dark:text-white">Toll-Free Verification</h3>
                   <p className="text-xs text-slate-500">For 800, 888, 877, etc. numbers</p>
