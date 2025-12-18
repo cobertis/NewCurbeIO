@@ -1,7 +1,7 @@
 # Admin Dashboard - Curbe
 
 ## Overview
-Curbe is a multi-tenant CRM system designed to enhance operational efficiency and communication for businesses. It provides comprehensive customer relationship management, communication tools (iMessage/SMS/RCS), and an admin dashboard for managing Quotes, Policies, and Campaigns. The system aims to unify customer interactions, automate marketing, and streamline policy and quote management to improve customer engagement and operational efficiency.
+Curbe is a multi-tenant CRM system designed to enhance operational efficiency and communication for businesses. It provides comprehensive customer relationship management, communication tools (iMessage/SMS/RCS), and an admin dashboard for managing Quotes, Policies, and Campaigns. The system aims to unify customer interactions, automate marketing, and streamline policy and quote management to improve customer engagement and operational efficiency. It focuses on improving customer engagement and operational efficiency with features like unified contacts, automated marketing, and streamlined policy/quote management.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -32,150 +32,17 @@ The backend is an Express.js application with TypeScript, providing a RESTful AP
 - **Core Management:** User, Company, Quotes & Policies, Consent Documents, Tasks & Reminders, Plan Features, User Seat Limits.
 - **Communication:** Email, SMS/MMS, iMessage, WhatsApp.
 - **Billing & Integrations:** Stripe, Telnyx Phone System (full white-label telephony, WebRTC, E911 management, call control application routing).
-- **Automation & Analytics:** Birthday Automation, Dashboard Analytics ("Policy Journeys"), Email Processing (IMAP bounce, exponential backoff).
+- **Automation & Analytics:** Birthday Automation, Dashboard Analytics ("Policy Journeys"), Email Processing.
 - **Specialized Systems:** Landing Page Builder, Unified Contacts Directory, Tab Auto-Save, Duplicate Message Prevention, Custom Domain (White Label), Wallet System (Apple Wallet + Google Wallet).
 
-**Telnyx WebRTC Configuration:**
-All WebRTC implementations follow official Telnyx documentation, including programmatic audio element creation, `prefetchIceCandidates: true`, string ID for remote elements, specific call options (`audio: true`, `useStereo: true`, `preferred_codecs`), detailed audio settings, `userMediaError` handling, and `encrypted_media: null` (SRTP disabled) for compatibility. Key optimizations include pre-warming ICE candidates on login, early initialization, and using `iceCandidatePoolSize: 8`. RTCP-MUX is enabled on credential connections for WebRTC browser compatibility.
-
-**Telnyx Call Control Architecture:**
-Phone numbers are routed via a Call Control Application using the `connection_id` parameter (not `call_control_application_id`) for proper hangup using the Telnyx REST API. This involves webhook-driven call flow (`call.initiated` -> answer PSTN -> dial SIP -> `call.answered` -> bridge legs), and a specific hangup API call with `NORMAL_CLEARING (16)`. E911 must be disabled using a dedicated action endpoint before reassigning numbers.
-
-**Telephony Billing Architecture:**
-Includes immediate purchase billing for phone numbers and monthly recurring billing on the 1st of each month via `node-cron` for active numbers, CNAM, and E911 fees. Call billing is in 60-second increments.
-
-**Security Architecture:**
-Session security (`SESSION_SECRET`), webhook signature validation (Twilio, BulkVS, BlueBubbles), Zod schema validation for all public endpoints, open redirect protection via allowlist, unsubscribe token enforcement, user-scoped data isolation (BulkVS), iMessage webhook secret isolation, and multi-tenant session isolation for WhatsApp integration with real-time webhooks and secure media storage.
-
-**Extension-to-Extension Calling:**
-Enables internal calls between PBX extensions using pure WebRTC peer-to-peer over WebSocket signaling, integrated into PBX settings.
-
-**SIP Forking Configuration:**
-Implemented via `simultaneous_ringing: "enabled"` in Telnyx credential connection configuration to enable simultaneous ringing on all registered SIP devices. Uses a Dial+Bridge pattern (not transfer) for incoming calls.
+**Telnyx WebRTC & Telephony:**
+Implements Telnyx WebRTC following official documentation, including specific call options and audio settings. Critical dual SIP domain architecture is used: company subdomain for registration/inbound, and `sip.telnyx.com` for outbound PSTN calls. Call control is webhook-driven, and telephony billing includes immediate purchase and monthly recurring charges for numbers, CNAM, and E911. Extension-to-extension calling uses pure WebRTC, and SIP forking is enabled for simultaneous ringing.
 
 **Wallet System Architecture:**
-Supports both Apple Wallet (PKPass) and Google Wallet with Smart Links, analytics dashboard, APNs push notifications, and Proactive Payment Collection:
+Supports Apple Wallet (PKPass) and Google Wallet with smart links, analytics, and APNs push notifications for proactive payment collection. Key components include dedicated services for Apple and Google Wallet, PassKit Web Service for device registration and updates, and a scheduler for daily payment reminders. The "Cenicienta Strategy" ensures lock-screen persistence for passes by setting `relevantDate` to the end of the day. Pass images are "baked in" and only text/data can be updated via push notifications.
 
-- **Database Tables:** `wallet_members`, `wallet_passes`, `wallet_links`, `wallet_events`, `wallet_devices`, `wallet_settings`
-- **Services:** 
-  - `wallet-pass-service.ts` - Core CRUD, analytics, member/pass management
-  - `apple-wallet-service.ts` - PKPass generation using `passkit-generator`
-  - `google-wallet-service.ts` - Generic Pass API integration
-  - `apns-service.ts` - HTTP/2 APNs push notifications for dynamic pass updates
-- **Routes:** 
-  - Wallet API: `/api/wallet/*` (members, passes, analytics, settings)
-  - PassKit Web Service: `/api/passkit/v1/*` (device registration, pass updates)
-  - Smart Links: `/w/:slug` (OS detection for iOS/Android)
-- **Frontend:** `/wallet-analytics` page with member management, pass generation, bulk alerts, and real-time analytics
-- **Scheduler:** `payment-reminder-scheduler.ts` - Daily cron job at 12:01 AM EST for Proactive Collection
-
-**Apple Wallet Pass Structure (storeCard type):**
-```
-Pass Layout (Insurance Mode):
-┌─────────────────────────────────┐
-│ [LOGO]           STATUS: ACTIVE │  ← headerFields (notification trigger)
-├─────────────────────────────────┤
-│      [STRIP IMAGE]              │  ← strip.png (1280x168 @2x)
-│         MEMBER                  │
-│     JAVIER LAZO                 │  ← primaryFields (large name)
-├─────────────────────────────────┤
-│ INSURANCE CARRIER               │
-│ UnitedHealthcare                │  ← secondaryFields (carrier + plan)
-│ PLAN: Silver HMO $0 Deductible  │
-├─────────────────────────────────┤
-│ PLAN ID: 68398FL0030  $132.44/mo│  ← auxiliaryFields (plan ID + premium)
-└─────────────────────────────────┘
-   (NO BARCODE - clean design)
-
-Pass Layout (Alert Mode - when notification is active):
-┌─────────────────────────────────┐
-│ [LOGO]              STATUS: NEW │  ← headerFields (triggers notification)
-├─────────────────────────────────┤
-│      [STRIP IMAGE]              │
-│         MEMBER                  │
-│     JAVIER LAZO                 │
-├─────────────────────────────────┤
-│ URGENT NOTICE                   │
-│ Your payment is overdue...      │  ← secondaryFields (alert replaces plan)
-├─────────────────────────────────┤
-│ PLAN ID: 68398FL0030  $132.44/mo│
-└─────────────────────────────────┘
-```
-
-**Wallet Member Fields:**
-- `fullName` - Member name displayed on pass
-- `memberId` - Unique member identifier
-- `contactId` - Link to CRM contact (optional)
-- `carrierName` - Insurance carrier (e.g., "UnitedHealthcare")
-- `planId` - Plan identifier (e.g., "68398FL0030040")
-- `planName` - Full plan name (e.g., "Silver HMO $0 Deductible")
-- `monthlyPremium` - Monthly premium amount (e.g., "132.44")
-
-**CRITICAL: Apple Wallet Notification Rules:**
-1. **changeMessage MUST be in headerFields or primaryFields** for lock-screen preview to appear
-2. **Never send the same text twice** - Apple suppresses duplicate notifications silently
-3. **webServiceURL must be `/api/passkit`** (NOT `/api/passkit/v1`) - Apple appends `/v1/` automatically
-4. **If-Modified-Since header** must be respected - return 304 if pass unchanged
-5. **Each notification must have unique text** - append timestamp or ID for testing
-
-**Proactive Payment Collection System:**
-Automated payment reminders that trigger lock-screen notifications on payment day.
-
-- **Scheduler:** `payment-reminder-scheduler.ts` runs daily at 12:01 AM EST via `node-cron`
-- **Trigger:** Checks all wallet members where `payment_day` matches current day of month
-- **Action:** Sends APNs push notification with payment reminder message
-- **Message:** Configurable per-company via `wallet_settings.paymentReminderMessage`
-
-**"Cenicienta Strategy" - Lock Screen Persistence:**
-To keep the pass visible on the iPhone lock screen ALL DAY (like airline boarding passes):
-
-- **Problem:** If `relevantDate` is set to beginning of day (00:01 AM), Apple considers it "old news" and hides it quickly
-- **Solution:** Set `relevantDate` to END of day (23:59 PM) - this makes iOS treat it as a "pending deadline"
-- **Format:** `YYYY-MM-DDT23:59:00-05:00` (EST timezone)
-- **Result:** Pass appears on lock screen from morning until midnight as "something due today"
-
-```typescript
-// Cenicienta Strategy implementation in apple-wallet-service.ts
-passData.relevantDate = `${year}-${month}-${day}T23:59:00-05:00`;
-```
-
-**Pass Image Limitations:**
-- **Images are "baked in"** when pass is first installed
-- **Push updates ONLY change text/data**, NOT images (icon, logo, strip)
-- **To update images:** User must delete and reinstall the pass
-- **New passes** automatically include the latest uploaded images
-
-**Wallet Member Sync (Policy Integration):**
-- Members linked by `policyPlanId` (stable) instead of just `memberId`
-- Auto-sync from policies table when wallet member is created
-- Fallback to `memberId` lookup for backward compatibility
-
-**APNs Push Notification Flow:**
-1. Update `lastNotification` field in database (`wallet_passes` table)
-2. Update `updatedAt` timestamp (triggers pass refresh)
-3. Send empty APNs push to device token (HTTP/2 to `api.push.apple.com`)
-4. iOS queries `/api/passkit/v1/devices/.../registrations/...` for updated serials
-5. iOS fetches updated pass from `/api/passkit/v1/passes/.../[serialNumber]`
-6. If field with `changeMessage: "%@"` changed, lock-screen preview appears
-
-**Endpoints:**
-- `POST /api/wallet/passes/:id/alert` - Send alert to single pass
-- `POST /api/wallet/alerts/bulk` - Send alert to all company passes
-- `POST /api/passkit/v1/devices/:deviceId/registrations/:passTypeId/:serial` - Device registration
-- `GET /api/passkit/v1/devices/:deviceId/registrations/:passTypeId` - List updated passes
-- `GET /api/passkit/v1/passes/:passTypeId/:serial` - Download updated pass
-- `DELETE /api/passkit/v1/devices/:deviceId/registrations/:passTypeId/:serial` - Unregister device
-
-**Pass Images:**
-- `attached_assets/pass-icon.png` / `pass-icon@2x.png` - Pass icon
-- `attached_assets/pass-logo.png` / `pass-logo@2x.png` - Company logo
-- `attached_assets/strip.png` / `strip@2x.png` - Header strip image (1280x168 for @2x)
-
-**Security:**
-- Encrypted auth tokens using AES-256-CBC with `ENCRYPTION_KEY_32BYTES`
-- Push tokens encrypted in database
-- All configuration stored in `wallet_settings` table (NO environment variables)
-- WWDR certificate at `server/certs/AppleWWDRCAG4.pem`
+**Security Architecture:**
+Includes session security, webhook signature validation (Twilio, BulkVS, BlueBubbles), Zod schema validation, open redirect protection, unsubscribe token enforcement, user-scoped data isolation, iMessage webhook secret isolation, and multi-tenant WhatsApp session isolation.
 
 ## External Dependencies
 
@@ -185,7 +52,7 @@ passData.relevantDate = `${year}-${month}-${day}T23:59:00-05:00`;
 - **Payments:** Stripe.
 - **Telephony:** Telnyx (WebRTC SDK, Call Control API).
 - **UI Components:** Radix UI, Shadcn/ui, Lucide React, CMDK, Embla Carousel.
-- **Drag & Drop:** `@dnd-kit/core`, `@dnd-kit/sortable`, `@dnd-kit/utilities`.
+- **Drag & Drop:** `@dnd-kit`.
 - **Rich Text Editing:** TipTap.
 - **Form Management & Validation:** React Hook Form, Zod.
 - **Session Management:** `express-session`, `connect-pg-simple`.
