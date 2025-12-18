@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -294,17 +296,17 @@ function getStatusBadge(status: string | null) {
   switch (status?.toUpperCase()) {
     case "VERIFIED":
     case "OK":
-      return <Badge className="bg-green-100 text-green-800 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" />Verified</Badge>;
+      return <Badge variant="default" className="bg-green-600"><CheckCircle2 className="h-3 w-3 mr-1" />Verified</Badge>;
     case "VETTED_VERIFIED":
-      return <Badge className="bg-blue-100 text-blue-800 border-blue-200"><ShieldCheck className="h-3 w-3 mr-1" />Vetted</Badge>;
+      return <Badge variant="default"><ShieldCheck className="h-3 w-3 mr-1" />Vetted</Badge>;
     case "PENDING":
     case "REGISTRATION_PENDING":
-      return <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+      return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
     case "UNVERIFIED":
     case "REGISTRATION_FAILED":
-      return <Badge className="bg-red-100 text-red-800 border-red-200"><XCircle className="h-3 w-3 mr-1" />Failed</Badge>;
+      return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Failed</Badge>;
     case "SELF_DECLARED":
-      return <Badge className="bg-slate-100 text-slate-800 border-slate-200">Self Declared</Badge>;
+      return <Badge variant="outline">Self Declared</Badge>;
     default:
       return <Badge variant="outline">{status || "Unknown"}</Badge>;
   }
@@ -1068,36 +1070,36 @@ export function ComplianceTab() {
                       The terms displayed in this page may be subject to change at the sole discretion of the mobile network operator.
                     </div>
                     <div className="overflow-x-auto">
-                      <table className="w-full text-sm">
-                        <thead>
-                          <tr className="border-b">
-                            <th className="text-left py-2 font-medium">Carrier</th>
-                            <th className="text-left py-2 font-medium">Qualify</th>
-                            <th className="text-left py-2 font-medium">MNO Review</th>
-                            <th className="text-left py-2 font-medium">Surcharge</th>
-                            <th className="text-left py-2 font-medium">SMS TPM</th>
-                            <th className="text-left py-2 font-medium">MMS TPM</th>
-                            <th className="text-left py-2 font-medium">Brand Tier</th>
-                            <th className="text-left py-2 font-medium">Daily Limit</th>
-                            <th className="text-left py-2 font-medium">Message Class</th>
-                          </tr>
-                        </thead>
-                        <tbody>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Carrier</TableHead>
+                            <TableHead>Qualify</TableHead>
+                            <TableHead>MNO Review</TableHead>
+                            <TableHead>Surcharge</TableHead>
+                            <TableHead>SMS TPM</TableHead>
+                            <TableHead>MMS TPM</TableHead>
+                            <TableHead>Brand Tier</TableHead>
+                            <TableHead>Daily Limit</TableHead>
+                            <TableHead>Message Class</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
                           {CARRIER_TERMS.map(ct => (
-                            <tr key={ct.carrier} className="border-b">
-                              <td className="py-2">{ct.carrier}</td>
-                              <td className="py-2">{ct.qualify}</td>
-                              <td className="py-2">{ct.mnoReview}</td>
-                              <td className="py-2">{ct.surcharge}</td>
-                              <td className="py-2">{ct.smsTpm}</td>
-                              <td className="py-2">{ct.mmsTpm}</td>
-                              <td className="py-2">{ct.brandTier}</td>
-                              <td className="py-2">{ct.dailyLimit}</td>
-                              <td className="py-2">{ct.messageClass}</td>
-                            </tr>
+                            <TableRow key={ct.carrier}>
+                              <TableCell>{ct.carrier}</TableCell>
+                              <TableCell>{ct.qualify}</TableCell>
+                              <TableCell>{ct.mnoReview}</TableCell>
+                              <TableCell>{ct.surcharge}</TableCell>
+                              <TableCell>{ct.smsTpm}</TableCell>
+                              <TableCell>{ct.mmsTpm}</TableCell>
+                              <TableCell>{ct.brandTier}</TableCell>
+                              <TableCell>{ct.dailyLimit}</TableCell>
+                              <TableCell>{ct.messageClass}</TableCell>
+                            </TableRow>
                           ))}
-                        </tbody>
-                      </table>
+                        </TableBody>
+                      </Table>
                     </div>
                     <div className="flex gap-2 pt-6">
                       <Button onClick={() => setCampaignStep(3)}>Next</Button>
@@ -1320,246 +1322,210 @@ export function ComplianceTab() {
   const hasCampaign = campaignsData?.campaigns && campaignsData.campaigns.length > 0;
   const hasTollFree = tollFreeData?.verifications?.some((v: any) => v.verificationStatus === "VERIFIED") || false;
 
-  // Progress step component
-  const ProgressStep = ({ number, label, completed, current }: { number: number; label: string; completed: boolean; current?: boolean }) => (
-    <div className="flex items-center gap-2">
-      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
-        completed 
-          ? 'bg-green-500 text-white' 
-          : current 
-            ? 'bg-primary text-white' 
-            : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
-      }`}>
-        {completed ? <CheckCircle2 className="h-3.5 w-3.5" /> : number}
-      </div>
-      <span className={`text-sm ${completed ? 'text-green-600 dark:text-green-400 font-medium' : 'text-slate-600 dark:text-slate-400'}`}>
-        {label}
-      </span>
-    </div>
-  );
-
   return (
-    <div className="p-6 space-y-4">
-      {/* Compact Progress Bar */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-6">
-            <ProgressStep number={1} label="Brand" completed={hasBrand} current={!hasBrand} />
-            <ChevronRight className="h-4 w-4 text-slate-300" />
-            <ProgressStep number={2} label="Campaign" completed={hasCampaign} current={hasBrand && !hasCampaign} />
-            <ChevronRight className="h-4 w-4 text-slate-300" />
-            <ProgressStep number={3} label="Toll-Free" completed={hasTollFree} current={hasCampaign && !hasTollFree} />
-          </div>
-          <div className="text-xs text-slate-500">
-            {hasBrand && hasCampaign && hasTollFree 
-              ? <span className="text-green-600 dark:text-green-400 font-medium">Fully Compliant</span>
-              : hasBrand 
-                ? <span>Brand verified - ready for messaging</span>
-                : <span>Complete brand registration to start</span>
-            }
-          </div>
-        </div>
-      </div>
-
-      {/* Brand Registration Section */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
-        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
-              <Building2 className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Brand Registration</h3>
-              <p className="text-xs text-slate-500">10DLC identity for The Campaign Registry</p>
-            </div>
+    <div className="space-y-6">
+      {/* Brand Registration Card */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <div>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Building2 className="h-5 w-5" />
+              Brand Registration
+            </CardTitle>
+            <CardDescription>
+              Register your business identity with The Campaign Registry (TCR) for 10DLC compliance
+            </CardDescription>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">$4 fee</span>
+            <Badge variant="outline" className="text-xs">$4 one-time fee</Badge>
             <Button size="sm" data-testid="btn-register-brand" onClick={() => setShowBrandWizard(true)}>
-              <Plus className="h-4 w-4 mr-1" />Register
+              <Plus className="h-4 w-4 mr-2" />
+              Register Brand
             </Button>
           </div>
-        </div>
-        {isLoading ? (
-          <div className="flex items-center justify-center py-6">
-            <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-          </div>
-        ) : brands.length === 0 ? (
-          <div className="py-6 text-center">
-            <p className="text-sm text-slate-500">No brands registered. Register a brand to enable A2P SMS messaging.</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Name</th>
-                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Campaigns</th>
-                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">TCR ID</th>
-                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Status</th>
-                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Registered</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : brands.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Building2 className="h-12 w-12 text-muted-foreground/50 mb-3" />
+              <p className="text-sm text-muted-foreground">No brands registered yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Register a brand to enable A2P SMS messaging</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Campaigns</TableHead>
+                  <TableHead>TCR ID</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Registered</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {brands.map((brand) => {
                   const campaignCount = campaignsData?.campaigns?.filter((c: any) => c.brandId === brand.id || c.brandId === brand.brandId)?.length || 0;
                   const registrationDate = brand.createdAt ? new Date(brand.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
                   return (
-                    <tr key={brand.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                      <td className="py-2.5 px-4">
-                        <span className="font-medium text-slate-900 dark:text-white">{brand.displayName}</span>
-                      </td>
-                      <td className="py-2.5 px-4 text-slate-600 dark:text-slate-400">{campaignCount}</td>
-                      <td className="py-2.5 px-4">
-                        <span className="text-xs text-slate-500 font-mono">{brand.tcrBrandId || '-'}</span>
-                      </td>
-                      <td className="py-2.5 px-4">{getStatusBadge(brand.status)}</td>
-                      <td className="py-2.5 px-4 text-xs text-slate-500">{registrationDate}</td>
-                    </tr>
+                    <TableRow key={brand.id}>
+                      <TableCell className="font-medium">{brand.displayName}</TableCell>
+                      <TableCell>{campaignCount}</TableCell>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{brand.tcrBrandId || '-'}</TableCell>
+                      <TableCell>{getStatusBadge(brand.status)}</TableCell>
+                      <TableCell className="text-muted-foreground">{registrationDate}</TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </div>
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Campaign Section */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
-        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
-              <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">10DLC Campaign</h3>
-              <p className="text-xs text-slate-500">A2P messaging use case registration</p>
-            </div>
+      {/* 10DLC Campaign Card */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <div>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              10DLC Campaign
+            </CardTitle>
+            <CardDescription>
+              Register your messaging use case for carrier compliance and A2P messaging
+            </CardDescription>
           </div>
           <div className="flex items-center gap-3">
-            <span className="text-xs text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">$15 review fee</span>
+            <Badge variant="outline" className="text-xs">$15 review fee</Badge>
             {hasBrand && (
               <Button size="sm" data-testid="btn-open-create-campaign" onClick={() => setShowCampaignWizard(true)}>
-                <Plus className="h-4 w-4 mr-1" />Create
+                <Plus className="h-4 w-4 mr-2" />
+                Create Campaign
               </Button>
             )}
           </div>
-        </div>
-        {isLoadingCampaigns ? (
-          <div className="flex items-center justify-center py-6">
-            <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-          </div>
-        ) : campaignsData?.campaigns && campaignsData.campaigns.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">TCR ID</th>
-                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Brand</th>
-                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Use Case</th>
-                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+        </CardHeader>
+        <CardContent>
+          {isLoadingCampaigns ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : campaignsData?.campaigns && campaignsData.campaigns.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>TCR ID</TableHead>
+                  <TableHead>Brand</TableHead>
+                  <TableHead>Use Case</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {campaignsData.campaigns.map((campaign) => {
                   const status = campaign.status?.toUpperCase();
                   let statusBadge;
                   if (status === "ACTIVE" || status === "APPROVED") {
-                    statusBadge = <Badge className="bg-green-100 text-green-800 border-green-200 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Active</Badge>;
+                    statusBadge = <Badge variant="default" className="bg-green-600"><CheckCircle2 className="h-3 w-3 mr-1" />Active</Badge>;
                   } else if (status === "PENDING" || status === "IN_REVIEW") {
-                    statusBadge = <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 text-xs"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+                    statusBadge = <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
                   } else if (status === "REJECTED" || status === "FAILED") {
-                    statusBadge = <Badge className="bg-red-100 text-red-800 border-red-200 text-xs"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+                    statusBadge = <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
                   } else {
-                    statusBadge = <Badge variant="outline" className="text-xs">{campaign.status || "Unknown"}</Badge>;
+                    statusBadge = <Badge variant="outline">{campaign.status || "Unknown"}</Badge>;
                   }
                   return (
-                    <tr key={campaign.campaignId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                      <td className="py-2.5 px-4">
-                        <span className="text-xs text-slate-500 font-mono">{campaign.tcrCampaignId || campaign.campaignId}</span>
-                      </td>
-                      <td className="py-2.5 px-4 font-medium text-slate-900 dark:text-white">{campaign.brandId || '-'}</td>
-                      <td className="py-2.5 px-4 text-slate-700 dark:text-slate-300">{USE_CASES.find(uc => uc.value === campaign.usecase)?.label || campaign.usecase}</td>
-                      <td className="py-2.5 px-4">{statusBadge}</td>
-                    </tr>
+                    <TableRow key={campaign.campaignId}>
+                      <TableCell className="font-mono text-xs text-muted-foreground">{campaign.tcrCampaignId || campaign.campaignId}</TableCell>
+                      <TableCell className="font-medium">{campaign.brandId || '-'}</TableCell>
+                      <TableCell>{USE_CASES.find(uc => uc.value === campaign.usecase)?.label || campaign.usecase}</TableCell>
+                      <TableCell>{statusBadge}</TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="py-6 text-center">
-            <p className="text-sm text-slate-500">
-              {hasBrand ? "No campaigns. Create one to enable A2P messaging." : "Register a verified brand first."}
-            </p>
-          </div>
-        )}
-      </div>
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <MessageSquare className="h-12 w-12 text-muted-foreground/50 mb-3" />
+              <p className="text-sm text-muted-foreground">
+                {hasBrand ? "No campaigns registered yet" : "Register a verified brand first"}
+              </p>
+              {hasBrand && <p className="text-xs text-muted-foreground mt-1">Create a campaign to enable A2P messaging</p>}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-      {/* Toll-Free Section */}
-      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
-        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
-              <Phone className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-            </div>
-            <div>
-              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Toll-Free Verification</h3>
-              <p className="text-xs text-slate-500">For 800, 888, 877, 866, 855, 844, 833 numbers</p>
-            </div>
+      {/* Toll-Free Verification Card */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <div>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <Phone className="h-5 w-5" />
+              Toll-Free Verification
+            </CardTitle>
+            <CardDescription>
+              Verify your toll-free numbers (800, 888, 877, 866, 855, 844, 833) for SMS messaging
+            </CardDescription>
           </div>
           <Button size="sm" data-testid="btn-submit-toll-free-verification" onClick={() => setShowTollFreeForm(true)}>
-            <Plus className="h-4 w-4 mr-1" />Verify
+            <Plus className="h-4 w-4 mr-2" />
+            Submit Verification
           </Button>
-        </div>
-        {isLoadingTollFree ? (
-          <div className="flex items-center justify-center py-6">
-            <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-          </div>
-        ) : tollFreeData?.verifications && tollFreeData.verifications.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead>
-                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
-                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Business</th>
-                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Numbers</th>
-                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Use Case</th>
-                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Status</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+        </CardHeader>
+        <CardContent>
+          {isLoadingTollFree ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : tollFreeData?.verifications && tollFreeData.verifications.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Business</TableHead>
+                  <TableHead>Numbers</TableHead>
+                  <TableHead>Use Case</TableHead>
+                  <TableHead>Status</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {tollFreeData.verifications.map((verification) => {
                   const status = verification.verificationStatus?.toUpperCase();
                   let statusBadge;
                   if (status === "VERIFIED") {
-                    statusBadge = <Badge className="bg-green-100 text-green-800 border-green-200 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Verified</Badge>;
+                    statusBadge = <Badge variant="default" className="bg-green-600"><CheckCircle2 className="h-3 w-3 mr-1" />Verified</Badge>;
                   } else if (["PENDING", "IN PROGRESS", "WAITING FOR VENDOR", "WAITING FOR TELNYX"].includes(status)) {
-                    statusBadge = <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 text-xs"><Clock className="h-3 w-3 mr-1" />{verification.verificationStatus}</Badge>;
+                    statusBadge = <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />{verification.verificationStatus}</Badge>;
                   } else if (status === "WAITING FOR CUSTOMER") {
-                    statusBadge = <Badge className="bg-orange-100 text-orange-800 border-orange-200 text-xs"><AlertTriangle className="h-3 w-3 mr-1" />Action Required</Badge>;
+                    statusBadge = <Badge variant="warning" className="bg-orange-500"><AlertTriangle className="h-3 w-3 mr-1" />Action Required</Badge>;
                   } else if (status === "REJECTED") {
-                    statusBadge = <Badge className="bg-red-100 text-red-800 border-red-200 text-xs"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+                    statusBadge = <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
                   } else {
-                    statusBadge = <Badge variant="outline" className="text-xs">{verification.verificationStatus || "Unknown"}</Badge>;
+                    statusBadge = <Badge variant="outline">{verification.verificationStatus || "Unknown"}</Badge>;
                   }
                   return (
-                    <tr key={verification.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
-                      <td className="py-2.5 px-4 font-medium text-slate-900 dark:text-white">{verification.businessName}</td>
-                      <td className="py-2.5 px-4 text-slate-600 dark:text-slate-400">{verification.phoneNumbers?.length || 0}</td>
-                      <td className="py-2.5 px-4 text-slate-700 dark:text-slate-300">{verification.useCase || '-'}</td>
-                      <td className="py-2.5 px-4">{statusBadge}</td>
-                    </tr>
+                    <TableRow key={verification.id}>
+                      <TableCell className="font-medium">{verification.businessName}</TableCell>
+                      <TableCell>{verification.phoneNumbers?.length || 0}</TableCell>
+                      <TableCell>{verification.useCase || '-'}</TableCell>
+                      <TableCell>{statusBadge}</TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="py-6 text-center">
-            <p className="text-sm text-slate-500">No toll-free verifications. Submit one to enable messaging on toll-free numbers.</p>
-          </div>
-        )}
-      </div>
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <Phone className="h-12 w-12 text-muted-foreground/50 mb-3" />
+              <p className="text-sm text-muted-foreground">No toll-free verifications yet</p>
+              <p className="text-xs text-muted-foreground mt-1">Submit a verification to enable messaging on toll-free numbers</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
       {/* Toll-Free Verification Sheet */}
       <Sheet open={showTollFreeForm} onOpenChange={setShowTollFreeForm}>
