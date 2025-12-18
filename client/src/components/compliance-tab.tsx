@@ -1383,13 +1383,17 @@ export function ComplianceTab() {
                 <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-xs font-bold text-indigo-600 dark:text-indigo-400">1</div>
                 <div>
                   <h3 className="text-base font-semibold text-slate-900 dark:text-white">Brand Registration</h3>
-                  <p className="text-xs text-slate-500">10DLC brand for The Campaign Registry ($4 fee)</p>
+                  <p className="text-xs text-slate-500">10DLC brand for The Campaign Registry</p>
                 </div>
               </div>
               <Button size="sm" data-testid="btn-register-brand" onClick={() => setShowBrandWizard(true)}>
                 <Plus className="h-4 w-4 mr-2" />
                 Register Brand
               </Button>
+            </div>
+            <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+              <p className="text-xs text-blue-700 dark:text-blue-300">Registration Fee: <span className="font-semibold">$4.00</span> - Non-refundable fee charged by The Campaign Registry (TCR)</p>
             </div>
             {isLoading ? (
               <div className="flex items-center justify-center py-8">
@@ -1489,7 +1493,7 @@ export function ComplianceTab() {
                 <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-xs font-bold text-blue-600 dark:text-blue-400">3</div>
                 <div>
                   <h3 className="text-base font-semibold text-slate-900 dark:text-white">10DLC Campaign</h3>
-                  <p className="text-xs text-slate-500">A2P messaging registration ($15 carrier fee)</p>
+                  <p className="text-xs text-slate-500">A2P messaging registration for carrier compliance</p>
                 </div>
               </div>
               {brands.some(b => b.status === "OK" || b.identityStatus === "VERIFIED") && (
@@ -1497,6 +1501,10 @@ export function ComplianceTab() {
                   <Plus className="h-4 w-4 mr-2" />Create Campaign
                 </Button>
               )}
+            </div>
+            <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800 flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
+              <p className="text-xs text-blue-700 dark:text-blue-300">Carrier Review Fee: <span className="font-semibold">$15.00</span> - Charged each time a campaign is submitted for compliance review (includes resubmissions)</p>
             </div>
             {isLoadingCampaigns ? (
               <div className="flex items-center justify-center py-8">
