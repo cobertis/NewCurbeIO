@@ -95,6 +95,7 @@ interface CampaignPhoneNumber {
   phoneNumber: string;
   status?: string;
   provisioningStatus?: string;
+  assignmentStatus?: string;
   assignedAt?: string;
 }
 
@@ -2027,7 +2028,7 @@ export function ComplianceTab() {
                 <div className="text-xs text-muted-foreground mb-1">Click X to remove a number from this campaign</div>
                 <div className="border rounded-md p-3 bg-muted/30 max-h-[25vh] overflow-y-auto space-y-1">
                   {campaignPhoneNumbers[selectedCampaign.campaignId].map(num => {
-                    const status = num.provisioningStatus || num.status || '';
+                    const status = num.assignmentStatus || num.provisioningStatus || num.status || '';
                     const isPending = status.includes('PENDING') || status.includes('FAILED');
                     const statusDisplay = status.replace(/_/g, ' ');
                     return (
