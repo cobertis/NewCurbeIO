@@ -80,27 +80,29 @@ export default function InboxPage() {
   const [selectedFromNumber, setSelectedFromNumber] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { data: userData, isFetched: sessionFetched } = useQuery<{ user: UserType }>({
+  const { data: userData, status: sessionStatus } = useQuery<{ user: UserType }>({
     queryKey: ["/api/session"],
+    staleTime: 0,
+    refetchOnMount: "always",
   });
   const userTimezone = userData?.user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const hasUser = sessionFetched && !!userData?.user;
+  const isAuthenticated = sessionStatus === "success" && !!userData?.user;
 
   const { data: contactsData } = useQuery<{ contacts: UnifiedContact[] }>({
     queryKey: ["/api/contacts/unified"],
-    enabled: hasUser,
+    enabled: isAuthenticated,
   });
   const contacts = contactsData?.contacts || [];
 
   const { data: phoneNumbersData } = useQuery<{ numbers: Array<{ phoneNumber: string; friendlyName?: string }> }>({
     queryKey: ["/api/telnyx/my-numbers"],
-    enabled: hasUser,
+    enabled: isAuthenticated,
   });
   const companyNumbers = phoneNumbersData?.numbers || [];
 
   const { data: conversationsData, isLoading: loadingConversations } = useQuery<{ conversations: TelnyxConversation[] }>({
     queryKey: ["/api/inbox/conversations"],
-    enabled: hasUser,
+    enabled: isAuthenticated,
   });
   const conversations = conversationsData?.conversations || [];
 
@@ -232,6 +234,18 @@ export default function InboxPage() {
       text: newMessage.trim(),
     });
   };
+
+  if (sessionStatus === "pending") {
+    return <LoadingSpinner message="Loading..." />;
+  }
+
+  if (sessionStatus === "error" || !userData?.user) {
+    return (
+      <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
+        <p className="text-muted-foreground">Please log in to view your inbox.</p>
+      </div>
+    );
+  }
 
   if (loadingConversations) {
     return <LoadingSpinner message="Loading conversations..." />;
