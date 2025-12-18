@@ -28955,7 +28955,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.json({ campaigns: [] });
       }
       
-      const response = await fetch("https://api.telnyx.com/10dlc/campaign", {
+      const response = await fetch("https://api.telnyx.com/v2/10dlc/campaign", {
         method: "GET",
         headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
       });
@@ -29126,7 +29126,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
-      const response = await fetch(`https://api.telnyx.com/10dlc/campaign/${id}`, {
+      const response = await fetch(`https://api.telnyx.com/v2/10dlc/campaign/${id}`, {
         method: "GET",
         headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
       });
