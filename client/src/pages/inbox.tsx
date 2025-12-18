@@ -31,7 +31,6 @@ import {
   FileText,
   Eye,
   Wand2,
-  Sparkles,
   Volume2,
   CheckSquare,
   Braces,
@@ -97,8 +96,6 @@ interface TelnyxMessage {
 }
 
 type MobileView = "threads" | "messages" | "details";
-
-const alsoHere = [{ name: "Sarah" }, { name: "Mike" }, { name: "John" }];
 
 export default function InboxPage() {
   const { toast } = useToast();
@@ -316,21 +313,22 @@ export default function InboxPage() {
         mobileView !== "threads" && "hidden md:flex"
       )}>
         {/* Header */}
-        <div className="p-4 border-b space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <h2 className="font-semibold">Open</h2>
-              <Badge variant="secondary" className="text-xs">{conversations.length}</Badge>
-            </div>
-            <Button 
-              size="sm" 
-              onClick={() => setShowNewConversation(true)}
-              data-testid="btn-new-conversation"
-            >
-              <Plus className="h-4 w-4 mr-1" />
-              Create
-            </Button>
+        <div className="h-[73px] px-4 border-b flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <h2 className="font-semibold">Open</h2>
+            <Badge variant="secondary" className="text-xs">{conversations.length}</Badge>
           </div>
+          <Button 
+            size="sm" 
+            onClick={() => setShowNewConversation(true)}
+            data-testid="btn-new-conversation"
+          >
+            <Plus className="h-4 w-4 mr-1" />
+            Create
+          </Button>
+        </div>
+        {/* Search */}
+        <div className="px-4 py-2 border-b">
           <div className="relative">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
@@ -408,7 +406,7 @@ export default function InboxPage() {
         {selectedConversation ? (
           <>
             {/* Chat Header */}
-            <div className="p-4 border-b flex items-center justify-between">
+            <div className="h-[73px] px-4 border-b flex items-center justify-between">
               <div className="flex items-center gap-3">
                 <Button
                   variant="ghost"
@@ -499,24 +497,6 @@ export default function InboxPage() {
               </div>
             </div>
 
-            {/* Also here section */}
-            <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2" data-testid="section-also-here">
-              <span className="text-xs text-muted-foreground">Also here:</span>
-              <div className="flex items-center -space-x-2">
-                {alsoHere.map((person, idx) => (
-                  <Avatar 
-                    key={idx} 
-                    className="h-6 w-6 border-2 border-background"
-                    data-testid={`avatar-also-here-${idx}`}
-                  >
-                    <AvatarFallback className="text-[10px] bg-violet-100 text-violet-700">
-                      {person.name.charAt(0)}
-                    </AvatarFallback>
-                  </Avatar>
-                ))}
-              </div>
-            </div>
-
             {/* Messages */}
             <ScrollArea className="flex-1 p-4">
               {loadingMessages ? (
@@ -544,20 +524,6 @@ export default function InboxPage() {
                           isOutbound || isNote ? "justify-end" : "justify-start"
                         )}
                       >
-                        {/* AI Generate button for inbound messages */}
-                        {isInbound && (
-                          <div className="flex items-center mr-2">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-8 px-3 opacity-0 group-hover:opacity-100 transition-opacity bg-violet-600 hover:bg-violet-700 text-white rounded-full shadow-sm"
-                              data-testid={`btn-ai-generate-${message.id}`}
-                            >
-                              <Sparkles className="h-3.5 w-3.5 mr-1.5" />
-                              <span className="text-xs font-medium">Generate answer with AI</span>
-                            </Button>
-                          </div>
-                        )}
                         <div
                           className={cn(
                             "max-w-[70%] rounded-2xl px-4 py-2",
@@ -769,7 +735,7 @@ export default function InboxPage() {
       )}>
         {selectedConversation && (
           <>
-            <div className="p-4 border-b flex items-center justify-between">
+            <div className="h-[73px] px-4 border-b flex items-center justify-between">
               <h3 className="font-medium">Details</h3>
               <div className="flex items-center gap-1">
                 <TooltipProvider>
