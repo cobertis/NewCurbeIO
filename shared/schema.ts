@@ -5263,7 +5263,6 @@ export const apiProviders = [
   "cms_api",
   "imap_bounce",
   "cloudflare",
-  "intercom",
   "web_push",
 ] as const;
 export type ApiProvider = typeof apiProviders[number];

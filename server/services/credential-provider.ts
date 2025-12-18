@@ -164,21 +164,6 @@ export const credentialProvider = {
     return result;
   },
 
-  async getIntercom(): Promise<{ appId: string; identitySecret: string }> {
-    const cacheKey = getCacheKey('intercom');
-    const cached = getFromCache<{ appId: string; identitySecret: string }>(cacheKey);
-    if (cached) return cached;
-
-    const appId = await secretsService.getCredential("intercom" as ApiProvider, "app_id") || 
-                  process.env.INTERCOM_APP_ID || '';
-    const identitySecret = await secretsService.getCredential("intercom" as ApiProvider, "identity_secret") || 
-                           process.env.INTERCOM_IDENTITY_SECRET || '';
-    
-    const result = { appId, identitySecret };
-    setCache(cacheKey, result);
-    return result;
-  },
-
   async getCmsApi(): Promise<{ apiKey: string }> {
     const cacheKey = getCacheKey('cms_api');
     const cached = getFromCache<{ apiKey: string }>(cacheKey);
