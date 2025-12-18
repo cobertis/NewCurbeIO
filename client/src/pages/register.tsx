@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -32,30 +32,34 @@ const googleSSOSchema = z.object({
 type RegisterForm = z.infer<typeof registerSchema>;
 type GoogleSSOForm = z.infer<typeof googleSSOSchema>;
 
+// Detect Google SSO params before component renders
+function getGoogleSSOParams() {
+  if (typeof window === 'undefined') return null;
+  const params = new URLSearchParams(window.location.search);
+  const sso = params.get('sso');
+  const email = params.get('email');
+  const name = params.get('name');
+  const googleId = params.get('googleId');
+  
+  if (sso === 'google' && email && googleId) {
+    return { email, name: name || '', googleId };
+  }
+  return null;
+}
+
 export default function Register() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   
+  // Initialize Google SSO state from URL params
+  const initialGoogleSSO = getGoogleSSOParams();
   const [googleSSO, setGoogleSSO] = useState<{
     email: string;
     name: string;
     googleId: string;
-  } | null>(null);
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const sso = params.get('sso');
-    const email = params.get('email');
-    const name = params.get('name');
-    const googleId = params.get('googleId');
-    
-    if (sso === 'google' && email && googleId) {
-      setGoogleSSO({ email, name: name || '', googleId });
-      googleForm.setValue('workspaceName', name || '');
-    }
-  }, []);
+  } | null>(initialGoogleSSO);
 
   const form = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
@@ -70,8 +74,8 @@ export default function Register() {
   const googleForm = useForm<GoogleSSOForm>({
     resolver: zodResolver(googleSSOSchema),
     defaultValues: {
-      workspaceName: "",
-      termsAccepted: false,
+      workspaceName: initialGoogleSSO?.name || "",
+      termsAccepted: true,
     },
   });
 
