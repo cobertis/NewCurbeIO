@@ -41,7 +41,10 @@ import {
   Briefcase
 } from "lucide-react";
 import { SiFacebook, SiInstagram } from "react-icons/si";
+import Picker from "@emoji-mart/react";
+import data from "@emoji-mart/data";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
@@ -702,16 +705,24 @@ export default function InboxPage() {
               <div className="px-4 pb-3 flex items-center justify-between">
                 {/* Left: Toolbar Icons */}
                 <div className="flex items-center gap-1">
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-emoji">
-                          <Smile className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Emoji</TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-emoji">
+                        <Smile className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0 border-0" side="top" align="start">
+                      <Picker 
+                        data={data} 
+                        onEmojiSelect={(emoji: any) => {
+                          setNewMessage(prev => prev + emoji.native);
+                        }}
+                        theme="light"
+                        previewPosition="none"
+                        skinTonePosition="search"
+                      />
+                    </PopoverContent>
+                  </Popover>
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
