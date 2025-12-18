@@ -491,7 +491,7 @@ export default function InboxPage() {
 
       {/* Center Panel - Chat */}
       <div className={cn(
-        "flex-1 flex flex-col min-w-0",
+        "flex-1 flex flex-col min-w-0 relative",
         mobileView !== "messages" && "hidden md:flex"
       )}>
         {selectedConversation ? (
@@ -594,7 +594,7 @@ export default function InboxPage() {
             </div>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4">
+            <ScrollArea className="flex-1 p-4 pb-36">
               {loadingMessages ? (
                 <div className="flex items-center justify-center py-8">
                   <LoadingSpinner message="Loading messages..." fullScreen={false} />
@@ -671,10 +671,10 @@ export default function InboxPage() {
               )}
             </ScrollArea>
 
-            {/* Message Input / Composer */}
+            {/* Message Input / Composer - Floating */}
             <div className={cn(
-              "border-t",
-              isInternalNote && "bg-yellow-50"
+              "absolute bottom-4 left-4 right-4 rounded-lg border bg-white dark:bg-gray-900 shadow-lg",
+              isInternalNote && "bg-yellow-50 dark:bg-yellow-900/20"
             )}>
               {/* Text Input at top */}
               <div className="p-4 pb-2">
