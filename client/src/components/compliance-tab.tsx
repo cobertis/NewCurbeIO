@@ -1405,23 +1405,39 @@ export function ComplianceTab() {
                 <p className="text-sm text-slate-500 max-w-md">No brands registered. Register a brand to enable A2P SMS messaging.</p>
               </div>
             ) : (
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {brands.map((brand) => (
-                  <div key={brand.id} className="p-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <Building2 className="h-4 w-4 text-indigo-500" />
-                        <div>
-                          <h4 className="font-medium text-sm text-slate-900 dark:text-white">{brand.displayName}</h4>
-                          <p className="text-xs text-slate-400 font-mono">ID: {brand.brandId || 'Pending'}</p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {getStatusBadge(brand.status)}
-                      </div>
-                    </div>
-                  </div>
-                ))}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Name</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">ID</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">TCR ID</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Status</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Identity</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {brands.map((brand) => (
+                      <tr key={brand.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                        <td className="py-3 px-4">
+                          <span className="font-medium text-slate-900 dark:text-white">{brand.displayName}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-xs text-slate-500 font-mono">{brand.id?.slice(0, 13)}...</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-xs text-slate-500 font-mono">{brand.brandId || '-'}</span>
+                        </td>
+                        <td className="py-3 px-4">
+                          {getStatusBadge(brand.status)}
+                        </td>
+                        <td className="py-3 px-4">
+                          <span className="text-xs text-slate-500">{brand.identityStatus || '-'}</span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
@@ -1461,17 +1477,31 @@ export function ComplianceTab() {
                 <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
               </div>
             ) : messagingProfile?.exists ? (
-              <div className="p-4 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <MessageSquare className="h-4 w-4 text-emerald-500" />
-                  <div>
-                    <h4 className="font-medium text-sm text-slate-900 dark:text-white">{messagingProfile.profile?.name || "SMS Profile"}</h4>
-                    <p className="text-xs text-slate-400 font-mono">ID: {messagingProfile.profile?.id}</p>
-                  </div>
-                </div>
-                <Badge className="bg-green-100 text-green-800 border-green-200">
-                  <CheckCircle2 className="h-3 w-3 mr-1" />Active
-                </Badge>
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Name</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Status</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">ID</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <tr className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                      <td className="py-3 px-4">
+                        <span className="font-medium text-slate-900 dark:text-white">{messagingProfile.profile?.name || "SMS Profile"}</span>
+                      </td>
+                      <td className="py-3 px-4">
+                        <Badge className="bg-green-100 text-green-800 border-green-200">
+                          <CheckCircle2 className="h-3 w-3 mr-1" />Active
+                        </Badge>
+                      </td>
+                      <td className="py-3 px-4">
+                        <span className="text-xs text-slate-500 font-mono">{messagingProfile.profile?.id?.slice(0, 13)}...</span>
+                      </td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-center px-6">
@@ -1511,36 +1541,52 @@ export function ComplianceTab() {
                 <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
               </div>
             ) : campaignsData?.campaigns && campaignsData.campaigns.length > 0 ? (
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {campaignsData.campaigns.map((campaign) => {
-                  const status = campaign.status?.toUpperCase();
-                  let statusBadge;
-                  if (status === "ACTIVE" || status === "APPROVED") {
-                    statusBadge = <Badge className="bg-green-100 text-green-800 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" />Active</Badge>;
-                  } else if (status === "PENDING" || status === "IN_REVIEW") {
-                    statusBadge = <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
-                  } else if (status === "REJECTED" || status === "FAILED") {
-                    statusBadge = <Badge className="bg-red-100 text-red-800 border-red-200"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
-                  } else {
-                    statusBadge = <Badge variant="outline">{campaign.status || "Unknown"}</Badge>;
-                  }
-                  return (
-                    <div key={campaign.campaignId} className="p-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <MessageSquare className="h-4 w-4 text-blue-500" />
-                          <div>
-                            <h4 className="font-medium text-sm text-slate-900 dark:text-white">
-                              {USE_CASES.find(uc => uc.value === campaign.usecase)?.label || campaign.usecase}
-                            </h4>
-                            <p className="text-xs text-slate-400 font-mono">ID: {campaign.campaignId}</p>
-                          </div>
-                        </div>
-                        {statusBadge}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Campaign ID</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">TCR ID</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Brand</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Use Case</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {campaignsData.campaigns.map((campaign) => {
+                      const status = campaign.status?.toUpperCase();
+                      let statusBadge;
+                      if (status === "ACTIVE" || status === "APPROVED") {
+                        statusBadge = <Badge className="bg-green-100 text-green-800 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" />Active</Badge>;
+                      } else if (status === "PENDING" || status === "IN_REVIEW") {
+                        statusBadge = <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+                      } else if (status === "REJECTED" || status === "FAILED") {
+                        statusBadge = <Badge className="bg-red-100 text-red-800 border-red-200"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+                      } else {
+                        statusBadge = <Badge variant="outline">{campaign.status || "Unknown"}</Badge>;
+                      }
+                      return (
+                        <tr key={campaign.campaignId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                          <td className="py-3 px-4">
+                            <span className="text-xs text-slate-500 font-mono">{campaign.campaignId?.slice(0, 16)}...</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-xs text-slate-500 font-mono">{campaign.tcrCampaignId || '-'}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="font-medium text-slate-900 dark:text-white">{campaign.brandId?.slice(0, 10) || '-'}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-slate-700 dark:text-slate-300">{USE_CASES.find(uc => uc.value === campaign.usecase)?.label || campaign.usecase}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            {statusBadge}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-center px-6">
@@ -1582,36 +1628,50 @@ export function ComplianceTab() {
                 <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
               </div>
             ) : tollFreeData?.verifications && tollFreeData.verifications.length > 0 ? (
-              <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                {tollFreeData.verifications.map((verification) => {
-                  const status = verification.verificationStatus?.toUpperCase();
-                  let statusBadge;
-                  if (status === "VERIFIED") {
-                    statusBadge = <Badge className="bg-green-100 text-green-800 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" />Verified</Badge>;
-                  } else if (["PENDING", "IN PROGRESS", "WAITING FOR VENDOR", "WAITING FOR TELNYX"].includes(status)) {
-                    statusBadge = <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200"><Clock className="h-3 w-3 mr-1" />{verification.verificationStatus}</Badge>;
-                  } else if (status === "WAITING FOR CUSTOMER") {
-                    statusBadge = <Badge className="bg-orange-100 text-orange-800 border-orange-200"><AlertTriangle className="h-3 w-3 mr-1" />Action Required</Badge>;
-                  } else if (status === "REJECTED") {
-                    statusBadge = <Badge className="bg-red-100 text-red-800 border-red-200"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
-                  } else {
-                    statusBadge = <Badge variant="outline">{verification.verificationStatus || "Unknown"}</Badge>;
-                  }
-                  return (
-                    <div key={verification.id} className="p-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-3">
-                          <Phone className="h-4 w-4 text-amber-500" />
-                          <div>
-                            <h4 className="font-medium text-sm text-slate-900 dark:text-white">{verification.businessName}</h4>
-                            <p className="text-xs text-slate-400">{verification.phoneNumbers?.length || 0} number(s)</p>
-                          </div>
-                        </div>
-                        {statusBadge}
-                      </div>
-                    </div>
-                  );
-                })}
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Business Name</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Numbers</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Use Case</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                    {tollFreeData.verifications.map((verification) => {
+                      const status = verification.verificationStatus?.toUpperCase();
+                      let statusBadge;
+                      if (status === "VERIFIED") {
+                        statusBadge = <Badge className="bg-green-100 text-green-800 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" />Verified</Badge>;
+                      } else if (["PENDING", "IN PROGRESS", "WAITING FOR VENDOR", "WAITING FOR TELNYX"].includes(status)) {
+                        statusBadge = <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200"><Clock className="h-3 w-3 mr-1" />{verification.verificationStatus}</Badge>;
+                      } else if (status === "WAITING FOR CUSTOMER") {
+                        statusBadge = <Badge className="bg-orange-100 text-orange-800 border-orange-200"><AlertTriangle className="h-3 w-3 mr-1" />Action Required</Badge>;
+                      } else if (status === "REJECTED") {
+                        statusBadge = <Badge className="bg-red-100 text-red-800 border-red-200"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+                      } else {
+                        statusBadge = <Badge variant="outline">{verification.verificationStatus || "Unknown"}</Badge>;
+                      }
+                      return (
+                        <tr key={verification.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                          <td className="py-3 px-4">
+                            <span className="font-medium text-slate-900 dark:text-white">{verification.businessName}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-slate-600 dark:text-slate-400">{verification.phoneNumbers?.length || 0}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-xs text-slate-500">{verification.useCase || '-'}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            {statusBadge}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
             ) : (
               <div className="flex flex-col items-center justify-center py-8 text-center px-6">
