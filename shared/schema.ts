@@ -6195,6 +6195,15 @@ export type InsertTelnyxBrand = z.infer<typeof insertTelnyxBrandSchema>;
 // Message direction for SMS inbox
 export const telnyxMessageDirectionEnum = pgEnum("telnyx_message_direction", ["inbound", "outbound"]);
 
+// Message type for internal notes vs regular messages
+export const telnyxMessageTypeEnum = pgEnum("telnyx_message_type", ["incoming", "outgoing", "internal_note"]);
+
+// Message channel
+export const telnyxMessageChannelEnum = pgEnum("telnyx_message_channel", ["sms", "whatsapp", "imessage", "email", "facebook", "instagram", "live_chat"]);
+
+// Conversation status
+export const telnyxConversationStatusEnum = pgEnum("telnyx_conversation_status", ["open", "pending", "solved", "snoozed", "archived"]);
+
 // Message status
 export const telnyxMessageStatusEnum = pgEnum("telnyx_message_status", [
   "pending", "sending", "sent", "delivered", "failed", "receiving", "received"
@@ -6210,6 +6219,9 @@ export const telnyxConversations = pgTable("telnyx_conversations", {
   lastMessage: text("last_message"), // Preview of last message
   lastMessageAt: timestamp("last_message_at"), // Timestamp of last message
   unreadCount: integer("unread_count").notNull().default(0), // Count of unread inbound messages
+  status: telnyxConversationStatusEnum("status").notNull().default("open"), // Conversation status for filtering
+  channel: telnyxMessageChannelEnum("channel").notNull().default("sms"), // Primary channel for this conversation
+  assignedTo: varchar("assigned_to").references(() => users.id, { onDelete: "set null" }), // Assigned agent
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
@@ -6231,7 +6243,10 @@ export const telnyxMessages = pgTable("telnyx_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   conversationId: varchar("conversation_id").notNull().references(() => telnyxConversations.id, { onDelete: "cascade" }),
   direction: telnyxMessageDirectionEnum("direction").notNull(), // inbound or outbound
+  messageType: telnyxMessageTypeEnum("message_type").notNull().default("outgoing"), // incoming, outgoing, or internal_note
+  channel: telnyxMessageChannelEnum("channel").notNull().default("sms"), // sms, whatsapp, imessage, etc.
   text: text("text").notNull(), // Message content
+  contentType: text("content_type").notNull().default("text"), // text, image, file
   status: telnyxMessageStatusEnum("status").notNull().default("pending"), // Message delivery status
   telnyxMessageId: text("telnyx_message_id"), // Telnyx API message ID for tracking
   sentBy: varchar("sent_by").references(() => users.id, { onDelete: "set null" }), // User who sent outbound messages

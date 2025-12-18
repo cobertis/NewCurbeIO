@@ -1,0 +1,102 @@
+# ROLE & OBJECTIVE
+Act as a Senior Full Stack Engineer. Build a production-ready "Omnichannel CRM Inbox" application. The goal is to replicate a high-density customer support interface similar to Intercom/Front.
+
+# TECH STACK
+- Frontend: React (Vite), Tailwind CSS, Lucide React (icons), Shadcn/UI (components).
+- Backend: Node.js (Express).
+- Database: PostgreSQL with Prisma ORM.
+- State Management: React Query & Context API.
+
+# 1. DATABASE SCHEMA (PRISMA)
+Define the following models strictly:
+
+model Contact {
+  id          String   @id @default(uuid())
+  firstName   String
+  lastName    String?
+  phone       String   @unique
+  email       String?
+  avatarUrl   String?
+  organization String?
+  jobTitle    String?
+  tags        Tag[]
+  type        String   @default("Lead") // Lead, Customer
+  channels    Json     // Stores available channels (whatsapp, sms, email)
+  messages    Message[]
+}
+
+model Message {
+  id          String   @id @default(uuid())
+  content     String
+  contentType String   @default("text") // text, image, file
+  messageType String   // incoming, outgoing, internal_note
+  channel     String   // whatsapp, sms, facebook
+  status      String   @default("sent") // sent, delivered, read
+  createdAt   DateTime @default(now())
+  contactId   String
+  contact     Contact  @relation(fields: [contactId], references: [id])
+  agentId     String?  // Null if incoming
+}
+
+# 2. UI LAYOUT & COMPONENTS
+Create a fixed-height, 3-column layout (h-screen).
+
+## Column 1: Sidebar & Navigation (Width: 20%)
+- **Top:** "Messenger" header with Settings icon.
+- **Nav Links:** Open (with badge count), Unread, Assigned to me, Unassigned, Solved.
+- **Channels Section:** Collapsible list: SMS, Live Chat, WhatsApp, Instagram, Facebook.
+- **Style:** Light gray background (#F9FAFB). Hover effects on all list items.
+
+## Column 2: Conversation List (Width: 30%)
+- **Header:** "Open" count, Search bar ("Search chats"), Filter button.
+- **List Item Component:**
+  - Must display: Avatar (left), Contact Name (bold), Time (top right), Last Message Snippet (gray), Channel Icon (small, absolute position on avatar).
+  - **Active State:** Light blue background with blue left border for the selected chat.
+
+## Column 3: The Chat Interface (Width: 50%)
+This is the core complex component.
+
+### A. Header
+- Display Contact Name, Phone Number.
+- **Actions:** "Solve" button (outlined), Checkbox, Email icon, Audio toggle, Search icon, Kebab menu.
+
+### B. Message Feed (Scrollable Area)
+- **Incoming Message:** White bubble, left aligned.
+- **Outgoing Message:** Blue bubble (bg-blue-600), white text, right aligned. Show "double check" icon for read receipt.
+- **Internal Note (CRITICAL):**
+  - specific style: Background yellow-100, border yellow-300, text yellow-800.
+  - Must show a label "(internal note)" clearly.
+  - Aligned right but distinct from normal messages.
+- **System Events:** Centered small gray text (e.g., "Inbound call (0:08:16)").
+
+### C. The Input Area (The "Composer")
+- **TextArea:** Auto-expanding text area.
+- **Internal Note Toggle:** A switch/toggle at the bottom.
+  - Logic: When toggled ON, the "Send" button turns Yellow and text says "Add Note". Input background changes slightly to yellow tint.
+  - When OFF, button is Blue "Send".
+- **Toolbar Icons:** Emoji, Attachment, Templates (file-text icon), Variables `{}`, Calendar, Eye (preview), AI Rewrite (magic wand).
+- **Send Button:** Rounded, with an arrow icon.
+
+## Column 4: Contact Details (Right Sidebar - Collapsible)
+- **Sections:**
+  - **Contact Info:** Name, Editable Phone, WhatsApp/Email indicators with icons. Social media links.
+  - **Insights:**
+    - Contact Type (Badge: Lead/Customer).
+    - Owner (Avatar + Name).
+    - Lists/Tags: Blue badges with 'x' to remove.
+  - **Past Interactions:** visual timeline placeholder.
+
+# 3. FUNCTIONAL REQUIREMENTS
+1.  **Mock Data:** Seed the database with 5 distinct contacts and 20+ messages including mixed types (WhatsApp, SMS) and Internal Notes to demonstrate the UI.
+2.  **Filter Logic:** The Sidebar filters must work (Clicking "Unread" filters the middle list).
+3.  **Variable Injection:** Clicking the `{}` icon in the input should insert a placeholder like `{{first_name}}` into the text area.
+4.  **Send Logic:**
+    - If "Internal Note" toggle is ON -> Save as messageType: 'internal_note'.
+    - If OFF -> Save as messageType: 'outgoing'.
+    - Update the feed immediately (Optimistic UI).
+
+# 4. VISUAL POLISH
+- Use Inter font.
+- Borders should be subtle (border-gray-200).
+- Use Lucide Icons for everything (Phone, Mail, Check, User, etc.).
+- Ensure the layout is responsive but optimized for Desktop (no mobile stack).
