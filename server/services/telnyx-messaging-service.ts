@@ -1,7 +1,8 @@
 import { db } from "../db";
-import { wallets, telnyxPhoneNumbers, telnyxConversations, telnyxMessages } from "@shared/schema";
-import { eq, and, or, desc } from "drizzle-orm";
-import { getTelnyxMasterApiKey, getCompanyTelnyxAccountId } from "./telnyx-numbers-service";
+import { wallets, telnyxPhoneNumbers } from "@shared/schema";
+import { eq } from "drizzle-orm";
+import { getTelnyxMasterApiKey } from "./telnyx-numbers-service";
+import { getCompanyTelnyxAccountId } from "./wallet-service";
 import { getCompanyMessagingProfileId } from "./telnyx-manager-service";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
@@ -101,98 +102,12 @@ export async function sendTelnyxMessage(params: SendMessageParams): Promise<Send
 }
 
 /**
- * Save a message to the database and update conversation
- */
-export async function saveOutboundMessage(
-  companyId: string,
-  userId: string,
-  fromNumber: string,
-  toNumber: string,
-  text: string,
-  telnyxMessageId?: string,
-  mediaUrls?: string[]
-): Promise<{ conversationId: string; messageId: string }> {
-  // Normalize phone numbers
-  const normalizedFrom = fromNumber.replace(/\D/g, '');
-  const normalizedTo = toNumber.replace(/\D/g, '');
-  
-  // Find or create conversation
-  let [conversation] = await db
-    .select()
-    .from(telnyxConversations)
-    .where(
-      and(
-        eq(telnyxConversations.companyId, companyId),
-        or(
-          and(
-            eq(telnyxConversations.phoneNumber, normalizedFrom),
-            eq(telnyxConversations.contactNumber, normalizedTo)
-          ),
-          and(
-            eq(telnyxConversations.phoneNumber, normalizedTo),
-            eq(telnyxConversations.contactNumber, normalizedFrom)
-          )
-        )
-      )
-    );
-  
-  if (!conversation) {
-    // Create new conversation
-    const [newConversation] = await db
-      .insert(telnyxConversations)
-      .values({
-        companyId,
-        phoneNumber: normalizedFrom,
-        contactNumber: normalizedTo,
-        lastMessageAt: new Date(),
-        lastMessagePreview: text.substring(0, 100),
-        unreadCount: 0,
-      })
-      .returning();
-    conversation = newConversation;
-  }
-  
-  // Save message
-  const [message] = await db
-    .insert(telnyxMessages)
-    .values({
-      conversationId: conversation.id,
-      companyId,
-      direction: "outbound",
-      fromNumber: normalizedFrom,
-      toNumber: normalizedTo,
-      body: text,
-      telnyxMessageId: telnyxMessageId || null,
-      status: "sent",
-      mediaUrls: mediaUrls || null,
-      sentBy: userId,
-    })
-    .returning();
-  
-  // Update conversation
-  await db
-    .update(telnyxConversations)
-    .set({
-      lastMessageAt: new Date(),
-      lastMessagePreview: text.substring(0, 100),
-      updatedAt: new Date(),
-    })
-    .where(eq(telnyxConversations.id, conversation.id));
-  
-  return {
-    conversationId: conversation.id,
-    messageId: message.id,
-  };
-}
-
-/**
  * Get available phone numbers for sending messages
  */
-export async function getCompanyMessagingNumbers(companyId: string): Promise<Array<{ phoneNumber: string; label?: string }>> {
+export async function getCompanyMessagingNumbers(companyId: string): Promise<Array<{ phoneNumber: string }>> {
   const numbers = await db
     .select({
       phoneNumber: telnyxPhoneNumbers.phoneNumber,
-      label: telnyxPhoneNumbers.label,
     })
     .from(telnyxPhoneNumbers)
     .where(eq(telnyxPhoneNumbers.companyId, companyId));
