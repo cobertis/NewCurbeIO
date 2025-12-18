@@ -57,11 +57,14 @@ export async function getManagedAccountConfig(companyId: string): Promise<Manage
 }
 
 export function buildHeaders(config: ManagedAccountConfig): Record<string, string> {
-  return {
+  const headers: Record<string, string> = {
     "Authorization": `Bearer ${config.apiKey}`,
     "Content-Type": "application/json",
-    "x-managed-account-id": config.managedAccountId,
   };
+  if (config.managedAccountId && config.managedAccountId !== "MASTER_ACCOUNT") {
+    headers["x-managed-account-id"] = config.managedAccountId;
+  }
+  return headers;
 }
 
 async function getPhoneNumberDetails(
