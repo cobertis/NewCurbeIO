@@ -208,6 +208,46 @@ export class ObjectStorageService {
     };
     return mimeMap[mimetype] || "";
   }
+
+  async uploadInboxAttachment(
+    buffer: Buffer,
+    mimetype: string,
+    originalName: string,
+    companyId: string
+  ): Promise<{ objectPath: string; signedUrl: string }> {
+    const privateObjectDir = this.getPrivateObjectDir();
+    const extension = this.getExtensionFromFilename(originalName) || this.getExtensionFromMimetype(mimetype) || '';
+    const uniqueId = randomUUID();
+    const safeFilename = originalName.replace(/[^a-zA-Z0-9.-]/g, '_');
+    const objectName = `inbox-attachments/${companyId}/${uniqueId}_${safeFilename}`;
+    const fullPath = `${privateObjectDir}/${objectName}`;
+    const { bucketName, objectName: storagePath } = parseObjectPath(fullPath);
+    
+    const bucket = objectStorageClient.bucket(bucketName);
+    const file = bucket.file(storagePath);
+    
+    await file.save(buffer, {
+      contentType: mimetype,
+      metadata: {
+        cacheControl: "public, max-age=31536000",
+      },
+    });
+    
+    const signedUrl = await signObjectURL({
+      bucketName,
+      objectName: storagePath,
+      method: "GET",
+      ttlSec: 604800, // 7 days
+    });
+    
+    console.log(`[ObjectStorage] Inbox attachment uploaded: ${objectName}`);
+    return { objectPath: `/objects/${objectName}`, signedUrl };
+  }
+
+  private getExtensionFromFilename(filename: string): string {
+    const match = filename.match(/\.[a-zA-Z0-9]+$/);
+    return match ? match[0] : '';
+  }
 }
 
 function parseObjectPath(path: string): {

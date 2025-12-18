@@ -141,8 +141,10 @@ export default function InboxPage() {
     jobTitle: "",
     organization: "",
   });
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const userTimezone = user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -205,12 +207,32 @@ export default function InboxPage() {
   });
 
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ conversationId, text, isInternalNote }: { conversationId: string; text: string; isInternalNote?: boolean }) => {
-      return apiRequest("POST", `/api/inbox/conversations/${conversationId}/messages`, { text, isInternalNote });
+    mutationFn: async ({ conversationId, text, isInternalNote, files }: { conversationId: string; text: string; isInternalNote?: boolean; files?: File[] }) => {
+      const formData = new FormData();
+      formData.append('text', text);
+      if (isInternalNote) {
+        formData.append('isInternalNote', 'true');
+      }
+      if (files && files.length > 0) {
+        files.forEach((file) => {
+          formData.append('files', file);
+        });
+      }
+      const response = await fetch(`/api/inbox/conversations/${conversationId}/messages`, {
+        method: 'POST',
+        body: formData,
+        credentials: 'include',
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.message || 'Failed to send message');
+      }
+      return response.json();
     },
     onSuccess: () => {
       setNewMessage("");
       setIsInternalNote(false);
+      setSelectedFiles([]);
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
       queryClient.invalidateQueries({ 
         queryKey: [`/api/inbox/conversations/${selectedConversationId}/messages`] 
@@ -307,12 +329,34 @@ export default function InboxPage() {
   };
 
   const handleSendMessage = () => {
-    if (!newMessage.trim() || !selectedConversationId) return;
+    if ((!newMessage.trim() && selectedFiles.length === 0) || !selectedConversationId) return;
     sendMessageMutation.mutate({ 
       conversationId: selectedConversationId, 
       text: newMessage.trim(),
-      isInternalNote: isInternalNote
+      isInternalNote: isInternalNote,
+      files: selectedFiles.length > 0 ? selectedFiles : undefined
     });
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      const newFiles = Array.from(files);
+      setSelectedFiles(prev => [...prev, ...newFiles]);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
   };
 
   const handleCreateConversation = () => {
@@ -701,6 +745,36 @@ export default function InboxPage() {
                 />
               </div>
 
+              {/* Selected Files Preview */}
+              {selectedFiles.length > 0 && (
+                <div className="px-4 pb-2">
+                  <div className="flex flex-wrap gap-2">
+                    {selectedFiles.map((file, index) => (
+                      <div
+                        key={index}
+                        className="flex items-center gap-2 bg-gray-100 dark:bg-gray-800 rounded-md px-3 py-1.5 text-sm"
+                        data-testid={`file-preview-${index}`}
+                      >
+                        <Paperclip className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                        <span className="truncate max-w-[150px]" title={file.name}>
+                          {file.name}
+                        </span>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">
+                          ({formatFileSize(file.size)})
+                        </span>
+                        <button
+                          onClick={() => removeFile(index)}
+                          className="text-muted-foreground hover:text-destructive transition-colors"
+                          data-testid={`btn-remove-file-${index}`}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {/* Bottom toolbar row: icons | internal note toggle | send button */}
               <div className="px-4 pb-3 flex items-center justify-between">
                 {/* Left: Toolbar Icons */}
@@ -723,10 +797,24 @@ export default function InboxPage() {
                       />
                     </PopoverContent>
                   </Popover>
+                  <input
+                    type="file"
+                    ref={fileInputRef}
+                    onChange={handleFileSelect}
+                    className="hidden"
+                    multiple
+                    data-testid="input-file-attachment"
+                  />
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-attachment">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8" 
+                          onClick={() => fileInputRef.current?.click()}
+                          data-testid="btn-attachment"
+                        >
                           <Paperclip className="h-4 w-4 text-muted-foreground" />
                         </Button>
                       </TooltipTrigger>
@@ -806,7 +894,7 @@ export default function InboxPage() {
                   </div>
                   <Button
                     onClick={handleSendMessage}
-                    disabled={!newMessage.trim() || sendMessageMutation.isPending}
+                    disabled={(!newMessage.trim() && selectedFiles.length === 0) || sendMessageMutation.isPending}
                     className="bg-blue-600 hover:bg-blue-700"
                     data-testid="btn-send-message"
                   >

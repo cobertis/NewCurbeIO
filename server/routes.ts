@@ -35201,104 +35201,144 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // POST /api/inbox/conversations/:id/messages - Send message or internal note to existing conversation
-  app.post("/api/inbox/conversations/:id/messages", requireActiveCompany, async (req: Request, res: Response) => {
-    if (!req.user) {
-      return res.status(401).json({ message: "Unauthorized" });
-    }
-    const companyId = (req.user as any).companyId;
-    const userId = (req.user as any).id;
-    if (!companyId) {
-      return res.status(400).json({ message: "No company associated with user" });
-    }
-    const { id } = req.params;
-    const { text, isInternalNote } = req.body;
-    if (!text) {
-      return res.status(400).json({ message: "text is required" });
-    }
-    try {
-      // Verify conversation belongs to company
-      const [conversation] = await db
-        .select()
-        .from(telnyxConversations)
-        .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
-      if (!conversation) {
-        return res.status(404).json({ message: "Conversation not found" });
+  // POST /api/inbox/conversations/:id/messages - Send message or internal note to existing conversation (with optional file attachments)
+  const inboxAttachmentUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 25 * 1024 * 1024 }, // 25MB max per file
+  });
+
+  app.post("/api/inbox/conversations/:id/messages", requireActiveCompany, (req: Request, res: Response) => {
+    inboxAttachmentUpload.array('files', 10)(req, res, async (multerError: any) => {
+      if (multerError) {
+        console.error("[Inbox] Multer error:", multerError);
+        if (multerError.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ message: "File too large. Maximum size is 25MB." });
+        }
+        return res.status(400).json({ message: multerError.message || "Upload failed" });
       }
 
-      // If internal note, just save to database (no Telnyx send)
-      if (isInternalNote) {
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const companyId = (req.user as any).companyId;
+      const userId = (req.user as any).id;
+      if (!companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      const { id } = req.params;
+      const { text, isInternalNote } = req.body;
+      const files = (req as any).files as Express.Multer.File[] | undefined;
+      
+      // Text is required only if no files attached
+      if (!text && (!files || files.length === 0)) {
+        return res.status(400).json({ message: "text or files required" });
+      }
+      
+      try {
+        // Verify conversation belongs to company
+        const [conversation] = await db
+          .select()
+          .from(telnyxConversations)
+          .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+        if (!conversation) {
+          return res.status(404).json({ message: "Conversation not found" });
+        }
+
+        // Upload files to object storage if any
+        let mediaUrls: string[] = [];
+        if (files && files.length > 0) {
+          const { objectStorage } = await import("./objectStorage");
+          for (const file of files) {
+            try {
+              const { signedUrl } = await objectStorage.uploadInboxAttachment(
+                file.buffer,
+                file.mimetype,
+                file.originalname,
+                companyId
+              );
+              mediaUrls.push(signedUrl);
+            } catch (uploadError) {
+              console.error("[Inbox] File upload error:", uploadError);
+            }
+          }
+        }
+
+        // If internal note, just save to database (no Telnyx send)
+        if (isInternalNote === 'true' || isInternalNote === true) {
+          const [message] = await db
+            .insert(telnyxMessages)
+            .values({
+              conversationId: id,
+              direction: "outbound",
+              messageType: "internal_note",
+              channel: conversation.channel || "sms",
+              text: text || "(attachment)",
+              contentType: mediaUrls.length > 0 ? "media" : "text",
+              status: "sent",
+              telnyxMessageId: null,
+              sentBy: userId,
+              sentAt: new Date(),
+              errorMessage: null,
+            })
+            .returning();
+          return res.status(201).json(message);
+        }
+
+        // Send message via Telnyx API using managed account
+        const { sendTelnyxMessage } = await import("./services/telnyx-messaging-service");
+        const sendResult = await sendTelnyxMessage({
+          from: conversation.companyPhoneNumber,
+          to: conversation.phoneNumber,
+          text: text || "",
+          mediaUrls: mediaUrls.length > 0 ? mediaUrls : undefined,
+          companyId,
+        });
+        
+        // Mock response structure for compatibility
+        const telnyxResponse = { ok: sendResult.success };
+        const telnyxData: any = sendResult.success 
+          ? { data: { id: sendResult.messageId } }
+          : { errors: [{ detail: sendResult.error }] };
+        let status: "sent" | "failed" = "sent";
+        let errorMessage: string | null = null;
+        let telnyxMessageId: string | null = null;
+        if (!telnyxResponse.ok) {
+          status = "failed";
+          errorMessage = telnyxData?.errors?.[0]?.detail || "Failed to send message";
+          console.error("[Inbox] Telnyx error:", telnyxData);
+        } else {
+          telnyxMessageId = telnyxData?.data?.id || null;
+        }
+        // Create message record
         const [message] = await db
           .insert(telnyxMessages)
           .values({
             conversationId: id,
             direction: "outbound",
-            messageType: "internal_note",
+            messageType: "outgoing",
             channel: conversation.channel || "sms",
-            text,
-            contentType: "text",
-            status: "sent",
-            telnyxMessageId: null,
+            text: text || "(attachment)",
+            contentType: mediaUrls.length > 0 ? "media" : "text",
+            status,
+            telnyxMessageId,
             sentBy: userId,
             sentAt: new Date(),
-            errorMessage: null,
+            errorMessage,
           })
           .returning();
-        return res.status(201).json(message);
+        // Update conversation
+        await db
+          .update(telnyxConversations)
+          .set({ lastMessage: (text || "(attachment)").substring(0, 100), lastMessageAt: new Date(), updatedAt: new Date() })
+          .where(eq(telnyxConversations.id, id));
+        res.status(201).json(message);
+      } catch (error: any) {
+        console.error("[Inbox] Error sending message:", error);
+        res.status(500).json({ message: "Failed to send message" });
       }
-
-      // Send message via Telnyx API using managed account
-      const { sendTelnyxMessage } = await import("./services/telnyx-messaging-service");
-      const sendResult = await sendTelnyxMessage({
-        from: conversation.companyPhoneNumber,
-        to: conversation.phoneNumber,
-        text,
-        companyId,
-      });
-      
-      // Mock response structure for compatibility
-      const telnyxResponse = { ok: sendResult.success };
-      const telnyxData: any = sendResult.success 
-        ? { data: { id: sendResult.messageId } }
-        : { errors: [{ detail: sendResult.error }] };
-      let status: "sent" | "failed" = "sent";
-      let errorMessage: string | null = null;
-      let telnyxMessageId: string | null = null;
-      if (!telnyxResponse.ok) {
-        status = "failed";
-        errorMessage = telnyxData?.errors?.[0]?.detail || "Failed to send message";
-        console.error("[Inbox] Telnyx error:", telnyxData);
-      } else {
-        telnyxMessageId = telnyxData?.data?.id || null;
-      }
-      // Create message record
-      const [message] = await db
-        .insert(telnyxMessages)
-        .values({
-          conversationId: id,
-          direction: "outbound",
-          messageType: "outgoing",
-          channel: conversation.channel || "sms",
-          text,
-          contentType: "text",
-          status,
-          telnyxMessageId,
-          sentBy: userId,
-          sentAt: new Date(),
-          errorMessage,
-        })
-        .returning();
-      // Update conversation
-      await db
-        .update(telnyxConversations)
-        .set({ lastMessage: text.substring(0, 100), lastMessageAt: new Date(), updatedAt: new Date() })
-        .where(eq(telnyxConversations.id, id));
-      res.status(201).json(message);
-    } catch (error: any) {
-      console.error("[Inbox] Error sending message:", error);
-      res.status(500).json({ message: "Failed to send message" });
-    }
+    });
   });
+
 
   // PATCH /api/inbox/conversations/:id - Update conversation details
   app.patch("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
