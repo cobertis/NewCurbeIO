@@ -235,20 +235,16 @@ export default function InboxPage() {
     });
   };
 
-  if (sessionStatus === "pending") {
-    return <LoadingSpinner message="Loading..." />;
+  if (sessionStatus === "pending" || loadingConversations) {
+    return <LoadingSpinner message="Loading conversations..." />;
   }
 
-  if (sessionStatus === "error" || !userData?.user) {
+  if (!userData?.user) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
         <p className="text-muted-foreground">Please log in to view your inbox.</p>
       </div>
     );
-  }
-
-  if (loadingConversations) {
-    return <LoadingSpinner message="Loading conversations..." />;
   }
 
   return (
