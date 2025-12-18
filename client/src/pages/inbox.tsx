@@ -624,52 +624,45 @@ export default function InboxPage() {
                           className={cn(
                             "max-w-[70%] rounded-2xl px-4 py-2",
                             isNote
-                              ? "bg-yellow-100 border border-yellow-200 text-yellow-900 rounded-tr-sm"
+                              ? "bg-yellow-100 border border-yellow-200 rounded-tr-sm"
                               : isOutbound
-                                ? "bg-blue-600 text-white rounded-tr-sm"
+                                ? "bg-[#d9e8fb] dark:bg-[#2a3942] rounded-tr-sm"
                                 : "bg-white dark:bg-gray-800 shadow-sm rounded-tl-sm"
                           )}
                         >
                           {/* Sender name inside bubble for outbound and notes */}
                           {(isOutbound || isNote) && (
                             <div className="flex items-center gap-1 mb-1">
-                              <span className={cn(
-                                "text-xs font-medium",
-                                isNote ? "text-blue-600" : "text-blue-300"
-                              )}>
+                              <span className="text-xs font-medium text-blue-600">
                                 {user?.firstName && user?.lastName 
                                   ? `${user.firstName} ${user.lastName}` 
                                   : user?.email?.split('@')[0] || 'You'}
                               </span>
                               {isNote && (
-                                <span className="text-xs text-yellow-600">(internal note)</span>
+                                <span className="text-xs text-gray-500">(internal note)</span>
                               )}
                             </div>
                           )}
                           
                           {/* Message text */}
-                          <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                          <p className={cn(
+                            "text-sm whitespace-pre-wrap",
+                            isNote ? "text-yellow-900" : "text-gray-900 dark:text-gray-100"
+                          )}>{message.text}</p>
                           
                           {/* Timestamp and status inside bubble at bottom right */}
                           <div className="flex items-center gap-1 mt-1 justify-end">
-                            <span className={cn(
-                              "text-[11px]",
-                              isNote 
-                                ? "text-yellow-600"
-                                : isOutbound 
-                                  ? "text-blue-200" 
-                                  : "text-muted-foreground"
-                            )}>
+                            <span className="text-[11px] text-gray-500">
                               {format(new Date(message.createdAt), "h:mm a")}
                             </span>
                             {isOutbound && !isNote && (
-                              <span className="text-green-400">
+                              <span className="text-green-500">
                                 {message.status === "delivered" ? (
                                   <CheckCheck className="h-3.5 w-3.5" />
                                 ) : message.status === "sent" ? (
                                   <CheckCheck className="h-3.5 w-3.5 opacity-50" />
                                 ) : (
-                                  <Clock className="h-3.5 w-3.5" />
+                                  <Clock className="h-3.5 w-3.5 text-gray-400" />
                                 )}
                               </span>
                             )}
