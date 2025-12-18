@@ -27498,6 +27498,108 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /webhooks/telnyx/messages - Handle incoming SMS messages
+  app.post("/webhooks/telnyx/messages", async (req: Request, res: Response) => {
+    res.status(200).json({ received: true });
+    
+    try {
+      const event = req.body;
+      const eventType = event?.data?.event_type;
+      
+      console.log("[Telnyx SMS Webhook] Event type:", eventType);
+      
+      if (eventType !== "message.received") {
+        console.log("[Telnyx SMS Webhook] Ignoring event type:", eventType);
+        return;
+      }
+      
+      const payload = event?.data?.payload;
+      if (!payload) {
+        console.error("[Telnyx SMS Webhook] No payload in event");
+        return;
+      }
+      
+      const from = payload.from?.phone_number;
+      const to = payload.to?.[0]?.phone_number || payload.to;
+      const text = payload.text;
+      const telnyxMessageId = payload.id;
+      
+      if (!from || !to || !text) {
+        console.error("[Telnyx SMS Webhook] Missing required fields:", { from, to, text });
+        return;
+      }
+      
+      console.log(`[Telnyx SMS Webhook] Received: from=${from}, to=${to}, text=${text.substring(0, 50)}...`);
+      
+      const phoneNumber = await db.query.companyPhoneNumbers.findFirst({
+        where: eq(companyPhoneNumbers.phoneNumber, to),
+      });
+      
+      if (!phoneNumber) {
+        console.error("[Telnyx SMS Webhook] Phone number not found:", to);
+        return;
+      }
+      
+      const companyId = phoneNumber.companyId;
+      
+      let conversation = await db.query.telnyxConversations.findFirst({
+        where: and(
+          eq(telnyxConversations.companyId, companyId),
+          eq(telnyxConversations.phoneNumber, from),
+          eq(telnyxConversations.companyPhoneNumber, to)
+        ),
+      });
+      
+      if (!conversation) {
+        const contact = await db.query.unifiedContacts.findFirst({
+          where: and(
+            eq(unifiedContacts.companyId, companyId),
+            eq(unifiedContacts.phone, from)
+          ),
+        });
+        
+        const [newConversation] = await db.insert(telnyxConversations).values({
+          companyId,
+          phoneNumber: from,
+          companyPhoneNumber: to,
+          displayName: contact?.displayName || null,
+          lastMessage: text,
+          lastMessageAt: new Date(),
+          unreadCount: 1,
+        }).returning();
+        
+        conversation = newConversation;
+        console.log("[Telnyx SMS Webhook] Created new conversation:", conversation.id);
+      } else {
+        await db.update(telnyxConversations)
+          .set({
+            lastMessage: text,
+            lastMessageAt: new Date(),
+            unreadCount: (conversation.unreadCount || 0) + 1,
+            updatedAt: new Date(),
+          })
+          .where(eq(telnyxConversations.id, conversation.id));
+      }
+      
+      await db.insert(telnyxMessages).values({
+        conversationId: conversation.id,
+        direction: "inbound",
+        text,
+        status: "received",
+        telnyxMessageId,
+        sentAt: new Date(),
+      });
+      
+      console.log("[Telnyx SMS Webhook] Message saved for conversation:", conversation.id);
+      
+      broadcastConversationUpdate(companyId);
+      console.log("[Telnyx SMS Webhook] Broadcasted conversation update for company:", companyId);
+      
+    } catch (error: any) {
+      console.error("[Telnyx SMS Webhook] Error:", error);
+    }
+  });
+
   // ==================== WALLET API ====================
   
   // GET /api/wallet - Get company wallet
