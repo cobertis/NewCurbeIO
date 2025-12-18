@@ -35381,7 +35381,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // POST /api/inbox/conversations/:id/messages - Send message to existing conversation
+  // POST /api/inbox/conversations/:id/messages - Send message or internal note to existing conversation
   app.post("/api/inbox/conversations/:id/messages", requireActiveCompany, async (req: Request, res: Response) => {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -35392,7 +35392,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(400).json({ message: "No company associated with user" });
     }
     const { id } = req.params;
-    const { text } = req.body;
+    const { text, isInternalNote } = req.body;
     if (!text) {
       return res.status(400).json({ message: "text is required" });
     }
@@ -35405,6 +35405,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
       }
+
+      // If internal note, just save to database (no Telnyx send)
+      if (isInternalNote) {
+        const [message] = await db
+          .insert(telnyxMessages)
+          .values({
+            conversationId: id,
+            direction: "outbound",
+            messageType: "internal_note",
+            channel: conversation.channel || "sms",
+            text,
+            contentType: "text",
+            status: "sent",
+            telnyxMessageId: null,
+            sentBy: userId,
+            sentAt: new Date(),
+            errorMessage: null,
+          })
+          .returning();
+        return res.status(201).json(message);
+      }
+
       // Send message via Telnyx API using managed account
       const { sendTelnyxMessage } = await import("./services/telnyx-messaging-service");
       const sendResult = await sendTelnyxMessage({
@@ -35435,7 +35457,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         .values({
           conversationId: id,
           direction: "outbound",
+          messageType: "outgoing",
+          channel: conversation.channel || "sms",
           text,
+          contentType: "text",
           status,
           telnyxMessageId,
           sentBy: userId,
@@ -35457,4 +35482,3 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   return httpServer;
 }
-
