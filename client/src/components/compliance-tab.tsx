@@ -395,7 +395,13 @@ export function ComplianceTab() {
       }
     },
     onError: (error: any) => {
-      toast({ title: "Error", description: error.message || "Failed to remove number", variant: "destructive" });
+      const errorMessage = error.message || "Failed to remove number";
+      const friendlyMessage = errorMessage.includes("currently being assigned") 
+        ? "This number is still being processed. Please wait a few minutes and try again."
+        : errorMessage.includes("cannot be deleted")
+        ? "Cannot remove this number right now. It may still be processing."
+        : errorMessage;
+      toast({ title: "Cannot Remove Number", description: friendlyMessage, variant: "destructive" });
     },
   });
 
@@ -2000,34 +2006,50 @@ export function ComplianceTab() {
                 <Label className="text-sm font-medium">Currently Assigned ({campaignPhoneNumbers[selectedCampaign.campaignId].length})</Label>
                 <div className="text-xs text-muted-foreground mb-1">Click X to remove a number from this campaign</div>
                 <div className="border rounded-md p-3 bg-muted/30 max-h-[25vh] overflow-y-auto space-y-1">
-                  {campaignPhoneNumbers[selectedCampaign.campaignId].map(num => (
-                    <div key={num.phoneNumber} className="text-sm font-mono py-1.5 px-2 flex items-center justify-between gap-2 rounded hover:bg-muted/50">
-                      <div className="flex items-center gap-2">
-                        <Phone className="h-3 w-3 text-muted-foreground" />
-                        <span>{num.phoneNumber}</span>
-                        {num.status && (
-                          <Badge variant="outline" className="text-xs">{num.status}</Badge>
+                  {campaignPhoneNumbers[selectedCampaign.campaignId].map(num => {
+                    const isPending = num.status?.includes('PENDING') || num.status?.includes('FAILED');
+                    return (
+                      <div key={num.phoneNumber} className="text-sm font-mono py-1.5 px-2 flex items-center justify-between gap-2 rounded hover:bg-muted/50">
+                        <div className="flex items-center gap-2 flex-1 min-w-0">
+                          <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
+                          <span className="truncate">{num.phoneNumber}</span>
+                          {num.status && (
+                            <Badge 
+                              variant="outline" 
+                              className={`text-xs shrink-0 ${
+                                num.status.includes('PENDING') ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
+                                num.status.includes('FAILED') ? 'bg-red-100 text-red-800 border-red-300' :
+                                num.status === 'ASSIGNED' ? 'bg-green-100 text-green-800 border-green-300' : ''
+                              }`}
+                            >
+                              {num.status.replace('_', ' ')}
+                            </Badge>
+                          )}
+                        </div>
+                        {isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin text-muted-foreground shrink-0" />
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive shrink-0"
+                            disabled={removeNumberMutation.isPending}
+                            data-testid={`btn-remove-number-${num.phoneNumber}`}
+                            onClick={() => {
+                              if (selectedCampaign) {
+                                removeNumberMutation.mutate({
+                                  campaignId: selectedCampaign.campaignId,
+                                  phoneNumber: num.phoneNumber
+                                });
+                              }
+                            }}
+                          >
+                            <XCircle className="h-4 w-4" />
+                          </Button>
                         )}
                       </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
-                        disabled={removeNumberMutation.isPending}
-                        data-testid={`btn-remove-number-${num.phoneNumber}`}
-                        onClick={() => {
-                          if (selectedCampaign) {
-                            removeNumberMutation.mutate({
-                              campaignId: selectedCampaign.campaignId,
-                              phoneNumber: num.phoneNumber
-                            });
-                          }
-                        }}
-                      >
-                        <XCircle className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             )}
