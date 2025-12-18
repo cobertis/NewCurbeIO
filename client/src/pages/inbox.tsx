@@ -611,94 +611,14 @@ export default function InboxPage() {
 
             {/* Message Input / Composer */}
             <div className={cn(
-              "p-4 border-t",
+              "border-t",
               isInternalNote && "bg-yellow-50"
             )}>
-              {/* Toolbar Icons */}
-              <div className="flex items-center gap-1 mb-2">
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-emoji">
-                        <Smile className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Emoji</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-attachment">
-                        <Paperclip className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Attach file</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-templates">
-                        <FileText className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Templates</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button 
-                        variant="ghost" 
-                        size="icon" 
-                        className="h-8 w-8" 
-                        onClick={insertVariable}
-                        data-testid="btn-variables"
-                      >
-                        <Braces className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Insert variable</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-calendar">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Schedule</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-preview">
-                        <Eye className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Preview</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-ai">
-                        <Wand2 className="h-4 w-4 text-muted-foreground" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>AI Assistant</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-
-              {/* Text Input */}
-              <div className="flex items-end gap-2">
+              {/* Text Input at top */}
+              <div className="p-4 pb-2">
                 <Textarea
                   ref={textareaRef}
-                  placeholder={isInternalNote ? "Add an internal note..." : "Type a message..."}
+                  placeholder={isInternalNote ? "Add an internal note..." : "Type your text message here"}
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyDown={(e) => {
@@ -708,43 +628,117 @@ export default function InboxPage() {
                     }
                   }}
                   className={cn(
-                    "min-h-[44px] max-h-32 resize-none",
-                    isInternalNote && "bg-yellow-50 border-yellow-300 focus-visible:ring-yellow-400"
+                    "min-h-[60px] max-h-32 resize-none border-0 shadow-none focus-visible:ring-0 p-0",
+                    isInternalNote && "bg-yellow-50"
                   )}
                   data-testid="input-message"
                 />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={!newMessage.trim() || sendMessageMutation.isPending}
-                  className={cn(
-                    isInternalNote 
-                      ? "bg-yellow-500 hover:bg-yellow-600 text-yellow-900" 
-                      : "bg-blue-600 hover:bg-blue-700"
-                  )}
-                  data-testid="btn-send-message"
-                >
-                  {isInternalNote ? (
-                    <>Add Note</>
-                  ) : (
-                    <>
-                      <Send className="h-4 w-4 mr-1" />
-                      Send
-                    </>
-                  )}
-                </Button>
               </div>
 
-              {/* Internal Note Toggle */}
-              <div className="flex items-center gap-2 mt-3 pt-3 border-t">
-                <Switch
-                  id="internal-note"
-                  checked={isInternalNote}
-                  onCheckedChange={setIsInternalNote}
-                  data-testid="switch-internal-note"
-                />
-                <Label htmlFor="internal-note" className="text-sm text-muted-foreground cursor-pointer">
-                  Internal note (only visible to your team)
-                </Label>
+              {/* Bottom toolbar row: icons | internal note toggle | send button */}
+              <div className="px-4 pb-3 flex items-center justify-between">
+                {/* Left: Toolbar Icons */}
+                <div className="flex items-center gap-1">
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-emoji">
+                          <Smile className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Emoji</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-attachment">
+                          <Paperclip className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Attach file</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-templates">
+                          <FileText className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Templates</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className="h-8 w-8" 
+                          onClick={insertVariable}
+                          data-testid="btn-variables"
+                        >
+                          <Braces className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Insert variable</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-calendar">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Schedule</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-preview">
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>Preview</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                  <TooltipProvider>
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-ai">
+                          <Wand2 className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      </TooltipTrigger>
+                      <TooltipContent>AI Assistant</TooltipContent>
+                    </Tooltip>
+                  </TooltipProvider>
+                </div>
+
+                {/* Right: Internal Note Toggle + Send Button */}
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      id="internal-note"
+                      checked={isInternalNote}
+                      onCheckedChange={setIsInternalNote}
+                      data-testid="switch-internal-note"
+                    />
+                    <Label htmlFor="internal-note" className="text-sm text-muted-foreground cursor-pointer whitespace-nowrap">
+                      Internal note
+                    </Label>
+                  </div>
+                  <Button
+                    onClick={handleSendMessage}
+                    disabled={!newMessage.trim() || sendMessageMutation.isPending}
+                    className="bg-blue-600 hover:bg-blue-700"
+                    data-testid="btn-send-message"
+                  >
+                    Send
+                  </Button>
+                </div>
               </div>
             </div>
           </>
