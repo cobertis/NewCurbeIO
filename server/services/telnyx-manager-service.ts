@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { wallets, companies } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, sql } from "drizzle-orm";
 import { credentialProvider } from "./credential-provider";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
@@ -701,5 +701,68 @@ export async function updateVoiceProfileLimit(
   } catch (error) {
     console.error("[Telnyx] Error updating voice profile limit:", error);
     return { success: false, error: error instanceof Error ? error.message : "Failed to update limit" };
+  }
+}
+
+/**
+ * Repair messaging profile webhooks for all companies
+ * Updates webhook URLs to point to current dev/production domain
+ */
+export async function repairMessagingProfileWebhooks(): Promise<void> {
+  try {
+    const webhookBaseUrl = process.env.REPLIT_DEV_DOMAIN
+      ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+      : "https://api.curbe.io";
+    
+    const smsWebhookUrl = `${webhookBaseUrl}/webhooks/telnyx/messages`;
+    
+    // Get all companies with messaging profiles
+    const companiesWithProfiles = await db
+      .select({
+        companyId: wallets.companyId,
+        messagingProfileId: wallets.telnyxMessagingProfileId,
+        telnyxAccountId: wallets.telnyxAccountId,
+      })
+      .from(wallets)
+      .where(sql`${wallets.telnyxMessagingProfileId} IS NOT NULL`);
+    
+    const apiKey = await getTelnyxMasterApiKey();
+    
+    for (const company of companiesWithProfiles) {
+      if (!company.messagingProfileId) continue;
+      
+      try {
+        const headers: Record<string, string> = {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        };
+        
+        // Add managed account header if not master account
+        if (company.telnyxAccountId && company.telnyxAccountId !== "MASTER_ACCOUNT") {
+          headers["x-managed-account-id"] = company.telnyxAccountId;
+        }
+        
+        const response = await fetch(`${TELNYX_API_BASE}/messaging_profiles/${company.messagingProfileId}`, {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify({
+            webhook_url: smsWebhookUrl,
+          }),
+        });
+        
+        if (response.ok) {
+          console.log(`[Messaging Profile Repair] Updated webhook for company ${company.companyId} to ${smsWebhookUrl}`);
+        } else {
+          const errorText = await response.text();
+          console.error(`[Messaging Profile Repair] Failed for company ${company.companyId}: ${response.status} - ${errorText}`);
+        }
+      } catch (error) {
+        console.error(`[Messaging Profile Repair] Error for company ${company.companyId}:`, error);
+      }
+    }
+    
+    console.log(`[Messaging Profile Repair] Completed webhook repair for ${companiesWithProfiles.length} companies`);
+  } catch (error) {
+    console.error("[Messaging Profile Repair] Error:", error);
   }
 }

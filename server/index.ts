@@ -321,4 +321,11 @@ app.use((req, res, next) => {
       }).catch((err) => console.error(`[SRTP Repair] Error loading db:`, err));
     }).catch((err) => console.error(`[SRTP Repair] Error loading service:`, err));
   });
+  
+  // Repair Messaging Profile webhooks on startup (SMS/MMS inbound delivery)
+  import("./services/telnyx-manager-service").then(({ repairMessagingProfileWebhooks }) => {
+    repairMessagingProfileWebhooks().catch(err => 
+      console.error("[Messaging Profile Repair] Error:", err)
+    );
+  }).catch(err => console.error("[Messaging Profile Repair] Import error:", err));
 })();
