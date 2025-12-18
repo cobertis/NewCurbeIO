@@ -1314,235 +1314,310 @@ export function ComplianceTab() {
     );
   }
 
+  // Calculate compliance status
+  const hasBrand = brands.some(b => b.status === "OK" || b.identityStatus === "VERIFIED");
+  const hasProfile = messagingProfile?.exists;
+  const hasCampaign = campaignsData?.campaigns && campaignsData.campaigns.length > 0;
+  const hasTollFree = false; // Would need toll-free verification data
+
   return (
     <div className="p-6 space-y-6">
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-t-xl">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Registered Brands</h3>
-            <p className="text-sm text-slate-500 mt-1">Your 10DLC brands registered with The Campaign Registry</p>
-          </div>
-          <Button data-testid="btn-register-brand" onClick={() => setShowBrandWizard(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Register Brand
-          </Button>
-        </div>
-
-        {/* Brand Registration Fee Notice */}
-        <div className="mx-6 mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-blue-800 dark:text-blue-200">
-            Registration Fee: $4.00. This is a non-refundable fee charged by The Campaign Registry (TCR).
-          </p>
-        </div>
-
-        {isLoading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
-          </div>
-        ) : brands.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center">
-            <Building2 className="h-12 w-12 text-slate-300 mb-4" />
-            <h4 className="text-lg font-medium text-slate-700 dark:text-slate-300">No brands registered</h4>
-            <p className="text-sm text-slate-500 mt-1 max-w-md">
-              Register a 10DLC brand to enable SMS messaging in the United States. This is required for A2P compliance.
-            </p>
-            <Button className="mt-4" onClick={() => setShowBrandWizard(true)} data-testid="btn-register-first-brand">
-              <Plus className="h-4 w-4 mr-2" />
-              Register Your First Brand
-            </Button>
-          </div>
-        ) : (
-          <div className="divide-y divide-slate-100 dark:divide-slate-800">
-            {brands.map((brand) => (
-              <div key={brand.id} className="p-6 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-4">
-                    <div className="w-10 h-10 rounded-full bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center">
-                      <Building2 className="h-5 w-5 text-indigo-600" />
-                    </div>
-                    <div>
-                      <h4 className="font-semibold text-slate-900 dark:text-white">{brand.displayName}</h4>
-                      <p className="text-sm text-slate-500 mt-0.5">{brand.companyName || brand.email}</p>
-                      <div className="flex items-center gap-3 mt-2">
-                        <span className="text-xs text-slate-400">
-                          {ENTITY_TYPES.find(e => e.value === brand.entityType)?.label}
-                        </span>
-                        <span className="text-xs text-slate-300">•</span>
-                        <span className="text-xs text-slate-400">
-                          {VERTICALS.find(v => v.value === brand.vertical)?.label}
-                        </span>
-                      </div>
-                      {brand.brandId && (
-                        <p className="text-xs text-slate-400 mt-1 font-mono">Brand ID: {brand.brandId}</p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex flex-col items-end gap-2">
-                    {getStatusBadge(brand.status)}
-                    {brand.identityStatus && brand.identityStatus !== brand.status && (
-                      <span className="text-xs text-slate-500">Identity: {brand.identityStatus}</span>
-                    )}
-                  </div>
-                </div>
+      {/* Compliance Progress Overview */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 p-6">
+        <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Compliance Progress</h2>
+        <div className="grid grid-cols-4 gap-4">
+          <div className={`p-4 rounded-lg border-2 ${hasBrand ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50'}`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${hasBrand ? 'bg-green-500 text-white' : 'bg-slate-300 dark:bg-slate-600 text-slate-600 dark:text-slate-300'}`}>
+                {hasBrand ? <CheckCircle2 className="h-4 w-4" /> : '1'}
               </div>
-            ))}
+              <div>
+                <p className={`text-sm font-medium ${hasBrand ? 'text-green-700 dark:text-green-400' : 'text-slate-600 dark:text-slate-400'}`}>Brand</p>
+                <p className="text-xs text-slate-500">{hasBrand ? 'Verified' : 'Required'}</p>
+              </div>
+            </div>
           </div>
-        )}
+          <div className={`p-4 rounded-lg border-2 ${hasProfile ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50'}`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${hasProfile ? 'bg-green-500 text-white' : 'bg-slate-300 dark:bg-slate-600 text-slate-600 dark:text-slate-300'}`}>
+                {hasProfile ? <CheckCircle2 className="h-4 w-4" /> : '2'}
+              </div>
+              <div>
+                <p className={`text-sm font-medium ${hasProfile ? 'text-green-700 dark:text-green-400' : 'text-slate-600 dark:text-slate-400'}`}>Profile</p>
+                <p className="text-xs text-slate-500">{hasProfile ? 'Active' : 'Required'}</p>
+              </div>
+            </div>
+          </div>
+          <div className={`p-4 rounded-lg border-2 ${hasCampaign ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50'}`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${hasCampaign ? 'bg-green-500 text-white' : 'bg-slate-300 dark:bg-slate-600 text-slate-600 dark:text-slate-300'}`}>
+                {hasCampaign ? <CheckCircle2 className="h-4 w-4" /> : '3'}
+              </div>
+              <div>
+                <p className={`text-sm font-medium ${hasCampaign ? 'text-green-700 dark:text-green-400' : 'text-slate-600 dark:text-slate-400'}`}>Campaign</p>
+                <p className="text-xs text-slate-500">{hasCampaign ? 'Registered' : 'Optional'}</p>
+              </div>
+            </div>
+          </div>
+          <div className={`p-4 rounded-lg border-2 ${hasTollFree ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50'}`}>
+            <div className="flex items-center gap-3">
+              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${hasTollFree ? 'bg-green-500 text-white' : 'bg-slate-300 dark:bg-slate-600 text-slate-600 dark:text-slate-300'}`}>
+                {hasTollFree ? <CheckCircle2 className="h-4 w-4" /> : '4'}
+              </div>
+              <div>
+                <p className={`text-sm font-medium ${hasTollFree ? 'text-green-700 dark:text-green-400' : 'text-slate-600 dark:text-slate-400'}`}>Toll-Free</p>
+                <p className="text-xs text-slate-500">{hasTollFree ? 'Verified' : 'Optional'}</p>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-t-xl">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Messaging Profile</h3>
-            <p className="text-sm text-slate-500 mt-1">Required for sending SMS/MMS messages through your phone numbers</p>
-          </div>
-          {!isLoadingProfile && !messagingProfile?.exists && (
-            <Button 
-              onClick={() => createProfileMutation.mutate()}
-              disabled={createProfileMutation.isPending}
-              data-testid="btn-create-messaging-profile"
-            >
-              {createProfileMutation.isPending ? (
-                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>
-              ) : (
-                <><Plus className="h-4 w-4 mr-2" />Create Profile</>
-              )}
-            </Button>
-          )}
-        </div>
-
-        <div className="p-6">
-          {isLoadingProfile ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-            </div>
-          ) : messagingProfile?.exists ? (
-            <div className="flex items-start justify-between">
-              <div className="flex items-start gap-4">
-                <div className="w-10 h-10 rounded-full bg-green-50 dark:bg-green-900/30 flex items-center justify-center">
-                  <MessageSquare className="h-5 w-5 text-green-600" />
-                </div>
+      {/* Step 1: Brand Registration */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+        <div className="flex">
+          <div className="w-1.5 bg-indigo-500 flex-shrink-0"></div>
+          <div className="flex-1">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+              <div className="flex items-center gap-3">
+                <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-xs font-bold text-indigo-600 dark:text-indigo-400">1</div>
                 <div>
-                  <h4 className="font-semibold text-slate-900 dark:text-white">
-                    {messagingProfile.profile?.name || "SMS Profile"}
-                  </h4>
-                  <p className="text-xs text-slate-400 mt-1 font-mono">
-                    Profile ID: {messagingProfile.profile?.id}
-                  </p>
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">Brand Registration</h3>
+                  <p className="text-xs text-slate-500">10DLC brand for The Campaign Registry ($4 fee)</p>
                 </div>
               </div>
-              <Badge className="bg-green-100 text-green-800 border-green-200">
-                <CheckCircle2 className="h-3 w-3 mr-1" />Active
-              </Badge>
+              <Button size="sm" data-testid="btn-register-brand" onClick={() => setShowBrandWizard(true)}>
+                <Plus className="h-4 w-4 mr-2" />
+                Register Brand
+              </Button>
             </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <MessageSquare className="h-12 w-12 text-slate-300 mb-4" />
-              <h4 className="text-lg font-medium text-slate-700 dark:text-slate-300">No messaging profile</h4>
-              <p className="text-sm text-slate-500 mt-1 max-w-md">
-                Create a messaging profile to enable SMS/MMS sending through your phone numbers.
-              </p>
-            </div>
-          )}
+            {isLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+              </div>
+            ) : brands.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-center px-6">
+                <Building2 className="h-10 w-10 text-slate-300 mb-3" />
+                <p className="text-sm text-slate-500 max-w-md">No brands registered. Register a brand to enable A2P SMS messaging.</p>
+              </div>
+            ) : (
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {brands.map((brand) => (
+                  <div key={brand.id} className="p-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <Building2 className="h-4 w-4 text-indigo-500" />
+                        <div>
+                          <h4 className="font-medium text-sm text-slate-900 dark:text-white">{brand.displayName}</h4>
+                          <p className="text-xs text-slate-400 font-mono">ID: {brand.brandId || 'Pending'}</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {getStatusBadge(brand.status)}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      {/* 10DLC Campaigns Section */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-t-xl">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">10DLC Campaigns</h3>
-            <p className="text-sm text-slate-500 mt-1">Register messaging campaigns to enable A2P SMS on your phone numbers</p>
-          </div>
-          {brands.some(b => b.status === "OK" || b.identityStatus === "VERIFIED") && (
-            <Button size="sm" data-testid="btn-open-create-campaign" onClick={() => setShowCampaignWizard(true)}>
-              <Plus className="h-4 w-4 mr-2" />Create Campaign
-            </Button>
-          )}
-        </div>
-
-        {/* Campaign Fee Notice */}
-        <div className="mx-6 mt-6 p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg flex items-start gap-3">
-          <AlertCircle className="h-5 w-5 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
-          <p className="text-sm text-blue-800 dark:text-blue-200">
-            Please note that campaigns are charged a $15 review fee by the carriers each time they are submitted for carrier compliance review. This includes resubmissions following carrier rejections.
-          </p>
-        </div>
-
-        <div className="p-6">
-          {isLoadingCampaigns ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+      {/* Step 2: Messaging Profile */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+        <div className="flex">
+          <div className="w-1.5 bg-emerald-500 flex-shrink-0"></div>
+          <div className="flex-1">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+              <div className="flex items-center gap-3">
+                <div className="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/50 flex items-center justify-center text-xs font-bold text-emerald-600 dark:text-emerald-400">2</div>
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">Messaging Profile</h3>
+                  <p className="text-xs text-slate-500">Required for sending SMS/MMS messages</p>
+                </div>
+              </div>
+              {!isLoadingProfile && !messagingProfile?.exists && (
+                <Button 
+                  size="sm"
+                  onClick={() => createProfileMutation.mutate()}
+                  disabled={createProfileMutation.isPending}
+                  data-testid="btn-create-messaging-profile"
+                >
+                  {createProfileMutation.isPending ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Creating...</>
+                  ) : (
+                    <><Plus className="h-4 w-4 mr-2" />Create Profile</>
+                  )}
+                </Button>
+              )}
             </div>
-          ) : campaignsData?.campaigns && campaignsData.campaigns.length > 0 ? (
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {campaignsData.campaigns.map((campaign) => {
-                const status = campaign.status?.toUpperCase();
-                let statusBadge;
-                if (status === "ACTIVE" || status === "APPROVED") {
-                  statusBadge = <Badge className="bg-green-100 text-green-800 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" />Active</Badge>;
-                } else if (status === "PENDING" || status === "IN_REVIEW") {
-                  statusBadge = <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
-                } else if (status === "REJECTED" || status === "FAILED") {
-                  statusBadge = <Badge className="bg-red-100 text-red-800 border-red-200"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
-                } else {
-                  statusBadge = <Badge variant="outline">{campaign.status || "Unknown"}</Badge>;
-                }
+            {isLoadingProfile ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+              </div>
+            ) : messagingProfile?.exists ? (
+              <div className="p-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <MessageSquare className="h-4 w-4 text-emerald-500" />
+                  <div>
+                    <h4 className="font-medium text-sm text-slate-900 dark:text-white">{messagingProfile.profile?.name || "SMS Profile"}</h4>
+                    <p className="text-xs text-slate-400 font-mono">ID: {messagingProfile.profile?.id}</p>
+                  </div>
+                </div>
+                <Badge className="bg-green-100 text-green-800 border-green-200">
+                  <CheckCircle2 className="h-3 w-3 mr-1" />Active
+                </Badge>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center px-6">
+                <MessageSquare className="h-10 w-10 text-slate-300 mb-3" />
+                <p className="text-sm text-slate-500">No messaging profile. Create one to enable SMS/MMS.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
 
-                return (
-                  <div key={campaign.campaignId} className="py-4 first:pt-0 last:pb-0">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 rounded-full bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center">
-                          <MessageSquare className="h-5 w-5 text-blue-600" />
+      {/* Step 3: 10DLC Campaigns */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+        <div className="flex">
+          <div className="w-1.5 bg-blue-500 flex-shrink-0"></div>
+          <div className="flex-1">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+              <div className="flex items-center gap-3">
+                <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-xs font-bold text-blue-600 dark:text-blue-400">3</div>
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">10DLC Campaign</h3>
+                  <p className="text-xs text-slate-500">A2P messaging registration ($15 carrier fee)</p>
+                </div>
+              </div>
+              {brands.some(b => b.status === "OK" || b.identityStatus === "VERIFIED") && (
+                <Button size="sm" data-testid="btn-open-create-campaign" onClick={() => setShowCampaignWizard(true)}>
+                  <Plus className="h-4 w-4 mr-2" />Create Campaign
+                </Button>
+              )}
+            </div>
+            {isLoadingCampaigns ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+              </div>
+            ) : campaignsData?.campaigns && campaignsData.campaigns.length > 0 ? (
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {campaignsData.campaigns.map((campaign) => {
+                  const status = campaign.status?.toUpperCase();
+                  let statusBadge;
+                  if (status === "ACTIVE" || status === "APPROVED") {
+                    statusBadge = <Badge className="bg-green-100 text-green-800 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" />Active</Badge>;
+                  } else if (status === "PENDING" || status === "IN_REVIEW") {
+                    statusBadge = <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+                  } else if (status === "REJECTED" || status === "FAILED") {
+                    statusBadge = <Badge className="bg-red-100 text-red-800 border-red-200"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+                  } else {
+                    statusBadge = <Badge variant="outline">{campaign.status || "Unknown"}</Badge>;
+                  }
+                  return (
+                    <div key={campaign.campaignId} className="p-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <MessageSquare className="h-4 w-4 text-blue-500" />
+                          <div>
+                            <h4 className="font-medium text-sm text-slate-900 dark:text-white">
+                              {USE_CASES.find(uc => uc.value === campaign.usecase)?.label || campaign.usecase}
+                            </h4>
+                            <p className="text-xs text-slate-400 font-mono">ID: {campaign.campaignId}</p>
+                          </div>
                         </div>
-                        <div>
-                          <h4 className="font-semibold text-slate-900 dark:text-white">
-                            {USE_CASES.find(uc => uc.value === campaign.usecase)?.label || campaign.usecase}
-                          </h4>
-                          <p className="text-sm text-slate-500 mt-0.5">{campaign.description}</p>
-                          <p className="text-xs text-slate-400 mt-1 font-mono">Campaign ID: {campaign.campaignId}</p>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
                         {statusBadge}
                       </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <MessageSquare className="h-12 w-12 text-slate-300 mb-4" />
-              <h4 className="text-lg font-medium text-slate-700 dark:text-slate-300">No 10DLC campaigns</h4>
-              <p className="text-sm text-slate-500 mt-1 max-w-md">
-                {brands.some(b => b.status === "OK" || b.identityStatus === "VERIFIED") 
-                  ? "Create a campaign to start sending A2P messages through your phone numbers."
-                  : "You need a verified brand before you can create a campaign."}
-              </p>
-            </div>
-          )}
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center px-6">
+                <MessageSquare className="h-10 w-10 text-slate-300 mb-3" />
+                <p className="text-sm text-slate-500">
+                  {brands.some(b => b.status === "OK" || b.identityStatus === "VERIFIED") 
+                    ? "No campaigns. Create one to enable A2P messaging."
+                    : "Register a verified brand first."}
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800">
-        <div className="p-6 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50 rounded-t-xl">
-          <div>
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-white">Toll-Free Verification</h3>
-            <p className="text-sm text-slate-500 mt-1">Verify toll-free numbers (800, 888, 877, etc.) for SMS/MMS messaging</p>
-          </div>
-          <Sheet open={showTollFreeForm} onOpenChange={setShowTollFreeForm}>
-            <SheetTrigger asChild>
+      {/* Step 4: Toll-Free Verification */}
+      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+        <div className="flex">
+          <div className="w-1.5 bg-amber-500 flex-shrink-0"></div>
+          <div className="flex-1">
+            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
+              <div className="flex items-center gap-3">
+                <div className="w-7 h-7 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-xs font-bold text-amber-600 dark:text-amber-400">4</div>
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">Toll-Free Verification</h3>
+                  <p className="text-xs text-slate-500">For 800, 888, 877, etc. numbers</p>
+                </div>
+              </div>
               <Button 
+                size="sm"
                 data-testid="btn-submit-toll-free-verification"
                 onClick={() => setShowTollFreeForm(true)}
               >
                 <Plus className="h-4 w-4 mr-2" />Submit Verification
               </Button>
-            </SheetTrigger>
-            <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
+            </div>
+            {isLoadingTollFree ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
+              </div>
+            ) : tollFreeData?.verifications && tollFreeData.verifications.length > 0 ? (
+              <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                {tollFreeData.verifications.map((verification) => {
+                  const status = verification.verificationStatus?.toUpperCase();
+                  let statusBadge;
+                  if (status === "VERIFIED") {
+                    statusBadge = <Badge className="bg-green-100 text-green-800 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" />Verified</Badge>;
+                  } else if (["PENDING", "IN PROGRESS", "WAITING FOR VENDOR", "WAITING FOR TELNYX"].includes(status)) {
+                    statusBadge = <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200"><Clock className="h-3 w-3 mr-1" />{verification.verificationStatus}</Badge>;
+                  } else if (status === "WAITING FOR CUSTOMER") {
+                    statusBadge = <Badge className="bg-orange-100 text-orange-800 border-orange-200"><AlertTriangle className="h-3 w-3 mr-1" />Action Required</Badge>;
+                  } else if (status === "REJECTED") {
+                    statusBadge = <Badge className="bg-red-100 text-red-800 border-red-200"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+                  } else {
+                    statusBadge = <Badge variant="outline">{verification.verificationStatus || "Unknown"}</Badge>;
+                  }
+                  return (
+                    <div key={verification.id} className="p-4 hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <Phone className="h-4 w-4 text-amber-500" />
+                          <div>
+                            <h4 className="font-medium text-sm text-slate-900 dark:text-white">{verification.businessName}</h4>
+                            <p className="text-xs text-slate-400">{verification.phoneNumbers?.length || 0} number(s)</p>
+                          </div>
+                        </div>
+                        {statusBadge}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="flex flex-col items-center justify-center py-8 text-center px-6">
+                <Phone className="h-10 w-10 text-slate-300 mb-3" />
+                <p className="text-sm text-slate-500">No toll-free verifications. Submit one to enable messaging.</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Toll-Free Verification Sheet */}
+      <Sheet open={showTollFreeForm} onOpenChange={setShowTollFreeForm}>
+        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto">
               <SheetHeader>
                 <SheetTitle>Submit Toll-Free Verification</SheetTitle>
                 <SheetDescription>
@@ -1889,67 +1964,7 @@ export function ComplianceTab() {
                 </div>
               </ScrollArea>
             </SheetContent>
-          </Sheet>
-        </div>
-
-        <div className="p-6">
-          {isLoadingTollFree ? (
-            <div className="flex items-center justify-center py-8">
-              <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-            </div>
-          ) : tollFreeData?.verifications && tollFreeData.verifications.length > 0 ? (
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {tollFreeData.verifications.map((verification) => {
-                const status = verification.verificationStatus?.toUpperCase();
-                let statusBadge;
-                if (status === "VERIFIED") {
-                  statusBadge = <Badge className="bg-green-100 text-green-800 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" />Verified</Badge>;
-                } else if (["PENDING", "IN PROGRESS", "WAITING FOR VENDOR", "WAITING FOR TELNYX"].includes(status)) {
-                  statusBadge = <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200"><Clock className="h-3 w-3 mr-1" />{verification.verificationStatus}</Badge>;
-                } else if (status === "WAITING FOR CUSTOMER") {
-                  statusBadge = <Badge className="bg-orange-100 text-orange-800 border-orange-200"><AlertTriangle className="h-3 w-3 mr-1" />Waiting For Customer</Badge>;
-                } else if (status === "REJECTED") {
-                  statusBadge = <Badge className="bg-red-100 text-red-800 border-red-200"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
-                } else {
-                  statusBadge = <Badge variant="outline">{verification.verificationStatus || "Unknown"}</Badge>;
-                }
-
-                return (
-                  <div key={verification.id} className="py-4 first:pt-0 last:pb-0">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-4">
-                        <div className="w-10 h-10 rounded-full bg-purple-50 dark:bg-purple-900/30 flex items-center justify-center">
-                          <Phone className="h-5 w-5 text-purple-600" />
-                        </div>
-                        <div>
-                          <h4 className="font-semibold text-slate-900 dark:text-white">{verification.businessName}</h4>
-                          <div className="flex items-center gap-3 mt-1">
-                            <span className="text-xs text-slate-500">
-                              {verification.phoneNumbers?.length || 0} phone number{(verification.phoneNumbers?.length || 0) !== 1 ? 's' : ''}
-                            </span>
-                          </div>
-                          <p className="text-xs text-slate-400 mt-1 font-mono">ID: {verification.id}</p>
-                        </div>
-                      </div>
-                      <div className="flex flex-col items-end gap-2">
-                        {statusBadge}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center py-8 text-center">
-              <Phone className="h-12 w-12 text-slate-300 mb-4" />
-              <h4 className="text-lg font-medium text-slate-700 dark:text-slate-300">No toll-free verifications</h4>
-              <p className="text-sm text-slate-500 mt-1 max-w-md">
-                Submit a verification request to enable messaging on your toll-free numbers.
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
+      </Sheet>
 
       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6">
         <h4 className="font-semibold text-blue-900 dark:text-blue-100 flex items-center gap-2">
