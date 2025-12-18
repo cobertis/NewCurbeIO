@@ -24,11 +24,20 @@ import {
   ChevronRight,
   X,
   CheckCheck,
-  Clock
+  Clock,
+  Smile,
+  FileText,
+  Eye,
+  Wand2,
+  Volume2,
+  CheckSquare,
+  Braces
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { format, formatDistanceToNow, isToday, isYesterday } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { User as UserType, UnifiedContact } from "@shared/schema";
@@ -45,6 +54,12 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface TelnyxConversation {
   id: string;
@@ -66,6 +81,10 @@ interface TelnyxMessage {
   createdAt: string;
   sentAt: string | null;
   deliveredAt: string | null;
+  messageType?: "incoming" | "outgoing" | "internal_note";
+  channel?: string;
+  contentType?: string;
+  isInternalNote?: boolean;
 }
 
 type MobileView = "threads" | "messages" | "details";
@@ -79,7 +98,9 @@ export default function InboxPage() {
   const [showNewConversation, setShowNewConversation] = useState(false);
   const [newConversationPhone, setNewConversationPhone] = useState("");
   const [selectedFromNumber, setSelectedFromNumber] = useState<string>("");
+  const [isInternalNote, setIsInternalNote] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const userTimezone = user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -129,11 +150,12 @@ export default function InboxPage() {
   });
 
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ conversationId, text }: { conversationId: string; text: string }) => {
-      return apiRequest("POST", `/api/inbox/conversations/${conversationId}/messages`, { text });
+    mutationFn: async ({ conversationId, text, isInternalNote }: { conversationId: string; text: string; isInternalNote?: boolean }) => {
+      return apiRequest("POST", `/api/inbox/conversations/${conversationId}/messages`, { text, isInternalNote });
     },
     onSuccess: () => {
       setNewMessage("");
+      setIsInternalNote(false);
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
       queryClient.invalidateQueries({ 
         queryKey: [`/api/inbox/conversations/${selectedConversationId}/messages`] 
@@ -212,7 +234,8 @@ export default function InboxPage() {
     if (!newMessage.trim() || !selectedConversationId) return;
     sendMessageMutation.mutate({ 
       conversationId: selectedConversationId, 
-      text: newMessage.trim() 
+      text: newMessage.trim(),
+      isInternalNote: isInternalNote
     });
   };
 
@@ -230,6 +253,29 @@ export default function InboxPage() {
       fromNumber: selectedFromNumber,
       text: newMessage.trim(),
     });
+  };
+
+  const insertVariable = () => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+    
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = newMessage;
+    const variable = "{{first_name}}";
+    
+    const newText = text.substring(0, start) + variable + text.substring(end);
+    setNewMessage(newText);
+    
+    setTimeout(() => {
+      textarea.focus();
+      const newPosition = start + variable.length;
+      textarea.setSelectionRange(newPosition, newPosition);
+    }, 0);
+  };
+
+  const isMessageInternalNote = (message: TelnyxMessage) => {
+    return message.isInternalNote || message.messageType === "internal_note";
   };
 
   if (authLoading || !isAuthenticated || loadingConversations) {
@@ -360,15 +406,70 @@ export default function InboxPage() {
                   </p>
                 </div>
               </div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-1">
                 <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setMobileView("details")}
-                  data-testid="btn-show-details"
+                  variant="outline"
+                  size="sm"
+                  className="hidden sm:flex"
+                  data-testid="btn-solve"
                 >
-                  <User className="h-4 w-4" />
+                  Solve
                 </Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" data-testid="btn-checkbox">
+                        <CheckSquare className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Mark as done</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" data-testid="btn-email">
+                        <Mail className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Send email</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" data-testid="btn-audio">
+                        <Volume2 className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Audio</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" data-testid="btn-search-chat">
+                        <Search className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Search</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => setMobileView("details")}
+                        data-testid="btn-show-details"
+                      >
+                        <MoreVertical className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>More options</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
               </div>
             </div>
 
@@ -386,58 +487,159 @@ export default function InboxPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {messages.map((message) => (
-                    <div
-                      key={message.id}
-                      className={cn(
-                        "flex",
-                        message.direction === "outbound" ? "justify-end" : "justify-start"
-                      )}
-                    >
+                  {messages.map((message) => {
+                    const isNote = isMessageInternalNote(message);
+                    const isOutbound = message.direction === "outbound";
+                    
+                    return (
                       <div
+                        key={message.id}
                         className={cn(
-                          "max-w-[70%] rounded-2xl px-4 py-2",
-                          message.direction === "outbound"
-                            ? "bg-sky-500 text-white rounded-br-sm"
-                            : "bg-muted rounded-bl-sm"
+                          "flex",
+                          isOutbound || isNote ? "justify-end" : "justify-start"
                         )}
                       >
-                        <p className="text-sm whitespace-pre-wrap">{message.text}</p>
-                        <div className={cn(
-                          "flex items-center gap-1 mt-1",
-                          message.direction === "outbound" ? "justify-end" : "justify-start"
-                        )}>
-                          <span className={cn(
-                            "text-[10px]",
-                            message.direction === "outbound" ? "text-sky-100" : "text-muted-foreground"
-                          )}>
-                            {format(new Date(message.createdAt), "h:mm a")}
-                          </span>
-                          {message.direction === "outbound" && (
-                            <span className="text-sky-100">
-                              {message.status === "delivered" ? (
-                                <CheckCheck className="h-3 w-3" />
-                              ) : message.status === "sent" ? (
-                                <CheckCheck className="h-3 w-3 opacity-50" />
-                              ) : (
-                                <Clock className="h-3 w-3" />
-                              )}
-                            </span>
+                        <div
+                          className={cn(
+                            "max-w-[70%] rounded-2xl px-4 py-2",
+                            isNote
+                              ? "bg-yellow-100 border border-yellow-300 text-yellow-800 rounded-br-sm"
+                              : isOutbound
+                                ? "bg-blue-600 text-white rounded-br-sm"
+                                : "bg-muted rounded-bl-sm"
                           )}
+                        >
+                          {isNote && (
+                            <div className="flex items-center gap-1 mb-1">
+                              <span className="text-[10px] font-medium text-yellow-700">(internal note)</span>
+                            </div>
+                          )}
+                          <p className="text-sm whitespace-pre-wrap">{message.text}</p>
+                          <div className={cn(
+                            "flex items-center gap-1 mt-1",
+                            isOutbound || isNote ? "justify-end" : "justify-start"
+                          )}>
+                            <span className={cn(
+                              "text-[10px]",
+                              isNote 
+                                ? "text-yellow-600"
+                                : isOutbound 
+                                  ? "text-blue-100" 
+                                  : "text-muted-foreground"
+                            )}>
+                              {format(new Date(message.createdAt), "h:mm a")}
+                            </span>
+                            {isOutbound && !isNote && (
+                              <span className="text-blue-100">
+                                {message.status === "delivered" ? (
+                                  <CheckCheck className="h-3 w-3" />
+                                ) : message.status === "sent" ? (
+                                  <CheckCheck className="h-3 w-3 opacity-50" />
+                                ) : (
+                                  <Clock className="h-3 w-3" />
+                                )}
+                              </span>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                   <div ref={messagesEndRef} />
                 </div>
               )}
             </ScrollArea>
 
-            {/* Message Input */}
-            <div className="p-4 border-t">
+            {/* Message Input / Composer */}
+            <div className={cn(
+              "p-4 border-t",
+              isInternalNote && "bg-yellow-50"
+            )}>
+              {/* Toolbar Icons */}
+              <div className="flex items-center gap-1 mb-2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-emoji">
+                        <Smile className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Emoji</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-attachment">
+                        <Paperclip className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Attach file</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-templates">
+                        <FileText className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Templates</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8" 
+                        onClick={insertVariable}
+                        data-testid="btn-variables"
+                      >
+                        <Braces className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Insert variable</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-calendar">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Schedule</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-preview">
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Preview</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-ai">
+                        <Wand2 className="h-4 w-4 text-muted-foreground" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>AI Assistant</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+
+              {/* Text Input */}
               <div className="flex items-end gap-2">
                 <Textarea
-                  placeholder="Type a message..."
+                  ref={textareaRef}
+                  placeholder={isInternalNote ? "Add an internal note..." : "Type a message..."}
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyDown={(e) => {
@@ -446,17 +648,44 @@ export default function InboxPage() {
                       handleSendMessage();
                     }
                   }}
-                  className="min-h-[44px] max-h-32 resize-none"
+                  className={cn(
+                    "min-h-[44px] max-h-32 resize-none",
+                    isInternalNote && "bg-yellow-50 border-yellow-300 focus-visible:ring-yellow-400"
+                  )}
                   data-testid="input-message"
                 />
                 <Button
-                  size="icon"
                   onClick={handleSendMessage}
                   disabled={!newMessage.trim() || sendMessageMutation.isPending}
+                  className={cn(
+                    isInternalNote 
+                      ? "bg-yellow-500 hover:bg-yellow-600 text-yellow-900" 
+                      : "bg-blue-600 hover:bg-blue-700"
+                  )}
                   data-testid="btn-send-message"
                 >
-                  <Send className="h-4 w-4" />
+                  {isInternalNote ? (
+                    <>Add Note</>
+                  ) : (
+                    <>
+                      <Send className="h-4 w-4 mr-1" />
+                      Send
+                    </>
+                  )}
                 </Button>
+              </div>
+
+              {/* Internal Note Toggle */}
+              <div className="flex items-center gap-2 mt-3 pt-3 border-t">
+                <Switch
+                  id="internal-note"
+                  checked={isInternalNote}
+                  onCheckedChange={setIsInternalNote}
+                  data-testid="switch-internal-note"
+                />
+                <Label htmlFor="internal-note" className="text-sm text-muted-foreground cursor-pointer">
+                  Internal note (only visible to your team)
+                </Label>
               </div>
             </div>
           </>
@@ -583,7 +812,7 @@ export default function InboxPage() {
                 placeholder="+1 (555) 123-4567"
                 value={newConversationPhone}
                 onChange={(e) => setNewConversationPhone(e.target.value)}
-                data-testid="input-new-conversation-phone"
+                data-testid="input-to-phone"
               />
             </div>
             <div className="space-y-2">
@@ -592,15 +821,15 @@ export default function InboxPage() {
                 placeholder="Type your message..."
                 value={newMessage}
                 onChange={(e) => setNewMessage(e.target.value)}
-                rows={4}
-                data-testid="input-new-conversation-message"
+                className="min-h-[100px]"
+                data-testid="input-new-message"
               />
             </div>
             <Button
               className="w-full"
               onClick={handleCreateConversation}
               disabled={createConversationMutation.isPending}
-              data-testid="btn-create-conversation"
+              data-testid="btn-send-new-conversation"
             >
               {createConversationMutation.isPending ? "Sending..." : "Send Message"}
             </Button>
