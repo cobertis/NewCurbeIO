@@ -35135,11 +35135,100 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  return httpServer;
 
   // ============================================================
   // TELNYX SMS INBOX ROUTES
   // ============================================================
+
+  // POST /api/inbox/repair - Repair SMS inbox configuration (webhooks + number assignments)
+  app.post("/api/inbox/repair", async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const companyId = (req.user as any).companyId;
+    if (!companyId) {
+      return res.status(400).json({ message: "No company associated with user" });
+    }
+    try {
+      const results: any = {
+        webhookUpdate: null,
+        numberAssignment: null,
+        diagnostics: null,
+      };
+      
+      // Step 1: Get company messaging profile
+      const { getCompanyMessagingProfileId } = await import("./services/telnyx-manager-service");
+      const { getCompanyTelnyxAccountId } = await import("./services/wallet-service");
+      const { getTelnyxMasterApiKey, assignMessagingProfileToAllNumbers } = await import("./services/telnyx-numbers-service");
+      
+      const messagingProfileId = await getCompanyMessagingProfileId(companyId);
+      const managedAccountId = await getCompanyTelnyxAccountId(companyId);
+      
+      if (!messagingProfileId) {
+        return res.status(400).json({ 
+          message: "No messaging profile configured. Please set up Phone System first.",
+          diagnostics: { messagingProfileId: null, managedAccountId }
+        });
+      }
+      
+      results.diagnostics = {
+        messagingProfileId,
+        managedAccountId,
+        companyId,
+      };
+      
+      // Step 2: Update webhook URL on messaging profile
+      const webhookBaseUrl = process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : "https://api.curbe.io";
+      const smsWebhookUrl = `${webhookBaseUrl}/webhooks/telnyx/messages`;
+      
+      const apiKey = await getTelnyxMasterApiKey();
+      const headers: Record<string, string> = {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      };
+      
+      if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+        headers["x-managed-account-id"] = managedAccountId;
+      }
+      
+      console.log(`[Inbox Repair] Updating webhook for profile ${messagingProfileId} to ${smsWebhookUrl}`);
+      
+      const webhookResponse = await fetch(`https://api.telnyx.com/v2/messaging_profiles/${messagingProfileId}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({
+          webhook_url: smsWebhookUrl,
+          webhook_api_version: "2",
+        }),
+      });
+      
+      if (webhookResponse.ok) {
+        results.webhookUpdate = { success: true, url: smsWebhookUrl };
+        console.log(`[Inbox Repair] Webhook updated successfully`);
+      } else {
+        const errorText = await webhookResponse.text();
+        results.webhookUpdate = { success: false, error: errorText };
+        console.error(`[Inbox Repair] Webhook update failed: ${webhookResponse.status} - ${errorText}`);
+      }
+      
+      // Step 3: Assign messaging profile to all phone numbers
+      console.log(`[Inbox Repair] Assigning messaging profile to all numbers...`);
+      const assignResult = await assignMessagingProfileToAllNumbers(companyId);
+      results.numberAssignment = assignResult;
+      
+      console.log(`[Inbox Repair] Repair complete:`, JSON.stringify(results, null, 2));
+      
+      res.json({
+        message: "Inbox repair completed",
+        ...results,
+      });
+    } catch (error: any) {
+      console.error("[Inbox Repair] Error:", error);
+      res.status(500).json({ message: error.message || "Failed to repair inbox" });
+    }
+  });
 
   // GET /api/inbox/conversations - List all conversations for the company
   app.get("/api/inbox/conversations", async (req: Request, res: Response) => {
