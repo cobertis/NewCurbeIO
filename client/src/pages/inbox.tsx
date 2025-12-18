@@ -97,6 +97,7 @@ export default function InboxPage() {
 
   const { data: conversationsData, isLoading: loadingConversations } = useQuery<{ conversations: TelnyxConversation[] }>({
     queryKey: ["/api/inbox/conversations"],
+    enabled: !!userData?.user,
   });
   const conversations = conversationsData?.conversations || [];
 
