@@ -230,7 +230,7 @@ export default function InboxPage() {
   };
 
   if (loadingConversations) {
-    return <LoadingSpinner text="Loading conversations..." />;
+    return <LoadingSpinner message="Loading conversations..." />;
   }
 
   return (
@@ -373,7 +373,7 @@ export default function InboxPage() {
             <ScrollArea className="flex-1 p-4">
               {loadingMessages ? (
                 <div className="flex items-center justify-center py-8">
-                  <LoadingSpinner text="Loading messages..." fullScreen={false} />
+                  <LoadingSpinner message="Loading messages..." fullScreen={false} />
                 </div>
               ) : messages.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-12 text-center">
@@ -539,7 +539,7 @@ export default function InboxPage() {
                       <div className="flex items-center justify-between">
                         <span className="text-sm text-muted-foreground">Contact type</span>
                         <Badge variant="secondary">
-                          {matchedContact.source || "Lead"}
+                          {matchedContact.origin?.[0] || "Lead"}
                         </Badge>
                       </div>
                     </div>
