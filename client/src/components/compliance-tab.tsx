@@ -40,6 +40,7 @@ import {
   AlertTriangle,
   Building2,
   CheckCircle2,
+  ChevronRight,
   Clock,
   Loader2,
   MessageSquare,
@@ -1317,297 +1318,247 @@ export function ComplianceTab() {
   // Calculate compliance status
   const hasBrand = brands.some(b => b.status === "OK" || b.identityStatus === "VERIFIED");
   const hasCampaign = campaignsData?.campaigns && campaignsData.campaigns.length > 0;
-  const hasTollFree = false; // Would need toll-free verification data
+  const hasTollFree = tollFreeData?.verifications?.some((v: any) => v.verificationStatus === "VERIFIED") || false;
+
+  // Progress step component
+  const ProgressStep = ({ number, label, completed, current }: { number: number; label: string; completed: boolean; current?: boolean }) => (
+    <div className="flex items-center gap-2">
+      <div className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-semibold transition-all ${
+        completed 
+          ? 'bg-green-500 text-white' 
+          : current 
+            ? 'bg-primary text-white' 
+            : 'bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+      }`}>
+        {completed ? <CheckCircle2 className="h-3.5 w-3.5" /> : number}
+      </div>
+      <span className={`text-sm ${completed ? 'text-green-600 dark:text-green-400 font-medium' : 'text-slate-600 dark:text-slate-400'}`}>
+        {label}
+      </span>
+    </div>
+  );
 
   return (
-    <div className="p-6 space-y-6">
-      {/* Compliance Progress Overview */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 p-6">
-        <h2 className="text-lg font-semibold text-slate-900 dark:text-white mb-4">Compliance Progress</h2>
-        <div className="grid grid-cols-3 gap-4">
-          <div className={`p-4 rounded-lg border-2 ${hasBrand ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50'}`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${hasBrand ? 'bg-green-500 text-white' : 'bg-slate-300 dark:bg-slate-600 text-slate-600 dark:text-slate-300'}`}>
-                {hasBrand ? <CheckCircle2 className="h-4 w-4" /> : '1'}
-              </div>
-              <div>
-                <p className={`text-sm font-medium ${hasBrand ? 'text-green-700 dark:text-green-400' : 'text-slate-600 dark:text-slate-400'}`}>Brand</p>
-                <p className="text-xs text-slate-500">{hasBrand ? 'Verified' : 'Required'}</p>
-              </div>
-            </div>
+    <div className="p-6 space-y-4">
+      {/* Compact Progress Bar */}
+      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-6">
+            <ProgressStep number={1} label="Brand" completed={hasBrand} current={!hasBrand} />
+            <ChevronRight className="h-4 w-4 text-slate-300" />
+            <ProgressStep number={2} label="Campaign" completed={hasCampaign} current={hasBrand && !hasCampaign} />
+            <ChevronRight className="h-4 w-4 text-slate-300" />
+            <ProgressStep number={3} label="Toll-Free" completed={hasTollFree} current={hasCampaign && !hasTollFree} />
           </div>
-          <div className={`p-4 rounded-lg border-2 ${hasCampaign ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50'}`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${hasCampaign ? 'bg-green-500 text-white' : 'bg-slate-300 dark:bg-slate-600 text-slate-600 dark:text-slate-300'}`}>
-                {hasCampaign ? <CheckCircle2 className="h-4 w-4" /> : '2'}
-              </div>
-              <div>
-                <p className={`text-sm font-medium ${hasCampaign ? 'text-green-700 dark:text-green-400' : 'text-slate-600 dark:text-slate-400'}`}>Campaign</p>
-                <p className="text-xs text-slate-500">{hasCampaign ? 'Registered' : 'Optional'}</p>
-              </div>
-            </div>
-          </div>
-          <div className={`p-4 rounded-lg border-2 ${hasTollFree ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50'}`}>
-            <div className="flex items-center gap-3">
-              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold ${hasTollFree ? 'bg-green-500 text-white' : 'bg-slate-300 dark:bg-slate-600 text-slate-600 dark:text-slate-300'}`}>
-                {hasTollFree ? <CheckCircle2 className="h-4 w-4" /> : '3'}
-              </div>
-              <div>
-                <p className={`text-sm font-medium ${hasTollFree ? 'text-green-700 dark:text-green-400' : 'text-slate-600 dark:text-slate-400'}`}>Toll-Free</p>
-                <p className="text-xs text-slate-500">{hasTollFree ? 'Verified' : 'Optional'}</p>
-              </div>
-            </div>
+          <div className="text-xs text-slate-500">
+            {hasBrand && hasCampaign && hasTollFree 
+              ? <span className="text-green-600 dark:text-green-400 font-medium">Fully Compliant</span>
+              : hasBrand 
+                ? <span>Brand verified - ready for messaging</span>
+                : <span>Complete brand registration to start</span>
+            }
           </div>
         </div>
       </div>
 
-      {/* Step 1: Brand Registration */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
-        <div className="flex">
-          <div className="w-1.5 bg-indigo-500 flex-shrink-0"></div>
-          <div className="flex-1">
-            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-              <div className="flex items-center gap-3">
-                <div className="w-7 h-7 rounded-full bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center text-xs font-bold text-indigo-600 dark:text-indigo-400">1</div>
-                <div>
-                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">Brand Registration</h3>
-                  <p className="text-xs text-slate-500">10DLC brand for The Campaign Registry</p>
-                </div>
-              </div>
-              <Button size="sm" data-testid="btn-register-brand" onClick={() => setShowBrandWizard(true)}>
-                <Plus className="h-4 w-4 mr-2" />
-                Register Brand
+      {/* Brand Registration Section */}
+      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-indigo-100 dark:bg-indigo-900/50 flex items-center justify-center">
+              <Building2 className="h-4 w-4 text-indigo-600 dark:text-indigo-400" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Brand Registration</h3>
+              <p className="text-xs text-slate-500">10DLC identity for The Campaign Registry</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">$4 fee</span>
+            <Button size="sm" data-testid="btn-register-brand" onClick={() => setShowBrandWizard(true)}>
+              <Plus className="h-4 w-4 mr-1" />Register
+            </Button>
+          </div>
+        </div>
+        {isLoading ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+          </div>
+        ) : brands.length === 0 ? (
+          <div className="py-6 text-center">
+            <p className="text-sm text-slate-500">No brands registered. Register a brand to enable A2P SMS messaging.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Name</th>
+                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Campaigns</th>
+                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">TCR ID</th>
+                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Status</th>
+                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Registered</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {brands.map((brand) => {
+                  const campaignCount = campaignsData?.campaigns?.filter((c: any) => c.brandId === brand.id || c.brandId === brand.brandId)?.length || 0;
+                  const registrationDate = brand.createdAt ? new Date(brand.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : '-';
+                  return (
+                    <tr key={brand.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                      <td className="py-2.5 px-4">
+                        <span className="font-medium text-slate-900 dark:text-white">{brand.displayName}</span>
+                      </td>
+                      <td className="py-2.5 px-4 text-slate-600 dark:text-slate-400">{campaignCount}</td>
+                      <td className="py-2.5 px-4">
+                        <span className="text-xs text-slate-500 font-mono">{brand.tcrBrandId || '-'}</span>
+                      </td>
+                      <td className="py-2.5 px-4">{getStatusBadge(brand.status)}</td>
+                      <td className="py-2.5 px-4 text-xs text-slate-500">{registrationDate}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </div>
+
+      {/* Campaign Section */}
+      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+              <MessageSquare className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">10DLC Campaign</h3>
+              <p className="text-xs text-slate-500">A2P messaging use case registration</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded">$15 review fee</span>
+            {hasBrand && (
+              <Button size="sm" data-testid="btn-open-create-campaign" onClick={() => setShowCampaignWizard(true)}>
+                <Plus className="h-4 w-4 mr-1" />Create
               </Button>
-            </div>
-            <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800 flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-              <p className="text-xs text-blue-700 dark:text-blue-300">Registration Fee: <span className="font-semibold">$4.00</span> - Non-refundable fee charged by The Campaign Registry (TCR)</p>
-            </div>
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-              </div>
-            ) : brands.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-8 text-center px-6">
-                <Building2 className="h-10 w-10 text-slate-300 mb-3" />
-                <p className="text-sm text-slate-500 max-w-md">No brands registered. Register a brand to enable A2P SMS messaging.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Name</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Campaigns</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">ID</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">TCR ID</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Status</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Registration Date</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {brands.map((brand) => {
-                      const campaignCount = campaignsData?.campaigns?.filter((c: any) => c.brandId === brand.id || c.brandId === brand.brandId)?.length || 0;
-                      const registrationDate = brand.createdAt ? new Date(brand.createdAt).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
-                      return (
-                        <tr key={brand.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                          <td className="py-3 px-4">
-                            <span className="font-medium text-slate-900 dark:text-white">{brand.displayName}</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="text-slate-600 dark:text-slate-400">{campaignCount}</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="text-xs text-slate-500 font-mono">{brand.id}</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="text-xs text-slate-500 font-mono">{brand.tcrBrandId || '-'}</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            {getStatusBadge(brand.status)}
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="text-xs text-slate-500">{registrationDate}</span>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
             )}
           </div>
         </div>
+        {isLoadingCampaigns ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+          </div>
+        ) : campaignsData?.campaigns && campaignsData.campaigns.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">TCR ID</th>
+                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Brand</th>
+                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Use Case</th>
+                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {campaignsData.campaigns.map((campaign) => {
+                  const status = campaign.status?.toUpperCase();
+                  let statusBadge;
+                  if (status === "ACTIVE" || status === "APPROVED") {
+                    statusBadge = <Badge className="bg-green-100 text-green-800 border-green-200 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Active</Badge>;
+                  } else if (status === "PENDING" || status === "IN_REVIEW") {
+                    statusBadge = <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 text-xs"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+                  } else if (status === "REJECTED" || status === "FAILED") {
+                    statusBadge = <Badge className="bg-red-100 text-red-800 border-red-200 text-xs"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+                  } else {
+                    statusBadge = <Badge variant="outline" className="text-xs">{campaign.status || "Unknown"}</Badge>;
+                  }
+                  return (
+                    <tr key={campaign.campaignId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                      <td className="py-2.5 px-4">
+                        <span className="text-xs text-slate-500 font-mono">{campaign.tcrCampaignId || campaign.campaignId}</span>
+                      </td>
+                      <td className="py-2.5 px-4 font-medium text-slate-900 dark:text-white">{campaign.brandId || '-'}</td>
+                      <td className="py-2.5 px-4 text-slate-700 dark:text-slate-300">{USE_CASES.find(uc => uc.value === campaign.usecase)?.label || campaign.usecase}</td>
+                      <td className="py-2.5 px-4">{statusBadge}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="py-6 text-center">
+            <p className="text-sm text-slate-500">
+              {hasBrand ? "No campaigns. Create one to enable A2P messaging." : "Register a verified brand first."}
+            </p>
+          </div>
+        )}
       </div>
 
-      {/* Step 2: 10DLC Campaigns */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
-        <div className="flex">
-          <div className="w-1.5 bg-blue-500 flex-shrink-0"></div>
-          <div className="flex-1">
-            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-              <div className="flex items-center gap-3">
-                <div className="w-7 h-7 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-xs font-bold text-blue-600 dark:text-blue-400">2</div>
-                <div>
-                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">10DLC Campaign</h3>
-                  <p className="text-xs text-slate-500">A2P messaging registration for carrier compliance</p>
-                </div>
-              </div>
-              {brands.some(b => b.status === "OK" || b.identityStatus === "VERIFIED") && (
-                <Button size="sm" data-testid="btn-open-create-campaign" onClick={() => setShowCampaignWizard(true)}>
-                  <Plus className="h-4 w-4 mr-2" />Create Campaign
-                </Button>
-              )}
+      {/* Toll-Free Section */}
+      <div className="bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center">
+              <Phone className="h-4 w-4 text-amber-600 dark:text-amber-400" />
             </div>
-            <div className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 border-b border-blue-100 dark:border-blue-800 flex items-center gap-2">
-              <AlertCircle className="h-4 w-4 text-blue-600 dark:text-blue-400 flex-shrink-0" />
-              <p className="text-xs text-blue-700 dark:text-blue-300">Carrier Review Fee: <span className="font-semibold">$15.00</span> - Charged each time a campaign is submitted for compliance review (includes resubmissions)</p>
+            <div>
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-white">Toll-Free Verification</h3>
+              <p className="text-xs text-slate-500">For 800, 888, 877, 866, 855, 844, 833 numbers</p>
             </div>
-            {isLoadingCampaigns ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-              </div>
-            ) : campaignsData?.campaigns && campaignsData.campaigns.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Campaign ID</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">TCR ID</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Brand</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Use Case</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {campaignsData.campaigns.map((campaign) => {
-                      const status = campaign.status?.toUpperCase();
-                      let statusBadge;
-                      if (status === "ACTIVE" || status === "APPROVED") {
-                        statusBadge = <Badge className="bg-green-100 text-green-800 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" />Active</Badge>;
-                      } else if (status === "PENDING" || status === "IN_REVIEW") {
-                        statusBadge = <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
-                      } else if (status === "REJECTED" || status === "FAILED") {
-                        statusBadge = <Badge className="bg-red-100 text-red-800 border-red-200"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
-                      } else {
-                        statusBadge = <Badge variant="outline">{campaign.status || "Unknown"}</Badge>;
-                      }
-                      return (
-                        <tr key={campaign.campaignId} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                          <td className="py-3 px-4">
-                            <span className="text-xs text-slate-500 font-mono">{campaign.campaignId}</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="text-xs text-slate-500 font-mono">{campaign.tcrCampaignId || '-'}</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="font-medium text-slate-900 dark:text-white">{campaign.brandId || '-'}</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="text-slate-700 dark:text-slate-300">{USE_CASES.find(uc => uc.value === campaign.usecase)?.label || campaign.usecase}</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            {statusBadge}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center px-6">
-                <MessageSquare className="h-10 w-10 text-slate-300 mb-3" />
-                <p className="text-sm text-slate-500">
-                  {brands.some(b => b.status === "OK" || b.identityStatus === "VERIFIED") 
-                    ? "No campaigns. Create one to enable A2P messaging."
-                    : "Register a verified brand first."}
-                </p>
-              </div>
-            )}
           </div>
+          <Button size="sm" data-testid="btn-submit-toll-free-verification" onClick={() => setShowTollFreeForm(true)}>
+            <Plus className="h-4 w-4 mr-1" />Verify
+          </Button>
         </div>
-      </div>
-
-      {/* Step 3: Toll-Free Verification */}
-      <div className="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
-        <div className="flex">
-          <div className="w-1.5 bg-amber-500 flex-shrink-0"></div>
-          <div className="flex-1">
-            <div className="p-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50 dark:bg-slate-800/50">
-              <div className="flex items-center gap-3">
-                <div className="w-7 h-7 rounded-full bg-amber-100 dark:bg-amber-900/50 flex items-center justify-center text-xs font-bold text-amber-600 dark:text-amber-400">3</div>
-                <div>
-                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">Toll-Free Verification</h3>
-                  <p className="text-xs text-slate-500">For 800, 888, 877, etc. numbers</p>
-                </div>
-              </div>
-              <Button 
-                size="sm"
-                data-testid="btn-submit-toll-free-verification"
-                onClick={() => setShowTollFreeForm(true)}
-              >
-                <Plus className="h-4 w-4 mr-2" />Submit Verification
-              </Button>
-            </div>
-            {isLoadingTollFree ? (
-              <div className="flex items-center justify-center py-8">
-                <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
-              </div>
-            ) : tollFreeData?.verifications && tollFreeData.verifications.length > 0 ? (
-              <div className="overflow-x-auto">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Business Name</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Numbers</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Use Case</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {tollFreeData.verifications.map((verification) => {
-                      const status = verification.verificationStatus?.toUpperCase();
-                      let statusBadge;
-                      if (status === "VERIFIED") {
-                        statusBadge = <Badge className="bg-green-100 text-green-800 border-green-200"><CheckCircle2 className="h-3 w-3 mr-1" />Verified</Badge>;
-                      } else if (["PENDING", "IN PROGRESS", "WAITING FOR VENDOR", "WAITING FOR TELNYX"].includes(status)) {
-                        statusBadge = <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200"><Clock className="h-3 w-3 mr-1" />{verification.verificationStatus}</Badge>;
-                      } else if (status === "WAITING FOR CUSTOMER") {
-                        statusBadge = <Badge className="bg-orange-100 text-orange-800 border-orange-200"><AlertTriangle className="h-3 w-3 mr-1" />Action Required</Badge>;
-                      } else if (status === "REJECTED") {
-                        statusBadge = <Badge className="bg-red-100 text-red-800 border-red-200"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
-                      } else {
-                        statusBadge = <Badge variant="outline">{verification.verificationStatus || "Unknown"}</Badge>;
-                      }
-                      return (
-                        <tr key={verification.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                          <td className="py-3 px-4">
-                            <span className="font-medium text-slate-900 dark:text-white">{verification.businessName}</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="text-slate-600 dark:text-slate-400">{verification.phoneNumbers?.length || 0}</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            <span className="text-xs text-slate-500">{verification.useCase || '-'}</span>
-                          </td>
-                          <td className="py-3 px-4">
-                            {statusBadge}
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            ) : (
-              <div className="flex flex-col items-center justify-center py-8 text-center px-6">
-                <Phone className="h-10 w-10 text-slate-300 mb-3" />
-                <p className="text-sm text-slate-500">No toll-free verifications. Submit one to enable messaging.</p>
-              </div>
-            )}
+        {isLoadingTollFree ? (
+          <div className="flex items-center justify-center py-6">
+            <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
           </div>
-        </div>
+        ) : tollFreeData?.verifications && tollFreeData.verifications.length > 0 ? (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-slate-50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Business</th>
+                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Numbers</th>
+                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Use Case</th>
+                  <th className="text-left py-2.5 px-4 font-medium text-slate-600 dark:text-slate-400 text-xs uppercase tracking-wide">Status</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                {tollFreeData.verifications.map((verification) => {
+                  const status = verification.verificationStatus?.toUpperCase();
+                  let statusBadge;
+                  if (status === "VERIFIED") {
+                    statusBadge = <Badge className="bg-green-100 text-green-800 border-green-200 text-xs"><CheckCircle2 className="h-3 w-3 mr-1" />Verified</Badge>;
+                  } else if (["PENDING", "IN PROGRESS", "WAITING FOR VENDOR", "WAITING FOR TELNYX"].includes(status)) {
+                    statusBadge = <Badge className="bg-yellow-100 text-yellow-800 border-yellow-200 text-xs"><Clock className="h-3 w-3 mr-1" />{verification.verificationStatus}</Badge>;
+                  } else if (status === "WAITING FOR CUSTOMER") {
+                    statusBadge = <Badge className="bg-orange-100 text-orange-800 border-orange-200 text-xs"><AlertTriangle className="h-3 w-3 mr-1" />Action Required</Badge>;
+                  } else if (status === "REJECTED") {
+                    statusBadge = <Badge className="bg-red-100 text-red-800 border-red-200 text-xs"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+                  } else {
+                    statusBadge = <Badge variant="outline" className="text-xs">{verification.verificationStatus || "Unknown"}</Badge>;
+                  }
+                  return (
+                    <tr key={verification.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                      <td className="py-2.5 px-4 font-medium text-slate-900 dark:text-white">{verification.businessName}</td>
+                      <td className="py-2.5 px-4 text-slate-600 dark:text-slate-400">{verification.phoneNumbers?.length || 0}</td>
+                      <td className="py-2.5 px-4 text-slate-700 dark:text-slate-300">{verification.useCase || '-'}</td>
+                      <td className="py-2.5 px-4">{statusBadge}</td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="py-6 text-center">
+            <p className="text-sm text-slate-500">No toll-free verifications. Submit one to enable messaging on toll-free numbers.</p>
+          </div>
+        )}
       </div>
 
       {/* Toll-Free Verification Sheet */}
