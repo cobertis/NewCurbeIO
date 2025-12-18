@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { wallets, telnyxPhoneNumbers, telephonySettings, companies, telephonyCredentials } from "@shared/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 import { secretsService } from "../services/secrets-service";
 
 const TELNYX_WSS_SERVER = "wss://sip.telnyx.com:443";
@@ -1293,17 +1293,33 @@ export async function generateWebRTCToken(
       return { success: false, error: credResult.error || "Failed to get credential" };
     }
 
-    // First try local DB
+    // First try to find phone number assigned to this specific user
     let callerIdNumber: string | undefined;
-    const [localPhoneNumber] = await db
+    const [userPhoneNumber] = await db
       .select({ phoneNumber: telnyxPhoneNumbers.phoneNumber })
       .from(telnyxPhoneNumbers)
-      .where(eq(telnyxPhoneNumbers.companyId, companyId))
+      .where(and(
+        eq(telnyxPhoneNumbers.companyId, companyId),
+        eq(telnyxPhoneNumbers.ownerUserId, userId)
+      ))
       .limit(1);
     
-    callerIdNumber = localPhoneNumber?.phoneNumber;
+    callerIdNumber = userPhoneNumber?.phoneNumber;
+    console.log(`[WebRTC] User-assigned phone number: ${callerIdNumber || 'none'}`);
     
-    // If not in local DB, fetch from Telnyx API
+    // If no number assigned to user, fall back to any company number
+    if (!callerIdNumber) {
+      const [localPhoneNumber] = await db
+        .select({ phoneNumber: telnyxPhoneNumbers.phoneNumber })
+        .from(telnyxPhoneNumbers)
+        .where(eq(telnyxPhoneNumbers.companyId, companyId))
+        .limit(1);
+      
+      callerIdNumber = localPhoneNumber?.phoneNumber;
+      console.log(`[WebRTC] Fallback company phone number: ${callerIdNumber || 'none'}`);
+    }
+    
+    // If still not found, fetch from Telnyx API
     if (!callerIdNumber) {
       console.log(`[WebRTC] No local phone number, fetching from Telnyx API...`);
       try {
