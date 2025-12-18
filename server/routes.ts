@@ -3711,7 +3711,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }),
         admin: z.object({
           email: z.string().email("Valid email is required"),
-          password: z.string().min(8, "Password must be at least 8 characters"),
+          password: z.string().min(8, "Password must be at least 8 characters").optional(),
+          googleId: z.string().optional(),
           firstName: z.string().optional().nullable(),
           lastName: z.string().optional().nullable(),
           phone: z.string().optional().nullable(),
@@ -3721,6 +3722,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Validate request body with Zod
       const validatedData = registrationSchema.parse(req.body);
       const { company: companyData, admin: adminData } = validatedData;
+      
+      // Ensure either password or googleId is provided
+      if (!adminData.password && !adminData.googleId) {
+        return res.status(400).json({ message: "Either password or Google account is required" });
+      }
+      
       // Check if email already exists
       const existingUser = await storage.getUserByEmail(adminData.email);
       if (existingUser) {
@@ -3760,7 +3767,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error('[REGISTRATION] Failed to create Stripe customer:', stripeError);
         // Continue with registration even if Stripe fails - can be fixed later
       }
-      // Create admin user for the company - account starts as pending activation
+      // Create admin user for the company
+      // Google SSO users are immediately activated (email already verified by Google)
+      const isGoogleSSO = !!adminData.googleId;
       const newUser = await storage.createUser({
         email: adminData.email,
         firstName: adminData.firstName || '',
@@ -3768,15 +3777,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         phone: adminData.phone ?? null,
         role: 'admin',
         companyId: newCompany.id,
-        status: 'pending_activation', // Account pending activation until user clicks email link
-        password: adminData.password ? await hashPassword(adminData.password) : null, // Hash password during registration
-        isActive: false, // Account starts inactive until email verification
+        status: isGoogleSSO ? 'active' : 'pending_activation',
+        password: adminData.password ? await hashPassword(adminData.password) : null,
+        googleId: adminData.googleId || null,
+        isActive: isGoogleSSO, // Google users start active, others need email verification
         smsSubscribed: adminData.smsSubscribed ?? true,
       });
-      // Send activation email using existing function
-      const emailSent = await sendActivationEmail(newUser, newCompany.name, req);
-      if (!emailSent) {
-        console.warn('[REGISTRATION] Failed to send activation email, but continuing with registration');
+      
+      // Send activation email only for non-Google registrations
+      if (!isGoogleSSO) {
+        const emailSent = await sendActivationEmail(newUser, newCompany.name, req);
+        if (!emailSent) {
+          console.warn('[REGISTRATION] Failed to send activation email, but continuing with registration');
+        }
       }
 
       // Send notification email to Curbe team about new registration
