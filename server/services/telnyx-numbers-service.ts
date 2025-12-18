@@ -1919,3 +1919,102 @@ export async function syncVoiceSettingsFromTelnyx(
     return { success: false, error: error instanceof Error ? error.message : "Failed to sync voice settings" };
   }
 }
+
+/**
+ * Backfill/repair function: Assigns messaging profile to all phone numbers for a company
+ * Use this for existing numbers that were purchased before messaging profile auto-assignment was implemented
+ */
+export async function assignMessagingProfileToAllNumbers(companyId: string): Promise<{
+  success: boolean;
+  updated: number;
+  failed: number;
+  errors: string[];
+}> {
+  const errors: string[] = [];
+  let updated = 0;
+  let failed = 0;
+
+  try {
+    const apiKey = await getTelnyxMasterApiKey();
+    const managedAccountId = await getCompanyTelnyxAccountId(companyId);
+    const messagingProfileId = await getCompanyMessagingProfileId(companyId);
+
+    if (!managedAccountId) {
+      return { success: false, updated: 0, failed: 0, errors: ["Company Telnyx account not found"] };
+    }
+
+    if (!messagingProfileId) {
+      return { success: false, updated: 0, failed: 0, errors: ["Company messaging profile not found"] };
+    }
+
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+
+    if (managedAccountId !== "MASTER_ACCOUNT") {
+      headers["x-managed-account-id"] = managedAccountId;
+    }
+
+    const companyNumbers = await db
+      .select()
+      .from(telnyxPhoneNumbers)
+      .where(eq(telnyxPhoneNumbers.companyId, companyId));
+
+    console.log(`[Messaging Profile Backfill] Processing ${companyNumbers.length} numbers for company ${companyId}`);
+
+    for (const number of companyNumbers) {
+      if (!number.telnyxPhoneNumberId) {
+        errors.push(`${number.phoneNumber}: No Telnyx phone number ID`);
+        failed++;
+        continue;
+      }
+
+      try {
+        const patchResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${number.telnyxPhoneNumberId}`, {
+          method: "PATCH",
+          headers,
+          body: JSON.stringify({
+            messaging_profile_id: messagingProfileId,
+          }),
+        });
+
+        if (patchResponse.ok) {
+          // Persist to local database
+          await db
+            .update(telnyxPhoneNumbers)
+            .set({
+              messagingProfileId: messagingProfileId,
+              updatedAt: new Date(),
+            })
+            .where(eq(telnyxPhoneNumbers.id, number.id));
+          
+          console.log(`[Messaging Profile Backfill] Assigned ${number.phoneNumber} to messaging profile ${messagingProfileId}`);
+          updated++;
+        } else {
+          const errorText = await patchResponse.text();
+          errors.push(`${number.phoneNumber}: ${patchResponse.status} - ${errorText}`);
+          failed++;
+        }
+      } catch (err) {
+        errors.push(`${number.phoneNumber}: ${err instanceof Error ? err.message : "Unknown error"}`);
+        failed++;
+      }
+    }
+
+    return {
+      success: failed === 0,
+      updated,
+      failed,
+      errors,
+    };
+  } catch (error) {
+    console.error("[Messaging Profile Backfill] Error:", error);
+    return {
+      success: false,
+      updated,
+      failed,
+      errors: [error instanceof Error ? error.message : "Failed to backfill messaging profile"],
+    };
+  }
+}

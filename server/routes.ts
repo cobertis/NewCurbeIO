@@ -29103,6 +29103,25 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // POST /api/phone-system/messaging-profile/backfill - Assign messaging profile to all numbers
+  app.post("/api/phone-system/messaging-profile/backfill", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session.user?.companyId;
+      
+      if (!companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { assignMessagingProfileToAllNumbers } = await import("./services/telnyx-numbers-service");
+      const result = await assignMessagingProfileToAllNumbers(companyId);
+      
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error backfilling messaging profile:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
   // ========== TOLL-FREE VERIFICATION ENDPOINTS ==========
 
 
@@ -35227,23 +35246,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           .set({ lastMessage: text.substring(0, 100), lastMessageAt: new Date(), updatedAt: new Date() })
           .where(eq(telnyxConversations.id, conversation.id));
       }
-      // Send message via Telnyx API
-      const companySettings = await storage.getCompanySettings(companyId);
-      const telnyxSettings = companySettings?.telnyxSettings as any;
-      if (!telnyxSettings?.apiKey) {
-        return res.status(400).json({ message: "Telnyx not configured for this company" });
-      }
-      const headers = buildHeaders({ managedAccountId: telnyxSettings.managedAccountId, apiKey: telnyxSettings.apiKey });
-      const telnyxResponse = await fetch("https://api.telnyx.com/v2/messages", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          from: companyPhoneNumber,
-          to: phoneNumber,
-          text,
-        }),
+      // Send message via Telnyx API using managed account
+      const { sendTelnyxMessage } = await import("./services/telnyx-messaging-service");
+      const sendResult = await sendTelnyxMessage({
+        from: companyPhoneNumber,
+        to: phoneNumber,
+        text,
+        companyId,
       });
-      const telnyxData: any = await telnyxResponse.json();
+      
+      // Mock response structure for compatibility
+      const telnyxResponse = { ok: sendResult.success };
+      const telnyxData: any = sendResult.success 
+        ? { data: { id: sendResult.messageId } }
+        : { errors: [{ detail: sendResult.error }] };
       let status: "sent" | "failed" = "sent";
       let errorMessage: string | null = null;
       let telnyxMessageId: string | null = null;
@@ -35299,23 +35315,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
       }
-      // Send message via Telnyx API
-      const companySettings = await storage.getCompanySettings(companyId);
-      const telnyxSettings = companySettings?.telnyxSettings as any;
-      if (!telnyxSettings?.apiKey) {
-        return res.status(400).json({ message: "Telnyx not configured for this company" });
-      }
-      const headers = buildHeaders({ managedAccountId: telnyxSettings.managedAccountId, apiKey: telnyxSettings.apiKey });
-      const telnyxResponse = await fetch("https://api.telnyx.com/v2/messages", {
-        method: "POST",
-        headers,
-        body: JSON.stringify({
-          from: conversation.companyPhoneNumber,
-          to: conversation.phoneNumber,
-          text,
-        }),
+      // Send message via Telnyx API using managed account
+      const { sendTelnyxMessage } = await import("./services/telnyx-messaging-service");
+      const sendResult = await sendTelnyxMessage({
+        from: conversation.companyPhoneNumber,
+        to: conversation.phoneNumber,
+        text,
+        companyId,
       });
-      const telnyxData: any = await telnyxResponse.json();
+      
+      // Mock response structure for compatibility
+      const telnyxResponse = { ok: sendResult.success };
+      const telnyxData: any = sendResult.success 
+        ? { data: { id: sendResult.messageId } }
+        : { errors: [{ detail: sendResult.error }] };
       let status: "sent" | "failed" = "sent";
       let errorMessage: string | null = null;
       let telnyxMessageId: string | null = null;
