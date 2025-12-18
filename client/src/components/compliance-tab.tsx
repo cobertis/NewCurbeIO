@@ -48,6 +48,7 @@ import {
   MessageSquare,
   Phone,
   Plus,
+  Settings,
   ShieldCheck,
   XCircle,
 } from "lucide-react";
@@ -1542,15 +1543,15 @@ export function ComplianceTab() {
                           <Button
                             size="sm"
                             variant="outline"
-                            data-testid={`btn-assign-numbers-${campaign.campaignId}`}
+                            data-testid={`btn-manage-campaign-${campaign.campaignId}`}
                             onClick={() => {
                               setSelectedCampaign(campaign);
                               setSelectedNumbersToAssign([]);
                               setShowAssignNumbersSheet(true);
                             }}
                           >
-                            <Plus className="h-3 w-3 mr-1" />
-                            Assign Numbers
+                            <Settings className="h-3 w-3 mr-1" />
+                            Manage
                           </Button>
                         )}
                       </TableCell>
@@ -1994,9 +1995,9 @@ export function ComplianceTab() {
       <Sheet open={showAssignNumbersSheet} onOpenChange={setShowAssignNumbersSheet}>
         <SheetContent className="w-full sm:max-w-md flex flex-col h-full">
           <SheetHeader>
-            <SheetTitle>Assign Phone Numbers</SheetTitle>
+            <SheetTitle>Manage Campaign</SheetTitle>
             <SheetDescription>
-              Select phone numbers to assign to campaign {selectedCampaign?.tcrCampaignId || selectedCampaign?.campaignId}
+              View and manage phone numbers for campaign {selectedCampaign?.tcrCampaignId || selectedCampaign?.campaignId}
             </SheetDescription>
           </SheetHeader>
           
