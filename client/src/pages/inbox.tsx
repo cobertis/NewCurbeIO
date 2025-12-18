@@ -594,7 +594,7 @@ export default function InboxPage() {
             </div>
 
             {/* Messages */}
-            <ScrollArea className="flex-1 p-4 pb-36" style={{ backgroundImage: "url('/Patron_Garabatos_SemiTransparente.png')", backgroundRepeat: "repeat", backgroundSize: "400px" }}>
+            <ScrollArea className="flex-1 p-4 pb-36 bg-[#efeae2] dark:bg-[#0b141a]">
               {loadingMessages ? (
                 <div className="flex items-center justify-center py-8">
                   <LoadingSpinner message="Loading messages..." fullScreen={false} />
