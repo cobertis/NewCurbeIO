@@ -367,8 +367,7 @@ export function ComplianceTab() {
   // Assign numbers mutation
   const assignNumbersMutation = useMutation({
     mutationFn: async ({ campaignId, phoneNumbers }: { campaignId: string; phoneNumbers: string[] }) => {
-      const res = await apiRequest("POST", `/api/phone-system/campaigns/${campaignId}/phone-numbers`, { phoneNumbers });
-      return res.json();
+      return await apiRequest("POST", `/api/phone-system/campaigns/${campaignId}/phone-numbers`, { phoneNumbers });
     },
     onSuccess: () => {
       toast({ title: "Numbers assigned successfully" });
@@ -387,8 +386,7 @@ export function ComplianceTab() {
   // Remove number from campaign mutation
   const removeNumberMutation = useMutation({
     mutationFn: async ({ campaignId, phoneNumber }: { campaignId: string; phoneNumber: string }) => {
-      const res = await apiRequest("DELETE", `/api/phone-system/campaigns/${campaignId}/phone-numbers/${encodeURIComponent(phoneNumber)}`);
-      return res.json();
+      return await apiRequest("DELETE", `/api/phone-system/campaigns/${campaignId}/phone-numbers/${encodeURIComponent(phoneNumber)}`);
     },
     onSuccess: () => {
       toast({ title: "Number removed successfully" });
