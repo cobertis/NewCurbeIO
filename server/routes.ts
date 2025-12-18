@@ -116,7 +116,6 @@ import { buildBirthdayMessage } from "@shared/birthday-message";
 import { shouldViewAllCompanyData } from "./visibility-helpers";
 import { getCalendarHolidays } from "./services/holidays";
 import { blacklistService } from "./services/blacklist-service";
-import { evolutionApi } from "./services/evolution-api";
 import { getManagedAccountConfig, buildHeaders } from "./services/telnyx-e911-service";
 import { getTelnyxMasterApiKey } from "./services/telnyx-numbers-service";
 import { pbxService } from "./services/pbx-service";

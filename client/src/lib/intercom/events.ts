@@ -148,12 +148,6 @@ export function trackPaymentReceived(paymentId: string, amount: number, currency
   });
 }
 
-export function trackWhatsAppMessageSent(recipientPhone: string): void {
-  trackEvent('whatsapp_message_sent', {
-    recipient_phone: recipientPhone,
-  });
-}
-
 export function trackIMessageSent(recipientPhone: string): void {
   trackEvent('imessage_sent', {
     recipient_phone: recipientPhone,
