@@ -35141,7 +35141,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // ============================================================
 
   // POST /api/inbox/repair - Repair SMS inbox configuration (webhooks + number assignments)
-  app.post("/api/inbox/repair", async (req: Request, res: Response) => {
+  app.post("/api/inbox/repair", requireActiveCompany, async (req: Request, res: Response) => {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -35231,7 +35231,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
   // GET /api/inbox/conversations - List all conversations for the company
-  app.get("/api/inbox/conversations", async (req: Request, res: Response) => {
+  app.get("/api/inbox/conversations", requireActiveCompany, async (req: Request, res: Response) => {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -35254,7 +35254,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
   // GET /api/inbox/conversations/:id/messages - Get messages for a conversation
-  app.get("/api/inbox/conversations/:id/messages", async (req: Request, res: Response) => {
+  app.get("/api/inbox/conversations/:id/messages", requireActiveCompany, async (req: Request, res: Response) => {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -35291,7 +35291,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
   // POST /api/inbox/conversations - Create new conversation and send first message
-  app.post("/api/inbox/conversations", async (req: Request, res: Response) => {
+  app.post("/api/inbox/conversations", requireActiveCompany, async (req: Request, res: Response) => {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
@@ -35382,7 +35382,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
   // POST /api/inbox/conversations/:id/messages - Send message to existing conversation
-  app.post("/api/inbox/conversations/:id/messages", async (req: Request, res: Response) => {
+  app.post("/api/inbox/conversations/:id/messages", requireActiveCompany, async (req: Request, res: Response) => {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
