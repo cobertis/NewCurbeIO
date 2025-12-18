@@ -120,7 +120,7 @@ export function PublicPricingView({
     if (description) return description;
     const nameLower = planName.toLowerCase();
     if (nameLower.includes('starter') || nameLower.includes('shared') || nameLower.includes('individual')) {
-      return 'Good for individuals who are just starting out and simply want the essentials.';
+      return 'Good for individuals who are just starting out and simply want the essentials. Perfect for solo agents.';
     }
     if (nameLower.includes('team') || nameLower.includes('dedicated') || nameLower.includes('professional')) {
       return 'Highly recommended for small teams who seek to upgrade their time & perform.';
