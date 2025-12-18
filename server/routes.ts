@@ -28431,7 +28431,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // =====================================================
+  // GET /api/telnyx/phone-system-access - Check if current user has access to Phone System tab
+  app.get("/api/telnyx/phone-system-access", requireAuth, async (req: Request, res: Response) => {
+    try {
       const currentUser = req.user as User;
       
       // Superadmin always has access
