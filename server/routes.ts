@@ -27531,8 +27531,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       console.log(`[Telnyx SMS Webhook] Received: from=${from}, to=${to}, text=${text.substring(0, 50)}...`);
       
-      const phoneNumber = await db.query.companyPhoneNumbers.findFirst({
-        where: eq(companyPhoneNumbers.phoneNumber, to),
+      const phoneNumber = await db.query.telnyxPhoneNumbers.findFirst({
+        where: eq(telnyxPhoneNumbers.phoneNumber, to),
       });
       
       if (!phoneNumber) {
@@ -27551,10 +27551,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       });
       
       if (!conversation) {
-        const contact = await db.query.unifiedContacts.findFirst({
+        const contact = await db.query.contacts.findFirst({
           where: and(
-            eq(unifiedContacts.companyId, companyId),
-            eq(unifiedContacts.phone, from)
+            eq(contacts.companyId, companyId),
+            eq(contacts.phoneNormalized, from)
           ),
         });
         
