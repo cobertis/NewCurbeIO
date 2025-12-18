@@ -80,29 +80,27 @@ export default function InboxPage() {
   const [selectedFromNumber, setSelectedFromNumber] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { data: userData, isSuccess: sessionReady } = useQuery<{ user: UserType }>({
+  const { data: userData, isFetched: sessionFetched } = useQuery<{ user: UserType }>({
     queryKey: ["/api/session"],
-    staleTime: 0,
-    refetchOnMount: true,
   });
   const userTimezone = userData?.user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const isAuthenticated = sessionReady && !!userData?.user;
+  const hasUser = sessionFetched && !!userData?.user;
 
   const { data: contactsData } = useQuery<{ contacts: UnifiedContact[] }>({
     queryKey: ["/api/contacts/unified"],
-    enabled: isAuthenticated,
+    enabled: hasUser,
   });
   const contacts = contactsData?.contacts || [];
 
   const { data: phoneNumbersData } = useQuery<{ numbers: Array<{ phoneNumber: string; friendlyName?: string }> }>({
     queryKey: ["/api/telnyx/my-numbers"],
-    enabled: isAuthenticated,
+    enabled: hasUser,
   });
   const companyNumbers = phoneNumbersData?.numbers || [];
 
   const { data: conversationsData, isLoading: loadingConversations } = useQuery<{ conversations: TelnyxConversation[] }>({
     queryKey: ["/api/inbox/conversations"],
-    enabled: isAuthenticated,
+    enabled: hasUser,
   });
   const conversations = conversationsData?.conversations || [];
 
