@@ -40,7 +40,7 @@ import {
   Building2,
   Briefcase
 } from "lucide-react";
-import { SiWhatsapp, SiFacebook, SiInstagram } from "react-icons/si";
+import { SiFacebook, SiInstagram } from "react-icons/si";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -85,8 +85,6 @@ interface TelnyxConversation {
 
 const getChannelIcon = (channel?: string) => {
   switch (channel) {
-    case "whatsapp":
-      return <SiWhatsapp className="h-2.5 w-2.5 text-white" />;
     case "imessage":
       return <MessageSquare className="h-2.5 w-2.5 text-white" />;
     default:
@@ -96,8 +94,6 @@ const getChannelIcon = (channel?: string) => {
 
 const getChannelColor = (channel?: string) => {
   switch (channel) {
-    case "whatsapp":
-      return "bg-green-500";
     case "imessage":
       return "bg-blue-500";
     default:
@@ -948,20 +944,10 @@ export default function InboxPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-3">
-                        {selectedConversation.channel === "whatsapp" ? (
-                          <SiWhatsapp className="h-4 w-4 text-green-600 shrink-0" />
-                        ) : selectedConversation.channel === "imessage" ? (
-                          <MessageSquare className="h-4 w-4 text-blue-500 shrink-0" />
-                        ) : (
-                          <MessageSquare className="h-4 w-4 text-blue-600 shrink-0" />
-                        )}
+                        <MessageSquare className="h-4 w-4 text-blue-600 shrink-0" />
                         <div className="flex-1">
                           <p className="text-xs text-muted-foreground">
-                            {selectedConversation.channel === "whatsapp" 
-                              ? "WhatsApp" 
-                              : selectedConversation.channel === "imessage"
-                                ? "iMessage"
-                                : "SMS"}
+                            {selectedConversation.channel === "imessage" ? "iMessage" : "SMS"}
                           </p>
                           <p className="text-sm font-medium" data-testid="text-channel-number">
                             {formatForDisplay(selectedConversation.phoneNumber)}
