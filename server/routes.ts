@@ -29945,7 +29945,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               headers: {
                 "Content-Type": "application/json",
                 "Authorization": `Bearer ${config.apiKey}`,
-                ...(config.managedAccountId && { "X-Managed-Account-Id": config.managedAccountId }),
+                ...(config.managedAccountId && config.managedAccountId !== "MASTER_ACCOUNT" && { "X-Managed-Account-Id": config.managedAccountId }),
               },
               body: JSON.stringify({ connection_id: targetConnectionId }),
             });
