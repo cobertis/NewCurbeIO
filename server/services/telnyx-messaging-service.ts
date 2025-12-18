@@ -34,12 +34,16 @@ export async function sendTelnyxMessage(params: SendMessageParams): Promise<Send
     const messagingProfileId = await getCompanyMessagingProfileId(companyId);
     
     if (!managedAccountId) {
+      console.error(`[Telnyx Messaging] SEND FAILED: No Telnyx account for company ${companyId}`);
       return { success: false, error: "Telnyx account not configured for this company" };
     }
     
     if (!messagingProfileId) {
+      console.error(`[Telnyx Messaging] SEND FAILED: No messaging profile for company ${companyId}`);
       return { success: false, error: "Messaging profile not configured. Please set up SMS in Phone System settings." };
     }
+    
+    console.log(`[Telnyx Messaging] Config: companyId=${companyId}, managedAccount=${managedAccountId}, messagingProfile=${messagingProfileId}`);
     
     // Build headers with managed account
     const headers: Record<string, string> = {
@@ -66,7 +70,7 @@ export async function sendTelnyxMessage(params: SendMessageParams): Promise<Send
       payload.type = "MMS";
     }
     
-    console.log(`[Telnyx Messaging] Sending ${payload.type} from ${from} to ${to}`);
+    console.log(`[Telnyx Messaging] Sending ${payload.type}: from=${from}, to=${to}, textLen=${text.length}, profile=${messagingProfileId}`);
     
     const response = await fetch(`${TELNYX_API_BASE}/messages`, {
       method: "POST",
@@ -76,17 +80,19 @@ export async function sendTelnyxMessage(params: SendMessageParams): Promise<Send
     
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`[Telnyx Messaging] Send error: ${response.status} - ${errorText}`);
+      console.error(`[Telnyx Messaging] SEND FAILED: HTTP ${response.status}`);
+      console.error(`[Telnyx Messaging] Error details: ${errorText}`);
+      console.error(`[Telnyx Messaging] Failed request: from=${from}, to=${to}, profile=${messagingProfileId}`);
       return {
         success: false,
-        error: `Failed to send message: ${response.status}`,
+        error: `Failed to send message: ${response.status} - ${errorText}`,
       };
     }
     
     const result = await response.json();
     const messageId = result.data?.id;
     
-    console.log(`[Telnyx Messaging] Message sent successfully - ID: ${messageId}`);
+    console.log(`[Telnyx Messaging] SUCCESS: Message ${messageId} sent from ${from} to ${to}`);
     
     return {
       success: true,
