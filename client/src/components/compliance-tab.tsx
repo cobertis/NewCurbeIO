@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -94,6 +94,7 @@ interface TenDLCCampaign {
 interface CampaignPhoneNumber {
   phoneNumber: string;
   status?: string;
+  provisioningStatus?: string;
   assignedAt?: string;
 }
 
@@ -451,6 +452,23 @@ export function ComplianceTab() {
   const [selectedCampaign, setSelectedCampaign] = useState<TenDLCCampaign | null>(null);
   const [selectedNumbersToAssign, setSelectedNumbersToAssign] = useState<string[]>([]);
   const [campaignPhoneNumbers, setCampaignPhoneNumbers] = useState<Record<string, CampaignPhoneNumber[]>>({});
+
+  // Auto-refresh campaign numbers when sheet is open (polling every 5 seconds)
+  useEffect(() => {
+    if (!showAssignNumbersSheet || !selectedCampaign) return;
+    
+    // Fetch immediately when sheet opens
+    fetchCampaignNumbers(selectedCampaign.campaignId, selectedCampaign.tcrCampaignId);
+    
+    // Set up polling interval
+    const interval = setInterval(() => {
+      if (selectedCampaign) {
+        fetchCampaignNumbers(selectedCampaign.campaignId, selectedCampaign.tcrCampaignId);
+      }
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [showAssignNumbersSheet, selectedCampaign?.campaignId]);
 
   // Toll-Free Verification Form State
   const [showTollFreeForm, setShowTollFreeForm] = useState(false);
@@ -2009,22 +2027,24 @@ export function ComplianceTab() {
                 <div className="text-xs text-muted-foreground mb-1">Click X to remove a number from this campaign</div>
                 <div className="border rounded-md p-3 bg-muted/30 max-h-[25vh] overflow-y-auto space-y-1">
                   {campaignPhoneNumbers[selectedCampaign.campaignId].map(num => {
-                    const isPending = num.status?.includes('PENDING') || num.status?.includes('FAILED');
+                    const status = num.provisioningStatus || num.status || '';
+                    const isPending = status.includes('PENDING') || status.includes('FAILED');
+                    const statusDisplay = status.replace(/_/g, ' ');
                     return (
                       <div key={num.phoneNumber} className="text-sm font-mono py-1.5 px-2 flex items-center justify-between gap-2 rounded hover:bg-muted/50">
                         <div className="flex items-center gap-2 flex-1 min-w-0">
                           <Phone className="h-3 w-3 text-muted-foreground shrink-0" />
                           <span className="truncate">{num.phoneNumber}</span>
-                          {num.status && (
+                          {status && (
                             <Badge 
                               variant="outline" 
                               className={`text-xs shrink-0 ${
-                                num.status.includes('PENDING') ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
-                                num.status.includes('FAILED') ? 'bg-red-100 text-red-800 border-red-300' :
-                                num.status === 'ASSIGNED' ? 'bg-green-100 text-green-800 border-green-300' : ''
+                                status.includes('PENDING') ? 'bg-yellow-100 text-yellow-800 border-yellow-300' :
+                                status.includes('FAILED') ? 'bg-red-100 text-red-800 border-red-300' :
+                                status === 'ASSIGNED' ? 'bg-green-100 text-green-800 border-green-300' : ''
                               }`}
                             >
-                              {num.status.replace('_', ' ')}
+                              {statusDisplay}
                             </Badge>
                           )}
                         </div>
