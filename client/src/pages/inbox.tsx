@@ -365,11 +365,16 @@ export default function InboxPage() {
                   )}
                 >
                   <div className="flex items-start gap-3">
-                    <Avatar className="h-10 w-10 shrink-0">
-                      <AvatarFallback className="bg-sky-100 text-sky-700 text-sm">
-                        {getInitials(conversation.displayName, conversation.phoneNumber)}
-                      </AvatarFallback>
-                    </Avatar>
+                    <div className="relative shrink-0">
+                      <Avatar className="h-10 w-10">
+                        <AvatarFallback className="bg-sky-100 text-sky-700 text-sm">
+                          {getInitials(conversation.displayName, conversation.phoneNumber)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="absolute -bottom-0.5 -right-0.5 h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center border-2 border-background">
+                        <MessageSquare className="h-2.5 w-2.5 text-white" />
+                      </div>
+                    </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-medium truncate">
