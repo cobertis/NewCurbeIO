@@ -588,7 +588,9 @@ export class CallControlWebhookService {
     // but they are actually outbound user calls to external numbers
     const fromNumber = await this.findPhoneNumberByE164(from);
     if (fromNumber) {
-      console.log(`[CallControl] Outbound WebRTC call detected (from=${from} is our number), allowing to proceed`);
+      console.log(`[CallControl] Outbound WebRTC call detected (from=${from} is our number)`);
+      console.log(`[CallControl] Outbound call destination: ${to}`);
+      
       // Store call context for the outbound call (for recording, billing, etc.)
       const managedAccountId = await getCompanyManagedAccountId(fromNumber.companyId);
       callContextMap.set(call_control_id, {
@@ -596,7 +598,12 @@ export class CallControlWebhookService {
         managedAccountId,
         callerNumber: from
       });
-      // Don't answer or route - let the call proceed naturally to the destination
+      
+      // Answer the WebRTC leg first
+      await this.answerCall(call_control_id);
+      
+      // Dial the PSTN destination and bridge with the WebRTC leg
+      await this.dialOutboundPSTN(call_control_id, to, from, fromNumber.companyId, managedAccountId);
       return;
     }
 
@@ -1504,6 +1511,90 @@ export class CallControlWebhookService {
     });
 
     console.log(`[CallControl] Waiting for agent to answer call ${agentCallControlId}, will bridge with ${callControlId}`);
+  }
+
+  /**
+   * Dial outbound to PSTN number and bridge with WebRTC leg
+   * Used for outbound WebRTC calls - the WebRTC leg is answered first, then we dial PSTN
+   */
+  private async dialOutboundPSTN(
+    webrtcCallControlId: string,
+    destinationNumber: string,
+    callerIdNumber: string,
+    companyId: string,
+    managedAccountId: string | null
+  ): Promise<void> {
+    console.log(`[CallControl] Dialing outbound PSTN: ${destinationNumber} for bridging with WebRTC leg ${webrtcCallControlId}`);
+
+    const apiKey = await getTelnyxApiKey();
+
+    // Get Call Control App ID for the outbound leg
+    const [settings] = await db
+      .select({ 
+        callControlAppId: telephonySettings.callControlAppId
+      })
+      .from(telephonySettings)
+      .where(eq(telephonySettings.companyId, companyId));
+
+    const connectionId = settings?.callControlAppId;
+
+    if (!connectionId) {
+      console.error(`[CallControl] No Call Control App ID found for company ${companyId}`);
+      await this.hangupCall(webrtcCallControlId, "NORMAL_CLEARING");
+      return;
+    }
+
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+
+    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+      headers["X-Managed-Account-Id"] = managedAccountId;
+    }
+
+    // Create outbound call to PSTN number
+    const response = await fetch(`${TELNYX_API_BASE}/calls`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        connection_id: connectionId,
+        to: destinationNumber,
+        from: callerIdNumber,
+        timeout_secs: 60,
+        answering_machine_detection: "disabled",
+      }),
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[CallControl] Failed to dial PSTN: ${response.status} - ${errorText}`);
+      await this.hangupCall(webrtcCallControlId, "NORMAL_CLEARING");
+      return;
+    }
+
+    const data = await response.json();
+    const pstnCallControlId = data.data?.call_control_id;
+
+    if (!pstnCallControlId) {
+      console.error(`[CallControl] No call_control_id returned from PSTN dial`);
+      await this.hangupCall(webrtcCallControlId, "NORMAL_CLEARING");
+      return;
+    }
+
+    console.log(`[CallControl] Created outbound PSTN call: ${pstnCallControlId}`);
+
+    // Store context for the PSTN leg
+    callContextMap.set(pstnCallControlId, { companyId, managedAccountId });
+    
+    // Store pending bridge info - will bridge when PSTN leg answers
+    pendingBridges.set(pstnCallControlId, {
+      callerCallControlId: webrtcCallControlId,
+      clientState: "",
+      companyId,
+    });
+
+    console.log(`[CallControl] Waiting for PSTN ${destinationNumber} to answer, will bridge with WebRTC leg ${webrtcCallControlId}`);
   }
 
   /**
