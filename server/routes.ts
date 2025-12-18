@@ -27151,6 +27151,42 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // GET /api/phone-system/phone-numbers - Get all phone numbers for the company (for 10DLC assignment)
+  app.get("/api/phone-system/phone-numbers", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated" });
+      }
+
+      const { syncPhoneNumbersFromTelnyx, getCompanyPhoneNumbers } = await import("./services/telnyx-numbers-service");
+      
+      // Sync from Telnyx first to ensure we have the latest numbers
+      await syncPhoneNumbersFromTelnyx(user.companyId);
+      
+      // Get all company phone numbers
+      const result = await getCompanyPhoneNumbers(user.companyId);
+      
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+
+      // Transform to the expected format with phoneNumber and type
+      const numbers = (result.numbers || []).map((num: any) => ({
+        phoneNumber: num.phoneNumber,
+        type: num.type || (num.phoneNumber?.startsWith("+1800") || num.phoneNumber?.startsWith("+1888") || 
+              num.phoneNumber?.startsWith("+1877") || num.phoneNumber?.startsWith("+1866") ||
+              num.phoneNumber?.startsWith("+1855") || num.phoneNumber?.startsWith("+1844") ? "toll-free" : "local"),
+        id: num.id
+      }));
+
+      res.json({ numbers });
+    } catch (error: any) {
+      console.error("[Phone System] Error getting phone numbers:", error);
+      res.status(500).json({ message: "Failed to get phone numbers" });
+    }
+  });
+
   // POST /webhooks/telnyx - Telnyx webhook for billing automation
   app.post("/webhooks/telnyx", async (req: Request, res: Response) => {
     try {
