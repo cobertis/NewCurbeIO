@@ -1323,7 +1323,7 @@ export function ComplianceTab() {
   const hasTollFree = tollFreeData?.verifications?.some((v: any) => v.verificationStatus === "VERIFIED") || false;
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 pt-4">
       {/* Brand Registration Card */}
       <Card>
         <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
