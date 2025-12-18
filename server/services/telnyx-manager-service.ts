@@ -505,11 +505,12 @@ export async function setupPhoneSystemForCompany(companyId: string, userId?: str
         .set({
           telnyxAccountId: subAccountResult.accountId,
           telnyxApiToken: subAccountResult.apiToken,
+          telnyxMessagingProfileId: subAccountResult.messagingProfileId || null,
           updatedAt: new Date(),
         })
         .where(eq(wallets.id, existingWallet.id));
 
-      console.log(`[Telnyx] Updated existing wallet ${existingWallet.id} with Telnyx account`);
+      console.log(`[Telnyx] Updated existing wallet ${existingWallet.id} with Telnyx account and messaging profile: ${subAccountResult.messagingProfileId}`);
 
       return {
         success: true,
@@ -528,10 +529,11 @@ export async function setupPhoneSystemForCompany(companyId: string, userId?: str
         ownerUserId: userId || null,
         telnyxAccountId: subAccountResult.accountId,
         telnyxApiToken: subAccountResult.apiToken,
+        telnyxMessagingProfileId: subAccountResult.messagingProfileId || null,
       })
       .returning();
 
-    console.log(`[Telnyx] Created new wallet ${newWallet.id} with Telnyx account for company ${companyId}${userId ? `, user ${userId}` : ''}`);
+    console.log(`[Telnyx] Created new wallet ${newWallet.id} with Telnyx account and messaging profile: ${subAccountResult.messagingProfileId}`);
 
     return {
       success: true,
@@ -574,6 +576,18 @@ export async function getSubAccountApiToken(companyId: string): Promise<string |
     .where(eq(wallets.companyId, companyId));
 
   return wallet?.telnyxApiToken || null;
+}
+
+/**
+ * Get the company's Telnyx messaging profile ID for SMS/MMS
+ */
+export async function getCompanyMessagingProfileId(companyId: string): Promise<string | null> {
+  const [wallet] = await db
+    .select({ messagingProfileId: wallets.telnyxMessagingProfileId })
+    .from(wallets)
+    .where(eq(wallets.companyId, companyId));
+
+  return wallet?.messagingProfileId || null;
 }
 
 export async function makeSubAccountRequest(

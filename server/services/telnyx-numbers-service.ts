@@ -4,6 +4,7 @@ import { eq, and, or } from "drizzle-orm";
 import { SecretsService } from "./secrets-service";
 import { assignPhoneNumberToCredentialConnection } from "./telnyx-e911-service";
 import { getCompanyTelnyxAccountId, getCompanyTelnyxApiToken } from "./wallet-service";
+import { getCompanyMessagingProfileId } from "./telnyx-manager-service";
 
 const TELNYX_API_BASE = "https://api.telnyx.com/v2";
 const secretsService = new SecretsService();
@@ -350,6 +351,32 @@ export async function purchasePhoneNumber(
         }
       } catch (assignError) {
         console.warn(`[Telnyx Numbers] Error assigning credential connection (non-fatal):`, assignError);
+      }
+      
+      // Assign the phone number to the messaging profile for SMS/MMS
+      console.log(`[Telnyx Numbers] Assigning phone number to messaging profile...`);
+      try {
+        const messagingProfileId = await getCompanyMessagingProfileId(companyId);
+        if (messagingProfileId) {
+          const patchResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+            method: "PATCH",
+            headers,
+            body: JSON.stringify({
+              messaging_profile_id: messagingProfileId,
+            }),
+          });
+          
+          if (patchResponse.ok) {
+            console.log(`[Telnyx Numbers] Phone number assigned to messaging profile: ${messagingProfileId}`);
+          } else {
+            const errorText = await patchResponse.text();
+            console.warn(`[Telnyx Numbers] Failed to assign messaging profile (non-fatal): ${patchResponse.status} - ${errorText}`);
+          }
+        } else {
+          console.warn(`[Telnyx Numbers] No messaging profile found for company ${companyId} - SMS may not work`);
+        }
+      } catch (msgError) {
+        console.warn(`[Telnyx Numbers] Error assigning messaging profile (non-fatal):`, msgError);
       }
     }
 
