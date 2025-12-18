@@ -1904,7 +1904,7 @@ function ExtensionDialog({
             <Input
               value={ext}
               onChange={(e) => setExt(e.target.value)}
-              placeholder="101, 102, etc."
+              placeholder="1001, 1002, etc."
               data-testid="input-extension-number"
             />
           </div>
