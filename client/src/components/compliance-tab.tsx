@@ -1410,32 +1410,40 @@ export function ComplianceTab() {
                   <thead>
                     <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
                       <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Name</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Campaigns</th>
                       <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">ID</th>
                       <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">TCR ID</th>
                       <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Status</th>
-                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Identity</th>
+                      <th className="text-left py-3 px-4 font-medium text-slate-600 dark:text-slate-400">Registration Date</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {brands.map((brand) => (
-                      <tr key={brand.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                        <td className="py-3 px-4">
-                          <span className="font-medium text-slate-900 dark:text-white">{brand.displayName}</span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="text-xs text-slate-500 font-mono">{brand.id}</span>
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="text-xs text-slate-500 font-mono">{brand.brandId || '-'}</span>
-                        </td>
-                        <td className="py-3 px-4">
-                          {getStatusBadge(brand.status)}
-                        </td>
-                        <td className="py-3 px-4">
-                          <span className="text-xs text-slate-500">{brand.identityStatus || '-'}</span>
-                        </td>
-                      </tr>
-                    ))}
+                    {brands.map((brand) => {
+                      const campaignCount = campaignsData?.campaigns?.filter((c: any) => c.brandId === brand.id || c.brandId === brand.brandId)?.length || 0;
+                      const registrationDate = brand.createdAt ? new Date(brand.createdAt).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' }) : '-';
+                      return (
+                        <tr key={brand.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                          <td className="py-3 px-4">
+                            <span className="font-medium text-slate-900 dark:text-white">{brand.displayName}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-slate-600 dark:text-slate-400">{campaignCount}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-xs text-slate-500 font-mono">{brand.id}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-xs text-slate-500 font-mono">{brand.tcrBrandId || '-'}</span>
+                          </td>
+                          <td className="py-3 px-4">
+                            {getStatusBadge(brand.status)}
+                          </td>
+                          <td className="py-3 px-4">
+                            <span className="text-xs text-slate-500">{registrationDate}</span>
+                          </td>
+                        </tr>
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>
