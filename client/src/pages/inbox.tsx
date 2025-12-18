@@ -764,19 +764,152 @@ export default function InboxPage() {
                 </div>
 
                 {/* Insights */}
-                {matchedContact && (
-                  <div className="space-y-4">
-                    <h4 className="text-sm font-medium text-muted-foreground">Insights</h4>
-                    <div className="space-y-3">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm text-muted-foreground">Contact type</span>
-                        <Badge variant="secondary">
-                          {matchedContact.origin?.[0] || "Lead"}
-                        </Badge>
+                <div className="space-y-4">
+                  <h4 className="text-sm font-medium text-muted-foreground">Insights</h4>
+                  <div className="space-y-3">
+                    {/* Contact Origins/Types */}
+                    <div className="space-y-2">
+                      <span className="text-xs text-muted-foreground">Source</span>
+                      <div className="flex flex-wrap gap-1">
+                        {matchedContact?.origin?.length ? (
+                          matchedContact.origin.map((origin, idx) => (
+                            <Badge 
+                              key={idx} 
+                              variant="secondary"
+                              className={cn(
+                                "text-xs",
+                                origin === "policy" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+                                origin === "quote" && "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+                                origin === "manual" && "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+                                origin === "sms" && "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
+                              )}
+                              data-testid={`badge-origin-${origin}`}
+                            >
+                              {origin.charAt(0).toUpperCase() + origin.slice(1)}
+                            </Badge>
+                          ))
+                        ) : (
+                          <Badge variant="outline" className="text-xs" data-testid="badge-origin-lead">Lead</Badge>
+                        )}
                       </div>
+                    </div>
+
+                    {/* Status Badges */}
+                    {matchedContact?.status && matchedContact.status.length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-xs text-muted-foreground">Status</span>
+                        <div className="flex flex-wrap gap-1">
+                          {matchedContact.status.map((status, idx) => (
+                            <Badge 
+                              key={idx} 
+                              variant="outline"
+                              className="text-xs"
+                              data-testid={`badge-status-${idx}`}
+                            >
+                              {status}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Product Types */}
+                    {matchedContact?.productType && matchedContact.productType.filter(Boolean).length > 0 && (
+                      <div className="space-y-2">
+                        <span className="text-xs text-muted-foreground">Products</span>
+                        <div className="flex flex-wrap gap-1">
+                          {matchedContact.productType.filter(Boolean).map((product, idx) => (
+                            <Badge 
+                              key={idx} 
+                              className="text-xs bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200"
+                              data-testid={`badge-product-${idx}`}
+                            >
+                              {product}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Date of Birth */}
+                    {matchedContact?.dateOfBirth && (
+                      <div className="flex items-center gap-3">
+                        <Calendar className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Birthday</p>
+                          <p className="text-sm font-medium" data-testid="text-dob">
+                            {format(new Date(matchedContact.dateOfBirth), "MMM d, yyyy")}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Company */}
+                    {matchedContact?.companyName && (
+                      <div className="flex items-center gap-3">
+                        <Tag className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Company</p>
+                          <p className="text-sm font-medium" data-testid="text-company">
+                            {matchedContact.companyName}
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Related Records */}
+                {matchedContact?.sourceMetadata && matchedContact.sourceMetadata.length > 0 && (
+                  <div className="space-y-4">
+                    <h4 className="text-sm font-medium text-muted-foreground">Related Records</h4>
+                    <div className="space-y-2">
+                      {matchedContact.sourceMetadata.slice(0, 5).map((source, idx) => (
+                        <div 
+                          key={idx} 
+                          className="flex items-center justify-between p-2 rounded-md bg-background border text-sm"
+                          data-testid={`record-${source.type}-${idx}`}
+                        >
+                          <div className="flex items-center gap-2">
+                            <Badge 
+                              variant="outline" 
+                              className={cn(
+                                "text-xs",
+                                source.type === "policy" && "border-green-500 text-green-700",
+                                source.type === "quote" && "border-blue-500 text-blue-700"
+                              )}
+                            >
+                              {source.type.charAt(0).toUpperCase() + source.type.slice(1)}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground truncate max-w-[120px]">
+                              #{source.id.slice(-8)}
+                            </span>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                        </div>
+                      ))}
                     </div>
                   </div>
                 )}
+
+                {/* Conversation Stats */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-medium text-muted-foreground">Conversation</h4>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-md bg-background border text-center">
+                      <p className="text-lg font-semibold" data-testid="text-message-count">
+                        {messagesData?.messages?.length || 0}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Messages</p>
+                    </div>
+                    <div className="p-3 rounded-md bg-background border text-center">
+                      <p className="text-lg font-semibold" data-testid="text-unread-count">
+                        {selectedConversation.unreadCount || 0}
+                      </p>
+                      <p className="text-xs text-muted-foreground">Unread</p>
+                    </div>
+                  </div>
+                </div>
               </div>
             </ScrollArea>
           </>
