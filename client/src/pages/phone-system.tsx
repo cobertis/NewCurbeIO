@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -264,6 +264,27 @@ export default function PhoneSystem() {
       setVoicemailPinInput(selectedNumber.voicemailPin);
     }
   }, [selectedNumber?.voicemailPin]);
+
+  // Sort numbers: 1) IVR assigned, 2) User assigned, 3) Active, 4) Inactive/Pending port
+  const sortedNumbers = useMemo(() => {
+    if (!numbersData?.numbers) return [];
+    
+    return [...numbersData.numbers].sort((a, b) => {
+      // Priority function: lower = higher priority
+      const getPriority = (num: NumberInfo) => {
+        // 1. IVR assigned (highest priority)
+        if (num.ivrId && num.ivrId !== 'unassigned') return 1;
+        // 2. User assigned (direct)
+        if (num.ownerUserId) return 2;
+        // 3. Active numbers
+        if (num.status === 'active') return 3;
+        // 4. Inactive and pending port (lowest priority)
+        return 4;
+      };
+      
+      return getPriority(a) - getPriority(b);
+    });
+  }, [numbersData?.numbers]);
 
   const handleAutoRechargeToggle = (enabled: boolean) => {
     setAutoRechargeEnabled(enabled);
@@ -1153,7 +1174,7 @@ export default function PhoneSystem() {
                     </div>
                   </div>
                   <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                    {numbersData.numbers.map((number, idx) => {
+                    {sortedNumbers.map((number, idx) => {
                       const hasE911 = number.e911AddressId || number.e911Enabled;
                       const isSelected = selectedNumber?.phoneNumber === number.phoneNumber;
                       const assignedUserName = number.ownerUser 
