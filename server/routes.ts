@@ -35486,12 +35486,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(401).json({ message: "Unauthorized" });
     }
     const { id } = req.params;
-    const { displayName } = req.body;
+    const { displayName, email, jobTitle, organization } = req.body;
     const companyId = (req.user as any).companyId;
     
     try {
       await db.update(telnyxConversations)
-        .set({ displayName: displayName || null, updatedAt: new Date() })
+        .set({ displayName: displayName || null, email: email || null, jobTitle: jobTitle || null, organization: organization || null, updatedAt: new Date() })
         .where(and(
           eq(telnyxConversations.id, id),
           eq(telnyxConversations.companyId, companyId)

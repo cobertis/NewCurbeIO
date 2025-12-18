@@ -73,6 +73,9 @@ interface TelnyxConversation {
   id: string;
   phoneNumber: string;
   displayName: string | null;
+  email: string | null;
+  jobTitle: string | null;
+  organization: string | null;
   lastMessage: string | null;
   lastMessageAt: string | null;
   unreadCount: number;
@@ -223,8 +226,8 @@ export default function InboxPage() {
   });
 
   const updateConversationMutation = useMutation({
-    mutationFn: async ({ conversationId, displayName }: { conversationId: string; displayName: string }) => {
-      return apiRequest("PATCH", `/api/inbox/conversations/${conversationId}`, { displayName });
+    mutationFn: async ({ conversationId, displayName, email, jobTitle, organization }: { conversationId: string; displayName: string; email: string; jobTitle: string; organization: string }) => {
+      return apiRequest("PATCH", `/api/inbox/conversations/${conversationId}`, { displayName, email, jobTitle, organization });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
@@ -332,9 +335,9 @@ export default function InboxPage() {
   const startEditing = () => {
     setEditForm({
       displayName: matchedContact?.displayName || selectedConversation?.displayName || "",
-      email: matchedContact?.email || "",
-      jobTitle: "",
-      organization: matchedContact?.companyName || "",
+      email: selectedConversation?.email || matchedContact?.email || "",
+      jobTitle: selectedConversation?.jobTitle || "",
+      organization: selectedConversation?.organization || matchedContact?.companyName || "",
     });
     setIsEditingDetails(true);
   };
@@ -348,7 +351,17 @@ export default function InboxPage() {
     updateConversationMutation.mutate({
       conversationId: selectedConversationId,
       displayName: editForm.displayName,
+      email: editForm.email,
+      jobTitle: editForm.jobTitle,
+      organization: editForm.organization,
     });
+  };
+
+  const handleEditKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      saveContactEdit();
+    }
   };
 
   if (authLoading || !isAuthenticated || loadingConversations) {
@@ -861,6 +874,7 @@ export default function InboxPage() {
                             <Input
                               value={editForm.displayName}
                               onChange={(e) => setEditForm({ ...editForm, displayName: e.target.value })}
+                              onKeyDown={handleEditKeyDown}
                               className="h-7 text-sm"
                               data-testid="input-fullname"
                             />
@@ -888,13 +902,14 @@ export default function InboxPage() {
                             <Input
                               value={editForm.email}
                               onChange={(e) => setEditForm({ ...editForm, email: e.target.value })}
+                              onKeyDown={handleEditKeyDown}
                               className="h-7 text-sm"
                               placeholder="email@example.com"
                               data-testid="input-email"
                             />
                           ) : (
                             <p className="text-sm font-medium" data-testid="text-email">
-                              {matchedContact?.email || "—"}
+                              {selectedConversation.email || matchedContact?.email || "—"}
                             </p>
                           )}
                         </div>
@@ -916,12 +931,15 @@ export default function InboxPage() {
                             <Input
                               value={editForm.jobTitle}
                               onChange={(e) => setEditForm({ ...editForm, jobTitle: e.target.value })}
+                              onKeyDown={handleEditKeyDown}
                               className="h-7 text-sm"
                               placeholder="Enter job title"
                               data-testid="input-jobtitle"
                             />
                           ) : (
-                            <p className="text-sm font-medium text-muted-foreground" data-testid="text-jobtitle">—</p>
+                            <p className="text-sm font-medium" data-testid="text-jobtitle">
+                              {selectedConversation.jobTitle || "—"}
+                            </p>
                           )}
                         </div>
                       </div>
@@ -933,13 +951,14 @@ export default function InboxPage() {
                             <Input
                               value={editForm.organization}
                               onChange={(e) => setEditForm({ ...editForm, organization: e.target.value })}
+                              onKeyDown={handleEditKeyDown}
                               className="h-7 text-sm"
                               placeholder="Enter organization"
                               data-testid="input-organization"
                             />
                           ) : (
                             <p className="text-sm font-medium" data-testid="text-organization">
-                              {matchedContact?.companyName || "—"}
+                              {selectedConversation.organization || matchedContact?.companyName || "—"}
                             </p>
                           )}
                         </div>

@@ -6215,6 +6215,9 @@ export const telnyxConversations = pgTable("telnyx_conversations", {
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
   phoneNumber: text("phone_number").notNull(), // Customer phone number (E.164)
   displayName: text("display_name"), // Customer display name if known
+  email: text("email"), // Customer email
+  jobTitle: text("job_title"), // Customer job title
+  organization: text("organization"), // Customer organization/company
   companyPhoneNumber: text("company_phone_number").notNull(), // The Telnyx number we're using (E.164)
   lastMessage: text("last_message"), // Preview of last message
   lastMessageAt: timestamp("last_message_at"), // Timestamp of last message
