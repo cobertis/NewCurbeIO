@@ -576,32 +576,14 @@ export class CallControlWebhookService {
       return;
     }
 
-    // Check if "from" is one of our numbers - this means it's an OUTBOUND call from our system
-    // Even if Telnyx reports direction="incoming", WebRTC calls through credential connections
-    // may appear as incoming to the Call Control App but are actually outbound user calls
-    const fromNumber = await this.findPhoneNumberByE164(from);
-    if (fromNumber) {
-      console.log(`[CallControl] Outbound call detected (from=${from} is our number), allowing call to proceed`);
-      // Store call context for the outbound call (for recording, billing, etc.)
-      const managedAccountId = await getCompanyManagedAccountId(fromNumber.companyId);
-      callContextMap.set(call_control_id, {
-        companyId: fromNumber.companyId,
-        managedAccountId,
-        callerNumber: from
-      });
-      // Don't answer or route - let the call proceed naturally to the destination
-      return;
-    }
-
-    // If "to" is a SIP URI (contains @), this is a forked call leg from SIP Forking
-    // These should be ignored, not hung up - the SIP client will handle them directly
-    if (to.includes('@')) {
-      console.log(`[CallControl] Ignoring SIP URI call (forked leg): ${to}`);
-      return;
-    }
-
     const phoneNumber = await this.findPhoneNumberByE164(to);
     if (!phoneNumber) {
+      // If "to" is a SIP URI (contains @), this is a forked call leg from SIP Forking
+      // These should be ignored, not hung up - the SIP client will handle them directly
+      if (to.includes('@')) {
+        console.log(`[CallControl] Ignoring SIP URI call (forked leg): ${to}`);
+        return;
+      }
       console.log(`[CallControl] Phone number not found for: ${to}`);
       await this.hangupCall(call_control_id, "USER_NOT_FOUND");
       return;
