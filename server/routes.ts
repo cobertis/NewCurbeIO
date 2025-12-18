@@ -35480,5 +35480,29 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
+  // PATCH /api/inbox/conversations/:id - Update conversation details
+  app.patch("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { id } = req.params;
+    const { displayName } = req.body;
+    const companyId = (req.user as any).companyId;
+    
+    try {
+      await db.update(telnyxConversations)
+        .set({ displayName: displayName || null, updatedAt: new Date() })
+        .where(and(
+          eq(telnyxConversations.id, id),
+          eq(telnyxConversations.companyId, companyId)
+        ));
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Inbox] Error updating conversation:", error);
+      res.status(500).json({ message: "Failed to update conversation" });
+    }
+  });
+
   return httpServer;
 }

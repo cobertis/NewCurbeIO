@@ -222,6 +222,27 @@ export default function InboxPage() {
     },
   });
 
+  const updateConversationMutation = useMutation({
+    mutationFn: async ({ conversationId, displayName }: { conversationId: string; displayName: string }) => {
+      return apiRequest("PATCH", `/api/inbox/conversations/${conversationId}`, { displayName });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      setIsEditingDetails(false);
+      toast({
+        title: "Contact updated",
+        description: "Contact information has been saved successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -323,11 +344,11 @@ export default function InboxPage() {
   };
 
   const saveContactEdit = () => {
-    toast({
-      title: "Contact updated",
-      description: "Contact information has been saved successfully.",
+    if (!selectedConversationId) return;
+    updateConversationMutation.mutate({
+      conversationId: selectedConversationId,
+      displayName: editForm.displayName,
     });
-    setIsEditingDetails(false);
   };
 
   if (authLoading || !isAuthenticated || loadingConversations) {
