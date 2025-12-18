@@ -28488,7 +28488,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
   // ==================== 10DLC Brand Registration ====================
 
-  // GET /api/phone-system/brands - List all brands for company from Telnyx API
+  // Helper function to build Telnyx API headers with conditional managed account header
+  function buildTelnyxHeaders(apiKey, managedAccountId) {
+    const headers = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+    // MASTER_ACCOUNT means use main Telnyx account directly (no managed account header needed)
+    if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+      headers["x-managed-account-id"] = managedAccountId;
+    }
+    return headers;
+  }
+
+    // GET /api/phone-system/brands - List all brands for company from Telnyx API
   app.get("/api/phone-system/brands", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = req.session.user?.companyId;
@@ -28511,11 +28524,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Fetch brands from Telnyx API
       const response = await fetch("https://api.telnyx.com/v2/10dlc/brand", {
         method: "GET",
-        headers: {
-          "Authorization": `Bearer ${telnyxApiKey}`,
-          "x-managed-account-id": managedAccountId,
-          "Content-Type": "application/json",
-        },
+        headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
       });
       
       if (!response.ok) {
@@ -28628,11 +28637,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 
       const response = await fetch("https://api.telnyx.com/v2/10dlc/brand", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${telnyxApiKey}`,
-          "x-managed-account-id": managedAccountId,
-        },
+        headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
         body: JSON.stringify(telnyxPayload),
       });
 
@@ -28750,10 +28755,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         const listResponse = await fetch("https://api.telnyx.com/v2/messaging_profiles", {
           method: "GET",
-          headers: {
-            "Authorization": `Bearer ${telnyxApiKey}`,
-            "x-managed-account-id": managedAccountId,
-          },
+          headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
         });
         
         if (listResponse.ok) {
@@ -28787,10 +28789,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const response = await fetch(`https://api.telnyx.com/v2/messaging_profiles/${wallet.telnyxMessagingProfileId}`, {
         method: "GET",
-        headers: {
-          "Authorization": `Bearer ${telnyxApiKey}`,
-          "x-managed-account-id": managedAccountId,
-        },
+        headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
       });
       
       if (!response.ok) {
@@ -28849,11 +28848,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Create messaging profile in Telnyx
       const response = await fetch("https://api.telnyx.com/v2/messaging_profiles", {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${telnyxApiKey}`,
-          "x-managed-account-id": managedAccountId,
-        },
+        headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
         body: JSON.stringify({
           name: `SMS Profile - ${company.name}`,
           enabled: true,
@@ -28922,10 +28917,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Delete from Telnyx
       const response = await fetch(`https://api.telnyx.com/v2/messaging_profiles/${wallet.telnyxMessagingProfileId}`, {
         method: "DELETE",
-        headers: {
-          "Authorization": `Bearer ${telnyxApiKey}`,
-          "x-managed-account-id": managedAccountId,
-        },
+        headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
       });
       
       if (!response.ok && response.status !== 404) {
@@ -28965,10 +28957,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const response = await fetch("https://api.telnyx.com/10dlc/campaign", {
         method: "GET",
-        headers: {
-          "Authorization": `Bearer ${telnyxApiKey}`,
-          "x-managed-account-id": managedAccountId,
-        },
+        headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
       });
       
       if (!response.ok) {
@@ -29088,11 +29077,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const response = await fetch("https://api.telnyx.com/v2/10dlc/campaignBuilder", {
         method: "POST",
-        headers: {
-          "Authorization": `Bearer ${telnyxApiKey}`,
-          "x-managed-account-id": managedAccountId,
-          "Content-Type": "application/json",
-        },
+        headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
         body: JSON.stringify(campaignData),
       });
       
@@ -29143,10 +29128,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const response = await fetch(`https://api.telnyx.com/10dlc/campaign/${id}`, {
         method: "GET",
-        headers: {
-          "Authorization": `Bearer ${telnyxApiKey}`,
-          "x-managed-account-id": managedAccountId,
-        },
+        headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
       });
       
       if (!response.ok) {
@@ -29182,11 +29164,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         `https://api.telnyx.com/v2/messaging_tollfree/verification/requests?page=${page}&page_size=${pageSize}`,
         {
           method: "GET",
-          headers: {
-            "Authorization": `Bearer ${telnyxApiKey}`,
-            "x-managed-account-id": managedAccountId,
-            "Accept": "application/json",
-          },
+          headers: { ...buildTelnyxHeaders(telnyxApiKey, managedAccountId), "Accept": "application/json" },
         }
       );
       
@@ -29295,12 +29273,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         "https://api.telnyx.com/v2/messaging_tollfree/verification/requests",
         {
           method: "POST",
-          headers: {
-            "Authorization": `Bearer ${telnyxApiKey}`,
-            "x-managed-account-id": managedAccountId,
-            "Content-Type": "application/json",
-            "Accept": "application/json",
-          },
+          headers: { ...buildTelnyxHeaders(telnyxApiKey, managedAccountId), "Accept": "application/json" },
           body: JSON.stringify(requestBody),
         }
       );
@@ -29343,11 +29316,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         `https://api.telnyx.com/v2/messaging_tollfree/verification/requests/${id}`,
         {
           method: "GET",
-          headers: {
-            "Authorization": `Bearer ${telnyxApiKey}`,
-            "x-managed-account-id": managedAccountId,
-            "Accept": "application/json",
-          },
+          headers: { ...buildTelnyxHeaders(telnyxApiKey, managedAccountId), "Accept": "application/json" },
         }
       );
       
