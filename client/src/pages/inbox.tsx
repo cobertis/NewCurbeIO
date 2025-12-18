@@ -22,6 +22,8 @@ import {
   Calendar,
   Tag,
   ChevronRight,
+  ChevronDown,
+  ChevronUp,
   X,
   CheckCheck,
   Clock,
@@ -29,10 +31,17 @@ import {
   FileText,
   Eye,
   Wand2,
+  Sparkles,
   Volume2,
   CheckSquare,
-  Braces
+  Braces,
+  Pencil,
+  List,
+  Users,
+  Building2,
+  Briefcase
 } from "lucide-react";
+import { SiWhatsapp, SiFacebook, SiInstagram } from "react-icons/si";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
@@ -89,6 +98,8 @@ interface TelnyxMessage {
 
 type MobileView = "threads" | "messages" | "details";
 
+const alsoHere = [{ name: "Sarah" }, { name: "Mike" }, { name: "John" }];
+
 export default function InboxPage() {
   const { toast } = useToast();
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
@@ -99,6 +110,8 @@ export default function InboxPage() {
   const [newConversationPhone, setNewConversationPhone] = useState("");
   const [selectedFromNumber, setSelectedFromNumber] = useState<string>("");
   const [isInternalNote, setIsInternalNote] = useState(false);
+  const [contactInfoOpen, setContactInfoOpen] = useState(true);
+  const [insightsOpen, setInsightsOpen] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -136,6 +149,19 @@ export default function InboxPage() {
     if (!selectedConversation) return null;
     return contacts.find(c => c.phone === selectedConversation.phoneNumber);
   }, [selectedConversation, contacts]);
+
+  const lastInboundMessage = useMemo(() => {
+    return messages.filter(m => m.direction === "inbound" && !m.isInternalNote).pop();
+  }, [messages]);
+
+  const lastOutboundMessage = useMemo(() => {
+    return messages.filter(m => m.direction === "outbound" && !m.isInternalNote).pop();
+  }, [messages]);
+
+  const lastInteraction = useMemo(() => {
+    const nonNotes = messages.filter(m => !m.isInternalNote);
+    return nonNotes.length > 0 ? nonNotes[nonNotes.length - 1] : null;
+  }, [messages]);
 
   useWebSocket((message) => {
     const msg = message as any;
@@ -473,6 +499,24 @@ export default function InboxPage() {
               </div>
             </div>
 
+            {/* Also here section */}
+            <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-2" data-testid="section-also-here">
+              <span className="text-xs text-muted-foreground">Also here:</span>
+              <div className="flex items-center -space-x-2">
+                {alsoHere.map((person, idx) => (
+                  <Avatar 
+                    key={idx} 
+                    className="h-6 w-6 border-2 border-background"
+                    data-testid={`avatar-also-here-${idx}`}
+                  >
+                    <AvatarFallback className="text-[10px] bg-violet-100 text-violet-700">
+                      {person.name.charAt(0)}
+                    </AvatarFallback>
+                  </Avatar>
+                ))}
+              </div>
+            </div>
+
             {/* Messages */}
             <ScrollArea className="flex-1 p-4">
               {loadingMessages ? (
@@ -490,15 +534,30 @@ export default function InboxPage() {
                   {messages.map((message) => {
                     const isNote = isMessageInternalNote(message);
                     const isOutbound = message.direction === "outbound";
+                    const isInbound = message.direction === "inbound" && !isNote;
                     
                     return (
                       <div
                         key={message.id}
                         className={cn(
-                          "flex",
+                          "flex group",
                           isOutbound || isNote ? "justify-end" : "justify-start"
                         )}
                       >
+                        {/* AI Generate button for inbound messages */}
+                        {isInbound && (
+                          <div className="flex items-center mr-2">
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="h-8 px-3 opacity-0 group-hover:opacity-100 transition-opacity bg-violet-600 hover:bg-violet-700 text-white rounded-full shadow-sm"
+                              data-testid={`btn-ai-generate-${message.id}`}
+                            >
+                              <Sparkles className="h-3.5 w-3.5 mr-1.5" />
+                              <span className="text-xs font-medium">Generate answer with AI</span>
+                            </Button>
+                          </div>
+                        )}
                         <div
                           className={cn(
                             "max-w-[70%] rounded-2xl px-4 py-2",
@@ -718,145 +777,326 @@ export default function InboxPage() {
           <>
             <div className="p-4 border-b flex items-center justify-between">
               <h3 className="font-medium">Details</h3>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="lg:hidden"
-                onClick={() => setMobileView("messages")}
-              >
-                <X className="h-4 w-4" />
-              </Button>
+              <div className="flex items-center gap-1">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-edit-details">
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Edit</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-search-details">
+                        <Search className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Search</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="lg:hidden h-8 w-8"
+                  onClick={() => setMobileView("messages")}
+                  data-testid="btn-close-details"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
             </div>
             <ScrollArea className="flex-1">
               <div className="p-4 space-y-6">
-                {/* Contact Info */}
+                {/* Contact Info - Collapsible */}
                 <div className="space-y-4">
-                  <h4 className="text-sm font-medium text-muted-foreground">Contact info</h4>
-                  <div className="space-y-3">
-                    <div className="flex items-center gap-3">
-                      <User className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Full name</p>
-                        <p className="text-sm font-medium">
-                          {matchedContact?.displayName || selectedConversation.displayName || "Unknown"}
-                        </p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-3">
-                      <Phone className="h-4 w-4 text-muted-foreground" />
-                      <div>
-                        <p className="text-xs text-muted-foreground">Phone</p>
-                        <p className="text-sm font-medium">
-                          {formatForDisplay(selectedConversation.phoneNumber)}
-                        </p>
-                      </div>
-                    </div>
-                    {matchedContact?.email && (
+                  <button 
+                    onClick={() => setContactInfoOpen(!contactInfoOpen)}
+                    className="flex items-center justify-between w-full text-left"
+                    data-testid="btn-toggle-contact-info"
+                  >
+                    <h4 className="text-sm font-medium text-muted-foreground">Contact info</h4>
+                    {contactInfoOpen ? (
+                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
+                  {contactInfoOpen && (
+                    <div className="space-y-3" data-testid="section-contact-info">
                       <div className="flex items-center gap-3">
-                        <Mail className="h-4 w-4 text-muted-foreground" />
+                        <User className="h-4 w-4 text-muted-foreground" />
                         <div>
-                          <p className="text-xs text-muted-foreground">Email</p>
-                          <p className="text-sm font-medium">{matchedContact.email}</p>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                {/* Insights */}
-                <div className="space-y-4">
-                  <h4 className="text-sm font-medium text-muted-foreground">Insights</h4>
-                  <div className="space-y-3">
-                    {/* Contact Origins/Types */}
-                    <div className="space-y-2">
-                      <span className="text-xs text-muted-foreground">Source</span>
-                      <div className="flex flex-wrap gap-1">
-                        {matchedContact?.origin?.length ? (
-                          matchedContact.origin.map((origin, idx) => (
-                            <Badge 
-                              key={idx} 
-                              variant="secondary"
-                              className={cn(
-                                "text-xs",
-                                origin === "policy" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
-                                origin === "quote" && "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-                                origin === "manual" && "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-                                origin === "sms" && "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
-                              )}
-                              data-testid={`badge-origin-${origin}`}
-                            >
-                              {origin.charAt(0).toUpperCase() + origin.slice(1)}
-                            </Badge>
-                          ))
-                        ) : (
-                          <Badge variant="outline" className="text-xs" data-testid="badge-origin-lead">Lead</Badge>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Status Badges */}
-                    {matchedContact?.status && matchedContact.status.length > 0 && (
-                      <div className="space-y-2">
-                        <span className="text-xs text-muted-foreground">Status</span>
-                        <div className="flex flex-wrap gap-1">
-                          {matchedContact.status.map((status, idx) => (
-                            <Badge 
-                              key={idx} 
-                              variant="outline"
-                              className="text-xs"
-                              data-testid={`badge-status-${idx}`}
-                            >
-                              {status}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Product Types */}
-                    {matchedContact?.productType && matchedContact.productType.filter(Boolean).length > 0 && (
-                      <div className="space-y-2">
-                        <span className="text-xs text-muted-foreground">Products</span>
-                        <div className="flex flex-wrap gap-1">
-                          {matchedContact.productType.filter(Boolean).map((product, idx) => (
-                            <Badge 
-                              key={idx} 
-                              className="text-xs bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200"
-                              data-testid={`badge-product-${idx}`}
-                            >
-                              {product}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Date of Birth */}
-                    {matchedContact?.dateOfBirth && (
-                      <div className="flex items-center gap-3">
-                        <Calendar className="h-4 w-4 text-muted-foreground" />
-                        <div>
-                          <p className="text-xs text-muted-foreground">Birthday</p>
-                          <p className="text-sm font-medium" data-testid="text-dob">
-                            {format(new Date(matchedContact.dateOfBirth), "MMM d, yyyy")}
+                          <p className="text-xs text-muted-foreground">Full name</p>
+                          <p className="text-sm font-medium" data-testid="text-fullname">
+                            {matchedContact?.displayName || selectedConversation.displayName || "Unknown"}
                           </p>
                         </div>
                       </div>
-                    )}
+                      <div className="flex items-center gap-3">
+                        <Phone className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Phone</p>
+                          <p className="text-sm font-medium" data-testid="text-phone">
+                            {formatForDisplay(selectedConversation.phoneNumber)}
+                          </p>
+                        </div>
+                      </div>
+                      {matchedContact?.email && (
+                        <div className="flex items-center gap-3">
+                          <Mail className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-xs text-muted-foreground">Email</p>
+                            <p className="text-sm font-medium" data-testid="text-email">{matchedContact.email}</p>
+                          </div>
+                        </div>
+                      )}
+                      <div className="flex items-center gap-3">
+                        <SiWhatsapp className="h-4 w-4 text-green-600" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">WhatsApp</p>
+                          <p className="text-sm font-medium" data-testid="text-whatsapp">
+                            {formatForDisplay(selectedConversation.phoneNumber)}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Briefcase className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Job title</p>
+                          <p className="text-sm font-medium text-muted-foreground" data-testid="text-jobtitle">—</p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <Building2 className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Organization</p>
+                          <p className="text-sm font-medium" data-testid="text-organization">
+                            {matchedContact?.companyName || "—"}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
+                          <SiFacebook className="h-4 w-4 text-blue-600 cursor-pointer hover:opacity-80" data-testid="icon-facebook" />
+                          <SiInstagram className="h-4 w-4 text-pink-600 cursor-pointer hover:opacity-80" data-testid="icon-instagram" />
+                        </div>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Social media</p>
+                          <p className="text-sm text-muted-foreground" data-testid="text-social">Not connected</p>
+                        </div>
+                      </div>
+                      <button 
+                        className="text-xs text-violet-600 hover:text-violet-700 font-medium"
+                        data-testid="btn-show-more-contact"
+                      >
+                        Show more
+                      </button>
+                    </div>
+                  )}
+                </div>
 
-                    {/* Company */}
-                    {matchedContact?.companyName && (
+                {/* Insights - Collapsible */}
+                <div className="space-y-4">
+                  <button 
+                    onClick={() => setInsightsOpen(!insightsOpen)}
+                    className="flex items-center justify-between w-full text-left"
+                    data-testid="btn-toggle-insights"
+                  >
+                    <h4 className="text-sm font-medium text-muted-foreground">Insights</h4>
+                    {insightsOpen ? (
+                      <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </button>
+                  {insightsOpen && (
+                    <div className="space-y-3" data-testid="section-insights">
+                      {/* Contact Origins/Types */}
+                      <div className="space-y-2">
+                        <span className="text-xs text-muted-foreground">Source</span>
+                        <div className="flex flex-wrap gap-1">
+                          {matchedContact?.origin?.length ? (
+                            matchedContact.origin.map((origin, idx) => (
+                              <Badge 
+                                key={idx} 
+                                variant="secondary"
+                                className={cn(
+                                  "text-xs",
+                                  origin === "policy" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+                                  origin === "quote" && "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+                                  origin === "manual" && "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
+                                  origin === "sms" && "bg-orange-100 text-orange-800 dark:bg-orange-900 dark:text-orange-200"
+                                )}
+                                data-testid={`badge-origin-${origin}`}
+                              >
+                                {origin.charAt(0).toUpperCase() + origin.slice(1)}
+                              </Badge>
+                            ))
+                          ) : (
+                            <Badge variant="outline" className="text-xs" data-testid="badge-origin-lead">Lead</Badge>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Status Badges */}
+                      {matchedContact?.status && matchedContact.status.length > 0 && (
+                        <div className="space-y-2">
+                          <span className="text-xs text-muted-foreground">Status</span>
+                          <div className="flex flex-wrap gap-1">
+                            {matchedContact.status.map((status, idx) => (
+                              <Badge 
+                                key={idx} 
+                                variant="outline"
+                                className="text-xs"
+                                data-testid={`badge-status-${idx}`}
+                              >
+                                {status}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Product Types */}
+                      {matchedContact?.productType && matchedContact.productType.filter(Boolean).length > 0 && (
+                        <div className="space-y-2">
+                          <span className="text-xs text-muted-foreground">Products</span>
+                          <div className="flex flex-wrap gap-1">
+                            {matchedContact.productType.filter(Boolean).map((product, idx) => (
+                              <Badge 
+                                key={idx} 
+                                className="text-xs bg-slate-100 text-slate-800 dark:bg-slate-800 dark:text-slate-200"
+                                data-testid={`badge-product-${idx}`}
+                              >
+                                {product}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Date of Birth */}
+                      {matchedContact?.dateOfBirth && (
+                        <div className="flex items-center gap-3">
+                          <Calendar className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-xs text-muted-foreground">Birthday</p>
+                            <p className="text-sm font-medium" data-testid="text-dob">
+                              {format(new Date(matchedContact.dateOfBirth), "MMM d, yyyy")}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Company */}
+                      {matchedContact?.companyName && (
+                        <div className="flex items-center gap-3">
+                          <Tag className="h-4 w-4 text-muted-foreground" />
+                          <div>
+                            <p className="text-xs text-muted-foreground">Company</p>
+                            <p className="text-sm font-medium" data-testid="text-company">
+                              {matchedContact.companyName}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Contact Owner */}
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-5 w-5">
+                          <AvatarFallback className="text-[8px] bg-gray-200">?</AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-xs text-muted-foreground">Contact owner</p>
+                          <p className="text-sm text-muted-foreground" data-testid="text-contact-owner">Unassigned</p>
+                        </div>
+                      </div>
+
+                      {/* Lists */}
+                      <div className="flex items-center gap-3">
+                        <List className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Lists</p>
+                          <p className="text-sm text-muted-foreground" data-testid="text-lists">—</p>
+                        </div>
+                      </div>
+
+                      {/* Segments */}
+                      <div className="flex items-center gap-3">
+                        <Users className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Segments</p>
+                          <p className="text-sm text-muted-foreground" data-testid="text-segments">—</p>
+                        </div>
+                      </div>
+
+                      {/* Tags */}
                       <div className="flex items-center gap-3">
                         <Tag className="h-4 w-4 text-muted-foreground" />
                         <div>
-                          <p className="text-xs text-muted-foreground">Company</p>
-                          <p className="text-sm font-medium" data-testid="text-company">
-                            {matchedContact.companyName}
+                          <p className="text-xs text-muted-foreground">Tags</p>
+                          <p className="text-sm text-muted-foreground" data-testid="text-tags">—</p>
+                        </div>
+                      </div>
+
+                      {/* Interactions */}
+                      <div className="flex items-center gap-3">
+                        <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Interactions</p>
+                          <p className="text-sm font-medium" data-testid="text-interactions">
+                            {messagesData?.messages?.length || 0}
                           </p>
                         </div>
                       </div>
-                    )}
-                  </div>
+
+                      {/* Last interaction */}
+                      <div className="flex items-center gap-3">
+                        <Clock className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Last interaction</p>
+                          <p className="text-sm font-medium" data-testid="text-last-interaction">
+                            {lastInteraction 
+                              ? format(new Date(lastInteraction.createdAt), "MMM d, yyyy h:mm a")
+                              : "—"
+                            }
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Last outbound */}
+                      <div className="flex items-center gap-3">
+                        <Send className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Last outbound</p>
+                          <p className="text-sm font-medium" data-testid="text-last-outbound">
+                            {lastOutboundMessage 
+                              ? format(new Date(lastOutboundMessage.createdAt), "MMM d, yyyy h:mm a")
+                              : "—"
+                            }
+                          </p>
+                        </div>
+                      </div>
+
+                      {/* Last inbound */}
+                      <div className="flex items-center gap-3">
+                        <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                        <div>
+                          <p className="text-xs text-muted-foreground">Last inbound</p>
+                          <p className="text-sm font-medium" data-testid="text-last-inbound">
+                            {lastInboundMessage 
+                              ? format(new Date(lastInboundMessage.createdAt), "MMM d, yyyy h:mm a")
+                              : "—"
+                            }
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Related Records */}
