@@ -315,7 +315,7 @@ export function PublicPricingView({
                     
                     {/* Card */}
                     <div 
-                      className="flex-1 flex flex-col"
+                      className="flex-1 flex flex-col p-6"
                       style={{
                         backgroundColor: '#FFFFFF',
                         borderRadius: '16px',
