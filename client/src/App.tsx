@@ -31,7 +31,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sh
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, ChevronLeft, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard, Shield, FileText, DollarSign, Phone, PhoneMissed, Share2, Star, ClipboardList, Clock, Megaphone, MessageCircle, Users as UsersIcon, Gift, Layout, Wallet } from "lucide-react";
+import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, ChevronLeft, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard, Shield, FileText, DollarSign, Phone, PhoneMissed, Share2, Star, ClipboardList, Clock, Megaphone, MessageCircle, Users as UsersIcon, Gift, Layout, Wallet, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -87,6 +87,7 @@ import Referrals from "@/pages/referrals";
 import LandingPageBuilder from "@/pages/landing-page";
 import PublicLandingPage from "@/pages/public-landing-page";
 import SmsMmsPage from "@/pages/sms-mms";
+import InboxPage from "@/pages/inbox";
 import EmailMarketingPage from "@/pages/email-marketing";
 import IntegrationsPage from "@/pages/integrations";
 import Leads from "@/pages/leads";
@@ -838,6 +839,19 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           <div className="w-8 h-px bg-gray-300/50 dark:bg-gray-600/50 my-1" />
 
           {/* Communications Icons */}
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <button
+                onClick={() => setLocation("/inbox")}
+                data-testid="sidebar-button-inbox"
+                className={circularButtonClass}
+              >
+                <Inbox className="h-[18px] w-[18px] text-sky-600" />
+              </button>
+            </TooltipTrigger>
+            <TooltipContent side="right" className="font-medium">Inbox</TooltipContent>
+          </Tooltip>
+
           <Tooltip>
             <TooltipTrigger asChild>
               <div className="relative">
@@ -1854,6 +1868,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <IncomingSms />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/inbox">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <InboxPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
