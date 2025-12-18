@@ -262,6 +262,7 @@ interface TelnyxWebRTCState {
   callDuration: number;
   callActiveTimestamp?: number;
   activeTelnyxLegId?: string;
+  isOutboundPstnRinging: boolean; // true when outbound PSTN is ringing, waiting for answer
   // NEW: Call info for UI compatibility
   currentCallInfo?: SipCallInfo;
   incomingCallInfo?: SipCallInfo;
@@ -282,6 +283,7 @@ interface TelnyxWebRTCState {
   setCallDuration: (duration: number) => void;
   setCallActiveTimestamp: (timestamp?: number) => void;
   setActiveTelnyxLegId: (legId?: string) => void;
+  setOutboundPstnRinging: (ringing: boolean) => void;
   // NEW: Call info setters
   setCurrentCallInfo: (info?: SipCallInfo) => void;
   setIncomingCallInfo: (info?: SipCallInfo) => void;
@@ -299,6 +301,7 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   callDuration: 0,
   callActiveTimestamp: undefined,
   activeTelnyxLegId: undefined,
+  isOutboundPstnRinging: false,
   currentCallInfo: undefined,
   incomingCallInfo: undefined,
   outgoingCallInfo: undefined,
@@ -323,6 +326,7 @@ export const useTelnyxStore = create<TelnyxWebRTCState>((set) => ({
   setCallDuration: (duration) => set({ callDuration: duration }),
   setCallActiveTimestamp: (timestamp) => set({ callActiveTimestamp: timestamp }),
   setActiveTelnyxLegId: (legId) => set({ activeTelnyxLegId: legId }),
+  setOutboundPstnRinging: (ringing) => set({ isOutboundPstnRinging: ringing }),
   setCurrentCallInfo: (info) => set({ currentCallInfo: info }),
   setIncomingCallInfo: (info) => set({ incomingCallInfo: info }),
   setOutgoingCallInfo: (info) => set({ outgoingCallInfo: info }),
@@ -1003,9 +1007,19 @@ class TelnyxWebRTCManager {
           store.setOutgoingCall(undefined);
           store.setIncomingCallInfo(undefined);
           store.setOutgoingCallInfo(undefined);
-          store.setCallActiveTimestamp(Date.now());
           store.setMuted(false);
           store.setOnHold(false);
+          
+          // For outbound calls, don't start timer yet - wait for PSTN to answer
+          // The timer will be started when we receive outbound_call_answered from server
+          if (isOutbound) {
+            console.log("[SIP.js WebRTC] Outbound call - waiting for PSTN to answer before starting timer");
+            store.setOutboundPstnRinging(true);
+            // Don't set callActiveTimestamp - it will be set when PSTN answers
+          } else {
+            // Inbound call - timer starts now
+            store.setCallActiveTimestamp(Date.now());
+          }
           
           // Update store with Telnyx Leg ID if found
           if (this.currentTelnyxLegId) {
@@ -1033,6 +1047,7 @@ class TelnyxWebRTCManager {
           store.setOutgoingCallInfo(undefined);
           store.setCallActiveTimestamp(undefined);
           store.setActiveTelnyxLegId(undefined);
+          store.setOutboundPstnRinging(false);
           store.setMuted(false);
           store.setOnHold(false);
           // Log call end with final status

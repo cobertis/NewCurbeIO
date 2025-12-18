@@ -1,6 +1,7 @@
 import { useRef, useEffect, useCallback } from 'react';
 import { useExtensionCallStore, OnlineExtension, IncomingExtCall, QueueCall } from '@/stores/extensionCallStore';
 import { useToast } from '@/hooks/use-toast';
+import { useTelnyxStore } from '@/services/telnyx-webrtc';
 
 const ICE_SERVERS = [
   { urls: "stun:stun.l.google.com:19302" },
@@ -221,6 +222,14 @@ export function useExtensionCall() {
             });
             setQueueCall(null);
           }
+          break;
+
+        case "outbound_call_answered":
+          // PSTN answered the outbound call - now start the timer
+          console.log("[useExtensionCall] Outbound PSTN call answered:", msg.destinationNumber);
+          const telnyxStore = useTelnyxStore.getState();
+          telnyxStore.setOutboundPstnRinging(false);
+          telnyxStore.setCallActiveTimestamp(Date.now());
           break;
       }
     } catch (e) {

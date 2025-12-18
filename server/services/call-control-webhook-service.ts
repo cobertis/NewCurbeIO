@@ -39,6 +39,8 @@ interface PendingBridge {
   companyId: string;
   queueId?: string;
   isDirectCall?: boolean; // true when it's a direct call to assigned user (not queue)
+  isOutboundPstn?: boolean; // true when this is an outbound PSTN call from WebRTC
+  destinationNumber?: string; // The destination number for outbound calls
 }
 const pendingBridges = new Map<string, PendingBridge>();
 
@@ -690,9 +692,40 @@ export class CallControlWebhookService {
   private async handleCallAnswered(payload: CallControlEvent["data"]["payload"]): Promise<void> {
     const { call_control_id, client_state } = payload;
 
-    // Check if this is an agent answering a queue call - need to bridge
+    // Check if this is an agent answering a queue call or PSTN answering outbound call - need to bridge
     const pendingBridge = pendingBridges.get(call_control_id);
     if (pendingBridge) {
+      // Check if this is an outbound PSTN call being answered
+      if (pendingBridge.isOutboundPstn) {
+        console.log(`[CallControl] PSTN ${pendingBridge.destinationNumber} answered! Bridging with WebRTC leg ${pendingBridge.callerCallControlId}`);
+        pendingBridges.delete(call_control_id);
+        
+        try {
+          // Bridge the WebRTC leg with the PSTN leg
+          await this.makeCallControlRequest(pendingBridge.callerCallControlId, "bridge", {
+            call_control_id: call_control_id,
+            client_state: "",
+          });
+          console.log(`[CallControl] Successfully bridged WebRTC with PSTN`);
+          
+          // Notify frontend that PSTN answered - this is when the timer should start
+          extensionCallService.broadcastToCompany(pendingBridge.companyId, {
+            type: "outbound_call_answered",
+            webrtcCallControlId: pendingBridge.callerCallControlId,
+            pstnCallControlId: call_control_id,
+            destinationNumber: pendingBridge.destinationNumber,
+          });
+          console.log(`[CallControl] Notified frontend that PSTN answered`);
+        } catch (bridgeError) {
+          console.error(`[CallControl] Failed to bridge outbound call:`, bridgeError);
+          try {
+            await this.hangupCall(call_control_id, "NORMAL_CLEARING");
+            await this.hangupCall(pendingBridge.callerCallControlId, "NORMAL_CLEARING");
+          } catch (e) { /* ignore */ }
+        }
+        return;
+      }
+      
       console.log(`[CallControl] Agent answered! Bridging with caller ${pendingBridge.callerCallControlId}`);
       pendingBridges.delete(call_control_id);
 
@@ -1528,13 +1561,23 @@ export class CallControlWebhookService {
 
     const apiKey = await getTelnyxApiKey();
 
-    // Get Call Control App ID for the outbound leg
+    // Get Call Control App ID and Caller ID Name for the outbound leg
     const [settings] = await db
       .select({ 
         callControlAppId: telephonySettings.callControlAppId
       })
       .from(telephonySettings)
       .where(eq(telephonySettings.companyId, companyId));
+
+    // Get Caller ID Name from the phone number
+    const [phoneNumberRecord] = await db
+      .select({ callerIdName: telnyxPhoneNumbers.callerIdName })
+      .from(telnyxPhoneNumbers)
+      .where(eq(telnyxPhoneNumbers.phoneNumber, callerIdNumber))
+      .limit(1);
+    
+    const callerIdName = phoneNumberRecord?.callerIdName || undefined;
+    console.log(`[CallControl] Using Caller ID: ${callerIdNumber}, Name: ${callerIdName || 'not set'}`);
 
     const connectionId = settings?.callControlAppId;
 
@@ -1553,17 +1596,24 @@ export class CallControlWebhookService {
       headers["X-Managed-Account-Id"] = managedAccountId;
     }
 
+    // Build request body with optional caller_id_name
+    const requestBody: Record<string, unknown> = {
+      connection_id: connectionId,
+      to: destinationNumber,
+      from: callerIdNumber,
+      timeout_secs: 60,
+      answering_machine_detection: "disabled",
+    };
+    
+    if (callerIdName) {
+      requestBody.from_display_name = callerIdName;
+    }
+
     // Create outbound call to PSTN number
     const response = await fetch(`${TELNYX_API_BASE}/calls`, {
       method: "POST",
       headers,
-      body: JSON.stringify({
-        connection_id: connectionId,
-        to: destinationNumber,
-        from: callerIdNumber,
-        timeout_secs: 60,
-        answering_machine_detection: "disabled",
-      }),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
@@ -1592,6 +1642,8 @@ export class CallControlWebhookService {
       callerCallControlId: webrtcCallControlId,
       clientState: "",
       companyId,
+      isOutboundPstn: true,
+      destinationNumber,
     });
 
     console.log(`[CallControl] Waiting for PSTN ${destinationNumber} to answer, will bridge with WebRTC leg ${webrtcCallControlId}`);
