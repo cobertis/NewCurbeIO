@@ -79,13 +79,21 @@ interface TollFreeVerificationsResponse {
 
 interface TenDLCCampaign {
   campaignId: string;
+  tcrCampaignId?: string;
   brandId: string;
   usecase: string;
   description?: string;
   status: string;
   createDate?: string;
+  createdAt?: string;
   sample1?: string;
   sample2?: string;
+}
+
+interface CampaignPhoneNumber {
+  phoneNumber: string;
+  status?: string;
+  assignedAt?: string;
 }
 
 interface CampaignsResponse {
@@ -336,6 +344,59 @@ export function ComplianceTab() {
     queryKey: ["/api/phone-system/phone-numbers"],
   });
 
+  // Fetch phone numbers for a campaign
+  const fetchCampaignNumbers = async (campaignId: string) => {
+    try {
+      const response = await fetch(`/api/phone-system/campaigns/${campaignId}/phone-numbers`);
+      if (response.ok) {
+        const data = await response.json();
+        setCampaignPhoneNumbers(prev => ({
+          ...prev,
+          [campaignId]: data.phoneNumbers || []
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching campaign numbers:", error);
+    }
+  };
+
+  // Assign numbers mutation
+  const assignNumbersMutation = useMutation({
+    mutationFn: async ({ campaignId, phoneNumbers }: { campaignId: string; phoneNumbers: string[] }) => {
+      const res = await apiRequest("POST", `/api/phone-system/campaigns/${campaignId}/phone-numbers`, { phoneNumbers });
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Numbers assigned successfully" });
+      queryClient.invalidateQueries({ queryKey: ["/api/phone-system/campaigns"] });
+      if (selectedCampaign) {
+        fetchCampaignNumbers(selectedCampaign.campaignId);
+      }
+      setShowAssignNumbersSheet(false);
+      setSelectedNumbersToAssign([]);
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to assign numbers", variant: "destructive" });
+    },
+  });
+
+  // Remove number from campaign mutation
+  const removeNumberMutation = useMutation({
+    mutationFn: async ({ campaignId, phoneNumber }: { campaignId: string; phoneNumber: string }) => {
+      const res = await apiRequest("DELETE", `/api/phone-system/campaigns/${campaignId}/phone-numbers/${encodeURIComponent(phoneNumber)}`);
+      return res.json();
+    },
+    onSuccess: () => {
+      toast({ title: "Number removed successfully" });
+      if (selectedCampaign) {
+        fetchCampaignNumbers(selectedCampaign.campaignId);
+      }
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to remove number", variant: "destructive" });
+    },
+  });
+
   const tollFreeNumbers = (phoneNumbersData?.numbers || []).filter(n => {
     const cleaned = n.phoneNumber?.replace(/\D/g, '') || '';
     const areaCode = cleaned.length === 11 ? cleaned.substring(1, 4) : cleaned.substring(0, 3);
@@ -374,6 +435,12 @@ export function ComplianceTab() {
   const [sampleMessage3, setSampleMessage3] = useState<string>("");
   const [sampleMessage4, setSampleMessage4] = useState<string>("");
   const [sampleMessage5, setSampleMessage5] = useState<string>("");
+
+  // Campaign Number Assignment State
+  const [showAssignNumbersSheet, setShowAssignNumbersSheet] = useState(false);
+  const [selectedCampaign, setSelectedCampaign] = useState<TenDLCCampaign | null>(null);
+  const [selectedNumbersToAssign, setSelectedNumbersToAssign] = useState<string[]>([]);
+  const [campaignPhoneNumbers, setCampaignPhoneNumbers] = useState<Record<string, CampaignPhoneNumber[]>>({});
 
   // Toll-Free Verification Form State
   const [showTollFreeForm, setShowTollFreeForm] = useState(false);
@@ -1418,9 +1485,11 @@ export function ComplianceTab() {
               <TableHeader>
                 <TableRow>
                   <TableHead>TCR ID</TableHead>
-                  <TableHead>Brand</TableHead>
                   <TableHead>Use Case</TableHead>
+                  <TableHead>Numbers</TableHead>
+                  <TableHead>Created</TableHead>
                   <TableHead>Status</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -1436,12 +1505,52 @@ export function ComplianceTab() {
                   } else {
                     statusBadge = <Badge variant="outline">{campaign.status || "Unknown"}</Badge>;
                   }
+                  
+                  const assignedNumbers = campaignPhoneNumbers[campaign.campaignId] || [];
+                  const createdDate = campaign.createDate || campaign.createdAt;
+                  const formattedDate = createdDate ? new Date(createdDate).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "-";
+                  
+                  // Fetch numbers for this campaign if not already loaded
+                  if (!campaignPhoneNumbers[campaign.campaignId] && (status === "ACTIVE" || status === "APPROVED")) {
+                    fetchCampaignNumbers(campaign.campaignId);
+                  }
+                  
                   return (
                     <TableRow key={campaign.campaignId}>
                       <TableCell className="font-mono text-xs text-muted-foreground">{campaign.tcrCampaignId || campaign.campaignId}</TableCell>
-                      <TableCell className="font-medium">{campaign.brandId || '-'}</TableCell>
                       <TableCell>{USE_CASES.find(uc => uc.value === campaign.usecase)?.label || campaign.usecase}</TableCell>
+                      <TableCell>
+                        {assignedNumbers.length > 0 ? (
+                          <div className="flex flex-col gap-1">
+                            <Badge variant="outline" className="w-fit">{assignedNumbers.length} number{assignedNumbers.length !== 1 ? 's' : ''}</Badge>
+                            <div className="text-xs text-muted-foreground max-w-[150px] truncate">
+                              {assignedNumbers.slice(0, 2).map(n => n.phoneNumber).join(", ")}
+                              {assignedNumbers.length > 2 && ` +${assignedNumbers.length - 2} more`}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-xs text-muted-foreground">No numbers</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{formattedDate}</TableCell>
                       <TableCell>{statusBadge}</TableCell>
+                      <TableCell className="text-right">
+                        {(status === "ACTIVE" || status === "APPROVED") && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            data-testid={`btn-assign-numbers-${campaign.campaignId}`}
+                            onClick={() => {
+                              setSelectedCampaign(campaign);
+                              setSelectedNumbersToAssign([]);
+                              setShowAssignNumbersSheet(true);
+                            }}
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            Assign Numbers
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
                   );
                 })}
@@ -1876,6 +1985,147 @@ export function ComplianceTab() {
                 </div>
               </ScrollArea>
             </SheetContent>
+      </Sheet>
+
+      {/* Assign Numbers Sheet */}
+      <Sheet open={showAssignNumbersSheet} onOpenChange={setShowAssignNumbersSheet}>
+        <SheetContent className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Assign Phone Numbers</SheetTitle>
+            <SheetDescription>
+              Select phone numbers to assign to campaign {selectedCampaign?.tcrCampaignId || selectedCampaign?.campaignId}
+            </SheetDescription>
+          </SheetHeader>
+          
+          <div className="mt-6 space-y-4">
+            {/* Currently assigned numbers */}
+            {selectedCampaign && campaignPhoneNumbers[selectedCampaign.campaignId]?.length > 0 && (
+              <div className="space-y-2">
+                <Label className="text-sm font-medium">Currently Assigned ({campaignPhoneNumbers[selectedCampaign.campaignId].length})</Label>
+                <div className="text-xs text-muted-foreground mb-1">Click X to remove a number from this campaign</div>
+                <div className="border rounded-md p-3 bg-muted/30 max-h-40 overflow-y-auto space-y-1">
+                  {campaignPhoneNumbers[selectedCampaign.campaignId].map(num => (
+                    <div key={num.phoneNumber} className="text-sm font-mono py-1.5 px-2 flex items-center justify-between gap-2 rounded hover:bg-muted/50">
+                      <div className="flex items-center gap-2">
+                        <Phone className="h-3 w-3 text-muted-foreground" />
+                        <span>{num.phoneNumber}</span>
+                        {num.status && (
+                          <Badge variant="outline" className="text-xs">{num.status}</Badge>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive"
+                        disabled={removeNumberMutation.isPending}
+                        data-testid={`btn-remove-number-${num.phoneNumber}`}
+                        onClick={() => {
+                          if (selectedCampaign) {
+                            removeNumberMutation.mutate({
+                              campaignId: selectedCampaign.campaignId,
+                              phoneNumber: num.phoneNumber
+                            });
+                          }
+                        }}
+                      >
+                        <XCircle className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            
+            {/* Available numbers to assign */}
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Available Numbers</Label>
+              <div className="text-xs text-muted-foreground mb-2">Select numbers to add to this campaign</div>
+              {phoneNumbersData?.numbers && phoneNumbersData.numbers.length > 0 ? (
+                <div className="border rounded-md p-3 max-h-64 overflow-y-auto space-y-1">
+                  {phoneNumbersData.numbers
+                    .filter(num => {
+                      const assignedToThis = selectedCampaign ? 
+                        (campaignPhoneNumbers[selectedCampaign.campaignId] || []).some(n => n.phoneNumber === num.phoneNumber) : false;
+                      return !assignedToThis;
+                    })
+                    .map(num => (
+                      <div 
+                        key={num.phoneNumber}
+                        className={`flex items-center gap-2 p-2 rounded cursor-pointer ${
+                          selectedNumbersToAssign.includes(num.phoneNumber) 
+                            ? "bg-primary/10 border border-primary" 
+                            : "hover:bg-muted"
+                        }`}
+                        onClick={() => {
+                          setSelectedNumbersToAssign(prev => 
+                            prev.includes(num.phoneNumber)
+                              ? prev.filter(n => n !== num.phoneNumber)
+                              : [...prev, num.phoneNumber]
+                          );
+                        }}
+                      >
+                        <Checkbox 
+                          checked={selectedNumbersToAssign.includes(num.phoneNumber)}
+                          onCheckedChange={() => {
+                            setSelectedNumbersToAssign(prev => 
+                              prev.includes(num.phoneNumber)
+                                ? prev.filter(n => n !== num.phoneNumber)
+                                : [...prev, num.phoneNumber]
+                            );
+                          }}
+                        />
+                        <span className="text-sm font-mono">{num.phoneNumber}</span>
+                      </div>
+                    ))
+                  }
+                </div>
+              ) : (
+                <div className="text-sm text-muted-foreground p-4 border rounded-md bg-muted/30">
+                  No phone numbers available. Purchase numbers first.
+                </div>
+              )}
+              {selectedNumbersToAssign.length > 0 && (
+                <div className="text-xs text-muted-foreground">{selectedNumbersToAssign.length} number(s) selected</div>
+              )}
+            </div>
+            
+            {/* Actions */}
+            <div className="flex gap-3 pt-4 border-t">
+              <Button
+                variant="outline"
+                className="flex-1"
+                onClick={() => {
+                  setShowAssignNumbersSheet(false);
+                  setSelectedNumbersToAssign([]);
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                className="flex-1"
+                data-testid="btn-confirm-assign-numbers"
+                disabled={selectedNumbersToAssign.length === 0 || assignNumbersMutation.isPending}
+                onClick={() => {
+                  if (selectedCampaign) {
+                    assignNumbersMutation.mutate({
+                      campaignId: selectedCampaign.campaignId,
+                      phoneNumbers: selectedNumbersToAssign
+                    });
+                  }
+                }}
+              >
+                {assignNumbersMutation.isPending ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Assigning...
+                  </>
+                ) : (
+                  `Assign ${selectedNumbersToAssign.length} Number${selectedNumbersToAssign.length !== 1 ? 's' : ''}`
+                )}
+              </Button>
+            </div>
+          </div>
+        </SheetContent>
       </Sheet>
 
       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-xl p-6">

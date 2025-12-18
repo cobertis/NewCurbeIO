@@ -29192,7 +29192,138 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
   });
 
-  // GET /api/phone-system/toll-free/verifications - List toll-free verification requests
+  // GET /api/phone-system/campaigns/:id/phone-numbers - Get phone numbers assigned to campaign
+  // Telnyx API: GET https://api.telnyx.com/v2/10dlc/phone_number_campaigns?campaignId=...
+  app.get("/api/phone-system/campaigns/:id/phone-numbers", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session.user?.companyId;
+      const { id } = req.params;
+      
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey) {
+        return res.status(400).json({ message: "Telnyx not configured" });
+      }
+      
+      // Use campaignId query param per Telnyx documentation
+      const response = await fetch(`https://api.telnyx.com/v2/10dlc/phone_number_campaigns?campaignId=${encodeURIComponent(id)}`, {
+        method: "GET",
+        headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        console.error("[10DLC Campaign Numbers] Error:", error);
+        return res.json({ phoneNumbers: [] });
+      }
+      
+      const result = await response.json();
+      console.log("[10DLC Campaign Numbers] Found", (result.data || []).length, "numbers for campaign", id);
+      res.json({ phoneNumbers: result.data || [] });
+    } catch (error: any) {
+      console.error("Error fetching campaign phone numbers:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/phone-system/campaigns/:id/phone-numbers - Assign phone numbers to campaign
+  // Telnyx API: POST https://api.telnyx.com/v2/10dlc/phone_number_campaigns with { phoneNumber, campaignId }
+  app.post("/api/phone-system/campaigns/:id/phone-numbers", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session.user?.companyId;
+      const { id } = req.params;
+      const { phoneNumbers } = req.body;
+      
+      if (!phoneNumbers || !Array.isArray(phoneNumbers) || phoneNumbers.length === 0) {
+        return res.status(400).json({ message: "Phone numbers array is required" });
+      }
+      
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey) {
+        return res.status(400).json({ message: "Telnyx not configured" });
+      }
+      
+      console.log("[10DLC Campaign] Assigning", phoneNumbers.length, "numbers to campaign", id);
+      
+      // Assign each number individually per Telnyx API documentation
+      const results = [];
+      const errors = [];
+      
+      for (const phoneNumber of phoneNumbers) {
+        try {
+          const response = await fetch(`https://api.telnyx.com/v2/10dlc/phone_number_campaigns`, {
+            method: "POST",
+            headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
+            body: JSON.stringify({ phoneNumber, campaignId: id }),
+          });
+          
+          const result = await response.json();
+          
+          if (!response.ok) {
+            console.error("[10DLC Campaign] Error assigning", phoneNumber, ":", result);
+            errors.push({ phoneNumber, error: result.errors?.[0]?.detail || "Failed to assign" });
+          } else {
+            console.log("[10DLC Campaign] Successfully assigned", phoneNumber);
+            results.push(result.data || result);
+          }
+        } catch (err: any) {
+          errors.push({ phoneNumber, error: err.message });
+        }
+      }
+      
+      if (results.length === 0 && errors.length > 0) {
+        return res.status(400).json({ message: errors[0]?.error || "Failed to assign phone numbers", errors });
+      }
+      
+      res.json({ success: true, assigned: results, errors });
+    } catch (error: any) {
+      console.error("Error assigning phone numbers to campaign:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // DELETE /api/phone-system/campaigns/:id/phone-numbers/:phoneNumber - Remove phone number from campaign
+  // Telnyx API: DELETE https://api.telnyx.com/v2/10dlc/phone_number_campaigns/:phoneNumber
+  app.delete("/api/phone-system/campaigns/:id/phone-numbers/:phoneNumber", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session.user?.companyId;
+      const { phoneNumber } = req.params;
+      
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey) {
+        return res.status(400).json({ message: "Telnyx not configured" });
+      }
+      
+      console.log("[10DLC Campaign] Removing phone number", phoneNumber, "from campaign");
+      
+      const response = await fetch(`https://api.telnyx.com/v2/10dlc/phone_number_campaigns/${encodeURIComponent(phoneNumber)}`, {
+        method: "DELETE",
+        headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
+      });
+      
+      if (!response.ok) {
+        const error = await response.json();
+        console.error("[10DLC Campaign] Error removing number:", error);
+        return res.status(response.status).json({ message: error.errors?.[0]?.detail || "Failed to remove phone number" });
+      }
+      
+      console.log("[10DLC Campaign] Successfully removed", phoneNumber);
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("Error removing phone number from campaign:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+    // GET /api/phone-system/toll-free/verifications - List toll-free verification requests
   app.get("/api/phone-system/toll-free/verifications", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = req.session.user?.companyId;
