@@ -96,7 +96,6 @@ import PhoneSystem from "@/pages/phone-system";
 import IMessagePage from "@/pages/imessage";
 import ImessageCampaigns from "@/pages/imessage-campaigns";
 import ImessageCampaignDetail from "@/pages/imessage-campaign-detail";
-import WhatsAppPage from "@/pages/whatsapp";
 import NotificationsPage from "@/pages/notifications";
 import WalletAnalyticsPage from "@/pages/wallet-analytics";
 import NotFound from "@/pages/not-found";
@@ -182,11 +181,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     queryKey: ["/api/notifications"],
   });
 
-  // WhatsApp unread count query - no polling, updated via WebSocket
-  const { data: whatsappUnread } = useQuery<{ total: number }>({
-    queryKey: ['/api/whatsapp/unread-count'],
-    enabled: !!user,
-  });
   
   // Query for Phone System access - only owners can see the Phone System tab
   const { data: phoneSystemAccessData } = useQuery<{ hasAccess: boolean; isOwner: boolean; reason: string }>({
@@ -225,31 +219,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     }
   }, [hasPbxExtension, extConnectionStatus, connectExtension]);
 
-  // Listen for WhatsApp unread count updates via WebSocket
-  useEffect(() => {
-    if (!user) return;
-    
-    const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-    const ws = new WebSocket(`${protocol}//${window.location.host}/ws/chat`);
-    
-    ws.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        // Update unread count when new WhatsApp message arrives
-        if (data.type === 'whatsapp:message' || data.type === 'whatsapp:chat_update') {
-          queryClient.invalidateQueries({ queryKey: ['/api/whatsapp/unread-count'] });
-        }
-      } catch (e) {
-        // Ignore parse errors
-      }
-    };
-    
-    return () => {
-      if (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING) {
-        ws.close();
-      }
-    };
-  }, [user]);
 
   // Fetch company data for all users with a companyId
   const { data: companyData, isLoading: isLoadingCompany, isFetched: isCompanyFetched } = useQuery<{ company: any }>({
@@ -853,25 +822,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
             <TooltipContent side="right" className="font-medium">Inbox</TooltipContent>
           </Tooltip>
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="relative">
-                <button
-                  onClick={() => setLocation("/whatsapp")}
-                  data-testid="sidebar-button-whatsapp"
-                  className={circularButtonClass}
-                >
-                  <MessageCircle className="h-[18px] w-[18px] text-[#25D366]" />
-                </button>
-                {whatsappUnread?.total > 0 && (
-                  <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[9px] font-bold rounded-full h-[14px] min-w-[14px] flex items-center justify-center px-0.5 pointer-events-none">
-                    {whatsappUnread.total > 99 ? '99+' : whatsappUnread.total}
-                  </span>
-                )}
-              </div>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">WhatsApp</TooltipContent>
-          </Tooltip>
 
           {hasImessageAccess && (
             <Tooltip>
@@ -1806,13 +1756,6 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <IMessagePage />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/whatsapp">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <WhatsAppPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
