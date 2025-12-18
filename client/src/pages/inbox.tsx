@@ -80,7 +80,30 @@ interface TelnyxConversation {
   lastMessageAt: string | null;
   unreadCount: number;
   companyPhoneNumber: string;
+  channel?: string;
 }
+
+const getChannelIcon = (channel?: string) => {
+  switch (channel) {
+    case "whatsapp":
+      return <SiWhatsapp className="h-2.5 w-2.5 text-white" />;
+    case "imessage":
+      return <MessageSquare className="h-2.5 w-2.5 text-white" />;
+    default:
+      return <MessageSquare className="h-2.5 w-2.5 text-white" />;
+  }
+};
+
+const getChannelColor = (channel?: string) => {
+  switch (channel) {
+    case "whatsapp":
+      return "bg-green-500";
+    case "imessage":
+      return "bg-blue-500";
+    default:
+      return "bg-blue-500";
+  }
+};
 
 interface TelnyxMessage {
   id: string;
@@ -434,8 +457,8 @@ export default function InboxPage() {
                           {getInitials(conversation.displayName, conversation.phoneNumber)}
                         </AvatarFallback>
                       </Avatar>
-                      <div className="absolute -bottom-0.5 -right-0.5 h-5 w-5 rounded-full bg-blue-500 flex items-center justify-center border-2 border-background">
-                        <MessageSquare className="h-2.5 w-2.5 text-white" />
+                      <div className={cn("absolute -bottom-0.5 -right-0.5 h-5 w-5 rounded-full flex items-center justify-center border-2 border-background", getChannelColor(conversation.channel))}>
+                        {getChannelIcon(conversation.channel)}
                       </div>
                     </div>
                     <div className="flex-1 min-w-0">
@@ -484,11 +507,16 @@ export default function InboxPage() {
                 >
                   <ChevronRight className="h-4 w-4 rotate-180" />
                 </Button>
-                <Avatar className="h-10 w-10">
-                  <AvatarFallback className="bg-sky-100 text-sky-700">
-                    {getInitials(selectedConversation.displayName, selectedConversation.phoneNumber)}
-                  </AvatarFallback>
-                </Avatar>
+                <div className="relative shrink-0">
+                  <Avatar className="h-10 w-10">
+                    <AvatarFallback className="bg-sky-100 text-sky-700">
+                      {getInitials(selectedConversation.displayName, selectedConversation.phoneNumber)}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className={cn("absolute -bottom-0.5 -right-0.5 h-5 w-5 rounded-full flex items-center justify-center border-2 border-background", getChannelColor(selectedConversation.channel))}>
+                    {getChannelIcon(selectedConversation.channel)}
+                  </div>
+                </div>
                 <div>
                   <h3 className="font-medium">
                     {selectedConversation.displayName || formatForDisplay(selectedConversation.phoneNumber)}
