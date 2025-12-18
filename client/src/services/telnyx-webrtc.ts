@@ -1248,8 +1248,11 @@ class TelnyxWebRTCManager {
     }
     console.log("[SIP.js WebRTC] Calling:", formattedDest);
 
-    // Build target URI
-    const targetUri = UserAgent.makeURI(`sip:${formattedDest}@${this.currentSipDomain}`);
+    // Build target URI - CRITICAL: Use sip.telnyx.com for outbound PSTN calls
+    // The company subdomain (e.g., curbe-io.sip.telnyx.com) routes calls to the Call Control App
+    // which creates a loop. For PSTN calls, we must use the main Telnyx SIP domain.
+    const outboundSipDomain = "sip.telnyx.com";
+    const targetUri = UserAgent.makeURI(`sip:${formattedDest}@${outboundSipDomain}`);
     if (!targetUri) {
       console.error("[SIP.js WebRTC] Invalid target URI");
       return null;
