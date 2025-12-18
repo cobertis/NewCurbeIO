@@ -6249,6 +6249,7 @@ export const telnyxMessages = pgTable("telnyx_messages", {
   channel: telnyxMessageChannelEnum("channel").notNull().default("sms"), // sms, whatsapp, imessage, etc.
   text: text("text").notNull(), // Message content
   contentType: text("content_type").notNull().default("text"), // text, image, file
+  mediaUrls: text("media_urls").array(), // Array of media URLs for MMS attachments
   status: telnyxMessageStatusEnum("status").notNull().default("pending"), // Message delivery status
   telnyxMessageId: text("telnyx_message_id"), // Telnyx API message ID for tracking
   sentBy: varchar("sent_by").references(() => users.id, { onDelete: "set null" }), // User who sent outbound messages
