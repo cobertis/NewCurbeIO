@@ -29193,11 +29193,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
 
   // GET /api/phone-system/campaigns/:id/phone-numbers - Get phone numbers assigned to campaign
-  // Telnyx API: GET https://api.telnyx.com/v2/10dlc/phone_number_campaigns?campaignId=...
+  // Telnyx API: GET https://api.telnyx.com/v2/10dlc/phone_number_campaigns
   app.get("/api/phone-system/campaigns/:id/phone-numbers", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = req.session.user?.companyId;
       const { id } = req.params;
+      const { tcrCampaignId } = req.query;
       
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
@@ -29207,21 +29208,39 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
-      // Use campaignId query param per Telnyx documentation
-      const response = await fetch(`https://api.telnyx.com/v2/10dlc/phone_number_campaigns?campaignId=${encodeURIComponent(id)}`, {
+      console.log("[10DLC Campaign Numbers] Fetching numbers for campaign:", id, "tcrCampaignId:", tcrCampaignId);
+      
+      // Get ALL phone number campaigns and filter by our campaign ID
+      // The API may not support filtering by campaignId directly
+      const response = await fetch(`https://api.telnyx.com/v2/10dlc/phone_number_campaigns`, {
         method: "GET",
         headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
       });
       
       if (!response.ok) {
         const error = await response.json();
-        console.error("[10DLC Campaign Numbers] Error:", error);
+        console.error("[10DLC Campaign Numbers] Error fetching all:", error);
         return res.json({ phoneNumbers: [] });
       }
       
       const result = await response.json();
-      console.log("[10DLC Campaign Numbers] Found", (result.data || []).length, "numbers for campaign", id);
-      res.json({ phoneNumbers: result.data || [] });
+      const allNumbers = result.data || [];
+      
+      console.log("[10DLC Campaign Numbers] Total numbers found:", allNumbers.length);
+      
+      // Filter by campaignId or telnyxCampaignId or tcrCampaignId
+      const filteredNumbers = allNumbers.filter((num: any) => {
+        const matchesCampaignId = num.campaignId === id || num.telnyxCampaignId === id;
+        const matchesTcrId = tcrCampaignId && num.tcrCampaignId === tcrCampaignId;
+        return matchesCampaignId || matchesTcrId;
+      });
+      
+      console.log("[10DLC Campaign Numbers] Filtered numbers for campaign", id, ":", filteredNumbers.length);
+      if (allNumbers.length > 0 && filteredNumbers.length === 0) {
+        console.log("[10DLC Campaign Numbers] Sample number data:", JSON.stringify(allNumbers[0], null, 2));
+      }
+      
+      res.json({ phoneNumbers: filteredNumbers });
     } catch (error: any) {
       console.error("Error fetching campaign phone numbers:", error);
       res.status(500).json({ message: error.message });

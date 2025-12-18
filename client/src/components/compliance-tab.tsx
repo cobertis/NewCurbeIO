@@ -345,9 +345,13 @@ export function ComplianceTab() {
   });
 
   // Fetch phone numbers for a campaign
-  const fetchCampaignNumbers = async (campaignId: string) => {
+  const fetchCampaignNumbers = async (campaignId: string, tcrCampaignId?: string) => {
     try {
-      const response = await fetch(`/api/phone-system/campaigns/${campaignId}/phone-numbers`);
+      const params = new URLSearchParams();
+      if (tcrCampaignId) params.append("tcrCampaignId", tcrCampaignId);
+      const queryString = params.toString();
+      const url = `/api/phone-system/campaigns/${campaignId}/phone-numbers${queryString ? `?${queryString}` : ""}`;
+      const response = await fetch(url);
       if (response.ok) {
         const data = await response.json();
         setCampaignPhoneNumbers(prev => ({
@@ -370,7 +374,7 @@ export function ComplianceTab() {
       toast({ title: "Numbers assigned successfully" });
       queryClient.invalidateQueries({ queryKey: ["/api/phone-system/campaigns"] });
       if (selectedCampaign) {
-        fetchCampaignNumbers(selectedCampaign.campaignId);
+        fetchCampaignNumbers(selectedCampaign.campaignId, selectedCampaign.tcrCampaignId);
       }
       setShowAssignNumbersSheet(false);
       setSelectedNumbersToAssign([]);
@@ -389,7 +393,7 @@ export function ComplianceTab() {
     onSuccess: () => {
       toast({ title: "Number removed successfully" });
       if (selectedCampaign) {
-        fetchCampaignNumbers(selectedCampaign.campaignId);
+        fetchCampaignNumbers(selectedCampaign.campaignId, selectedCampaign.tcrCampaignId);
       }
     },
     onError: (error: any) => {
@@ -1512,7 +1516,7 @@ export function ComplianceTab() {
                   
                   // Fetch numbers for this campaign if not already loaded
                   if (!campaignPhoneNumbers[campaign.campaignId] && (status === "ACTIVE" || status === "APPROVED")) {
-                    fetchCampaignNumbers(campaign.campaignId);
+                    fetchCampaignNumbers(campaign.campaignId, campaign.tcrCampaignId);
                   }
                   
                   return (
