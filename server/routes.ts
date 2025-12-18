@@ -91,8 +91,8 @@ import {
   createCampaignWithDetailsSchema
 } from "@shared/schema";
 import { db } from "./db";
-import { and, eq, ne, gte, lte, desc, or, sql, inArray, count, isNotNull, isNull } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings } from "@shared/schema";
+import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull } from "drizzle-orm";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -174,6 +174,9 @@ function detectStopKeyword(messageBody: string): boolean {
 
   // ============================================================
   return httpServer;
+
+
+  return httpServer;
 }
 // Verify ffmpeg is available at startup
 (async () => {
@@ -204,6 +207,9 @@ async function extractAudioDuration(audioPath: string): Promise<number> {
   }
 
   // ============================================================
+  return httpServer;
+
+
   return httpServer;
 }
 // Helper function to generate real waveform from audio file
@@ -281,6 +287,9 @@ async function generateAudioWaveform(audioPath: string, targetSamples: number = 
   }
 
   // ============================================================
+  return httpServer;
+
+
   return httpServer;
 }
 async function convertWebMToCAF(inputPath: string, tryOpus: boolean = true): Promise<{ path: string, metadata: AudioMetadata }> {
@@ -376,6 +385,9 @@ async function convertWebMToCAF(inputPath: string, tryOpus: boolean = true): Pro
 
   // ============================================================
   return httpServer;
+
+
+  return httpServer;
 }
 interface AudioMetadata {
   duration: number; // milliseconds
@@ -386,6 +398,9 @@ interface AudioMetadata {
   sampleRate: number;
 
   // ============================================================
+  return httpServer;
+
+
   return httpServer;
 }
 async function ensureUserSlug(userId: string, companyId: string): Promise<string> {
@@ -427,6 +442,9 @@ async function ensureUserSlug(userId: string, companyId: string): Promise<string
   return finalSlug;
 
   // ============================================================
+  return httpServer;
+
+
   return httpServer;
 }
 export async function registerRoutes(app: Express, sessionStore?: any): Promise<Server> {
@@ -34993,6 +35011,242 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("[Onboarding] Error completing profile:", error);
       res.status(500).json({ message: "Failed to complete profile" });
+    }
+  });
+
+  return httpServer;
+
+  // ============================================================
+  // TELNYX SMS INBOX ROUTES
+  // ============================================================
+
+  // GET /api/inbox/conversations - List all conversations for the company
+  app.get("/api/inbox/conversations", async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const companyId = (req.user as any).companyId;
+    if (!companyId) {
+      return res.status(400).json({ message: "No company associated with user" });
+    }
+    try {
+      const conversations = await db
+        .select()
+        .from(telnyxConversations)
+        .where(eq(telnyxConversations.companyId, companyId))
+        .orderBy(desc(telnyxConversations.lastMessageAt));
+      res.json(conversations);
+    } catch (error: any) {
+      console.error("[Inbox] Error fetching conversations:", error);
+      res.status(500).json({ message: "Failed to fetch conversations" });
+    }
+  });
+
+  // GET /api/inbox/conversations/:id/messages - Get messages for a conversation
+  app.get("/api/inbox/conversations/:id/messages", async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const companyId = (req.user as any).companyId;
+    if (!companyId) {
+      return res.status(400).json({ message: "No company associated with user" });
+    }
+    const { id } = req.params;
+    try {
+      // Verify conversation belongs to company
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      // Mark as read (reset unread count)
+      await db
+        .update(telnyxConversations)
+        .set({ unreadCount: 0, updatedAt: new Date() })
+        .where(eq(telnyxConversations.id, id));
+      // Fetch messages
+      const messages = await db
+        .select()
+        .from(telnyxMessages)
+        .where(eq(telnyxMessages.conversationId, id))
+        .orderBy(asc(telnyxMessages.createdAt));
+      res.json({ conversation, messages });
+    } catch (error: any) {
+      console.error("[Inbox] Error fetching messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+
+  // POST /api/inbox/conversations - Create new conversation and send first message
+  app.post("/api/inbox/conversations", async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const companyId = (req.user as any).companyId;
+    const userId = (req.user as any).id;
+    if (!companyId) {
+      return res.status(400).json({ message: "No company associated with user" });
+    }
+    const { phoneNumber, companyPhoneNumber, text, displayName } = req.body;
+    if (!phoneNumber || !companyPhoneNumber || !text) {
+      return res.status(400).json({ message: "phoneNumber, companyPhoneNumber, and text are required" });
+    }
+    try {
+      // Check if conversation already exists
+      let [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(
+          eq(telnyxConversations.companyId, companyId),
+          eq(telnyxConversations.phoneNumber, phoneNumber),
+          eq(telnyxConversations.companyPhoneNumber, companyPhoneNumber)
+        ));
+      if (!conversation) {
+        // Create new conversation
+        const [newConversation] = await db
+          .insert(telnyxConversations)
+          .values({
+            companyId,
+            phoneNumber,
+            companyPhoneNumber,
+            displayName: displayName || null,
+            lastMessage: text.substring(0, 100),
+            lastMessageAt: new Date(),
+            unreadCount: 0,
+          })
+          .returning();
+        conversation = newConversation;
+      } else {
+        // Update existing conversation
+        await db
+          .update(telnyxConversations)
+          .set({ lastMessage: text.substring(0, 100), lastMessageAt: new Date(), updatedAt: new Date() })
+          .where(eq(telnyxConversations.id, conversation.id));
+      }
+      // Send message via Telnyx API
+      const companySettings = await storage.getCompanySettings(companyId);
+      const telnyxSettings = companySettings?.telnyxSettings as any;
+      if (!telnyxSettings?.apiKey) {
+        return res.status(400).json({ message: "Telnyx not configured for this company" });
+      }
+      const headers = buildHeaders({ managedAccountId: telnyxSettings.managedAccountId, apiKey: telnyxSettings.apiKey });
+      const telnyxResponse = await fetch("https://api.telnyx.com/v2/messages", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          from: companyPhoneNumber,
+          to: phoneNumber,
+          text,
+        }),
+      });
+      const telnyxData: any = await telnyxResponse.json();
+      let status: "sent" | "failed" = "sent";
+      let errorMessage: string | null = null;
+      let telnyxMessageId: string | null = null;
+      if (!telnyxResponse.ok) {
+        status = "failed";
+        errorMessage = telnyxData?.errors?.[0]?.detail || "Failed to send message";
+        console.error("[Inbox] Telnyx error:", telnyxData);
+      } else {
+        telnyxMessageId = telnyxData?.data?.id || null;
+      }
+      // Create message record
+      const [message] = await db
+        .insert(telnyxMessages)
+        .values({
+          conversationId: conversation.id,
+          direction: "outbound",
+          text,
+          status,
+          telnyxMessageId,
+          sentBy: userId,
+          sentAt: new Date(),
+          errorMessage,
+        })
+        .returning();
+      res.status(201).json({ conversation, message });
+    } catch (error: any) {
+      console.error("[Inbox] Error creating conversation:", error);
+      res.status(500).json({ message: "Failed to create conversation" });
+    }
+  });
+
+  // POST /api/inbox/conversations/:id/messages - Send message to existing conversation
+  app.post("/api/inbox/conversations/:id/messages", async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const companyId = (req.user as any).companyId;
+    const userId = (req.user as any).id;
+    if (!companyId) {
+      return res.status(400).json({ message: "No company associated with user" });
+    }
+    const { id } = req.params;
+    const { text } = req.body;
+    if (!text) {
+      return res.status(400).json({ message: "text is required" });
+    }
+    try {
+      // Verify conversation belongs to company
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      // Send message via Telnyx API
+      const companySettings = await storage.getCompanySettings(companyId);
+      const telnyxSettings = companySettings?.telnyxSettings as any;
+      if (!telnyxSettings?.apiKey) {
+        return res.status(400).json({ message: "Telnyx not configured for this company" });
+      }
+      const headers = buildHeaders({ managedAccountId: telnyxSettings.managedAccountId, apiKey: telnyxSettings.apiKey });
+      const telnyxResponse = await fetch("https://api.telnyx.com/v2/messages", {
+        method: "POST",
+        headers,
+        body: JSON.stringify({
+          from: conversation.companyPhoneNumber,
+          to: conversation.phoneNumber,
+          text,
+        }),
+      });
+      const telnyxData: any = await telnyxResponse.json();
+      let status: "sent" | "failed" = "sent";
+      let errorMessage: string | null = null;
+      let telnyxMessageId: string | null = null;
+      if (!telnyxResponse.ok) {
+        status = "failed";
+        errorMessage = telnyxData?.errors?.[0]?.detail || "Failed to send message";
+        console.error("[Inbox] Telnyx error:", telnyxData);
+      } else {
+        telnyxMessageId = telnyxData?.data?.id || null;
+      }
+      // Create message record
+      const [message] = await db
+        .insert(telnyxMessages)
+        .values({
+          conversationId: id,
+          direction: "outbound",
+          text,
+          status,
+          telnyxMessageId,
+          sentBy: userId,
+          sentAt: new Date(),
+          errorMessage,
+        })
+        .returning();
+      // Update conversation
+      await db
+        .update(telnyxConversations)
+        .set({ lastMessage: text.substring(0, 100), lastMessageAt: new Date(), updatedAt: new Date() })
+        .where(eq(telnyxConversations.id, id));
+      res.status(201).json(message);
+    } catch (error: any) {
+      console.error("[Inbox] Error sending message:", error);
+      res.status(500).json({ message: "Failed to send message" });
     }
   });
 

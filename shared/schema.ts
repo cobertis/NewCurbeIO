@@ -6187,3 +6187,67 @@ export const insertTelnyxBrandSchema = createInsertSchema(telnyxBrands).omit({
 
 export type TelnyxBrand = typeof telnyxBrands.$inferSelect;
 export type InsertTelnyxBrand = z.infer<typeof insertTelnyxBrandSchema>;
+
+// =====================================================
+// TELNYX SMS INBOX (Conversations & Messages)
+// =====================================================
+
+// Message direction for SMS inbox
+export const telnyxMessageDirectionEnum = pgEnum("telnyx_message_direction", ["inbound", "outbound"]);
+
+// Message status
+export const telnyxMessageStatusEnum = pgEnum("telnyx_message_status", [
+  "pending", "sending", "sent", "delivered", "failed", "receiving", "received"
+]);
+
+// Telnyx Conversations - Thread-level grouping of messages by phone number
+export const telnyxConversations = pgTable("telnyx_conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  phoneNumber: text("phone_number").notNull(), // Customer phone number (E.164)
+  displayName: text("display_name"), // Customer display name if known
+  companyPhoneNumber: text("company_phone_number").notNull(), // The Telnyx number we're using (E.164)
+  lastMessage: text("last_message"), // Preview of last message
+  lastMessageAt: timestamp("last_message_at"), // Timestamp of last message
+  unreadCount: integer("unread_count").notNull().default(0), // Count of unread inbound messages
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  // Unique conversation per phone number pair per company
+  companyPhoneUnique: uniqueIndex("telnyx_conversations_company_phone_unique").on(table.companyId, table.phoneNumber, table.companyPhoneNumber),
+}));
+
+export const insertTelnyxConversationSchema = createInsertSchema(telnyxConversations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type TelnyxConversation = typeof telnyxConversations.$inferSelect;
+export type InsertTelnyxConversation = z.infer<typeof insertTelnyxConversationSchema>;
+
+// Telnyx Messages - Individual messages within a conversation
+export const telnyxMessages = pgTable("telnyx_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull().references(() => telnyxConversations.id, { onDelete: "cascade" }),
+  direction: telnyxMessageDirectionEnum("direction").notNull(), // inbound or outbound
+  text: text("text").notNull(), // Message content
+  status: telnyxMessageStatusEnum("status").notNull().default("pending"), // Message delivery status
+  telnyxMessageId: text("telnyx_message_id"), // Telnyx API message ID for tracking
+  sentBy: varchar("sent_by").references(() => users.id, { onDelete: "set null" }), // User who sent outbound messages
+  sentAt: timestamp("sent_at"), // When message was sent
+  deliveredAt: timestamp("delivered_at"), // When message was delivered
+  errorMessage: text("error_message"), // Error details if failed
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  conversationIdx: index("telnyx_messages_conversation_idx").on(table.conversationId),
+  telnyxMessageIdIdx: index("telnyx_messages_telnyx_id_idx").on(table.telnyxMessageId),
+}));
+
+export const insertTelnyxMessageSchema = createInsertSchema(telnyxMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type TelnyxMessage = typeof telnyxMessages.$inferSelect;
+export type InsertTelnyxMessage = z.infer<typeof insertTelnyxMessageSchema>;
