@@ -763,7 +763,7 @@ export default function InboxPage() {
 
       {/* Right Panel - Contact Details */}
       <div className={cn(
-        "w-96 border-l flex flex-col bg-muted/30",
+        "w-[420px] border-l flex flex-col bg-muted/30",
         mobileView !== "details" && "hidden lg:flex",
         !selectedConversation && "hidden"
       )}>
