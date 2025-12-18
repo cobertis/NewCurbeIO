@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -80,34 +81,25 @@ export default function InboxPage() {
   const [selectedFromNumber, setSelectedFromNumber] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { data: userData, isSuccess: sessionLoaded } = useQuery<{ user: UserType }>({
-    queryKey: ["/api/session"],
-  });
-  const userTimezone = userData?.user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const userId = userData?.user?.id;
+  const { user, isAuthenticated, isLoading: authLoading } = useAuth();
+  const userTimezone = user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
 
   const { data: contactsData } = useQuery<{ contacts: UnifiedContact[] }>({
     queryKey: ["/api/contacts/unified"],
-    enabled: !!userId,
+    enabled: isAuthenticated,
   });
   const contacts = contactsData?.contacts || [];
 
   const { data: phoneNumbersData } = useQuery<{ numbers: Array<{ phoneNumber: string; friendlyName?: string }> }>({
     queryKey: ["/api/telnyx/my-numbers"],
-    enabled: !!userId,
+    enabled: isAuthenticated,
   });
   const companyNumbers = phoneNumbersData?.numbers || [];
 
-  const { data: conversationsData, isLoading: loadingConversations, error: conversationsError, isFetching: fetchingConversations } = useQuery<{ conversations: TelnyxConversation[] }>({
+  const { data: conversationsData, isLoading: loadingConversations } = useQuery<{ conversations: TelnyxConversation[] }>({
     queryKey: ["/api/inbox/conversations"],
-    enabled: !!userId,
+    enabled: isAuthenticated,
     staleTime: 30000,
-    retry: (failureCount, error: any) => {
-      if (error?.message?.includes('401') || error?.message?.includes('Unauthorized')) {
-        return false;
-      }
-      return failureCount < 2;
-    },
   });
   const conversations = conversationsData?.conversations || [];
 
@@ -240,7 +232,7 @@ export default function InboxPage() {
     });
   };
 
-  if (!userId || loadingConversations || (fetchingConversations && !conversationsData)) {
+  if (authLoading || !isAuthenticated || loadingConversations) {
     return <LoadingSpinner message="Loading conversations..." />;
   }
 

@@ -101,6 +101,7 @@ import NotificationsPage from "@/pages/notifications";
 import WalletAnalyticsPage from "@/pages/wallet-analytics";
 import NotFound from "@/pages/not-found";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
+import { AuthProvider } from "@/hooks/use-auth";
 
 function DashboardLayout({ children }: { children: React.ReactNode }) {
   const style = {
@@ -1925,14 +1926,16 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="light">
-        <TooltipProvider>
-          <IntercomProvider>
-          <Toaster />
-          <Router />
-          </IntercomProvider>
-        </TooltipProvider>
-      </ThemeProvider>
+      <AuthProvider>
+        <ThemeProvider defaultTheme="light">
+          <TooltipProvider>
+            <IntercomProvider>
+            <Toaster />
+            <Router />
+            </IntercomProvider>
+          </TooltipProvider>
+        </ThemeProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
