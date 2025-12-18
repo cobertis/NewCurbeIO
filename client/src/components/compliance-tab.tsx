@@ -1525,13 +1525,7 @@ export function ComplianceTab() {
                       <TableCell>{USE_CASES.find(uc => uc.value === campaign.usecase)?.label || campaign.usecase}</TableCell>
                       <TableCell>
                         {assignedNumbers.length > 0 ? (
-                          <div className="flex flex-col gap-1">
-                            <Badge variant="outline" className="w-fit">{assignedNumbers.length} number{assignedNumbers.length !== 1 ? 's' : ''}</Badge>
-                            <div className="text-xs text-muted-foreground max-w-[150px] truncate">
-                              {assignedNumbers.slice(0, 2).map(n => n.phoneNumber).join(", ")}
-                              {assignedNumbers.length > 2 && ` +${assignedNumbers.length - 2} more`}
-                            </div>
-                          </div>
+                          <Badge variant="outline" className="w-fit">{assignedNumbers.length} number{assignedNumbers.length !== 1 ? 's' : ''}</Badge>
                         ) : (
                           <span className="text-xs text-muted-foreground">No numbers</span>
                         )}

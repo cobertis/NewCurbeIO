@@ -27170,15 +27170,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-
       // Transform to the expected format with phoneNumber and type
-      const numbers = (result.numbers || []).map((num: any) => ({
-        phoneNumber: num.phoneNumber,
-        type: num.type || (num.phoneNumber?.startsWith("+1800") || num.phoneNumber?.startsWith("+1888") || 
-              num.phoneNumber?.startsWith("+1877") || num.phoneNumber?.startsWith("+1866") ||
-              num.phoneNumber?.startsWith("+1855") || num.phoneNumber?.startsWith("+1844") ? "toll-free" : "local"),
-        id: num.id
-      }));
+      // Note: Telnyx API uses snake_case (phone_number), we convert to camelCase
+      const numbers = (result.numbers || []).map((num: any) => {
+        const phoneNum = num.phone_number || num.phoneNumber;
+        return {
+          phoneNumber: phoneNum,
+          type: num.type || (phoneNum?.startsWith("+1800") || phoneNum?.startsWith("+1888") || 
+                phoneNum?.startsWith("+1877") || phoneNum?.startsWith("+1866") ||
+                phoneNum?.startsWith("+1855") || phoneNum?.startsWith("+1844") ||
+                phoneNum?.startsWith("+1833") ? "toll-free" : "local"),
+          id: num.id
+        };
+      });
 
       res.json({ numbers });
     } catch (error: any) {
