@@ -144,27 +144,14 @@ export function PublicPricingView({
   
   return (
     <div 
-      className="h-screen relative overflow-hidden flex flex-col"
-      style={{ backgroundColor: pricingTheme.colors.background }}
+      className="min-h-screen relative overflow-auto flex flex-col"
+      style={{ backgroundColor: '#F8FAFC' }}
     >
-      {/* Blueprint grid background */}
+      {/* Subtle gradient background */}
       <div 
         className="absolute inset-0"
         style={{
-          backgroundImage: `
-            linear-gradient(to right, ${pricingTheme.colors.gridLines} 1px, transparent 1px),
-            linear-gradient(to bottom, ${pricingTheme.colors.gridLines} 1px, transparent 1px)
-          `,
-          backgroundSize: '40px 40px',
-          opacity: 0.5,
-        }}
-      />
-      
-      {/* Gradient overlay for depth */}
-      <div 
-        className="absolute inset-0"
-        style={{
-          background: 'radial-gradient(ellipse at 50% 0%, rgba(255,255,255,0.7) 0%, transparent 70%)',
+          background: 'linear-gradient(180deg, #F1F5F9 0%, #F8FAFC 50%, #FFFFFF 100%)',
         }}
       />
       
@@ -281,7 +268,7 @@ export function PublicPricingView({
               </p>
             </div>
           ) : (
-            <div className="grid gap-4 md:grid-cols-3 max-w-5xl mx-auto" style={{ alignItems: 'start' }}>
+            <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto" style={{ alignItems: 'stretch' }}>
               {sortedPlans.map((plan, index) => {
                 const popular = isPopularPlan(plan.name, index, sortedPlans.length);
                 const enterprise = isEnterprisePlan(plan.name, index, sortedPlans.length);
@@ -294,7 +281,7 @@ export function PublicPricingView({
                 return (
                   <div 
                     key={plan.id} 
-                    className="relative flex flex-col"
+                    className="relative flex flex-col h-full"
                     data-testid={`card-public-plan-${index}`}
                   >
                     {/* Trial Badge for Popular Plan */}
@@ -315,12 +302,12 @@ export function PublicPricingView({
                     
                     {/* Card */}
                     <div 
-                      className="flex-1 flex flex-col p-6"
+                      className="flex-1 flex flex-col p-6 h-full"
                       style={{
                         backgroundColor: '#FFFFFF',
                         borderRadius: '16px',
-                        border: `1px solid ${pricingTheme.colors.cardBorder}`,
-                        boxShadow: '0 4px 24px -8px rgba(15, 45, 92, 0.12)',
+                        border: popular ? '2px solid #3B82F6' : '1px solid #E2E8F0',
+                        boxShadow: popular ? '0 8px 32px -8px rgba(59, 130, 246, 0.25)' : '0 4px 16px -4px rgba(15, 45, 92, 0.08)',
                       }}
                     >
                       {/* Plan Name */}
