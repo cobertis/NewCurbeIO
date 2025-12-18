@@ -80,25 +80,27 @@ export default function InboxPage() {
   const [selectedFromNumber, setSelectedFromNumber] = useState<string>("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
-  const { data: userData } = useQuery<{ user: UserType }>({
+  const { data: userData, isSuccess: sessionLoaded } = useQuery<{ user: UserType }>({
     queryKey: ["/api/session"],
   });
   const userTimezone = userData?.user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const userId = userData?.user?.id;
 
   const { data: contactsData } = useQuery<{ contacts: UnifiedContact[] }>({
     queryKey: ["/api/contacts/unified"],
+    enabled: !!userId,
   });
   const contacts = contactsData?.contacts || [];
 
   const { data: phoneNumbersData } = useQuery<{ numbers: Array<{ phoneNumber: string; friendlyName?: string }> }>({
     queryKey: ["/api/telnyx/my-numbers"],
+    enabled: !!userId,
   });
   const companyNumbers = phoneNumbersData?.numbers || [];
 
   const { data: conversationsData, isLoading: loadingConversations, error: conversationsError } = useQuery<{ conversations: TelnyxConversation[] }>({
     queryKey: ["/api/inbox/conversations"],
-    retry: 3,
-    retryDelay: 1000,
+    enabled: !!userId,
   });
   const conversations = conversationsData?.conversations || [];
 
@@ -231,14 +233,14 @@ export default function InboxPage() {
     });
   };
 
-  if (loadingConversations) {
+  if (!userId || loadingConversations) {
     return <LoadingSpinner message="Loading conversations..." />;
   }
 
-  if (conversationsError || !userData?.user) {
+  if (conversationsError) {
     return (
       <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
-        <p className="text-muted-foreground">Please log in to view your inbox.</p>
+        <p className="text-muted-foreground">Error loading conversations. Please refresh the page.</p>
       </div>
     );
   }
