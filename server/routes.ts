@@ -26056,7 +26056,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/integrations/meta/whatsapp/callback - OAuth callback from Meta
   app.get("/api/integrations/meta/whatsapp/callback", async (req: Request, res: Response) => {
     const frontendUrl = process.env.BASE_URL || "";
-    const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/settings/integrations?whatsapp=error&reason=${encodeURIComponent(reason)}`);
+    const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?whatsapp=error&reason=${encodeURIComponent(reason)}`);
     
     try {
       const { code, state } = req.query;
@@ -26256,7 +26256,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       console.log(`[WhatsApp OAuth] Successfully connected WABA ${wabaId} for company ${oauthState.companyId}`);
-      return res.redirect(`${frontendUrl}/settings/integrations?whatsapp=connected`);
+      return res.redirect(`${frontendUrl}/integrations?whatsapp=connected`);
       
     } catch (error) {
       console.error("[WhatsApp OAuth] Callback error:", error);
@@ -26481,7 +26481,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/integrations/meta/instagram/callback - OAuth callback from Meta
   app.get("/api/integrations/meta/instagram/callback", async (req: Request, res: Response) => {
     const frontendUrl = process.env.BASE_URL || "";
-    const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/settings/integrations?instagram=error&reason=${encodeURIComponent(reason)}`);
+    const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?instagram=error&reason=${encodeURIComponent(reason)}`);
     
     try {
       const { code, state } = req.query;
@@ -26599,7 +26599,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       console.log(`[Instagram OAuth] Successfully connected @${igAccount.username} for company ${oauthState.companyId}`);
-      return res.redirect(`${frontendUrl}/settings/integrations?instagram=connected`);
+      return res.redirect(`${frontendUrl}/integrations?instagram=connected`);
       
     } catch (error) {
       console.error("[Instagram OAuth] Callback error:", error);
@@ -26714,7 +26714,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/integrations/meta/facebook/callback - OAuth callback from Meta
   app.get("/api/integrations/meta/facebook/callback", async (req: Request, res: Response) => {
     const frontendUrl = process.env.BASE_URL || "";
-    const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/settings/integrations?facebook=error&reason=${encodeURIComponent(reason)}`);
+    const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?facebook=error&reason=${encodeURIComponent(reason)}`);
     
     try {
       const { code, state } = req.query;
@@ -26828,7 +26828,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       console.log(`[Facebook OAuth] Connected page ${pageName} (${pageId}) for company ${oauthState.companyId}`);
-      return res.redirect(`${frontendUrl}/settings/integrations?facebook=connected`);
+      return res.redirect(`${frontendUrl}/integrations?facebook=connected`);
     } catch (error) {
       console.error("[Facebook OAuth] Callback error:", error);
       return errorRedirect("connection_failed");
@@ -26945,7 +26945,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/integrations/tiktok/callback - OAuth callback from TikTok
   app.get("/api/integrations/tiktok/callback", async (req: Request, res: Response) => {
     const frontendUrl = process.env.BASE_URL || "";
-    const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/settings/integrations?tiktok=error&reason=${encodeURIComponent(reason)}`);
+    const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?tiktok=error&reason=${encodeURIComponent(reason)}`);
     
     try {
       const { code, state, error: tiktokError } = req.query;
@@ -27098,7 +27098,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       const successOrigin = (oauthState.metadata as any)?.origin || frontendUrl;
-      return res.redirect(`${successOrigin}/settings/integrations?tiktok=connected`);
+      return res.redirect(`${successOrigin}/integrations?tiktok=connected`);
     } catch (error) {
       console.error("[TikTok OAuth] Callback error:", error);
       return errorRedirect("connection_failed");
