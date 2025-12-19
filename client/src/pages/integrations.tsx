@@ -1255,9 +1255,17 @@ function TelegramCard() {
     }>;
   }>({
     queryKey: ["/api/integrations/telegram/status"],
+    refetchInterval: deepLink ? 2000 : false,
   });
 
   const isConnected = status?.connected && status.chats.length > 0;
+
+  useEffect(() => {
+    if (deepLink && isConnected) {
+      setDeepLink(null);
+      toast({ title: "Connected!", description: "Your Telegram chat has been connected successfully" });
+    }
+  }, [deepLink, isConnected, toast]);
 
   const connectMutation = useMutation({
     mutationFn: async () => {
