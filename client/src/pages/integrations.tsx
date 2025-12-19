@@ -45,24 +45,24 @@ function getErrorMessage(reason: string): { title: string; description: string }
     case "missing_params":
       return {
         title: "Connection cancelled",
-        description: "No se completó la conexión con Meta. Intenta nuevamente cuando estés listo."
+        description: "You cancelled the connection. Try again when you're ready."
       };
     case "permission_denied":
     case "insufficient_permissions":
       return {
         title: "Permission required",
-        description: "Tu cuenta de Meta no otorgó los permisos necesarios para conectar WhatsApp. Intenta nuevamente y acepta los permisos solicitados."
+        description: "You need to approve the permissions to connect."
       };
     case "number_already_connected":
       return {
         title: "This number is already connected",
-        description: "Este número ya está conectado a otro workspace. Usa un número diferente o desconecta el número del otro workspace antes de continuar."
+        description: "This number is already connected to another workspace. Use a different number or disconnect it from the other workspace first."
       };
     case "number_not_eligible":
     case "no_phone_number":
       return {
         title: "Number not eligible",
-        description: "Este número no puede conectarse a WhatsApp Business Platform en este momento."
+        description: "No account/page was found on your account."
       };
     case "invalid_state":
     case "state_expired":
@@ -73,7 +73,7 @@ function getErrorMessage(reason: string): { title: string; description: string }
     default:
       return {
         title: "Connection failed",
-        description: "No pudimos completar la conexión. Nuestro equipo ya tiene registros del error. Intenta nuevamente en unos minutos."
+        description: "We couldn't connect your account. Please try again."
       };
   }
 }
@@ -83,28 +83,28 @@ function getInstagramErrorMessage(reason: string): { title: string; description:
     case "connection_cancelled":
       return {
         title: "Connection cancelled",
-        description: "No se completó la conexión con Meta."
+        description: "You cancelled the connection. Try again when you're ready."
       };
     case "not_professional":
       return {
         title: "Professional account required",
-        description: "Esta cuenta es personal. Cambia tu Instagram a Business o Creator."
+        description: "This account is personal. Switch your Instagram to Business or Creator."
       };
     case "permission_denied":
       return {
         title: "Permission denied",
-        description: "Curbe no tiene permiso para acceder a Instagram DMs."
+        description: "You need to approve the permissions to connect."
       };
     case "access_not_available":
       return {
         title: "Access not available",
-        description: "Esta integración aún no está habilitada para esta cuenta."
+        description: "No account/page was found on your account."
       };
     case "connection_failed":
     default:
       return {
         title: "Connection failed",
-        description: "No pudimos completar la conexión."
+        description: "We couldn't connect your account. Please try again."
       };
   }
 }
@@ -128,24 +128,24 @@ function getFacebookErrorMessage(reason: string): { title: string; description: 
   switch (reason) {
     case "connection_cancelled":
       return {
-        title: "Conexión cancelada",
-        description: "Cancelaste la conexión. Intenta de nuevo cuando estés listo."
+        title: "Connection cancelled",
+        description: "You cancelled the connection. Try again when you're ready."
       };
     case "permission_required":
       return {
-        title: "Permisos requeridos",
-        description: "Necesitas aprobar los permisos para conectar Facebook Messenger."
+        title: "Permission required",
+        description: "You need to approve the permissions to connect."
       };
     case "page_not_found":
       return {
-        title: "Página no encontrada",
-        description: "No se encontró ninguna Página de Facebook en tu cuenta."
+        title: "Page not found",
+        description: "No account/page was found on your account."
       };
     case "connection_failed":
     default:
       return {
-        title: "Error de conexión",
-        description: "No pudimos conectar tu Página. Por favor intenta de nuevo."
+        title: "Connection failed",
+        description: "We couldn't connect your account. Please try again."
       };
   }
 }
@@ -260,7 +260,7 @@ function WhatsAppCard() {
       toast({
         variant: "destructive",
         title: "Connection failed",
-        description: error.message || "No pudimos completar la conexión. Intenta nuevamente.",
+        description: error.message || "We couldn't connect your account. Please try again.",
       });
     },
   });
@@ -316,19 +316,15 @@ function WhatsAppCard() {
     <TooltipProvider>
       <>
         <Card className="relative overflow-hidden" data-testid="card-whatsapp">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-green-500/10 to-transparent" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#25D366]/10 to-transparent" />
           <CardHeader className="flex flex-row items-start justify-between space-y-0">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-green-500/10">
-                <SiWhatsapp className="h-6 w-6 text-green-500" />
+              <div className="p-2 rounded-lg bg-[#25D366]/10">
+                <SiWhatsapp className="h-6 w-6 text-[#25D366]" />
               </div>
               <div>
                 <CardTitle className="text-lg">WhatsApp Business</CardTitle>
-                <CardDescription>
-                  {isConnected || isPending || hasError || isRevoked
-                    ? "Connected to your WhatsApp Business account"
-                    : "Conecta tu WhatsApp Business para enviar y recibir mensajes desde tu inbox en Curbe."}
-                </CardDescription>
+                <CardDescription>Connect your WhatsApp Business account</CardDescription>
               </div>
             </div>
             {getStatusBadge(connection?.status)}
@@ -336,9 +332,9 @@ function WhatsAppCard() {
           <CardContent className="space-y-4">
             {oauthStartMutation.isPending ? (
               <div className="text-center py-6">
-                <RefreshCw className="h-8 w-8 animate-spin text-green-500 mx-auto mb-3" />
+                <RefreshCw className="h-8 w-8 animate-spin text-[#25D366] mx-auto mb-3" />
                 <p className="font-medium">Connecting WhatsApp...</p>
-                <p className="text-sm text-muted-foreground">Estamos completando la conexión con Meta. No cierres esta ventana.</p>
+                <p className="text-sm text-muted-foreground">We're completing the connection with Meta. Please don't close this window.</p>
               </div>
             ) : isConnected || isPending || hasError || isRevoked ? (
               <>
@@ -359,7 +355,7 @@ function WhatsAppCard() {
                           <Info className="h-3 w-3 text-muted-foreground cursor-help" />
                         </TooltipTrigger>
                         <TooltipContent className="max-w-xs">
-                          <p>"Active" significa que Curbe puede enviar y recibir mensajes. Si aparece "Needs attention", reconecta o revisa permisos.</p>
+                          <p>"Active" means Curbe can send and receive messages. If it shows "Needs attention", reconnect or check permissions.</p>
                         </TooltipContent>
                       </Tooltip>
                     </span>
@@ -394,76 +390,56 @@ function WhatsAppCard() {
                     Disconnect
                   </Button>
                 </div>
-                <p className="text-xs text-muted-foreground">
-                  Desconectar detendrá el envío/recepción de mensajes en Curbe para este número.
-                </p>
               </>
             ) : (
               <>
-                <div className="space-y-3">
-                  <div className="flex items-center gap-2">
-                    <Button
-                      className="flex-1 bg-green-500 hover:bg-green-600"
-                      onClick={handleOAuthConnect}
-                      disabled={oauthStartMutation.isPending}
-                      data-testid="button-connect-whatsapp"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Connect WhatsApp
-                    </Button>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-9 w-9">
-                          <Info className="h-4 w-4 text-muted-foreground" />
-                        </Button>
-                      </TooltipTrigger>
-                      <TooltipContent className="max-w-xs">
-                        <p>Conectar WhatsApp habilita mensajes en Curbe. Meta puede pedirte seleccionar/crear tu cuenta de WhatsApp Business y confirmar el número.</p>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <p className="text-xs text-muted-foreground text-center">
-                    Te llevaremos a Meta para iniciar sesión y seleccionar tu cuenta de WhatsApp Business.
-                  </p>
-                  {isAdmin && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="w-full text-xs text-muted-foreground"
-                      onClick={() => setManualConnectDialogOpen(true)}
-                      data-testid="button-manual-connect-whatsapp"
-                    >
-                      <Settings className="h-3 w-3 mr-1" />
-                      Manual Connect (Debug)
-                    </Button>
-                  )}
-                </div>
+                <p className="text-sm text-muted-foreground">
+                  Connect your WhatsApp Business account to respond and manage messages from Curbe's inbox.
+                </p>
                 
+                <Button
+                  className="w-full bg-[#25D366] hover:bg-[#20BD5A]"
+                  onClick={handleOAuthConnect}
+                  disabled={oauthStartMutation.isPending}
+                  data-testid="button-connect-whatsapp"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Connect WhatsApp
+                </Button>
+                
+                <p className="text-xs text-muted-foreground text-center">
+                  We'll take you to Meta to log in and select your WhatsApp Business account.
+                </p>
+                
+                {isAdmin && (
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="w-full text-xs text-muted-foreground"
+                    onClick={() => setManualConnectDialogOpen(true)}
+                    data-testid="button-manual-connect-whatsapp"
+                  >
+                    <Settings className="h-3 w-3 mr-1" />
+                    Manual Connect (Debug)
+                  </Button>
+                )}
+
                 <Collapsible open={helpOpen} onOpenChange={setHelpOpen}>
                   <CollapsibleTrigger asChild>
                     <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground" data-testid="button-help-whatsapp">
                       <span className="flex items-center gap-1">
-                        <HelpCircle className="h-3 w-3" />
-                        Need help?
+                        <HelpCircle className="h-4 w-4 mr-2" />
+                        Need help connecting?
                       </span>
                       <ChevronDown className={`h-4 w-4 transition-transform ${helpOpen ? "rotate-180" : ""}`} />
                     </Button>
                   </CollapsibleTrigger>
-                  <CollapsibleContent className="pt-2">
-                    <div className="text-sm text-muted-foreground space-y-2 p-3 bg-muted/50 rounded-lg">
-                      <p className="font-medium text-foreground">Para conectar WhatsApp necesitas:</p>
-                      <ul className="list-disc list-inside space-y-1 ml-1">
-                        <li>Un <strong>Meta Business</strong> (Business Manager/Portfolio)</li>
-                        <li>Un número elegible para WhatsApp Business Platform</li>
-                        <li>Permisos para administrar tu cuenta de WhatsApp Business</li>
-                      </ul>
-                      <Button variant="link" className="p-0 h-auto text-primary" asChild>
-                        <a href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started" target="_blank" rel="noopener noreferrer" data-testid="link-whatsapp-setup-guide">
-                          <ExternalLink className="h-3 w-3 mr-1" />
-                          View WhatsApp setup guide
-                        </a>
-                      </Button>
-                    </div>
+                  <CollapsibleContent className="mt-2 space-y-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>You need a WhatsApp Business account</li>
+                      <li>Your phone number must be verified</li>
+                      <li>You need to approve messaging permissions</li>
+                    </ul>
                   </CollapsibleContent>
                 </Collapsible>
               </>
@@ -475,7 +451,7 @@ function WhatsAppCard() {
           <DialogContent className="max-w-md" data-testid="dialog-manual-connect-whatsapp">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
-                <SiWhatsapp className="h-5 w-5 text-green-500" />
+                <SiWhatsapp className="h-5 w-5 text-[#25D366]" />
                 Manual Connect (Debug)
               </DialogTitle>
               <DialogDescription>
@@ -545,7 +521,7 @@ function WhatsAppCard() {
               <Button
                 onClick={handleManualConnect}
                 disabled={manualConnectMutation.isPending}
-                className="bg-green-500 hover:bg-green-600"
+                className="bg-[#25D366] hover:bg-[#20BD5A]"
                 data-testid="button-submit-manual-connect"
               >
                 {manualConnectMutation.isPending ? "Connecting..." : "Connect"}
@@ -559,7 +535,7 @@ function WhatsAppCard() {
             <AlertDialogHeader>
               <AlertDialogTitle>Disconnect WhatsApp?</AlertDialogTitle>
               <AlertDialogDescription>
-                Curbe dejará de recibir y enviar mensajes desde este número. Puedes volver a conectarlo en cualquier momento.
+                You will no longer receive messages from this account in Curbe.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -685,11 +661,11 @@ function InstagramCard() {
     <TooltipProvider>
       <>
         <Card data-testid="card-instagram" className="relative overflow-hidden">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-pink-500/10 to-transparent" />
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#E4405F]/10 to-transparent" />
           <CardHeader className="flex flex-row items-start justify-between space-y-0">
             <div className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-pink-500/10">
-                <SiInstagram className="h-6 w-6 text-pink-500" />
+              <div className="p-2 rounded-lg bg-[#E4405F]/10">
+                <SiInstagram className="h-6 w-6 text-[#E4405F]" />
               </div>
               <div>
                 <CardTitle className="text-lg">Instagram Direct</CardTitle>
@@ -699,85 +675,92 @@ function InstagramCard() {
             {getInstagramStatusBadge(connection?.status)}
           </CardHeader>
           <CardContent className="space-y-4">
-            {isConnected ? (
+            {oauthStartMutation.isPending ? (
+              <div className="text-center py-6">
+                <RefreshCw className="h-8 w-8 animate-spin text-[#E4405F] mx-auto mb-3" />
+                <p className="font-medium">Connecting Instagram...</p>
+                <p className="text-sm text-muted-foreground">We're completing the connection with Meta. Please don't close this window.</p>
+              </div>
+            ) : isConnected ? (
               <>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
                     <span className="text-muted-foreground">Account</span>
                     <span className="font-medium" data-testid="text-instagram-username">@{connection?.igUsername}</span>
                   </div>
                   {connection?.pageName && (
-                    <div className="flex items-center justify-between text-sm">
+                    <div className="flex justify-between">
                       <span className="text-muted-foreground">Page</span>
                       <span className="font-medium" data-testid="text-instagram-page">{connection.pageName}</span>
                     </div>
                   )}
-                  <div className="flex items-center justify-between text-sm">
+                  <div className="flex justify-between">
                     <span className="text-muted-foreground">Connected</span>
                     <span className="font-medium" data-testid="text-instagram-connected-date">
                       {connection?.connectedAt ? new Date(connection.connectedAt).toLocaleDateString() : "—"}
                     </span>
                   </div>
                 </div>
-                {isAdmin && (
+                <div className="flex gap-2">
                   <Button
                     variant="outline"
-                    className="w-full text-red-500 hover:text-red-600 hover:bg-red-50"
-                    onClick={() => setDisconnectDialogOpen(true)}
-                    data-testid="button-disconnect-instagram"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/integrations/instagram/status"] })}
+                    data-testid="button-refresh-instagram"
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Disconnect
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
                   </Button>
-                )}
+                  {isAdmin && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setDisconnectDialogOpen(true)}
+                      data-testid="button-disconnect-instagram"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Disconnect
+                    </Button>
+                  )}
+                </div>
               </>
             ) : (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Conecta tu Instagram profesional para responder y gestionar DMs desde el inbox de Curbe.
+                  Connect your Instagram Business account to respond and manage DMs from Curbe's inbox.
                 </p>
                 
                 <Button 
-                  className="w-full bg-pink-500 hover:bg-pink-600"
+                  className="w-full bg-[#E4405F] hover:bg-[#D93B56]"
                   onClick={handleOAuthConnect}
                   disabled={oauthStartMutation.isPending}
                   data-testid="button-connect-instagram"
                 >
-                  {oauthStartMutation.isPending ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Connecting...
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Connect Instagram
-                    </>
-                  )}
+                  <Plus className="h-4 w-4 mr-2" />
+                  Connect Instagram
                 </Button>
                 
-                {oauthStartMutation.isPending && (
-                  <p className="text-xs text-muted-foreground text-center">
-                    Estamos completando la conexión con Meta. No cierres esta ventana.
-                  </p>
-                )}
-                
                 <p className="text-xs text-muted-foreground text-center">
-                  Te llevaremos a Meta para iniciar sesión y seleccionar tu cuenta de Instagram.
+                  We'll take you to Meta to log in and select your Instagram account.
                 </p>
 
                 <Collapsible open={helpOpen} onOpenChange={setHelpOpen}>
                   <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="w-full text-muted-foreground" data-testid="button-instagram-help">
-                      <HelpCircle className="h-4 w-4 mr-2" />
-                      Need help connecting?
-                      <ChevronDown className={`h-4 w-4 ml-2 transition-transform ${helpOpen ? "rotate-180" : ""}`} />
+                    <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground" data-testid="button-instagram-help">
+                      <span className="flex items-center gap-1">
+                        <HelpCircle className="h-4 w-4 mr-2" />
+                        Need help connecting?
+                      </span>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${helpOpen ? "rotate-180" : ""}`} />
                     </Button>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="mt-2 space-y-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
-                    <p>
-                      Necesitas una cuenta de Instagram Business o Creator y permisos para autorizar mensajería.
-                    </p>
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>You must have an Instagram Business account</li>
+                      <li>Your account must be linked to a Facebook Page</li>
+                      <li>You need to approve messaging permissions</li>
+                    </ul>
                   </CollapsibleContent>
                 </Collapsible>
               </>
@@ -790,7 +773,7 @@ function InstagramCard() {
             <AlertDialogHeader>
               <AlertDialogTitle>Disconnect Instagram?</AlertDialogTitle>
               <AlertDialogDescription>
-                Curbe dejará de recibir y enviar DMs desde esta cuenta.
+                You will no longer receive messages from this account in Curbe.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
@@ -837,8 +820,8 @@ function FacebookCard() {
 
     if (facebookStatus === "connected") {
       toast({
-        title: "Facebook conectado",
-        description: "Tu Página de Facebook ha sido conectada exitosamente.",
+        title: "Facebook Connected",
+        description: "Your Facebook Page has been connected successfully.",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/integrations/facebook/status"] });
       urlParams.delete("facebook");
@@ -885,15 +868,15 @@ function FacebookCard() {
       queryClient.invalidateQueries({ queryKey: ["/api/integrations/facebook/status"] });
       setDisconnectDialogOpen(false);
       toast({
-        title: "Facebook desconectado",
-        description: "Tu Página de Facebook ha sido desconectada.",
+        title: "Facebook Disconnected",
+        description: "Your Facebook Page has been disconnected.",
       });
     },
     onError: (error: any) => {
       toast({
         variant: "destructive",
-        title: "Error al desconectar",
-        description: error.message || "No pudimos desconectar tu Página de Facebook.",
+        title: "Disconnect Failed",
+        description: error.message || "Failed to disconnect Facebook Page.",
       });
     },
   });
@@ -924,42 +907,60 @@ function FacebookCard() {
               </div>
               <div>
                 <CardTitle className="text-lg">Facebook Messenger</CardTitle>
-                <CardDescription>Conecta tu Página de Facebook</CardDescription>
+                <CardDescription>Connect your Facebook Page</CardDescription>
               </div>
             </div>
             {getFacebookStatusBadge(connection?.status)}
           </CardHeader>
           <CardContent className="space-y-4">
-            {isConnected ? (
+            {oauthStartMutation.isPending ? (
+              <div className="text-center py-6">
+                <RefreshCw className="h-8 w-8 animate-spin text-[#1877F2] mx-auto mb-3" />
+                <p className="font-medium">Connecting Facebook...</p>
+                <p className="text-sm text-muted-foreground">We're completing the connection with Meta. Please don't close this window.</p>
+              </div>
+            ) : isConnected ? (
               <>
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Página</span>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Page</span>
                     <span className="font-medium" data-testid="text-facebook-page">{connection?.fbPageName}</span>
                   </div>
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground">Conectado</span>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Connected</span>
                     <span className="font-medium" data-testid="text-facebook-connected-date">
                       {connection?.connectedAt ? new Date(connection.connectedAt).toLocaleDateString() : "—"}
                     </span>
                   </div>
                 </div>
-                {isAdmin && (
+                <div className="flex gap-2">
                   <Button
                     variant="outline"
-                    className="w-full text-red-500 hover:text-red-600 hover:bg-red-50"
-                    onClick={() => setDisconnectDialogOpen(true)}
-                    data-testid="button-disconnect-facebook"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/integrations/facebook/status"] })}
+                    data-testid="button-refresh-facebook"
                   >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Desconectar
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
                   </Button>
-                )}
+                  {isAdmin && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setDisconnectDialogOpen(true)}
+                      data-testid="button-disconnect-facebook"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Disconnect
+                    </Button>
+                  )}
+                </div>
               </>
             ) : (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Conecta tu Página de Facebook para responder y gestionar mensajes de Messenger desde el inbox de Curbe.
+                  Connect your Facebook Page to respond and manage Messenger conversations from Curbe's inbox.
                 </p>
                 
                 <Button 
@@ -968,42 +969,29 @@ function FacebookCard() {
                   disabled={oauthStartMutation.isPending}
                   data-testid="button-connect-facebook"
                 >
-                  {oauthStartMutation.isPending ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Conectando...
-                    </>
-                  ) : (
-                    <>
-                      <Plus className="h-4 w-4 mr-2" />
-                      Conectar Facebook
-                    </>
-                  )}
+                  <Plus className="h-4 w-4 mr-2" />
+                  Connect Facebook
                 </Button>
                 
-                {oauthStartMutation.isPending && (
-                  <p className="text-xs text-muted-foreground text-center">
-                    Estamos completando la conexión con Meta. No cierres esta ventana.
-                  </p>
-                )}
-                
                 <p className="text-xs text-muted-foreground text-center">
-                  Te llevaremos a Meta para iniciar sesión y seleccionar tu Página de Facebook.
+                  We'll take you to Meta to log in and select your Facebook Page.
                 </p>
 
                 <Collapsible open={helpOpen} onOpenChange={setHelpOpen}>
                   <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="w-full text-muted-foreground" data-testid="button-facebook-help">
-                      <HelpCircle className="h-4 w-4 mr-2" />
-                      ¿Necesitas ayuda conectando?
-                      <ChevronDown className={`h-4 w-4 ml-2 transition-transform ${helpOpen ? "rotate-180" : ""}`} />
+                    <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground" data-testid="button-facebook-help">
+                      <span className="flex items-center gap-1">
+                        <HelpCircle className="h-4 w-4 mr-2" />
+                        Need help connecting?
+                      </span>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${helpOpen ? "rotate-180" : ""}`} />
                     </Button>
                   </CollapsibleTrigger>
                   <CollapsibleContent className="mt-2 space-y-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
                     <ul className="list-disc list-inside space-y-1">
-                      <li>Debes ser administrador de la Página de Facebook</li>
-                      <li>La Página debe tener Messenger habilitado</li>
-                      <li>Necesitas aprobar los permisos de mensajería</li>
+                      <li>You must be an admin of the Facebook Page</li>
+                      <li>The Page must have Messenger enabled</li>
+                      <li>You need to approve messaging permissions</li>
                     </ul>
                   </CollapsibleContent>
                 </Collapsible>
@@ -1015,19 +1003,19 @@ function FacebookCard() {
         <AlertDialog open={disconnectDialogOpen} onOpenChange={setDisconnectDialogOpen}>
           <AlertDialogContent data-testid="dialog-disconnect-facebook">
             <AlertDialogHeader>
-              <AlertDialogTitle>¿Desconectar Facebook?</AlertDialogTitle>
+              <AlertDialogTitle>Disconnect Facebook?</AlertDialogTitle>
               <AlertDialogDescription>
-                Curbe dejará de recibir y enviar mensajes desde esta Página.
+                You will no longer receive messages from this account in Curbe.
               </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-              <AlertDialogCancel data-testid="button-cancel-disconnect-facebook">Cancelar</AlertDialogCancel>
+              <AlertDialogCancel data-testid="button-cancel-disconnect-facebook">Cancel</AlertDialogCancel>
               <AlertDialogAction
                 onClick={() => disconnectMutation.mutate()}
                 className="bg-red-500 hover:bg-red-600"
                 data-testid="button-confirm-disconnect-facebook"
               >
-                {disconnectMutation.isPending ? "Desconectando..." : "Desconectar"}
+                {disconnectMutation.isPending ? "Disconnecting..." : "Disconnect"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
