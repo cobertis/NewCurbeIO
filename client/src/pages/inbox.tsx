@@ -146,6 +146,7 @@ export default function InboxPage() {
     organization: "",
   });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -726,12 +727,10 @@ export default function InboxPage() {
                           {message.mediaUrls && message.mediaUrls.length > 0 && (
                             <div className="flex flex-col gap-2 mt-1">
                               {message.mediaUrls.map((url, idx) => (
-                                <a 
+                                <button 
                                   key={idx} 
-                                  href={url} 
-                                  target="_blank" 
-                                  rel="noopener noreferrer"
-                                  className="block"
+                                  onClick={() => setPreviewImage(url)}
+                                  className="block text-left"
                                   data-testid={`media-attachment-${idx}`}
                                 >
                                   <img 
@@ -741,7 +740,10 @@ export default function InboxPage() {
                                     onError={(e) => {
                                       const target = e.target as HTMLImageElement;
                                       target.style.display = 'none';
-                                      const fallback = document.createElement('div');
+                                      const fallback = document.createElement('a');
+                                      fallback.href = url;
+                                      fallback.target = '_blank';
+                                      fallback.rel = 'noopener noreferrer';
                                       fallback.className = 'flex items-center gap-2 p-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors';
                                       fallback.innerHTML = `
                                         <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -755,7 +757,7 @@ export default function InboxPage() {
                                       target.parentElement!.appendChild(fallback);
                                     }}
                                   />
-                                </a>
+                                </button>
                               ))}
                             </div>
                           )}
@@ -1492,6 +1494,30 @@ export default function InboxPage() {
           </div>
         </SheetContent>
       </Sheet>
+
+      {/* Image Preview Modal - fits exactly to image size */}
+      {previewImage && (
+        <div 
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80"
+          onClick={() => setPreviewImage(null)}
+          data-testid="image-preview-overlay"
+        >
+          <button
+            className="absolute top-4 right-4 text-white hover:text-gray-300 transition-colors"
+            onClick={() => setPreviewImage(null)}
+            data-testid="btn-close-preview"
+          >
+            <X className="h-6 w-6" />
+          </button>
+          <img 
+            src={previewImage} 
+            alt="Preview" 
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-lg"
+            onClick={(e) => e.stopPropagation()}
+            data-testid="image-preview"
+          />
+        </div>
+      )}
     </div>
   );
 }
