@@ -1,0 +1,340 @@
+Eres un ingeniero senior. Vamos a reemplazar el flujo manual (pedir WABA ID / Phone Number ID / Access Token) por un flujo SaaS correcto: el cliente inicia sesión con Meta dentro de Curbe, selecciona/crea su WhatsApp Business (WABA) y número, y queda conectado sin pegar credenciales.
+
+Objetivo MVP
+
+Botón “Connect WhatsApp” abre el flujo de Meta.
+
+Callback guarda en DB: tenant_id -> waba_id + phone_number_id + phone_number_e164 + display_name + token_encriptado.
+
+Webhook entrante se enruta por phone_number_id al tenant correcto.
+
+UI muestra Connected/Disconnected.
+
+El modal manual queda solo para Admin/Debug, no para clientes.
+
+1) Cambios de modelo de datos (Postgres)
+
+Crear/actualizar tablas (si ya existen, migra sin romper data):
+
+channel_connections
+
+Campos mínimos (WhatsApp):
+
+id uuid pk
+
+tenant_id uuid fk
+
+provider text (fixed: meta_whatsapp)
+
+status text enum: pending | active | error | revoked
+
+waba_id text
+
+phone_number_id text UNIQUE
+
+phone_number_e164 text
+
+display_name text
+
+access_token_enc text (token encriptado)
+
+token_expires_at timestamptz null
+
+scopes jsonb
+
+metadata jsonb
+
+timestamps
+
+Índices:
+
+unique(provider,phone_number_id)
+
+index(tenant_id,provider)
+
+oauth_states (anti-CSRF y auditoría)
+
+id uuid pk
+
+tenant_id uuid
+
+provider text (meta_whatsapp)
+
+nonce text unique
+
+created_at timestamptz
+
+used_at timestamptz null
+
+expires_at timestamptz (ej: now+10 min)
+
+metadata jsonb (ip, user_agent)
+
+Regla: si used_at no es null, rechazar.
+
+2) Configuración (ENV VARS)
+
+Agregar:
+
+META_APP_ID
+
+META_APP_SECRET
+
+META_REDIRECT_URI (ej: https://app.curbe.io/api/integrations/meta/whatsapp/callback)
+
+META_WEBHOOK_VERIFY_TOKEN (string secreto)
+
+TOKEN_ENCRYPTION_KEY_BASE64 (32 bytes base64 para AES-256-GCM)
+
+META_GRAPH_VERSION (ej: v21.0 o la que uses)
+
+Prohibido:
+
+No loguear tokens.
+
+No hardcodear secretos.
+
+3) Encriptación de tokens (obligatorio)
+
+Implementa util crypto.ts:
+
+AES-256-GCM con IV aleatorio (12 bytes).
+
+Output base64: iv.ciphertext.tag (o JSON base64).
+
+Funciones:
+
+encryptToken(plain: string): string
+
+decryptToken(enc: string): string
+
+Valida que TOKEN_ENCRYPTION_KEY_BASE64 decodifica a 32 bytes.
+
+4) Backend: endpoints nuevos (Multi-tenant)
+
+Asume que existe auth y puedes obtener tenantId del usuario logueado.
+
+(A) Start Connect
+
+POST /api/integrations/meta/whatsapp/start
+
+Input: none (usa tenant del session)
+Output JSON:
+
+authUrl (URL de Meta a abrir)
+
+state (nonce opcional para debug; no necesario si ya va en authUrl)
+
+Pasos:
+
+Genera nonce criptográficamente seguro.
+
+Inserta en oauth_states con expiry 10 min.
+
+Construye authUrl (OAuth) con:
+
+client_id
+
+redirect_uri = META_REDIRECT_URI
+
+response_type=code
+
+state = nonce (o un JWT firmado que contenga nonce + tenantId; preferible nonce + DB)
+
+scopes: los mínimos necesarios para WhatsApp Business Platform + embedded signup (consulta docs y deja comentario con los scopes exactos).
+
+Devuelve authUrl.
+
+(B) Callback
+
+GET /api/integrations/meta/whatsapp/callback?code=...&state=...
+
+Pasos:
+
+Valida state:
+
+busca nonce en oauth_states
+
+verifica not expired
+
+verifica used_at is null
+
+marca used_at = now()
+
+Intercambia code por access_token usando META_APP_SECRET.
+
+Con ese token, llama a Graph API para obtener:
+
+WABA(s) accesibles para el negocio del usuario
+
+el phone_number_id seleccionado/creado por embedded signup
+
+phone_number_e164 y display_name si están disponibles
+(Si embedded signup devuelve directamente esos IDs en el flujo, usa eso; si no, consulta Graph para resolverlos.)
+
+UPSERT en channel_connections:
+
+provider = meta_whatsapp
+
+tenant_id = oauth_states.tenant_id
+
+phone_number_id = …
+
+guarda token encriptado
+
+status=active
+
+Redirige a: /settings/integrations?whatsapp=connected (o donde esté la pantalla).
+
+(C) Status
+
+GET /api/integrations/meta/whatsapp/status
+Output:
+
+connected: boolean
+
+phone_number_e164, display_name, updated_at
+
+(D) Disconnect
+
+POST /api/integrations/meta/whatsapp/disconnect
+Pasos:
+
+marca connection status=revoked
+
+borra token (o mantenlo encriptado pero inaccesible) según política
+
+opcional: intentar revocar token en Meta (si existe endpoint de revocación, si no, omitir)
+
+5) Webhooks (WhatsApp)
+(A) Verify webhook
+
+GET /webhooks/meta/whatsapp
+
+Si hub.verify_token == META_WEBHOOK_VERIFY_TOKEN, responde hub.challenge.
+
+Si no, 403.
+
+(B) Receive webhook
+
+POST /webhooks/meta/whatsapp
+
+Responde 200 rápido.
+
+Encola procesamiento (si no hay cola, al menos procesa rápido y no bloquees).
+
+Procesamiento:
+
+Extrae phone_number_id del payload.
+
+Busca channel_connections por provider+phone_number_id.
+
+Si no existe: log warning con request_id y 200.
+
+Con tenant_id:
+
+Upsert conversación (por wa_id del contacto).
+
+Inserta mensaje inbound y/o actualiza status outbound (sent/delivered/read/failed) por provider_message_id.
+
+Idempotencia:
+
+unique(provider_message_id) para no duplicar.
+
+si llega repetido, ignora.
+
+6) Frontend (UX de verdad)
+
+Pantalla Integrations (como tu screenshot):
+
+WhatsApp card
+
+Estados:
+
+Not connected: botón “Connect WhatsApp”
+
+Connecting: loading spinner
+
+Connected: muestra número y display name + botón “Disconnect”
+
+Flujo:
+
+Click “Connect WhatsApp” → llama POST /start → abre authUrl en nueva ventana o redirect.
+
+Al volver (query param whatsapp=connected):
+
+refresca GET /status
+
+muestra conectado
+
+El modal actual (manual)
+
+Ocúltalo para usuarios normales.
+
+Solo visible si role=admin o featureFlag=integration_debug.
+
+Renómbralo “Manual Connect (Admin only)”.
+
+7) Manejo de errores (sin excusas)
+
+Si OAuth falla o el usuario cancela:
+
+redirige a integrations con whatsapp=error&reason=...
+
+UI muestra un error claro: “Connection cancelled or failed. Try again.”
+
+Si token no tiene permisos:
+
+status=error y guardas metadata.error.
+
+Si phone_number_id ya está conectado a otro tenant:
+
+RECHAZA y explica: “This number is already connected to another workspace.”
+
+8) Pruebas / scripts de verificación
+
+Entregables:
+
+Migración SQL
+
+Colección de requests (curl) para:
+
+start
+
+status
+
+disconnect
+
+Un “webhook replay” endpoint SOLO DEV (o script node) para POSTear un payload sample al webhook y verificar que se enruta por phone_number_id.
+
+Criterios de aceptación:
+
+Usuario tenant normal no ve WABA ID/token inputs.
+
+Puede conectar en 1 flujo (Meta login) y al volver queda channel_connections.status=active.
+
+GET status refleja el número y nombre.
+
+Webhook entrante crea mensaje en tenant correcto.
+
+Desconectar cambia a not connected y deja de permitir envíos.
+
+9) Notas estratégicas (para que no lo rompas después)
+
+No intentes “token permanente”. Implementa reconexión limpia.
+
+Si luego añadimos Instagram/Facebook, reutilizamos el mismo patrón: start/callback/status/disconnect + oauth_states.
+
+Ejecuta esto en este orden:
+
+DB + crypto
+
+start/callback/status/disconnect
+
+UI connect/disconnect
+
+webhooks + ruteo tenant
+
+pruebas
+
+No avances a “enviar mensajes” hasta que conectar + webhook estén sólidos.

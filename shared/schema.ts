@@ -4691,10 +4691,28 @@ export const waWebhookLogs = pgTable("wa_webhook_logs", {
   createdAtIdx: index("wa_webhook_logs_created_at_idx").on(table.createdAt),
 }));
 
+export const oauthProviderEnum = pgEnum("oauth_provider", ["meta_whatsapp", "meta_instagram", "meta_facebook"]);
+
+export const oauthStates = pgTable("oauth_states", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  provider: oauthProviderEnum("provider").notNull(),
+  nonce: text("nonce").notNull().unique(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  metadata: jsonb("metadata").$type<{ ip?: string; userAgent?: string }>(),
+}, (table) => ({
+  nonceIdx: index("oauth_states_nonce_idx").on(table.nonce),
+  companyIdIdx: index("oauth_states_company_id_idx").on(table.companyId),
+  expiresAtIdx: index("oauth_states_expires_at_idx").on(table.expiresAt),
+}));
+
 export const insertChannelConnectionSchema = createInsertSchema(channelConnections).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertWaConversationSchema = createInsertSchema(waConversations).omit({ id: true, createdAt: true, updatedAt: true });
 export const insertWaMessageSchema = createInsertSchema(waMessages).omit({ id: true, createdAt: true });
 export const insertWaWebhookLogSchema = createInsertSchema(waWebhookLogs).omit({ id: true, createdAt: true });
+export const insertOauthStateSchema = createInsertSchema(oauthStates).omit({ id: true, createdAt: true });
 
 export type ChannelConnection = typeof channelConnections.$inferSelect;
 export type InsertChannelConnection = z.infer<typeof insertChannelConnectionSchema>;
@@ -4704,6 +4722,8 @@ export type WaMessage = typeof waMessages.$inferSelect;
 export type InsertWaMessage = z.infer<typeof insertWaMessageSchema>;
 export type WaWebhookLog = typeof waWebhookLogs.$inferSelect;
 export type InsertWaWebhookLog = z.infer<typeof insertWaWebhookLogSchema>;
+export type OauthState = typeof oauthStates.$inferSelect;
+export type InsertOauthState = z.infer<typeof insertOauthStateSchema>;
 
 // =====================================================
 // TELNYX GLOBAL PRICING (Super Admin Configuration)

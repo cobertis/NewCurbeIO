@@ -177,3 +177,88 @@ export function isEncrypted(data: string | null | undefined): boolean {
     return false;
   }
 }
+
+// =====================================================
+// TOKEN ENCRYPTION (for OAuth access tokens)
+// Uses TOKEN_ENCRYPTION_KEY_BASE64 or fallback to SECRETS_MASTER_KEY
+// =====================================================
+
+const TOKEN_IV_LENGTH = 12; // 96 bits for GCM
+const TOKEN_AUTH_TAG_LENGTH = 16; // 128 bits
+
+function getTokenEncryptionKey(): Buffer {
+  const base64Key = process.env.TOKEN_ENCRYPTION_KEY_BASE64;
+  
+  if (base64Key) {
+    const key = Buffer.from(base64Key, 'base64');
+    if (key.length !== 32) {
+      throw new Error('TOKEN_ENCRYPTION_KEY_BASE64 must decode to exactly 32 bytes');
+    }
+    return key;
+  }
+  
+  const masterKey = process.env.SECRETS_MASTER_KEY;
+  if (masterKey) {
+    return crypto.scryptSync(masterKey, 'token-encryption-salt', 32);
+  }
+  
+  console.warn('⚠️  WARNING: Using default token encryption key. Set TOKEN_ENCRYPTION_KEY_BASE64 for production!');
+  return crypto.scryptSync('default-token-key', 'salt', 32);
+}
+
+/**
+ * Encrypt OAuth token using AES-256-GCM
+ * Output format: base64(iv.ciphertext.authTag)
+ */
+export function encryptToken(plaintext: string): string {
+  if (!plaintext) {
+    throw new Error('Cannot encrypt empty token');
+  }
+
+  const key = getTokenEncryptionKey();
+  const iv = crypto.randomBytes(TOKEN_IV_LENGTH);
+  
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  
+  const ciphertext = Buffer.concat([
+    cipher.update(plaintext, 'utf8'),
+    cipher.final()
+  ]);
+  
+  const authTag = cipher.getAuthTag();
+  
+  const combined = Buffer.concat([iv, ciphertext, authTag]);
+  return combined.toString('base64');
+}
+
+/**
+ * Decrypt OAuth token
+ * Input format: base64(iv.ciphertext.authTag)
+ */
+export function decryptToken(encrypted: string): string {
+  if (!encrypted) {
+    throw new Error('Cannot decrypt empty token');
+  }
+
+  try {
+    const key = getTokenEncryptionKey();
+    const combined = Buffer.from(encrypted, 'base64');
+    
+    const iv = combined.subarray(0, TOKEN_IV_LENGTH);
+    const authTag = combined.subarray(combined.length - TOKEN_AUTH_TAG_LENGTH);
+    const ciphertext = combined.subarray(TOKEN_IV_LENGTH, combined.length - TOKEN_AUTH_TAG_LENGTH);
+    
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, iv);
+    decipher.setAuthTag(authTag);
+    
+    const plaintext = Buffer.concat([
+      decipher.update(ciphertext),
+      decipher.final()
+    ]);
+    
+    return plaintext.toString('utf8');
+  } catch (error) {
+    console.error('Token decryption error:', error);
+    throw new Error('Failed to decrypt token');
+  }
+}
