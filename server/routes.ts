@@ -27233,6 +27233,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     await db.insert(telegramChatLinks).values({
       chatId,
       companyId: connectCode.companyId,
+      userId: connectCode.createdByUserId,
       chatType: chatType as any,
       title: title || fromUser?.username || fromUser?.first_name,
       linkedByUserId: connectCode.createdByUserId,
@@ -27241,6 +27242,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       target: telegramChatLinks.chatId,
       set: {
         companyId: connectCode.companyId,
+        userId: connectCode.createdByUserId,
         status: "active",
         linkedByUserId: connectCode.createdByUserId,
         updatedAt: new Date()
@@ -27265,6 +27267,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   async function handleTelegramMessage(update: any, message: any, chatId: string, chatType: string, fromUser: any) {
     // Find tenant - first try by chat_id link, then fallback to any connected company
     let companyId: string;
+    let userId: string | undefined;
     const chatLink = await db.query.telegramChatLinks.findFirst({
       where: and(
         eq(telegramChatLinks.chatId, chatId),
@@ -27274,6 +27277,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     
     if (chatLink) {
       companyId = chatLink.companyId;
+      userId = chatLink.userId;
     } else {
       // Fallback: route to any company with active Telegram connection
       const anyActiveLink = await db.query.telegramChatLinks.findFirst({
@@ -27286,10 +27290,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       companyId = anyActiveLink.companyId;
+      userId = anyActiveLink.userId;
       
       // Auto-create link for this new chat (use the same user who set up the original link)
       await db.insert(telegramChatLinks).values({
         companyId,
+        userId: anyActiveLink.userId,
         chatId,
         chatType: chatType as any,
         title: message.chat.title || null,
@@ -27326,7 +27332,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     // Upsert conversation
     let conversation = await db.query.telegramConversations.findFirst({
       where: and(
-        eq(telegramConversations.companyId, companyId),
+        eq(telegramConversations.userId, userId),
         eq(telegramConversations.chatId, chatId)
       )
     });
@@ -27338,6 +27344,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     if (!conversation) {
       const [newConv] = await db.insert(telegramConversations).values({
         companyId,
+        userId,
         chatId,
         chatType: chatType as any,
         contactId: contact.id,
@@ -27552,7 +27559,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     try {
       const chats = await db.query.telegramChatLinks.findMany({
         where: and(
-          eq(telegramChatLinks.companyId, user.companyId),
+          eq(telegramChatLinks.userId, user.id),
           eq(telegramChatLinks.status, "active")
         ),
         orderBy: [desc(telegramChatLinks.linkedAt)]
@@ -27576,7 +27583,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       await db.update(telegramChatLinks)
         .set({ status: "revoked", updatedAt: new Date() })
         .where(and(
-          eq(telegramChatLinks.companyId, user.companyId),
+          eq(telegramChatLinks.userId, user.id),
           eq(telegramChatLinks.chatId, chatId)
         ));
       

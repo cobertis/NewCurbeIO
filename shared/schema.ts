@@ -4781,11 +4781,12 @@ export const telegramChatTypeEnum = pgEnum("telegram_chat_type", ["private", "gr
 // Telegram Chat Link Status Enum  
 export const telegramChatLinkStatusEnum = pgEnum("telegram_chat_link_status", ["active", "revoked"]);
 
-// Telegram Chat Links - Maps Telegram chat_ids to tenants
+// Telegram Chat Links - Maps Telegram chat_ids to users (user-level integration)
 export const telegramChatLinks = pgTable("telegram_chat_links", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   chatId: text("chat_id").notNull().unique(),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   chatType: telegramChatTypeEnum("chat_type").notNull(),
   title: text("title"),
   status: telegramChatLinkStatusEnum("status").notNull().default("active"),
@@ -4797,6 +4798,7 @@ export const telegramChatLinks = pgTable("telegram_chat_links", {
 }, (table) => ({
   chatIdIdx: index("telegram_chat_links_chat_id_idx").on(table.chatId),
   companyIdIdx: index("telegram_chat_links_company_id_idx").on(table.companyId),
+  userIdIdx: index("telegram_chat_links_user_id_idx").on(table.userId),
   statusIdx: index("telegram_chat_links_status_idx").on(table.status),
 }));
 
@@ -4830,10 +4832,11 @@ export const insertTelegramParticipantSchema = createInsertSchema(telegramPartic
 export type TelegramParticipant = typeof telegramParticipants.$inferSelect;
 export type InsertTelegramParticipant = z.infer<typeof insertTelegramParticipantSchema>;
 
-// Telegram Conversations - Conversations from Telegram (DM or Group)
+// Telegram Conversations - Conversations from Telegram (DM or Group) - user-level
 export const telegramConversations = pgTable("telegram_conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
   chatId: text("chat_id").notNull(),
   chatType: telegramChatTypeEnum("chat_type").notNull(),
   contactId: varchar("contact_id").references(() => contacts.id, { onDelete: "set null" }),
@@ -4846,8 +4849,9 @@ export const telegramConversations = pgTable("telegram_conversations", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
-  uniqueConversation: unique().on(table.companyId, table.chatId),
+  uniqueConversation: unique().on(table.userId, table.chatId),
   companyIdIdx: index("telegram_conversations_company_id_idx").on(table.companyId),
+  userIdIdx: index("telegram_conversations_user_id_idx").on(table.userId),
   chatIdIdx: index("telegram_conversations_chat_id_idx").on(table.chatId),
   statusIdx: index("telegram_conversations_status_idx").on(table.status),
 }));
