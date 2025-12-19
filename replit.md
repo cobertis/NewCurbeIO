@@ -59,3 +59,29 @@ Includes session security, webhook signature validation (Twilio, BulkVS, BlueBub
 - **Security:** Bcrypt.
 - **Utilities:** `date-fns`.
 - **Background Jobs:** `node-cron`.
+
+## Recent Changes (December 19, 2025)
+
+### MMS Media Persistence
+- **Problem:** MMS images were stored in memory and lost on server restart.
+- **Solution:** Added `mms_media_cache` database table for persistent storage.
+- **Files Modified:**
+  - `shared/schema.ts`: Added `mmsMediaCache` table (line ~6281)
+  - `server/routes.ts`: Updated `/api/mms-file/:id` endpoint to query database, updated MMS fallback to save to database instead of memory Map
+
+### PDF Attachment Display
+- **Enhancement:** Professional card view for PDF attachments in inbox.
+- **Features:**
+  - Red gradient background with PDF icon
+  - "PDF Document" label with description
+  - Eye icon button to view in new tab
+  - Download icon button to download directly
+- **File Modified:** `client/src/pages/inbox.tsx` (media rendering section ~line 726)
+
+### Optimistic UI for Message Sending
+- **Enhancement:** Messages and attachments appear instantly in chat, input clears immediately.
+- **Behavior:**
+  - Message shows with "pending" status immediately
+  - User can continue typing while previous message sends in background
+  - If send fails, error toast appears and optimistic message is removed
+- **File Modified:** `client/src/pages/inbox.tsx` (sendMessageMutation and handleSendMessage ~line 214, 336)
