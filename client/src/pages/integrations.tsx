@@ -124,6 +124,47 @@ function getInstagramStatusBadge(status: string | undefined) {
   }
 }
 
+function getFacebookErrorMessage(reason: string): { title: string; description: string } {
+  switch (reason) {
+    case "connection_cancelled":
+      return {
+        title: "Conexión cancelada",
+        description: "Cancelaste la conexión. Intenta de nuevo cuando estés listo."
+      };
+    case "permission_required":
+      return {
+        title: "Permisos requeridos",
+        description: "Necesitas aprobar los permisos para conectar Facebook Messenger."
+      };
+    case "page_not_found":
+      return {
+        title: "Página no encontrada",
+        description: "No se encontró ninguna Página de Facebook en tu cuenta."
+      };
+    case "connection_failed":
+    default:
+      return {
+        title: "Error de conexión",
+        description: "No pudimos conectar tu Página. Por favor intenta de nuevo."
+      };
+  }
+}
+
+function getFacebookStatusBadge(status: string | undefined) {
+  switch (status) {
+    case "active":
+      return <Badge data-testid="badge-facebook-status-active" className="bg-green-500/10 text-green-600 border-green-500/20"><CheckCircle className="h-3 w-3 mr-1" />Connected</Badge>;
+    case "pending":
+      return <Badge data-testid="badge-facebook-status-pending" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+    case "error":
+      return <Badge data-testid="badge-facebook-status-error" className="bg-red-500/10 text-red-600 border-red-500/20"><AlertTriangle className="h-3 w-3 mr-1" />Needs attention</Badge>;
+    case "revoked":
+      return <Badge data-testid="badge-facebook-status-revoked" className="bg-gray-500/10 text-gray-600 border-gray-500/20"><XCircle className="h-3 w-3 mr-1" />Revoked</Badge>;
+    default:
+      return <Badge data-testid="badge-facebook-status-disconnected" variant="outline"><XCircle className="h-3 w-3 mr-1" />Not Connected</Badge>;
+  }
+}
+
 function WhatsAppCard() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -769,6 +810,233 @@ function InstagramCard() {
   );
 }
 
+function FacebookCard() {
+  const { toast } = useToast();
+  const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  const { data: sessionData } = useQuery<{ user: User }>({
+    queryKey: ["/api/session"],
+  });
+
+  const user = sessionData?.user;
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+
+  const { data: connectionData, isLoading } = useQuery<{ connection: ChannelConnection | null }>({
+    queryKey: ["/api/integrations/facebook/status"],
+  });
+
+  const connection = connectionData?.connection;
+  const isConnected = connection?.status === "active";
+  const isRevoked = connection?.status === "revoked";
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const facebookStatus = urlParams.get("facebook");
+    const reason = urlParams.get("reason");
+
+    if (facebookStatus === "connected") {
+      toast({
+        title: "Facebook conectado",
+        description: "Tu Página de Facebook ha sido conectada exitosamente.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations/facebook/status"] });
+      urlParams.delete("facebook");
+      const newUrl = window.location.pathname + (urlParams.toString() ? `?${urlParams.toString()}` : "");
+      window.history.replaceState({}, "", newUrl);
+    } else if (facebookStatus === "error") {
+      const errorMsg = getFacebookErrorMessage(reason || "connection_failed");
+      toast({
+        variant: "destructive",
+        title: errorMsg.title,
+        description: errorMsg.description,
+      });
+      urlParams.delete("facebook");
+      urlParams.delete("reason");
+      const newUrl = window.location.pathname + (urlParams.toString() ? `?${urlParams.toString()}` : "");
+      window.history.replaceState({}, "", newUrl);
+    }
+  }, [toast]);
+
+  const oauthStartMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/integrations/meta/facebook/start");
+    },
+    onSuccess: (data: { authUrl: string; state: string }) => {
+      if (data.authUrl) {
+        window.open(data.authUrl, "_blank");
+      }
+    },
+    onError: (error: any) => {
+      const errorMsg = getFacebookErrorMessage("connection_failed");
+      toast({
+        variant: "destructive",
+        title: errorMsg.title,
+        description: error.message || errorMsg.description,
+      });
+    },
+  });
+
+  const disconnectMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/integrations/facebook/disconnect");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations/facebook/status"] });
+      setDisconnectDialogOpen(false);
+      toast({
+        title: "Facebook desconectado",
+        description: "Tu Página de Facebook ha sido desconectada.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error al desconectar",
+        description: error.message || "No pudimos desconectar tu Página de Facebook.",
+      });
+    },
+  });
+
+  const handleOAuthConnect = () => {
+    oauthStartMutation.mutate();
+  };
+
+  if (isLoading) {
+    return (
+      <Card data-testid="card-facebook-loading">
+        <CardContent className="flex items-center justify-center py-12">
+          <LoadingSpinner fullScreen={false} />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <TooltipProvider>
+      <>
+        <Card data-testid="card-facebook" className="relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#1877F2]/10 to-transparent" />
+          <CardHeader className="flex flex-row items-start justify-between space-y-0">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-[#1877F2]/10">
+                <SiFacebook className="h-6 w-6 text-[#1877F2]" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Facebook Messenger</CardTitle>
+                <CardDescription>Conecta tu Página de Facebook</CardDescription>
+              </div>
+            </div>
+            {getFacebookStatusBadge(connection?.status)}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isConnected ? (
+              <>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Página</span>
+                    <span className="font-medium" data-testid="text-facebook-page">{connection?.fbPageName}</span>
+                  </div>
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Conectado</span>
+                    <span className="font-medium" data-testid="text-facebook-connected-date">
+                      {connection?.connectedAt ? new Date(connection.connectedAt).toLocaleDateString() : "—"}
+                    </span>
+                  </div>
+                </div>
+                {isAdmin && (
+                  <Button
+                    variant="outline"
+                    className="w-full text-red-500 hover:text-red-600 hover:bg-red-50"
+                    onClick={() => setDisconnectDialogOpen(true)}
+                    data-testid="button-disconnect-facebook"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Desconectar
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Conecta tu Página de Facebook para responder y gestionar mensajes de Messenger desde el inbox de Curbe.
+                </p>
+                
+                <Button 
+                  className="w-full bg-[#1877F2] hover:bg-[#166FE5]"
+                  onClick={handleOAuthConnect}
+                  disabled={oauthStartMutation.isPending}
+                  data-testid="button-connect-facebook"
+                >
+                  {oauthStartMutation.isPending ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Conectando...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Conectar Facebook
+                    </>
+                  )}
+                </Button>
+                
+                {oauthStartMutation.isPending && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Estamos completando la conexión con Meta. No cierres esta ventana.
+                  </p>
+                )}
+                
+                <p className="text-xs text-muted-foreground text-center">
+                  Te llevaremos a Meta para iniciar sesión y seleccionar tu Página de Facebook.
+                </p>
+
+                <Collapsible open={helpOpen} onOpenChange={setHelpOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="w-full text-muted-foreground" data-testid="button-facebook-help">
+                      <HelpCircle className="h-4 w-4 mr-2" />
+                      ¿Necesitas ayuda conectando?
+                      <ChevronDown className={`h-4 w-4 ml-2 transition-transform ${helpOpen ? "rotate-180" : ""}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 space-y-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Debes ser administrador de la Página de Facebook</li>
+                      <li>La Página debe tener Messenger habilitado</li>
+                      <li>Necesitas aprobar los permisos de mensajería</li>
+                    </ul>
+                  </CollapsibleContent>
+                </Collapsible>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <AlertDialog open={disconnectDialogOpen} onOpenChange={setDisconnectDialogOpen}>
+          <AlertDialogContent data-testid="dialog-disconnect-facebook">
+            <AlertDialogHeader>
+              <AlertDialogTitle>¿Desconectar Facebook?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Curbe dejará de recibir y enviar mensajes desde esta Página.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-disconnect-facebook">Cancelar</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => disconnectMutation.mutate()}
+                className="bg-red-500 hover:bg-red-600"
+                data-testid="button-confirm-disconnect-facebook"
+              >
+                {disconnectMutation.isPending ? "Desconectando..." : "Desconectar"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    </TooltipProvider>
+  );
+}
+
 function ComingSoonCard({ 
   icon: Icon, 
   title, 
@@ -828,13 +1096,7 @@ export default function IntegrationsPage() {
         
         <InstagramCard />
         
-        <ComingSoonCard
-          icon={SiFacebook}
-          title="Facebook Messenger"
-          description="Connect your Facebook Page"
-          bodyText="Conecta tu Página de Facebook para manejar Messenger desde Curbe (próximamente)."
-          color="text-blue-600"
-        />
+        <FacebookCard />
       </div>
     </div>
   );

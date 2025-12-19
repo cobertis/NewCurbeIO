@@ -4605,6 +4605,11 @@ export const channelConnections = pgTable("channel_connections", {
   pageId: text("page_id"),
   pageName: text("page_name"),
   
+  // Facebook Messenger fields
+  fbPageId: text("fb_page_id"),
+  fbPageName: text("fb_page_name"),
+  fbPageAccessToken: text("fb_page_access_token"),
+  
   accessTokenEnc: text("access_token_enc"),
   tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }),
   scopes: jsonb("scopes").$type<string[]>(),

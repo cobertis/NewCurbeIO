@@ -26655,6 +26655,236 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
 
+  // =====================================================
+  // FACEBOOK MESSENGER OAUTH INTEGRATION
+  // =====================================================
+
+  const META_FACEBOOK_REDIRECT_URI = process.env.META_FACEBOOK_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/meta/facebook/callback`;
+  const META_FACEBOOK_SCOPES = [
+    "pages_messaging",
+    "pages_manage_metadata",
+    "pages_show_list",
+    "business_management"
+  ].join(",");
+
+  // POST /api/integrations/meta/facebook/start - Start Facebook OAuth flow
+  app.post("/api/integrations/meta/facebook/start", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
+      
+      if (!META_APP_ID) {
+        return res.status(500).json({ error: "Meta App ID not configured. Contact administrator." });
+      }
+      
+      const nonce = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      
+      await db.insert(oauthStates).values({
+        companyId: user.companyId,
+        provider: "meta_facebook",
+        nonce,
+        expiresAt,
+        metadata: {
+          ip: req.ip || req.connection.remoteAddress,
+          userAgent: req.get("user-agent") || undefined
+        }
+      });
+      
+      const authUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
+      authUrl.searchParams.set("client_id", META_APP_ID);
+      authUrl.searchParams.set("redirect_uri", META_FACEBOOK_REDIRECT_URI);
+      authUrl.searchParams.set("response_type", "code");
+      authUrl.searchParams.set("scope", META_FACEBOOK_SCOPES);
+      authUrl.searchParams.set("state", nonce);
+      
+      return res.json({ authUrl: authUrl.toString(), state: nonce });
+    } catch (error) {
+      console.error("[Facebook OAuth] Start error:", error);
+      return res.status(500).json({ error: "Failed to start OAuth flow" });
+    }
+  });
+
+  // GET /api/integrations/meta/facebook/callback - OAuth callback from Meta
+  app.get("/api/integrations/meta/facebook/callback", async (req: Request, res: Response) => {
+    const frontendUrl = process.env.BASE_URL || "";
+    const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/settings/integrations?facebook=error&reason=${encodeURIComponent(reason)}`);
+    
+    try {
+      const { code, state } = req.query;
+      
+      if (!code || !state) {
+        console.error("[Facebook OAuth] Missing code or state");
+        return errorRedirect("connection_cancelled");
+      }
+      
+      const oauthState = await db.query.oauthStates.findFirst({
+        where: and(
+          eq(oauthStates.nonce, state as string),
+          eq(oauthStates.provider, "meta_facebook")
+        )
+      });
+      
+      if (!oauthState) {
+        console.error("[Facebook OAuth] Invalid state");
+        return errorRedirect("connection_failed");
+      }
+      
+      if (new Date() > new Date(oauthState.expiresAt)) {
+        console.error("[Facebook OAuth] State expired");
+        return errorRedirect("connection_failed");
+      }
+      
+      if (oauthState.usedAt) {
+        console.error("[Facebook OAuth] State already used");
+        return errorRedirect("connection_failed");
+      }
+      
+      await db.update(oauthStates)
+        .set({ usedAt: new Date() })
+        .where(eq(oauthStates.id, oauthState.id));
+      
+      // Exchange code for access token
+      const tokenUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token`;
+      const tokenParams = new URLSearchParams({
+        client_id: META_APP_ID!,
+        client_secret: META_APP_SECRET!,
+        code: code as string,
+        redirect_uri: META_FACEBOOK_REDIRECT_URI,
+      });
+      
+      const tokenResponse = await fetch(`${tokenUrl}?${tokenParams.toString()}`);
+      const tokenData = await tokenResponse.json() as any;
+      
+      if (!tokenResponse.ok || tokenData.error) {
+        console.error("[Facebook OAuth] Token exchange failed:", tokenData.error);
+        return errorRedirect("connection_failed");
+      }
+      
+      const userAccessToken = tokenData.access_token;
+      
+      // Get user's Facebook pages
+      const pagesUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/accounts?access_token=${userAccessToken}&fields=id,name,access_token`;
+      const pagesResponse = await fetch(pagesUrl);
+      const pagesData = await pagesResponse.json() as any;
+      
+      if (!pagesResponse.ok || pagesData.error) {
+        console.error("[Facebook OAuth] Failed to get pages:", pagesData.error);
+        return errorRedirect("permission_required");
+      }
+      
+      if (!pagesData.data || pagesData.data.length === 0) {
+        console.error("[Facebook OAuth] No pages found");
+        return errorRedirect("page_not_found");
+      }
+      
+      // Use the first page
+      const page = pagesData.data[0];
+      const pageId = page.id;
+      const pageName = page.name;
+      const pageAccessToken = page.access_token;
+      
+      // Check for existing connection
+      const existingConnection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, oauthState.companyId),
+          eq(channelConnections.channel, "facebook")
+        )
+      });
+      
+      if (existingConnection) {
+        await db.update(channelConnections)
+          .set({
+            status: "active",
+            fbPageId: pageId,
+            fbPageName: pageName,
+            fbPageAccessToken: pageAccessToken,
+            accessTokenEnc: userAccessToken,
+            scopes: META_FACEBOOK_SCOPES.split(","),
+            connectedAt: new Date(),
+            disconnectedAt: null,
+            lastError: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(channelConnections.id, existingConnection.id));
+      } else {
+        await db.insert(channelConnections).values({
+          companyId: oauthState.companyId,
+          channel: "facebook",
+          status: "active",
+          fbPageId: pageId,
+          fbPageName: pageName,
+          fbPageAccessToken: pageAccessToken,
+          accessTokenEnc: userAccessToken,
+          scopes: META_FACEBOOK_SCOPES.split(","),
+          connectedAt: new Date(),
+        });
+      }
+      
+      console.log(`[Facebook OAuth] Connected page ${pageName} (${pageId}) for company ${oauthState.companyId}`);
+      return res.redirect(`${frontendUrl}/settings/integrations?facebook=connected`);
+    } catch (error) {
+      console.error("[Facebook OAuth] Callback error:", error);
+      return errorRedirect("connection_failed");
+    }
+  });
+
+  // GET /api/integrations/facebook/status - Get Facebook connection status
+  app.get("/api/integrations/facebook/status", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) return res.status(400).json({ error: "No company" });
+      
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "facebook")
+        )
+      });
+      
+      return res.json({ connection: connection || null });
+    } catch (error) {
+      console.error("[Facebook] Status error:", error);
+      return res.status(500).json({ error: "Failed to get Facebook status" });
+    }
+  });
+
+  // POST /api/integrations/facebook/disconnect - Disconnect Facebook
+  app.post("/api/integrations/facebook/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) return res.status(400).json({ error: "No company" });
+      
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "facebook")
+        )
+      });
+      
+      if (!connection) {
+        return res.status(404).json({ error: "No Facebook connection found" });
+      }
+      
+      await db.update(channelConnections)
+        .set({
+          status: "revoked",
+          accessTokenEnc: null,
+          fbPageAccessToken: null,
+          disconnectedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(channelConnections.id, connection.id));
+      
+      console.log(`[Facebook] Disconnected for company ${user.companyId}`);
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("[Facebook] Disconnect error:", error);
+      return res.status(500).json({ error: "Failed to disconnect Facebook" });
+    }
+  });
+
+
   // POST /webhooks/telnyx/voicemail - Handle voicemail completed events
   app.post("/webhooks/telnyx/voicemail", async (req: Request, res: Response) => {
     try {
