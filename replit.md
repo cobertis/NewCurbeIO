@@ -166,3 +166,28 @@ Includes session security, webhook signature validation (Twilio, BulkVS, BlueBub
 - **Implementation:** Before deleting the connection, the backend now calls TikTok's revoke endpoint (`https://open.tiktokapis.com/v2/oauth/revoke/`) to invalidate the access token.
 - **File Modified:** `server/routes.ts` (TikTok disconnect route ~line 27129)
 - **Behavior:** Token revocation is non-blocking - if it fails, the disconnect still proceeds.
+
+### Telegram Integration (COMPLETED - December 19, 2025)
+- **Feature:** Multi-tenant Telegram bot integration for customer support and sales via Curbe inbox.
+- **Database Schema (`shared/schema.ts`):**
+  - `telegram_connect_codes`: Time-limited codes for linking chats to companies (10-min expiry)
+  - `telegram_chat_links`: Links Telegram chats to companies with chat metadata
+  - `telegram_participants`: Tracks Telegram users participating in conversations
+  - `telegram_conversations`: Inbox conversations for Telegram messages
+  - `telegram_messages`: Message history with direction, status, and media support
+- **Backend Routes (`server/routes.ts` ~lines 27193-27565):**
+  - POST /admin/telegram/setupWebhook - Setup Telegram webhook (super_admin only)
+  - POST /api/integrations/telegram/start - Generate deep link with connect code
+  - GET /api/integrations/telegram/status - Get connection status and linked chats
+  - POST /api/integrations/telegram/disconnect - Disconnect a specific chat
+  - POST /webhooks/telegram - Webhook handler for incoming messages and /start command
+  - POST /api/integrations/telegram/send - Send message to Telegram chat
+- **Frontend UI (`client/src/pages/integrations.tsx`):**
+  - TelegramCard component with connect/disconnect flow
+  - Deep link generation with 10-minute expiry
+  - List of connected chats with disconnect option per chat
+  - Spanish localization for all UI text
+- **ENV VARS REQUIRED:**
+  - TELEGRAM_BOT_TOKEN - Bot token from @BotFather
+  - TELEGRAM_BOT_USERNAME - Bot username (without @)
+  - TELEGRAM_WEBHOOK_SECRET_TOKEN - Secret for webhook signature validation
