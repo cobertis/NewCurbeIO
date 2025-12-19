@@ -35375,8 +35375,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                   contentType: file.mimetype,
                   expiresAt: Date.now() + 24 * 60 * 60 * 1000
                 });
-                const baseUrl = process.env.BASE_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
-                const fallbackUrl = `${baseUrl}/api/mms-file/${fileId}`;
+                const fallbackUrl = `/api/mms-file/${fileId}`;
                 mediaUrls.push(fallbackUrl);
                 console.log("[Inbox] Using fallback URL:", fallbackUrl);
               }
