@@ -1012,7 +1012,7 @@ class TelnyxWebRTCManager {
           
           // For outbound calls, don't start timer yet - wait for PSTN to answer
           // The timer will be started when we receive outbound_call_answered from server
-          if (isOutbound) {
+          if (isOutgoing) {
             console.log("[SIP.js WebRTC] Outbound call - waiting for PSTN to answer before starting timer");
             store.setOutboundPstnRinging(true);
             // Don't set callActiveTimestamp - it will be set when PSTN answers
