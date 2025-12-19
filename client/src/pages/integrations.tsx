@@ -1239,9 +1239,10 @@ function TikTokCard() {
 
 function TelegramCard() {
   const { toast } = useToast();
-  const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
+  const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [deepLink, setDeepLink] = useState<string | null>(null);
+  const [helpOpen, setHelpOpen] = useState(false);
 
   const { data: status, isLoading } = useQuery<{
     connected: boolean;
@@ -1256,6 +1257,8 @@ function TelegramCard() {
     queryKey: ["/api/integrations/telegram/status"],
   });
 
+  const isConnected = status?.connected && status.chats.length > 0;
+
   const connectMutation = useMutation({
     mutationFn: async () => {
       const res = await apiRequest("POST", "/api/integrations/telegram/start");
@@ -1263,10 +1266,10 @@ function TelegramCard() {
     },
     onSuccess: (data) => {
       setDeepLink(data.deepLink);
-      toast({ title: "Enlace generado", description: "Abre el enlace en Telegram y presiona Start" });
+      toast({ title: "Link Generated", description: "Open the link in Telegram and press Start" });
     },
     onError: () => {
-      toast({ title: "Error", description: "No se pudo generar el enlace", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to generate connection link", variant: "destructive" });
     },
   });
 
@@ -1277,12 +1280,12 @@ function TelegramCard() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/integrations/telegram/status"] });
-      toast({ title: "Desconectado", description: "El chat fue desconectado de Telegram" });
-      setShowDisconnectDialog(false);
+      toast({ title: "Disconnected", description: "The chat has been disconnected from Telegram" });
+      setDisconnectDialogOpen(false);
       setSelectedChatId(null);
     },
     onError: () => {
-      toast({ title: "Error", description: "No se pudo desconectar", variant: "destructive" });
+      toast({ title: "Error", description: "Failed to disconnect chat", variant: "destructive" });
     },
   });
 
@@ -1298,148 +1301,189 @@ function TelegramCard() {
 
   if (isLoading) {
     return (
-      <Card>
-        <CardHeader>
-          <div className="flex items-center gap-3">
-            <SiTelegram className="h-8 w-8 text-[#0088cc]" />
-            <div>
-              <CardTitle>Telegram</CardTitle>
-              <CardDescription>Cargando...</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
+      <Card data-testid="card-telegram-loading">
+        <CardContent className="flex items-center justify-center py-12">
+          <LoadingSpinner fullScreen={false} />
+        </CardContent>
       </Card>
     );
   }
 
   return (
-    <>
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
+    <TooltipProvider>
+      <>
+        <Card data-testid="card-telegram" className="relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-[#0088cc]/10 to-transparent" />
+          <CardHeader className="flex flex-row items-start justify-between space-y-0">
             <div className="flex items-center gap-3">
-              <SiTelegram className="h-8 w-8 text-[#0088cc]" />
+              <div className="p-2 rounded-lg bg-[#0088cc]/10">
+                <SiTelegram className="h-6 w-6 text-[#0088cc]" />
+              </div>
               <div>
-                <CardTitle>Telegram</CardTitle>
-                <CardDescription>
-                  {status?.connected
-                    ? `${status.chats.length} chat(s) conectado(s)`
-                    : "Conecta Telegram para atender soporte y ventas desde el inbox de Curbe"}
-                </CardDescription>
+                <CardTitle className="text-lg">Telegram</CardTitle>
+                <CardDescription>Connect your Telegram bot</CardDescription>
               </div>
             </div>
-            {!status?.connected && (
-              <Button
-                onClick={handleConnect}
-                disabled={connectMutation.isPending}
-                data-testid="button-connect-telegram"
-              >
-                {connectMutation.isPending ? (
-                  <LoadingSpinner fullScreen={false} />
-                ) : (
-                  "Conectar Telegram"
-                )}
-              </Button>
-            )}
-          </div>
-        </CardHeader>
-        <CardContent>
-          {deepLink && !status?.connected && (
-            <div className="mb-4 p-4 bg-muted rounded-lg">
-              <p className="text-sm mb-2">Abre este enlace en Telegram y presiona <strong>Start</strong>:</p>
-              <a
-                href={deepLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-blue-600 hover:underline break-all"
-              >
-                {deepLink}
-              </a>
-              <p className="text-xs text-muted-foreground mt-2">
-                El enlace expira en 10 minutos
-              </p>
-            </div>
-          )}
-
-          {status?.connected && status.chats.length > 0 && (
-            <div className="space-y-2">
-              <h4 className="font-medium text-sm">Chats conectados</h4>
-              {status.chats.map((chat) => (
-                <div
-                  key={chat.id}
-                  className="flex items-center justify-between p-3 border rounded-lg"
-                  data-testid={`telegram-chat-${chat.chatId}`}
-                >
-                  <div className="flex items-center gap-2">
-                    {chat.chatType === "private" ? (
-                      <UserIcon className="h-4 w-4 text-muted-foreground" />
-                    ) : (
-                      <Users className="h-4 w-4 text-muted-foreground" />
-                    )}
-                    <span className="text-sm">
-                      {chat.chatType === "private" ? "Chat privado" : "Grupo"} — {chat.title || "Sin nombre"}
-                    </span>
-                  </div>
+            <Badge variant={isConnected ? "default" : "secondary"} className={isConnected ? "bg-green-500" : ""}>
+              {isConnected ? (
+                <>
+                  <CheckCircle className="h-3 w-3 mr-1" />
+                  Connected
+                </>
+              ) : (
+                "Not Connected"
+              )}
+            </Badge>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {connectMutation.isPending ? (
+              <div className="text-center py-6">
+                <RefreshCw className="h-8 w-8 animate-spin text-[#0088cc] mx-auto mb-3" />
+                <p className="font-medium">Generating Link...</p>
+                <p className="text-sm text-muted-foreground">Please wait while we create your connection link.</p>
+              </div>
+            ) : isConnected ? (
+              <>
+                <div className="space-y-2">
+                  <div className="text-sm text-muted-foreground mb-2">Connected Chats</div>
+                  {status.chats.map((chat) => (
+                    <div
+                      key={chat.id}
+                      className="flex items-center justify-between p-3 border rounded-lg"
+                      data-testid={`telegram-chat-${chat.chatId}`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {chat.chatType === "private" ? (
+                          <UserIcon className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                        )}
+                        <span className="text-sm font-medium">
+                          {chat.chatType === "private" ? "Private Chat" : "Group"} — {chat.title || "Unnamed"}
+                        </span>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                        onClick={() => {
+                          setSelectedChatId(chat.chatId);
+                          setDisconnectDialogOpen(true);
+                        }}
+                        data-testid={`button-disconnect-telegram-${chat.chatId}`}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex gap-2">
                   <Button
-                    variant="ghost"
+                    variant="outline"
                     size="sm"
-                    onClick={() => {
-                      setSelectedChatId(chat.chatId);
-                      setShowDisconnectDialog(true);
-                    }}
-                    data-testid={`button-disconnect-telegram-${chat.chatId}`}
+                    className="flex-1"
+                    onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/integrations/telegram/status"] })}
+                    data-testid="button-refresh-telegram"
                   >
-                    Desconectar
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={handleConnect}
+                    disabled={connectMutation.isPending}
+                    data-testid="button-add-another-telegram"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Chat
                   </Button>
                 </div>
-              ))}
-              <Button
-                variant="outline"
-                size="sm"
-                className="mt-2"
-                onClick={handleConnect}
-                disabled={connectMutation.isPending}
-                data-testid="button-add-another-telegram"
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Connect Telegram to handle support and sales from the Curbe inbox.
+                </p>
+
+                {deepLink ? (
+                  <div className="p-4 bg-muted rounded-lg space-y-2">
+                    <p className="text-sm font-medium">Open this link in Telegram and press <strong>Start</strong>:</p>
+                    <a
+                      href={deepLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-[#0088cc] hover:underline break-all text-sm"
+                      data-testid="link-telegram-deeplink"
+                    >
+                      {deepLink}
+                    </a>
+                    <p className="text-xs text-muted-foreground">
+                      This link expires in 10 minutes
+                    </p>
+                  </div>
+                ) : (
+                  <Button 
+                    className="w-full bg-[#0088cc] hover:bg-[#006699] text-white"
+                    onClick={handleConnect}
+                    disabled={connectMutation.isPending}
+                    data-testid="button-connect-telegram"
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Connect Telegram
+                  </Button>
+                )}
+                
+                <p className="text-xs text-muted-foreground text-center">
+                  We'll generate a link for you to open in Telegram.
+                </p>
+
+                <Collapsible open={helpOpen} onOpenChange={setHelpOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground" data-testid="button-telegram-help">
+                      <span className="flex items-center gap-1">
+                        <HelpCircle className="h-4 w-4 mr-2" />
+                        Need help connecting?
+                      </span>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${helpOpen ? "rotate-180" : ""}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 space-y-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>Telegram works via a bot. Customers must start a chat with the bot to receive responses.</li>
+                      <li>To connect a group, run the connection link inside the group and press Start.</li>
+                      <li>You can connect multiple chats to your account.</li>
+                    </ul>
+                  </CollapsibleContent>
+                </Collapsible>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <AlertDialog open={disconnectDialogOpen} onOpenChange={setDisconnectDialogOpen}>
+          <AlertDialogContent data-testid="dialog-disconnect-telegram">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Disconnect this chat?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Curbe will stop sending and receiving messages from this Telegram chat.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-disconnect-telegram">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleDisconnect}
+                className="bg-red-500 hover:bg-red-600"
+                data-testid="button-confirm-disconnect-telegram"
               >
-                {connectMutation.isPending ? <LoadingSpinner fullScreen={false} /> : "Conectar otro chat"}
-              </Button>
-            </div>
-          )}
-
-          <Collapsible className="mt-4">
-            <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
-              <HelpCircle className="h-4 w-4" />
-              ¿Necesitas ayuda?
-            </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2 text-sm text-muted-foreground space-y-2">
-              <p>Telegram funciona mediante un bot. Los clientes deben iniciar el chat con el bot para recibir respuestas.</p>
-              <p>Para conectar un grupo, ejecuta el enlace de conexión dentro del grupo y presiona Start.</p>
-            </CollapsibleContent>
-          </Collapsible>
-        </CardContent>
-      </Card>
-
-      <AlertDialog open={showDisconnectDialog} onOpenChange={setShowDisconnectDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>¿Desconectar este chat?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Curbe dejará de enviar y recibir mensajes de este chat por Telegram.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={handleDisconnect}
-              disabled={disconnectMutation.isPending}
-              data-testid="button-confirm-disconnect-telegram"
-            >
-              {disconnectMutation.isPending ? <LoadingSpinner fullScreen={false} /> : "Desconectar"}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-    </>
+                {disconnectMutation.isPending ? "Disconnecting..." : "Disconnect"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    </TooltipProvider>
   );
 }
 
