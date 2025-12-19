@@ -193,3 +193,4 @@ Includes session security, webhook signature validation (Twilio, BulkVS, BlueBub
   - Bot Username - Without @ symbol (e.g., MyCurbeBot)
   - Webhook Secret - Optional secret for webhook validation
   - Falls back to ENV VARS: TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME, TELEGRAM_WEBHOOK_SECRET_TOKEN
+- **Webhook URL:** https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telegram
