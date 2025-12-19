@@ -94,7 +94,7 @@ import {
 import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, oauthStates, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, oauthStates, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages } from "@shared/schema";
 import { encryptToken, decryptToken } from "./crypto";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -27184,6 +27184,393 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
 
+
+  // =====================================================
+  // TELEGRAM INTEGRATION ROUTES
+  // =====================================================
+
+  // Helper: Send Telegram message
+  async function sendTelegramMessage(chatId: string, text: string): Promise<any> {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    if (!botToken) return null;
+    
+    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text })
+    });
+    
+    return response.json();
+  }
+
+  // Helper: Handle Telegram connect code
+  async function handleTelegramConnect(chatId: string, chatType: string, title: string | undefined, code: string, fromUser: any) {
+    // Validate connect code
+    const connectCode = await db.query.telegramConnectCodes.findFirst({
+      where: and(
+        eq(telegramConnectCodes.code, code),
+        isNull(telegramConnectCodes.usedAt)
+      )
+    });
+    
+    if (!connectCode) {
+      await sendTelegramMessage(chatId, "Invalid or expired code. Please generate a new connection link.");
+      return;
+    }
+    
+    if (new Date() > new Date(connectCode.expiresAt)) {
+      await sendTelegramMessage(chatId, "This code has expired. Please generate a new connection link.");
+      return;
+    }
+    
+    // Get company name
+    const company = await db.query.companies.findFirst({
+      where: eq(companies.id, connectCode.companyId)
+    });
+    
+    // Create or update chat link
+    await db.insert(telegramChatLinks).values({
+      chatId,
+      companyId: connectCode.companyId,
+      chatType: chatType as any,
+      title: title || fromUser?.username || fromUser?.first_name,
+      linkedByUserId: connectCode.createdByUserId,
+      status: "active"
+    }).onConflictDoUpdate({
+      target: telegramChatLinks.chatId,
+      set: {
+        companyId: connectCode.companyId,
+        status: "active",
+        linkedByUserId: connectCode.createdByUserId,
+        updatedAt: new Date()
+      }
+    });
+    
+    // Mark code as used
+    await db.update(telegramConnectCodes)
+      .set({ usedAt: new Date(), usedByChatId: chatId })
+      .where(eq(telegramConnectCodes.id, connectCode.id));
+    
+    // Send confirmation
+    const confirmMsg = chatType === "private" 
+      ? `Connected to ${company?.name || "your workspace"}. You can now send messages.`
+      : `Group connected to ${company?.name || "your workspace"}. Messages will appear in your inbox.`;
+    
+    await sendTelegramMessage(chatId, confirmMsg);
+    console.log(`[Telegram] Chat ${chatId} connected to company ${connectCode.companyId}`);
+  }
+
+  // Helper: Handle regular Telegram message
+  async function handleTelegramMessage(update: any, message: any, chatId: string, chatType: string, fromUser: any) {
+    // Find tenant by chat_id
+    const chatLink = await db.query.telegramChatLinks.findFirst({
+      where: and(
+        eq(telegramChatLinks.chatId, chatId),
+        eq(telegramChatLinks.status, "active")
+      )
+    });
+    
+    if (!chatLink) {
+      console.log(`[Telegram] Ignoring message from unlinked chat ${chatId}`);
+      return;
+    }
+    
+    const companyId = chatLink.companyId;
+    const telegramUserId = String(fromUser.id);
+    
+    // Upsert contact
+    let contact = await db.query.contacts.findFirst({
+      where: and(
+        eq(contacts.companyId, companyId),
+        eq(contacts.telegramUserId, telegramUserId)
+      )
+    });
+    
+    if (!contact) {
+      const [newContact] = await db.insert(contacts).values({
+        companyId,
+        firstName: fromUser.first_name || null,
+        lastName: fromUser.last_name || null,
+        displayName: fromUser.first_name || fromUser.username || "Telegram User",
+        telegramUserId,
+        telegramUsername: fromUser.username || null
+      }).returning();
+      contact = newContact;
+    }
+    
+    // Upsert conversation
+    let conversation = await db.query.telegramConversations.findFirst({
+      where: and(
+        eq(telegramConversations.companyId, companyId),
+        eq(telegramConversations.chatId, chatId)
+      )
+    });
+    
+    const subject = chatType === "private" 
+      ? (fromUser.username ? `@${fromUser.username}` : fromUser.first_name || "Private Chat")
+      : `Group: ${message.chat.title || "Unnamed Group"}`;
+    
+    if (!conversation) {
+      const [newConv] = await db.insert(telegramConversations).values({
+        companyId,
+        chatId,
+        chatType: chatType as any,
+        contactId: contact.id,
+        subject,
+        lastMessage: message.text?.substring(0, 100),
+        lastMessageAt: new Date(),
+        unreadCount: 1
+      }).returning();
+      conversation = newConv;
+    } else {
+      await db.update(telegramConversations)
+        .set({
+          lastMessage: message.text?.substring(0, 100),
+          lastMessageAt: new Date(),
+          unreadCount: sql`${telegramConversations.unreadCount} + 1`,
+          updatedAt: new Date(),
+          ...(conversation.contactId ? {} : { contactId: contact.id })
+        })
+        .where(eq(telegramConversations.id, conversation.id));
+    }
+    
+    // Determine message type
+    let messageType: "text" | "photo" | "video" | "document" | "voice" | "audio" | "sticker" | "animation" = "text";
+    if (message.photo) messageType = "photo";
+    else if (message.video) messageType = "video";
+    else if (message.document) messageType = "document";
+    else if (message.voice) messageType = "voice";
+    else if (message.audio) messageType = "audio";
+    else if (message.sticker) messageType = "sticker";
+    else if (message.animation) messageType = "animation";
+    
+    // Insert message
+    const providerMessageId = `${chatId}:${message.message_id}`;
+    
+    await db.insert(telegramMessages).values({
+      conversationId: conversation.id,
+      providerMessageId,
+      direction: "inbound",
+      messageType,
+      text: message.text || message.caption || null,
+      authorContactId: contact.id,
+      payload: update,
+      status: "delivered",
+      sentAt: new Date(message.date * 1000)
+    }).onConflictDoNothing();
+    
+    // For groups, upsert participant
+    if (chatType !== "private") {
+      await db.insert(telegramParticipants).values({
+        companyId,
+        chatId,
+        telegramUserId,
+        contactId: contact.id,
+        lastSeenAt: new Date()
+      }).onConflictDoUpdate({
+        target: [telegramParticipants.companyId, telegramParticipants.chatId, telegramParticipants.telegramUserId],
+        set: { lastSeenAt: new Date() }
+      });
+    }
+    
+    console.log(`[Telegram] Message saved for company ${companyId}, conversation ${conversation.id}`);
+  }
+
+  // POST /admin/telegram/setupWebhook - Setup Telegram webhook (Admin only)
+  app.post("/admin/telegram/setupWebhook", requireAuth, requireRole(["super_admin"]), async (req: Request, res: Response) => {
+    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET_TOKEN;
+    const baseUrl = process.env.BASE_URL || `https://${req.get("host")}`;
+    
+    if (!botToken) return res.status(500).json({ error: "TELEGRAM_BOT_TOKEN not configured" });
+    
+    const webhookUrl = `${baseUrl}/webhooks/telegram`;
+    
+    try {
+      const response = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: webhookUrl,
+          secret_token: webhookSecret,
+          allowed_updates: ["message", "edited_message", "callback_query", "my_chat_member"]
+        })
+      });
+      
+      const data = await response.json() as any;
+      console.log("[Telegram] Webhook setup response:", data);
+      return res.json({ success: data.ok, webhookUrl, response: data });
+    } catch (error: any) {
+      console.error("[Telegram] Webhook setup error:", error);
+      return res.status(500).json({ error: "Failed to setup webhook", details: error.message });
+    }
+  });
+
+  // POST /api/integrations/telegram/start - Generate connect code
+  app.post("/api/integrations/telegram/start", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    const botUsername = process.env.TELEGRAM_BOT_USERNAME;
+    
+    if (!botUsername) return res.status(500).json({ error: "TELEGRAM_BOT_USERNAME not configured" });
+    
+    const code = randomBytes(16).toString("hex");
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    
+    try {
+      await db.insert(telegramConnectCodes).values({
+        code,
+        companyId: user.companyId,
+        createdByUserId: user.id,
+        expiresAt
+      });
+      
+      const deepLink = `https://t.me/${botUsername}?start=${code}`;
+      return res.json({ deepLink, code, expiresAt: expiresAt.toISOString() });
+    } catch (error: any) {
+      console.error("[Telegram] Start error:", error);
+      return res.status(500).json({ error: "Failed to generate connect code" });
+    }
+  });
+
+  // GET /api/integrations/telegram/status - Get connected chats
+  app.get("/api/integrations/telegram/status", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    
+    try {
+      const chats = await db.query.telegramChatLinks.findMany({
+        where: and(
+          eq(telegramChatLinks.companyId, user.companyId),
+          eq(telegramChatLinks.status, "active")
+        ),
+        orderBy: [desc(telegramChatLinks.linkedAt)]
+      });
+      
+      return res.json({ connected: chats.length > 0, chats });
+    } catch (error: any) {
+      console.error("[Telegram] Status error:", error);
+      return res.status(500).json({ error: "Failed to get Telegram status" });
+    }
+  });
+
+  // POST /api/integrations/telegram/disconnect - Disconnect a chat
+  app.post("/api/integrations/telegram/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    const { chatId } = req.body;
+    
+    if (!chatId) return res.status(400).json({ error: "chatId required" });
+    
+    try {
+      await db.update(telegramChatLinks)
+        .set({ status: "revoked", updatedAt: new Date() })
+        .where(and(
+          eq(telegramChatLinks.companyId, user.companyId),
+          eq(telegramChatLinks.chatId, chatId)
+        ));
+      
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Telegram] Disconnect error:", error);
+      return res.status(500).json({ error: "Failed to disconnect chat" });
+    }
+  });
+
+  // POST /webhooks/telegram - Main Telegram webhook handler
+  app.post("/webhooks/telegram", async (req: Request, res: Response) => {
+    // Verify secret token
+    const secretToken = req.get("X-Telegram-Bot-Api-Secret-Token");
+    const expectedToken = process.env.TELEGRAM_WEBHOOK_SECRET_TOKEN;
+    
+    if (expectedToken && secretToken !== expectedToken) {
+      console.warn("[Telegram Webhook] Invalid secret token");
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
+    // Respond quickly to Telegram
+    res.status(200).json({ ok: true });
+    
+    try {
+      const update = req.body;
+      const message = update.message || update.edited_message;
+      
+      if (!message) return;
+      
+      const chatId = String(message.chat.id);
+      const chatType = message.chat.type as "private" | "group" | "supergroup" | "channel";
+      const fromUser = message.from;
+      const text = message.text || "";
+      
+      // Handle /start command with connect code
+      if (text.startsWith("/start ")) {
+        const code = text.split(" ")[1];
+        await handleTelegramConnect(chatId, chatType, message.chat.title, code, fromUser);
+        return;
+      }
+      
+      // Handle regular messages
+      await handleTelegramMessage(update, message, chatId, chatType, fromUser);
+      
+    } catch (error) {
+      console.error("[Telegram Webhook] Error:", error);
+    }
+  });
+
+  // POST /api/telegram/messages/send - Send outbound message
+  app.post("/api/telegram/messages/send", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    const { conversationId, text } = req.body;
+    
+    if (!conversationId || !text) {
+      return res.status(400).json({ error: "conversationId and text required" });
+    }
+    
+    try {
+      const conversation = await db.query.telegramConversations.findFirst({
+        where: and(
+          eq(telegramConversations.id, conversationId),
+          eq(telegramConversations.companyId, user.companyId)
+        )
+      });
+      
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      
+      // Send via Telegram API
+      const result = await sendTelegramMessage(conversation.chatId, text);
+      
+      if (!result?.ok) {
+        return res.status(500).json({ error: "Failed to send message", details: result });
+      }
+      
+      // Save outbound message
+      const providerMessageId = `${conversation.chatId}:${result.result.message_id}`;
+      
+      const [message] = await db.insert(telegramMessages).values({
+        conversationId: conversation.id,
+        providerMessageId,
+        direction: "outbound",
+        messageType: "text",
+        text,
+        status: "sent",
+        sentBy: user.id,
+        sentAt: new Date()
+      }).returning();
+      
+      // Update conversation
+      await db.update(telegramConversations)
+        .set({
+          lastMessage: text.substring(0, 100),
+          lastMessageAt: new Date(),
+          updatedAt: new Date()
+        })
+        .where(eq(telegramConversations.id, conversation.id));
+      
+      return res.json({ success: true, message });
+    } catch (error: any) {
+      console.error("[Telegram] Send message error:", error);
+      return res.status(500).json({ error: "Failed to send message" });
+    }
+  });
   // POST /webhooks/telnyx/voicemail - Handle voicemail completed events
   app.post("/webhooks/telnyx/voicemail", async (req: Request, res: Response) => {
     try {
