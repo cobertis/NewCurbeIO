@@ -35310,21 +35310,47 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           return res.status(404).json({ message: "Conversation not found" });
         }
 
-        // Upload files to object storage if any
+        // Upload files to Telnyx Media Storage for MMS
         let mediaUrls: string[] = [];
         if (files && files.length > 0) {
-          const { objectStorage } = await import("./objectStorage");
-          for (const file of files) {
-            try {
-              const { signedUrl } = await objectStorage.uploadInboxAttachment(
-                file.buffer,
-                file.mimetype,
-                file.originalname,
-                companyId
-              );
-              mediaUrls.push(signedUrl);
-            } catch (uploadError) {
-              console.error("[Inbox] File upload error:", uploadError);
+          const { getTelnyxMasterApiKey } = await import("./services/telnyx-numbers-service");
+          const telnyxApiKey = await getTelnyxMasterApiKey();
+          
+          if (!telnyxApiKey) {
+            console.error("[Inbox] No Telnyx API key available for media upload");
+          } else {
+            for (const file of files) {
+              try {
+                // Upload directly to Telnyx Media Storage API
+                const FormData = (await import("form-data")).default;
+                const formData = new FormData();
+                formData.append("media", file.buffer, {
+                  filename: file.originalname,
+                  contentType: file.mimetype
+                });
+                
+                const mediaResponse = await fetch("https://api.telnyx.com/v2/media", {
+                  method: "POST",
+                  headers: {
+                    "Authorization": `Bearer ${telnyxApiKey}`,
+                    ...formData.getHeaders()
+                  },
+                  body: formData
+                });
+                
+                if (mediaResponse.ok) {
+                  const mediaData = await mediaResponse.json() as any;
+                  // Telnyx returns a media_name which can be used as URL
+                  const mediaUrl = `https://api.telnyx.com/v2/media/${mediaData.data.media_name}/download`;
+                  mediaUrls.push(mediaUrl);
+                  console.log("[Inbox] Uploaded to Telnyx Media:", mediaData.data.media_name);
+                } else {
+                  const errorText = await mediaResponse.text();
+                  console.error("[Inbox] Telnyx media upload failed:", mediaResponse.status, errorText);
+                }
+              } catch (uploadError) {
+                console.error("[Inbox] File upload error:", uploadError);
+              }
             }
           }
         }
