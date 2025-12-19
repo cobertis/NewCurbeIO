@@ -28447,6 +28447,26 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             { keyName: "zone_id", label: "Zone ID", required: true, hint: "Found in your domain Overview page" },
           ]
         },
+              { 
+          provider: "meta", 
+          label: "Meta Channels (WhatsApp, Instagram, Messenger)",
+          helpText: "Get your App credentials from Meta for Developers > Your App > Basic Settings",
+          helpUrl: "https://developers.facebook.com/apps/",
+          keys: [
+            { keyName: "app_id", label: "App ID", required: true, hint: "Your Meta App ID" },
+            { keyName: "app_secret", label: "App Secret", required: true, hint: "Your Meta App Secret" },
+          ]
+        },
+        { 
+          provider: "tiktok", 
+          label: "TikTok Login Kit",
+          helpText: "Get your credentials from TikTok for Developers > Your App > Manage Apps",
+          helpUrl: "https://developers.tiktok.com/apps/",
+          keys: [
+            { keyName: "client_key", label: "Client Key", required: true, hint: "Your TikTok Client Key" },
+            { keyName: "client_secret", label: "Client Secret", required: true, hint: "Your TikTok Client Secret" },
+          ]
+        },
       ];
       res.json({ providers: providerConfigs, apiProviders });
     } catch (error: any) {

@@ -5323,6 +5323,8 @@ export const apiProviders = [
   "imap_bounce",
   "cloudflare",
   "web_push",
+  "meta",
+  "tiktok",
 ] as const;
 export type ApiProvider = typeof apiProviders[number];
 
