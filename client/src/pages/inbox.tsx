@@ -519,18 +519,29 @@ export default function InboxPage() {
                       </div>
                       <div className="flex items-center justify-between gap-2 mt-0.5">
                         <div className="flex items-center gap-2 min-w-0 flex-1">
-                          {conversation.lastMediaUrls && conversation.lastMediaUrls.length > 0 && (
-                            <img 
-                              src={conversation.lastMediaUrls[0]} 
-                              alt="" 
-                              className="h-8 w-8 rounded object-cover shrink-0"
-                              onError={(e) => {
-                                (e.target as HTMLImageElement).style.display = 'none';
-                              }}
-                            />
-                          )}
                           <p className="text-sm text-muted-foreground truncate">
-                            {conversation.lastMessage || "No messages yet"}
+                            {conversation.lastMediaUrls && conversation.lastMediaUrls.length > 0 ? (
+                              (() => {
+                                const url = conversation.lastMediaUrls[0].toLowerCase();
+                                if (url.includes('.jpg') || url.includes('.jpeg') || url.includes('.png') || url.includes('.gif') || url.includes('.webp') || url.includes('.heic')) {
+                                  return 'Image';
+                                } else if (url.includes('.pdf')) {
+                                  return 'PDF';
+                                } else if (url.includes('.mp3') || url.includes('.m4a') || url.includes('.wav') || url.includes('.ogg') || url.includes('.aac') || url.includes('audio')) {
+                                  return 'Voice note';
+                                } else if (url.includes('.mp4') || url.includes('.mov') || url.includes('.avi') || url.includes('.webm') || url.includes('video')) {
+                                  return 'Video';
+                                } else if (url.includes('.doc') || url.includes('.docx')) {
+                                  return 'Document';
+                                } else if (url.includes('.xls') || url.includes('.xlsx')) {
+                                  return 'Spreadsheet';
+                                } else {
+                                  return 'Attachment';
+                                }
+                              })()
+                            ) : (
+                              conversation.lastMessage || "No messages yet"
+                            )}
                           </p>
                         </div>
                         {conversation.unreadCount > 0 && (
