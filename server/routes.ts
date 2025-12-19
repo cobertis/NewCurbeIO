@@ -17,6 +17,7 @@ import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
 import { notificationService } from "./notification-service";
 import twilio from "twilio";
+import fetch from "node-fetch";
 import { exec } from 'child_process';
 import { promisify } from 'util';
 const execAsync = promisify(exec);
@@ -27520,15 +27521,22 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       const from = payload.from?.phone_number;
       const to = payload.to?.[0]?.phone_number || payload.to;
-      const text = payload.text;
+      const text = payload.text || "";
       const telnyxMessageId = payload.id;
+      const incomingMedia = payload.media || [];
       
-      if (!from || !to || !text) {
-        console.error("[Telnyx SMS Webhook] Missing required fields:", { from, to, text });
+      if (!from || !to) {
+        console.error("[Telnyx SMS Webhook] Missing required fields:", { from, to });
         return;
       }
       
-      console.log(`[Telnyx SMS Webhook] Received: from=${from}, to=${to}, text=${text.substring(0, 50)}...`);
+      // Handle MMS: if no text but has media, that's still valid
+      if (!text && incomingMedia.length === 0) {
+        console.error("[Telnyx SMS Webhook] No text or media in message");
+        return;
+      }
+      
+      console.log(`[Telnyx SMS Webhook] Received: from=${from}, to=${to}, text=${(text || "").substring(0, 50)}, media=${incomingMedia.length}`);
       
       const phoneNumber = await db.query.telnyxPhoneNumbers.findFirst({
         where: eq(telnyxPhoneNumbers.phoneNumber, to),
@@ -27580,16 +27588,57 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           .where(eq(telnyxConversations.id, conversation.id));
       }
       
+      // Process MMS media attachments
+      let uploadedMediaUrls: string[] = [];
+      if (incomingMedia.length > 0) {
+        console.log("[Telnyx SMS Webhook] Processing", incomingMedia.length, "media attachments");
+        for (const media of incomingMedia) {
+          try {
+            const mediaUrl = media.url;
+            const contentType = media.content_type || "application/octet-stream";
+            
+            // Download media from Telnyx
+            const mediaResponse = await fetch(mediaUrl);
+            if (!mediaResponse.ok) {
+              console.error("[Telnyx SMS Webhook] Failed to download media:", mediaUrl);
+              continue;
+            }
+            
+            const buffer = Buffer.from(await mediaResponse.arrayBuffer());
+            const extension = contentType.split("/")[1] || "bin";
+            const filename = `mms_${Date.now()}_${Math.random().toString(36).substring(7)}.${extension}`;
+            
+            // Upload to object storage
+            const { objectPath } = await objectStorage.uploadInboxAttachment(
+              buffer,
+              contentType,
+              filename,
+              companyId
+            );
+            
+            uploadedMediaUrls.push(objectPath);
+            console.log("[Telnyx SMS Webhook] Uploaded media:", objectPath);
+          } catch (mediaError: any) {
+            console.error("[Telnyx SMS Webhook] Error processing media:", mediaError.message);
+          }
+        }
+      }
+      
+      const hasMedia = uploadedMediaUrls.length > 0;
+      const messageText = text || (hasMedia ? "(MMS attachment)" : "");
+      
       await db.insert(telnyxMessages).values({
         conversationId: conversation.id,
         direction: "inbound",
-        text,
+        text: messageText,
+        contentType: hasMedia ? "media" : "text",
+        mediaUrls: hasMedia ? uploadedMediaUrls : null,
         status: "received",
         telnyxMessageId,
         sentAt: new Date(),
       });
       
-      console.log("[Telnyx SMS Webhook] Message saved for conversation:", conversation.id);
+      console.log("[Telnyx SMS Webhook] Message saved for conversation:", conversation.id, "with", uploadedMediaUrls.length, "media files");
       
       broadcastConversationUpdate(companyId);
       console.log("[Telnyx SMS Webhook] Broadcasted conversation update for company:", companyId);
@@ -35324,6 +35373,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             sentBy: userId,
             sentAt: new Date(),
             errorMessage,
+            mediaUrls: mediaUrls.length > 0 ? mediaUrls : null,
           })
           .returning();
         // Update conversation
