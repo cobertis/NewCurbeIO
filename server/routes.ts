@@ -104,6 +104,13 @@ import multer from "multer";
 
 // Temporary in-memory storage for MMS attachments (files expire after 10 minutes)
 const mmsFileCache = new Map<string, { buffer: Buffer; contentType: string; expiresAt: number }>();
+
+// Helper to build absolute URL from request for external services (Telnyx)
+function buildAbsoluteUrl(req: Request, path: string): string {
+  const protocol = req.get("x-forwarded-proto") || req.protocol || "https";
+  const host = req.get("x-forwarded-host") || req.get("host") || process.env.REPLIT_DEV_DOMAIN || "localhost:5000";
+  return `${protocol}://${host}${path}`;
+}
 setInterval(() => {
   const now = Date.now();
   for (const [id, file] of mmsFileCache.entries()) {
@@ -35412,7 +35419,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           from: conversation.companyPhoneNumber,
           to: conversation.phoneNumber,
           text: text || "",
-          mediaUrls: mediaUrls.length > 0 ? mediaUrls : undefined,
+          mediaUrls: mediaUrls.length > 0 ? mediaUrls.map(url => url.startsWith("/") ? buildAbsoluteUrl(req, url) : url) : undefined,
           companyId,
         });
         
