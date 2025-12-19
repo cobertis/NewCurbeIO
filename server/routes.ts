@@ -27657,7 +27657,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             uploadedMediaUrls.push(signedUrl);
             console.log("[Telnyx SMS Webhook] Uploaded media:", signedUrl);
           } catch (mediaError: any) {
-            console.error("[Telnyx SMS Webhook] Error processing media:", mediaError.message);
+            console.error("[Telnyx SMS Webhook] Error processing media:", mediaError.message, mediaError.stack || mediaError);
           }
         }
       }
@@ -35342,30 +35342,28 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           return res.status(404).json({ message: "Conversation not found" });
         }
 
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
-PLACEHOLDER_LINE
+        // Upload files to permanent object storage for MMS
+        let mediaUrls: string[] = [];
+        if (files && files.length > 0) {
+          for (const file of files) {
+            try {
+              const extension = file.mimetype.split("/")[1] || "bin";
+              const filename = `outbound_mms_${Date.now()}_${Math.random().toString(36).substring(7)}.${extension}`;
+              
+              // Upload to object storage for permanent URL
+              const { signedUrl } = await objectStorage.uploadInboxAttachment(
+                file.buffer,
+                file.mimetype,
+                filename,
+                companyId
+              );
+              
+              mediaUrls.push(signedUrl);
+              console.log("[Inbox] MMS file uploaded to storage:", filename, "URL:", signedUrl);
+            } catch (uploadError) {
+              console.error("[Inbox] Object storage upload error:", uploadError);
+            }
+          }
         }
 
         // If internal note, just save to database (no Telnyx send)
