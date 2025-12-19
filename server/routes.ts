@@ -29013,7 +29013,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // RCS agents are on the master account, use master API key directly
       // URL format: /v2/messaging_rcs/test_number_invite/{id}/{phone_number}
       const encodedPhone = encodeURIComponent(phoneNumber);
-      const url = `https://api.telnyx.com/v2/messaging/rcs/test_number_invite/${agentId}/${encodedPhone}`;
+      const url = `https://api.telnyx.com/v2/messaging_rcs/test_number_invite/${agentId}/${encodedPhone}`;
       
       console.log("[RCS] Adding test number:", phoneNumber, "to agent:", agentId);
       console.log("[RCS] URL:", url);
