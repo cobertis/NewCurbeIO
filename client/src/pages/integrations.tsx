@@ -1261,8 +1261,7 @@ function TelegramCard() {
 
   const connectMutation = useMutation({
     mutationFn: async () => {
-      const res = await apiRequest("POST", "/api/integrations/telegram/start");
-      return res.json();
+      return await apiRequest("POST", "/api/integrations/telegram/start");
     },
     onSuccess: (data) => {
       setDeepLink(data.deepLink);
@@ -1275,8 +1274,7 @@ function TelegramCard() {
 
   const disconnectMutation = useMutation({
     mutationFn: async (chatId: string) => {
-      const res = await apiRequest("POST", "/api/integrations/telegram/disconnect", { chatId });
-      return res.json();
+      return await apiRequest("POST", "/api/integrations/telegram/disconnect", { chatId });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/integrations/telegram/status"] });
