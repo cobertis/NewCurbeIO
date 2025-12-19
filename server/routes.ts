@@ -27602,14 +27602,24 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             const mediaUrl = media.url;
             const contentType = media.content_type || "application/octet-stream";
             
-            // Download media from Telnyx
-            const mediaResponse = await fetch(mediaUrl, {
-              headers: telnyxApiKey ? { 'Authorization': `Bearer ${telnyxApiKey}` } : {}
-            });
+            // Download media from Telnyx - try without auth first (S3 URLs are pre-signed)
+            console.log("[Telnyx SMS Webhook] Downloading media:", mediaUrl);
+            let mediaResponse = await fetch(mediaUrl);
+            
+            // If public access fails, try with Telnyx API auth
+            if (!mediaResponse.ok && telnyxApiKey) {
+              console.log(`[Telnyx SMS Webhook] Public access failed (${mediaResponse.status}), trying with Telnyx auth...`);
+              mediaResponse = await fetch(mediaUrl, {
+                headers: { 'Authorization': `Bearer ${telnyxApiKey}` }
+              });
+            }
+            
             if (!mediaResponse.ok) {
-              console.error("[Telnyx SMS Webhook] Failed to download media:", mediaUrl);
+              const errorText = await mediaResponse.text().catch(() => 'No response body');
+              console.error(`[Telnyx SMS Webhook] Failed to download media: status=${mediaResponse.status}, url=${mediaUrl.substring(0, 100)}, error=${errorText.substring(0, 200)}`);
               continue;
             }
+            console.log("[Telnyx SMS Webhook] Media downloaded successfully");
             
             const buffer = Buffer.from(await mediaResponse.arrayBuffer());
             const extension = contentType.split("/")[1] || "bin";
