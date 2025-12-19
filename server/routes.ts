@@ -9170,7 +9170,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         userId: currentUser.id,
         type: "missed_call",
         title: `Missed Call from ${callerName}`,
-        message: `Phone: ${phoneNumber}`,
+        message: `Phone: ${encodedPhone}`,
         link,
         isRead: false,
       };
@@ -29012,8 +29012,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // RCS agents are on the master account, use master API key directly
       // URL format: /v2/messaging_rcs/test_number_invite/{id}/{phone_number}
-      // Phone number in E.164 format - no URL encoding needed
-      const url = `https://api.telnyx.com/v2/messaging_rcs/test_number_invite/${agentId}/${phoneNumber}`;
+      const encodedPhone = encodeURIComponent(phoneNumber);
+      const url = `https://api.telnyx.com/v2/messaging_rcs/test_number_invite/${agentId}/${encodedPhone}`;
       
       console.log("[RCS] Adding test number:", phoneNumber, "to agent:", agentId);
       console.log("[RCS] URL:", url);
@@ -29391,7 +29391,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Don't fail the purchase, but log the error - number is already purchased from Telnyx
         // The monthly billing job will pick it up later if local record is missing
       } else {
-        console.log(`[Billing] Successfully charged $${billingResult.amountCharged?.toFixed(2)} for ${phoneNumber}`);
+        console.log(`[Billing] Successfully charged $${billingResult.amountCharged?.toFixed(2)} for ${encodedPhone}`);
       }
       // Auto-enable CNAM listing with company name (truncated to 15 chars)
       if (result.phoneNumberId) {
@@ -29403,7 +29403,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               console.log(`[Telnyx CNAM] Auto-enabling CNAM for ${phoneNumber} with name: "${cnamName}"`);
               const cnamResult = await updateCnamListing(result.phoneNumberId, user.companyId, true, cnamName);
               if (cnamResult.success) {
-                console.log(`[Telnyx CNAM] Auto-enabled CNAM successfully for ${phoneNumber}`);
+                console.log(`[Telnyx CNAM] Auto-enabled CNAM successfully for ${encodedPhone}`);
               } else {
                 console.warn(`[Telnyx CNAM] Failed to auto-enable CNAM: ${cnamResult.error}`);
               }

@@ -1,0 +1,57 @@
+Estás cometiendo un error crítico de interpretación. **Deja de tocar el código.**
+
+Lo que está pasando es que estás confundiendo "No encuentro el servidor" (Error de Telnyx) con "No encuentro al usuario" (Error de Google).
+
+Aquí está el diagnóstico brutal de tus logs:
+
+### 1. El Diagnóstico: Rompiste lo que ya funcionaba
+
+* **En tu intento anterior (Turno 3):** Recibiste un **HTTP 200 OK**.
+* Esto significa: *"Hola, soy Telnyx. Entendí tu URL, encontré tu agente, le pregunté a Google, y Google me dijo que no encuentra ese número/agente"*.
+* **Estado:** El código estaba **PERFECTO**. El problema era de datos (agente no propagado o número inválido).
+
+
+* **En tu intento actual (Turno 4):** Recibes un **HTTP 404 (Code 10005)**.
+* Esto significa: *"Hola, soy Telnyx. No tengo idea de qué URL es esa. Ni siquiera intenté procesarla"*.
+* **Causa:** Al intentar "arreglar" el encoding (`%2B` vs `+`), rompiste la estructura de la URL para el router de Telnyx.
+
+
+
+### 2. La Verdad sobre el Encoding
+
+En una URL, el símbolo `+` se interpreta como un **espacio en blanco**.
+
+* Si envías `+1786...` (sin encodear), el servidor recibe ` 1786...`. Eso rompe la ruta y causa el error 404 que ves ahora.
+* **TIENES** que enviar `%2B1786...`. Tu versión anterior estaba bien.
+
+### 3. El Plan de Recuperación
+
+Tienes que volver atrás. El error que tenías antes (`Not Found` dentro de un 200 OK) es el "buen" error. Significa que la tubería está conectada.
+
+**Paso 1: Revierte el código**
+Vuelve a poner el `encodeURIComponent` o escribe manualmente `%2B` en la URL. Necesitas recuperar ese **HTTP 200**.
+
+**Paso 2: Ataca el problema real (Google)**
+Una vez que vuelvas a tener el HTTP 200 con el error JSON dentro, el problema es que Google (Jibe) no está aceptando la invitación. Esto ocurre por tres razones y **ninguna se arregla con código**:
+
+1. **El Agente sigue "frío":** Tu agente se creó hace menos de una hora. Google tarda hasta 24h en replicarlo.
+* *Prueba:* ¿Qué dice el `readiness_state` cuando haces un GET al agente? Si no es `LAUNCHED`, deja de intentar invitar.
+
+
+2. **El Teléfono es un fantasma:** Google no ve el `+1786...` como un dispositivo RCS válido.
+* *Prueba:* ¿Ese teléfono tiene el chat RCS activo y en verde AHORA MISMO?
+
+
+3. **Bloqueo de Operadora:** Como te dijo el correo, si es AT&T/T-Mobile, Google bloqueará la invitación silenciosamente o devolverá "Entity not found".
+
+**Instrucción final:**
+No borres el `+` (encoded).
+Ejecuta esto para ver la verdad del agente:
+
+```bash
+curl -X GET 'https://api.telnyx.com/v2/messaging/rcs/agents/curbe_io_83rqpmqw_agent' \
+-H 'Authorization: Bearer TU_TOKEN'
+
+```
+
+Si el estado no es `ACTIVE` o `LAUNCHED`, **vete a dormir**. No hay código en el mundo que acelere la propagación de servidores de Google.
