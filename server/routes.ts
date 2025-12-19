@@ -101,6 +101,15 @@ import fs from "fs";
 import { promises as fsPromises } from "fs";
 import crypto from "crypto";
 import multer from "multer";
+
+// Temporary in-memory storage for MMS attachments (files expire after 10 minutes)
+const mmsFileCache = new Map<string, { buffer: Buffer; contentType: string; expiresAt: number }>();
+setInterval(() => {
+  const now = Date.now();
+  for (const [id, file] of mmsFileCache.entries()) {
+    if (file.expiresAt < now) mmsFileCache.delete(id);
+  }
+}, 60000); // Clean up every minute
 import ffmpeg from "fluent-ffmpeg";
 import "./types";
 import { type AuditAction } from "./types";
@@ -26793,6 +26802,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to delete voicemail" });
     }
   });
+  // GET /api/mms-file/:id - Public endpoint to serve MMS files for Telnyx
+  app.get("/api/mms-file/:id", (req: Request, res: Response) => {
+    const { id } = req.params;
+    const file = mmsFileCache.get(id);
+    if (!file) {
+      return res.status(404).send("File not found or expired");
+    }
+    res.set("Content-Type", file.contentType);
+    res.set("Cache-Control", "public, max-age=600");
+    res.send(file.buffer);
+  });
+
   // ==================== WALLET API ====================
   
   // GET /api/wallet - Get company wallet
@@ -35310,47 +35331,26 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           return res.status(404).json({ message: "Conversation not found" });
         }
 
-        // Upload files to Telnyx Media Storage for MMS
+        // Store files in temporary cache and create public URLs for MMS
         let mediaUrls: string[] = [];
         if (files && files.length > 0) {
-          const { getTelnyxMasterApiKey } = await import("./services/telnyx-numbers-service");
-          const telnyxApiKey = await getTelnyxMasterApiKey();
+          const baseUrl = process.env.BASE_URL || "https://crm.cemscale.com";
           
-          if (!telnyxApiKey) {
-            console.error("[Inbox] No Telnyx API key available for media upload");
-          } else {
-            for (const file of files) {
-              try {
-                // Upload directly to Telnyx Media Storage API
-                const FormData = (await import("form-data")).default;
-                const formData = new FormData();
-                formData.append("media", file.buffer, {
-                  filename: file.originalname,
-                  contentType: file.mimetype
-                });
-                
-                const mediaResponse = await fetch("https://api.telnyx.com/v2/media", {
-                  method: "POST",
-                  headers: {
-                    "Authorization": `Bearer ${telnyxApiKey}`,
-                    ...formData.getHeaders()
-                  },
-                  body: formData
-                });
-                
-                if (mediaResponse.ok) {
-                  const mediaData = await mediaResponse.json() as any;
-                  // Telnyx returns a media_name which can be used as URL
-                  const mediaUrl = `https://api.telnyx.com/v2/media/${mediaData.data.media_name}/download`;
-                  mediaUrls.push(mediaUrl);
-                  console.log("[Inbox] Uploaded to Telnyx Media:", mediaData.data.media_name);
-                } else {
-                  const errorText = await mediaResponse.text();
-                  console.error("[Inbox] Telnyx media upload failed:", mediaResponse.status, errorText);
-                }
-              } catch (uploadError) {
-                console.error("[Inbox] File upload error:", uploadError);
-              }
+          for (const file of files) {
+            try {
+              const fileId = crypto.randomUUID();
+              // Store in cache for 10 minutes
+              mmsFileCache.set(fileId, {
+                buffer: file.buffer,
+                contentType: file.mimetype,
+                expiresAt: Date.now() + 10 * 60 * 1000
+              });
+              
+              const mediaUrl = `${baseUrl}/api/mms-file/${fileId}`;
+              mediaUrls.push(mediaUrl);
+              console.log("[Inbox] MMS file cached:", fileId, "URL:", mediaUrl);
+            } catch (uploadError) {
+              console.error("[Inbox] File cache error:", uploadError);
             }
           }
         }
