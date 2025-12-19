@@ -115,6 +115,23 @@ class ExtensionCallService {
     console.log(`[ExtensionCall] Broadcast online_extensions to ${sentCount} clients in company ${companyId}`);
   }
 
+  /**
+   * Broadcast a message to all connected PBX clients in a company
+   */
+  broadcastToCompany(companyId: string, data: any): void {
+    const message = JSON.stringify(data);
+    
+    let sentCount = 0;
+    Array.from(this.connectedClients.values()).forEach((client) => {
+      if (client.companyId === companyId && client.ws.readyState === WebSocket.OPEN) {
+        client.ws.send(message);
+        sentCount++;
+      }
+    });
+    
+    console.log(`[ExtensionCall] Broadcast ${data.type || 'message'} to ${sentCount} PBX clients in company ${companyId}`);
+  }
+
   async getOnlineExtensions(companyId: string): Promise<Array<{
     extensionId: string;
     extension: string;
