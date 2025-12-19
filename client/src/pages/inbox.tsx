@@ -212,7 +212,7 @@ export default function InboxPage() {
   });
 
   const sendMessageMutation = useMutation({
-    mutationFn: async ({ conversationId, text, isInternalNote, files }: { conversationId: string; text: string; isInternalNote?: boolean; files?: File[] }) => {
+    mutationFn: async ({ conversationId, text, isInternalNote, files, optimisticId }: { conversationId: string; text: string; isInternalNote?: boolean; files?: File[]; optimisticId: string }) => {
       const formData = new FormData();
       formData.append('text', text);
       if (isInternalNote) {
@@ -234,16 +234,22 @@ export default function InboxPage() {
       }
       return response.json();
     },
-    onSuccess: () => {
-      setNewMessage("");
-      setIsInternalNote(false);
-      setSelectedFiles([]);
+    onSuccess: (_, variables) => {
+      // Invalidate to get the real message from server
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
       queryClient.invalidateQueries({ 
-        queryKey: [`/api/inbox/conversations/${selectedConversationId}/messages`] 
+        queryKey: [`/api/inbox/conversations/${variables.conversationId}/messages`] 
       });
     },
-    onError: (error: any) => {
+    onError: (error: any, variables) => {
+      // Remove optimistic message on error
+      queryClient.setQueryData(
+        [`/api/inbox/conversations/${variables.conversationId}/messages`],
+        (old: any) => ({
+          ...old,
+          messages: old?.messages?.filter((m: any) => m.id !== variables.optimisticId) || []
+        })
+      );
       toast({
         title: "Failed to send message",
         description: error.message || "Please try again",
@@ -335,11 +341,46 @@ export default function InboxPage() {
 
   const handleSendMessage = () => {
     if ((!newMessage.trim() && selectedFiles.length === 0) || !selectedConversationId) return;
+    
+    const messageText = newMessage.trim();
+    const messageFiles = selectedFiles.length > 0 ? [...selectedFiles] : undefined;
+    const messageIsNote = isInternalNote;
+    const optimisticId = `optimistic-${Date.now()}`;
+    
+    // Create optimistic message
+    const optimisticMessage = {
+      id: optimisticId,
+      conversationId: selectedConversationId,
+      direction: "outbound" as const,
+      messageType: messageIsNote ? "internal_note" : "outgoing",
+      text: messageText,
+      status: "pending",
+      createdAt: new Date().toISOString(),
+      isInternalNote: messageIsNote,
+      mediaUrls: messageFiles?.map(f => URL.createObjectURL(f)) || null,
+    };
+    
+    // Add optimistic message to cache immediately
+    queryClient.setQueryData(
+      [`/api/inbox/conversations/${selectedConversationId}/messages`],
+      (old: any) => ({
+        ...old,
+        messages: [...(old?.messages || []), optimisticMessage]
+      })
+    );
+    
+    // Clear input immediately so user can continue typing
+    setNewMessage("");
+    setIsInternalNote(false);
+    setSelectedFiles([]);
+    
+    // Send in background
     sendMessageMutation.mutate({ 
       conversationId: selectedConversationId, 
-      text: newMessage.trim(),
-      isInternalNote: isInternalNote,
-      files: selectedFiles.length > 0 ? selectedFiles : undefined
+      text: messageText,
+      isInternalNote: messageIsNote,
+      files: messageFiles,
+      optimisticId
     });
   };
 
@@ -1004,7 +1045,7 @@ export default function InboxPage() {
                   </div>
                   <Button
                     onClick={handleSendMessage}
-                    disabled={(!newMessage.trim() && selectedFiles.length === 0) || sendMessageMutation.isPending}
+                    disabled={!newMessage.trim() && selectedFiles.length === 0}
                     className="bg-blue-600 hover:bg-blue-700"
                     data-testid="btn-send-message"
                   >
