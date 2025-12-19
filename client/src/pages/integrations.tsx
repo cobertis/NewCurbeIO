@@ -1025,16 +1025,28 @@ function TikTokCard() {
         headers: { "Content-Type": "application/json" },
         credentials: "include",
       });
+      const text = await response.text();
       if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        let errorData: any = {};
+        try {
+          errorData = JSON.parse(text);
+        } catch (e) {
+          console.error("TikTok start error response:", text.substring(0, 500));
+        }
         throw new Error(errorData.error || "Failed to start OAuth flow");
       }
-      return response.json();
+      try {
+        return JSON.parse(text);
+      } catch (e) {
+        console.error("TikTok start response (not JSON):", text.substring(0, 500));
+        throw new Error("Invalid response from server");
+      }
     },
     onSuccess: (data: { authUrl: string; state: string }) => {
       if (data.authUrl) {
         window.location.href = data.authUrl;
       } else {
+        console.error("TikTok authUrl missing in response:", data);
         toast({
           variant: "destructive",
           title: "Connection Error",

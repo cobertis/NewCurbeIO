@@ -44,8 +44,8 @@ export async function setupVite(app: Express, server: Server) {
   app.use("*", async (req, res, next) => {
     const url = req.originalUrl;
     
-    // Skip Vite handling for static file routes
-    if (url.startsWith('/uploads/')) {
+    // Skip Vite handling for API routes, webhooks, and static file routes
+    if (url.startsWith('/api/') || url.startsWith('/webhooks/') || url.startsWith('/uploads/')) {
       return next();
     }
 
