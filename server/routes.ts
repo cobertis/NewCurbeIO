@@ -27646,16 +27646,21 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             const extension = contentType.split("/")[1] || "bin";
             const filename = `mms_${Date.now()}_${Math.random().toString(36).substring(7)}.${extension}`;
             
-            // Upload to object storage
-            const { signedUrl } = await objectStorage.uploadInboxAttachment(
-              buffer,
-              contentType,
-              filename,
-              companyId
-            );
-            
-            uploadedMediaUrls.push(signedUrl);
-            console.log("[Telnyx SMS Webhook] Uploaded media:", signedUrl);
+            // Upload to object storage with fallback to original Telnyx URL
+            try {
+              const { signedUrl } = await objectStorage.uploadInboxAttachment(
+                buffer,
+                contentType,
+                filename,
+                companyId
+              );
+              uploadedMediaUrls.push(signedUrl);
+              console.log("[Telnyx SMS Webhook] Uploaded media to storage:", signedUrl);
+            } catch (uploadError: any) {
+              // Fallback: Use original Telnyx URL (valid for 30 days per Telnyx docs)
+              console.log("[Telnyx SMS Webhook] Object storage failed, using original Telnyx URL:", uploadError.message);
+              uploadedMediaUrls.push(mediaUrl);
+            }
           } catch (mediaError: any) {
             console.error("[Telnyx SMS Webhook] Error processing media:", mediaError.message, mediaError.stack || mediaError);
           }
