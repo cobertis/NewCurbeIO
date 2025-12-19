@@ -27036,6 +27036,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       const userInfoData = await userInfoResponse.json() as any;
       
+      console.log("[TikTok OAuth] User info response:", JSON.stringify(userInfoData));
       let displayName = openId;
       let username = null;
       let avatarUrl = null;
