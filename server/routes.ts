@@ -35369,7 +35369,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               } catch (storageError) {
                 // Fallback: Use temporary file cache (valid for 24 hours)
                 console.log("[Inbox] Object storage failed, using temp cache fallback:", (storageError as Error).message);
-                const fileId = randomUUID();
+                const fileId = require("crypto").randomUUID();
                 mmsFileCache.set(fileId, {
                   buffer: file.buffer,
                   contentType: file.mimetype,
