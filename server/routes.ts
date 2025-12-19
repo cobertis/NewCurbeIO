@@ -35342,30 +35342,30 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           return res.status(404).json({ message: "Conversation not found" });
         }
 
-        // Store files in temporary cache and create public URLs for MMS
-        let mediaUrls: string[] = [];
-        if (files && files.length > 0) {
-          const baseUrl = process.env.REPLIT_DEV_DOMAIN 
-            ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
-            : (process.env.BASE_URL || "https://crm.cemscale.com");
-          
-          for (const file of files) {
-            try {
-              const fileId = crypto.randomUUID();
-              // Store in cache for 10 minutes
-              mmsFileCache.set(fileId, {
-                buffer: file.buffer,
-                contentType: file.mimetype,
-                expiresAt: Date.now() + 10 * 60 * 1000
-              });
-              
-              const mediaUrl = `${baseUrl}/api/mms-file/${fileId}`;
-              mediaUrls.push(mediaUrl);
-              console.log("[Inbox] MMS file cached:", fileId, "URL:", mediaUrl);
-            } catch (uploadError) {
-              console.error("[Inbox] File cache error:", uploadError);
-            }
-          }
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
+PLACEHOLDER_LINE
         }
 
         // If internal note, just save to database (no Telnyx send)
