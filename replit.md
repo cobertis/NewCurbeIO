@@ -85,3 +85,18 @@ Includes session security, webhook signature validation (Twilio, BulkVS, BlueBub
   - User can continue typing while previous message sends in background
   - If send fails, error toast appears and optimistic message is removed
 - **File Modified:** `client/src/pages/inbox.tsx` (sendMessageMutation and handleSendMessage ~line 214, 336)
+
+### RCS (Rich Communication Services) Implementation
+- **Feature:** Added RCS messaging channel support via Telnyx API.
+- **Backend Routes (server/routes.ts):**
+  - GET /api/rcs/agents - List RCS agents
+  - GET /api/rcs/agents/:agentId - Get single agent details
+  - PATCH /api/rcs/agents/:agentId - Update agent settings
+  - POST /api/rcs/check-capabilities - Check if phone supports RCS
+  - POST /api/rcs/agents/:agentId/test-numbers - Add test number
+  - POST /api/rcs/send - Send RCS message
+- **Files Modified:**
+  - `shared/schema.ts`: Added 'rcs' to telnyxMessageChannelEnum
+  - `server/services/telnyx-messaging-service.ts`: Added sendRcsMessage function
+  - `client/src/components/compliance-tab.tsx`: Added RCS Agents management card
+  - `client/src/pages/inbox.tsx`: Added RCS channel icon (purple) and color support
