@@ -42,7 +42,7 @@ import {
   Download,
   Image
 } from "lucide-react";
-import { SiFacebook, SiInstagram } from "react-icons/si";
+import { SiFacebook, SiInstagram, SiTelegram } from "react-icons/si";
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -93,6 +93,8 @@ const getChannelIcon = (channel?: string) => {
   switch (channel) {
     case "imessage":
       return <MessageSquare className="h-2.5 w-2.5 text-white" />;
+    case "telegram":
+      return <SiTelegram className="h-2.5 w-2.5 text-white" />;
     case "rcs":
       return <MessageSquare className="h-2.5 w-2.5 text-white" />;
     default:
@@ -104,6 +106,8 @@ const getChannelColor = (channel?: string) => {
   switch (channel) {
     case "imessage":
       return "bg-blue-500";
+    case "telegram":
+      return "bg-sky-500";
     case "rcs":
       return "bg-purple-500";
     default:

@@ -27360,6 +27360,62 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       sentAt: new Date(message.date * 1000)
     }).onConflictDoNothing();
     
+    // === INBOX INTEGRATION: Also store in unified inbox tables ===
+    const telegramPhoneId = `telegram:${chatId}`;
+    const displayNameForInbox = chatType === "private" 
+      ? (fromUser.first_name ? `${fromUser.first_name}${fromUser.last_name ? ' ' + fromUser.last_name : ''}` : fromUser.username || "Telegram User")
+      : message.chat.title || "Telegram Group";
+    
+    // Upsert inbox conversation
+    let inboxConversation = await db.query.telnyxConversations.findFirst({
+      where: and(
+        eq(telnyxConversations.companyId, companyId),
+        eq(telnyxConversations.phoneNumber, telegramPhoneId),
+        eq(telnyxConversations.channel, "telegram")
+      )
+    });
+    
+    if (!inboxConversation) {
+      const [newInboxConv] = await db.insert(telnyxConversations).values({
+        companyId,
+        phoneNumber: telegramPhoneId,
+        displayName: displayNameForInbox,
+        companyPhoneNumber: "telegram_bot",
+        lastMessage: (message.text || message.caption || `[${messageType}]`).substring(0, 100),
+        lastMessageAt: new Date(),
+        unreadCount: 1,
+        channel: "telegram",
+        status: "open"
+      }).returning();
+      inboxConversation = newInboxConv;
+    } else {
+      await db.update(telnyxConversations)
+        .set({
+          displayName: displayNameForInbox,
+          lastMessage: (message.text || message.caption || `[${messageType}]`).substring(0, 100),
+          lastMessageAt: new Date(),
+          unreadCount: sql`${telnyxConversations.unreadCount} + 1`,
+          updatedAt: new Date()
+        })
+        .where(eq(telnyxConversations.id, inboxConversation.id));
+    }
+    
+    // Insert into inbox messages
+    await db.insert(telnyxMessages).values({
+      conversationId: inboxConversation.id,
+      direction: "inbound",
+      messageType: "incoming",
+      channel: "telegram",
+      text: message.text || message.caption || `[${messageType}]`,
+      contentType: messageType === "photo" ? "image" : "text",
+      status: "delivered",
+      telnyxMessageId: providerMessageId,
+      sentAt: new Date(message.date * 1000)
+    });
+    
+    console.log(`[Telegram] Message also saved to inbox conversation ${inboxConversation.id}`);
+    // === END INBOX INTEGRATION ===
+    
     // For groups, upsert participant
     if (chatType !== "private") {
       await db.insert(telegramParticipants).values({
@@ -36128,6 +36184,66 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             .returning();
           return res.status(201).json(message);
         }
+        // === TELEGRAM CHANNEL ROUTING ===
+        if (conversation.channel === "telegram") {
+          // Extract chatId from the phone number field (format: telegram:chatId)
+          const telegramChatId = conversation.phoneNumber.replace("telegram:", "");
+          
+          // Send via Telegram API
+          const telegramCreds = await credentialProvider.getTelegram();
+          const botToken = telegramCreds.botToken;
+          
+          if (!botToken) {
+            return res.status(500).json({ message: "Telegram bot not configured" });
+          }
+          
+          try {
+            const telegramResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                chat_id: telegramChatId,
+                text: text || "(attachment)",
+                parse_mode: "HTML"
+              })
+            });
+            const telegramData = await telegramResponse.json() as any;
+            
+            let status: "sent" | "failed" = telegramData.ok ? "sent" : "failed";
+            let errorMessage: string | null = telegramData.ok ? null : (telegramData.description || "Telegram send failed");
+            let telnyxMessageId = telegramData.ok ? `${telegramChatId}:${telegramData.result?.message_id}` : null;
+            
+            // Create message record
+            const [message] = await db
+              .insert(telnyxMessages)
+              .values({
+                conversationId: id,
+                direction: "outbound",
+                messageType: "outgoing",
+                channel: "telegram",
+                text: text || "(attachment)",
+                contentType: "text",
+                status,
+                telnyxMessageId,
+                sentBy: userId,
+                sentAt: new Date(),
+                errorMessage,
+              })
+              .returning();
+            
+            // Update conversation
+            await db
+              .update(telnyxConversations)
+              .set({ lastMessage: (text || "(attachment)").substring(0, 100), lastMessageAt: new Date(), updatedAt: new Date() })
+              .where(eq(telnyxConversations.id, id));
+            
+            return res.status(201).json(message);
+          } catch (telegramError: any) {
+            console.error("[Inbox Telegram] Send error:", telegramError);
+            return res.status(500).json({ message: "Failed to send Telegram message" });
+          }
+        }
+        // === END TELEGRAM CHANNEL ROUTING ===
         // Send message via Telnyx API using managed account
         const { sendTelnyxMessage } = await import("./services/telnyx-messaging-service");
         const sendResult = await sendTelnyxMessage({
