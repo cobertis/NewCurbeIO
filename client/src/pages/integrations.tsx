@@ -13,7 +13,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import { SiWhatsapp, SiInstagram, SiFacebook } from "react-icons/si";
+import { SiWhatsapp, SiInstagram, SiFacebook, SiTiktok } from "react-icons/si";
 import { CheckCircle, XCircle, Clock, AlertTriangle, Plus, Trash2, RefreshCw, ExternalLink, Settings, HelpCircle, ChevronDown, Info } from "lucide-react";
 import type { ChannelConnection, User } from "@shared/schema";
 
@@ -162,6 +162,47 @@ function getFacebookStatusBadge(status: string | undefined) {
       return <Badge data-testid="badge-facebook-status-revoked" className="bg-gray-500/10 text-gray-600 border-gray-500/20"><XCircle className="h-3 w-3 mr-1" />Revoked</Badge>;
     default:
       return <Badge data-testid="badge-facebook-status-disconnected" variant="outline"><XCircle className="h-3 w-3 mr-1" />Not Connected</Badge>;
+  }
+}
+
+function getTiktokErrorMessage(reason: string): { title: string; description: string } {
+  switch (reason) {
+    case "connection_cancelled":
+      return {
+        title: "Connection cancelled",
+        description: "You cancelled the connection. Try again when you're ready."
+      };
+    case "permission_denied":
+      return {
+        title: "Permission denied",
+        description: "You need to approve the permissions to connect."
+      };
+    case "account_not_found":
+      return {
+        title: "Account not found",
+        description: "No TikTok account was found."
+      };
+    case "connection_failed":
+    default:
+      return {
+        title: "Connection failed",
+        description: "We couldn't connect your account. Please try again."
+      };
+  }
+}
+
+function getTiktokStatusBadge(status: string | undefined) {
+  switch (status) {
+    case "active":
+      return <Badge data-testid="badge-tiktok-status-active" className="bg-green-500/10 text-green-600 border-green-500/20"><CheckCircle className="h-3 w-3 mr-1" />Connected</Badge>;
+    case "pending":
+      return <Badge data-testid="badge-tiktok-status-pending" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+    case "error":
+      return <Badge data-testid="badge-tiktok-status-error" className="bg-red-500/10 text-red-600 border-red-500/20"><AlertTriangle className="h-3 w-3 mr-1" />Needs attention</Badge>;
+    case "revoked":
+      return <Badge data-testid="badge-tiktok-status-revoked" className="bg-gray-500/10 text-gray-600 border-gray-500/20"><XCircle className="h-3 w-3 mr-1" />Revoked</Badge>;
+    default:
+      return <Badge data-testid="badge-tiktok-status-disconnected" variant="outline"><XCircle className="h-3 w-3 mr-1" />Not Connected</Badge>;
   }
 }
 
@@ -929,6 +970,246 @@ function FacebookCard() {
   );
 }
 
+function TikTokCard() {
+  const { toast } = useToast();
+  const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  const { data: sessionData } = useQuery<{ user: User }>({
+    queryKey: ["/api/session"],
+  });
+
+  const user = sessionData?.user;
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+
+  const { data: connectionData, isLoading } = useQuery<{ connection: ChannelConnection | null }>({
+    queryKey: ["/api/integrations/tiktok/status"],
+  });
+
+  const connection = connectionData?.connection;
+  const isConnected = connection?.status === "active";
+  const isRevoked = connection?.status === "revoked";
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const tiktokStatus = urlParams.get("tiktok");
+    const reason = urlParams.get("reason");
+
+    if (tiktokStatus === "connected") {
+      toast({
+        title: "TikTok Connected",
+        description: "Your TikTok account has been connected successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations/tiktok/status"] });
+      urlParams.delete("tiktok");
+      const newUrl = window.location.pathname + (urlParams.toString() ? `?${urlParams.toString()}` : "");
+      window.history.replaceState({}, "", newUrl);
+    } else if (tiktokStatus === "error") {
+      const errorMsg = getTiktokErrorMessage(reason || "connection_failed");
+      toast({
+        variant: "destructive",
+        title: errorMsg.title,
+        description: errorMsg.description,
+      });
+      urlParams.delete("tiktok");
+      urlParams.delete("reason");
+      const newUrl = window.location.pathname + (urlParams.toString() ? `?${urlParams.toString()}` : "");
+      window.history.replaceState({}, "", newUrl);
+    }
+  }, [toast]);
+
+  const oauthStartMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/integrations/tiktok/start");
+    },
+    onSuccess: (data: { authUrl: string; state: string }) => {
+      if (data.authUrl) {
+        window.open(data.authUrl, "_blank");
+      }
+    },
+    onError: (error: any) => {
+      const errorMsg = getTiktokErrorMessage("connection_failed");
+      toast({
+        variant: "destructive",
+        title: errorMsg.title,
+        description: error.message || errorMsg.description,
+      });
+    },
+  });
+
+  const disconnectMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/integrations/tiktok/disconnect");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations/tiktok/status"] });
+      setDisconnectDialogOpen(false);
+      toast({
+        title: "TikTok Disconnected",
+        description: "Your TikTok account has been disconnected.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Disconnect Failed",
+        description: error.message || "Failed to disconnect TikTok account.",
+      });
+    },
+  });
+
+  const handleOAuthConnect = () => {
+    oauthStartMutation.mutate();
+  };
+
+  if (isLoading) {
+    return (
+      <Card data-testid="card-tiktok-loading">
+        <CardContent className="flex items-center justify-center py-12">
+          <LoadingSpinner fullScreen={false} />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <TooltipProvider>
+      <>
+        <Card data-testid="card-tiktok" className="relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-black/10 to-transparent" />
+          <CardHeader className="flex flex-row items-start justify-between space-y-0">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-black/10">
+                <SiTiktok className="h-6 w-6 text-black dark:text-white" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">TikTok</CardTitle>
+                <CardDescription>Connect your TikTok account</CardDescription>
+              </div>
+            </div>
+            {getTiktokStatusBadge(connection?.status)}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {oauthStartMutation.isPending ? (
+              <div className="text-center py-6">
+                <RefreshCw className="h-8 w-8 animate-spin text-black dark:text-white mx-auto mb-3" />
+                <p className="font-medium">Connecting TikTok...</p>
+                <p className="text-sm text-muted-foreground">We're completing the connection with TikTok. Please don't close this window.</p>
+              </div>
+            ) : isConnected ? (
+              <>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Account</span>
+                    <span className="font-medium" data-testid="text-tiktok-account">
+                      {connection?.tiktokDisplayName || connection?.tiktokUsername || "TikTok User"}
+                    </span>
+                  </div>
+                  {connection?.tiktokUsername && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Username</span>
+                      <span className="font-medium" data-testid="text-tiktok-username">@{connection.tiktokUsername}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Connected</span>
+                    <span className="font-medium" data-testid="text-tiktok-connected-date">
+                      {connection?.connectedAt ? new Date(connection.connectedAt).toLocaleDateString() : "—"}
+                    </span>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="flex-1"
+                    onClick={() => queryClient.invalidateQueries({ queryKey: ["/api/integrations/tiktok/status"] })}
+                    data-testid="button-refresh-tiktok"
+                  >
+                    <RefreshCw className="h-4 w-4 mr-2" />
+                    Refresh
+                  </Button>
+                  {isAdmin && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => setDisconnectDialogOpen(true)}
+                      data-testid="button-disconnect-tiktok"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      Disconnect
+                    </Button>
+                  )}
+                </div>
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Connect your TikTok account to enable TikTok Login for your users.
+                </p>
+                
+                <Button 
+                  className="w-full bg-black hover:bg-gray-800 text-white"
+                  onClick={handleOAuthConnect}
+                  disabled={oauthStartMutation.isPending}
+                  data-testid="button-connect-tiktok"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Connect TikTok
+                </Button>
+                
+                <p className="text-xs text-muted-foreground text-center">
+                  We'll take you to TikTok to log in and authorize the connection.
+                </p>
+
+                <Collapsible open={helpOpen} onOpenChange={setHelpOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground" data-testid="button-tiktok-help">
+                      <span className="flex items-center gap-1">
+                        <HelpCircle className="h-4 w-4 mr-2" />
+                        Need help connecting?
+                      </span>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${helpOpen ? "rotate-180" : ""}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 space-y-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+                    <ul className="list-disc list-inside space-y-1">
+                      <li>You must have a TikTok account</li>
+                      <li>You need to approve the login permissions</li>
+                      <li>The connection uses TikTok Login Kit</li>
+                    </ul>
+                  </CollapsibleContent>
+                </Collapsible>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <AlertDialog open={disconnectDialogOpen} onOpenChange={setDisconnectDialogOpen}>
+          <AlertDialogContent data-testid="dialog-disconnect-tiktok">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Disconnect TikTok?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Your TikTok account will be disconnected from Curbe.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-disconnect-tiktok">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => disconnectMutation.mutate()}
+                className="bg-red-500 hover:bg-red-600"
+                data-testid="button-confirm-disconnect-tiktok"
+              >
+                {disconnectMutation.isPending ? "Disconnecting..." : "Disconnect"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    </TooltipProvider>
+  );
+}
+
 function ComingSoonCard({ 
   icon: Icon, 
   title, 
@@ -989,6 +1270,8 @@ export default function IntegrationsPage() {
         <InstagramCard />
         
         <FacebookCard />
+        
+        <TikTokCard />
       </div>
     </div>
   );

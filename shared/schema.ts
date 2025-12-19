@@ -4579,10 +4579,10 @@ export type InsertCampaignPlaceholder = z.infer<typeof insertCampaignPlaceholder
 
 // =====================================================
 // CHANNEL CONNECTIONS (Multi-tenant Social Media Integrations)
-// WhatsApp Cloud API, Instagram, Facebook
+// WhatsApp Cloud API, Instagram, Facebook, TikTok
 // =====================================================
 
-export const channelTypeEnum = pgEnum("channel_type", ["whatsapp", "instagram", "facebook"]);
+export const channelTypeEnum = pgEnum("channel_type", ["whatsapp", "instagram", "facebook", "tiktok"]);
 export const channelStatusEnum = pgEnum("channel_status", ["pending", "active", "error", "revoked"]);
 export const messageDirectionEnum = pgEnum("message_direction", ["inbound", "outbound", "system"]);
 export const messageStatusEnum = pgEnum("wa_message_status", ["queued", "sent", "delivered", "read", "failed"]);
@@ -4609,6 +4609,13 @@ export const channelConnections = pgTable("channel_connections", {
   fbPageId: text("fb_page_id"),
   fbPageName: text("fb_page_name"),
   fbPageAccessToken: text("fb_page_access_token"),
+  
+  // TikTok Login Kit fields
+  tiktokOpenId: text("tiktok_open_id"),
+  tiktokUsername: text("tiktok_username"),
+  tiktokDisplayName: text("tiktok_display_name"),
+  tiktokAvatarUrl: text("tiktok_avatar_url"),
+  tiktokRefreshTokenEnc: text("tiktok_refresh_token_enc"),
   
   accessTokenEnc: text("access_token_enc"),
   tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }),
@@ -4703,7 +4710,7 @@ export const waWebhookLogs = pgTable("wa_webhook_logs", {
   createdAtIdx: index("wa_webhook_logs_created_at_idx").on(table.createdAt),
 }));
 
-export const oauthProviderEnum = pgEnum("oauth_provider", ["meta_whatsapp", "meta_instagram", "meta_facebook"]);
+export const oauthProviderEnum = pgEnum("oauth_provider", ["meta_whatsapp", "meta_instagram", "meta_facebook", "tiktok"]);
 
 export const oauthStates = pgTable("oauth_states", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),

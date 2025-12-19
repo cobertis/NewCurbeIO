@@ -26882,6 +26882,262 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Facebook] Disconnect error:", error);
       return res.status(500).json({ error: "Failed to disconnect Facebook" });
     }
+
+  // =====================================================
+  // TIKTOK LOGIN KIT OAUTH INTEGRATION
+  // =====================================================
+  
+  const TIKTOK_CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY;
+  const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET;
+  const TIKTOK_REDIRECT_URI = process.env.TIKTOK_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/tiktok/callback`;
+  const TIKTOK_SCOPES = "user.info.basic";
+
+  // POST /api/integrations/tiktok/start - Start TikTok OAuth flow
+  app.post("/api/integrations/tiktok/start", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
+      
+      if (!TIKTOK_CLIENT_KEY) {
+        return res.status(500).json({ error: "TikTok Client Key not configured. Contact administrator." });
+      }
+      
+      const nonce = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      
+      await db.insert(oauthStates).values({
+        companyId: user.companyId,
+        provider: "tiktok",
+        nonce,
+        expiresAt,
+        metadata: {
+          ip: req.ip || req.connection.remoteAddress,
+          userAgent: req.get("user-agent") || undefined
+        }
+      });
+      
+      const authUrl = new URL("https://www.tiktok.com/v2/auth/authorize/");
+      authUrl.searchParams.set("client_key", TIKTOK_CLIENT_KEY);
+      authUrl.searchParams.set("redirect_uri", TIKTOK_REDIRECT_URI);
+      authUrl.searchParams.set("response_type", "code");
+      authUrl.searchParams.set("scope", TIKTOK_SCOPES);
+      authUrl.searchParams.set("state", nonce);
+      
+      return res.json({ authUrl: authUrl.toString(), state: nonce });
+    } catch (error) {
+      console.error("[TikTok OAuth] Start error:", error);
+      return res.status(500).json({ error: "Failed to start OAuth flow" });
+    }
+  });
+
+  // GET /api/integrations/tiktok/callback - OAuth callback from TikTok
+  app.get("/api/integrations/tiktok/callback", async (req: Request, res: Response) => {
+    const frontendUrl = process.env.BASE_URL || "";
+    const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/settings/integrations?tiktok=error&reason=${encodeURIComponent(reason)}`);
+    
+    try {
+      const { code, state, error: tiktokError } = req.query;
+      
+      if (tiktokError) {
+        console.error("[TikTok OAuth] Error from TikTok:", tiktokError);
+        return errorRedirect("connection_cancelled");
+      }
+      
+      if (!code || !state) {
+        console.error("[TikTok OAuth] Missing code or state");
+        return errorRedirect("connection_cancelled");
+      }
+      
+      const oauthState = await db.query.oauthStates.findFirst({
+        where: and(
+          eq(oauthStates.nonce, state as string),
+          eq(oauthStates.provider, "tiktok")
+        )
+      });
+      
+      if (!oauthState) {
+        console.error("[TikTok OAuth] Invalid state");
+        return errorRedirect("connection_failed");
+      }
+      
+      if (new Date() > new Date(oauthState.expiresAt)) {
+        console.error("[TikTok OAuth] State expired");
+        return errorRedirect("connection_failed");
+      }
+      
+      if (oauthState.usedAt) {
+        console.error("[TikTok OAuth] State already used");
+        return errorRedirect("connection_failed");
+      }
+      
+      await db.update(oauthStates)
+        .set({ usedAt: new Date() })
+        .where(eq(oauthStates.id, oauthState.id));
+      
+      // Exchange code for access token
+      const tokenUrl = "https://open.tiktokapis.com/v2/oauth/token/";
+      const tokenParams = new URLSearchParams({
+        client_key: TIKTOK_CLIENT_KEY!,
+        client_secret: TIKTOK_CLIENT_SECRET!,
+        code: code as string,
+        grant_type: "authorization_code",
+        redirect_uri: TIKTOK_REDIRECT_URI,
+      });
+      
+      const tokenResponse = await fetch(tokenUrl, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "Cache-Control": "no-cache",
+        },
+        body: tokenParams.toString(),
+      });
+      
+      const tokenData = await tokenResponse.json() as any;
+      
+      if (!tokenResponse.ok || tokenData.error) {
+        console.error("[TikTok OAuth] Token exchange failed:", tokenData);
+        return errorRedirect("connection_failed");
+      }
+      
+      const accessToken = tokenData.access_token;
+      const refreshToken = tokenData.refresh_token;
+      const openId = tokenData.open_id;
+      const expiresIn = tokenData.expires_in || 86400;
+      const scopes = tokenData.scope ? tokenData.scope.split(",") : [TIKTOK_SCOPES];
+      
+      // Get user info
+      const userInfoUrl = `https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name,username`;
+      const userInfoResponse = await fetch(userInfoUrl, {
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+        },
+      });
+      
+      const userInfoData = await userInfoResponse.json() as any;
+      
+      let displayName = openId;
+      let username = null;
+      let avatarUrl = null;
+      
+      if (userInfoData.data?.user) {
+        displayName = userInfoData.data.user.display_name || openId;
+        username = userInfoData.data.user.username || null;
+        avatarUrl = userInfoData.data.user.avatar_url || null;
+      }
+      
+      const encryptedAccessToken = encryptToken(accessToken);
+      const encryptedRefreshToken = refreshToken ? encryptToken(refreshToken) : null;
+      const tokenExpiresAt = new Date(Date.now() + expiresIn * 1000);
+      
+      // Check for existing connection
+      const existingConnection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, oauthState.companyId),
+          eq(channelConnections.channel, "tiktok")
+        )
+      });
+      
+      if (existingConnection) {
+        await db.update(channelConnections)
+          .set({
+            status: "active",
+            tiktokOpenId: openId,
+            tiktokUsername: username,
+            tiktokDisplayName: displayName,
+            tiktokAvatarUrl: avatarUrl,
+            accessTokenEnc: encryptedAccessToken,
+            tiktokRefreshTokenEnc: encryptedRefreshToken,
+            tokenExpiresAt,
+            scopes,
+            connectedAt: new Date(),
+            disconnectedAt: null,
+            lastError: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(channelConnections.id, existingConnection.id));
+        
+        console.log(`[TikTok OAuth] Updated existing connection for company ${oauthState.companyId}`);
+      } else {
+        await db.insert(channelConnections).values({
+          companyId: oauthState.companyId,
+          channel: "tiktok",
+          status: "active",
+          tiktokOpenId: openId,
+          tiktokUsername: username,
+          tiktokDisplayName: displayName,
+          tiktokAvatarUrl: avatarUrl,
+          accessTokenEnc: encryptedAccessToken,
+          tiktokRefreshTokenEnc: encryptedRefreshToken,
+          tokenExpiresAt,
+          scopes,
+          connectedAt: new Date(),
+        });
+        
+        console.log(`[TikTok OAuth] Created new connection for company ${oauthState.companyId}`);
+      }
+      
+      return res.redirect(`${frontendUrl}/settings/integrations?tiktok=connected`);
+    } catch (error) {
+      console.error("[TikTok OAuth] Callback error:", error);
+      return errorRedirect("connection_failed");
+    }
+  });
+
+  // GET /api/integrations/tiktok/status - Get TikTok connection status
+  app.get("/api/integrations/tiktok/status", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) return res.status(400).json({ error: "No company" });
+      
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "tiktok")
+        )
+      });
+      
+      return res.json({ connection: connection || null });
+    } catch (error) {
+      console.error("[TikTok] Status error:", error);
+      return res.status(500).json({ error: "Failed to get TikTok status" });
+    }
+  });
+
+  // POST /api/integrations/tiktok/disconnect - Disconnect TikTok
+  app.post("/api/integrations/tiktok/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) return res.status(400).json({ error: "No company" });
+      
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "tiktok")
+        )
+      });
+      
+      if (!connection) {
+        return res.status(404).json({ error: "No TikTok connection found" });
+      }
+      
+      await db.update(channelConnections)
+        .set({
+          status: "revoked",
+          accessTokenEnc: null,
+          tiktokRefreshTokenEnc: null,
+          disconnectedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(channelConnections.id, connection.id));
+      
+      console.log(`[TikTok] Disconnected for company ${user.companyId}`);
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("[TikTok] Disconnect error:", error);
+      return res.status(500).json({ error: "Failed to disconnect TikTok" });
+    }
+  });
   });
 
 
