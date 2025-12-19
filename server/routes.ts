@@ -91,9 +91,11 @@ import {
   insertImessageCampaignSchema,
   createCampaignWithDetailsSchema
 } from "@shared/schema";
+import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, oauthStates, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache } from "@shared/schema";
+import { encryptToken, decryptToken } from "./crypto";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -25980,14 +25982,287 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
 END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // =====================================================
-  // META CLOUD API WHATSAPP INTEGRATION ROUTES
   // =====================================================
+  // META CLOUD API WHATSAPP INTEGRATION ROUTES
+  // OAuth Flow for SaaS WhatsApp Business API
+  // =====================================================
+
+  // Meta OAuth configuration
+  const META_APP_ID = process.env.META_APP_ID;
+  const META_APP_SECRET = process.env.META_APP_SECRET;
+  const META_REDIRECT_URI = process.env.META_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/meta/whatsapp/callback`;
+  const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v21.0";
+  
+  // Scopes required for WhatsApp Business Platform Embedded Signup
+  // https://developers.facebook.com/docs/whatsapp/embedded-signup
+  const META_WHATSAPP_SCOPES = [
+    "whatsapp_business_management",
+    "whatsapp_business_messaging",
+    "business_management"
+  ].join(",");
+
+  // POST /api/integrations/meta/whatsapp/start - Start OAuth flow
+  app.post("/api/integrations/meta/whatsapp/start", async (req: Request, res: Response) => {
+    try {
+      if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+      const user = req.user as any;
+      if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
+      
+      if (!META_APP_ID) {
+        return res.status(500).json({ error: "Meta App ID not configured. Contact administrator." });
+      }
+      
+      // Generate cryptographically secure nonce
+      const nonce = randomBytes(32).toString("hex");
+      
+      // Store in oauth_states with 10 min expiry
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+      
+      await db.insert(oauthStates).values({
+        companyId: user.companyId,
+        provider: "meta_whatsapp",
+        nonce,
+        expiresAt,
+        metadata: {
+          ip: req.ip || req.connection.remoteAddress,
+          userAgent: req.get("user-agent") || undefined
+        }
+      });
+      
+      // Build OAuth URL for Meta Embedded Signup
+      // Using response_type=code for server-side flow
+      const authUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
+      authUrl.searchParams.set("client_id", META_APP_ID);
+      authUrl.searchParams.set("redirect_uri", META_REDIRECT_URI);
+      authUrl.searchParams.set("response_type", "code");
+      authUrl.searchParams.set("scope", META_WHATSAPP_SCOPES);
+      authUrl.searchParams.set("state", nonce);
+      // Enable embedded signup extras
+      authUrl.searchParams.set("extras", JSON.stringify({
+        feature: "whatsapp_embedded_signup",
+        setup: { business: { name: "", email: "" } }
+      }));
+      
+      return res.json({ authUrl: authUrl.toString(), state: nonce });
+    } catch (error) {
+      console.error("[WhatsApp OAuth] Start error:", error);
+      return res.status(500).json({ error: "Failed to start OAuth flow" });
+    }
+  });
+
+  // GET /api/integrations/meta/whatsapp/callback - OAuth callback from Meta
+  app.get("/api/integrations/meta/whatsapp/callback", async (req: Request, res: Response) => {
+    const frontendUrl = process.env.BASE_URL || "";
+    const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/settings/integrations?whatsapp=error&reason=${encodeURIComponent(reason)}`);
+    
+    try {
+      const { code, state } = req.query;
+      
+      if (!code || !state) {
+        console.error("[WhatsApp OAuth] Missing code or state");
+        return errorRedirect("missing_params");
+      }
+      
+      // Validate state/nonce
+      const oauthState = await db.query.oauthStates.findFirst({
+        where: and(
+          eq(oauthStates.nonce, state as string),
+          eq(oauthStates.provider, "meta_whatsapp")
+        )
+      });
+      
+      if (!oauthState) {
+        console.error("[WhatsApp OAuth] Invalid state");
+        return errorRedirect("invalid_state");
+      }
+      
+      // Check if expired
+      if (new Date() > new Date(oauthState.expiresAt)) {
+        console.error("[WhatsApp OAuth] State expired");
+        return errorRedirect("state_expired");
+      }
+      
+      // Check if already used
+      if (oauthState.usedAt) {
+        console.error("[WhatsApp OAuth] State already used");
+        return errorRedirect("state_reused");
+      }
+      
+      // Mark state as used
+      await db.update(oauthStates)
+        .set({ usedAt: new Date() })
+        .where(eq(oauthStates.id, oauthState.id));
+      
+      // Exchange code for access token
+      if (!META_APP_ID || !META_APP_SECRET) {
+        console.error("[WhatsApp OAuth] Meta credentials not configured");
+        return errorRedirect("server_config_error");
+      }
+      
+      const tokenResponse = await fetch(
+        `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token?` +
+        `client_id=${META_APP_ID}&` +
+        `client_secret=${META_APP_SECRET}&` +
+        `redirect_uri=${encodeURIComponent(META_REDIRECT_URI)}&` +
+        `code=${code}`
+      );
+      
+      const tokenData = await tokenResponse.json() as any;
+      
+      if (tokenData.error || !tokenData.access_token) {
+        console.error("[WhatsApp OAuth] Token exchange failed:", tokenData.error);
+        return errorRedirect("token_exchange_failed");
+      }
+      
+      const accessToken = tokenData.access_token;
+      
+      // Get WhatsApp Business Account(s) associated with this token
+      // First get the list of businesses
+      const debugResponse = await fetch(
+        `https://graph.facebook.com/${META_GRAPH_VERSION}/debug_token?input_token=${accessToken}&access_token=${META_APP_ID}|${META_APP_SECRET}`
+      );
+      const debugData = await debugResponse.json() as any;
+      
+      // Get WABA info from the shared WABAs endpoint
+      const wabaResponse = await fetch(
+        `https://graph.facebook.com/${META_GRAPH_VERSION}/me/businesses?fields=owned_whatsapp_business_accounts{id,name,timezone_id,message_template_namespace}&access_token=${accessToken}`
+      );
+      const wabaData = await wabaResponse.json() as any;
+      
+      let wabaId: string | null = null;
+      let phoneNumberId: string | null = null;
+      let phoneNumberE164: string | null = null;
+      let displayName: string | null = null;
+      
+      // Try to find WABA from business accounts
+      if (wabaData.data && wabaData.data.length > 0) {
+        for (const business of wabaData.data) {
+          if (business.owned_whatsapp_business_accounts?.data?.length > 0) {
+            const waba = business.owned_whatsapp_business_accounts.data[0];
+            wabaId = waba.id;
+            
+            // Get phone numbers for this WABA
+            const phoneResponse = await fetch(
+              `https://graph.facebook.com/${META_GRAPH_VERSION}/${wabaId}/phone_numbers?access_token=${accessToken}`
+            );
+            const phoneData = await phoneResponse.json() as any;
+            
+            if (phoneData.data && phoneData.data.length > 0) {
+              const phone = phoneData.data[0];
+              phoneNumberId = phone.id;
+              phoneNumberE164 = phone.display_phone_number;
+              displayName = phone.verified_name || phone.display_phone_number;
+            }
+            break;
+          }
+        }
+      }
+      
+      // If no WABA found from businesses, try direct shared WABA endpoint
+      if (!wabaId) {
+        const sharedWabaResponse = await fetch(
+          `https://graph.facebook.com/${META_GRAPH_VERSION}/me/wabas?access_token=${accessToken}`
+        );
+        const sharedWabaData = await sharedWabaResponse.json() as any;
+        
+        if (sharedWabaData.data && sharedWabaData.data.length > 0) {
+          wabaId = sharedWabaData.data[0].id;
+          
+          // Get phone numbers
+          const phoneResponse = await fetch(
+            `https://graph.facebook.com/${META_GRAPH_VERSION}/${wabaId}/phone_numbers?access_token=${accessToken}`
+          );
+          const phoneData = await phoneResponse.json() as any;
+          
+          if (phoneData.data && phoneData.data.length > 0) {
+            const phone = phoneData.data[0];
+            phoneNumberId = phone.id;
+            phoneNumberE164 = phone.display_phone_number;
+            displayName = phone.verified_name || phone.display_phone_number;
+          }
+        }
+      }
+      
+      if (!wabaId || !phoneNumberId) {
+        console.error("[WhatsApp OAuth] Could not find WABA or phone number");
+        return errorRedirect("no_waba_found");
+      }
+      
+      // Check if this phone number is already connected to another tenant
+      const existingConnection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.phoneNumberId, phoneNumberId),
+          ne(channelConnections.companyId, oauthState.companyId)
+        )
+      });
+      
+      if (existingConnection) {
+        console.error("[WhatsApp OAuth] Phone number already connected to another workspace");
+        return errorRedirect("number_already_connected");
+      }
+      
+      // Encrypt the access token
+      const encryptedToken = encryptToken(accessToken);
+      
+      // UPSERT connection
+      const existing = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, oauthState.companyId),
+          eq(channelConnections.channel, "whatsapp")
+        )
+      });
+      
+      const scopes = debugData.data?.scopes || META_WHATSAPP_SCOPES.split(",");
+      const tokenExpiresAt = tokenData.expires_in 
+        ? new Date(Date.now() + tokenData.expires_in * 1000) 
+        : null;
+      
+      if (existing) {
+        await db.update(channelConnections)
+          .set({
+            wabaId,
+            phoneNumberId,
+            phoneNumberE164,
+            displayName,
+            accessTokenEnc: encryptedToken,
+            tokenExpiresAt,
+            scopes,
+            status: "active",
+            connectedAt: new Date(),
+            lastError: null,
+            updatedAt: new Date(),
+          })
+          .where(eq(channelConnections.id, existing.id));
+      } else {
+        await db.insert(channelConnections).values({
+          companyId: oauthState.companyId,
+          channel: "whatsapp",
+          status: "active",
+          wabaId,
+          phoneNumberId,
+          phoneNumberE164,
+          displayName,
+          accessTokenEnc: encryptedToken,
+          tokenExpiresAt,
+          scopes,
+          connectedAt: new Date(),
+        });
+      }
+      
+      console.log(`[WhatsApp OAuth] Successfully connected WABA ${wabaId} for company ${oauthState.companyId}`);
+      return res.redirect(`${frontendUrl}/settings/integrations?whatsapp=connected`);
+      
+    } catch (error) {
+      console.error("[WhatsApp OAuth] Callback error:", error);
+      return errorRedirect("unexpected_error");
+    }
+  });
 
   // GET /api/integrations/whatsapp/status - Get WhatsApp connection status
   app.get("/api/integrations/whatsapp/status", async (req: Request, res: Response) => {
     if (!req.user) return res.status(401).json({ error: "Unauthorized" });
     const user = req.user as any;
-    if (!user.companyId) return res.json({ connection: null });
+    if (!user.companyId) return res.json({ connected: false, connection: null });
     
     const connection = await db.query.channelConnections.findFirst({
       where: and(
@@ -25995,20 +26270,58 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         eq(channelConnections.channel, "whatsapp")
       ),
     });
-    return res.json({ connection: connection || null });
+    
+    if (!connection) {
+      return res.json({ connected: false, connection: null });
+    }
+    
+    // Return connection info without the encrypted token
+    return res.json({ 
+      connected: connection.status === "active",
+      connection: {
+        id: connection.id,
+        status: connection.status,
+        phoneNumberE164: connection.phoneNumberE164,
+        displayName: connection.displayName,
+        wabaId: connection.wabaId,
+        connectedAt: connection.connectedAt,
+        updatedAt: connection.updatedAt,
+      }
+    });
   });
 
-  // POST /api/integrations/whatsapp/connect - Connect WhatsApp Business account
+  // POST /api/integrations/whatsapp/connect - Manual connect (Admin/Debug only)
+  // This is kept for admin debugging purposes
   app.post("/api/integrations/whatsapp/connect", async (req: Request, res: Response) => {
     if (!req.user) return res.status(401).json({ error: "Unauthorized" });
     const user = req.user as any;
     if (!user.companyId) return res.status(400).json({ error: "No company" });
+    
+    // Only allow admins to use manual connect
+    if (user.role !== "admin" && user.role !== "super_admin") {
+      return res.status(403).json({ error: "Manual connect is only available for administrators" });
+    }
     
     const { wabaId, phoneNumberId, phoneNumber, displayName, accessToken } = req.body;
     
     if (!wabaId || !phoneNumberId || !accessToken) {
       return res.status(400).json({ error: "Missing required fields" });
     }
+    
+    // Check if phone number is already connected elsewhere
+    const existingOther = await db.query.channelConnections.findFirst({
+      where: and(
+        eq(channelConnections.phoneNumberId, phoneNumberId),
+        ne(channelConnections.companyId, user.companyId)
+      )
+    });
+    
+    if (existingOther) {
+      return res.status(400).json({ error: "This number is already connected to another workspace" });
+    }
+    
+    // Encrypt the token
+    const encryptedToken = encryptToken(accessToken);
     
     // Check if already connected
     const existing = await db.query.channelConnections.findFirst({
@@ -26019,14 +26332,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     });
     
     if (existing) {
-      // Update existing
       await db.update(channelConnections)
         .set({
           wabaId,
           phoneNumberId,
           phoneNumberE164: phoneNumber || null,
           displayName: displayName || null,
-          accessTokenEnc: accessToken,
+          accessTokenEnc: encryptedToken,
           status: "active",
           connectedAt: new Date(),
           lastError: null,
@@ -26034,7 +26346,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         })
         .where(eq(channelConnections.id, existing.id));
     } else {
-      // Insert new
       await db.insert(channelConnections).values({
         companyId: user.companyId,
         channel: "whatsapp",
@@ -26043,7 +26354,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         phoneNumberId,
         phoneNumberE164: phoneNumber || null,
         displayName: displayName || null,
-        accessTokenEnc: accessToken,
+        accessTokenEnc: encryptedToken,
         connectedAt: new Date(),
       });
     }
@@ -26051,17 +26362,61 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     return res.json({ success: true });
   });
 
-  // DELETE /api/integrations/whatsapp/disconnect - Disconnect WhatsApp
+  // POST /api/integrations/whatsapp/disconnect - Disconnect WhatsApp
+  app.post("/api/integrations/whatsapp/disconnect", async (req: Request, res: Response) => {
+    if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+    const user = req.user as any;
+    if (!user.companyId) return res.status(400).json({ error: "No company" });
+    
+    const connection = await db.query.channelConnections.findFirst({
+      where: and(
+        eq(channelConnections.companyId, user.companyId),
+        eq(channelConnections.channel, "whatsapp")
+      )
+    });
+    
+    if (!connection) {
+      return res.status(404).json({ error: "No WhatsApp connection found" });
+    }
+    
+    // Mark as revoked instead of deleting (preserves audit trail)
+    await db.update(channelConnections)
+      .set({
+        status: "revoked",
+        accessTokenEnc: null, // Clear the token
+        disconnectedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(channelConnections.id, connection.id));
+    
+    return res.json({ success: true });
+  });
+
+  // DELETE /api/integrations/whatsapp/disconnect - Disconnect WhatsApp (legacy support)
   app.delete("/api/integrations/whatsapp/disconnect", async (req: Request, res: Response) => {
     if (!req.user) return res.status(401).json({ error: "Unauthorized" });
     const user = req.user as any;
     if (!user.companyId) return res.status(400).json({ error: "No company" });
     
-    await db.delete(channelConnections)
-      .where(and(
+    const connection = await db.query.channelConnections.findFirst({
+      where: and(
         eq(channelConnections.companyId, user.companyId),
         eq(channelConnections.channel, "whatsapp")
-      ));
+      )
+    });
+    
+    if (!connection) {
+      return res.status(404).json({ error: "No WhatsApp connection found" });
+    }
+    
+    await db.update(channelConnections)
+      .set({
+        status: "revoked",
+        accessTokenEnc: null,
+        disconnectedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(channelConnections.id, connection.id));
     
     return res.json({ success: true });
   });
