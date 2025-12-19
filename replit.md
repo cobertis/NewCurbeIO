@@ -101,6 +101,34 @@ Includes session security, webhook signature validation (Twilio, BulkVS, BlueBub
   - `client/src/components/compliance-tab.tsx`: Added RCS Agents management card
   - `client/src/pages/inbox.tsx`: Added RCS channel icon (purple) and color support
 
+### TikTok Login Kit OAuth Integration (COMPLETED)
+- **Feature:** TikTok OAuth flow for connecting TikTok accounts.
+- **Database Schema (`shared/schema.ts`):**
+  - Added "tiktok" to `channelTypeEnum` and `oauthProviderEnum`
+  - Added TikTok-specific fields to `channelConnections`: tiktokOpenId, tiktokUsername, tiktokDisplayName, tiktokAvatarUrl, tiktokRefreshTokenEnc
+- **Backend OAuth Routes (`server/routes.ts`):**
+  - POST /api/integrations/tiktok/start - Generates OAuth URL with CSRF nonce
+  - GET /api/integrations/tiktok/callback - Handles TikTok callback, validates state, stores tokens
+  - GET /api/integrations/tiktok/status - Returns connection status
+  - POST /api/integrations/tiktok/disconnect - Marks connection as revoked
+- **Frontend UI (`client/src/pages/integrations.tsx`):**
+  - TikTokCard component with OAuth flow, status badges, and error handling
+- **Redirect URI:** https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/integrations/tiktok/callback
+
+### Social Media API Credentials in System Settings (COMPLETED)
+- **Feature:** Configurable Meta and TikTok API credentials via /system-settings > API Credentials tab.
+- **Schema (`shared/schema.ts`):**
+  - Added "meta" and "tiktok" to `apiProviders` array
+- **Backend (`server/routes.ts`):**
+  - Added Meta provider config with keys: app_id, app_secret
+  - Added TikTok provider config with keys: client_key, client_secret
+- **Credential Provider (`server/services/credential-provider.ts`):**
+  - Added `getMeta()` returning { appId, appSecret }
+  - Added `getTiktok()` returning { clientKey, clientSecret }
+  - Both methods use DB credentials with env var fallback
+- **OAuth Routes Refactored:**
+  - TikTok and Meta/WhatsApp OAuth routes now use credentialProvider for dynamic credential fetching
+
 ### WhatsApp Cloud API OAuth Integration (IN PROGRESS)
 - **Feature:** Meta Embedded Signup OAuth flow for WhatsApp Business Platform connection.
 - **Database Schema (`shared/schema.ts`):**
