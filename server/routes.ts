@@ -26888,6 +26888,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Facebook] Disconnect error:", error);
       return res.status(500).json({ error: "Failed to disconnect Facebook" });
     }
+  });
 
   // =====================================================
   // TIKTOK LOGIN KIT OAUTH INTEGRATION
@@ -27153,8 +27154,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       return res.status(500).json({ error: "Failed to disconnect TikTok" });
     }
   });
-  });
-
 
   // POST /webhooks/telnyx/voicemail - Handle voicemail completed events
   app.post("/webhooks/telnyx/voicemail", async (req: Request, res: Response) => {
