@@ -28997,7 +28997,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // POST /api/rcs/agents/:agentId/test-numbers - Add test number for RCS agent
   app.post("/api/rcs/agents/:agentId/test-numbers", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = req.session.user?.companyId;
       const { agentId } = req.params;
       const { phoneNumber } = req.body;
       
@@ -29006,17 +29005,26 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
-      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
-      const managedAccountId = await getCompanyManagedAccountId(companyId!);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
-      const response = await fetch(`https://api.telnyx.com/v2/rcs/agents/\${agentId}/test_numbers`, {
+      // RCS agents are on the master account, use master API key directly
+      // URL format: /v2/messaging_rcs/test_number_invite/{id}/{phone_number}
+      const encodedPhone = encodeURIComponent(phoneNumber);
+      const url = `https://api.telnyx.com/v2/messaging_rcs/test_number_invite/${agentId}/${encodedPhone}`;
+      
+      console.log("[RCS] Adding test number:", phoneNumber, "to agent:", agentId);
+      console.log("[RCS] URL:", url);
+      
+      const response = await fetch(url, {
         method: "PUT",
-        headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
-        
+        headers: {
+          "Authorization": `Bearer ${telnyxApiKey}`,
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
       });
       
       if (!response.ok) {
@@ -29028,13 +29036,52 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       const result = await response.json();
-      console.log("[RCS] Test number added:", phoneNumber, "to agent:", agentId);
+      console.log("[RCS] Test number added successfully:", result.data);
       res.json({ testNumber: result.data });
     } catch (error: any) {
       console.error("[RCS] Error adding test number:", error);
       res.status(500).json({ message: error.message });
     }
   });
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
   // POST /api/rcs/send - Send RCS message
   app.post("/api/rcs/send", requireActiveCompany, async (req: Request, res: Response) => {
