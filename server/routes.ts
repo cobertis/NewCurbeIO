@@ -28852,7 +28852,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
-      const response = await fetch("https://api.telnyx.com/v2/rcs_agents", {
+      const response = await fetch("https://api.telnyx.com/v2/messaging_rcs/agents", {
         method: "GET",
         headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
       });
@@ -28890,7 +28890,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
-      const response = await fetch(`https://api.telnyx.com/v2/rcs_agents/\${agentId}`, {
+      const response = await fetch(`https://api.telnyx.com/v2/messaging_rcs/agents/\${agentId}`, {
         method: "GET",
         headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
       });
@@ -28925,7 +28925,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
-      const response = await fetch(`https://api.telnyx.com/v2/rcs_agents/\${agentId}`, {
+      const response = await fetch(`https://api.telnyx.com/v2/messaging_rcs/agents/\${agentId}`, {
         method: "PATCH",
         headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
         body: JSON.stringify(req.body),
