@@ -78,6 +78,52 @@ function getErrorMessage(reason: string): { title: string; description: string }
   }
 }
 
+function getInstagramErrorMessage(reason: string): { title: string; description: string } {
+  switch (reason) {
+    case "connection_cancelled":
+      return {
+        title: "Connection cancelled",
+        description: "No se completó la conexión con Meta."
+      };
+    case "not_professional":
+      return {
+        title: "Professional account required",
+        description: "Esta cuenta es personal. Cambia tu Instagram a Business o Creator."
+      };
+    case "permission_denied":
+      return {
+        title: "Permission denied",
+        description: "Curbe no tiene permiso para acceder a Instagram DMs."
+      };
+    case "access_not_available":
+      return {
+        title: "Access not available",
+        description: "Esta integración aún no está habilitada para esta cuenta."
+      };
+    case "connection_failed":
+    default:
+      return {
+        title: "Connection failed",
+        description: "No pudimos completar la conexión."
+      };
+  }
+}
+
+function getInstagramStatusBadge(status: string | undefined) {
+  switch (status) {
+    case "active":
+      return <Badge data-testid="badge-instagram-status-active" className="bg-green-500/10 text-green-600 border-green-500/20"><CheckCircle className="h-3 w-3 mr-1" />Connected</Badge>;
+    case "pending":
+      return <Badge data-testid="badge-instagram-status-pending" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+    case "error":
+      return <Badge data-testid="badge-instagram-status-error" className="bg-red-500/10 text-red-600 border-red-500/20"><AlertTriangle className="h-3 w-3 mr-1" />Needs attention</Badge>;
+    case "revoked":
+      return <Badge data-testid="badge-instagram-status-revoked" className="bg-gray-500/10 text-gray-600 border-gray-500/20"><XCircle className="h-3 w-3 mr-1" />Revoked</Badge>;
+    default:
+      return <Badge data-testid="badge-instagram-status-disconnected" variant="outline"><XCircle className="h-3 w-3 mr-1" />Not Connected</Badge>;
+  }
+}
+
 function WhatsAppCard() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -492,6 +538,237 @@ function WhatsAppCard() {
   );
 }
 
+function InstagramCard() {
+  const { toast } = useToast();
+  const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
+  const [helpOpen, setHelpOpen] = useState(false);
+
+  const { data: sessionData } = useQuery<{ user: User }>({
+    queryKey: ["/api/session"],
+  });
+
+  const user = sessionData?.user;
+  const isAdmin = user?.role === "admin" || user?.role === "super_admin";
+
+  const { data: connectionData, isLoading } = useQuery<{ connection: ChannelConnection | null }>({
+    queryKey: ["/api/integrations/instagram/status"],
+  });
+
+  const connection = connectionData?.connection;
+  const isConnected = connection?.status === "active";
+  const isRevoked = connection?.status === "revoked";
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const instagramStatus = urlParams.get("instagram");
+    const reason = urlParams.get("reason");
+
+    if (instagramStatus === "connected") {
+      toast({
+        title: "Instagram Connected",
+        description: "Your Instagram Business account has been connected successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations/instagram/status"] });
+      urlParams.delete("instagram");
+      const newUrl = window.location.pathname + (urlParams.toString() ? `?${urlParams.toString()}` : "");
+      window.history.replaceState({}, "", newUrl);
+    } else if (instagramStatus === "error") {
+      const errorMsg = getInstagramErrorMessage(reason || "connection_failed");
+      toast({
+        variant: "destructive",
+        title: errorMsg.title,
+        description: errorMsg.description,
+      });
+      urlParams.delete("instagram");
+      urlParams.delete("reason");
+      const newUrl = window.location.pathname + (urlParams.toString() ? `?${urlParams.toString()}` : "");
+      window.history.replaceState({}, "", newUrl);
+    }
+  }, [toast]);
+
+  const oauthStartMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/integrations/meta/instagram/start");
+    },
+    onSuccess: (data: { authUrl: string; state: string }) => {
+      if (data.authUrl) {
+        window.open(data.authUrl, "_blank");
+      }
+    },
+    onError: (error: any) => {
+      const errorMsg = getInstagramErrorMessage("connection_failed");
+      toast({
+        variant: "destructive",
+        title: errorMsg.title,
+        description: error.message || errorMsg.description,
+      });
+    },
+  });
+
+  const disconnectMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/integrations/instagram/disconnect");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations/instagram/status"] });
+      setDisconnectDialogOpen(false);
+      toast({
+        title: "Instagram Disconnected",
+        description: "Your Instagram Business account has been disconnected.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Disconnect Failed",
+        description: error.message || "Failed to disconnect Instagram Business account.",
+      });
+    },
+  });
+
+  const handleOAuthConnect = () => {
+    oauthStartMutation.mutate();
+  };
+
+  if (isLoading) {
+    return (
+      <Card data-testid="card-instagram-loading">
+        <CardContent className="flex items-center justify-center py-12">
+          <LoadingSpinner fullScreen={false} />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <TooltipProvider>
+      <>
+        <Card data-testid="card-instagram" className="relative overflow-hidden">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-bl from-pink-500/10 to-transparent" />
+          <CardHeader className="flex flex-row items-start justify-between space-y-0">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-lg bg-pink-500/10">
+                <SiInstagram className="h-6 w-6 text-pink-500" />
+              </div>
+              <div>
+                <CardTitle className="text-lg">Instagram Direct</CardTitle>
+                <CardDescription>Connect your Instagram Business account</CardDescription>
+              </div>
+            </div>
+            {getInstagramStatusBadge(connection?.status)}
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {isConnected ? (
+              <>
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Account</span>
+                    <span className="font-medium" data-testid="text-instagram-username">@{connection?.igUsername}</span>
+                  </div>
+                  {connection?.pageName && (
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-muted-foreground">Page</span>
+                      <span className="font-medium" data-testid="text-instagram-page">{connection.pageName}</span>
+                    </div>
+                  )}
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-muted-foreground">Connected</span>
+                    <span className="font-medium" data-testid="text-instagram-connected-date">
+                      {connection?.connectedAt ? new Date(connection.connectedAt).toLocaleDateString() : "—"}
+                    </span>
+                  </div>
+                </div>
+                {isAdmin && (
+                  <Button
+                    variant="outline"
+                    className="w-full text-red-500 hover:text-red-600 hover:bg-red-50"
+                    onClick={() => setDisconnectDialogOpen(true)}
+                    data-testid="button-disconnect-instagram"
+                  >
+                    <Trash2 className="h-4 w-4 mr-2" />
+                    Disconnect
+                  </Button>
+                )}
+              </>
+            ) : (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Conecta tu Instagram profesional para responder y gestionar DMs desde el inbox de Curbe.
+                </p>
+                
+                <Button 
+                  className="w-full bg-pink-500 hover:bg-pink-600"
+                  onClick={handleOAuthConnect}
+                  disabled={oauthStartMutation.isPending}
+                  data-testid="button-connect-instagram"
+                >
+                  {oauthStartMutation.isPending ? (
+                    <>
+                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                      Connecting...
+                    </>
+                  ) : (
+                    <>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Connect Instagram
+                    </>
+                  )}
+                </Button>
+                
+                {oauthStartMutation.isPending && (
+                  <p className="text-xs text-muted-foreground text-center">
+                    Estamos completando la conexión con Meta. No cierres esta ventana.
+                  </p>
+                )}
+                
+                <p className="text-xs text-muted-foreground text-center">
+                  Te llevaremos a Meta para iniciar sesión y seleccionar tu cuenta de Instagram.
+                </p>
+
+                <Collapsible open={helpOpen} onOpenChange={setHelpOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="w-full text-muted-foreground" data-testid="button-instagram-help">
+                      <HelpCircle className="h-4 w-4 mr-2" />
+                      Need help connecting?
+                      <ChevronDown className={`h-4 w-4 ml-2 transition-transform ${helpOpen ? "rotate-180" : ""}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 space-y-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+                    <p>
+                      Necesitas una cuenta de Instagram Business o Creator y permisos para autorizar mensajería.
+                    </p>
+                  </CollapsibleContent>
+                </Collapsible>
+              </>
+            )}
+          </CardContent>
+        </Card>
+
+        <AlertDialog open={disconnectDialogOpen} onOpenChange={setDisconnectDialogOpen}>
+          <AlertDialogContent data-testid="dialog-disconnect-instagram">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Disconnect Instagram?</AlertDialogTitle>
+              <AlertDialogDescription>
+                Curbe dejará de recibir y enviar DMs desde esta cuenta.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-disconnect-instagram">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => disconnectMutation.mutate()}
+                className="bg-red-500 hover:bg-red-600"
+                data-testid="button-confirm-disconnect-instagram"
+              >
+                {disconnectMutation.isPending ? "Disconnecting..." : "Disconnect"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+      </>
+    </TooltipProvider>
+  );
+}
+
 function ComingSoonCard({ 
   icon: Icon, 
   title, 
@@ -549,13 +826,7 @@ export default function IntegrationsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <WhatsAppCard />
         
-        <ComingSoonCard
-          icon={SiInstagram}
-          title="Instagram Direct"
-          description="Connect your Instagram Business account"
-          bodyText="Conecta Instagram Business para manejar DMs desde Curbe (próximamente)."
-          color="text-pink-500"
-        />
+        <InstagramCard />
         
         <ComingSoonCard
           icon={SiFacebook}

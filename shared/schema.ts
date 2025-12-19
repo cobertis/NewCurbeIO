@@ -4593,10 +4593,17 @@ export const channelConnections = pgTable("channel_connections", {
   channel: channelTypeEnum("channel").notNull(),
   status: channelStatusEnum("status").notNull().default("pending"),
   
+  // WhatsApp fields
   wabaId: text("waba_id"),
   phoneNumberId: text("phone_number_id"),
   phoneNumberE164: text("phone_number_e164"),
   displayName: text("display_name"),
+  
+  // Instagram fields
+  igUserId: text("ig_user_id"),
+  igUsername: text("ig_username"),
+  pageId: text("page_id"),
+  pageName: text("page_name"),
   
   accessTokenEnc: text("access_token_enc"),
   tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }),

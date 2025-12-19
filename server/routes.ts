@@ -26421,6 +26421,240 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     return res.json({ success: true });
   });
 
+
+  // =====================================================
+  // INSTAGRAM DIRECT OAUTH INTEGRATION
+  // =====================================================
+
+  const META_INSTAGRAM_REDIRECT_URI = process.env.META_INSTAGRAM_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/meta/instagram/callback`;
+  const META_INSTAGRAM_SCOPES = [
+    "instagram_basic",
+    "instagram_manage_messages",
+    "pages_show_list",
+    "business_management"
+  ].join(",");
+
+  // POST /api/integrations/meta/instagram/start - Start Instagram OAuth flow
+  app.post("/api/integrations/meta/instagram/start", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
+      
+      if (!META_APP_ID) {
+        return res.status(500).json({ error: "Meta App ID not configured. Contact administrator." });
+      }
+      
+      const nonce = randomBytes(32).toString("hex");
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      
+      await db.insert(oauthStates).values({
+        companyId: user.companyId,
+        provider: "meta_instagram",
+        nonce,
+        expiresAt,
+        metadata: {
+          ip: req.ip || req.connection.remoteAddress,
+          userAgent: req.get("user-agent") || undefined
+        }
+      });
+      
+      const authUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
+      authUrl.searchParams.set("client_id", META_APP_ID);
+      authUrl.searchParams.set("redirect_uri", META_INSTAGRAM_REDIRECT_URI);
+      authUrl.searchParams.set("response_type", "code");
+      authUrl.searchParams.set("scope", META_INSTAGRAM_SCOPES);
+      authUrl.searchParams.set("state", nonce);
+      
+      return res.json({ authUrl: authUrl.toString(), state: nonce });
+    } catch (error) {
+      console.error("[Instagram OAuth] Start error:", error);
+      return res.status(500).json({ error: "Failed to start OAuth flow" });
+    }
+  });
+
+  // GET /api/integrations/meta/instagram/callback - OAuth callback from Meta
+  app.get("/api/integrations/meta/instagram/callback", async (req: Request, res: Response) => {
+    const frontendUrl = process.env.BASE_URL || "";
+    const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/settings/integrations?instagram=error&reason=${encodeURIComponent(reason)}`);
+    
+    try {
+      const { code, state } = req.query;
+      
+      if (!code || !state) {
+        console.error("[Instagram OAuth] Missing code or state");
+        return errorRedirect("connection_cancelled");
+      }
+      
+      const oauthState = await db.query.oauthStates.findFirst({
+        where: and(
+          eq(oauthStates.nonce, state as string),
+          eq(oauthStates.provider, "meta_instagram")
+        )
+      });
+      
+      if (!oauthState) {
+        console.error("[Instagram OAuth] Invalid state");
+        return errorRedirect("connection_failed");
+      }
+      
+      if (new Date() > new Date(oauthState.expiresAt)) {
+        console.error("[Instagram OAuth] State expired");
+        return errorRedirect("connection_failed");
+      }
+      
+      if (oauthState.usedAt) {
+        console.error("[Instagram OAuth] State already used");
+        return errorRedirect("connection_failed");
+      }
+      
+      await db.update(oauthStates)
+        .set({ usedAt: new Date() })
+        .where(eq(oauthStates.id, oauthState.id));
+      
+      // Exchange code for access token
+      const tokenUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token`;
+      const tokenParams = new URLSearchParams({
+        client_id: META_APP_ID!,
+        client_secret: META_APP_SECRET!,
+        code: code as string,
+        redirect_uri: META_INSTAGRAM_REDIRECT_URI,
+      });
+      
+      const tokenResponse = await fetch(`${tokenUrl}?${tokenParams.toString()}`);
+      const tokenData = await tokenResponse.json() as any;
+      
+      if (tokenData.error) {
+        console.error("[Instagram OAuth] Token exchange failed:", tokenData.error);
+        return errorRedirect("connection_failed");
+      }
+      
+      const accessToken = tokenData.access_token;
+      
+      // Fetch pages with Instagram Business accounts
+      const pagesUrl = `https://graph.facebook.com/${META_GRAPH_VERSION}/me/accounts?fields=id,name,instagram_business_account{id,username}&access_token=${accessToken}`;
+      const pagesResponse = await fetch(pagesUrl);
+      const pagesData = await pagesResponse.json() as any;
+      
+      if (pagesData.error) {
+        console.error("[Instagram OAuth] Failed to fetch pages:", pagesData.error);
+        return errorRedirect("permission_denied");
+      }
+      
+      const pagesWithInstagram = (pagesData.data || []).filter((page: any) => page.instagram_business_account);
+      
+      if (pagesWithInstagram.length === 0) {
+        console.error("[Instagram OAuth] No Instagram Business accounts found");
+        return errorRedirect("not_professional");
+      }
+      
+      // For now, use the first page with Instagram Business account
+      const selectedPage = pagesWithInstagram[0];
+      const igAccount = selectedPage.instagram_business_account;
+      
+      const encryptedToken = encryptToken(accessToken);
+      const scopes = META_INSTAGRAM_SCOPES.split(",");
+      const tokenExpiresAt = tokenData.expires_in 
+        ? new Date(Date.now() + tokenData.expires_in * 1000) 
+        : null;
+      
+      // UPSERT connection
+      const existing = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, oauthState.companyId),
+          eq(channelConnections.channel, "instagram")
+        )
+      });
+      
+      const connectionData = {
+        igUserId: igAccount.id,
+        igUsername: igAccount.username,
+        pageId: selectedPage.id,
+        pageName: selectedPage.name,
+        accessTokenEnc: encryptedToken,
+        tokenExpiresAt,
+        scopes,
+        status: "active" as const,
+        connectedAt: new Date(),
+        lastError: null,
+        updatedAt: new Date(),
+        metadata: pagesWithInstagram.length > 1 ? { availableAccounts: pagesWithInstagram } : null,
+      };
+      
+      if (existing) {
+        await db.update(channelConnections)
+          .set(connectionData)
+          .where(eq(channelConnections.id, existing.id));
+      } else {
+        await db.insert(channelConnections).values({
+          companyId: oauthState.companyId,
+          channel: "instagram",
+          ...connectionData,
+        });
+      }
+      
+      console.log(`[Instagram OAuth] Successfully connected @${igAccount.username} for company ${oauthState.companyId}`);
+      return res.redirect(`${frontendUrl}/settings/integrations?instagram=connected`);
+      
+    } catch (error) {
+      console.error("[Instagram OAuth] Callback error:", error);
+      return errorRedirect("connection_failed");
+    }
+  });
+
+  // GET /api/integrations/instagram/status - Get Instagram connection status
+  app.get("/api/integrations/instagram/status", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) return res.status(400).json({ error: "No company" });
+      
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "instagram")
+        )
+      });
+      
+      return res.json({ connection: connection || null });
+    } catch (error) {
+      console.error("[Instagram] Status error:", error);
+      return res.status(500).json({ error: "Failed to get Instagram status" });
+    }
+  });
+
+  // POST /api/integrations/instagram/disconnect - Disconnect Instagram
+  app.post("/api/integrations/instagram/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) return res.status(400).json({ error: "No company" });
+      
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "instagram")
+        )
+      });
+      
+      if (!connection) {
+        return res.status(404).json({ error: "No Instagram connection found" });
+      }
+      
+      await db.update(channelConnections)
+        .set({
+          status: "revoked",
+          accessTokenEnc: null,
+          disconnectedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(eq(channelConnections.id, connection.id));
+      
+      console.log(`[Instagram] Disconnected for company ${user.companyId}`);
+      return res.json({ success: true });
+    } catch (error) {
+      console.error("[Instagram] Disconnect error:", error);
+      return res.status(500).json({ error: "Failed to disconnect Instagram" });
+    }
+  });
+
   // POST /webhooks/telnyx/voicemail - Handle voicemail completed events
   app.post("/webhooks/telnyx/voicemail", async (req: Request, res: Response) => {
     try {
