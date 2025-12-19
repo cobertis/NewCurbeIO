@@ -82,6 +82,7 @@ interface TelnyxConversation {
   jobTitle: string | null;
   organization: string | null;
   lastMessage: string | null;
+  lastMediaUrls: string[] | null;
   lastMessageAt: string | null;
   unreadCount: number;
   companyPhoneNumber: string;
@@ -517,9 +518,21 @@ export default function InboxPage() {
                         </span>
                       </div>
                       <div className="flex items-center justify-between gap-2 mt-0.5">
-                        <p className="text-sm text-muted-foreground truncate">
-                          {conversation.lastMessage || "No messages yet"}
-                        </p>
+                        <div className="flex items-center gap-2 min-w-0 flex-1">
+                          {conversation.lastMediaUrls && conversation.lastMediaUrls.length > 0 && (
+                            <img 
+                              src={conversation.lastMediaUrls[0]} 
+                              alt="" 
+                              className="h-8 w-8 rounded object-cover shrink-0"
+                              onError={(e) => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                          )}
+                          <p className="text-sm text-muted-foreground truncate">
+                            {conversation.lastMessage || "No messages yet"}
+                          </p>
+                        </div>
                         {conversation.unreadCount > 0 && (
                           <Badge variant="default" className="shrink-0 h-5 min-w-[20px] flex items-center justify-center text-xs">
                             {conversation.unreadCount}

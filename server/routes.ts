@@ -27678,6 +27678,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       console.log("[Telnyx SMS Webhook] Message saved for conversation:", conversation.id, "with", uploadedMediaUrls.length, "media files");
       
+      // Update conversation with lastMediaUrls if there are media files
+      if (uploadedMediaUrls.length > 0) {
+        await db.update(telnyxConversations)
+          .set({
+            lastMessage: text || "(MMS attachment)",
+            lastMediaUrls: uploadedMediaUrls,
+            lastMessageAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(telnyxConversations.id, conversation.id));
+      }
       broadcastConversationUpdate(companyId);
       console.log("[Telnyx SMS Webhook] Broadcasted conversation update for company:", companyId);
       
@@ -35424,7 +35435,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Update conversation
         await db
           .update(telnyxConversations)
-          .set({ lastMessage: (text || "(attachment)").substring(0, 100), lastMessageAt: new Date(), updatedAt: new Date() })
+          .set({ lastMessage: (text || "(attachment)").substring(0, 100), lastMediaUrls: mediaUrls.length > 0 ? mediaUrls : null, lastMessageAt: new Date(), updatedAt: new Date() })
           .where(eq(telnyxConversations.id, id));
         res.status(201).json(message);
       } catch (error: any) {

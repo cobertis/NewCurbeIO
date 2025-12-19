@@ -6219,6 +6219,7 @@ export const telnyxConversations = pgTable("telnyx_conversations", {
   organization: text("organization"), // Customer organization/company
   companyPhoneNumber: text("company_phone_number").notNull(), // The Telnyx number we're using (E.164)
   lastMessage: text("last_message"), // Preview of last message
+  lastMediaUrls: text("last_media_urls").array(), // Media URLs from last message for preview
   lastMessageAt: timestamp("last_message_at"), // Timestamp of last message
   unreadCount: integer("unread_count").notNull().default(0), // Count of unread inbound messages
   status: telnyxConversationStatusEnum("status").notNull().default("open"), // Conversation status for filtering
