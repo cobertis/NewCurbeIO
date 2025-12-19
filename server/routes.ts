@@ -26893,8 +26893,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // =====================================================
   // TIKTOK LOGIN KIT OAUTH INTEGRATION
   // =====================================================
-  
-  const TIKTOK_REDIRECT_URI = process.env.TIKTOK_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/tiktok/callback`;
   const TIKTOK_SCOPES = "user.info.basic";
 
   // POST /api/integrations/tiktok/start - Start TikTok OAuth flow
@@ -26910,6 +26908,10 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(500).json({ error: "TikTok Client Key not configured. Contact administrator." });
       }
       
+      // Build redirect_uri from current request origin (SaaS multi-tenant support)
+      const origin = req.get("origin") || `${req.protocol}://${req.get("host")}`;
+      const tiktokRedirectUri = `${origin}/api/integrations/tiktok/callback`;
+      
       const nonce = randomBytes(32).toString("hex");
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
       
@@ -26920,13 +26922,15 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         expiresAt,
         metadata: {
           ip: req.ip || req.connection.remoteAddress,
-          userAgent: req.get("user-agent") || undefined
+          userAgent: req.get("user-agent") || undefined,
+          origin: origin,
+          redirectUri: tiktokRedirectUri
         }
       });
       
       const authUrl = new URL("https://www.tiktok.com/v2/auth/authorize/");
       authUrl.searchParams.set("client_key", clientKey);
-      authUrl.searchParams.set("redirect_uri", TIKTOK_REDIRECT_URI);
+      authUrl.searchParams.set("redirect_uri", tiktokRedirectUri);
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("scope", TIKTOK_SCOPES);
       authUrl.searchParams.set("state", nonce);
@@ -26997,7 +27001,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         client_secret: clientSecret,
         code: code as string,
         grant_type: "authorization_code",
-        redirect_uri: TIKTOK_REDIRECT_URI,
+        redirect_uri: (oauthState.metadata as any)?.redirectUri || "",
       });
       
       const tokenResponse = await fetch(tokenUrl, {
@@ -27093,7 +27097,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.log(`[TikTok OAuth] Created new connection for company ${oauthState.companyId}`);
       }
       
-      return res.redirect(`${frontendUrl}/settings/integrations?tiktok=connected`);
+      const successOrigin = (oauthState.metadata as any)?.origin || frontendUrl;
+      return res.redirect(`${successOrigin}/settings/integrations?tiktok=connected`);
     } catch (error) {
       console.error("[TikTok OAuth] Callback error:", error);
       return errorRedirect("connection_failed");
