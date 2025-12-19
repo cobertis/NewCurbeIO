@@ -723,42 +723,83 @@ export default function InboxPage() {
                             )}>{message.text}</p>
                           )}
                           
-                          {/* Media attachments - always try to render as image first */}
+                          {/* Media attachments */}
                           {message.mediaUrls && message.mediaUrls.length > 0 && (
                             <div className="flex flex-col gap-2 mt-1">
-                              {message.mediaUrls.map((url, idx) => (
-                                <button 
-                                  key={idx} 
-                                  onClick={() => setPreviewImage(url)}
-                                  className="block text-left"
-                                  data-testid={`media-attachment-${idx}`}
-                                >
-                                  <img 
-                                    src={url} 
-                                    alt="Attachment" 
-                                    className="max-w-[300px] max-h-[300px] rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
-                                    onError={(e) => {
-                                      const target = e.target as HTMLImageElement;
-                                      target.style.display = 'none';
-                                      const fallback = document.createElement('a');
-                                      fallback.href = url;
-                                      fallback.target = '_blank';
-                                      fallback.rel = 'noopener noreferrer';
-                                      fallback.className = 'flex items-center gap-2 p-2 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors';
-                                      fallback.innerHTML = `
-                                        <svg class="h-4 w-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                                        </svg>
-                                        <span class="text-xs text-gray-700 dark:text-gray-300">Attachment</span>
-                                        <svg class="h-3 w-3 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
-                                        </svg>
-                                      `;
-                                      target.parentElement!.appendChild(fallback);
-                                    }}
-                                  />
-                                </button>
-                              ))}
+                              {message.mediaUrls.map((url, idx) => {
+                                const isPdf = url.toLowerCase().includes('.pdf') || url.toLowerCase().includes('application/pdf');
+                                
+                                if (isPdf) {
+                                  return (
+                                    <div 
+                                      key={idx}
+                                      className="flex items-center gap-3 p-3 bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/20 dark:to-red-800/20 border border-red-200 dark:border-red-800 rounded-lg max-w-[280px]"
+                                      data-testid={`pdf-attachment-${idx}`}
+                                    >
+                                      <div className="flex-shrink-0 w-12 h-12 bg-red-500 rounded-lg flex items-center justify-center">
+                                        <FileText className="h-6 w-6 text-white" />
+                                      </div>
+                                      <div className="flex-1 min-w-0">
+                                        <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">PDF Document</p>
+                                        <p className="text-xs text-gray-500 dark:text-gray-400">Click to view or download</p>
+                                      </div>
+                                      <div className="flex gap-1">
+                                        <a
+                                          href={url}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="p-2 hover:bg-red-200 dark:hover:bg-red-700/50 rounded-lg transition-colors"
+                                          title="View PDF"
+                                        >
+                                          <Eye className="h-4 w-4 text-red-600 dark:text-red-400" />
+                                        </a>
+                                        <a
+                                          href={url}
+                                          download
+                                          className="p-2 hover:bg-red-200 dark:hover:bg-red-700/50 rounded-lg transition-colors"
+                                          title="Download PDF"
+                                        >
+                                          <Download className="h-4 w-4 text-red-600 dark:text-red-400" />
+                                        </a>
+                                      </div>
+                                    </div>
+                                  );
+                                }
+                                
+                                return (
+                                  <button 
+                                    key={idx} 
+                                    onClick={() => setPreviewImage(url)}
+                                    className="block text-left"
+                                    data-testid={`media-attachment-${idx}`}
+                                  >
+                                    <img 
+                                      src={url} 
+                                      alt="Attachment" 
+                                      className="max-w-[300px] max-h-[300px] rounded-lg object-cover cursor-pointer hover:opacity-90 transition-opacity"
+                                      onError={(e) => {
+                                        const target = e.target as HTMLImageElement;
+                                        target.style.display = 'none';
+                                        const fallback = document.createElement('a');
+                                        fallback.href = url;
+                                        fallback.target = '_blank';
+                                        fallback.rel = 'noopener noreferrer';
+                                        fallback.className = 'flex items-center gap-2 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors';
+                                        fallback.innerHTML = `
+                                          <svg class="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 21h10a2 2 0 002-2V9.414a1 1 0 00-.293-.707l-5.414-5.414A1 1 0 0012.586 3H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                          </svg>
+                                          <span class="text-sm text-gray-700 dark:text-gray-300">Attachment</span>
+                                          <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                                          </svg>
+                                        `;
+                                        target.parentElement!.appendChild(fallback);
+                                      }}
+                                    />
+                                  </button>
+                                );
+                              })}
                             </div>
                           )}
                           
