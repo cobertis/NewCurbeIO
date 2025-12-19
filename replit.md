@@ -187,7 +187,9 @@ Includes session security, webhook signature validation (Twilio, BulkVS, BlueBub
   - Deep link generation with 10-minute expiry
   - List of connected chats with disconnect option per chat
   - Spanish localization for all UI text
-- **ENV VARS REQUIRED:**
-  - TELEGRAM_BOT_TOKEN - Bot token from @BotFather
-  - TELEGRAM_BOT_USERNAME - Bot username (without @)
-  - TELEGRAM_WEBHOOK_SECRET_TOKEN - Secret for webhook signature validation
+- **Credentials (Configurable from Admin Panel):**
+  - Go to System Settings > API Credentials > Telegram Bot
+  - Bot Token - Token from @BotFather (e.g., 123456:ABC-DEF...)
+  - Bot Username - Without @ symbol (e.g., MyCurbeBot)
+  - Webhook Secret - Optional secret for webhook validation
+  - Falls back to ENV VARS: TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME, TELEGRAM_WEBHOOK_SECRET_TOKEN

@@ -235,6 +235,23 @@ export const credentialProvider = {
     return result;
   },
 
+  async getTelegram(): Promise<{ botToken: string; botUsername: string; webhookSecret: string }> {
+    const cacheKey = getCacheKey('telegram');
+    const cached = getFromCache<{ botToken: string; botUsername: string; webhookSecret: string }>(cacheKey);
+    if (cached) return cached;
+
+    const botToken = await secretsService.getCredential("telegram" as ApiProvider, "bot_token") || 
+                     process.env.TELEGRAM_BOT_TOKEN || '';
+    const botUsername = await secretsService.getCredential("telegram" as ApiProvider, "bot_username") || 
+                        process.env.TELEGRAM_BOT_USERNAME || '';
+    const webhookSecret = await secretsService.getCredential("telegram" as ApiProvider, "webhook_secret") || 
+                          process.env.TELEGRAM_WEBHOOK_SECRET_TOKEN || '';
+    
+    const result = { botToken, botUsername, webhookSecret };
+    setCache(cacheKey, result);
+    return result;
+  },
+
   async get(service: string, key: string): Promise<string> {
     const cacheKey = getCacheKey(service, key);
     const cached = getFromCache<string>(cacheKey);

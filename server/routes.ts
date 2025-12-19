@@ -27191,7 +27191,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // Helper: Send Telegram message
   async function sendTelegramMessage(chatId: string, text: string): Promise<any> {
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
+    const telegramCreds = await credentialProvider.getTelegram();
+    const botToken = telegramCreds.botToken;
     if (!botToken) return null;
     
     const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -27383,8 +27384,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       return res.status(403).json({ error: "Super admin access required" });
     }
 
-    const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET_TOKEN;
+    const telegramCreds = await credentialProvider.getTelegram();
+    const botToken = telegramCreds.botToken;
+    const webhookSecret = telegramCreds.webhookSecret;
     const baseUrl = process.env.BASE_URL || `https://${req.get("host")}`;
     
     if (!botToken) return res.status(500).json({ error: "TELEGRAM_BOT_TOKEN not configured" });
@@ -27414,7 +27416,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/integrations/telegram/start - Generate connect code
   app.post("/api/integrations/telegram/start", requireActiveCompany, async (req: Request, res: Response) => {
     const user = req.user as any;
-    const botUsername = process.env.TELEGRAM_BOT_USERNAME;
+    const telegramCreds = await credentialProvider.getTelegram();
+    const botUsername = telegramCreds.botUsername;
     
     if (!botUsername) return res.status(500).json({ error: "TELEGRAM_BOT_USERNAME not configured" });
     
@@ -27483,7 +27486,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   app.post("/webhooks/telegram", async (req: Request, res: Response) => {
     // Verify secret token
     const secretToken = req.get("X-Telegram-Bot-Api-Secret-Token");
-    const expectedToken = process.env.TELEGRAM_WEBHOOK_SECRET_TOKEN;
+    const telegramCreds = await credentialProvider.getTelegram();
+    const expectedToken = telegramCreds.webhookSecret;
     
     if (expectedToken && secretToken !== expectedToken) {
       console.warn("[Telegram Webhook] Invalid secret token");
@@ -28900,6 +28904,17 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           keys: [
             { keyName: "client_key", label: "Client Key", required: true, hint: "Your TikTok Client Key" },
             { keyName: "client_secret", label: "Client Secret", required: true, hint: "Your TikTok Client Secret" },
+          ]
+        },
+        { 
+          provider: "telegram", 
+          label: "Telegram Bot",
+          helpText: "Create a bot with @BotFather on Telegram to get your credentials",
+          helpUrl: "https://core.telegram.org/bots#botfather",
+          keys: [
+            { keyName: "bot_token", label: "Bot Token", required: true, hint: "Token from @BotFather (e.g., 123456:ABC-DEF...)" },
+            { keyName: "bot_username", label: "Bot Username", required: true, hint: "Without @ symbol (e.g., MyCurbeBot)" },
+            { keyName: "webhook_secret", label: "Webhook Secret", required: false, hint: "Optional secret for webhook validation" },
           ]
         },
       ];
