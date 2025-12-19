@@ -1,0 +1,315 @@
+Perfecto. Entonces vamos a copiar lo que funciona de Octopods, pero adaptado a Curbe (multi-tenant) y sin inventar “magia”. Te dejo el **diseño exacto** (1:1 + grupos) y el **prompt para Replit** para que lo implemente.
+
+## Diseño Curbe “estilo Octopods” para Telegram
+
+### Objetivo
+
+* Cualquier mensaje que llegue a **Telegram Bot** se convierte en:
+
+  * **Contacto/Lead** en Curbe (usando `telegram_user_id`)
+  * **Conversación** en el Inbox
+  * Mensajes **bidireccionales** (reply desde Curbe → Telegram)
+
+### Decisión de producto (igual que Octopods)
+
+1. **1:1 (DM al bot)** = 1 conversación por usuario (limpio, vendible).
+2. **Grupos** = 1 conversación por grupo (chat_id del grupo), con autores múltiples dentro del hilo.
+3. El **“lead ancla”** del grupo: el primer usuario que escribió en el grupo se usa como “contacto principal” de esa conversación, pero se guardan todos los participantes.
+
+---
+
+# Esquema de datos (exacto)
+
+## contacts (o leads)
+
+Agrega campos:
+
+* `telegram_user_id` (bigint/text) **unique por tenant**
+* `telegram_username` (text nullable)
+* `first_name`, `last_name` (text nullable)
+* `source = telegram`
+
+Índices:
+
+* unique(tenant_id, telegram_user_id)
+
+## channel_connections (por tenant)
+
+Si usas bot global (recomendado):
+
+* `provider = telegram`
+* `mode = shared_bot`
+* `status`
+* `telegram_chat_id` (para chat privado conectado) **opcional**
+* `metadata` (jsonb)
+
+Si soportas grupos, no necesitas una “conexión por chat”; el bot puede recibir grupos siempre. Pero sí guardas **mapping** de chat_id a tenant.
+
+### Tabla CRÍTICA: telegram_chat_links (multi-tenant routing)
+
+Porque un bot global puede estar en muchos chats. Necesitas saber a qué tenant pertenece cada chat.
+
+* `tenant_id`
+* `chat_id` (bigint/text) **unique**
+* `chat_type` (private/group/supergroup/channel)
+* `title` (group title)
+* `linked_by_user_id` (curbe user)
+* `linked_at`
+* `status` (active/revoked)
+* `metadata` (jsonb)
+
+Índices:
+
+* unique(chat_id)
+
+## conversations
+
+Campos:
+
+* `tenant_id`
+* `provider = telegram`
+* `external_thread_id` (text)
+
+  * para DM: `chat_id` (private)
+  * para grupo: `chat_id` (group)
+* `contact_id` (lead ancla)
+* `subject` (ej: `@username` o `Group: <title>`)
+* `last_message_at`
+
+Índices:
+
+* unique(tenant_id, provider, external_thread_id)
+
+## messages
+
+Campos:
+
+* `tenant_id`
+* `conversation_id`
+* `direction` inbound/outbound
+* `provider_message_id` (telegram message_id + chat_id para evitar colisiones)
+
+  * Ej: `${chat_id}:${message_id}`
+* `author_contact_id` (para grupos: el autor real)
+* `type` text | photo | video | file | voice
+* `text` nullable
+* `payload` jsonb (raw update)
+* `status` queued/sent/delivered/failed
+* timestamps
+
+Índices:
+
+* unique(provider_message_id)
+
+## telegram_participants (solo grupos)
+
+* `tenant_id`
+* `chat_id`
+* `telegram_user_id`
+* `contact_id`
+* `last_seen_at`
+* unique(tenant_id, chat_id, telegram_user_id)
+
+---
+
+# Enlazar un chat (DM o grupo) a un tenant: “connect code”
+
+Esto es el equivalente a “pegar token” pero con UX SaaS.
+
+### Curbe genera un código
+
+`POST /api/integrations/telegram/start`
+
+* crea `connect_code` (1 uso, expira 10 min)
+* devuelve deep link: `https://t.me/<BOT>?start=<code>`
+
+### Usuario toca Start (o lo usa en un grupo)
+
+Telegram manda update:
+
+* `message.text = "/start <code>"`
+
+Tu webhook:
+
+* valida `connect_code`
+* crea `telegram_chat_links(chat_id -> tenant_id)`
+* responde confirmación en Telegram:
+
+  * DM: “✅ Conectado a <workspace>”
+  * Grupo: “✅ Este grupo fue conectado a <workspace>. Escribe /ticket para abrir un caso.”
+
+**Esto permite conectar grupos también** (si ejecutan /start code en el grupo).
+
+---
+
+# Comportamiento 1:1 (DM)
+
+Cuando llega un mensaje:
+
+1. Resuelves tenant por `chat_id` en `telegram_chat_links`.
+2. Upsert contact por `from.id` (telegram_user_id).
+3. Upsert conversation por `external_thread_id = chat_id`.
+4. Insert message inbound.
+
+Cuando respondes:
+
+* `sendMessage(chat_id, text)` y guardas outbound.
+
+---
+
+# Comportamiento grupos (igual a Octopods, bien definido)
+
+Cuando llega un mensaje de grupo:
+
+1. Tenant por `chat_id` (link del grupo).
+2. Upsert contact del autor (`from.id`).
+3. Upsert conversation por `external_thread_id = chat_id`.
+4. Si conversation no tiene `contact_id` (lead ancla):
+
+   * set `contact_id = autor_contact_id` (primer escritor)
+5. Guarda message inbound con `author_contact_id` = autor real
+6. Upsert `telegram_participants` con last_seen_at.
+
+UI:
+
+* En la conversación del grupo muestras:
+
+  * título del grupo
+  * en cada mensaje: “Autor: Juan @juan”
+* Responder desde Curbe responde al grupo (chat_id del grupo).
+* Recomendación producto: soporta `/ticket` para crear sub-tickets si quieres granularidad.
+
+---
+
+# Prompt para tu agente de Replit (implementación completa)
+
+Copia/pega esto:
+
+```txt
+Implementa Telegram como canal en Curbe (SaaS multi-tenant) replicando el patrón de Octopods: conversaciones del bot -> conversaciones en inbox, con soporte para 1:1 y grupos.
+
+MODELO: Bot global + connect code + webhook.
+
+1) DB
+Crear tablas/migraciones:
+A) telegram_connect_codes:
+- code unique, tenant_id, created_by_user_id, expires_at, used_at, used_by_chat_id
+B) telegram_chat_links:
+- chat_id unique, tenant_id, chat_type, title, status, linked_by_user_id, linked_at, metadata
+C) telegram_participants:
+- tenant_id, chat_id, telegram_user_id, contact_id, last_seen_at
+D) Extender contacts:
+- telegram_user_id unique per tenant, telegram_username, first_name, last_name
+E) conversations/messages:
+- conversations unique(tenant_id, provider, external_thread_id)
+- messages provider_message_id unique = `${chat_id}:${message_id}`
+
+2) ENV
+- TELEGRAM_BOT_TOKEN
+- TELEGRAM_BOT_USERNAME
+- TELEGRAM_WEBHOOK_SECRET_TOKEN
+- CURBE_PUBLIC_BASE_URL
+
+3) Admin webhook setup
+POST /admin/telegram/setupWebhook
+- llama POST https://api.telegram.org/bot{TOKEN}/setWebhook
+  - url = CURBE_PUBLIC_BASE_URL + '/webhooks/telegram'
+  - secret_token = TELEGRAM_WEBHOOK_SECRET_TOKEN
+  - allowed_updates = ["message","edited_message","callback_query","my_chat_member"]
+- guardar logs y respuesta
+
+4) Connect flow (UI endpoint)
+POST /api/integrations/telegram/start
+- auth required
+- genera connect_code (1 uso, expira 10 min)
+- devuelve deepLink = https://t.me/{BOT_USERNAME}?start={code}
+- devuelve qrValue = deepLink
+
+GET /api/integrations/telegram/status
+- devuelve lista de chats conectados (private y/o groups) para el tenant
+
+POST /api/integrations/telegram/disconnect
+- permite desactivar un chat_id específico (revoked)
+
+5) Webhook handler
+POST /webhooks/telegram
+- verificar header X-Telegram-Bot-Api-Secret-Token == TELEGRAM_WEBHOOK_SECRET_TOKEN
+- responder 200 rápido
+- parse update.message
+
+A) Si message.text comienza con "/start":
+- extraer connect_code
+- validar: existe, no expirado, no usado
+- upsert telegram_chat_links(chat_id -> tenant_id), chat_type, title
+- marcar connect_code.used_at + used_by_chat_id
+- responder con sendMessage confirmación:
+  - private: "✅ Telegram connected to <workspace>"
+  - group: "✅ Group connected to <workspace>. Use /ticket to open a case."
+
+B) Si mensaje normal:
+- resolver tenant por telegram_chat_links(chat_id) y status=active
+- si no existe -> ignore + log
+- upsert contact por tenant_id + from.id (telegram_user_id)
+- upsert conversation:
+  - provider='telegram'
+  - external_thread_id = chat_id
+  - subject = (private: '@username' or name) / (group: 'Group: <title>')
+  - if conversation.contact_id null -> set to autor_contact_id (lead ancla en grupos)
+- insert message inbound:
+  - provider_message_id = `${chat_id}:${message_id}`
+  - author_contact_id = autor_contact_id
+  - type = detect (text/photo/video/document/voice)
+  - text/payload = guardar raw update
+- upsert telegram_participants en grupos
+
+6) Outbound send
+POST /api/tenants/:tenantId/telegram/messages/send
+Body: conversationId, text
+- lookup conversation -> chat_id = external_thread_id
+- call sendMessage(chat_id,text)
+- insert outbound message with provider_message_id from Telegram response and status sent
+
+7) UI/Inbox
+- Mostrar canal Telegram en Inbox.
+- Para grupos: renderizar autor por mensaje.
+- Para 1:1: render normal.
+- Implementar rate limit básico al webhook y no loguear tokens.
+
+Acceptance:
+- Connect: deep link -> /start code -> chat_link creado -> UI muestra Connected
+- Mensajes entrantes crean conversación y mensajes en tenant correcto
+- Reply desde Curbe llega a Telegram (DM o grupo)
+- Grupos: conversación única por chat_id, con autores múltiples
+```
+
+---
+
+## Microtext exacto (Telegram) para la UI en Curbe
+
+### Card: Telegram
+
+**Not connected:**
+“Conecta Telegram para atender soporte y ventas desde el inbox de Curbe.”
+**Button:** Connect Telegram
+**Subtext:** “Se abrirá Telegram. Presiona **Start** para vincular este chat con tu workspace.”
+
+**Help (collapsible):**
+“Telegram funciona mediante un bot. Los clientes deben iniciar el chat con el bot para recibir respuestas.”
+“Para conectar un grupo, ejecuta el enlace de conexión dentro del grupo y presiona Start.”
+
+### Connected (listado de chats vinculados)
+
+**Title:** Connected chats
+**Row (Private):** “Private chat — @username”
+**Row (Group):** “Group — <Group Title>”
+**Action:** Disconnect
+
+### Disconnect modal
+
+“Curbe dejará de enviar y recibir mensajes de este chat por Telegram.”
+
+---
+
+Esto replica exactamente la lógica de Octopods, pero en Curbe: **mensajes → conversaciones → workflows**.
+
+Si quieres que esto sea “premium”, el siguiente upgrade natural es: **/ticket** en grupos para crear sub-conversaciones internas (sin perder el hilo principal). Eso ya es ingeniería de producto, no solo integración.

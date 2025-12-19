@@ -3541,12 +3541,17 @@ export const contacts = pgTable("contacts", {
   emailBouncedAt: timestamp("email_bounced_at"), // When the bounce was detected
   emailBounceReason: text("email_bounce_reason"), // Reason for bounce if available
   
+  // Telegram fields
+  telegramUserId: text("telegram_user_id"), // Telegram user ID
+  telegramUsername: text("telegram_username"), // @username
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
   // Unique constraints - one canonical contact per phone/email per company
   uniqueCompanyEmail: uniqueIndex("contacts_company_email_unique").on(table.companyId, table.email).where(sql`${table.email} IS NOT NULL`),
   uniqueCompanyPhone: uniqueIndex("contacts_company_phone_unique").on(table.companyId, table.phoneNormalized).where(sql`${table.phoneNormalized} IS NOT NULL`),
+  uniqueCompanyTelegramUserId: uniqueIndex("contacts_company_telegram_user_id_unique").on(table.companyId, table.telegramUserId).where(sql`${table.telegramUserId} IS NOT NULL`),
   // Performance indexes
   companyIdIndex: index("contacts_company_id_idx").on(table.companyId),
   emailIndex: index("contacts_email_idx").on(table.email),
@@ -4582,7 +4587,7 @@ export type InsertCampaignPlaceholder = z.infer<typeof insertCampaignPlaceholder
 // WhatsApp Cloud API, Instagram, Facebook, TikTok
 // =====================================================
 
-export const channelTypeEnum = pgEnum("channel_type", ["whatsapp", "instagram", "facebook", "tiktok"]);
+export const channelTypeEnum = pgEnum("channel_type", ["whatsapp", "instagram", "facebook", "tiktok", "telegram"]);
 export const channelStatusEnum = pgEnum("channel_status", ["pending", "active", "error", "revoked"]);
 export const messageDirectionEnum = pgEnum("message_direction", ["inbound", "outbound", "system"]);
 export const messageStatusEnum = pgEnum("wa_message_status", ["queued", "sent", "delivered", "read", "failed"]);
@@ -4710,7 +4715,7 @@ export const waWebhookLogs = pgTable("wa_webhook_logs", {
   createdAtIdx: index("wa_webhook_logs_created_at_idx").on(table.createdAt),
 }));
 
-export const oauthProviderEnum = pgEnum("oauth_provider", ["meta_whatsapp", "meta_instagram", "meta_facebook", "tiktok"]);
+export const oauthProviderEnum = pgEnum("oauth_provider", ["meta_whatsapp", "meta_instagram", "meta_facebook", "tiktok", "telegram"]);
 
 export const oauthStates = pgTable("oauth_states", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -4743,6 +4748,153 @@ export type WaWebhookLog = typeof waWebhookLogs.$inferSelect;
 export type InsertWaWebhookLog = z.infer<typeof insertWaWebhookLogSchema>;
 export type OauthState = typeof oauthStates.$inferSelect;
 export type InsertOauthState = z.infer<typeof insertOauthStateSchema>;
+
+// =====================================================
+// TELEGRAM INTEGRATION TABLES
+// =====================================================
+
+// Telegram Connect Codes - One-time codes for linking chats to tenants
+export const telegramConnectCodes = pgTable("telegram_connect_codes", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  code: text("code").notNull().unique(),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  createdByUserId: varchar("created_by_user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  usedByChatId: text("used_by_chat_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  codeIdx: index("telegram_connect_codes_code_idx").on(table.code),
+  companyIdIdx: index("telegram_connect_codes_company_id_idx").on(table.companyId),
+}));
+
+export const insertTelegramConnectCodeSchema = createInsertSchema(telegramConnectCodes).omit({
+  id: true,
+  createdAt: true,
+});
+export type TelegramConnectCode = typeof telegramConnectCodes.$inferSelect;
+export type InsertTelegramConnectCode = z.infer<typeof insertTelegramConnectCodeSchema>;
+
+// Telegram Chat Type Enum
+export const telegramChatTypeEnum = pgEnum("telegram_chat_type", ["private", "group", "supergroup", "channel"]);
+
+// Telegram Chat Link Status Enum  
+export const telegramChatLinkStatusEnum = pgEnum("telegram_chat_link_status", ["active", "revoked"]);
+
+// Telegram Chat Links - Maps Telegram chat_ids to tenants
+export const telegramChatLinks = pgTable("telegram_chat_links", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  chatId: text("chat_id").notNull().unique(),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  chatType: telegramChatTypeEnum("chat_type").notNull(),
+  title: text("title"),
+  status: telegramChatLinkStatusEnum("status").notNull().default("active"),
+  linkedByUserId: varchar("linked_by_user_id").references(() => users.id, { onDelete: "set null" }),
+  linkedAt: timestamp("linked_at", { withTimezone: true }).notNull().defaultNow(),
+  metadata: jsonb("metadata"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  chatIdIdx: index("telegram_chat_links_chat_id_idx").on(table.chatId),
+  companyIdIdx: index("telegram_chat_links_company_id_idx").on(table.companyId),
+  statusIdx: index("telegram_chat_links_status_idx").on(table.status),
+}));
+
+export const insertTelegramChatLinkSchema = createInsertSchema(telegramChatLinks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type TelegramChatLink = typeof telegramChatLinks.$inferSelect;
+export type InsertTelegramChatLink = z.infer<typeof insertTelegramChatLinkSchema>;
+
+// Telegram Participants - Tracks users in group chats
+export const telegramParticipants = pgTable("telegram_participants", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  chatId: text("chat_id").notNull(),
+  telegramUserId: text("telegram_user_id").notNull(),
+  contactId: varchar("contact_id").references(() => contacts.id, { onDelete: "set null" }),
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }).notNull().defaultNow(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  uniqueParticipant: unique().on(table.companyId, table.chatId, table.telegramUserId),
+  chatIdIdx: index("telegram_participants_chat_id_idx").on(table.chatId),
+  telegramUserIdIdx: index("telegram_participants_telegram_user_id_idx").on(table.telegramUserId),
+}));
+
+export const insertTelegramParticipantSchema = createInsertSchema(telegramParticipants).omit({
+  id: true,
+  createdAt: true,
+});
+export type TelegramParticipant = typeof telegramParticipants.$inferSelect;
+export type InsertTelegramParticipant = z.infer<typeof insertTelegramParticipantSchema>;
+
+// Telegram Conversations - Conversations from Telegram (DM or Group)
+export const telegramConversations = pgTable("telegram_conversations", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  chatId: text("chat_id").notNull(),
+  chatType: telegramChatTypeEnum("chat_type").notNull(),
+  contactId: varchar("contact_id").references(() => contacts.id, { onDelete: "set null" }),
+  subject: text("subject"),
+  lastMessage: text("last_message"),
+  lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
+  unreadCount: integer("unread_count").notNull().default(0),
+  status: text("status").notNull().default("open"),
+  assignedTo: varchar("assigned_to").references(() => users.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  uniqueConversation: unique().on(table.companyId, table.chatId),
+  companyIdIdx: index("telegram_conversations_company_id_idx").on(table.companyId),
+  chatIdIdx: index("telegram_conversations_chat_id_idx").on(table.chatId),
+  statusIdx: index("telegram_conversations_status_idx").on(table.status),
+}));
+
+export const insertTelegramConversationSchema = createInsertSchema(telegramConversations).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type TelegramConversation = typeof telegramConversations.$inferSelect;
+export type InsertTelegramConversation = z.infer<typeof insertTelegramConversationSchema>;
+
+// Telegram Message Type Enum
+export const telegramMessageTypeEnum = pgEnum("telegram_message_type", ["text", "photo", "video", "document", "voice", "audio", "sticker", "animation", "location", "contact"]);
+
+// Telegram Message Status Enum
+export const telegramMessageStatusEnum = pgEnum("telegram_message_status", ["pending", "sent", "delivered", "read", "failed"]);
+
+// Telegram Messages - Individual messages
+export const telegramMessages = pgTable("telegram_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull().references(() => telegramConversations.id, { onDelete: "cascade" }),
+  direction: text("direction").notNull(),
+  providerMessageId: text("provider_message_id").notNull().unique(),
+  authorContactId: varchar("author_contact_id").references(() => contacts.id, { onDelete: "set null" }),
+  messageType: telegramMessageTypeEnum("message_type").notNull().default("text"),
+  text: text("text"),
+  mediaUrl: text("media_url"),
+  mediaType: text("media_type"),
+  payload: jsonb("payload"),
+  status: telegramMessageStatusEnum("status").notNull().default("pending"),
+  sentBy: varchar("sent_by").references(() => users.id, { onDelete: "set null" }),
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  errorMessage: text("error_message"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  conversationIdIdx: index("telegram_messages_conversation_id_idx").on(table.conversationId),
+  providerMessageIdIdx: index("telegram_messages_provider_message_id_idx").on(table.providerMessageId),
+  createdAtIdx: index("telegram_messages_created_at_idx").on(table.createdAt),
+}));
+
+export const insertTelegramMessageSchema = createInsertSchema(telegramMessages).omit({
+  id: true,
+  createdAt: true,
+});
+export type TelegramMessage = typeof telegramMessages.$inferSelect;
+export type InsertTelegramMessage = z.infer<typeof insertTelegramMessageSchema>;
 
 // =====================================================
 // TELNYX GLOBAL PRICING (Super Admin Configuration)
