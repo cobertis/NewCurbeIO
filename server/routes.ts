@@ -27263,7 +27263,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // Helper: Handle regular Telegram message
   async function handleTelegramMessage(update: any, message: any, chatId: string, chatType: string, fromUser: any) {
-    // Find tenant by chat_id
+    // Find tenant - first try by chat_id link, then fallback to any connected company
+    let companyId: string;
     const chatLink = await db.query.telegramChatLinks.findFirst({
       where: and(
         eq(telegramChatLinks.chatId, chatId),
@@ -27271,12 +27272,34 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       )
     });
     
-    if (!chatLink) {
-      console.log(`[Telegram] Ignoring message from unlinked chat ${chatId}`);
-      return;
+    if (chatLink) {
+      companyId = chatLink.companyId;
+    } else {
+      // Fallback: route to any company with active Telegram connection
+      const anyActiveLink = await db.query.telegramChatLinks.findFirst({
+        where: eq(telegramChatLinks.status, "active")
+      });
+      
+      if (!anyActiveLink) {
+        console.log(`[Telegram] No active Telegram connections, ignoring message from ${chatId}`);
+        return;
+      }
+      
+      companyId = anyActiveLink.companyId;
+      
+      // Auto-create link for this new chat
+      await db.insert(telegramChatLinks).values({
+        companyId,
+        chatId,
+        chatType: chatType as any,
+        title: message.chat.title || null,
+        linkedAt: new Date(),
+        status: "active"
+      }).onConflictDoNothing();
+      
+      console.log(`[Telegram] Auto-linked chat ${chatId} to company ${companyId}`);
     }
     
-    const companyId = chatLink.companyId;
     const telegramUserId = String(fromUser.id);
     
     // Upsert contact
