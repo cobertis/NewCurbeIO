@@ -35334,7 +35334,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Store files in temporary cache and create public URLs for MMS
         let mediaUrls: string[] = [];
         if (files && files.length > 0) {
-          const baseUrl = process.env.BASE_URL || "https://crm.cemscale.com";
+          const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+            ? `https://${process.env.REPLIT_DEV_DOMAIN}` 
+            : (process.env.BASE_URL || "https://crm.cemscale.com");
           
           for (const file of files) {
             try {
