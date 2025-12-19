@@ -1,0 +1,126 @@
+# Add RCS test number
+
+> Adds a test phone number to an RCS agent for testing purposes.
+
+
+
+## OpenAPI
+
+````yaml https://telnyx-openapi-ng.s3.us-east-1.amazonaws.com/real-time-communications/messaging.yml put /messaging_rcs/test_number_invite/{id}/{phone_number}
+openapi: 3.1.0
+info:
+  title: Telnyx Messaging API
+  version: 2.0.0
+  description: API for Messaging.
+  contact:
+    email: support@telnyx.com
+servers:
+  - url: https://api.telnyx.com/v2
+security:
+  - bearerAuth: []
+paths:
+  /messaging_rcs/test_number_invite/{id}/{phone_number}:
+    put:
+      tags:
+        - RCS
+      summary: Add RCS test number
+      description: Adds a test phone number to an RCS agent for testing purposes.
+      operationId: InviteATestNumberToRCS
+      parameters:
+        - name: id
+          in: path
+          description: RCS agent ID
+          required: true
+          schema:
+            type: string
+        - name: phone_number
+          in: path
+          description: Phone number in E164 format to invite for testing
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Test number successfully invited to RCS agent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RCSTestNumberInviteResponse'
+        4XX:
+          $ref: '#/components/responses/messaging_GenericErrorResponse'
+components:
+  schemas:
+    RCSTestNumberInviteResponse:
+      type: object
+      properties:
+        data:
+          type: object
+          properties:
+            record_type:
+              type: string
+              example: rcs.test_number_invite
+              enum:
+                - rcs.test_number_invite
+              description: Identifies the type of the resource
+            agent_id:
+              type: string
+              example: TestAgent
+              description: RCS agent ID
+            phone_number:
+              type: string
+              example: '+13125551234'
+              description: Phone number that was invited for testing
+            status:
+              type: string
+              example: PENDING
+              description: Status of the test number invitation
+      required:
+        - data
+    messaging_Errors:
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/messaging_Error'
+    messaging_Error:
+      required:
+        - code
+        - title
+      properties:
+        code:
+          type: string
+          format: integer
+        title:
+          type: string
+        detail:
+          type: string
+        source:
+          type: object
+          properties:
+            pointer:
+              description: JSON pointer (RFC6901) to the offending entity.
+              type: string
+              format: json-pointer
+            parameter:
+              description: Indicates which query parameter caused the error.
+              type: string
+        meta:
+          type: object
+          additionalProperties: true
+  responses:
+    messaging_GenericErrorResponse:
+      description: Unexpected error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/messaging_Errors'
+  securitySchemes:
+    bearerAuth:
+      scheme: bearer
+      type: http
+
+````
+
+---
+
+> To find navigation and other pages in this documentation, fetch the llms.txt file at: https://developers.telnyx.com/llms.txt
