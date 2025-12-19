@@ -98,7 +98,7 @@ const getChannelIcon = (channel?: string) => {
     case "rcs":
       return <MessageSquare className="h-2.5 w-2.5 text-white" />;
     case "sms":
-      return "bg-green-500";
+      return <MessageSquare className="h-2.5 w-2.5 text-white" />;
     default:
       return <MessageSquare className="h-2.5 w-2.5 text-white" />;
   }
