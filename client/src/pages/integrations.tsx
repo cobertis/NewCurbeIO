@@ -1129,7 +1129,7 @@ function TikTokCard() {
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Account</span>
                     <span className="font-medium" data-testid="text-tiktok-account">
-                      {connection?.tiktokDisplayName || connection?.tiktokUsername || "TikTok User"}
+                      {connection?.tiktokDisplayName || connection?.tiktokUsername || "Cuenta Conectada"}
                     </span>
                   </div>
                   {connection?.tiktokUsername && (

@@ -26893,7 +26893,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // =====================================================
   // TIKTOK LOGIN KIT OAUTH INTEGRATION
   // =====================================================
-  const TIKTOK_SCOPES = "user.info.basic";
+  const TIKTOK_SCOPES = "user.info.basic,user.info.profile";
 
   // POST /api/integrations/tiktok/start - Start TikTok OAuth flow
   app.post("/api/integrations/tiktok/start", requireActiveCompany, async (req: Request, res: Response) => {
@@ -27027,7 +27027,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const scopes = tokenData.scope ? tokenData.scope.split(",") : [TIKTOK_SCOPES];
       
       // Get user info
-      const userInfoUrl = `https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name,username`;
+      const userInfoUrl = `https://open.tiktokapis.com/v2/user/info/?fields=open_id,union_id,avatar_url,display_name,username,bio_description,is_verified,profile_deep_link`;
       const userInfoResponse = await fetch(userInfoUrl, {
         headers: {
           "Authorization": `Bearer ${accessToken}`,
@@ -27037,7 +27037,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const userInfoData = await userInfoResponse.json() as any;
       
       console.log("[TikTok OAuth] User info response:", JSON.stringify(userInfoData));
-      let displayName = openId;
+      let displayName = null;
       let username = null;
       let avatarUrl = null;
       
