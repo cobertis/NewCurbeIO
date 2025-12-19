@@ -4578,112 +4578,132 @@ export type CampaignPlaceholder = typeof campaignPlaceholders.$inferSelect;
 export type InsertCampaignPlaceholder = z.infer<typeof insertCampaignPlaceholderSchema>;
 
 // =====================================================
-// WHATSAPP EVOLUTION API (Multi-tenant WhatsApp integration)
+// CHANNEL CONNECTIONS (Multi-tenant Social Media Integrations)
+// WhatsApp Cloud API, Instagram, Facebook
 // =====================================================
 
-export const whatsappInstances = pgTable("whatsapp_instances", {
+export const channelTypeEnum = pgEnum("channel_type", ["whatsapp", "instagram", "facebook"]);
+export const channelStatusEnum = pgEnum("channel_status", ["pending", "active", "error", "revoked"]);
+export const messageDirectionEnum = pgEnum("message_direction", ["inbound", "outbound", "system"]);
+export const messageStatusEnum = pgEnum("wa_message_status", ["queued", "sent", "delivered", "read", "failed"]);
+
+export const channelConnections = pgTable("channel_connections", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-  instanceName: text("instance_name").notNull(),
-  status: text("status").notNull().default("disconnected"),
-  qrCode: text("qr_code"),
-  webhookUrl: text("webhook_url"),
+  channel: channelTypeEnum("channel").notNull(),
+  status: channelStatusEnum("status").notNull().default("pending"),
+  
+  wabaId: text("waba_id"),
+  phoneNumberId: text("phone_number_id"),
+  phoneNumberE164: text("phone_number_e164"),
+  displayName: text("display_name"),
+  
+  accessTokenEnc: text("access_token_enc"),
+  tokenExpiresAt: timestamp("token_expires_at", { withTimezone: true }),
+  scopes: jsonb("scopes").$type<string[]>(),
+  
   webhookSecret: text("webhook_secret"),
-  phoneNumber: text("phone_number"),
-  profileName: text("profile_name"),
-  profilePicUrl: text("profile_pic_url"),
-  lastConnectedAt: timestamp("last_connected_at", { withTimezone: true }),
+  metadata: jsonb("metadata"),
+  
+  connectedAt: timestamp("connected_at", { withTimezone: true }),
+  disconnectedAt: timestamp("disconnected_at", { withTimezone: true }),
+  lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
+  lastError: text("last_error"),
+  
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
-  companyInstanceUnique: unique().on(table.companyId, table.instanceName),
-  companyIdIdx: index("whatsapp_instances_company_id_idx").on(table.companyId),
+  companyChannelUnique: unique().on(table.companyId, table.channel),
+  phoneNumberIdUnique: unique().on(table.phoneNumberId),
+  companyIdIdx: index("channel_connections_company_id_idx").on(table.companyId),
+  statusIdx: index("channel_connections_status_idx").on(table.status),
 }));
 
-export const whatsappContacts = pgTable("whatsapp_contacts", {
+export const waConversations = pgTable("wa_conversations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  instanceId: varchar("instance_id").notNull().references(() => whatsappInstances.id, { onDelete: "cascade" }),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-  remoteJid: text("remote_jid").notNull(),
-  lid: text("lid"),
-  pushName: text("push_name"),
-  profilePicUrl: text("profile_pic_url"),
-  businessPhone: text("business_phone"),
-  businessName: text("business_name"),
-  profileFetchedAt: timestamp("profile_fetched_at", { withTimezone: true }),
-  isGroup: boolean("is_group").notNull().default(false),
-  isBlocked: boolean("is_blocked").notNull().default(false),
-  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
-}, (table) => ({
-  instanceContactUnique: unique().on(table.instanceId, table.remoteJid),
-  instanceIdIdx: index("whatsapp_contacts_instance_id_idx").on(table.instanceId),
-  companyIdIdx: index("whatsapp_contacts_company_id_idx").on(table.companyId),
-  lidIdx: index("whatsapp_contacts_lid_idx").on(table.lid),
-}));
-
-export const whatsappConversations = pgTable("whatsapp_conversations", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  instanceId: varchar("instance_id").notNull().references(() => whatsappInstances.id, { onDelete: "cascade" }),
-  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-  contactId: varchar("contact_id").references(() => whatsappContacts.id, { onDelete: "set null" }),
-  remoteJid: text("remote_jid").notNull(),
+  connectionId: varchar("connection_id").notNull().references(() => channelConnections.id, { onDelete: "cascade" }),
+  
+  externalThreadId: text("external_thread_id").notNull(),
+  contactE164: text("contact_e164"),
+  contactWaId: text("contact_wa_id").notNull(),
+  contactName: text("contact_name"),
+  contactProfilePic: text("contact_profile_pic"),
+  
   unreadCount: integer("unread_count").notNull().default(0),
   lastMessageAt: timestamp("last_message_at", { withTimezone: true }),
   lastMessagePreview: text("last_message_preview"),
-  lastMessageFromMe: boolean("last_message_from_me"),
-  isPinned: boolean("is_pinned").notNull().default(false),
-  isArchived: boolean("is_archived").notNull().default(false),
-  isMuted: boolean("is_muted").notNull().default(false),
+  
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
-  instanceConvoUnique: unique().on(table.instanceId, table.remoteJid),
-  instanceIdIdx: index("whatsapp_conversations_instance_id_idx").on(table.instanceId),
-  companyIdIdx: index("whatsapp_conversations_company_id_idx").on(table.companyId),
-  lastMessageIdx: index("whatsapp_conversations_last_message_idx").on(table.lastMessageAt),
+  connectionThreadUnique: unique().on(table.connectionId, table.externalThreadId),
+  companyIdIdx: index("wa_conversations_company_id_idx").on(table.companyId),
+  connectionIdIdx: index("wa_conversations_connection_id_idx").on(table.connectionId),
+  lastMessageIdx: index("wa_conversations_last_message_idx").on(table.lastMessageAt),
 }));
 
-export const whatsappMessages = pgTable("whatsapp_messages", {
+export const waMessages = pgTable("wa_messages", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  conversationId: varchar("conversation_id").notNull().references(() => whatsappConversations.id, { onDelete: "cascade" }),
-  instanceId: varchar("instance_id").notNull().references(() => whatsappInstances.id, { onDelete: "cascade" }),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-  messageId: text("message_id").notNull(),
-  remoteJid: text("remote_jid").notNull(),
-  fromMe: boolean("from_me").notNull().default(false),
-  senderJid: text("sender_jid"),
+  connectionId: varchar("connection_id").notNull().references(() => channelConnections.id, { onDelete: "cascade" }),
+  conversationId: varchar("conversation_id").notNull().references(() => waConversations.id, { onDelete: "cascade" }),
+  
+  providerMessageId: text("provider_message_id"),
+  direction: messageDirectionEnum("direction").notNull(),
+  status: messageStatusEnum("status").notNull().default("queued"),
+  
   messageType: text("message_type").notNull().default("text"),
-  content: text("content"),
+  textBody: text("text_body"),
   mediaUrl: text("media_url"),
-  mediaType: text("media_type"),
-  quotedMessageId: text("quoted_message_id"),
-  reaction: text("reaction"),
-  status: text("status").notNull().default("sent"),
-  timestamp: timestamp("timestamp", { withTimezone: true }).notNull(),
+  mediaMimeType: text("media_mime_type"),
+  templateName: text("template_name"),
+  
+  payload: jsonb("payload"),
+  errorMessage: text("error_message"),
+  
+  sentAt: timestamp("sent_at", { withTimezone: true }),
+  deliveredAt: timestamp("delivered_at", { withTimezone: true }),
+  readAt: timestamp("read_at", { withTimezone: true }),
+  
+  timestamp: timestamp("timestamp", { withTimezone: true }).notNull().defaultNow(),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
-  messageIdUnique: unique().on(table.instanceId, table.messageId),
-  conversationIdIdx: index("whatsapp_messages_conversation_id_idx").on(table.conversationId),
-  instanceIdIdx: index("whatsapp_messages_instance_id_idx").on(table.instanceId),
-  timestampIdx: index("whatsapp_messages_timestamp_idx").on(table.timestamp),
+  providerMessageUnique: unique().on(table.connectionId, table.providerMessageId),
+  conversationIdIdx: index("wa_messages_conversation_id_idx").on(table.conversationId),
+  connectionIdIdx: index("wa_messages_connection_id_idx").on(table.connectionId),
+  timestampIdx: index("wa_messages_timestamp_idx").on(table.timestamp),
 }));
 
-// WhatsApp Insert Schemas
-export const insertWhatsappInstanceSchema = createInsertSchema(whatsappInstances).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertWhatsappContactSchema = createInsertSchema(whatsappContacts).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertWhatsappConversationSchema = createInsertSchema(whatsappConversations).omit({ id: true, createdAt: true, updatedAt: true });
-export const insertWhatsappMessageSchema = createInsertSchema(whatsappMessages).omit({ id: true, createdAt: true });
+export const waWebhookLogs = pgTable("wa_webhook_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id"),
+  connectionId: varchar("connection_id"),
+  eventType: text("event_type").notNull(),
+  eventId: text("event_id"),
+  phoneNumberId: text("phone_number_id"),
+  payload: jsonb("payload"),
+  processed: boolean("processed").notNull().default(false),
+  error: text("error"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  eventIdIdx: index("wa_webhook_logs_event_id_idx").on(table.eventId),
+  createdAtIdx: index("wa_webhook_logs_created_at_idx").on(table.createdAt),
+}));
 
-// WhatsApp Types
-export type WhatsappInstance = typeof whatsappInstances.$inferSelect;
-export type InsertWhatsappInstance = z.infer<typeof insertWhatsappInstanceSchema>;
-export type WhatsappContact = typeof whatsappContacts.$inferSelect;
-export type InsertWhatsappContact = z.infer<typeof insertWhatsappContactSchema>;
-export type WhatsappConversation = typeof whatsappConversations.$inferSelect;
-export type InsertWhatsappConversation = z.infer<typeof insertWhatsappConversationSchema>;
-export type WhatsappMessage = typeof whatsappMessages.$inferSelect;
-export type InsertWhatsappMessage = z.infer<typeof insertWhatsappMessageSchema>;
+export const insertChannelConnectionSchema = createInsertSchema(channelConnections).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertWaConversationSchema = createInsertSchema(waConversations).omit({ id: true, createdAt: true, updatedAt: true });
+export const insertWaMessageSchema = createInsertSchema(waMessages).omit({ id: true, createdAt: true });
+export const insertWaWebhookLogSchema = createInsertSchema(waWebhookLogs).omit({ id: true, createdAt: true });
+
+export type ChannelConnection = typeof channelConnections.$inferSelect;
+export type InsertChannelConnection = z.infer<typeof insertChannelConnectionSchema>;
+export type WaConversation = typeof waConversations.$inferSelect;
+export type InsertWaConversation = z.infer<typeof insertWaConversationSchema>;
+export type WaMessage = typeof waMessages.$inferSelect;
+export type InsertWaMessage = z.infer<typeof insertWaMessageSchema>;
+export type WaWebhookLog = typeof waWebhookLogs.$inferSelect;
+export type InsertWaWebhookLog = z.infer<typeof insertWaWebhookLogSchema>;
 
 // =====================================================
 // TELNYX GLOBAL PRICING (Super Admin Configuration)

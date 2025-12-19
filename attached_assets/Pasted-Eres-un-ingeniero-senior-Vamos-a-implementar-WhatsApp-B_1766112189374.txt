@@ -1,0 +1,268 @@
+Eres un ingeniero senior. Vamos a implementar WhatsApp Business Platform (Cloud API) en Curbe, un SaaS multi-tenant. Objetivo MVP: que cada tenant pueda conectar su WhatsApp (WABA + número) y que Curbe pueda enviar/recibir mensajes con un inbox unificado.
+
+0) Reglas de oro
+
+Curbe es multi-tenant: NUNCA mezcles tokens/IDs entre tenants.
+
+No uses “dominio” para resolver tenant en webhooks. Resuelve por phone_number_id (o WABA id/metadata) mapeado en DB.
+
+Todo debe ser idempotente y con logs.
+
+Tokens secretos: encriptar en DB (AES-GCM o libsodium). No logs con tokens.
+
+Implementa colas/reintentos para envíos y para procesar webhooks (mínimo: retries con backoff).
+
+FASE 1 — Diseño de datos (DB)
+
+Crea tablas mínimas:
+
+tenants
+
+id (uuid)
+
+name
+
+channel_connections
+
+id (uuid)
+
+tenant_id (uuid FK)
+
+provider (enum: "meta_whatsapp")
+
+status (enum: "pending"|"active"|"error"|"revoked")
+
+waba_id (text, nullable)
+
+phone_number_id (text, unique, nullable)
+
+phone_number_e164 (text, nullable)
+
+display_name (text, nullable)
+
+access_token_enc (text) // token encriptado
+
+token_expires_at (timestamptz nullable)
+
+scopes (jsonb)
+
+metadata (jsonb)
+
+created_at, updated_at
+
+conversations
+
+id (uuid)
+
+tenant_id
+
+channel_connection_id
+
+external_thread_id (text) // para WA: wa_id del contacto o algo estable
+
+contact_e164 (text)
+
+contact_wa_id (text)
+
+last_message_at
+
+created_at, updated_at
+
+messages
+
+id (uuid)
+
+tenant_id
+
+conversation_id
+
+direction (enum: inbound|outbound)
+
+status (enum: queued|sent|delivered|read|failed)
+
+provider_message_id (text, unique nullable)
+
+type (text: text|template|image|etc)
+
+text (text nullable)
+
+payload (jsonb) // raw provider payload
+
+error (text nullable)
+
+created_at, updated_at
+
+Índices:
+
+channel_connections(phone_number_id) unique
+
+conversations(tenant_id, external_thread_id) unique
+
+messages(provider_message_id) unique
+
+messages(conversation_id, created_at)
+
+FASE 2 — Config y secretos
+
+Agrega env vars:
+
+META_APP_ID
+
+META_APP_SECRET
+
+META_VERIFY_TOKEN // para webhook verification
+
+META_SYSTEM_USER_TOKEN (opcional si lo usas)
+
+TOKEN_ENCRYPTION_KEY (32 bytes base64)
+
+CURBE_PUBLIC_BASE_URL (para construir callback/webhook URLs)
+
+No hardcodear nada.
+
+FASE 3 — Onboarding (conectar WhatsApp por tenant)
+
+Implementa endpoints internos:
+
+POST /api/tenants/:tenantId/whatsapp/connect/start
+
+Devuelve un objeto con:
+
+connectUrl (si usas Embedded Signup o flujo OAuth)
+
+o instrucciones/estado si estamos en modo manual temporal.
+
+MVP permitido si Embedded Signup toma tiempo: modo “manual” para conectar:
+
+El tenant pega phone_number_id, waba_id, y un access_token (temporal) en una pantalla admin.
+Pero deja la estructura lista para reemplazarlo por Embedded Signup sin rehacer DB.
+
+POST /api/tenants/:tenantId/whatsapp/connect/complete
+
+Recibe datos del onboarding (del flujo que sea) y:
+
+guarda waba_id, phone_number_id, phone_number_e164, display_name
+
+guarda access_token encriptado
+
+set status=active
+
+GET /api/tenants/:tenantId/whatsapp/status
+
+Devuelve si está connected y qué número.
+
+FASE 4 — Webhooks (recibir mensajes y estados)
+
+Implementa:
+
+GET /webhooks/meta/whatsapp
+
+Verificación: usa hub.verify_token == META_VERIFY_TOKEN y responde hub.challenge.
+
+POST /webhooks/meta/whatsapp
+
+Valida firma si aplica (si no la implementas en MVP, deja TODO preparado y documentado).
+
+Parsear payload de WhatsApp Cloud API:
+
+mensajes entrantes (texto)
+
+status updates (sent/delivered/read/failed)
+
+Resolver tenant así:
+
+extrae phone_number_id del payload
+
+busca channel_connections por phone_number_id
+
+si no existe: log + 200 OK (no reintentes infinito)
+
+Upsert conversación:
+
+external_thread_id = wa_id del contacto (o el identificador de thread)
+
+Insert message inbound/outbound status event
+
+Para status updates:
+
+encuentra message por provider_message_id y actualiza status
+
+Importante: Responder rápido 200 OK y procesar async si el payload es pesado.
+
+FASE 5 — Envío de mensajes (API interna)
+
+Implementa:
+
+POST /api/tenants/:tenantId/whatsapp/messages/send
+
+Body:
+
+to (E.164)
+
+text (string) // MVP solo texto
+
+conversationId (opcional)
+
+Lógica:
+
+encuentra channel_connection active del tenant
+
+POST al endpoint de Cloud API: /vXX.X/{phone_number_id}/messages
+
+guarda message outbound en DB con status queued/sent
+
+guarda provider_message_id de la respuesta
+
+maneja errores y set status failed + error text
+
+FASE 6 — Inbox mínimo en Curbe
+
+Implementa endpoints para UI:
+
+GET /api/tenants/:tenantId/inbox/conversations?channel=whatsapp
+
+Lista conversaciones con last_message.
+
+GET /api/tenants/:tenantId/inbox/conversations/:conversationId/messages
+
+Paginar.
+
+FASE 7 — Observabilidad + seguridad
+
+Logging estructurado (request_id, tenant_id, phone_number_id).
+
+No imprimir tokens.
+
+Rate limits básicos en webhooks.
+
+Auditar eventos: connect/disconnect, send, webhook receive.
+
+Criterios de aceptación (sin excusas)
+
+Puedo crear un tenant, conectar WhatsApp (manual MVP OK) y queda channel_connections.status=active.
+
+Si envío un mensaje desde Curbe → llega al WhatsApp real y se guarda message outbound con provider_message_id.
+
+Si respondo desde WhatsApp → webhook crea message inbound y aparece en el inbox del tenant correcto.
+
+Status updates (delivered/read) actualizan el mensaje correcto.
+
+Un webhook de un phone_number_id no registrado NO rompe nada y NO se asigna a un tenant al azar.
+
+Entregables
+
+Migraciones DB
+
+Endpoints implementados
+
+Un script de prueba (curl/postman) con ejemplos:
+
+connect/complete
+
+send
+
+webhook sample payload replay (para test local)
+
+README: pasos para configurar env vars y exponer webhook en dev (ngrok/cloudflared).
+
+Empieza por FASE 1–4 primero (DB + webhooks) y luego envío/inbox.
