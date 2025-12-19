@@ -1,0 +1,131 @@
+Perfecto. Aquí tienes el **copy exacto** (microtext) para la UI de Curbe, pensado para que el cliente entienda lo mínimo sin sentirse en una auditoría de la CIA. Incluye estados, errores y tooltips. Úsalo tal cual.
+
+---
+
+## WhatsApp Integration Card (Integrations page)
+
+### Estado: Not Connected
+
+**Título:** WhatsApp Business
+**Descripción corta:** Conecta tu WhatsApp Business para enviar y recibir mensajes desde tu inbox en Curbe.
+
+**Botón principal:** **Connect WhatsApp**
+**Texto bajo el botón (pequeño):** Te llevaremos a Meta para iniciar sesión y seleccionar tu cuenta de WhatsApp Business.
+
+**Requisitos (colapsable)**
+**Need help?**
+Para conectar WhatsApp necesitas:
+
+* Un **Meta Business** (Business Manager/Portfolio)
+* Un número elegible para WhatsApp Business Platform
+* Permisos para administrar tu cuenta de WhatsApp Business
+
+**Link:** “View WhatsApp setup guide” (si tienes docs internas)
+
+---
+
+### Estado: Connecting (loading)
+
+**Título:** Connecting WhatsApp…
+**Body:** Estamos completando la conexión con Meta. No cierres esta ventana.
+
+---
+
+### Estado: Connected
+
+**Badge:** Connected
+**Título:** WhatsApp Business
+**Detalles:**
+
+* **Number:** +1 XXX XXX XXXX
+* **Display name:** ACME Insurance
+* **Status:** Active
+
+**Botón secundario:** Disconnect
+**Texto pequeño:** Desconectar detendrá el envío/recepción de mensajes en Curbe para este número.
+
+---
+
+## Modal / Drawer de confirmación para Disconnect
+
+**Título:** Disconnect WhatsApp?
+**Body:** Curbe dejará de recibir y enviar mensajes desde este número. Puedes volver a conectarlo en cualquier momento.
+**Botones:** Cancel / **Disconnect**
+
+---
+
+## Errores (mostrar en toast + bloque en la card)
+
+### 1) Usuario canceló en Meta
+
+**Título:** Connection cancelled
+**Body:** No se completó la conexión con Meta. Intenta nuevamente cuando estés listo.
+
+### 2) Permisos insuficientes
+
+**Título:** Permission required
+**Body:** Tu cuenta de Meta no otorgó los permisos necesarios para conectar WhatsApp. Intenta nuevamente y acepta los permisos solicitados.
+
+### 3) Número ya conectado a otro workspace/tenant
+
+**Título:** This number is already connected
+**Body:** Este número ya está conectado a otro workspace. Usa un número diferente o desconecta el número del otro workspace antes de continuar.
+
+### 4) Número no elegible (muy común)
+
+**Título:** Number not eligible
+**Body:** Este número no puede conectarse a WhatsApp Business Platform en este momento.
+**Link:** Learn how to fix this
+
+Tooltip / “Learn how to fix this” contenido:
+
+* Si el número está en WhatsApp personal o WhatsApp Business App, normalmente se requiere migración/desvinculación.
+* Recomendación: usar un número nuevo dedicado para WhatsApp del negocio.
+
+### 5) Fallo técnico (token/webhook)
+
+**Título:** Connection failed
+**Body:** No pudimos completar la conexión. Nuestro equipo ya tiene registros del error. Intenta nuevamente en unos minutos.
+
+---
+
+## Tooltips útiles (icono “i”)
+
+### Tooltip junto al botón Connect
+
+**Texto:** Conectar WhatsApp habilita mensajes en Curbe. Meta puede pedirte seleccionar/crear tu cuenta de WhatsApp Business y confirmar el número.
+
+### Tooltip junto a “Status”
+
+**Texto:** “Active” significa que Curbe puede enviar y recibir mensajes. Si aparece “Needs attention”, reconecta o revisa permisos.
+
+---
+
+## Texto para “Coming Soon” (Instagram y Facebook)
+
+### Instagram Direct (Coming Soon)
+
+**Body:** Conecta Instagram Business para manejar DMs desde Curbe (próximamente).
+
+### Facebook Messenger (Coming Soon)
+
+**Body:** Conecta tu Página de Facebook para manejar Messenger desde Curbe (próximamente).
+
+---
+
+## Copy para “Setup guide” (si haces una mini guía interna)
+
+**Título:** Before you connect WhatsApp
+**Bullets:**
+
+* Asegúrate de tener acceso a tu **Meta Business**
+* Ten listo un número dedicado para WhatsApp del negocio (recomendado)
+* Si ya usas ese número en WhatsApp, podría requerir migración
+
+---
+
+### Brutalidad útil (para ti, no para el cliente)
+
+Tu UI actual está diseñada para **tú** (devops) no para el cliente. Con este copy, el cliente entiende lo que pasa sin tocar IDs ni tokens. Si a esto le sumas el flujo “Connect with Meta”, ya tienes UX de producto serio.
+
+Si quieres, también te redacto el **texto del “Learn how to fix this”** como una mini página FAQ de 1 pantalla (sin tecnicismos) para reducir tickets.

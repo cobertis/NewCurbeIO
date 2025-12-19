@@ -1,0 +1,123 @@
+Instagram Direct Integration Card (UI microtext)
+Estado: Not Connected
+
+Título: Instagram Direct
+Descripción corta: Conecta tu Instagram profesional para responder y gestionar DMs desde el inbox de Curbe.
+
+Botón principal: Connect Instagram
+Texto pequeño bajo el botón: Te llevaremos a Meta para iniciar sesión y seleccionar tu cuenta de Instagram.
+
+Requisitos (colapsable)
+Need help?
+Para conectar Instagram necesitas:
+
+Una cuenta de Instagram profesional (Business o Creator)
+
+Acceso a tu cuenta en Meta (para autorizar permisos)
+
+Tu app debe estar aprobada para mensajería (si aplica a tu caso)
+
+Link: “View Instagram setup guide”
+
+Nota interna: IG DM requiere permisos como instagram_manage_messages (lectura/respuesta de DMs) y suele requerir App Review/Advanced Access. 
+Facebook for Developers
++1
+
+Estado: Connecting (loading)
+
+Título: Connecting Instagram…
+Body: Estamos completando la conexión con Meta. No cierres esta ventana.
+
+Estado: Connected
+
+Badge: Connected
+Título: Instagram Direct
+Detalles:
+
+Account: @username
+
+Account type: Professional
+
+Status: Active
+
+Botón secundario: Disconnect
+Texto pequeño: Desconectar detendrá la recepción y el envío de DMs en Curbe para esta cuenta.
+
+Modal / Drawer de confirmación para Disconnect
+
+Título: Disconnect Instagram?
+Body: Curbe dejará de recibir y enviar DMs desde esta cuenta. Puedes volver a conectarla en cualquier momento.
+Botones: Cancel / Disconnect
+
+Errores (toast + bloque en la card)
+1) Usuario canceló en Meta
+
+Título: Connection cancelled
+Body: No se completó la conexión con Meta. Intenta nuevamente cuando estés listo.
+
+2) Cuenta no es profesional
+
+Título: Professional account required
+Body: Esta cuenta es personal. Cambia tu Instagram a Business o Creator y vuelve a intentarlo.
+
+3) Permisos insuficientes / falta aprobación
+
+Título: Permission required
+Body: Curbe no tiene permiso para acceder a Instagram DMs con esta cuenta. Intenta nuevamente y acepta los permisos solicitados.
+
+(Mensaje técnico interno/logs): falta instagram_manage_messages o Advanced Access / App Review. 
+Facebook for Developers
++1
+
+4) App en modo Development / cuenta no autorizada
+
+Título: Access not available
+Body: Esta integración aún no está habilitada para esta cuenta. Si eres parte del equipo, solicita acceso o vuelve a intentarlo cuando esté disponible.
+
+5) Fallo técnico (webhook/config)
+
+Título: Connection failed
+Body: No pudimos completar la conexión. Ya registramos el error. Intenta nuevamente en unos minutos.
+
+Tooltips (icono “i”)
+Tooltip junto a “Connect Instagram”
+
+Texto: Conectar Instagram permite gestionar DMs desde Curbe. Meta puede pedirte seleccionar la cuenta y autorizar permisos de mensajería.
+
+Tooltip junto a “Status”
+
+Texto: “Active” significa que Curbe puede recibir y responder DMs. Si aparece “Needs attention”, reconecta o revisa permisos.
+
+“Instagram setup guide” (mini guía interna de 1 pantalla)
+
+Título: Before you connect Instagram
+Bullets:
+
+Asegúrate de que tu cuenta sea Business o Creator
+
+Ten acceso a Meta para autorizar permisos
+
+Si tu cuenta tiene restricciones, Meta puede requerir pasos adicionales de verificación
+
+Sección: Troubleshooting
+
+“I can’t see my Instagram account” → Asegúrate de estar usando la cuenta correcta y que sea profesional.
+
+“Connection succeeds but messages don’t arrive” → Revisar webhooks/subscriptions en el backend. (Tu webhook debe estar suscrito a eventos de mensajería). 
+Facebook for Developers
++1
+
+Copy para la tarjeta cuando aún no está listo (si la vas a marcar Coming Soon)
+
+Badge: Coming Soon
+Body: Esta integración está en desarrollo y estará disponible pronto.
+
+Realidad importante (para que diseñes bien el producto)
+
+Instagram DM no es “solo un login” si tu app todavía no tiene permisos aprobados para mensajería. El botón puede estar perfecto, pero sin instagram_manage_messages + App Review/Advanced Access, se te va a convertir en “connect-loop” y tickets. 
+Facebook for Developers
++2
+Facebook for Developers
++2
+
+Si quieres, te escribo el prompt para el agente igual de detallado que el de WhatsApp pero para Instagram (start/callback/status/disconnect + scopes + webhooks + mapeo por ig_user_id), para que lo implemente sin improvisar.

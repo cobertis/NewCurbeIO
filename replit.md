@@ -100,3 +100,34 @@ Includes session security, webhook signature validation (Twilio, BulkVS, BlueBub
   - `server/services/telnyx-messaging-service.ts`: Added sendRcsMessage function
   - `client/src/components/compliance-tab.tsx`: Added RCS Agents management card
   - `client/src/pages/inbox.tsx`: Added RCS channel icon (purple) and color support
+
+### WhatsApp Cloud API OAuth Integration (IN PROGRESS)
+- **Feature:** Meta Embedded Signup OAuth flow for WhatsApp Business Platform connection.
+- **Database Schema (`shared/schema.ts`):**
+  - Added `oauthProviderEnum` ("meta_whatsapp", "meta_instagram", "meta_facebook")
+  - Added `oauthStates` table for anti-CSRF OAuth flow with 10-min expiry
+  - Updated `channelConnections` with WhatsApp-specific fields
+- **Token Encryption (`server/crypto.ts`):**
+  - `encryptToken(plaintext)` and `decryptToken(encrypted)` using AES-256-GCM
+  - Falls back to SECRETS_MASTER_KEY if TOKEN_ENCRYPTION_KEY_BASE64 not set
+- **Backend OAuth Routes (`server/routes.ts` ~lines 25985-26450):**
+  - POST /api/integrations/meta/whatsapp/start - Generates OAuth URL with CSRF nonce
+  - GET /api/integrations/meta/whatsapp/callback - Handles Meta callback, validates state, encrypts token
+  - GET /api/integrations/whatsapp/status - Returns connection status (admin-safe, no tokens)
+  - POST /api/integrations/whatsapp/connect - Manual connect (admin only)
+  - POST /api/integrations/whatsapp/disconnect - Marks connection as revoked
+- **Frontend UI (`client/src/pages/integrations.tsx`):**
+  - OAuth flow with "Connect WhatsApp" button
+  - Collapsible "Need help?" section with requirements
+  - Tooltips for Connect button and Status field
+  - Error handling with localized Spanish messages for:
+    - Connection cancelled, Permission required, Number already connected
+    - Number not eligible, Connection failed
+  - Disconnect confirmation modal with Spanish copy
+  - Coming Soon cards for Instagram/Facebook with Spanish descriptions
+- **ENV VARS NEEDED:**
+  - META_APP_ID, META_APP_SECRET
+  - META_REDIRECT_URI (optional, defaults to BASE_URL + callback path)
+  - META_GRAPH_VERSION (optional, defaults to v21.0)
+  - META_WEBHOOK_VERIFY_TOKEN (for webhooks - TODO)
+- **PENDING:** Webhooks with tenant routing by phone_number_id

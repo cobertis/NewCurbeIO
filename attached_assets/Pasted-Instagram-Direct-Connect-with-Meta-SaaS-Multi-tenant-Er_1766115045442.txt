@@ -1,0 +1,350 @@
+Instagram Direct “Connect with Meta” (SaaS Multi-tenant)
+
+Eres un ingeniero senior. Vamos a implementar la integración de Instagram Direct (DMs) en Curbe (multi-tenant) con experiencia SaaS: un botón “Connect Instagram” abre login de Meta, el usuario selecciona su cuenta IG profesional y queda conectado. El usuario NO debe ver IDs, tokens, ni configuraciones técnicas.
+
+Meta-objetivos
+
+“Connect Instagram” (OAuth) → seleccionar IG profesional → guardado en DB.
+
+Webhooks entrantes de IG DMs → se enrutan al tenant correcto (sin adivinar por dominio).
+
+Inbox unificado (conversations/messages) reutiliza la misma estructura que WhatsApp.
+
+“Disconnect” limpia y desactiva.
+
+El flujo manual (IDs/tokens) queda solo para Admin/Debug.
+
+1) Modelo de datos (Postgres)
+channel_connections (reutilizar tabla si ya existe)
+
+Para Instagram:
+
+provider: meta_instagram
+
+status: pending | active | error | revoked
+
+ig_user_id (text) UNIQUE
+
+ig_username (text)
+
+page_id (text) (muchas implementaciones de IG Messaging dependen de Page; guarda si aplica)
+
+page_name (text)
+
+access_token_enc (text) token encriptado
+
+token_expires_at (timestamptz null)
+
+scopes (jsonb)
+
+metadata (jsonb) // cualquier mapping extra: business_id, etc.
+
+tenant_id fk
+
+timestamps
+
+Índices/constraints:
+
+unique(provider, ig_user_id)
+
+index(tenant_id, provider)
+
+oauth_states (anti-CSRF)
+
+nonce unique
+
+tenant_id
+
+provider (meta_instagram)
+
+expires_at (now + 10 min)
+
+used_at null
+
+metadata (ip, ua)
+
+2) ENV VARS
+
+META_APP_ID
+
+META_APP_SECRET
+
+META_REDIRECT_URI_INSTAGRAM (ej: https://app.curbe.io/api/integrations/meta/instagram/callback)
+
+META_WEBHOOK_VERIFY_TOKEN
+
+TOKEN_ENCRYPTION_KEY_BASE64 (32 bytes base64, AES-256-GCM)
+
+META_GRAPH_VERSION (vXX.X)
+
+3) Encriptación (obligatorio)
+
+Implementar AES-256-GCM con IV aleatorio. No loguear tokens.
+
+Funciones:
+
+encryptToken(plain) -> enc
+
+decryptToken(enc) -> plain
+
+4) Backend: endpoints OAuth (multi-tenant)
+(A) Start
+
+POST /api/integrations/meta/instagram/start
+
+Acción:
+
+Obtener tenantId del usuario logueado.
+
+Crear nonce y guardarlo en oauth_states con expiry 10 min.
+
+Construir authUrl hacia Meta Login:
+
+client_id=META_APP_ID
+
+redirect_uri=META_REDIRECT_URI_INSTAGRAM
+
+response_type=code
+
+state=nonce
+
+scope=... (scopes mínimos para:
+
+identificar páginas/cuentas disponibles,
+
+acceder a la cuenta IG profesional,
+
+mensajería DMs)
+NOTA: los scopes exactos deben consultarse en “Permissions Reference” y en “Instagram Messaging” docs; deja comentario en código. 
+Facebook for Developers
++1
+
+Responder { authUrl }.
+
+(B) Callback
+
+GET /api/integrations/meta/instagram/callback?code=...&state=...
+
+Acción:
+
+Validar state:
+
+existe en oauth_states
+
+no expirado
+
+used_at null → set used_at=now()
+
+Intercambiar code por access_token.
+
+Convertir a token “long-lived” si aplica (si la plataforma lo permite para este token).
+
+Descubrir qué IG account conectar:
+
+Recuperar assets disponibles (Pages + IG professional vinculadas).
+
+Construir una lista: { page_id, page_name, ig_user_id, ig_username }.
+
+Si hay 1 sola, seleccionar automática.
+
+Si hay múltiples, redirigir a una pantalla dentro de Curbe: /settings/integrations/instagram/select?state=... con la lista (o guardar lista temporal en DB/cache y que el front la pida).
+
+Guardar channel_connections:
+
+provider=meta_instagram
+
+tenant_id del oauth_state
+
+ig_user_id / ig_username / page_id / page_name
+
+token encriptado
+
+status=active
+
+Redirigir a /settings/integrations?instagram=connected.
+
+Selección de cuenta (si hay múltiples)
+
+Crear endpoint:
+GET /api/integrations/meta/instagram/assets?state=...
+
+devuelve lista de IG profesionales disponibles.
+
+Y endpoint:
+POST /api/integrations/meta/instagram/select
+Body: { state, ig_user_id, page_id }
+
+valida state y que esos assets pertenecen al token
+
+guarda connection y activa
+
+(C) Status
+
+GET /api/integrations/meta/instagram/status
+
+devuelve connected, ig_username, page_name, updated_at, status.
+
+(D) Disconnect
+
+POST /api/integrations/meta/instagram/disconnect
+
+status=revoked
+
+borrar token o invalidarlo (según política)
+
+opcional: unsubscribe de webhooks si aplica.
+
+5) Webhooks (Instagram Messaging)
+
+Crear endpoints:
+
+(A) Verify
+
+GET /webhooks/meta/instagram
+
+validar hub.verify_token vs META_WEBHOOK_VERIFY_TOKEN
+
+responder hub.challenge si ok
+
+(B) Receive
+
+POST /webhooks/meta/instagram
+
+responder 200 rápido
+
+procesar asíncrono (cola o worker)
+
+Procesamiento:
+
+Identificar la clave de ruteo del evento (depende del tipo de webhook; típicamente page_id o ig_user_id / recipient).
+
+Resolver tenant:
+
+buscar channel_connections por provider=meta_instagram y page_id o ig_user_id (según lo que traiga el payload).
+
+Upsert conversation:
+
+external_thread_id = identificador estable del thread (ej: id del usuario externo)
+
+guardar contact_ig_id, contact_username si está
+
+Insert message inbound en messages (idempotente por provider_message_id).
+
+Status updates si existen: actualizar outbound.
+
+Referencia: Instagram Messaging Webhooks existen y son el mecanismo estándar para recibir eventos en tiempo real. 
+Facebook for Developers
++1
+
+6) Envío de mensajes (DM reply)
+
+Crear endpoint interno:
+
+POST /api/tenants/:tenantId/instagram/messages/send
+Body:
+
+conversationId
+
+text
+
+Acción:
+
+Encontrar channel_connection active del tenant.
+
+Decrypt token.
+
+Usar el endpoint de envío de la plataforma (Send API / messages) según docs de Instagram Messaging en Messenger Platform. 
+Facebook for Developers
++1
+
+Guardar mensaje outbound:
+
+status=sent/queued
+
+provider_message_id de respuesta
+
+Manejar errores: status=failed + error.
+
+Regla producto (importante):
+
+En MVP, solo permitir enviar mensajes a usuarios que ya están en una conversación (reply). No prometas “outbound frío” por IG sin validar políticas; te mete en bloqueos.
+
+7) Frontend UI/UX (igual que WhatsApp)
+Card: Instagram Direct
+
+Estados:
+
+Not Connected → botón Connect Instagram
+
+Connecting → loading
+
+Connected → @username, Status: Active, botón Disconnect
+
+Flujo:
+
+Click Connect → POST /start → abrir authUrl (popup o redirect).
+
+Callback vuelve → refrescar /status.
+
+Si multiple accounts → mostrar selector UI dentro de Curbe (lista con radio buttons y botón “Connect this account”).
+
+Ocultar modo manual
+
+Cualquier UI que pida IDs/tokens → solo role=admin o feature flag integration_debug.
+
+8) Errores y edge cases (obligatorio)
+
+Si usuario cancela en Meta → mostrar “Connection cancelled”.
+
+Si cuenta no es profesional → error “Professional account required”.
+
+Si ig_user_id ya está conectado a otro tenant → bloquear y explicar.
+
+Si webhooks llegan sin mapping → log y 200 (no reintentar infinito).
+
+Implementar auditoría: integration_events (opcional) con connect/disconnect/error.
+
+9) Entregables
+
+Migración DB
+
+Endpoints + servicios OAuth
+
+Webhook verify/receive
+
+UI card + selector (si múltiples)
+
+Script de pruebas:
+
+webhook replay con payload sample
+
+status/disconnect
+
+README corto: configuración env vars + cómo probar en dev.
+
+Criterios de aceptación
+
+Un tenant normal conecta IG con 1 botón y queda activo.
+
+Curbe recibe un DM (webhook) y aparece en inbox del tenant correcto.
+
+Curbe responde a ese DM y se guarda el outbound.
+
+Disconnect corta el flujo.
+
+Microtext exacto para UI (úsalo tal cual)
+
+Not connected:
+“Conecta tu Instagram profesional para responder y gestionar DMs desde el inbox de Curbe.”
+Botón: “Connect Instagram”
+Subtexto: “Te llevaremos a Meta para iniciar sesión y seleccionar tu cuenta de Instagram.”
+
+Connected:
+“Connected: @username”
+Subtexto: “Curbe puede recibir y responder DMs para esta cuenta.”
+Botón: “Disconnect”
+
+Need help (colapsable):
+“Necesitas una cuenta de Instagram Business o Creator y permisos para autorizar mensajería.”
+
+Si tu agente implementa este plan y aún así “no salen mensajes”, casi siempre es permisos/review o suscripción webhooks mal hecha. Y eso se depura rápido porque ya tendrás: mapping correcto, logs limpios, y endpoints separados por provider.
