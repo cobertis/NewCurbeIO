@@ -791,6 +791,37 @@ export function broadcastDataInvalidation(queryKeys: string[], companyId?: strin
   console.log(`[WebSocket] Broadcasting data_invalidation for queries: ${queryKeys.join(', ')} to ${sentCount} authenticated clients${companyId ? ` (company: ${companyId})` : ''}`);
 }
 
+// Broadcast inbox message update for real-time inbox refresh
+export function broadcastInboxMessage(companyId: string, conversationId: string) {
+  if (!wss) {
+    console.warn('[WebSocket] Server not initialized');
+    return;
+  }
+
+  const message = JSON.stringify({
+    type: 'telnyx_message',
+    conversationId,
+    companyId
+  });
+
+  let sentCount = 0;
+  wss.clients.forEach((client) => {
+    const authClient = client as AuthenticatedWebSocket;
+    
+    if (!authClient.isAuthenticated || client.readyState !== WebSocket.OPEN) {
+      return;
+    }
+    
+    // Only send to clients in the same company or superadmins
+    if (authClient.companyId === companyId || authClient.role === 'superadmin') {
+      client.send(message);
+      sentCount++;
+    }
+  });
+
+  console.log(`[WebSocket] Broadcasting telnyx_message for inbox conversation ${conversationId} to ${sentCount} clients (company: ${companyId})`);
+}
+
 // Broadcast new BulkVS message
 export function broadcastBulkvsMessage(threadId: string, message: any, userId: string) {
   if (!wss) {
