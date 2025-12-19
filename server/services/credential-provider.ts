@@ -205,6 +205,36 @@ export const credentialProvider = {
     return result;
   },
 
+  async getMeta(): Promise<{ appId: string; appSecret: string }> {
+    const cacheKey = getCacheKey('meta');
+    const cached = getFromCache<{ appId: string; appSecret: string }>(cacheKey);
+    if (cached) return cached;
+
+    const appId = await secretsService.getCredential("meta" as ApiProvider, "app_id") || 
+                  process.env.META_APP_ID || '';
+    const appSecret = await secretsService.getCredential("meta" as ApiProvider, "app_secret") || 
+                      process.env.META_APP_SECRET || '';
+    
+    const result = { appId, appSecret };
+    setCache(cacheKey, result);
+    return result;
+  },
+
+  async getTiktok(): Promise<{ clientKey: string; clientSecret: string }> {
+    const cacheKey = getCacheKey('tiktok');
+    const cached = getFromCache<{ clientKey: string; clientSecret: string }>(cacheKey);
+    if (cached) return cached;
+
+    const clientKey = await secretsService.getCredential("tiktok" as ApiProvider, "client_key") || 
+                      process.env.TIKTOK_CLIENT_KEY || '';
+    const clientSecret = await secretsService.getCredential("tiktok" as ApiProvider, "client_secret") || 
+                         process.env.TIKTOK_CLIENT_SECRET || '';
+    
+    const result = { clientKey, clientSecret };
+    setCache(cacheKey, result);
+    return result;
+  },
+
   async get(service: string, key: string): Promise<string> {
     const cacheKey = getCacheKey(service, key);
     const cached = getFromCache<string>(cacheKey);

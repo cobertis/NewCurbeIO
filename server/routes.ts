@@ -26008,7 +26008,10 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
       
-      if (!META_APP_ID) {
+      // Get Meta credentials dynamically from credential provider
+      const { appId } = await credentialProvider.getMeta();
+      
+      if (!appId) {
         return res.status(500).json({ error: "Meta App ID not configured. Contact administrator." });
       }
       
@@ -26032,7 +26035,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       // Build OAuth URL for Meta Embedded Signup
       // Using response_type=code for server-side flow
       const authUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
-      authUrl.searchParams.set("client_id", META_APP_ID);
+      authUrl.searchParams.set("client_id", appId);
       authUrl.searchParams.set("redirect_uri", META_REDIRECT_URI);
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("scope", META_WHATSAPP_SCOPES);
@@ -26094,15 +26097,18 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         .where(eq(oauthStates.id, oauthState.id));
       
       // Exchange code for access token
-      if (!META_APP_ID || !META_APP_SECRET) {
+      // Get Meta credentials dynamically from credential provider
+      const { appId, appSecret } = await credentialProvider.getMeta();
+      
+      if (!appId || !appSecret) {
         console.error("[WhatsApp OAuth] Meta credentials not configured");
         return errorRedirect("server_config_error");
       }
       
       const tokenResponse = await fetch(
         `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token?` +
-        `client_id=${META_APP_ID}&` +
-        `client_secret=${META_APP_SECRET}&` +
+        `client_id=${appId}&` +
+        `client_secret=${appSecret}&` +
         `redirect_uri=${encodeURIComponent(META_REDIRECT_URI)}&` +
         `code=${code}`
       );
@@ -26119,7 +26125,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       // Get WhatsApp Business Account(s) associated with this token
       // First get the list of businesses
       const debugResponse = await fetch(
-        `https://graph.facebook.com/${META_GRAPH_VERSION}/debug_token?input_token=${accessToken}&access_token=${META_APP_ID}|${META_APP_SECRET}`
+        `https://graph.facebook.com/${META_GRAPH_VERSION}/debug_token?input_token=${accessToken}&access_token=${appId}|${appSecret}`
       );
       const debugData = await debugResponse.json() as any;
       
@@ -26887,8 +26893,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // TIKTOK LOGIN KIT OAUTH INTEGRATION
   // =====================================================
   
-  const TIKTOK_CLIENT_KEY = process.env.TIKTOK_CLIENT_KEY;
-  const TIKTOK_CLIENT_SECRET = process.env.TIKTOK_CLIENT_SECRET;
   const TIKTOK_REDIRECT_URI = process.env.TIKTOK_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/tiktok/callback`;
   const TIKTOK_SCOPES = "user.info.basic";
 
@@ -26898,7 +26902,10 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
       
-      if (!TIKTOK_CLIENT_KEY) {
+      // Get TikTok credentials dynamically from credential provider
+      const { clientKey, clientSecret } = await credentialProvider.getTiktok();
+      
+      if (!clientKey) {
         return res.status(500).json({ error: "TikTok Client Key not configured. Contact administrator." });
       }
       
@@ -26917,7 +26924,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       });
       
       const authUrl = new URL("https://www.tiktok.com/v2/auth/authorize/");
-      authUrl.searchParams.set("client_key", TIKTOK_CLIENT_KEY);
+      authUrl.searchParams.set("client_key", clientKey);
       authUrl.searchParams.set("redirect_uri", TIKTOK_REDIRECT_URI);
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("scope", TIKTOK_SCOPES);
@@ -26975,10 +26982,18 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         .where(eq(oauthStates.id, oauthState.id));
       
       // Exchange code for access token
+      // Get TikTok credentials dynamically from credential provider
+      const { clientKey, clientSecret } = await credentialProvider.getTiktok();
+      
+      if (!clientKey || !clientSecret) {
+        console.error("[TikTok OAuth] TikTok credentials not configured");
+        return errorRedirect("server_config_error");
+      }
+      
       const tokenUrl = "https://open.tiktokapis.com/v2/oauth/token/";
       const tokenParams = new URLSearchParams({
-        client_key: TIKTOK_CLIENT_KEY!,
-        client_secret: TIKTOK_CLIENT_SECRET!,
+        client_key: clientKey,
+        client_secret: clientSecret,
         code: code as string,
         grant_type: "authorization_code",
         redirect_uri: TIKTOK_REDIRECT_URI,
