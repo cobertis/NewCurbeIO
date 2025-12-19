@@ -28836,6 +28836,263 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: error.message });
     }
   });
+
+  // ========== RCS (Rich Communication Services) Management ==========
+  
+  // GET /api/rcs/agents - List RCS agents from Telnyx
+  app.get("/api/rcs/agents", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session.user?.companyId;
+      
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey || !managedAccountId) {
+        return res.status(400).json({ message: "Telnyx not configured" });
+      }
+      
+      const response = await fetch("https://api.telnyx.com/v2/rcs/agents", {
+        method: "GET",
+        headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
+      });
+      
+      if (!response.ok) {
+        const result = await response.json();
+        console.error("[RCS] Error listing agents:", result);
+        return res.status(response.status).json({ 
+          message: result.errors?.[0]?.detail || "Error fetching RCS agents" 
+        });
+      }
+      
+      const result = await response.json();
+      res.json({
+        agents: result.data || [],
+        meta: result.meta || {},
+      });
+    } catch (error: any) {
+      console.error("[RCS] Error listing agents:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // GET /api/rcs/agents/:agentId - Get single RCS agent details
+  app.get("/api/rcs/agents/:agentId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session.user?.companyId;
+      const { agentId } = req.params;
+      
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey || !managedAccountId) {
+        return res.status(400).json({ message: "Telnyx not configured" });
+      }
+      
+      const response = await fetch(`https://api.telnyx.com/v2/rcs/agents/\${agentId}`, {
+        method: "GET",
+        headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
+      });
+      
+      if (!response.ok) {
+        const result = await response.json();
+        console.error("[RCS] Error fetching agent:", result);
+        return res.status(response.status).json({ 
+          message: result.errors?.[0]?.detail || "Error fetching RCS agent" 
+        });
+      }
+      
+      const result = await response.json();
+      res.json({ agent: result.data });
+    } catch (error: any) {
+      console.error("[RCS] Error fetching agent:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // PATCH /api/rcs/agents/:agentId - Update RCS agent settings
+  app.patch("/api/rcs/agents/:agentId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session.user?.companyId;
+      const { agentId } = req.params;
+      
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey || !managedAccountId) {
+        return res.status(400).json({ message: "Telnyx not configured" });
+      }
+      
+      const response = await fetch(`https://api.telnyx.com/v2/rcs/agents/\${agentId}`, {
+        method: "PATCH",
+        headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
+        body: JSON.stringify(req.body),
+      });
+      
+      if (!response.ok) {
+        const result = await response.json();
+        console.error("[RCS] Error updating agent:", result);
+        return res.status(response.status).json({ 
+          message: result.errors?.[0]?.detail || "Error updating RCS agent" 
+        });
+      }
+      
+      const result = await response.json();
+      console.log("[RCS] Agent updated:", agentId);
+      res.json({ agent: result.data });
+    } catch (error: any) {
+      console.error("[RCS] Error updating agent:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/rcs/check-capabilities - Check if phone number supports RCS
+  app.post("/api/rcs/check-capabilities", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session.user?.companyId;
+      const { phoneNumber, agentId } = req.body;
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ message: "phoneNumber is required" });
+      }
+      
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey || !managedAccountId) {
+        return res.status(400).json({ message: "Telnyx not configured" });
+      }
+      
+      const requestBody: any = { phone_number: phoneNumber };
+      if (agentId) {
+        requestBody.agent_id = agentId;
+      }
+      
+      const response = await fetch("https://api.telnyx.com/v2/rcs/capabilities/check", {
+        method: "POST",
+        headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
+        body: JSON.stringify(requestBody),
+      });
+      
+      if (!response.ok) {
+        const result = await response.json();
+        console.error("[RCS] Error checking capabilities:", result);
+        return res.status(response.status).json({ 
+          message: result.errors?.[0]?.detail || "Error checking RCS capabilities" 
+        });
+      }
+      
+      const result = await response.json();
+      console.log("[RCS] Capabilities checked for:", phoneNumber);
+      res.json({ capabilities: result.data });
+    } catch (error: any) {
+      console.error("[RCS] Error checking capabilities:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/rcs/agents/:agentId/test-numbers - Add test number for RCS agent
+  app.post("/api/rcs/agents/:agentId/test-numbers", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session.user?.companyId;
+      const { agentId } = req.params;
+      const { phoneNumber } = req.body;
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ message: "phoneNumber is required" });
+      }
+      
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey || !managedAccountId) {
+        return res.status(400).json({ message: "Telnyx not configured" });
+      }
+      
+      const response = await fetch(`https://api.telnyx.com/v2/rcs/agents/\${agentId}/test_numbers`, {
+        method: "POST",
+        headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
+        body: JSON.stringify({ phone_number: phoneNumber }),
+      });
+      
+      if (!response.ok) {
+        const result = await response.json();
+        console.error("[RCS] Error adding test number:", result);
+        return res.status(response.status).json({ 
+          message: result.errors?.[0]?.detail || "Error adding RCS test number" 
+        });
+      }
+      
+      const result = await response.json();
+      console.log("[RCS] Test number added:", phoneNumber, "to agent:", agentId);
+      res.json({ testNumber: result.data });
+    } catch (error: any) {
+      console.error("[RCS] Error adding test number:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/rcs/send - Send RCS message
+  app.post("/api/rcs/send", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session.user?.companyId;
+      const { agentId, to, text, mediaUrl } = req.body;
+      
+      if (!agentId || !to) {
+        return res.status(400).json({ message: "agentId and to are required" });
+      }
+      
+      if (!text && !mediaUrl) {
+        return res.status(400).json({ message: "Either text or mediaUrl is required" });
+      }
+      
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey || !managedAccountId) {
+        return res.status(400).json({ message: "Telnyx not configured" });
+      }
+      
+      const requestBody: any = {
+        agent_id: agentId,
+        to,
+      };
+      
+      if (text) {
+        requestBody.text = text;
+      }
+      
+      if (mediaUrl) {
+        requestBody.media_url = mediaUrl;
+      }
+      
+      const response = await fetch("https://api.telnyx.com/v2/rcs/messages", {
+        method: "POST",
+        headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
+        body: JSON.stringify(requestBody),
+      });
+      
+      if (!response.ok) {
+        const result = await response.json();
+        console.error("[RCS] Error sending message:", result);
+        return res.status(response.status).json({ 
+          message: result.errors?.[0]?.detail || "Error sending RCS message" 
+        });
+      }
+      
+      const result = await response.json();
+      console.log("[RCS] Message sent to:", to, "via agent:", agentId);
+      res.json({ message: result.data });
+    } catch (error: any) {
+      console.error("[RCS] Error sending message:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
   // GET /api/telnyx/user-phone-status - Check if current user has an assigned phone number for calling
   app.get("/api/telnyx/user-phone-status", requireAuth, async (req: Request, res: Response) => {
     try {

@@ -107,6 +107,72 @@ export async function sendTelnyxMessage(params: SendMessageParams): Promise<Send
   }
 }
 
+export interface SendRcsMessageParams {
+  agentId: string;
+  to: string;
+  text?: string;
+  mediaUrl?: string;
+  companyId: string;
+}
+
+/**
+ * Send an RCS message using Telnyx RCS API
+ * Reference: https://developers.telnyx.com/api-reference/rcs/send-an-rcs-message
+ */
+export async function sendRcsMessage(params: SendRcsMessageParams): Promise<SendMessageResult> {
+  try {
+    const { agentId, to, text, mediaUrl, companyId } = params;
+    
+    const apiKey = await getTelnyxMasterApiKey();
+    const managedAccountId = await getCompanyTelnyxAccountId(companyId);
+    
+    if (!managedAccountId) {
+      return { success: false, error: "Telnyx account not configured" };
+    }
+    
+    const headers: Record<string, string> = {
+      "Authorization": `Bearer ${apiKey}`,
+      "Content-Type": "application/json",
+    };
+    
+    if (managedAccountId !== "MASTER_ACCOUNT") {
+      headers["x-managed-account-id"] = managedAccountId;
+    }
+    
+    const payload: any = {
+      agent_id: agentId,
+      to,
+    };
+    
+    if (text) payload.text = text;
+    if (mediaUrl) {
+      payload.media = { type: "image", url: mediaUrl };
+    }
+    
+    console.log(`[Telnyx RCS] Sending: agentId=${agentId}, to=${to}`);
+    
+    const response = await fetch(`${TELNYX_API_BASE}/rcs/messages`, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error(`[Telnyx RCS] SEND FAILED: ${response.status} - ${errorText}`);
+      return { success: false, error: `RCS send failed: ${errorText}` };
+    }
+    
+    const result = await response.json();
+    console.log(`[Telnyx RCS] SUCCESS: ${result.data?.id}`);
+    
+    return { success: true, messageId: result.data?.id };
+  } catch (error) {
+    console.error("[Telnyx RCS] Error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "RCS send failed" };
+  }
+}
+
 /**
  * Get available phone numbers for sending messages
  */

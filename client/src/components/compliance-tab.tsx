@@ -103,6 +103,27 @@ interface CampaignsResponse {
   campaigns: TenDLCCampaign[];
 }
 
+interface RCSAgent {
+  id: string;
+  agentName: string;
+  agentId?: string;
+  brandName?: string;
+  status?: string;
+  launchState?: string;
+  webhookUrl?: string;
+  testNumbers?: string[];
+}
+
+interface RCSAgentsResponse {
+  agents: RCSAgent[];
+}
+
+interface RCSCapabilitiesResult {
+  phoneNumber: string;
+  rcsCapable: boolean;
+  carrier?: string;
+}
+
 const USE_CASES = [
   { value: "2FA", label: "2FA" },
   { value: "ACCOUNT_NOTIFICATION", label: "Account Notification" },
@@ -495,6 +516,49 @@ export function ComplianceTab() {
   const [tfBusinessRegistrationNumber, setTfBusinessRegistrationNumber] = useState<string>("");
   const [tfBusinessRegistrationType, setTfBusinessRegistrationType] = useState<string>("EIN");
   const [tfBusinessRegistrationCountry, setTfBusinessRegistrationCountry] = useState<string>("US");
+
+  // RCS Agents State
+  const [showAddTestNumber, setShowAddTestNumber] = useState(false);
+  const [selectedRcsAgentId, setSelectedRcsAgentId] = useState<string | null>(null);
+  const [rcsTestPhoneNumber, setRcsTestPhoneNumber] = useState("");
+  const [rcsCheckPhoneNumber, setRcsCheckPhoneNumber] = useState("");
+  const [showRcsCapabilitiesCheck, setShowRcsCapabilitiesCheck] = useState(false);
+  const [rcsCapabilitiesResult, setRcsCapabilitiesResult] = useState<RCSCapabilitiesResult | null>(null);
+
+  // RCS Agents Query
+  const { data: rcsAgentsData, isLoading: isLoadingRcsAgents } = useQuery<RCSAgentsResponse>({
+    queryKey: ["/api/rcs/agents"],
+  });
+
+  // Add RCS Test Number Mutation
+  const addRcsTestNumberMutation = useMutation({
+    mutationFn: async ({ agentId, phoneNumber }: { agentId: string; phoneNumber: string }) => {
+      return await apiRequest("POST", `/api/rcs/agents/${agentId}/test-numbers`, { phoneNumber });
+    },
+    onSuccess: () => {
+      toast({ title: "Test number added", description: "The test number has been added to the RCS agent." });
+      queryClient.invalidateQueries({ queryKey: ["/api/rcs/agents"] });
+      setShowAddTestNumber(false);
+      setSelectedRcsAgentId(null);
+      setRcsTestPhoneNumber("");
+    },
+    onError: (error: any) => {
+      toast({ title: "Failed to add test number", description: error.message || "An error occurred", variant: "destructive" });
+    },
+  });
+
+  // Check RCS Capabilities Mutation
+  const checkRcsCapabilitiesMutation = useMutation({
+    mutationFn: async (phoneNumber: string) => {
+      return await apiRequest("POST", "/api/rcs/check-capabilities", { phoneNumber });
+    },
+    onSuccess: (data: any) => {
+      setRcsCapabilitiesResult(data);
+    },
+    onError: (error: any) => {
+      toast({ title: "Capability check failed", description: error.message || "An error occurred", variant: "destructive" });
+    },
+  });
 
   const CARRIER_TERMS = [
     { carrier: "AT&T", qualify: "Yes", mnoReview: "No", surcharge: "N/A", smsTpm: "240", mmsTpm: "150", brandTier: "-", dailyLimit: "-", messageClass: "F" },
@@ -1660,6 +1724,194 @@ export function ComplianceTab() {
           )}
         </CardContent>
       </Card>
+
+      {/* RCS Agents Card */}
+      <Card>
+        <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+          <div>
+            <CardTitle className="text-lg flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              RCS Agents
+            </CardTitle>
+            <CardDescription>
+              Rich Communication Services agents registered with Telnyx
+            </CardDescription>
+          </div>
+          <Button 
+            size="sm" 
+            variant="outline"
+            data-testid="btn-check-rcs-capabilities" 
+            onClick={() => {
+              setShowRcsCapabilitiesCheck(true);
+              setRcsCapabilitiesResult(null);
+              setRcsCheckPhoneNumber("");
+            }}
+          >
+            <Phone className="h-4 w-4 mr-2" />
+            Check RCS Capabilities
+          </Button>
+        </CardHeader>
+        <CardContent>
+          {isLoadingRcsAgents ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : rcsAgentsData?.agents && rcsAgentsData.agents.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Agent Name</TableHead>
+                  <TableHead>Brand Name</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Launch State</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {rcsAgentsData.agents.map((agent) => {
+                  const status = agent.status?.toUpperCase();
+                  let statusBadge;
+                  if (status === "ACTIVE") {
+                    statusBadge = <Badge variant="default" className="bg-green-600" data-testid={`badge-rcs-status-${agent.id}`}><CheckCircle2 className="h-3 w-3 mr-1" />Active</Badge>;
+                  } else if (status === "PENDING") {
+                    statusBadge = <Badge variant="secondary" data-testid={`badge-rcs-status-${agent.id}`}><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+                  } else {
+                    statusBadge = <Badge variant="outline" data-testid={`badge-rcs-status-${agent.id}`}>{agent.status || "Unknown"}</Badge>;
+                  }
+                  return (
+                    <TableRow key={agent.id} data-testid={`row-rcs-agent-${agent.id}`}>
+                      <TableCell className="font-medium" data-testid={`text-rcs-agent-name-${agent.id}`}>{agent.agentName}</TableCell>
+                      <TableCell data-testid={`text-rcs-brand-name-${agent.id}`}>{agent.brandName || '-'}</TableCell>
+                      <TableCell>{statusBadge}</TableCell>
+                      <TableCell data-testid={`text-rcs-launch-state-${agent.id}`}>{agent.launchState || '-'}</TableCell>
+                      <TableCell className="text-right">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          data-testid={`btn-add-test-number-${agent.id}`}
+                          onClick={() => {
+                            setSelectedRcsAgentId(agent.id);
+                            setShowAddTestNumber(true);
+                            setRcsTestPhoneNumber("");
+                          }}
+                        >
+                          <Plus className="h-4 w-4 mr-1" />
+                          Add Test Number
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  );
+                })}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-8 text-center">
+              <MessageSquare className="h-12 w-12 text-muted-foreground/50 mb-3" />
+              <p className="text-sm text-muted-foreground">No RCS agents registered</p>
+              <p className="text-xs text-muted-foreground mt-1">RCS agents are managed through Telnyx</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* RCS Capabilities Check Sheet */}
+      <Sheet open={showRcsCapabilitiesCheck} onOpenChange={setShowRcsCapabilitiesCheck}>
+        <SheetContent className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Check RCS Capabilities</SheetTitle>
+            <SheetDescription>
+              Check if a phone number supports Rich Communication Services
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-6 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="rcs-check-phone">Phone Number</Label>
+              <Input
+                id="rcs-check-phone"
+                data-testid="input-rcs-check-phone"
+                value={rcsCheckPhoneNumber}
+                onChange={(e) => setRcsCheckPhoneNumber(e.target.value)}
+                placeholder="+1 (555) 123-4567"
+              />
+            </div>
+            <Button
+              className="w-full"
+              data-testid="btn-submit-rcs-check"
+              disabled={!rcsCheckPhoneNumber.trim() || checkRcsCapabilitiesMutation.isPending}
+              onClick={() => checkRcsCapabilitiesMutation.mutate(rcsCheckPhoneNumber)}
+            >
+              {checkRcsCapabilitiesMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Checking...</>
+              ) : (
+                "Check Capabilities"
+              )}
+            </Button>
+            {rcsCapabilitiesResult && (
+              <div className="mt-4 p-4 rounded-lg border bg-muted/50" data-testid="rcs-capabilities-result">
+                <div className="flex items-center gap-2 mb-2">
+                  {rcsCapabilitiesResult.rcsCapable ? (
+                    <Badge variant="default" className="bg-green-600" data-testid="badge-rcs-capable">
+                      <CheckCircle2 className="h-3 w-3 mr-1" />RCS Capable
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" data-testid="badge-rcs-not-capable">
+                      <XCircle className="h-3 w-3 mr-1" />Not RCS Capable
+                    </Badge>
+                  )}
+                </div>
+                <p className="text-sm text-muted-foreground" data-testid="text-rcs-phone-result">
+                  Phone: {rcsCapabilitiesResult.phoneNumber}
+                </p>
+                {rcsCapabilitiesResult.carrier && (
+                  <p className="text-sm text-muted-foreground" data-testid="text-rcs-carrier-result">
+                    Carrier: {rcsCapabilitiesResult.carrier}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Add RCS Test Number Sheet */}
+      <Sheet open={showAddTestNumber} onOpenChange={setShowAddTestNumber}>
+        <SheetContent className="w-full sm:max-w-md">
+          <SheetHeader>
+            <SheetTitle>Add Test Number</SheetTitle>
+            <SheetDescription>
+              Add a phone number for testing RCS messaging with this agent
+            </SheetDescription>
+          </SheetHeader>
+          <div className="mt-6 space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="rcs-test-phone">Phone Number</Label>
+              <Input
+                id="rcs-test-phone"
+                data-testid="input-rcs-test-phone"
+                value={rcsTestPhoneNumber}
+                onChange={(e) => setRcsTestPhoneNumber(e.target.value)}
+                placeholder="+1 (555) 123-4567"
+              />
+            </div>
+            <Button
+              className="w-full"
+              data-testid="btn-submit-add-test-number"
+              disabled={!rcsTestPhoneNumber.trim() || !selectedRcsAgentId || addRcsTestNumberMutation.isPending}
+              onClick={() => {
+                if (selectedRcsAgentId) {
+                  addRcsTestNumberMutation.mutate({ agentId: selectedRcsAgentId, phoneNumber: rcsTestPhoneNumber });
+                }
+              }}
+            >
+              {addRcsTestNumberMutation.isPending ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Adding...</>
+              ) : (
+                "Add Test Number"
+              )}
+            </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
 
       {/* Toll-Free Verification Sheet */}
       <Sheet open={showTollFreeForm} onOpenChange={setShowTollFreeForm}>

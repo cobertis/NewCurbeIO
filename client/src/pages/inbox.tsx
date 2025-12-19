@@ -93,6 +93,8 @@ const getChannelIcon = (channel?: string) => {
   switch (channel) {
     case "imessage":
       return <MessageSquare className="h-2.5 w-2.5 text-white" />;
+    case "rcs":
+      return <MessageSquare className="h-2.5 w-2.5 text-white" />;
     default:
       return <MessageSquare className="h-2.5 w-2.5 text-white" />;
   }
@@ -102,6 +104,8 @@ const getChannelColor = (channel?: string) => {
   switch (channel) {
     case "imessage":
       return "bg-blue-500";
+    case "rcs":
+      return "bg-purple-500";
     default:
       return "bg-blue-500";
   }
