@@ -27418,8 +27418,30 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     const user = req.user as any;
     const telegramCreds = await credentialProvider.getTelegram();
     const botUsername = telegramCreds.botUsername;
+    const botToken = telegramCreds.botToken;
     
     if (!botUsername) return res.status(500).json({ error: "TELEGRAM_BOT_USERNAME not configured" });
+    if (!botToken) return res.status(500).json({ error: "TELEGRAM_BOT_TOKEN not configured" });
+    
+    // Auto-setup webhook on first connect attempt (using request host for correct URL)
+    try {
+      const webhookUrl = `https://${req.get("host")}/webhooks/telegram`;
+      const webhookSecret = telegramCreds.webhookSecret;
+      
+      const webhookResponse = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: webhookUrl,
+          secret_token: webhookSecret || undefined,
+          allowed_updates: ["message", "callback_query"]
+        })
+      });
+      const webhookData = await webhookResponse.json() as any;
+      console.log("[Telegram] Auto webhook setup:", webhookData.ok ? "success" : webhookData.description, "URL:", webhookUrl);
+    } catch (webhookError: any) {
+      console.error("[Telegram] Auto webhook setup failed:", webhookError.message);
+    }
     
     const code = randomBytes(16).toString("hex");
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes

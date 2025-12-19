@@ -1,7 +1,7 @@
 # Admin Dashboard - Curbe
 
 ## Overview
-Curbe is a multi-tenant CRM system designed to enhance operational efficiency and communication for businesses. It provides comprehensive customer relationship management, communication tools (iMessage/SMS/RCS), and an admin dashboard for managing Quotes, Policies, and Campaigns. The system aims to unify customer interactions, automate marketing, and streamline policy and quote management to improve customer engagement and operational efficiency. It focuses on improving customer engagement and operational efficiency with features like unified contacts, automated marketing, and streamlined policy/quote management.
+Curbe is a multi-tenant CRM system designed to enhance operational efficiency and communication for businesses. It provides comprehensive customer relationship management, communication tools (iMessage/SMS/RCS), and an admin dashboard for managing Quotes, Policies, and Campaigns. The system aims to unify customer interactions, automate marketing, and streamline policy and quote management to improve customer engagement and operational efficiency.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
@@ -30,19 +30,19 @@ The backend is an Express.js application with TypeScript, providing a RESTful AP
 
 **Key Features:**
 - **Core Management:** User, Company, Quotes & Policies, Consent Documents, Tasks & Reminders, Plan Features, User Seat Limits.
-- **Communication:** Email, SMS/MMS, iMessage, WhatsApp.
+- **Communication:** Email, SMS/MMS, iMessage, WhatsApp, RCS, Telegram, TikTok.
 - **Billing & Integrations:** Stripe, Telnyx Phone System (full white-label telephony, WebRTC, E911 management, call control application routing).
 - **Automation & Analytics:** Birthday Automation, Dashboard Analytics ("Policy Journeys"), Email Processing.
 - **Specialized Systems:** Landing Page Builder, Unified Contacts Directory, Tab Auto-Save, Duplicate Message Prevention, Custom Domain (White Label), Wallet System (Apple Wallet + Google Wallet).
 
 **Telnyx WebRTC & Telephony:**
-Implements Telnyx WebRTC following official documentation, including specific call options and audio settings. Critical dual SIP domain architecture is used: company subdomain for registration/inbound, and `sip.telnyx.com` for outbound PSTN calls. Call control is webhook-driven, and telephony billing includes immediate purchase and monthly recurring charges for numbers, CNAM, and E911. Extension-to-extension calling uses pure WebRTC, and SIP forking is enabled for simultaneous ringing.
+Implements Telnyx WebRTC with specific call options and audio settings. Uses a dual SIP domain architecture: company subdomain for registration/inbound, and `sip.telnyx.com` for outbound PSTN calls. Call control is webhook-driven, and telephony billing includes immediate purchase and monthly recurring charges. Extension-to-extension calling uses pure WebRTC, and SIP forking is enabled.
 
 **Wallet System Architecture:**
-Supports Apple Wallet (PKPass) and Google Wallet with smart links, analytics, and APNs push notifications for proactive payment collection. Key components include dedicated services for Apple and Google Wallet, PassKit Web Service for device registration and updates, and a scheduler for daily payment reminders. The "Cenicienta Strategy" ensures lock-screen persistence for passes by setting `relevantDate` to the end of the day. Pass images are "baked in" and only text/data can be updated via push notifications.
+Supports Apple Wallet (PKPass) and Google Wallet with smart links, analytics, and APNs push notifications for proactive payment collection. Key components include dedicated services, PassKit Web Service, and a scheduler for daily payment reminders. The "Cenicienta Strategy" ensures lock-screen persistence for passes by setting `relevantDate` to the end of the day. Pass images are "baked in," with only text/data updated via push notifications.
 
 **Security Architecture:**
-Includes session security, webhook signature validation (Twilio, BulkVS, BlueBubbles), Zod schema validation, open redirect protection, unsubscribe token enforcement, user-scoped data isolation, iMessage webhook secret isolation, and multi-tenant WhatsApp session isolation.
+Includes session security, webhook signature validation (Twilio, BulkVS, BlueBubbles), Zod schema validation, open redirect protection, unsubscribe token enforcement, user-scoped data isolation, iMessage webhook secret isolation, multi-tenant WhatsApp session isolation, and token encryption for sensitive data.
 
 ## External Dependencies
 
@@ -51,6 +51,7 @@ Includes session security, webhook signature validation (Twilio, BulkVS, BlueBub
 - **SMS/MMS/iMessage:** Twilio, BulkVS, BlueBubbles.
 - **Payments:** Stripe.
 - **Telephony:** Telnyx (WebRTC SDK, Call Control API).
+- **Social Media/Messaging APIs:** Meta (WhatsApp Business Platform), TikTok, Telegram Bot API.
 - **UI Components:** Radix UI, Shadcn/ui, Lucide React, CMDK, Embla Carousel.
 - **Drag & Drop:** `@dnd-kit`.
 - **Rich Text Editing:** TipTap.
@@ -59,138 +60,3 @@ Includes session security, webhook signature validation (Twilio, BulkVS, BlueBub
 - **Security:** Bcrypt.
 - **Utilities:** `date-fns`.
 - **Background Jobs:** `node-cron`.
-
-## Recent Changes (December 19, 2025)
-
-### MMS Media Persistence
-- **Problem:** MMS images were stored in memory and lost on server restart.
-- **Solution:** Added `mms_media_cache` database table for persistent storage.
-- **Files Modified:**
-  - `shared/schema.ts`: Added `mmsMediaCache` table (line ~6281)
-  - `server/routes.ts`: Updated `/api/mms-file/:id` endpoint to query database, updated MMS fallback to save to database instead of memory Map
-
-### PDF Attachment Display
-- **Enhancement:** Professional card view for PDF attachments in inbox.
-- **Features:**
-  - Red gradient background with PDF icon
-  - "PDF Document" label with description
-  - Eye icon button to view in new tab
-  - Download icon button to download directly
-- **File Modified:** `client/src/pages/inbox.tsx` (media rendering section ~line 726)
-
-### Optimistic UI for Message Sending
-- **Enhancement:** Messages and attachments appear instantly in chat, input clears immediately.
-- **Behavior:**
-  - Message shows with "pending" status immediately
-  - User can continue typing while previous message sends in background
-  - If send fails, error toast appears and optimistic message is removed
-- **File Modified:** `client/src/pages/inbox.tsx` (sendMessageMutation and handleSendMessage ~line 214, 336)
-
-### RCS (Rich Communication Services) Implementation
-- **Feature:** Added RCS messaging channel support via Telnyx API.
-- **Backend Routes (server/routes.ts):**
-  - GET /api/rcs/agents - List RCS agents
-  - GET /api/rcs/agents/:agentId - Get single agent details
-  - PATCH /api/rcs/agents/:agentId - Update agent settings
-  - POST /api/rcs/check-capabilities - Check if phone supports RCS
-  - POST /api/rcs/agents/:agentId/test-numbers - Add test number
-  - POST /api/rcs/send - Send RCS message
-- **Files Modified:**
-  - `shared/schema.ts`: Added 'rcs' to telnyxMessageChannelEnum
-  - `server/services/telnyx-messaging-service.ts`: Added sendRcsMessage function
-  - `client/src/components/compliance-tab.tsx`: Added RCS Agents management card
-  - `client/src/pages/inbox.tsx`: Added RCS channel icon (purple) and color support
-
-### TikTok Login Kit OAuth Integration (COMPLETED)
-- **Feature:** TikTok OAuth flow for connecting TikTok accounts.
-- **Database Schema (`shared/schema.ts`):**
-  - Added "tiktok" to `channelTypeEnum` and `oauthProviderEnum`
-  - Added TikTok-specific fields to `channelConnections`: tiktokOpenId, tiktokUsername, tiktokDisplayName, tiktokAvatarUrl, tiktokRefreshTokenEnc
-- **Backend OAuth Routes (`server/routes.ts`):**
-  - POST /api/integrations/tiktok/start - Generates OAuth URL with CSRF nonce
-  - GET /api/integrations/tiktok/callback - Handles TikTok callback, validates state, stores tokens
-  - GET /api/integrations/tiktok/status - Returns connection status
-  - POST /api/integrations/tiktok/disconnect - Marks connection as revoked
-- **Frontend UI (`client/src/pages/integrations.tsx`):**
-  - TikTokCard component with OAuth flow, status badges, and error handling
-- **Redirect URI:** https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/integrations/tiktok/callback
-
-### Social Media API Credentials in System Settings (COMPLETED)
-- **Feature:** Configurable Meta and TikTok API credentials via /system-settings > API Credentials tab.
-- **Schema (`shared/schema.ts`):**
-  - Added "meta" and "tiktok" to `apiProviders` array
-- **Backend (`server/routes.ts`):**
-  - Added Meta provider config with keys: app_id, app_secret
-  - Added TikTok provider config with keys: client_key, client_secret
-- **Credential Provider (`server/services/credential-provider.ts`):**
-  - Added `getMeta()` returning { appId, appSecret }
-  - Added `getTiktok()` returning { clientKey, clientSecret }
-  - Both methods use DB credentials with env var fallback
-- **OAuth Routes Refactored:**
-  - TikTok and Meta/WhatsApp OAuth routes now use credentialProvider for dynamic credential fetching
-
-### WhatsApp Cloud API OAuth Integration (IN PROGRESS)
-- **Feature:** Meta Embedded Signup OAuth flow for WhatsApp Business Platform connection.
-- **Database Schema (`shared/schema.ts`):**
-  - Added `oauthProviderEnum` ("meta_whatsapp", "meta_instagram", "meta_facebook")
-  - Added `oauthStates` table for anti-CSRF OAuth flow with 10-min expiry
-  - Updated `channelConnections` with WhatsApp-specific fields
-- **Token Encryption (`server/crypto.ts`):**
-  - `encryptToken(plaintext)` and `decryptToken(encrypted)` using AES-256-GCM
-  - Falls back to SECRETS_MASTER_KEY if TOKEN_ENCRYPTION_KEY_BASE64 not set
-- **Backend OAuth Routes (`server/routes.ts` ~lines 25985-26450):**
-  - POST /api/integrations/meta/whatsapp/start - Generates OAuth URL with CSRF nonce
-  - GET /api/integrations/meta/whatsapp/callback - Handles Meta callback, validates state, encrypts token
-  - GET /api/integrations/whatsapp/status - Returns connection status (admin-safe, no tokens)
-  - POST /api/integrations/whatsapp/connect - Manual connect (admin only)
-  - POST /api/integrations/whatsapp/disconnect - Marks connection as revoked
-- **Frontend UI (`client/src/pages/integrations.tsx`):**
-  - OAuth flow with "Connect WhatsApp" button
-  - Collapsible "Need help?" section with requirements
-  - Tooltips for Connect button and Status field
-  - Error handling with localized Spanish messages for:
-    - Connection cancelled, Permission required, Number already connected
-    - Number not eligible, Connection failed
-  - Disconnect confirmation modal with Spanish copy
-  - Coming Soon cards for Instagram/Facebook with Spanish descriptions
-- **ENV VARS NEEDED:**
-  - META_APP_ID, META_APP_SECRET
-  - META_REDIRECT_URI (optional, defaults to BASE_URL + callback path)
-  - META_GRAPH_VERSION (optional, defaults to v21.0)
-  - META_WEBHOOK_VERIFY_TOKEN (for webhooks - TODO)
-- **PENDING:** Webhooks with tenant routing by phone_number_id
-### TikTok Token Revocation on Disconnect (December 19, 2025)
-- **Problem:** When disconnecting and reconnecting TikTok, it auto-connected to the same account without showing the authorization screen.
-- **Root Cause:** TikTok remembers previous authorizations and auto-approves if user is already logged in.
-- **Solution:** Added token revocation call to disconnect endpoint.
-- **Implementation:** Before deleting the connection, the backend now calls TikTok's revoke endpoint (`https://open.tiktokapis.com/v2/oauth/revoke/`) to invalidate the access token.
-- **File Modified:** `server/routes.ts` (TikTok disconnect route ~line 27129)
-- **Behavior:** Token revocation is non-blocking - if it fails, the disconnect still proceeds.
-
-### Telegram Integration (COMPLETED - December 19, 2025)
-- **Feature:** Multi-tenant Telegram bot integration for customer support and sales via Curbe inbox.
-- **Database Schema (`shared/schema.ts`):**
-  - `telegram_connect_codes`: Time-limited codes for linking chats to companies (10-min expiry)
-  - `telegram_chat_links`: Links Telegram chats to companies with chat metadata
-  - `telegram_participants`: Tracks Telegram users participating in conversations
-  - `telegram_conversations`: Inbox conversations for Telegram messages
-  - `telegram_messages`: Message history with direction, status, and media support
-- **Backend Routes (`server/routes.ts` ~lines 27193-27565):**
-  - POST /admin/telegram/setupWebhook - Setup Telegram webhook (super_admin only)
-  - POST /api/integrations/telegram/start - Generate deep link with connect code
-  - GET /api/integrations/telegram/status - Get connection status and linked chats
-  - POST /api/integrations/telegram/disconnect - Disconnect a specific chat
-  - POST /webhooks/telegram - Webhook handler for incoming messages and /start command
-  - POST /api/integrations/telegram/send - Send message to Telegram chat
-- **Frontend UI (`client/src/pages/integrations.tsx`):**
-  - TelegramCard component with connect/disconnect flow
-  - Deep link generation with 10-minute expiry
-  - List of connected chats with disconnect option per chat
-  - Spanish localization for all UI text
-- **Credentials (Configurable from Admin Panel):**
-  - Go to System Settings > API Credentials > Telegram Bot
-  - Bot Token - Token from @BotFather (e.g., 123456:ABC-DEF...)
-  - Bot Username - Without @ symbol (e.g., MyCurbeBot)
-  - Webhook Secret - Optional secret for webhook validation
-  - Falls back to ENV VARS: TELEGRAM_BOT_TOKEN, TELEGRAM_BOT_USERNAME, TELEGRAM_WEBHOOK_SECRET_TOKEN
-- **Webhook URL:** https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/webhooks/telegram
