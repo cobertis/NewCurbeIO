@@ -27592,13 +27592,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       let uploadedMediaUrls: string[] = [];
       if (incomingMedia.length > 0) {
         console.log("[Telnyx SMS Webhook] Processing", incomingMedia.length, "media attachments");
+        
+        // Get Telnyx API key for authentication (once, outside the loop)
+        const { getTelnyxMasterApiKey } = await import("./services/telnyx-numbers-service");
+        const telnyxApiKey = await getTelnyxMasterApiKey();
+        
         for (const media of incomingMedia) {
           try {
             const mediaUrl = media.url;
             const contentType = media.content_type || "application/octet-stream";
             
             // Download media from Telnyx
-            const mediaResponse = await fetch(mediaUrl);
+            const mediaResponse = await fetch(mediaUrl, {
+              headers: telnyxApiKey ? { 'Authorization': `Bearer ${telnyxApiKey}` } : {}
+            });
             if (!mediaResponse.ok) {
               console.error("[Telnyx SMS Webhook] Failed to download media:", mediaUrl);
               continue;
