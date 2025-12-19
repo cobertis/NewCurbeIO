@@ -2,7 +2,7 @@ import type { Express, Request, Response, NextFunction } from "express";
 import fs from "fs";
 import path from "path";
 import { createServer, type Server } from "http";
-import { randomBytes } from "crypto";
+import { randomBytes, randomUUID } from "crypto";
 import bcrypt from "bcrypt";
 import { z } from "zod";
 import { storage } from "./storage";
@@ -35369,7 +35369,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               } catch (storageError) {
                 // Fallback: Use temporary file cache (valid for 24 hours)
                 console.log("[Inbox] Object storage failed, using temp cache fallback:", (storageError as Error).message);
-                const fileId = require("crypto").randomUUID();
+                const fileId = randomUUID();
                 mmsFileCache.set(fileId, {
                   buffer: file.buffer,
                   contentType: file.mimetype,
