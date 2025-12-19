@@ -3924,7 +3924,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       };
       console.log("[GOOGLE_PLACES] Making request to Google Places Autocomplete API");
       const response = await fetch(url, {
-        method: "POST",
+        method: "PUT",
         headers,
         body: JSON.stringify(body)
       });
@@ -4084,7 +4084,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       };
       console.log("[GOOGLE_PLACES] Making request to Google Places API");
       const response = await fetch(url, {
-        method: "POST",
+        method: "PUT",
         headers,
         body: JSON.stringify(body)
       });
@@ -27922,7 +27922,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (brandData.isReseller !== undefined) telnyxPayload.isReseller = brandData.isReseller;
       console.log(`[10DLC] Registering brand for company ${companyId} using managed account ${managedAccountId}`);
       const response = await fetch("https://api.telnyx.com/v2/10dlc/brand", {
-        method: "POST",
+        method: "PUT",
         headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
         body: JSON.stringify(telnyxPayload),
       });
@@ -28125,7 +28125,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Create messaging profile in Telnyx
       const response = await fetch("https://api.telnyx.com/v2/messaging_profiles", {
-        method: "POST",
+        method: "PUT",
         headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
         body: JSON.stringify({
           name: `SMS Profile - ${company.name}`,
@@ -28408,7 +28408,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log("[10DLC Campaign] Creating campaign:", JSON.stringify(campaignData, null, 2));
       
       const response = await fetch("https://api.telnyx.com/v2/10dlc/campaignBuilder", {
-        method: "POST",
+        method: "PUT",
         headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
         body: JSON.stringify(campaignData),
       });
@@ -28583,7 +28583,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       for (const phoneNumber of phoneNumbers) {
         try {
           const response = await fetch(`https://api.telnyx.com/v2/10dlc/phone_number_campaigns`, {
-            method: "POST",
+            method: "PUT",
             headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
             body: JSON.stringify({ phoneNumber, campaignId: id }),
           });
@@ -28774,7 +28774,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const response = await fetch(
         "https://api.telnyx.com/v2/messaging_tollfree/verification/requests",
         {
-          method: "POST",
+          method: "PUT",
           headers: { ...buildTelnyxHeaders(telnyxApiKey, managedAccountId), "Accept": "application/json" },
           body: JSON.stringify(requestBody),
         }
@@ -28972,7 +28972,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       const response = await fetch("https://api.telnyx.com/v2/rcs/capabilities/check", {
-        method: "POST",
+        method: "PUT",
         headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
         body: JSON.stringify(requestBody),
       });
@@ -29014,9 +29014,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       const response = await fetch(`https://api.telnyx.com/v2/rcs/agents/\${agentId}/test_numbers`, {
-        method: "POST",
+        method: "PUT",
         headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
-        body: JSON.stringify({ phone_number: phoneNumber }),
+        
       });
       
       if (!response.ok) {
@@ -29072,7 +29072,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       
       const response = await fetch("https://api.telnyx.com/v2/rcs/messages", {
-        method: "POST",
+        method: "PUT",
         headers: buildTelnyxHeaders(telnyxApiKey, managedAccountId),
         body: JSON.stringify(requestBody),
       });
@@ -31563,7 +31563,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       hangupPromises.push(fetch(
         `https://api.telnyx.com/v2/calls/${callControlIdToHangup}/actions/hangup`,
         {
-          method: "POST",
+          method: "PUT",
           headers: {
             "Content-Type": "application/json",
       "Accept": "application/json",
@@ -31577,7 +31577,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         hangupPromises.push(fetch(
           `https://api.telnyx.com/v2/calls/${dialedLegToHangup}/actions/hangup`,
           {
-            method: "POST",
+            method: "PUT",
             headers: {
               "Content-Type": "application/json",
       "Accept": "application/json",
@@ -31673,7 +31673,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const hangupResponse = await fetch(
           `https://api.telnyx.com/v2/calls/${activeCall.callSid}/actions/hangup`,
           {
-            method: "POST",
+            method: "PUT",
             headers: {
               "Content-Type": "application/json",
       "Accept": "application/json",
@@ -33690,7 +33690,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // Initiate call from user's SIP to company number (triggers IVR/queue routing)
       const response = await fetch("https://api.telnyx.com/v2/calls", {
-        method: "POST",
+        method: "PUT",
         headers: {
           Authorization: `Bearer ${TELNYX_API_KEY}`,
           "Content-Type": "application/json",
