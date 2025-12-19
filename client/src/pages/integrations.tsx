@@ -1020,11 +1020,26 @@ function TikTokCard() {
 
   const oauthStartMutation = useMutation({
     mutationFn: async () => {
-      return apiRequest("POST", "/api/integrations/tiktok/start");
+      const response = await fetch("/api/integrations/tiktok/start", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+      });
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({}));
+        throw new Error(errorData.error || "Failed to start OAuth flow");
+      }
+      return response.json();
     },
     onSuccess: (data: { authUrl: string; state: string }) => {
       if (data.authUrl) {
-        window.open(data.authUrl, "_blank");
+        window.location.href = data.authUrl;
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Connection Error",
+          description: "Failed to get authorization URL. Please try again.",
+        });
       }
     },
     onError: (error: any) => {
