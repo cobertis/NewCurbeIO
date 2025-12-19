@@ -27287,13 +27287,14 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       companyId = anyActiveLink.companyId;
       
-      // Auto-create link for this new chat
+      // Auto-create link for this new chat (use the same user who set up the original link)
       await db.insert(telegramChatLinks).values({
         companyId,
         chatId,
         chatType: chatType as any,
         title: message.chat.title || null,
         linkedAt: new Date(),
+        linkedByUserId: anyActiveLink.linkedByUserId,
         status: "active"
       }).onConflictDoNothing();
       
