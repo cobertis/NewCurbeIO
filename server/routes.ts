@@ -26002,9 +26002,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   ].join(",");
 
   // POST /api/integrations/meta/whatsapp/start - Start OAuth flow
-  app.post("/api/integrations/meta/whatsapp/start", async (req: Request, res: Response) => {
+  app.post("/api/integrations/meta/whatsapp/start", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+      
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
       
@@ -26259,8 +26259,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
 
   // GET /api/integrations/whatsapp/status - Get WhatsApp connection status
-  app.get("/api/integrations/whatsapp/status", async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+  app.get("/api/integrations/whatsapp/status", requireActiveCompany, async (req: Request, res: Response) => {
+    
     const user = req.user as any;
     if (!user.companyId) return res.json({ connected: false, connection: null });
     
@@ -26292,8 +26292,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // POST /api/integrations/whatsapp/connect - Manual connect (Admin/Debug only)
   // This is kept for admin debugging purposes
-  app.post("/api/integrations/whatsapp/connect", async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+  app.post("/api/integrations/whatsapp/connect", requireActiveCompany, async (req: Request, res: Response) => {
+    
     const user = req.user as any;
     if (!user.companyId) return res.status(400).json({ error: "No company" });
     
@@ -26363,8 +26363,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
 
   // POST /api/integrations/whatsapp/disconnect - Disconnect WhatsApp
-  app.post("/api/integrations/whatsapp/disconnect", async (req: Request, res: Response) => {
-    if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+  app.post("/api/integrations/whatsapp/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
+    
     const user = req.user as any;
     if (!user.companyId) return res.status(400).json({ error: "No company" });
     
