@@ -35356,17 +35356,32 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               const filename = `outbound_mms_${Date.now()}_${Math.random().toString(36).substring(7)}.${extension}`;
               
               // Upload to object storage for permanent URL
-              const { signedUrl } = await objectStorage.uploadInboxAttachment(
-                file.buffer,
-                file.mimetype,
-                filename,
-                companyId
-              );
-              
-              mediaUrls.push(signedUrl);
-              console.log("[Inbox] MMS file uploaded to storage:", filename, "URL:", signedUrl);
+              try {
+                const { signedUrl } = await objectStorage.uploadInboxAttachment(
+                  file.buffer,
+                  file.mimetype,
+                  filename,
+                  companyId
+                );
+                
+                mediaUrls.push(signedUrl);
+                console.log("[Inbox] MMS file uploaded to storage:", filename, "URL:", signedUrl);
+              } catch (storageError) {
+                // Fallback: Use temporary file cache (valid for 24 hours)
+                console.log("[Inbox] Object storage failed, using temp cache fallback:", (storageError as Error).message);
+                const fileId = randomUUID();
+                mmsFileCache.set(fileId, {
+                  buffer: file.buffer,
+                  contentType: file.mimetype,
+                  expiresAt: Date.now() + 24 * 60 * 60 * 1000
+                });
+                const baseUrl = process.env.BASE_URL || `https://${process.env.REPLIT_DEV_DOMAIN}`;
+                const fallbackUrl = `${baseUrl}/api/mms-file/${fileId}`;
+                mediaUrls.push(fallbackUrl);
+                console.log("[Inbox] Using fallback URL:", fallbackUrl);
+              }
             } catch (uploadError) {
-              console.error("[Inbox] Object storage upload error:", uploadError);
+              console.error("[Inbox] MMS upload error:", uploadError);
             }
           }
         }
