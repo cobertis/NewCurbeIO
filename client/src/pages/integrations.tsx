@@ -13,8 +13,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import { SiWhatsapp, SiInstagram, SiFacebook, SiTiktok } from "react-icons/si";
-import { CheckCircle, XCircle, Clock, AlertTriangle, Plus, Trash2, RefreshCw, ExternalLink, Settings, HelpCircle, ChevronDown, Info } from "lucide-react";
+import { SiWhatsapp, SiInstagram, SiFacebook, SiTiktok, SiTelegram } from "react-icons/si";
+import { CheckCircle, XCircle, Clock, AlertTriangle, Plus, Trash2, RefreshCw, ExternalLink, Settings, HelpCircle, ChevronDown, Info, User as UserIcon, Users } from "lucide-react";
 import type { ChannelConnection, User } from "@shared/schema";
 
 type ChannelType = "whatsapp" | "instagram" | "facebook";
@@ -1237,6 +1237,212 @@ function TikTokCard() {
   );
 }
 
+function TelegramCard() {
+  const { toast } = useToast();
+  const [showDisconnectDialog, setShowDisconnectDialog] = useState(false);
+  const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
+  const [deepLink, setDeepLink] = useState<string | null>(null);
+
+  const { data: status, isLoading } = useQuery<{
+    connected: boolean;
+    chats: Array<{
+      id: string;
+      chatId: string;
+      chatType: "private" | "group" | "supergroup" | "channel";
+      title: string | null;
+      linkedAt: string;
+    }>;
+  }>({
+    queryKey: ["/api/integrations/telegram/status"],
+  });
+
+  const connectMutation = useMutation({
+    mutationFn: async () => {
+      const res = await apiRequest("POST", "/api/integrations/telegram/start");
+      return res.json();
+    },
+    onSuccess: (data) => {
+      setDeepLink(data.deepLink);
+      toast({ title: "Enlace generado", description: "Abre el enlace en Telegram y presiona Start" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "No se pudo generar el enlace", variant: "destructive" });
+    },
+  });
+
+  const disconnectMutation = useMutation({
+    mutationFn: async (chatId: string) => {
+      const res = await apiRequest("POST", "/api/integrations/telegram/disconnect", { chatId });
+      return res.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations/telegram/status"] });
+      toast({ title: "Desconectado", description: "El chat fue desconectado de Telegram" });
+      setShowDisconnectDialog(false);
+      setSelectedChatId(null);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "No se pudo desconectar", variant: "destructive" });
+    },
+  });
+
+  const handleConnect = () => {
+    connectMutation.mutate();
+  };
+
+  const handleDisconnect = () => {
+    if (selectedChatId) {
+      disconnectMutation.mutate(selectedChatId);
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <Card>
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <SiTelegram className="h-8 w-8 text-[#0088cc]" />
+            <div>
+              <CardTitle>Telegram</CardTitle>
+              <CardDescription>Cargando...</CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+      </Card>
+    );
+  }
+
+  return (
+    <>
+      <Card>
+        <CardHeader>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <SiTelegram className="h-8 w-8 text-[#0088cc]" />
+              <div>
+                <CardTitle>Telegram</CardTitle>
+                <CardDescription>
+                  {status?.connected
+                    ? `${status.chats.length} chat(s) conectado(s)`
+                    : "Conecta Telegram para atender soporte y ventas desde el inbox de Curbe"}
+                </CardDescription>
+              </div>
+            </div>
+            {!status?.connected && (
+              <Button
+                onClick={handleConnect}
+                disabled={connectMutation.isPending}
+                data-testid="button-connect-telegram"
+              >
+                {connectMutation.isPending ? (
+                  <LoadingSpinner fullScreen={false} />
+                ) : (
+                  "Conectar Telegram"
+                )}
+              </Button>
+            )}
+          </div>
+        </CardHeader>
+        <CardContent>
+          {deepLink && !status?.connected && (
+            <div className="mb-4 p-4 bg-muted rounded-lg">
+              <p className="text-sm mb-2">Abre este enlace en Telegram y presiona <strong>Start</strong>:</p>
+              <a
+                href={deepLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:underline break-all"
+              >
+                {deepLink}
+              </a>
+              <p className="text-xs text-muted-foreground mt-2">
+                El enlace expira en 10 minutos
+              </p>
+            </div>
+          )}
+
+          {status?.connected && status.chats.length > 0 && (
+            <div className="space-y-2">
+              <h4 className="font-medium text-sm">Chats conectados</h4>
+              {status.chats.map((chat) => (
+                <div
+                  key={chat.id}
+                  className="flex items-center justify-between p-3 border rounded-lg"
+                  data-testid={`telegram-chat-${chat.chatId}`}
+                >
+                  <div className="flex items-center gap-2">
+                    {chat.chatType === "private" ? (
+                      <UserIcon className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Users className="h-4 w-4 text-muted-foreground" />
+                    )}
+                    <span className="text-sm">
+                      {chat.chatType === "private" ? "Chat privado" : "Grupo"} — {chat.title || "Sin nombre"}
+                    </span>
+                  </div>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => {
+                      setSelectedChatId(chat.chatId);
+                      setShowDisconnectDialog(true);
+                    }}
+                    data-testid={`button-disconnect-telegram-${chat.chatId}`}
+                  >
+                    Desconectar
+                  </Button>
+                </div>
+              ))}
+              <Button
+                variant="outline"
+                size="sm"
+                className="mt-2"
+                onClick={handleConnect}
+                disabled={connectMutation.isPending}
+                data-testid="button-add-another-telegram"
+              >
+                {connectMutation.isPending ? <LoadingSpinner fullScreen={false} /> : "Conectar otro chat"}
+              </Button>
+            </div>
+          )}
+
+          <Collapsible className="mt-4">
+            <CollapsibleTrigger className="flex items-center gap-2 text-sm text-muted-foreground hover:text-foreground">
+              <HelpCircle className="h-4 w-4" />
+              ¿Necesitas ayuda?
+            </CollapsibleTrigger>
+            <CollapsibleContent className="mt-2 text-sm text-muted-foreground space-y-2">
+              <p>Telegram funciona mediante un bot. Los clientes deben iniciar el chat con el bot para recibir respuestas.</p>
+              <p>Para conectar un grupo, ejecuta el enlace de conexión dentro del grupo y presiona Start.</p>
+            </CollapsibleContent>
+          </Collapsible>
+        </CardContent>
+      </Card>
+
+      <AlertDialog open={showDisconnectDialog} onOpenChange={setShowDisconnectDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>¿Desconectar este chat?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Curbe dejará de enviar y recibir mensajes de este chat por Telegram.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDisconnect}
+              disabled={disconnectMutation.isPending}
+              data-testid="button-confirm-disconnect-telegram"
+            >
+              {disconnectMutation.isPending ? <LoadingSpinner fullScreen={false} /> : "Desconectar"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
+  );
+}
+
 function ComingSoonCard({ 
   icon: Icon, 
   title, 
@@ -1299,6 +1505,8 @@ export default function IntegrationsPage() {
         <FacebookCard />
         
         <TikTokCard />
+        
+        <TelegramCard />
       </div>
     </div>
   );

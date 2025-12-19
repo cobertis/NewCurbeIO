@@ -27377,7 +27377,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   }
 
   // POST /admin/telegram/setupWebhook - Setup Telegram webhook (Admin only)
-  app.post("/admin/telegram/setupWebhook", requireAuth, requireRole(["super_admin"]), async (req: Request, res: Response) => {
+  app.post("/admin/telegram/setupWebhook", requireAuth, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    if (user.role !== "super_admin") {
+      return res.status(403).json({ error: "Super admin access required" });
+    }
+
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
     const webhookSecret = process.env.TELEGRAM_WEBHOOK_SECRET_TOKEN;
     const baseUrl = process.env.BASE_URL || `https://${req.get("host")}`;
