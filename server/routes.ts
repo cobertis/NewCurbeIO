@@ -28852,7 +28852,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
-      const response = await fetch("https://api.telnyx.com/v2/messaging_rcs/agents", {
+      const response = await fetch("https://api.telnyx.com/v2/rcs_agents", {
         method: "GET",
         headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
       });
@@ -28890,7 +28890,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
-      const response = await fetch(`https://api.telnyx.com/v2/messaging_rcs/agents/\${agentId}`, {
+      const response = await fetch(`https://api.telnyx.com/v2/rcs_agents/${agentId}`, {
         method: "GET",
         headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
       });
@@ -28925,7 +28925,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
-      const response = await fetch(`https://api.telnyx.com/v2/messaging_rcs/agents/\${agentId}`, {
+      const response = await fetch(`https://api.telnyx.com/v2/rcs_agents/${agentId}`, {
         method: "PATCH",
         headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify(req.body),
@@ -28971,7 +28971,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         requestBody.agent_id = agentId;
       }
       
-      const response = await fetch("https://api.telnyx.com/v2/messaging_rcs/capabilities/check", {
+      const response = await fetch("https://api.telnyx.com/v2/rcs/capabilities/check", {
         method: "PUT",
         headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify(requestBody),
@@ -29013,7 +29013,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // RCS agents are on the master account, use master API key directly
       // URL format: /v2/messaging_rcs/test_number_invite/{id}/{phone_number}
       const encodedPhone = encodeURIComponent(phoneNumber);
-      const url = `https://api.telnyx.com/v2/messaging_rcs/test_number_invite/${agentId}/${encodedPhone}`;
+      const url = `https://api.telnyx.com/v2/messaging/rcs/test_number_invite/${agentId}/${encodedPhone}`;
       
       console.log("[RCS] Adding test number:", phoneNumber, "to agent:", agentId);
       console.log("[RCS] URL:", url);
@@ -29118,7 +29118,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         requestBody.media_url = mediaUrl;
       }
       
-      const response = await fetch("https://api.telnyx.com/v2/messaging_rcs/messages", {
+      const response = await fetch("https://api.telnyx.com/v2/messages", {
         method: "PUT",
         headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify(requestBody),
