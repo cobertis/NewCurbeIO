@@ -159,3 +159,10 @@ Includes session security, webhook signature validation (Twilio, BulkVS, BlueBub
   - META_GRAPH_VERSION (optional, defaults to v21.0)
   - META_WEBHOOK_VERIFY_TOKEN (for webhooks - TODO)
 - **PENDING:** Webhooks with tenant routing by phone_number_id
+### TikTok Token Revocation on Disconnect (December 19, 2025)
+- **Problem:** When disconnecting and reconnecting TikTok, it auto-connected to the same account without showing the authorization screen.
+- **Root Cause:** TikTok remembers previous authorizations and auto-approves if user is already logged in.
+- **Solution:** Added token revocation call to disconnect endpoint.
+- **Implementation:** Before deleting the connection, the backend now calls TikTok's revoke endpoint (`https://open.tiktokapis.com/v2/oauth/revoke/`) to invalidate the access token.
+- **File Modified:** `server/routes.ts` (TikTok disconnect route ~line 27129)
+- **Behavior:** Token revocation is non-blocking - if it fails, the disconnect still proceeds.

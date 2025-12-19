@@ -27143,6 +27143,36 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(404).json({ error: "No TikTok connection found" });
       }
       
+      // Revoke the access token from TikTok to force re-authorization on next connect
+      if (connection.accessTokenEnc) {
+        try {
+          const { clientKey, clientSecret } = await credentialProvider.getTiktok();
+          const accessToken = decryptToken(connection.accessTokenEnc);
+          
+          const revokeResponse = await fetch("https://open.tiktokapis.com/v2/oauth/revoke/", {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/x-www-form-urlencoded",
+            },
+            body: new URLSearchParams({
+              client_key: clientKey,
+              client_secret: clientSecret,
+              token: accessToken,
+            }).toString(),
+          });
+          
+          if (revokeResponse.ok) {
+            console.log(`[TikTok] Token revoked successfully for company ${user.companyId}`);
+          } else {
+            const revokeData = await revokeResponse.json();
+            console.warn(`[TikTok] Token revocation failed (non-blocking):`, revokeData);
+          }
+        } catch (revokeError) {
+          // Token revocation failure is non-blocking - continue with disconnect
+          console.warn(`[TikTok] Token revocation error (non-blocking):`, revokeError);
+        }
+      }
+      
       await db.delete(channelConnections)
         .where(eq(channelConnections.id, connection.id));
       
