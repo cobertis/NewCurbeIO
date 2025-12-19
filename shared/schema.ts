@@ -6270,3 +6270,16 @@ export const insertTelnyxMessageSchema = createInsertSchema(telnyxMessages).omit
 
 export type TelnyxMessage = typeof telnyxMessages.$inferSelect;
 export type InsertTelnyxMessage = z.infer<typeof insertTelnyxMessageSchema>;
+
+// =====================================================
+// MMS MEDIA CACHE (Persistent storage for MMS files)
+// =====================================================
+
+export const mmsMediaCache = pgTable("mms_media_cache", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  data: text("data").notNull(),
+  contentType: varchar("content_type", { length: 100 }).notNull(),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+});
+
+export type MmsMediaCache = typeof mmsMediaCache.$inferSelect;
