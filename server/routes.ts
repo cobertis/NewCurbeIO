@@ -93,7 +93,7 @@ import {
 } from "@shared/schema";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, whatsappInstances, whatsappContacts, whatsappConversations, whatsappMessages, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache } from "@shared/schema";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
 import path from "path";
@@ -24180,6 +24180,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // Get domain for webhook URL
   const REPLIT_DOMAIN = process.env.REPLIT_DOMAINS || process.env.REPLIT_DEV_DOMAIN || 'localhost:5000';
   // GET /api/whatsapp/instance - Get company's WhatsApp instance
+/* BEGIN COMMENTED OUT - Old WhatsApp Evolution API routes
   app.get("/api/whatsapp/instance", requireActiveCompany, async (req: Request, res: Response) => {
     // Disable caching to ensure fresh data
     res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
@@ -25976,6 +25977,95 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to send reaction" });
     }
   });
+END COMMENTED OUT - Old WhatsApp Evolution API routes */
+
+  // =====================================================
+  // META CLOUD API WHATSAPP INTEGRATION ROUTES
+  // =====================================================
+
+  // GET /api/integrations/whatsapp/status - Get WhatsApp connection status
+  app.get("/api/integrations/whatsapp/status", async (req: Request, res: Response) => {
+    if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+    const user = req.user as any;
+    if (!user.companyId) return res.json({ connection: null });
+    
+    const connection = await db.query.channelConnections.findFirst({
+      where: and(
+        eq(channelConnections.companyId, user.companyId),
+        eq(channelConnections.channel, "whatsapp")
+      ),
+    });
+    return res.json({ connection: connection || null });
+  });
+
+  // POST /api/integrations/whatsapp/connect - Connect WhatsApp Business account
+  app.post("/api/integrations/whatsapp/connect", async (req: Request, res: Response) => {
+    if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+    const user = req.user as any;
+    if (!user.companyId) return res.status(400).json({ error: "No company" });
+    
+    const { wabaId, phoneNumberId, phoneNumber, displayName, accessToken } = req.body;
+    
+    if (!wabaId || !phoneNumberId || !accessToken) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    
+    // Check if already connected
+    const existing = await db.query.channelConnections.findFirst({
+      where: and(
+        eq(channelConnections.companyId, user.companyId),
+        eq(channelConnections.channel, "whatsapp")
+      ),
+    });
+    
+    if (existing) {
+      // Update existing
+      await db.update(channelConnections)
+        .set({
+          wabaId,
+          phoneNumberId,
+          phoneNumberE164: phoneNumber || null,
+          displayName: displayName || null,
+          accessTokenEnc: accessToken,
+          status: "active",
+          connectedAt: new Date(),
+          lastError: null,
+          updatedAt: new Date(),
+        })
+        .where(eq(channelConnections.id, existing.id));
+    } else {
+      // Insert new
+      await db.insert(channelConnections).values({
+        companyId: user.companyId,
+        channel: "whatsapp",
+        status: "active",
+        wabaId,
+        phoneNumberId,
+        phoneNumberE164: phoneNumber || null,
+        displayName: displayName || null,
+        accessTokenEnc: accessToken,
+        connectedAt: new Date(),
+      });
+    }
+    
+    return res.json({ success: true });
+  });
+
+  // DELETE /api/integrations/whatsapp/disconnect - Disconnect WhatsApp
+  app.delete("/api/integrations/whatsapp/disconnect", async (req: Request, res: Response) => {
+    if (!req.user) return res.status(401).json({ error: "Unauthorized" });
+    const user = req.user as any;
+    if (!user.companyId) return res.status(400).json({ error: "No company" });
+    
+    await db.delete(channelConnections)
+      .where(and(
+        eq(channelConnections.companyId, user.companyId),
+        eq(channelConnections.channel, "whatsapp")
+      ));
+    
+    return res.json({ success: true });
+  });
+
   // POST /webhooks/telnyx/voicemail - Handle voicemail completed events
   app.post("/webhooks/telnyx/voicemail", async (req: Request, res: Response) => {
     try {
