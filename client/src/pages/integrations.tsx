@@ -410,19 +410,6 @@ function WhatsAppCard() {
                 <p className="text-xs text-muted-foreground text-center">
                   We'll take you to Meta to log in and select your WhatsApp Business account.
                 </p>
-                
-                {isAdmin && (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full text-xs text-muted-foreground"
-                    onClick={() => setManualConnectDialogOpen(true)}
-                    data-testid="button-manual-connect-whatsapp"
-                  >
-                    <Settings className="h-3 w-3 mr-1" />
-                    Manual Connect (Debug)
-                  </Button>
-                )}
 
                 <Collapsible open={helpOpen} onOpenChange={setHelpOpen}>
                   <CollapsibleTrigger asChild>
@@ -446,89 +433,6 @@ function WhatsAppCard() {
             )}
           </CardContent>
         </Card>
-
-        <Dialog open={manualConnectDialogOpen} onOpenChange={setManualConnectDialogOpen}>
-          <DialogContent className="max-w-md" data-testid="dialog-manual-connect-whatsapp">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                <SiWhatsapp className="h-5 w-5 text-[#25D366]" />
-                Manual Connect (Debug)
-              </DialogTitle>
-              <DialogDescription>
-                Enter your WhatsApp Business API credentials from Meta Business Suite. This is for debugging purposes only.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="wabaId">WhatsApp Business Account ID *</Label>
-                <Input
-                  id="wabaId"
-                  placeholder="e.g., 123456789012345"
-                  value={formData.wabaId}
-                  onChange={(e) => setFormData({ ...formData, wabaId: e.target.value })}
-                  data-testid="input-waba-id"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phoneNumberId">Phone Number ID *</Label>
-                <Input
-                  id="phoneNumberId"
-                  placeholder="e.g., 109876543210123"
-                  value={formData.phoneNumberId}
-                  onChange={(e) => setFormData({ ...formData, phoneNumberId: e.target.value })}
-                  data-testid="input-phone-number-id"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="phoneNumber">Phone Number (E.164)</Label>
-                <Input
-                  id="phoneNumber"
-                  placeholder="e.g., +1234567890"
-                  value={formData.phoneNumber}
-                  onChange={(e) => setFormData({ ...formData, phoneNumber: e.target.value })}
-                  data-testid="input-phone-number"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="displayName">Display Name</Label>
-                <Input
-                  id="displayName"
-                  placeholder="e.g., My Business"
-                  value={formData.displayName}
-                  onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
-                  data-testid="input-display-name"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="accessToken">Access Token *</Label>
-                <Input
-                  id="accessToken"
-                  type="password"
-                  placeholder="Your permanent access token"
-                  value={formData.accessToken}
-                  onChange={(e) => setFormData({ ...formData, accessToken: e.target.value })}
-                  data-testid="input-access-token"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Get this from Meta Business Suite → System Users → Generate Token
-                </p>
-              </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setManualConnectDialogOpen(false)} data-testid="button-cancel-manual-connect">
-                Cancel
-              </Button>
-              <Button
-                onClick={handleManualConnect}
-                disabled={manualConnectMutation.isPending}
-                className="bg-[#25D366] hover:bg-[#20BD5A]"
-                data-testid="button-submit-manual-connect"
-              >
-                {manualConnectMutation.isPending ? "Connecting..." : "Connect"}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         <AlertDialog open={disconnectDialogOpen} onOpenChange={setDisconnectDialogOpen}>
           <AlertDialogContent data-testid="dialog-disconnect-whatsapp">
