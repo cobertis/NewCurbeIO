@@ -36225,20 +36225,92 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           }
           
           try {
-            const telegramResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                chat_id: telegramChatId,
-                text: text || "(attachment)",
-                parse_mode: "HTML"
-              })
-            });
-            const telegramData = await telegramResponse.json() as any;
+            let telegramData: any;
+            let sentMediaUrls: string[] = [];
             
-            let status: "sent" | "failed" = telegramData.ok ? "sent" : "failed";
-            let errorMessage: string | null = telegramData.ok ? null : (telegramData.description || "Telegram send failed");
-            let telnyxMessageId = telegramData.ok ? `${telegramChatId}:${telegramData.result?.message_id}` : null;
+            // Helper to determine Telegram API method based on mimetype
+            const getTelegramMethod = (mimetype: string): string => {
+              if (mimetype.startsWith("image/gif")) return "sendAnimation";
+              if (mimetype.startsWith("image/")) return "sendPhoto";
+              if (mimetype.startsWith("video/")) return "sendVideo";
+              if (mimetype.startsWith("audio/ogg") || mimetype.startsWith("audio/opus")) return "sendVoice";
+              if (mimetype.startsWith("audio/")) return "sendAudio";
+              return "sendDocument";
+            };
+            
+            // Helper to get the form field name for Telegram API
+            const getTelegramFieldName = (method: string): string => {
+              switch (method) {
+                case "sendPhoto": return "photo";
+                case "sendVideo": return "video";
+                case "sendAnimation": return "animation";
+                case "sendVoice": return "voice";
+                case "sendAudio": return "audio";
+                default: return "document";
+              }
+            };
+            
+            // Send files if present
+            if (files && files.length > 0) {
+              for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const method = getTelegramMethod(file.mimetype);
+                const fieldName = getTelegramFieldName(method);
+                
+                // Use FormData for file upload
+                const FormData = (await import("form-data")).default;
+                const formData = new FormData();
+                formData.append("chat_id", telegramChatId);
+                formData.append(fieldName, file.buffer, {
+                  filename: file.originalname || `file_${Date.now()}`,
+                  contentType: file.mimetype,
+                });
+                
+                // Only add caption to the first file (or if it's the only file)
+                if (text && i === 0) {
+                  formData.append("caption", text);
+                  formData.append("parse_mode", "HTML");
+                }
+                
+                const telegramResponse = await fetch(`https://api.telegram.org/bot${botToken}/${method}`, {
+                  method: "POST",
+                  body: formData as any,
+                  headers: formData.getHeaders(),
+                });
+                telegramData = await telegramResponse.json();
+                
+                if (!telegramData.ok) {
+                  console.error(`[Telegram] Failed to send ${method}:`, telegramData.description);
+                }
+                
+                // Track sent media for message record
+                if (telegramData.ok) {
+                  // Store the URL if available
+                  const mediaUrl = mediaUrls[i] || `telegram:${method}:${file.originalname}`;
+                  sentMediaUrls.push(mediaUrl);
+                }
+              }
+            } else if (text) {
+              // Text-only message (emojis work naturally with text)
+              const telegramResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  chat_id: telegramChatId,
+                  text: text,
+                  parse_mode: "HTML"
+                })
+              });
+              telegramData = await telegramResponse.json();
+            }
+            
+            let status: "sent" | "failed" = telegramData?.ok ? "sent" : "failed";
+            let errorMessage: string | null = telegramData?.ok ? null : (telegramData?.description || "Telegram send failed");
+            let telnyxMessageId = telegramData?.ok ? `${telegramChatId}:${telegramData.result?.message_id}` : null;
+            
+            // Determine content type
+            const hasMedia = files && files.length > 0;
+            const contentType = hasMedia ? "media" : "text";
             
             // Create message record
             const [message] = await db
@@ -36248,8 +36320,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
                 direction: "outbound",
                 messageType: "outgoing",
                 channel: "telegram",
-                text: text || "(attachment)",
-                contentType: "text",
+                text: text || (hasMedia ? "(media)" : ""),
+                contentType,
+                mediaUrls: sentMediaUrls.length > 0 ? sentMediaUrls : null,
                 status,
                 telnyxMessageId,
                 sentBy: userId,
@@ -36259,10 +36332,14 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
               .returning();
             
             // Update conversation
+            const lastMsgPreview = text ? text.substring(0, 100) : (hasMedia ? "[Media]" : "");
             await db
               .update(telnyxConversations)
-              .set({ lastMessage: (text || "(attachment)").substring(0, 100), lastMessageAt: new Date(), updatedAt: new Date() })
+              .set({ lastMessage: lastMsgPreview, lastMessageAt: new Date(), updatedAt: new Date() })
               .where(eq(telnyxConversations.id, id));
+            
+            // Broadcast for real-time update
+            broadcastInboxMessage(companyId, id);
             
             return res.status(201).json(message);
           } catch (telegramError: any) {
