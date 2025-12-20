@@ -20,7 +20,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Check, ArrowLeft, ChevronDown, AlertTriangle } from "lucide-react";
+import { Check, ArrowLeft, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -327,15 +327,14 @@ export default function ComplianceBrand() {
           <CardContent className="p-0">
             <Collapsible open={openStep === 1} onOpenChange={() => setOpenStep(openStep === 1 ? 0 : 1)}>
               <CollapsibleTrigger className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                <span className={cn(
-                  "font-semibold",
-                  step1Complete ? "text-amber-600" : "text-gray-900 dark:text-gray-100"
-                )}>
+                <span className="font-semibold text-gray-900 dark:text-gray-100">
                   Step 1: Organization details
                 </span>
                 <div className="flex items-center gap-2">
-                  {step1Complete && !form.formState.errors.legalName && !form.formState.errors.legalForm && !form.formState.errors.website && !form.formState.errors.vertical && (
-                    <AlertTriangle className="w-5 h-5 text-amber-500" />
+                  {step1Complete && (
+                    <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                      <Check className="w-4 h-4 text-white" />
+                    </div>
                   )}
                   <ChevronDown className={cn("w-5 h-5 text-gray-500 transition-transform", openStep === 1 && "rotate-180")} />
                 </div>
@@ -456,15 +455,14 @@ export default function ComplianceBrand() {
 
             <Collapsible open={openStep === 2} onOpenChange={() => setOpenStep(openStep === 2 ? 0 : 2)}>
               <CollapsibleTrigger className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                <span className={cn(
-                  "font-semibold",
-                  step2Complete ? "text-amber-600" : "text-gray-900 dark:text-gray-100"
-                )}>
+                <span className="font-semibold text-gray-900 dark:text-gray-100">
                   Step 2: Organization address
                 </span>
                 <div className="flex items-center gap-2">
                   {step2Complete && (
-                    <AlertTriangle className="w-5 h-5 text-amber-500" />
+                    <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                      <Check className="w-4 h-4 text-white" />
+                    </div>
                   )}
                   <ChevronDown className={cn("w-5 h-5 text-gray-500 transition-transform", openStep === 2 && "rotate-180")} />
                 </div>
@@ -576,15 +574,14 @@ export default function ComplianceBrand() {
 
             <Collapsible open={openStep === 3} onOpenChange={() => setOpenStep(openStep === 3 ? 0 : 3)}>
               <CollapsibleTrigger className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
-                <span className={cn(
-                  "font-semibold",
-                  step3Complete ? "text-amber-600" : "text-gray-900 dark:text-gray-100"
-                )}>
+                <span className="font-semibold text-gray-900 dark:text-gray-100">
                   Step 3: Point of contact
                 </span>
                 <div className="flex items-center gap-2">
                   {step3Complete && (
-                    <AlertTriangle className="w-5 h-5 text-amber-500" />
+                    <div className="w-6 h-6 rounded-full bg-green-500 flex items-center justify-center">
+                      <Check className="w-4 h-4 text-white" />
+                    </div>
                   )}
                   <ChevronDown className={cn("w-5 h-5 text-gray-500 transition-transform", openStep === 3 && "rotate-180")} />
                 </div>
