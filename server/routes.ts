@@ -3550,6 +3550,63 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       },
     });
   });
+
+  // ==================== ONBOARDING PROGRESS ====================
+  app.get("/api/onboarding/progress", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      
+      // Check profile completion (firstName, lastName, phone)
+      const profileCompleted = !!(user.firstName && user.lastName && user.phone);
+      
+      // Check if company has phone setup
+      let phoneSetup = false;
+      let emailSetup = false;
+      let messagingSetup = false;
+      
+      if (user.companyId) {
+        const company = await storage.getCompany(user.companyId);
+        phoneSetup = !!(company?.phone);
+        
+        // Check company email settings
+        const settings = await storage.getCompanySettings(user.companyId);
+        if (settings?.emailSettings) {
+          const emailSettings = settings.emailSettings as { fromEmail?: string; fromName?: string };
+          emailSetup = !!(emailSettings.fromEmail && emailSettings.fromName);
+        }
+        
+        // Check if company has any BulkVS phone numbers (messaging channels)
+        const bulkvsNumbers = await storage.getBulkvsPhoneNumbersByCompany(user.companyId);
+        messagingSetup = bulkvsNumbers.length > 0;
+      }
+      
+      // Calculate if all steps are complete
+      const allComplete = profileCompleted && phoneSetup && emailSetup && messagingSetup;
+      
+      res.json({
+        profileCompleted,
+        phoneSetup,
+        emailSetup,
+        messagingSetup,
+        allComplete
+      });
+    } catch (error) {
+      console.error("[ONBOARDING] Error fetching progress:", error);
+      res.status(500).json({ message: "Failed to fetch onboarding progress" });
+    }
+  });
+
+  // Mark onboarding as complete
+  app.post("/api/onboarding/complete", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      await storage.updateUser(user.id, { onboardingCompleted: true });
+      res.json({ success: true });
+    } catch (error) {
+      console.error("[ONBOARDING] Error marking complete:", error);
+      res.status(500).json({ message: "Failed to mark onboarding as complete" });
+    }
+  });
   // ==================== LOCATIONIQ AUTOCOMPLETE ====================
   app.get("/api/locationiq/autocomplete", async (req: Request, res: Response) => {
     try {

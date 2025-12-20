@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -37,6 +38,7 @@ interface OnboardingProgress {
   phoneSetup: boolean;
   emailSetup: boolean;
   messagingSetup: boolean;
+  allComplete: boolean;
 }
 
 export default function GettingStarted() {
@@ -52,12 +54,23 @@ export default function GettingStarted() {
     enabled: !!sessionData?.user,
   });
 
+  const completeOnboardingMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/onboarding/complete");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+      setLocation("/");
+    },
+  });
+
   const user = sessionData?.user;
   const progress = progressData || {
     profileCompleted: !!(user?.firstName && user?.lastName && user?.phone),
     phoneSetup: false,
     emailSetup: false,
     messagingSetup: false,
+    allComplete: false,
   };
 
   const faqItems = {
@@ -177,6 +190,12 @@ export default function GettingStarted() {
                     <MessageSquare className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                   </div>
                   <span className="font-medium text-gray-900 dark:text-gray-100">SMS broadcasts</span>
+                  {progress.messagingSetup && (
+                    <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 ml-2">
+                      <Check className="w-3 h-3 mr-1" />
+                      Completed
+                    </Badge>
+                  )}
                 </div>
               </div>
             </AccordionTrigger>
@@ -247,6 +266,12 @@ export default function GettingStarted() {
                     <Gift className="w-3 h-3 mr-1" />
                     First 10,000 emails free
                   </Badge>
+                  {progress.emailSetup && (
+                    <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 ml-2">
+                      <Check className="w-3 h-3 mr-1" />
+                      Completed
+                    </Badge>
+                  )}
                 </div>
               </div>
             </AccordionTrigger>
@@ -351,6 +376,26 @@ export default function GettingStarted() {
             </AccordionContent>
           </AccordionItem>
         </Accordion>
+
+        {progress.allComplete && (
+          <div className="mt-8 text-center p-6 bg-green-50 dark:bg-green-900/20 rounded-lg border border-green-200 dark:border-green-800">
+            <h3 className="text-lg font-semibold text-green-800 dark:text-green-200 mb-2">
+              Setup Complete!
+            </h3>
+            <p className="text-sm text-green-600 dark:text-green-400 mb-4">
+              You've completed all the onboarding steps. Ready to get started?
+            </p>
+            <Button
+              onClick={() => completeOnboardingMutation.mutate()}
+              disabled={completeOnboardingMutation.isPending}
+              className="bg-green-600 hover:bg-green-700 text-white"
+              data-testid="button-complete-onboarding"
+            >
+              {completeOnboardingMutation.isPending ? "Completing..." : "Continue to Dashboard"}
+              <ChevronRight className="w-4 h-4 ml-2" />
+            </Button>
+          </div>
+        )}
 
         <div className="mt-12 text-center">
           <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
