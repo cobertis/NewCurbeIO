@@ -27962,6 +27962,65 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       sentAt: new Date(message.date * 1000)
     }).onConflictDoNothing();
     
+    // === INBOX INTEGRATION: Also store in unified inbox tables ===
+    const telegramPhoneId = `telegram:${chatId}`;
+    const displayNameForInbox = chatType === "private" 
+      ? (fromUser.first_name ? `${fromUser.first_name}${fromUser.last_name ? ' ' + fromUser.last_name : ''}` : fromUser.username || "Telegram User")
+      : message.chat.title || "Telegram Group";
+    
+    // Upsert inbox conversation
+    let inboxConversation = await db.query.telnyxConversations.findFirst({
+      where: and(
+        eq(telnyxConversations.companyId, companyId),
+        eq(telnyxConversations.phoneNumber, telegramPhoneId),
+        eq(telnyxConversations.channel, "telegram")
+      )
+    });
+    
+    if (!inboxConversation) {
+      const [newInboxConv] = await db.insert(telnyxConversations).values({
+        companyId,
+        phoneNumber: telegramPhoneId,
+        displayName: displayNameForInbox,
+        companyPhoneNumber: "telegram_bot",
+        lastMessage: (message.text || message.caption || `[${messageType}]`).substring(0, 100),
+        lastMessageAt: new Date(),
+        unreadCount: 1,
+        channel: "telegram",
+        status: "open"
+      }).returning();
+      inboxConversation = newInboxConv;
+    } else {
+      await db.update(telnyxConversations)
+        .set({
+          displayName: displayNameForInbox,
+          lastMessage: (message.text || message.caption || `[${messageType}]`).substring(0, 100),
+          lastMessageAt: new Date(),
+          unreadCount: sql`${telnyxConversations.unreadCount} + 1`,
+          updatedAt: new Date()
+        })
+        .where(eq(telnyxConversations.id, inboxConversation.id));
+    }
+    
+    // Insert into inbox messages
+    await db.insert(telnyxMessages).values({
+      conversationId: inboxConversation.id,
+      direction: "inbound",
+      messageType: "incoming",
+      channel: "telegram",
+      text: message.text || message.caption || `[${messageType}]`,
+      contentType: messageType === "photo" ? "image" : "text",
+      status: "delivered",
+      telnyxMessageId: providerMessageId,
+      sentAt: new Date(message.date * 1000)
+    });
+    
+    console.log(`[Telegram User Bot] Message also saved to inbox conversation ${inboxConversation.id}`);
+    
+    // Broadcast to inbox for real-time updates
+    broadcastInboxMessage(companyId, inboxConversation.id);
+    // === END INBOX INTEGRATION ===
+    
     console.log(`[Telegram User Bot] Message received from ${fromUser.first_name || telegramUserId} via @${userBot.botUsername}`);
   }
 
