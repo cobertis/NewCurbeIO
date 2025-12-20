@@ -219,6 +219,9 @@ export const users = pgTable("users", {
   twoFactorEmailEnabled: boolean("two_factor_email_enabled").notNull().default(true), // Email 2FA enabled by default
   twoFactorSmsEnabled: boolean("two_factor_sms_enabled").notNull().default(true), // SMS 2FA enabled by default
   
+  // Onboarding
+  onboardingCompleted: boolean("onboarding_completed").notNull().default(false), // Whether user has completed onboarding
+  
   // Timestamps
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
