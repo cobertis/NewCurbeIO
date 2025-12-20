@@ -98,6 +98,7 @@ import ImessageCampaigns from "@/pages/imessage-campaigns";
 import ImessageCampaignDetail from "@/pages/imessage-campaign-detail";
 import NotificationsPage from "@/pages/notifications";
 import WalletAnalyticsPage from "@/pages/wallet-analytics";
+import GettingStarted from "@/pages/getting-started";
 import NotFound from "@/pages/not-found";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -1410,6 +1411,13 @@ function Router() {
       <Route path="/forgot-password" component={ForgotPassword} />
       <Route path="/reset-password" component={ResetPassword} />
       <Route path="/onboarding" component={Onboarding} />
+      <Route path="/getting-started">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <GettingStarted />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
       <Route path="/dashboard">
         <ProtectedRoute>
           <DashboardLayout>

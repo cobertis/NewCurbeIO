@@ -33,10 +33,10 @@ export function ProtectedRoute({ children, fallbackPath = "/login" }: ProtectedR
           setIsAuthenticated(true);
           
           // Check if user needs to complete onboarding
-          // Skip this check if we're already on the onboarding page
-          if (data.user && !data.user.onboardingCompleted && location !== "/onboarding") {
-            console.log("[ONBOARDING] User has not completed onboarding, redirecting");
-            setLocation("/onboarding");
+          // Skip this check if we're already on the getting-started or onboarding page
+          if (data.user && !data.user.onboardingCompleted && location !== "/getting-started" && location !== "/onboarding") {
+            console.log("[ONBOARDING] User has not completed onboarding, redirecting to getting-started");
+            setLocation("/getting-started");
             return;
           }
           
