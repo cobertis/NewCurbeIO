@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Eye, EyeOff, Check, X, ArrowLeft, AlertCircle, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { AuthLayout } from "@/components/auth-layout";
+import { AuthShell } from "@/components/auth-shell";
 
 interface PasswordStrength {
   score: number;
@@ -159,7 +159,7 @@ export default function ResetPassword() {
 
   if (isValidating) {
     return (
-      <AuthLayout
+      <AuthShell
         title="Validating..."
         subtitle="Please wait while we validate your reset link"
         footer={<div />}
@@ -167,13 +167,13 @@ export default function ResetPassword() {
         <div className="flex flex-col items-center justify-center py-8">
           <Loader2 className="w-10 h-10 text-gray-400 animate-spin" />
         </div>
-      </AuthLayout>
+      </AuthShell>
     );
   }
 
   if (!isValidToken) {
     return (
-      <AuthLayout
+      <AuthShell
         title="Link expired"
         subtitle="This password reset link is no longer valid."
         footer={
@@ -202,14 +202,14 @@ export default function ResetPassword() {
             Request new link
           </Button>
         </div>
-      </AuthLayout>
+      </AuthShell>
     );
   }
 
   const requirements = validatePasswordRequirements(password);
 
   return (
-    <AuthLayout
+    <AuthShell
       title="Create new password"
       subtitle="Choose a strong password you'll remember."
       footer={
@@ -342,6 +342,6 @@ export default function ResetPassword() {
           )}
         </Button>
       </form>
-    </AuthLayout>
+    </AuthShell>
   );
 }

@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ArrowLeft, CheckCircle2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { AuthLayout } from "@/components/auth-layout";
+import { AuthShell } from "@/components/auth-shell";
 
 export default function ForgotPassword() {
   const [, setLocation] = useLocation();
@@ -62,7 +62,7 @@ export default function ForgotPassword() {
 
   if (emailSent) {
     return (
-      <AuthLayout
+      <AuthShell
         title="Check your email"
         subtitle="We've sent you a password reset link"
         footer={
@@ -87,12 +87,12 @@ export default function ForgotPassword() {
             If an account exists with <span className="font-medium text-gray-700">{identifier}</span>, you'll receive a password reset link shortly.
           </p>
         </div>
-      </AuthLayout>
+      </AuthShell>
     );
   }
 
   return (
-    <AuthLayout
+    <AuthShell
       title="Reset password"
       subtitle="Enter your email and we'll send you a reset link."
       footer={
@@ -145,6 +145,6 @@ export default function ForgotPassword() {
           )}
         </Button>
       </form>
-    </AuthLayout>
+    </AuthShell>
   );
 }
