@@ -1,4 +1,5 @@
 import logo from "@assets/logo no fondo_1760457183587.png";
+import productMockup from "@assets/image_1766258646875.png";
 import { Star } from "lucide-react";
 
 interface AuthShellProps {
@@ -46,9 +47,11 @@ export function AuthShell({
   return (
     <div className="flex min-h-screen">
       {/* LEFT PANEL - Form */}
-      <div className="w-full lg:w-1/2 bg-white flex flex-col justify-center items-center min-h-screen px-8 lg:px-16">
+      <div className="w-full lg:w-1/2 bg-white relative flex flex-col justify-center items-center min-h-screen px-8 lg:px-16">
+        {/* Fixed Logo */}
+        <img src={logo} alt="Curbe" className="absolute top-8 left-8 lg:left-16 h-12 w-auto" />
+        
         <div className="w-full max-w-[400px]">
-          <img src={logo} alt="Curbe" className="h-8 w-auto mb-8" />
           <h1 className="text-[24px] lg:text-[28px] font-semibold text-gray-900 leading-tight">
             {title}
           </h1>
@@ -112,80 +115,13 @@ export function AuthShell({
           <p className="text-[12px] text-gray-500">{testimonial.authorTitle}</p>
         </div>
 
-        {/* Product Mockup - Scaled 50% */}
-        <div className="flex-1 flex items-center justify-center w-full mt-4 relative" style={{ transform: 'scale(0.75)', transformOrigin: 'center center' }}>
-          <div className="relative w-full max-w-xs">
-            {/* Desktop Browser Window */}
-            <div className="bg-white rounded-lg shadow-lg border border-gray-100 overflow-hidden">
-              <div className="bg-gray-50 px-2 py-1 border-b border-gray-100 flex items-center gap-1">
-                <div className="w-1.5 h-1.5 rounded-full bg-red-400"></div>
-                <div className="w-1.5 h-1.5 rounded-full bg-yellow-400"></div>
-                <div className="w-1.5 h-1.5 rounded-full bg-green-400"></div>
-              </div>
-              <div className="p-2">
-                <div className="flex items-center gap-1.5 mb-2">
-                  <span className="text-[10px] font-medium text-gray-800">Open chats</span>
-                  <div className="flex -space-x-1">
-                    <div className="w-4 h-4 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 border border-white"></div>
-                    <div className="w-4 h-4 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 border border-white"></div>
-                    <div className="w-4 h-4 rounded-full bg-gradient-to-br from-orange-400 to-red-500 border border-white"></div>
-                    <div className="w-4 h-4 rounded-full bg-gradient-to-br from-green-400 to-teal-500 border border-white"></div>
-                  </div>
-                </div>
-                <div className="flex items-start gap-1.5">
-                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 flex items-center justify-center text-white text-[8px] font-medium">A</div>
-                  <div>
-                    <p className="text-[8px] font-medium text-gray-800">Amanda Brown</p>
-                    <div className="bg-gray-100 rounded p-1 mt-0.5">
-                      <p className="text-[8px] text-gray-600">Hello, thanks for your...</p>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Mobile Phone */}
-            <div className="absolute -right-2 top-1/2 -translate-y-1/3 w-[100px] bg-white rounded-[16px] shadow-xl border border-gray-100 overflow-hidden">
-              <div className="bg-gray-800 h-3 flex items-center justify-center">
-                <div className="w-6 h-1.5 bg-black rounded-full"></div>
-              </div>
-              <div className="p-1 space-y-1">
-                <div className="flex justify-end">
-                  <div className="bg-blue-500 rounded-lg px-1 py-0.5">
-                    <p className="text-[6px] text-white">Hello Amanda,</p>
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <div className="bg-gray-100 rounded-lg px-1 py-0.5">
-                    <p className="text-[6px] text-gray-600">Reply STOP to opt out.</p>
-                  </div>
-                </div>
-                <div className="flex items-start gap-0.5">
-                  <div className="w-3 h-3 rounded-full bg-gradient-to-br from-orange-400 to-yellow-500"></div>
-                  <div className="bg-white border border-gray-100 rounded-lg px-1 py-0.5 shadow-sm">
-                    <p className="text-[6px] text-gray-600">Hello, thanks!</p>
-                  </div>
-                </div>
-                <div className="flex justify-end">
-                  <div className="bg-green-500 rounded-lg px-1 py-0.5">
-                    <p className="text-[6px] text-white">Thanks! Will try it</p>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Floating Icons */}
-            <div className="absolute -left-1 top-2 w-6 h-6 bg-blue-500 rounded-lg flex items-center justify-center shadow-md">
-              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
-              </svg>
-            </div>
-            <div className="absolute right-8 -bottom-1 w-6 h-6 bg-orange-500 rounded-lg flex items-center justify-center shadow-md">
-              <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
-              </svg>
-            </div>
-          </div>
+        {/* Product Mockup Image */}
+        <div className="flex-1 flex items-center justify-center w-full mt-4 px-4">
+          <img 
+            src={productMockup} 
+            alt="Product Preview" 
+            className="w-full max-w-md object-contain"
+          />
         </div>
 
         {/* Company Logos */}
