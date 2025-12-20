@@ -3675,7 +3675,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       };
       console.log("[GOOGLE_PLACES] Making request to Google Places Autocomplete API");
       const response = await fetch(url, {
-        method: "PUT",
+        method: "POST",
         headers,
         body: JSON.stringify(body)
       });
@@ -3835,7 +3835,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       };
       console.log("[GOOGLE_PLACES] Making request to Google Places API");
       const response = await fetch(url, {
-        method: "PUT",
+        method: "POST",
         headers,
         body: JSON.stringify(body)
       });
