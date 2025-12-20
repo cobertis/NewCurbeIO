@@ -53,7 +53,7 @@ export default function ComplianceInfo() {
   const applicationId = params?.id;
   
   const { data: application, isLoading } = useQuery<ComplianceApplication>({
-    queryKey: ["/api/compliance/applications", applicationId],
+    queryKey: [`/api/compliance/applications/${applicationId}`],
     enabled: !!applicationId,
   });
 
