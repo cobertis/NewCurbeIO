@@ -3563,6 +3563,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       let phoneSetup = false;
       let emailSetup = false;
       let messagingSetup = false;
+      let planSelected = false;
       
       if (user.companyId) {
         const company = await storage.getCompany(user.companyId);
@@ -3578,13 +3579,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Check if company has any BulkVS phone numbers (messaging channels)
         const bulkvsNumbers = await storage.getBulkvsPhoneNumbersByCompany(user.companyId);
         messagingSetup = bulkvsNumbers.length > 0;
+        
+        // Check if user has selected a plan (has subscription)
+        const subscription = await storage.getSubscriptionByCompanyId(user.companyId);
+        planSelected = !!(subscription && subscription.status !== 'cancelled');
       }
       
       // Calculate if all steps are complete
-      const allComplete = profileCompleted && phoneSetup && emailSetup && messagingSetup;
+      const allComplete = profileCompleted && planSelected && phoneSetup && emailSetup && messagingSetup;
       
       res.json({
         profileCompleted,
+        planSelected,
         phoneSetup,
         emailSetup,
         messagingSetup,

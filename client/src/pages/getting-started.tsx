@@ -20,7 +20,8 @@ import {
   Smartphone,
   Send,
   Settings,
-  Plus
+  Plus,
+  CreditCard
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 
@@ -35,6 +36,7 @@ interface User {
 
 interface OnboardingProgress {
   profileCompleted: boolean;
+  planSelected: boolean;
   phoneSetup: boolean;
   emailSetup: boolean;
   messagingSetup: boolean;
@@ -68,6 +70,7 @@ export default function GettingStarted() {
   const user = sessionData?.user;
   const progress = progressData || {
     profileCompleted: !!(user?.firstName && user?.lastName && user?.phone),
+    planSelected: false,
     phoneSetup: false,
     emailSetup: false,
     messagingSetup: false,
@@ -78,6 +81,8 @@ export default function GettingStarted() {
   useEffect(() => {
     if (!progress.profileCompleted) {
       setActiveAccordion("profile");
+    } else if (!progress.planSelected) {
+      setActiveAccordion("plan");
     } else if (!progress.messagingSetup) {
       setActiveAccordion("sms");
     } else if (!progress.emailSetup) {
@@ -85,7 +90,7 @@ export default function GettingStarted() {
     } else {
       setActiveAccordion("other");
     }
-  }, [progress.profileCompleted, progress.messagingSetup, progress.emailSetup]);
+  }, [progress.profileCompleted, progress.planSelected, progress.messagingSetup, progress.emailSetup]);
 
   const faqItems = {
     sms: [
@@ -189,6 +194,57 @@ export default function GettingStarted() {
                     data-testid="button-complete-profile"
                   >
                     {progress.profileCompleted ? "Edit profile" : "Complete profile"}
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
+                </div>
+              </div>
+            </AccordionContent>
+          </AccordionItem>
+
+          <AccordionItem value="plan" className="border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
+            <AccordionTrigger className="px-5 py-4 hover:no-underline" data-testid="accordion-plan">
+              <div className="flex items-center justify-between w-full pr-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center">
+                    <CreditCard className="w-4 h-4 text-green-600 dark:text-green-400" />
+                  </div>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">Select a plan</span>
+                  <Badge variant="outline" className="text-green-600 dark:text-green-400 border-green-200 dark:border-green-800 ml-2">
+                    <Gift className="w-3 h-3 mr-1" />
+                    14-day free trial
+                  </Badge>
+                  {progress.planSelected && (
+                    <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 ml-2">
+                      <Check className="w-3 h-3 mr-1" />
+                      Completed
+                    </Badge>
+                  )}
+                </div>
+              </div>
+            </AccordionTrigger>
+            <AccordionContent className="px-5 pb-5">
+              <div className="pl-11">
+                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                  Choose the plan that best fits your needs. Start with a 14-day free trial - no credit card required.
+                </p>
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open("https://youtu.be/example", "_blank")}
+                    className="gap-2"
+                    data-testid="button-watch-plan-tutorial"
+                  >
+                    <PlayCircle className="w-4 h-4" />
+                    Watch tutorial
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={() => setLocation("/select-plan")}
+                    className="gap-2 bg-green-600 hover:bg-green-700"
+                    data-testid="button-select-plan"
+                  >
+                    {progress.planSelected ? "Change plan" : "Start free trial"}
                     <ChevronRight className="w-4 h-4" />
                   </Button>
                 </div>
