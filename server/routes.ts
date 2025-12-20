@@ -94,7 +94,7 @@ import {
 import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, oauthStates, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, oauthStates, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema } from "@shared/schema";
 import { encryptToken, decryptToken } from "./crypto";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -36855,6 +36855,134 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     } catch (error: any) {
       console.error("[Inbox] Error deleting conversation:", error);
       res.status(500).json({ message: "Failed to delete conversation" });
+    }
+  });
+
+  // =====================================================
+  // COMPLIANCE APPLICATIONS API
+  // =====================================================
+  
+  // POST /api/compliance/applications - Create new compliance application
+  app.post("/api/compliance/applications", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const validation = insertComplianceApplicationSchema.safeParse({
+        ...req.body,
+        companyId: user.companyId,
+        userId: user.id,
+      });
+      
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const [application] = await db.insert(complianceApplications).values(validation.data).returning();
+      res.status(201).json(application);
+    } catch (error: any) {
+      console.error("[Compliance] Error creating application:", error);
+      res.status(500).json({ message: "Failed to create compliance application" });
+    }
+  });
+  
+  // GET /api/compliance/applications/current - Get current user draft application
+  app.get("/api/compliance/applications/current", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const [application] = await db
+        .select()
+        .from(complianceApplications)
+        .where(
+          and(
+            eq(complianceApplications.companyId, user.companyId),
+            eq(complianceApplications.status, "draft")
+          )
+        )
+        .orderBy(desc(complianceApplications.createdAt))
+        .limit(1);
+      
+      res.json({ application: application || null });
+    } catch (error: any) {
+      console.error("[Compliance] Error getting current application:", error);
+      res.status(500).json({ message: "Failed to get current application" });
+    }
+  });
+  
+  // GET /api/compliance/applications/:id - Get application by ID
+  app.get("/api/compliance/applications/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      const [application] = await db
+        .select()
+        .from(complianceApplications)
+        .where(
+          and(
+            eq(complianceApplications.id, id),
+            eq(complianceApplications.companyId, user.companyId)
+          )
+        );
+      
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      
+      res.json(application);
+    } catch (error: any) {
+      console.error("[Compliance] Error getting application:", error);
+      res.status(500).json({ message: "Failed to get application" });
+    }
+  });
+  
+  // PATCH /api/compliance/applications/:id - Update application
+  app.patch("/api/compliance/applications/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      const [existing] = await db
+        .select()
+        .from(complianceApplications)
+        .where(
+          and(
+            eq(complianceApplications.id, id),
+            eq(complianceApplications.companyId, user.companyId)
+          )
+        );
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      
+      const [updated] = await db
+        .update(complianceApplications)
+        .set({
+          ...req.body,
+          updatedAt: new Date(),
+        })
+        .where(eq(complianceApplications.id, id))
+        .returning();
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("[Compliance] Error updating application:", error);
+      res.status(500).json({ message: "Failed to update application" });
     }
   });
 

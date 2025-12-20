@@ -6531,3 +6531,73 @@ export const mmsMediaCache = pgTable("mms_media_cache", {
 });
 
 export type MmsMediaCache = typeof mmsMediaCache.$inferSelect;
+
+// =====================================================
+// COMPLIANCE APPLICATIONS (10DLC/Toll-Free Registration Wizard)
+// =====================================================
+
+export const complianceApplicationStatusEnum = pgEnum("compliance_application_status", [
+  "draft", "step_1_complete", "step_2_complete", "step_3_complete", "step_4_complete", "submitted", "approved", "rejected"
+]);
+
+export const complianceNumberTypeEnum = pgEnum("compliance_number_type", ["toll_free", "10dlc"]);
+
+export const complianceApplications = pgTable("compliance_applications", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  
+  // Current progress
+  currentStep: integer("current_step").notNull().default(1),
+  status: complianceApplicationStatusEnum("status").notNull().default("draft"),
+  
+  // Step 1: Number Selection
+  numberType: complianceNumberTypeEnum("number_type"),
+  selectedPhoneNumber: text("selected_phone_number"),
+  areaCode: text("area_code"),
+  country: text("country").default("US"),
+  
+  // Step 2: Business Info
+  businessName: text("business_name"),
+  businessType: text("business_type"),
+  ein: text("ein"),
+  businessAddress: text("business_address"),
+  businessCity: text("business_city"),
+  businessState: text("business_state"),
+  businessZip: text("business_zip"),
+  contactFirstName: text("contact_first_name"),
+  contactLastName: text("contact_last_name"),
+  contactEmail: text("contact_email"),
+  contactPhone: text("contact_phone"),
+  website: text("website"),
+  
+  // Step 3: Brand Info (reference to telnyxBrands if created)
+  brandId: integer("brand_id").references(() => telnyxBrands.id, { onDelete: "set null" }),
+  
+  // Step 4: Campaign Info
+  campaignDescription: text("campaign_description"),
+  messageFlow: text("message_flow"),
+  sampleMessages: jsonb("sample_messages").default([]),
+  useCase: text("use_case"),
+  optInMethod: text("opt_in_method"),
+  optOutKeywords: text("opt_out_keywords"),
+  helpKeywords: text("help_keywords"),
+  
+  // Metadata
+  submittedAt: timestamp("submitted_at"),
+  approvedAt: timestamp("approved_at"),
+  rejectedAt: timestamp("rejected_at"),
+  rejectionReason: text("rejection_reason"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertComplianceApplicationSchema = createInsertSchema(complianceApplications).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type ComplianceApplication = typeof complianceApplications.$inferSelect;
+export type InsertComplianceApplication = z.infer<typeof insertComplianceApplicationSchema>;

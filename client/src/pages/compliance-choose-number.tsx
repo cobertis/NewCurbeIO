@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
@@ -347,6 +349,7 @@ const usAreaCodes = [
 
 export default function ComplianceChooseNumber() {
   const [location, setLocation] = useLocation();
+  const { toast } = useToast();
 
   const [currentStep] = useState(0);
   const [country] = useState("US");
@@ -356,6 +359,33 @@ export default function ComplianceChooseNumber() {
   const [areaCodeOpen, setAreaCodeOpen] = useState(false);
   const [showSwitchDialog, setShowSwitchDialog] = useState(false);
   const [pendingType, setPendingType] = useState<"toll-free" | "10dlc" | null>(null);
+
+  const createApplicationMutation = useMutation({
+    mutationFn: async (data: { numberType: string; selectedPhoneNumber: string; areaCode: string; country: string }) => {
+      const response = await apiRequest("POST", "/api/compliance/applications", data);
+      return response.json();
+    },
+    onSuccess: (application) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/compliance/applications"] });
+      setLocation(`/compliance/info?id=${application.id}`);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Error",
+        description: error.message || "Failed to create compliance application",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleActivateNumber = () => {
+    createApplicationMutation.mutate({
+      numberType: numberType === "toll-free" ? "toll_free" : "10dlc",
+      selectedPhoneNumber: selectedNumber,
+      areaCode: selectedAreaCode,
+      country: country,
+    });
+  };
 
   const handleNumberTypeChange = (val: string) => {
     const newType = val as "toll-free" | "10dlc";
@@ -647,10 +677,18 @@ export default function ComplianceChooseNumber() {
           </Link>
           <Button
             className="bg-blue-600 hover:bg-blue-700 px-6"
-            disabled={!selectedNumber || selectedNumber === "_none"}
+            disabled={!selectedNumber || selectedNumber === "_none" || createApplicationMutation.isPending}
+            onClick={handleActivateNumber}
             data-testid="button-activate"
           >
-            Activate number ($0.00)
+            {createApplicationMutation.isPending ? (
+              <>
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                Processing...
+              </>
+            ) : (
+              "Activate number ($0.00)"
+            )}
           </Button>
         </div>
       </div>
