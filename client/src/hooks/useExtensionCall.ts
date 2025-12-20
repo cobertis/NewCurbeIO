@@ -110,11 +110,14 @@ export function useExtensionCall() {
           break;
 
         case "error":
-          toast({
-            title: "Extension Error",
-            description: msg.message,
-            variant: "destructive",
-          });
+          // Don't show toast for "No extension assigned" - this is expected during onboarding
+          if (msg.message !== "No extension assigned") {
+            toast({
+              title: "Extension Error",
+              description: msg.message,
+              variant: "destructive",
+            });
+          }
           break;
 
         case "online_extensions":
