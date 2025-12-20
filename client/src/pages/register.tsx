@@ -18,6 +18,8 @@ import { Loader2, Eye, EyeOff } from "lucide-react";
 import { AuthShell } from "@/components/auth-shell";
 
 const registerSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
   workspaceName: z.string().min(2, "Workspace name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
@@ -25,6 +27,8 @@ const registerSchema = z.object({
 });
 
 const googleSSOSchema = z.object({
+  firstName: z.string().min(1, "First name is required"),
+  lastName: z.string().min(1, "Last name is required"),
   workspaceName: z.string().min(2, "Workspace name must be at least 2 characters"),
   termsAccepted: z.boolean().refine((val) => val === true, "Required"),
 });
@@ -64,6 +68,8 @@ export default function Register() {
   const form = useForm<RegisterForm>({
     resolver: zodResolver(registerSchema),
     defaultValues: {
+      firstName: "",
+      lastName: "",
       workspaceName: "",
       email: "",
       password: "",
@@ -74,6 +80,8 @@ export default function Register() {
   const googleForm = useForm<GoogleSSOForm>({
     resolver: zodResolver(googleSSOSchema),
     defaultValues: {
+      firstName: "",
+      lastName: "",
       workspaceName: initialGoogleSSO?.name || "",
       termsAccepted: true,
     },
@@ -93,6 +101,8 @@ export default function Register() {
           slug: slug,
         },
         admin: {
+          firstName: data.firstName,
+          lastName: data.lastName,
           email: data.email,
           password: data.password,
         },
@@ -305,8 +315,63 @@ export default function Register() {
       }
     >
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <div className="space-y-1.5">
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-3">
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <label className="block text-[11px] text-gray-500 font-medium tracking-wide uppercase">
+                First name
+              </label>
+              <FormField
+                control={form.control}
+                name="firstName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="John"
+                        className="h-10 px-3 bg-white border border-gray-200 rounded-lg text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
+                        {...field}
+                        autoComplete="given-name"
+                        data-testid="input-first-name"
+                      />
+                    </FormControl>
+                    <div className="h-3">
+                      <FormMessage className="text-[10px]" />
+                    </div>
+                  </FormItem>
+                )}
+              />
+            </div>
+            <div className="space-y-1">
+              <label className="block text-[11px] text-gray-500 font-medium tracking-wide uppercase">
+                Last name
+              </label>
+              <FormField
+                control={form.control}
+                name="lastName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormControl>
+                      <Input
+                        type="text"
+                        placeholder="Doe"
+                        className="h-10 px-3 bg-white border border-gray-200 rounded-lg text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
+                        {...field}
+                        autoComplete="family-name"
+                        data-testid="input-last-name"
+                      />
+                    </FormControl>
+                    <div className="h-3">
+                      <FormMessage className="text-[10px]" />
+                    </div>
+                  </FormItem>
+                )}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1">
             <label className="block text-[11px] text-gray-500 font-medium tracking-wide uppercase">
               Workspace name
             </label>
@@ -319,13 +384,13 @@ export default function Register() {
                     <Input
                       type="text"
                       placeholder="Your company or team name"
-                      className="h-11 px-4 bg-white border border-gray-200 rounded-lg text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
+                      className="h-10 px-3 bg-white border border-gray-200 rounded-lg text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
                       {...field}
                       autoComplete="organization"
                       data-testid="input-workspace-name"
                     />
                   </FormControl>
-                  <div className="h-4">
+                  <div className="h-3">
                     <FormMessage className="text-[10px]" />
                   </div>
                 </FormItem>
@@ -333,7 +398,7 @@ export default function Register() {
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <label className="block text-[11px] text-gray-500 font-medium tracking-wide uppercase">
               Work email
             </label>
@@ -346,13 +411,13 @@ export default function Register() {
                     <Input
                       type="email"
                       placeholder="you@company.com"
-                      className="h-11 px-4 bg-white border border-gray-200 rounded-lg text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
+                      className="h-10 px-3 bg-white border border-gray-200 rounded-lg text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
                       {...field}
                       autoComplete="email"
                       data-testid="input-email"
                     />
                   </FormControl>
-                  <div className="h-4">
+                  <div className="h-3">
                     <FormMessage className="text-[10px]" />
                   </div>
                 </FormItem>
@@ -360,7 +425,7 @@ export default function Register() {
             />
           </div>
 
-          <div className="space-y-1.5">
+          <div className="space-y-1">
             <label className="block text-[11px] text-gray-500 font-medium tracking-wide uppercase">
               Password
             </label>
@@ -374,7 +439,7 @@ export default function Register() {
                       <Input
                         type={showPassword ? "text" : "password"}
                         placeholder="Min. 8 characters"
-                        className="h-11 px-4 pr-11 bg-white border border-gray-200 rounded-lg text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
+                        className="h-10 px-3 pr-10 bg-white border border-gray-200 rounded-lg text-[14px] text-gray-900 placeholder:text-gray-400 focus:border-gray-300 focus:ring-2 focus:ring-gray-100 focus:ring-offset-0 transition-all outline-none"
                         {...field}
                         autoComplete="new-password"
                         data-testid="input-password"
@@ -382,7 +447,7 @@ export default function Register() {
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition-colors"
                         data-testid="button-toggle-password"
                       >
                         {showPassword ? (
@@ -393,7 +458,7 @@ export default function Register() {
                       </button>
                     </div>
                   </FormControl>
-                  <div className="h-4">
+                  <div className="h-3">
                     <FormMessage className="text-[10px]" />
                   </div>
                 </FormItem>
@@ -405,7 +470,7 @@ export default function Register() {
             control={form.control}
             name="termsAccepted"
             render={({ field }) => (
-              <FormItem className="flex flex-row items-start space-x-2.5 space-y-0 pt-1">
+              <FormItem className="flex flex-row items-start space-x-2 space-y-0">
                 <FormControl>
                   <Checkbox
                     checked={field.value}
@@ -415,13 +480,13 @@ export default function Register() {
                   />
                 </FormControl>
                 <div className="leading-none">
-                  <label className="text-[12px] text-gray-500 leading-relaxed cursor-pointer" onClick={() => field.onChange(!field.value)}>
+                  <label className="text-[11px] text-gray-500 leading-relaxed cursor-pointer" onClick={() => field.onChange(!field.value)}>
                     I agree to the{" "}
                     <a href="https://curbe.io/terms" target="_blank" rel="noopener noreferrer" className="text-gray-700 hover:text-gray-900 underline underline-offset-2" onClick={(e) => e.stopPropagation()}>Terms</a>
                     {" "}and{" "}
                     <a href="https://curbe.io/privacy" target="_blank" rel="noopener noreferrer" className="text-gray-700 hover:text-gray-900 underline underline-offset-2" onClick={(e) => e.stopPropagation()}>Privacy Policy</a>
                   </label>
-                  <div className="h-4">
+                  <div className="h-3">
                     <FormMessage className="text-[10px]" />
                   </div>
                 </div>
@@ -432,7 +497,7 @@ export default function Register() {
           <Button
             type="submit"
             disabled={isLoading}
-            className="w-full h-11 text-[13px] font-semibold bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-all duration-150 shadow-sm hover:shadow disabled:opacity-70"
+            className="w-full h-10 text-[13px] font-semibold bg-gray-900 hover:bg-gray-800 text-white rounded-lg transition-all duration-150 shadow-sm hover:shadow disabled:opacity-70"
             data-testid="button-register"
           >
             {isLoading ? (
