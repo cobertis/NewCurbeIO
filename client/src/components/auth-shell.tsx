@@ -132,41 +132,41 @@ export function AuthShell({
 
       {/* RIGHT PANEL - Testimonial */}
       <div 
-        className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center py-10 px-6"
-        style={{ background: 'linear-gradient(180deg, #EBF5FC 0%, #E0F0FA 50%, #D6EBF8 100%)' }}
+        className="hidden lg:flex lg:w-1/2 flex-col items-center justify-between py-12 px-8"
+        style={{ background: 'linear-gradient(180deg, #E8F4FD 0%, #DEF0FC 50%, #D4EBFA 100%)' }}
       >
-        {/* Product Mockup Image - Now at top */}
-        <div className="flex items-center justify-center w-full px-4 mb-8">
-          <img 
-            src={productMockup} 
-            alt="Product Preview" 
-            className="w-full max-w-md object-contain"
-          />
-        </div>
-
-        {/* Testimonial Section - Now below image */}
-        <div className="flex flex-col items-center text-center max-w-md transition-opacity duration-500">
-          <div className="flex gap-0.5 mb-4">
+        {/* Testimonial Section - At top */}
+        <div className="flex flex-col items-center text-center max-w-lg pt-4">
+          <div className="flex gap-1 mb-6">
             {[1, 2, 3, 4, 5].map((i) => (
-              <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+              <Star key={i} className="w-5 h-5 fill-amber-400 text-amber-400" />
             ))}
           </div>
           
-          <p className="text-[17px] text-gray-700 leading-relaxed mb-4 italic min-h-[80px]">
+          <p className="text-[20px] text-gray-700 leading-relaxed mb-6 italic font-light">
             "{renderQuoteWithHighlight()}"
           </p>
           
-          <p className="text-[14px] font-semibold text-gray-800">{testimonial.authorName}</p>
-          <p className="text-[12px] text-gray-500">{testimonial.authorTitle}</p>
+          <p className="text-[15px] font-semibold text-gray-800">{testimonial.authorName}</p>
+          <p className="text-[13px] text-gray-500">{testimonial.authorTitle}</p>
         </div>
 
-        {/* Company Logos */}
-        <div className="flex items-center justify-center gap-6 flex-wrap mt-8">
-          <span className="text-gray-500 font-semibold text-xs">FORTO</span>
-          <span className="text-gray-500 font-semibold text-xs">QiQ</span>
-          <span className="text-gray-500 font-semibold text-xs">IXICA</span>
-          <span className="text-gray-500 font-semibold text-xs">Cataphract</span>
-          <span className="text-gray-500 font-semibold text-xs">Marketplace</span>
+        {/* Product Mockup Image - Center */}
+        <div className="flex-1 flex items-center justify-center w-full px-4 py-6">
+          <img 
+            src={productMockup} 
+            alt="Product Preview" 
+            className="w-full max-w-lg object-contain"
+          />
+        </div>
+
+        {/* Company Logos - At bottom */}
+        <div className="flex items-center justify-center gap-8 flex-wrap pb-4">
+          <span className="text-gray-400 font-bold text-sm tracking-wide">FORTO</span>
+          <span className="text-gray-400 font-bold text-sm tracking-wide">QiQ</span>
+          <span className="text-gray-400 font-bold text-sm tracking-wide">IXICA</span>
+          <span className="text-gray-400 font-bold text-sm tracking-wide">Cataphract</span>
+          <span className="text-gray-400 font-bold text-sm tracking-wide">Marketplace</span>
         </div>
       </div>
     </div>
