@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -44,6 +44,7 @@ interface OnboardingProgress {
 export default function GettingStarted() {
   const [, setLocation] = useLocation();
   const [faqTab, setFaqTab] = useState("sms");
+  const [activeAccordion, setActiveAccordion] = useState<string | undefined>("profile");
 
   const { data: sessionData, isLoading } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
@@ -72,6 +73,19 @@ export default function GettingStarted() {
     messagingSetup: false,
     allComplete: false,
   };
+
+  // Auto-open the next incomplete step
+  useEffect(() => {
+    if (!progress.profileCompleted) {
+      setActiveAccordion("profile");
+    } else if (!progress.messagingSetup) {
+      setActiveAccordion("sms");
+    } else if (!progress.emailSetup) {
+      setActiveAccordion("email");
+    } else {
+      setActiveAccordion("other");
+    }
+  }, [progress.profileCompleted, progress.messagingSetup, progress.emailSetup]);
 
   const faqItems = {
     sms: [
@@ -134,7 +148,7 @@ export default function GettingStarted() {
           </p>
         </div>
 
-        <Accordion type="single" collapsible className="space-y-3" defaultValue="profile">
+        <Accordion type="single" collapsible className="space-y-3" value={activeAccordion} onValueChange={setActiveAccordion}>
           <AccordionItem value="profile" className="border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
             <AccordionTrigger className="px-5 py-4 hover:no-underline [&[data-state=open]>div>svg]:rotate-0" data-testid="accordion-profile">
               <div className="flex items-center justify-between w-full pr-4">
