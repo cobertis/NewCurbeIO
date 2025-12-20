@@ -1,6 +1,41 @@
+import { useState, useEffect } from "react";
+import { Link } from "wouter";
 import logo from "@assets/logo no fondo_1760457183587.png";
 import productMockup from "@assets/image_1766258646875.png";
 import { Star } from "lucide-react";
+
+const testimonials = [
+  {
+    quote: "The interface and ease of use makes our work so much easier, whilst giving us the professional image we strive to maintain.",
+    highlightedText: "interface and ease of use",
+    authorName: "Ahmet Deveci",
+    authorTitle: "Director, CCTV Aware",
+  },
+  {
+    quote: "Curbe has transformed how we manage customer relationships. The automation features save us hours every week.",
+    highlightedText: "transformed how we manage",
+    authorName: "Maria Rodriguez",
+    authorTitle: "CEO, InsureMax Solutions",
+  },
+  {
+    quote: "The unified inbox is a game changer. All our client communications in one place makes follow-ups effortless.",
+    highlightedText: "game changer",
+    authorName: "James Chen",
+    authorTitle: "Founder, Premier Insurance Group",
+  },
+  {
+    quote: "Our team productivity increased by 40% after switching to Curbe. The CRM just works exactly how we need it.",
+    highlightedText: "productivity increased by 40%",
+    authorName: "Sarah Mitchell",
+    authorTitle: "Operations Director, TrustShield Insurance",
+  },
+  {
+    quote: "Finally a CRM that understands the insurance industry. Customer support is exceptional and the platform is intuitive.",
+    highlightedText: "understands the insurance industry",
+    authorName: "Robert Thompson",
+    authorTitle: "Managing Partner, SecureLife Agency",
+  },
+];
 
 interface AuthShellProps {
   title: string;
@@ -8,12 +43,6 @@ interface AuthShellProps {
   onGoogleSSO?: () => void;
   footer: React.ReactNode;
   children: React.ReactNode;
-  testimonial?: {
-    quote: string;
-    highlightedText: string;
-    authorName: string;
-    authorTitle: string;
-  };
 }
 
 export function AuthShell({
@@ -22,13 +51,18 @@ export function AuthShell({
   onGoogleSSO,
   footer,
   children,
-  testimonial = {
-    quote: "The interface and ease of use makes our work so much easier, whilst giving us the professional image we strive to maintain.",
-    highlightedText: "interface and ease of use",
-    authorName: "Ahmet Deveci",
-    authorTitle: "Director, CCTV Aware",
-  },
 }: AuthShellProps) {
+  const [currentTestimonial, setCurrentTestimonial] = useState(0);
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTestimonial((prev) => (prev + 1) % testimonials.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const testimonial = testimonials[currentTestimonial];
+
   const renderQuoteWithHighlight = () => {
     const { quote, highlightedText } = testimonial;
     const parts = quote.split(highlightedText);
@@ -48,8 +82,10 @@ export function AuthShell({
     <div className="flex min-h-screen">
       {/* LEFT PANEL - Form */}
       <div className="w-full lg:w-1/2 bg-white relative flex flex-col justify-center items-center min-h-screen px-8 lg:px-16">
-        {/* Fixed Logo */}
-        <img src={logo} alt="Curbe" className="absolute top-8 left-8 lg:left-16 h-12 w-auto" />
+        {/* Fixed Logo with Link */}
+        <Link href="/">
+          <img src={logo} alt="Curbe" className="absolute top-8 left-8 lg:left-16 h-12 w-auto cursor-pointer" />
+        </Link>
         
         <div className="w-full max-w-[400px]">
           <h1 className="text-[24px] lg:text-[28px] font-semibold text-gray-900 leading-tight">
@@ -96,27 +132,11 @@ export function AuthShell({
 
       {/* RIGHT PANEL - Testimonial */}
       <div 
-        className="hidden lg:flex lg:w-1/2 flex-col items-center justify-between py-10 px-6"
+        className="hidden lg:flex lg:w-1/2 flex-col items-center justify-center py-10 px-6"
         style={{ background: 'linear-gradient(180deg, #EBF5FC 0%, #E0F0FA 50%, #D6EBF8 100%)' }}
       >
-        {/* Testimonial Section */}
-        <div className="flex flex-col items-center text-center max-w-md">
-          <div className="flex gap-0.5 mb-4">
-            {[1, 2, 3, 4, 5].map((i) => (
-              <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
-            ))}
-          </div>
-          
-          <p className="text-[17px] text-gray-700 leading-relaxed mb-4 italic">
-            "{renderQuoteWithHighlight()}"
-          </p>
-          
-          <p className="text-[14px] font-semibold text-gray-800">{testimonial.authorName}</p>
-          <p className="text-[12px] text-gray-500">{testimonial.authorTitle}</p>
-        </div>
-
-        {/* Product Mockup Image */}
-        <div className="flex-1 flex items-center justify-center w-full mt-4 px-4">
+        {/* Product Mockup Image - Now at top */}
+        <div className="flex items-center justify-center w-full px-4 mb-8">
           <img 
             src={productMockup} 
             alt="Product Preview" 
@@ -124,8 +144,24 @@ export function AuthShell({
           />
         </div>
 
+        {/* Testimonial Section - Now below image */}
+        <div className="flex flex-col items-center text-center max-w-md transition-opacity duration-500">
+          <div className="flex gap-0.5 mb-4">
+            {[1, 2, 3, 4, 5].map((i) => (
+              <Star key={i} className="w-4 h-4 fill-amber-400 text-amber-400" />
+            ))}
+          </div>
+          
+          <p className="text-[17px] text-gray-700 leading-relaxed mb-4 italic min-h-[80px]">
+            "{renderQuoteWithHighlight()}"
+          </p>
+          
+          <p className="text-[14px] font-semibold text-gray-800">{testimonial.authorName}</p>
+          <p className="text-[12px] text-gray-500">{testimonial.authorTitle}</p>
+        </div>
+
         {/* Company Logos */}
-        <div className="flex items-center justify-center gap-6 flex-wrap mt-4">
+        <div className="flex items-center justify-center gap-6 flex-wrap mt-8">
           <span className="text-gray-500 font-semibold text-xs">FORTO</span>
           <span className="text-gray-500 font-semibold text-xs">QiQ</span>
           <span className="text-gray-500 font-semibold text-xs">IXICA</span>
