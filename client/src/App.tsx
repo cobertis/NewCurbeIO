@@ -979,8 +979,8 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         </div>
         
         {/* Content Area - Row 2, Column 2 */}
-        <div className="flex flex-col min-w-0 pr-4 pt-2 overflow-hidden">
-          <main className="flex-1 overflow-auto p-6">
+        <div className="flex flex-col min-w-0 min-h-0 h-full pr-4 pt-2 overflow-hidden">
+          <main className="flex-1 min-h-0 overflow-auto p-6">
             {children}
           </main>
         </div>
