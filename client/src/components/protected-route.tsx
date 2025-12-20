@@ -32,6 +32,14 @@ export function ProtectedRoute({ children, fallbackPath = "/login" }: ProtectedR
           const data = await response.json();
           setIsAuthenticated(true);
           
+          // Check if user needs to complete onboarding
+          // Skip this check if we're already on the onboarding page
+          if (data.user && !data.user.onboardingCompleted && location !== "/onboarding") {
+            console.log("[ONBOARDING] User has not completed onboarding, redirecting");
+            setLocation("/onboarding");
+            return;
+          }
+          
           // Check if user needs to select a plan
           // Only ADMINS need to have a subscription - agents are covered by admin's plan
           // Superadmins bypass this check entirely

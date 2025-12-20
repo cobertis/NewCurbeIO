@@ -36172,6 +36172,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         nationalProducerNumber: nationalProducerNumber?.trim() || null,
         federallyFacilitatedMarketplace: federallyFacilitatedMarketplace?.trim() || null,
         referredBy: referredBy?.trim() || null,
+        onboardingCompleted: true, // Mark onboarding as completed
       });
       
       const updatedUser = await storage.getUser(userId);
