@@ -438,6 +438,9 @@ export default function Settings() {
   // Address autocomplete state
   const [addressValue, setAddressValue] = useState("");
   const [companyPhoneValue, setCompanyPhoneValue] = useState("");
+  const [cityValue, setCityValue] = useState("");
+  const [stateValue, setStateValue] = useState("");
+  const [postalCodeValue, setPostalCodeValue] = useState("");
   
   const user = userData?.user;
 
@@ -650,6 +653,9 @@ export default function Settings() {
       setSelectedNiche((companyData.company as any).businessNiche || "");
       setAddressValue(companyData.company.address || "");
       setCompanyPhoneValue(companyData.company.phone ? formatPhoneInput(companyData.company.phone) : "");
+      setCityValue(companyData.company.city || "");
+      setStateValue(companyData.company.state || "");
+      setPostalCodeValue(companyData.company.postalCode || "");
     }
   }, [companyData]);
 
@@ -1642,6 +1648,9 @@ export default function Settings() {
                           }}
                           onAddressSelect={(address) => {
                             setAddressValue(address.street);
+                            setCityValue(address.city);
+                            setStateValue(address.state);
+                            setPostalCodeValue(address.postalCode);
                             if (addressRef.current) addressRef.current.value = address.street;
                             if (cityRef.current) cityRef.current.value = address.city;
                             if (stateRef.current) stateRef.current.value = address.state;
@@ -1674,36 +1683,39 @@ export default function Settings() {
                       <div className="space-y-2">
                         <Label htmlFor="city">
                           City
-                          {!companyData?.company?.city && <span className="required-field-dot" title="Required field" />}
+                          {!cityValue && <span className="required-field-dot" title="Required field" />}
                         </Label>
                         <Input
                           id="city"
                           ref={cityRef}
-                          defaultValue={companyData?.company?.city || ""}
+                          value={cityValue}
+                          onChange={(e) => setCityValue(e.target.value)}
                           data-testid="input-city"
                         />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="state">
                           State / Province
-                          {!companyData?.company?.state && <span className="required-field-dot" title="Required field" />}
+                          {!stateValue && <span className="required-field-dot" title="Required field" />}
                         </Label>
                         <Input
                           id="state"
                           ref={stateRef}
-                          defaultValue={companyData?.company?.state || ""}
+                          value={stateValue}
+                          onChange={(e) => setStateValue(e.target.value)}
                           data-testid="input-state"
                         />
                       </div>
                       <div className="space-y-2">
                         <Label htmlFor="postalCode">
                           Postal Code
-                          {!companyData?.company?.postalCode && <span className="required-field-dot" title="Required field" />}
+                          {!postalCodeValue && <span className="required-field-dot" title="Required field" />}
                         </Label>
                         <Input
                           id="postalCode"
                           ref={postalCodeRef}
-                          defaultValue={companyData?.company?.postalCode || ""}
+                          value={postalCodeValue}
+                          onChange={(e) => setPostalCodeValue(e.target.value)}
                           data-testid="input-postal-code"
                         />
                       </div>
