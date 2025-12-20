@@ -5569,8 +5569,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (npn !== undefined) updateData.npn = npn;
       if (timezone !== undefined) updateData.timezone = timezone;
       
-      console.log("[Company Update] Received body:", JSON.stringify(req.body));
-      console.log("[Company Update] Update data:", JSON.stringify(updateData));
       // Actually update the company in the database
       const updatedCompany = await storage.updateCompany(companyId, updateData);
       if (!updatedCompany) {
