@@ -568,7 +568,7 @@ export default function GettingStarted() {
                     className="w-full bg-blue-600 hover:bg-blue-700"
                     onClick={() => {
                       setShowNumberTypeDialog(false);
-                      setLocation("/sms?type=toll-free");
+                      setLocation("/compliance/choose-number?type=toll-free");
                     }}
                     data-testid="button-choose-toll-free"
                   >
@@ -617,7 +617,7 @@ export default function GettingStarted() {
                     className="w-full"
                     onClick={() => {
                       setShowNumberTypeDialog(false);
-                      setLocation("/sms?type=10dlc");
+                      setLocation("/compliance/choose-number?type=10dlc");
                     }}
                     data-testid="button-choose-10dlc"
                   >

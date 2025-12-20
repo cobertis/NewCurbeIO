@@ -99,6 +99,7 @@ import ImessageCampaignDetail from "@/pages/imessage-campaign-detail";
 import NotificationsPage from "@/pages/notifications";
 import WalletAnalyticsPage from "@/pages/wallet-analytics";
 import GettingStarted from "@/pages/getting-started";
+import ComplianceChooseNumber from "@/pages/compliance-choose-number";
 import NotFound from "@/pages/not-found";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -1415,6 +1416,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <GettingStarted />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/compliance/choose-number">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <ComplianceChooseNumber />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
