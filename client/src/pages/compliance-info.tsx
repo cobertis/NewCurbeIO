@@ -211,13 +211,6 @@ export default function ComplianceInfo() {
             </span>
           </Link>
           <div className="flex items-center gap-4">
-            <a 
-              href="#" 
-              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium"
-              data-testid="link-add-team-members"
-            >
-              Add team members
-            </a>
             <Button
               className="bg-blue-600 hover:bg-blue-700 px-6"
               onClick={() => setLocation(`/compliance/brand?id=${applicationId}`)}
