@@ -23,12 +23,14 @@ const registerSchema = z.object({
   workspaceName: z.string().min(2, "Workspace name must be at least 2 characters"),
   email: z.string().email("Invalid email address"),
   password: z.string().min(8, "Password must be at least 8 characters"),
+  termsAccepted: z.boolean().refine((val) => val === true, "Required"),
 });
 
 const googleSSOSchema = z.object({
   firstName: z.string().min(1, "First name is required"),
   lastName: z.string().min(1, "Last name is required"),
   workspaceName: z.string().min(2, "Workspace name must be at least 2 characters"),
+  termsAccepted: z.boolean().refine((val) => val === true, "Required"),
 });
 
 type RegisterForm = z.infer<typeof registerSchema>;
@@ -71,6 +73,7 @@ export default function Register() {
       workspaceName: "",
       email: "",
       password: "",
+      termsAccepted: false,
     },
   });
 
@@ -80,6 +83,7 @@ export default function Register() {
       firstName: "",
       lastName: "",
       workspaceName: initialGoogleSSO?.name || "",
+      termsAccepted: false,
     },
   });
 
@@ -462,12 +466,33 @@ export default function Register() {
             />
           </div>
 
-          <p className="text-[11px] text-gray-500 leading-relaxed">
-            By signing up or otherwise using our services, you agree to be bound by our{" "}
-            <a href="https://curbe.io/terms" target="_blank" rel="noopener noreferrer" className="text-gray-700 hover:text-gray-900 underline underline-offset-2">Terms of use</a>
-            {" "}and{" "}
-            <a href="https://curbe.io/privacy" target="_blank" rel="noopener noreferrer" className="text-gray-700 hover:text-gray-900 underline underline-offset-2">Privacy policy</a>.
-          </p>
+          <FormField
+            control={form.control}
+            name="termsAccepted"
+            render={({ field }) => (
+              <FormItem className="flex flex-row items-start space-x-2 space-y-0">
+                <FormControl>
+                  <Checkbox
+                    checked={field.value}
+                    onCheckedChange={field.onChange}
+                    className="h-4 w-4 mt-0.5 border-gray-300 data-[state=checked]:bg-gray-900 data-[state=checked]:border-gray-900 rounded"
+                    data-testid="checkbox-terms"
+                  />
+                </FormControl>
+                <div className="leading-none">
+                  <label className="text-[11px] text-gray-500 leading-relaxed cursor-pointer" onClick={() => field.onChange(!field.value)}>
+                    By signing up or otherwise using our services, you agree to be bound by our{" "}
+                    <a href="https://curbe.io/terms" target="_blank" rel="noopener noreferrer" className="text-gray-700 hover:text-gray-900 underline underline-offset-2" onClick={(e) => e.stopPropagation()}>Terms of use</a>
+                    {" "}and{" "}
+                    <a href="https://curbe.io/privacy" target="_blank" rel="noopener noreferrer" className="text-gray-700 hover:text-gray-900 underline underline-offset-2" onClick={(e) => e.stopPropagation()}>Privacy policy</a>.
+                  </label>
+                  <div className="h-3">
+                    <FormMessage className="text-[10px]" />
+                  </div>
+                </div>
+              </FormItem>
+            )}
+          />
 
           <Button
             type="submit"
