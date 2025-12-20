@@ -6009,7 +6009,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (req.body.nationalProducerNumber !== undefined) allowedFields.nationalProducerNumber = req.body.nationalProducerNumber?.trim() || "";
       if (req.body.federallyFacilitatedMarketplace !== undefined) allowedFields.federallyFacilitatedMarketplace = req.body.federallyFacilitatedMarketplace;
       if (req.body.referredBy !== undefined) allowedFields.referredBy = req.body.referredBy?.trim() || "";
-      // Validate using updateUserSchema (validates phone E.164 format, email, etc.)
+      if (req.body.address !== undefined) allowedFields.address = req.body.address?.trim() || "";
       const validatedData = updateUserSchema.parse(allowedFields);
       // Validate email is not already taken by another user
       if (validatedData.email && validatedData.email !== user.email) {
