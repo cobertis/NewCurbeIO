@@ -12,7 +12,20 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, X } from "lucide-react";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Loader2, X, Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AvailableNumber {
@@ -340,6 +353,7 @@ export default function ComplianceChooseNumber() {
   const [numberType, setNumberType] = useState<"toll-free" | "10dlc">("toll-free");
   const [selectedNumber, setSelectedNumber] = useState<string>("");
   const [selectedAreaCode, setSelectedAreaCode] = useState<string>("");
+  const [areaCodeOpen, setAreaCodeOpen] = useState(false);
   const [showSwitchDialog, setShowSwitchDialog] = useState(false);
   const [pendingType, setPendingType] = useState<"toll-free" | "10dlc" | null>(null);
 
@@ -523,18 +537,50 @@ export default function ComplianceChooseNumber() {
                   <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 text-right">
                     Area code
                   </Label>
-                  <Select value={selectedAreaCode} onValueChange={setSelectedAreaCode}>
-                    <SelectTrigger className="w-full" data-testid="select-area-code">
-                      <SelectValue placeholder="Select an area code" />
-                    </SelectTrigger>
-                    <SelectContent className="max-h-[300px]">
-                      {usAreaCodes.map((ac) => (
-                        <SelectItem key={ac.code} value={ac.code}>
-                          {ac.code} – {ac.name} ({ac.state})
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Popover open={areaCodeOpen} onOpenChange={setAreaCodeOpen}>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        role="combobox"
+                        aria-expanded={areaCodeOpen}
+                        className="w-full justify-between font-normal"
+                        data-testid="select-area-code"
+                      >
+                        {selectedAreaCode
+                          ? `${selectedAreaCode} – ${usAreaCodes.find((ac) => ac.code === selectedAreaCode)?.name} (${usAreaCodes.find((ac) => ac.code === selectedAreaCode)?.state})`
+                          : "Select an area code"}
+                        <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[400px] p-0" align="start">
+                      <Command>
+                        <CommandInput placeholder="Search area code..." />
+                        <CommandList>
+                          <CommandEmpty>No area code found.</CommandEmpty>
+                          <CommandGroup>
+                            {usAreaCodes.map((ac) => (
+                              <CommandItem
+                                key={ac.code}
+                                value={`${ac.code} ${ac.name} ${ac.state}`}
+                                onSelect={() => {
+                                  setSelectedAreaCode(ac.code);
+                                  setAreaCodeOpen(false);
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    selectedAreaCode === ac.code ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                {ac.code} – {ac.name} ({ac.state})
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
                 </div>
               )}
 
