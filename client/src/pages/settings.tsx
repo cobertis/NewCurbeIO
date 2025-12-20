@@ -437,6 +437,7 @@ export default function Settings() {
   
   // Address autocomplete state
   const [addressValue, setAddressValue] = useState("");
+  const [companyPhoneValue, setCompanyPhoneValue] = useState("");
   
   const user = userData?.user;
 
@@ -648,6 +649,7 @@ export default function Settings() {
       setSelectedCategory((companyData.company as any).businessCategory || "");
       setSelectedNiche((companyData.company as any).businessNiche || "");
       setAddressValue(companyData.company.address || "");
+      setCompanyPhoneValue(companyData.company.phone ? formatPhoneInput(companyData.company.phone) : "");
     }
   }, [companyData]);
 
@@ -1066,7 +1068,7 @@ export default function Settings() {
       businessCategory: selectedCategory ?? "",
       businessNiche: selectedNiche ?? "",
       email: companyEmailRef.current?.value ?? "",
-      phone: companyPhoneRef.current?.value ?? "",
+      phone: companyPhoneValue ? formatE164(companyPhoneValue) : "",
       website: websiteRef.current?.value ?? "",
       platformLanguage: platformLanguageRef.current?.value ?? "",
     };
@@ -1852,9 +1854,13 @@ export default function Settings() {
                         <Label htmlFor="companyPhone">Company Phone</Label>
                         <Input
                           id="companyPhone"
-                          ref={companyPhoneRef}
                           type="tel"
-                          defaultValue={companyData?.company?.phone || ""}
+                          value={companyPhoneValue}
+                          onChange={(e) => {
+                            const formatted = formatPhoneInput(e.target.value);
+                            setCompanyPhoneValue(formatted);
+                          }}
+                          placeholder="(555) 555-5555"
                           data-testid="input-company-phone"
                         />
                       </div>
