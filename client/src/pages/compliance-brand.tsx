@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, Link, useRoute } from "wouter";
 import { useForm } from "react-hook-form";
@@ -150,6 +150,7 @@ export default function ComplianceBrand() {
   const [step1Complete, setStep1Complete] = useState(false);
   const [step2Complete, setStep2Complete] = useState(false);
   const [step3Complete, setStep3Complete] = useState(false);
+  const [brandNameManuallyEdited, setBrandNameManuallyEdited] = useState(false);
   
   const { data: application, isLoading } = useQuery<ComplianceApplication>({
     queryKey: [`/api/compliance/applications/${applicationId}`],
@@ -183,6 +184,14 @@ export default function ComplianceBrand() {
       email: "",
     },
   });
+
+  const legalNameValue = form.watch("legalName");
+  
+  useEffect(() => {
+    if (!brandNameManuallyEdited && legalNameValue) {
+      form.setValue("brandName", legalNameValue);
+    }
+  }, [legalNameValue, brandNameManuallyEdited, form]);
 
   const createBrandMutation = useMutation({
     mutationFn: async (data: BrandFormData) => {
@@ -362,7 +371,9 @@ export default function ComplianceBrand() {
                     <Input
                       placeholder="Enter brand name"
                       className="mt-1.5"
-                      {...form.register("brandName")}
+                      {...form.register("brandName", {
+                        onChange: () => setBrandNameManuallyEdited(true)
+                      })}
                       data-testid="input-brand-name"
                     />
                   </div>
