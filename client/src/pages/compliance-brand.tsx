@@ -24,6 +24,7 @@ import { Check, ArrowLeft, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
+import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import type { ComplianceApplication } from "@shared/schema";
 
 const steps = [
@@ -120,6 +121,26 @@ const countryOptions = [
   { value: "CA", label: "Canada" },
 ];
 
+const stateNameToCode: Record<string, string> = Object.fromEntries(
+  usStates.map(s => [s.label.toLowerCase(), s.value])
+);
+
+function normalizeStateCode(stateValue: string): string {
+  if (!stateValue) return "";
+  if (stateValue.length === 2 && usStates.some(s => s.value === stateValue.toUpperCase())) {
+    return stateValue.toUpperCase();
+  }
+  return stateNameToCode[stateValue.toLowerCase()] || stateValue;
+}
+
+function normalizeCountryCode(countryValue: string): string {
+  if (!countryValue) return "US";
+  const lower = countryValue.toLowerCase();
+  if (lower === "us" || lower === "united states" || lower === "usa") return "US";
+  if (lower === "ca" || lower === "canada") return "CA";
+  return countryValue;
+}
+
 const brandFormSchema = z.object({
   legalName: z.string().min(1, "Legal name is required"),
   brandName: z.string().optional(),
@@ -128,6 +149,7 @@ const brandFormSchema = z.object({
   vertical: z.string().min(1, "Industry is required"),
   ein: z.string().optional(),
   street: z.string().min(1, "Address is required"),
+  streetLine2: z.string().optional(),
   city: z.string().min(1, "City is required"),
   postalCode: z.string().min(1, "Zip code is required"),
   state: z.string().min(1, "State is required"),
@@ -174,6 +196,7 @@ export default function ComplianceBrand() {
       vertical: "",
       ein: "",
       street: "",
+      streetLine2: "",
       city: "",
       postalCode: "",
       state: "",
@@ -492,17 +515,38 @@ export default function ComplianceBrand() {
                 <div className="grid grid-cols-3 gap-6">
                   <div className="col-span-2">
                     <Label className="text-gray-700 dark:text-gray-300">
-                      Address / Street <span className="text-red-500">*</span>
+                      Address Line 1 <span className="text-red-500">*</span>
                     </Label>
-                    <Input
-                      placeholder="Enter address / street"
-                      className="mt-1.5"
-                      {...form.register("street")}
-                      data-testid="input-street"
-                    />
+                    <div className="mt-1.5">
+                      <GooglePlacesAddressAutocomplete
+                        value={form.watch("street")}
+                        onChange={(value) => form.setValue("street", value)}
+                        onAddressSelect={(address) => {
+                          form.setValue("street", address.street);
+                          form.setValue("city", address.city);
+                          form.setValue("postalCode", address.postalCode);
+                          form.setValue("state", normalizeStateCode(address.state));
+                          form.setValue("country", normalizeCountryCode(address.country));
+                        }}
+                        label=""
+                        placeholder="Start typing your address..."
+                        testId="input-street"
+                      />
+                    </div>
                     {form.formState.errors.street && (
                       <p className="text-red-500 text-sm mt-1">{form.formState.errors.street.message}</p>
                     )}
+                  </div>
+                  <div>
+                    <Label className="text-gray-700 dark:text-gray-300">
+                      Address Line 2
+                    </Label>
+                    <Input
+                      placeholder="Apt, Suite, Unit"
+                      className="mt-1.5"
+                      {...form.register("streetLine2")}
+                      data-testid="input-street-line2"
+                    />
                   </div>
                   <div>
                     <Label className="text-gray-700 dark:text-gray-300">
