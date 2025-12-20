@@ -170,17 +170,17 @@ export default function ComplianceInfo() {
                     : "U.S. carriers require 10DLC registration to send business SMS. Messages from unregistered numbers may be blocked or severely rate-limited."
                   }
                 </p>
-                <div className="flex flex-wrap items-center justify-center gap-6 w-full">
+                <div className="flex items-center justify-center gap-4 w-full">
                   {carrierLogos.map((carrier) => (
                     <img
                       key={carrier.name}
                       src={carrier.logo}
                       alt={carrier.name}
-                      className="h-7 object-contain"
+                      className="h-6 object-contain flex-shrink-0"
                       data-testid={`carrier-${carrier.name.toLowerCase().replace(/[^a-z0-9]/g, "")}`}
                     />
                   ))}
-                  <span className="text-gray-500 dark:text-gray-400 text-sm">+ all local carriers</span>
+                  <span className="text-gray-500 dark:text-gray-400 text-sm whitespace-nowrap flex-shrink-0">+ all local carriers</span>
                 </div>
               </div>
 
