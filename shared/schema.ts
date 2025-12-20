@@ -6559,9 +6559,12 @@ export const complianceApplications = pgTable("compliance_applications", {
   
   // Step 2: Business Info
   businessName: text("business_name"),
+  brandDisplayName: text("brand_display_name"),
   businessType: text("business_type"),
+  businessVertical: text("business_vertical"),
   ein: text("ein"),
   businessAddress: text("business_address"),
+  businessAddressLine2: text("business_address_line_2"),
   businessCity: text("business_city"),
   businessState: text("business_state"),
   businessZip: text("business_zip"),

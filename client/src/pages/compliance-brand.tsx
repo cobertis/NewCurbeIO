@@ -216,6 +216,47 @@ export default function ComplianceBrand() {
     }
   }, [legalNameValue, brandNameManuallyEdited, form]);
 
+  // Load saved data from application
+  useEffect(() => {
+    if (application) {
+      // Step 1 fields
+      if (application.businessName) form.setValue("legalName", application.businessName);
+      if (application.brandDisplayName) form.setValue("brandName", application.brandDisplayName);
+      if (application.businessType) form.setValue("legalForm", application.businessType);
+      if (application.website) form.setValue("website", application.website);
+      if (application.businessVertical) form.setValue("vertical", application.businessVertical);
+      if (application.ein) form.setValue("ein", application.ein);
+      
+      // Step 2 fields
+      if (application.businessAddress) form.setValue("street", application.businessAddress);
+      if (application.businessAddressLine2) form.setValue("streetLine2", application.businessAddressLine2);
+      if (application.businessCity) form.setValue("city", application.businessCity);
+      if (application.businessState) form.setValue("state", application.businessState);
+      if (application.businessZip) form.setValue("postalCode", application.businessZip);
+      if (application.country) form.setValue("country", application.country);
+      
+      // Step 3 fields
+      if (application.contactFirstName) form.setValue("firstName", application.contactFirstName);
+      if (application.contactLastName) form.setValue("lastName", application.contactLastName);
+      if (application.contactPhone) form.setValue("phone", application.contactPhone);
+      if (application.contactEmail) form.setValue("email", application.contactEmail);
+      
+      // Check step completion based on saved data
+      const hasStep1 = application.businessName && application.businessType && application.website && application.businessVertical;
+      const hasStep2 = application.businessAddress && application.businessCity && application.businessState && application.businessZip && application.country;
+      const hasStep3 = application.contactFirstName && application.contactLastName && application.contactPhone && application.contactEmail;
+      
+      if (hasStep1) setStep1Complete(true);
+      if (hasStep2) setStep2Complete(true);
+      if (hasStep3) setStep3Complete(true);
+      
+      // Set open step based on progress
+      if (hasStep3) setOpenStep(3);
+      else if (hasStep2) setOpenStep(3);
+      else if (hasStep1) setOpenStep(2);
+    }
+  }, [application, form]);
+
   const createBrandMutation = useMutation({
     mutationFn: async (data: BrandFormData) => {
       const payload = {
@@ -258,30 +299,79 @@ export default function ComplianceBrand() {
     },
   });
 
-  const handleStep1Save = () => {
-    const { legalName, legalForm, website, vertical } = form.getValues();
+  const handleStep1Save = async () => {
+    const { legalName, brandName, legalForm, website, vertical, ein } = form.getValues();
     if (legalName && legalForm && website && vertical) {
-      setStep1Complete(true);
-      setOpenStep(2);
+      try {
+        await apiRequest("PATCH", `/api/compliance/applications/${applicationId}`, {
+          businessName: legalName,
+          brandDisplayName: brandName || legalName,
+          businessType: legalForm,
+          website: website,
+          businessVertical: vertical,
+          ein: ein,
+        });
+        queryClient.invalidateQueries({ queryKey: [`/api/compliance/applications/${applicationId}`] });
+        setStep1Complete(true);
+        setOpenStep(2);
+      } catch (error: any) {
+        toast({
+          title: "Error saving data",
+          description: error.message || "Please try again",
+          variant: "destructive",
+        });
+      }
     } else {
       form.trigger(["legalName", "legalForm", "website", "vertical"]);
     }
   };
 
-  const handleStep2Save = () => {
-    const { street, city, postalCode, state, country } = form.getValues();
+  const handleStep2Save = async () => {
+    const { street, streetLine2, city, postalCode, state, country } = form.getValues();
     if (street && city && postalCode && state && country) {
-      setStep2Complete(true);
-      setOpenStep(3);
+      try {
+        await apiRequest("PATCH", `/api/compliance/applications/${applicationId}`, {
+          businessAddress: street,
+          businessAddressLine2: streetLine2,
+          businessCity: city,
+          businessState: state,
+          businessZip: postalCode,
+          country: country,
+        });
+        queryClient.invalidateQueries({ queryKey: [`/api/compliance/applications/${applicationId}`] });
+        setStep2Complete(true);
+        setOpenStep(3);
+      } catch (error: any) {
+        toast({
+          title: "Error saving data",
+          description: error.message || "Please try again",
+          variant: "destructive",
+        });
+      }
     } else {
       form.trigger(["street", "city", "postalCode", "state", "country"]);
     }
   };
 
-  const handleStep3Save = () => {
+  const handleStep3Save = async () => {
     const { firstName, lastName, phone, email } = form.getValues();
     if (firstName && lastName && phone && email) {
-      setStep3Complete(true);
+      try {
+        await apiRequest("PATCH", `/api/compliance/applications/${applicationId}`, {
+          contactFirstName: firstName,
+          contactLastName: lastName,
+          contactPhone: phone,
+          contactEmail: email,
+        });
+        queryClient.invalidateQueries({ queryKey: [`/api/compliance/applications/${applicationId}`] });
+        setStep3Complete(true);
+      } catch (error: any) {
+        toast({
+          title: "Error saving data",
+          description: error.message || "Please try again",
+          variant: "destructive",
+        });
+      }
     } else {
       form.trigger(["firstName", "lastName", "phone", "email"]);
     }
@@ -685,9 +775,24 @@ export default function ComplianceBrand() {
                       Phone number <span className="text-red-500">*</span>
                     </Label>
                     <Input
-                      placeholder="Enter phone number"
+                      placeholder="(XXX) XXX-XXXX"
                       className="mt-1.5"
-                      {...form.register("phone")}
+                      maxLength={14}
+                      {...form.register("phone", {
+                        onChange: (e) => {
+                          let value = e.target.value.replace(/[^0-9]/g, '');
+                          if (value.length > 0) {
+                            if (value.length <= 3) {
+                              value = '(' + value;
+                            } else if (value.length <= 6) {
+                              value = '(' + value.slice(0, 3) + ') ' + value.slice(3);
+                            } else {
+                              value = '(' + value.slice(0, 3) + ') ' + value.slice(3, 6) + '-' + value.slice(6, 10);
+                            }
+                          }
+                          form.setValue("phone", value);
+                        }
+                      })}
                       data-testid="input-phone"
                     />
                     {form.formState.errors.phone && (
