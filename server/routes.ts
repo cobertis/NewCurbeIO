@@ -94,7 +94,7 @@ import {
 import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, oauthStates, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, oauthStates, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots } from "@shared/schema";
 import { encryptToken, decryptToken } from "./crypto";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -27506,31 +27506,27 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/integrations/telegram/start - Generate connect code
   app.post("/api/integrations/telegram/start", requireActiveCompany, async (req: Request, res: Response) => {
     const user = req.user as any;
-    const telegramCreds = await credentialProvider.getTelegram();
-    const botUsername = telegramCreds.botUsername;
-    const botToken = telegramCreds.botToken;
     
-    if (!botUsername) return res.status(500).json({ error: "TELEGRAM_BOT_USERNAME not configured" });
-    if (!botToken) return res.status(500).json({ error: "TELEGRAM_BOT_TOKEN not configured" });
+    // Check if user has their own bot configured
+    const userBot = await db.query.userTelegramBots.findFirst({
+      where: and(
+        eq(userTelegramBots.userId, user.id),
+        eq(userTelegramBots.isActive, true)
+      )
+    });
     
-    // Auto-setup webhook on first connect attempt (using request host for correct URL)
-    try {
-      const webhookUrl = `https://${req.get("host")}/webhooks/telegram`;
-      const webhookSecret = telegramCreds.webhookSecret;
-      
-      const webhookResponse = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          url: webhookUrl,
-          secret_token: webhookSecret || undefined,
-          allowed_updates: ["message", "callback_query"]
-        })
+    if (!userBot) {
+      return res.status(400).json({ 
+        error: "No Telegram bot configured. Please set up your bot first.",
+        needsBotSetup: true
       });
-      const webhookData = await webhookResponse.json() as any;
-      console.log("[Telegram] Auto webhook setup:", webhookData.ok ? "success" : webhookData.description, "URL:", webhookUrl);
-    } catch (webhookError: any) {
-      console.error("[Telegram] Auto webhook setup failed:", webhookError.message);
+    }
+    
+    const botUsername = userBot.botUsername;
+    const botToken = userBot.botToken;
+    
+    if (!botUsername || !botToken) {
+      return res.status(500).json({ error: "Bot configuration incomplete" });
     }
     
     const code = randomBytes(16).toString("hex");
@@ -27593,6 +27589,368 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       return res.status(500).json({ error: "Failed to disconnect chat" });
     }
   });
+
+  // POST /api/integrations/telegram/setup-bot - User submits their own bot token
+  app.post("/api/integrations/telegram/setup-bot", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    const { botToken } = req.body;
+    
+    if (!botToken) return res.status(400).json({ error: "botToken required" });
+    
+    try {
+      // Validate bot token by calling Telegram getMe API
+      const getMeResponse = await fetch(`https://api.telegram.org/bot${botToken}/getMe`);
+      const getMeData = await getMeResponse.json() as any;
+      
+      if (!getMeData.ok) {
+        return res.status(400).json({ error: "Invalid bot token", details: getMeData.description });
+      }
+      
+      const botUsername = getMeData.result.username;
+      const botFirstName = getMeData.result.first_name;
+      
+      // Generate unique webhook secret
+      const webhookSecret = randomBytes(32).toString("hex");
+      
+      // Set up webhook on user's bot
+      const webhookUrl = `https://${req.get("host")}/webhooks/telegram/user/${webhookSecret}`;
+      const webhookResponse = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          url: webhookUrl,
+          secret_token: webhookSecret,
+          allowed_updates: ["message", "callback_query"]
+        })
+      });
+      const webhookData = await webhookResponse.json() as any;
+      
+      if (!webhookData.ok) {
+        return res.status(500).json({ error: "Failed to set webhook", details: webhookData.description });
+      }
+      
+      // Store in database (upsert - one bot per user)
+      await db.insert(userTelegramBots).values({
+        userId: user.id,
+        companyId: user.companyId,
+        botToken,
+        botUsername,
+        botFirstName,
+        webhookSecret,
+        isActive: true
+      }).onConflictDoUpdate({
+        target: userTelegramBots.userId,
+        set: {
+          botToken,
+          botUsername,
+          botFirstName,
+          webhookSecret,
+          isActive: true,
+          updatedAt: new Date()
+        }
+      });
+      
+      console.log(`[Telegram] User ${user.id} set up bot @${botUsername}`);
+      return res.json({ success: true, botUsername, botFirstName });
+    } catch (error: any) {
+      console.error("[Telegram] Setup bot error:", error);
+      return res.status(500).json({ error: "Failed to setup bot", details: error.message });
+    }
+  });
+
+  // DELETE /api/integrations/telegram/remove-bot - Remove user's bot
+  app.delete("/api/integrations/telegram/remove-bot", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    
+    try {
+      // Find user's bot
+      const userBot = await db.query.userTelegramBots.findFirst({
+        where: eq(userTelegramBots.userId, user.id)
+      });
+      
+      if (!userBot) {
+        return res.status(404).json({ error: "No bot configured" });
+      }
+      
+      // Call Telegram deleteWebhook API
+      try {
+        await fetch(`https://api.telegram.org/bot${userBot.botToken}/deleteWebhook`, {
+          method: "POST"
+        });
+      } catch (webhookError: any) {
+        console.warn("[Telegram] Failed to delete webhook:", webhookError.message);
+      }
+      
+      // Delete record from database
+      await db.delete(userTelegramBots).where(eq(userTelegramBots.userId, user.id));
+      
+      console.log(`[Telegram] User ${user.id} removed bot @${userBot.botUsername}`);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Telegram] Remove bot error:", error);
+      return res.status(500).json({ error: "Failed to remove bot" });
+    }
+  });
+
+  // GET /api/integrations/telegram/bot-status - Get user's bot status
+  app.get("/api/integrations/telegram/bot-status", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    
+    try {
+      const userBot = await db.query.userTelegramBots.findFirst({
+        where: eq(userTelegramBots.userId, user.id)
+      });
+      
+      if (!userBot) {
+        return res.json({ hasBot: false, botUsername: null, botFirstName: null, isActive: false });
+      }
+      
+      return res.json({
+        hasBot: true,
+        botUsername: userBot.botUsername,
+        botFirstName: userBot.botFirstName,
+        isActive: userBot.isActive
+      });
+    } catch (error: any) {
+      console.error("[Telegram] Bot status error:", error);
+      return res.status(500).json({ error: "Failed to get bot status" });
+    }
+  });
+
+  // POST /webhooks/telegram/user/:webhookSecret - Dynamic webhook for user bots
+  app.post("/webhooks/telegram/user/:webhookSecret", async (req: Request, res: Response) => {
+    const { webhookSecret } = req.params;
+    
+    // Look up the user bot by webhookSecret
+    const userBot = await db.query.userTelegramBots.findFirst({
+      where: and(
+        eq(userTelegramBots.webhookSecret, webhookSecret),
+        eq(userTelegramBots.isActive, true)
+      )
+    });
+    
+    if (!userBot) {
+      return res.status(404).json({ error: "Bot not found" });
+    }
+    
+    // Verify the X-Telegram-Bot-Api-Secret-Token header
+    const secretToken = req.get("X-Telegram-Bot-Api-Secret-Token");
+    if (secretToken !== webhookSecret) {
+      console.warn("[Telegram User Webhook] Invalid secret token for bot", userBot.botUsername);
+      return res.status(401).json({ error: "Unauthorized" });
+    }
+    
+    // Respond quickly to Telegram
+    res.status(200).json({ ok: true });
+    
+    try {
+      const update = req.body;
+      const message = update.message || update.edited_message;
+      
+      if (!message) return;
+      
+      const chatId = String(message.chat.id);
+      const chatType = message.chat.type as "private" | "group" | "supergroup" | "channel";
+      const fromUser = message.from;
+      const text = message.text || "";
+      
+      // Handle /start command with connect code
+      if (text.startsWith("/start ")) {
+        const code = text.split(" ")[1];
+        await handleUserBotTelegramConnect(chatId, chatType, message.chat.title, code, fromUser, userBot);
+        return;
+      }
+      
+      // Handle regular messages
+      await handleUserBotTelegramMessage(update, message, chatId, chatType, fromUser, userBot);
+      
+    } catch (error) {
+      console.error("[Telegram User Webhook] Error:", error);
+    }
+  });
+
+  // Helper: Send message via user's bot
+  async function sendUserBotTelegramMessage(botToken: string, chatId: string, text: string): Promise<any> {
+    const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chat_id: chatId, text })
+    });
+    return response.json();
+  }
+
+  // Helper: Handle connect code for user bot
+  async function handleUserBotTelegramConnect(chatId: string, chatType: string, title: string | undefined, code: string, fromUser: any, userBot: any) {
+    // Validate connect code
+    const connectCode = await db.query.telegramConnectCodes.findFirst({
+      where: and(
+        eq(telegramConnectCodes.code, code),
+        isNull(telegramConnectCodes.usedAt)
+      )
+    });
+    
+    if (!connectCode) {
+      await sendUserBotTelegramMessage(userBot.botToken, chatId, "Invalid or expired code. Please generate a new connection link.");
+      return;
+    }
+    
+    if (new Date() > new Date(connectCode.expiresAt)) {
+      await sendUserBotTelegramMessage(userBot.botToken, chatId, "This code has expired. Please generate a new connection link.");
+      return;
+    }
+    
+    // Get company name
+    const company = await db.query.companies.findFirst({
+      where: eq(companies.id, userBot.companyId)
+    });
+    
+    // Create or update chat link using the bot owner's userId
+    await db.insert(telegramChatLinks).values({
+      chatId,
+      companyId: userBot.companyId,
+      userId: userBot.userId,
+      chatType: chatType as any,
+      title: title || fromUser?.username || fromUser?.first_name,
+      linkedByUserId: userBot.userId,
+      status: "active"
+    }).onConflictDoUpdate({
+      target: telegramChatLinks.chatId,
+      set: {
+        companyId: userBot.companyId,
+        userId: userBot.userId,
+        status: "active",
+        linkedByUserId: userBot.userId,
+        updatedAt: new Date()
+      }
+    });
+    
+    // Mark code as used
+    await db.update(telegramConnectCodes)
+      .set({ usedAt: new Date(), usedByChatId: chatId })
+      .where(eq(telegramConnectCodes.id, connectCode.id));
+    
+    // Send confirmation
+    const confirmMsg = chatType === "private" 
+      ? `Connected to ${company?.name || "your workspace"}. You can now send messages.`
+      : `Group connected to ${company?.name || "your workspace"}. Messages will appear in your inbox.`;
+    
+    await sendUserBotTelegramMessage(userBot.botToken, chatId, confirmMsg);
+    console.log(`[Telegram User Bot] Chat ${chatId} connected to company ${userBot.companyId} via @${userBot.botUsername}`);
+  }
+
+  // Helper: Handle regular message for user bot
+  async function handleUserBotTelegramMessage(update: any, message: any, chatId: string, chatType: string, fromUser: any, userBot: any) {
+    const companyId = userBot.companyId;
+    const userId = userBot.userId;
+    
+    // Find or create contact
+    const telegramUserId = String(fromUser.id);
+    let contact = await db.query.contacts.findFirst({
+      where: and(
+        eq(contacts.companyId, companyId),
+        eq(contacts.telegramId, telegramUserId)
+      )
+    });
+    
+    if (!contact) {
+      const [newContact] = await db.insert(contacts).values({
+        companyId,
+        firstName: fromUser.first_name || null,
+        lastName: fromUser.last_name || null,
+        telegramUsername: fromUser.username || null,
+        telegramId: telegramUserId,
+        source: "telegram",
+        status: "active"
+      }).returning();
+      contact = newContact;
+    }
+    
+    // Get or create chat link
+    let chatLink = await db.query.telegramChatLinks.findFirst({
+      where: and(
+        eq(telegramChatLinks.chatId, chatId),
+        eq(telegramChatLinks.status, "active")
+      )
+    });
+    
+    if (!chatLink) {
+      const [newLink] = await db.insert(telegramChatLinks).values({
+        companyId,
+        userId,
+        chatId,
+        chatType: chatType as any,
+        title: chatType === "private" 
+          ? (fromUser.first_name || fromUser.username || "Telegram User")
+          : message.chat.title || "Telegram Group",
+        status: "active"
+      }).returning();
+      chatLink = newLink;
+    }
+    
+    // Get or create conversation
+    const subject = chatType === "private"
+      ? `${fromUser.first_name || ""} ${fromUser.last_name || ""}`.trim() || fromUser.username || "Telegram Chat"
+      : message.chat.title || "Telegram Group";
+    
+    let conversation = await db.query.telegramConversations.findFirst({
+      where: and(
+        eq(telegramConversations.companyId, companyId),
+        eq(telegramConversations.chatId, chatId)
+      )
+    });
+    
+    if (!conversation) {
+      const [newConv] = await db.insert(telegramConversations).values({
+        companyId,
+        userId,
+        chatId,
+        chatType: chatType as any,
+        contactId: contact.id,
+        subject,
+        lastMessage: message.text?.substring(0, 100),
+        lastMessageAt: new Date(),
+        unreadCount: 1
+      }).returning();
+      conversation = newConv;
+    } else {
+      await db.update(telegramConversations)
+        .set({
+          lastMessage: message.text?.substring(0, 100),
+          lastMessageAt: new Date(),
+          unreadCount: sql`${telegramConversations.unreadCount} + 1`,
+          updatedAt: new Date(),
+          ...(conversation.contactId ? {} : { contactId: contact.id })
+        })
+        .where(eq(telegramConversations.id, conversation.id));
+    }
+    
+    // Determine message type
+    let messageType: "text" | "photo" | "video" | "document" | "voice" | "audio" | "sticker" | "animation" = "text";
+    if (message.photo) messageType = "photo";
+    else if (message.video) messageType = "video";
+    else if (message.document) messageType = "document";
+    else if (message.voice) messageType = "voice";
+    else if (message.audio) messageType = "audio";
+    else if (message.sticker) messageType = "sticker";
+    else if (message.animation) messageType = "animation";
+    
+    // Insert message
+    const providerMessageId = `${chatId}:${message.message_id}`;
+    
+    await db.insert(telegramMessages).values({
+      conversationId: conversation.id,
+      providerMessageId,
+      direction: "inbound",
+      messageType,
+      text: message.text || message.caption || null,
+      authorContactId: contact.id,
+      payload: update,
+      status: "delivered",
+      sentAt: new Date(message.date * 1000)
+    }).onConflictDoNothing();
+    
+    console.log(`[Telegram User Bot] Message received from ${fromUser.first_name || telegramUserId} via @${userBot.botUsername}`);
+  }
 
   // POST /webhooks/telegram - Main Telegram webhook handler
   app.post("/webhooks/telegram", async (req: Request, res: Response) => {
