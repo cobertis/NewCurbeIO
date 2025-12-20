@@ -3581,7 +3581,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         messagingSetup = bulkvsNumbers.length > 0;
         
         // Check if user has selected a plan (has subscription)
-        const subscription = await storage.getSubscriptionByCompanyId(user.companyId);
+        const subscription = await storage.getSubscriptionByCompany(user.companyId);
         planSelected = !!(subscription && subscription.status !== 'cancelled');
       }
       
