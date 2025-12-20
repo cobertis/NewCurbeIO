@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   User, 
   Phone, 
@@ -21,7 +23,14 @@ import {
   Send,
   Settings,
   Plus,
-  CreditCard
+  CreditCard,
+  Clock,
+  FileText,
+  Shield,
+  Calendar,
+  DollarSign,
+  Video,
+  X
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 
@@ -47,6 +56,7 @@ export default function GettingStarted() {
   const [, setLocation] = useLocation();
   const [faqTab, setFaqTab] = useState("sms");
   const [activeAccordion, setActiveAccordion] = useState<string | undefined>("profile");
+  const [showNumberTypeDialog, setShowNumberTypeDialog] = useState(false);
 
   const { data: sessionData, isLoading } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
@@ -288,7 +298,7 @@ export default function GettingStarted() {
                           <PlayCircle className="w-4 h-4" />
                           Watch tutorial
                         </Button>
-                        <Button size="sm" onClick={() => setLocation("/phone-system")} className="gap-2 bg-blue-600 hover:bg-blue-700" data-testid="button-choose-number">
+                        <Button size="sm" onClick={() => setShowNumberTypeDialog(true)} className="gap-2 bg-blue-600 hover:bg-blue-700" data-testid="button-choose-number">
                           Choose number
                         </Button>
                       </div>
@@ -510,6 +520,253 @@ export default function GettingStarted() {
           </Tabs>
         </div>
       </div>
+
+      {/* Number Type Selection Dialog */}
+      <Dialog open={showNumberTypeDialog} onOpenChange={setShowNumberTypeDialog}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-hidden p-0">
+          <DialogHeader className="p-6 pb-0">
+            <DialogTitle className="text-xl font-semibold">Choose your texting number type</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[calc(90vh-80px)]">
+            <div className="p-6 pt-4 space-y-6">
+              {/* Two options side by side */}
+              <div className="grid md:grid-cols-2 gap-4">
+                {/* Toll-free Option */}
+                <div className="border rounded-lg p-5 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-semibold">Toll-free numbers</h3>
+                    <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-0">
+                      70-90% approval rate
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Simple & fast - perfect for getting started quicker with fewer compliance hurdles.
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-muted-foreground" />
+                      <span>Up to 5 business days approval</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-muted-foreground" />
+                      <span>Quick 5-10 min form</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-muted-foreground" />
+                      <span>Free to register</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Check className="w-4 h-4 text-muted-foreground" />
+                      <span>Preferred by Textmagic customers</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-muted-foreground" />
+                      <span>Easier compliance</span>
+                    </div>
+                  </div>
+                  <Button 
+                    className="w-full bg-blue-600 hover:bg-blue-700"
+                    onClick={() => {
+                      setShowNumberTypeDialog(false);
+                      setLocation("/sms?type=toll-free");
+                    }}
+                    data-testid="button-choose-toll-free"
+                  >
+                    Choose Toll-free (Recommended)
+                  </Button>
+                  <p className="text-xs text-center text-muted-foreground">
+                    Free for 1 month, later $10.00 / month
+                  </p>
+                </div>
+
+                {/* 10DLC Option */}
+                <div className="border rounded-lg p-5 space-y-4">
+                  <div className="flex items-center gap-3">
+                    <h3 className="text-lg font-semibold">10DLC numbers</h3>
+                    <Badge className="bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300 border-0">
+                      30-60% approval rate
+                    </Badge>
+                  </div>
+                  <p className="text-sm text-muted-foreground">
+                    Complex process - requires extensive documentation and legal compliance.
+                  </p>
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center gap-2">
+                      <Clock className="w-4 h-4 text-muted-foreground" />
+                      <span>5-10 business days review</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-muted-foreground" />
+                      <span>EIN number & business domain required</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-muted-foreground" />
+                      <span>Monthly fee ($10 / mo)</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <Shield className="w-4 h-4 text-muted-foreground" />
+                      <span>Brand + campaign registration</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <FileText className="w-4 h-4 text-muted-foreground" />
+                      <span>SMS terms & privacy pages required</span>
+                    </div>
+                  </div>
+                  <Button 
+                    variant="outline"
+                    className="w-full"
+                    onClick={() => {
+                      setShowNumberTypeDialog(false);
+                      setLocation("/sms?type=10dlc");
+                    }}
+                    data-testid="button-choose-10dlc"
+                  >
+                    Choose 10DLC (Advanced)
+                  </Button>
+                  <p className="text-xs text-center text-muted-foreground">
+                    Free for 1 month, later $10.00 / month
+                  </p>
+                </div>
+              </div>
+
+              {/* Detailed Comparison Table */}
+              <div>
+                <h4 className="font-semibold mb-4">Detailed comparison</h4>
+                <div className="border rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <thead>
+                      <tr className="border-b bg-muted/50">
+                        <th className="text-left p-3 font-medium">Aspect</th>
+                        <th className="text-left p-3 font-medium">Toll-free verification (free)</th>
+                        <th className="text-left p-3 font-medium">10DLC registration</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr className="border-b">
+                        <td className="p-3 font-medium">Number format</td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-green-600">✓</span>
+                            <span className="font-medium">8XX prefix (800-888)</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">Professional appearance, works nationwide.</p>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-red-500">📍</span>
+                            <span className="font-medium">Local area code format</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">Appears as local number from specific state.</p>
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="p-3 font-medium">Approval rate (First try)</td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-green-600">📈</span>
+                            <span className="font-medium">70-90%</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">Simpler process, fewer vetting steps.</p>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-yellow-600">⚠️</span>
+                            <span className="font-medium">30-60%</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">Tighter vetting on business, use case, opt-in.</p>
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="p-3 font-medium">Form complexity</td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-green-600">🟢</span>
+                            <span className="font-medium">Shorter (~5-10 min)</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">Business contact, address, website, use-case, sample messages.</p>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-orange-600">📋</span>
+                            <span className="font-medium">Extensive documentation required</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">Brand + campaign registration, EIN, terms & opt-in details, legal docs.</p>
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="p-3 font-medium">Compliance demands</td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-green-600">🔒</span>
+                            <span className="font-medium">Basic requirements</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">Explicit opt-in, use-case transparency, sample SMS.</p>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-red-500">🔴</span>
+                            <span className="font-medium">Extensive compliance</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">Company legal details, privacy/terms pages, double opt-in, campaign disclosures, legal documentation.</p>
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="p-3 font-medium">Review timeline</td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-green-600">👍</span>
+                            <span className="font-medium">Up to 5 business days</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">Most providers offer similar timelines.</p>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-yellow-600">⏳</span>
+                            <span className="font-medium">5-10 business days</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">Brand: near instant; Campaign: manually reviewed by DCA.</p>
+                        </td>
+                      </tr>
+                      <tr className="border-b">
+                        <td className="p-3 font-medium">Cost / fees</td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-green-600">🎉</span>
+                            <span className="font-medium">Free</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">The toll-free verification is free.</p>
+                        </td>
+                        <td className="p-3">
+                          <div className="flex items-center gap-2">
+                            <span className="text-yellow-600">💰</span>
+                            <span className="font-medium">€10 / month</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground mt-1">Monthly fee; extra cost for resubmission.</p>
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="p-3 font-medium">Video tutorial</td>
+                        <td className="p-3">
+                          <button className="text-blue-600 hover:text-blue-700 flex items-center gap-1 text-sm">
+                            <Video className="w-4 h-4" />
+                            Watch tutorial
+                          </button>
+                        </td>
+                        <td className="p-3">
+                          <button className="text-blue-600 hover:text-blue-700 flex items-center gap-1 text-sm">
+                            <Video className="w-4 h-4" />
+                            Watch tutorial
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
