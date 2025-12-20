@@ -213,7 +213,7 @@ export default function ComplianceInfo() {
           <div className="flex items-center gap-4">
             <Button
               className="bg-blue-600 hover:bg-blue-700 px-6"
-              onClick={() => setLocation(`/compliance/brand?id=${applicationId}`)}
+              onClick={() => setLocation(`/compliance/brand/${applicationId}`)}
               data-testid="button-proceed"
             >
               Proceed to verification
