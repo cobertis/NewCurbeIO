@@ -72,7 +72,7 @@ export default function ComplianceChooseNumber() {
     : "Get started with 10DLC texting";
 
   return (
-    <div className="flex-1 overflow-y-auto bg-gray-50 dark:bg-gray-900">
+    <div className="flex-1 overflow-y-auto">
       <div className="max-w-3xl mx-auto px-6 py-8">
         <div className="flex items-center gap-6 mb-8">
           {steps.map((step, index) => (
