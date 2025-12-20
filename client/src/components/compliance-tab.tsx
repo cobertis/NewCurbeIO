@@ -2394,7 +2394,7 @@ export function ComplianceTab() {
                             onClick={() => {
                               if (selectedCampaign) {
                                 removeNumberMutation.mutate({
-                                  campaignId: selectedCampaign.tcrCampaignId || selectedCampaign.campaignId,
+                                  campaignId: selectedCampaign.campaignId,
                                   phoneNumber: num.phoneNumber
                                 });
                               }
@@ -2483,7 +2483,7 @@ export function ComplianceTab() {
                 onClick={() => {
                   if (selectedCampaign) {
                     assignNumbersMutation.mutate({
-                      campaignId: selectedCampaign.tcrCampaignId || selectedCampaign.campaignId,
+                      campaignId: selectedCampaign.campaignId,
                       phoneNumbers: selectedNumbersToAssign
                     });
                   }

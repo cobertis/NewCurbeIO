@@ -30624,7 +30624,10 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
-      console.log("[10DLC Campaign] Assigning", phoneNumbers.length, "numbers to campaign", id);
+      // Detect if this is a Telnyx UUID or TCR ID
+      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+      const isTcrId = /^C[A-Z0-9]+$/i.test(id);
+      console.log("[10DLC Campaign] Assigning", phoneNumbers.length, "numbers to campaign", id, "isUUID:", isUUID, "isTcrId:", isTcrId);
       
       // Assign each number individually per Telnyx API documentation
       const results = [];
@@ -30632,10 +30635,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       for (const phoneNumber of phoneNumbers) {
         try {
+          // Use correct field based on ID format - Telnyx API accepts either campaignId (UUID) or tcrCampaignId
+          const assignmentBody = isUUID 
+            ? { phoneNumber, campaignId: id }
+            : { phoneNumber, tcrCampaignId: id };
+          console.log("[10DLC Campaign] Assignment body:", JSON.stringify(assignmentBody));
+          
           const response = await fetch(`https://api.telnyx.com/v2/10dlc/phone_number_campaigns`, {
             method: "PUT",
             headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
-            body: JSON.stringify({ phoneNumber, campaignId: id }),
+            body: JSON.stringify(assignmentBody),
           });
           
           const result = await response.json();
