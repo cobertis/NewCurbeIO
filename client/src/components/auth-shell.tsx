@@ -95,104 +95,130 @@ export function AuthShell({
       </div>
 
       <div 
-        className="relative hidden lg:flex w-[50%] flex-col items-center justify-between py-12 px-8"
+        className="relative hidden lg:flex w-[50%] flex-col items-center justify-between py-10 px-6 overflow-hidden"
         style={{
-          background: 'linear-gradient(180deg, #E8F4FD 0%, #D4EBFC 50%, #C5E4FB 100%)',
+          background: 'linear-gradient(180deg, #EBF5FC 0%, #E0F0FA 50%, #D6EBF8 100%)',
         }}
       >
-        <div className="flex flex-col items-center text-center max-w-lg pt-8">
-          <div className="flex gap-1 mb-6">
+        <div className="flex flex-col items-center text-center max-w-md z-10">
+          <div className="flex gap-0.5 mb-4">
             {[1, 2, 3, 4, 5].map((i) => (
               <Star 
                 key={i} 
-                className="w-5 h-5 fill-amber-400 text-amber-400" 
+                className="w-4 h-4 fill-amber-400 text-amber-400" 
               />
             ))}
           </div>
           
-          <p className="text-[20px] lg:text-[22px] font-normal text-gray-700 leading-relaxed mb-6">
+          <p className="text-[17px] font-normal text-gray-700 leading-relaxed mb-4 italic">
             "{renderQuoteWithHighlight()}"
           </p>
           
           <div className="text-center">
-            <p className="text-[15px] font-semibold text-gray-800">{testimonial.authorName}</p>
-            <p className="text-[13px] text-gray-500">{testimonial.authorTitle}</p>
+            <p className="text-[14px] font-semibold text-gray-800">{testimonial.authorName}</p>
+            <p className="text-[12px] text-gray-500">{testimonial.authorTitle}</p>
           </div>
         </div>
 
-        <div className="relative flex-1 flex items-center justify-center w-full max-w-md my-8">
-          <div className="relative">
+        <div className="relative flex-1 flex items-center justify-center w-full mt-4">
+          <div className="relative w-full max-w-lg">
             <div 
-              className="w-[280px] h-[420px] bg-white rounded-[32px] shadow-2xl p-3 border border-gray-100"
+              className="relative bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden"
               style={{
-                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.15)',
+                boxShadow: '0 20px 40px -12px rgba(0, 0, 0, 0.12)',
               }}
             >
-              <div className="w-full h-full bg-gray-50 rounded-[24px] overflow-hidden">
-                <div className="bg-white p-3 border-b border-gray-100">
-                  <div className="flex items-center gap-2">
-                    <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
-                      <span className="text-white text-xs font-medium">C</span>
-                    </div>
-                    <span className="text-sm font-medium text-gray-800">Open chats</span>
+              <div className="bg-gray-50 px-3 py-2 border-b border-gray-100 flex items-center gap-1.5">
+                <div className="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
+                <div className="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+              </div>
+              
+              <div className="p-4">
+                <div className="flex items-center gap-2 mb-4">
+                  <span className="text-sm font-medium text-gray-800">Open chats</span>
+                  <div className="flex -space-x-2">
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-400 to-blue-600 border-2 border-white"></div>
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 border-2 border-white"></div>
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-orange-400 to-red-500 border-2 border-white"></div>
+                    <div className="w-6 h-6 rounded-full bg-gradient-to-br from-green-400 to-teal-500 border-2 border-white"></div>
                   </div>
                 </div>
-                <div className="p-3 space-y-3">
+                
+                <div className="space-y-3">
                   <div className="flex items-start gap-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-400 shrink-0" />
-                    <div className="bg-white rounded-xl p-2.5 shadow-sm border border-gray-100 max-w-[180px]">
-                      <p className="text-xs text-gray-600">Hello, thanks for your...</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2 justify-end">
-                    <div className="bg-blue-500 rounded-xl p-2.5 max-w-[180px]">
-                      <p className="text-xs text-white">Hello Amanda,</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2 justify-end">
-                    <div className="bg-gray-100 rounded-xl p-2.5 max-w-[180px]">
-                      <p className="text-xs text-gray-600">Reply STOP to opt out.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-orange-400 to-yellow-400 shrink-0" />
-                    <div className="bg-white rounded-xl p-2.5 shadow-sm border border-gray-100 max-w-[180px]">
-                      <p className="text-xs text-gray-600">Hello, thanks for your offer!</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2 justify-end">
-                    <div className="bg-green-500 rounded-xl p-2.5 max-w-[180px]">
-                      <p className="text-xs text-white">Hello, thanks for your offer! Will try it</p>
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-400 to-pink-500 shrink-0 flex items-center justify-center text-white text-xs font-medium">A</div>
+                    <div>
+                      <p className="text-xs font-medium text-gray-800">Amanda Brown</p>
+                      <div className="bg-gray-100 rounded-lg p-2 mt-1">
+                        <p className="text-xs text-gray-600">Hello, thanks for your...</p>
+                      </div>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-            
+
             <div 
-              className="absolute -right-8 top-1/2 transform -translate-y-1/2 w-10 h-10 bg-orange-500 rounded-xl flex items-center justify-center shadow-lg"
+              className="absolute -right-4 top-1/2 transform -translate-y-1/3 w-[180px] bg-white rounded-[24px] shadow-2xl border border-gray-100 overflow-hidden"
+              style={{
+                boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.2)',
+              }}
             >
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+              <div className="bg-gray-800 h-6 flex items-center justify-center">
+                <div className="w-12 h-3 bg-black rounded-full"></div>
+              </div>
+              <div className="p-2 space-y-2">
+                <div className="flex justify-end">
+                  <div className="bg-blue-500 rounded-xl px-2 py-1.5 max-w-[120px]">
+                    <p className="text-[10px] text-white">Hello Amanda,</p>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <div className="bg-gray-100 rounded-xl px-2 py-1.5 max-w-[120px]">
+                    <p className="text-[10px] text-gray-600">Reply STOP to opt out.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-1">
+                  <div className="w-5 h-5 rounded-full bg-gradient-to-br from-orange-400 to-yellow-500 shrink-0"></div>
+                  <div className="bg-white border border-gray-100 rounded-xl px-2 py-1.5 shadow-sm">
+                    <p className="text-[10px] text-gray-600">Hello, thanks for your offer! Will try it</p>
+                  </div>
+                </div>
+                <div className="flex justify-end">
+                  <div className="bg-green-500 rounded-xl px-2 py-1.5 max-w-[130px]">
+                    <p className="text-[10px] text-white">Hello, thanks for your offer! Will try it</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div 
+              className="absolute -left-2 top-4 w-9 h-9 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg"
+              style={{ boxShadow: '0 8px 20px -4px rgba(59, 130, 246, 0.5)' }}
+            >
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
               </svg>
             </div>
             
             <div 
-              className="absolute -left-6 top-8 w-10 h-10 bg-blue-500 rounded-xl flex items-center justify-center shadow-lg"
+              className="absolute right-16 -bottom-2 w-9 h-9 bg-orange-500 rounded-xl flex items-center justify-center shadow-lg"
+              style={{ boxShadow: '0 8px 20px -4px rgba(249, 115, 22, 0.5)' }}
             >
-              <svg className="w-5 h-5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
+              <svg className="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
               </svg>
             </div>
           </div>
         </div>
 
-        <div className="flex items-center justify-center gap-8 flex-wrap opacity-50">
-          <span className="text-gray-600 font-medium text-sm">FORTO</span>
-          <span className="text-gray-600 font-medium text-sm">QiQ</span>
-          <span className="text-gray-600 font-medium text-sm">IXICA</span>
-          <span className="text-gray-600 font-medium text-sm">Cataphract</span>
-          <span className="text-gray-600 font-medium text-sm">Marketplace</span>
+        <div className="flex items-center justify-center gap-6 flex-wrap mt-4 z-10">
+          <span className="text-gray-500 font-semibold text-xs tracking-wide">FORTO</span>
+          <span className="text-gray-500 font-semibold text-xs tracking-wide">QiQ</span>
+          <span className="text-gray-500 font-semibold text-xs tracking-wide">IXICA</span>
+          <span className="text-gray-500 font-semibold text-xs tracking-wide">Cataphract</span>
+          <span className="text-gray-500 font-semibold text-xs tracking-wide">Marketplace</span>
         </div>
       </div>
     </div>
