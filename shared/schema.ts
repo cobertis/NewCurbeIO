@@ -6583,6 +6583,12 @@ export const complianceApplications = pgTable("compliance_applications", {
   optOutKeywords: text("opt_out_keywords"),
   helpKeywords: text("help_keywords"),
   
+  // Telnyx Integration
+  telnyxManagedAccountId: text("telnyx_managed_account_id"),
+  telnyxPhoneNumberId: text("telnyx_phone_number_id"),
+  telnyxNumberOrderId: text("telnyx_number_order_id"),
+  phoneNumberStatus: text("phone_number_status").default("pending"),
+  
   // Metadata
   submittedAt: timestamp("submitted_at"),
   approvedAt: timestamp("approved_at"),

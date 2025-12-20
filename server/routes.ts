@@ -36880,7 +36880,57 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
       }
       
-      const [application] = await db.insert(complianceApplications).values(validation.data).returning();
+      const { selectedPhoneNumber } = validation.data;
+      let telnyxManagedAccountId: string | undefined;
+      let telnyxPhoneNumberId: string | undefined;
+      let telnyxNumberOrderId: string | undefined;
+      let phoneNumberStatus = "pending";
+      
+      // Step 1: Setup company managed account (creates or links Telnyx sub-account)
+      if (selectedPhoneNumber) {
+        console.log(`[Compliance] Setting up Telnyx managed account for company ${user.companyId}`);
+        const { setupCompanyManagedAccount } = await import("./services/telnyx-managed-accounts");
+        const managedAccountResult = await setupCompanyManagedAccount(user.companyId);
+        
+        if (!managedAccountResult.success) {
+          console.error(`[Compliance] Failed to setup managed account: ${managedAccountResult.error}`);
+          return res.status(400).json({ 
+            message: "Failed to setup phone account. Please try again.",
+            error: managedAccountResult.error 
+          });
+        }
+        
+        telnyxManagedAccountId = managedAccountResult.managedAccountId;
+        console.log(`[Compliance] Managed account ready: ${telnyxManagedAccountId}`);
+        
+        // Step 2: Purchase the selected phone number
+        console.log(`[Compliance] Purchasing phone number ${selectedPhoneNumber} for company ${user.companyId}`);
+        const { purchasePhoneNumber } = await import("./services/telnyx-numbers-service");
+        const purchaseResult = await purchasePhoneNumber(selectedPhoneNumber, user.companyId);
+        
+        if (!purchaseResult.success) {
+          console.error(`[Compliance] Failed to purchase number: ${purchaseResult.error}`);
+          return res.status(400).json({ 
+            message: "Failed to purchase phone number. It may no longer be available.",
+            error: purchaseResult.error 
+          });
+        }
+        
+        telnyxPhoneNumberId = purchaseResult.phoneNumberId;
+        telnyxNumberOrderId = purchaseResult.orderId;
+        phoneNumberStatus = "active";
+        console.log(`[Compliance] Phone number purchased: ${selectedPhoneNumber}, ID: ${telnyxPhoneNumberId}, Order: ${telnyxNumberOrderId}`);
+      }
+      
+      // Create the compliance application with Telnyx integration data
+      const [application] = await db.insert(complianceApplications).values({
+        ...validation.data,
+        telnyxManagedAccountId,
+        telnyxPhoneNumberId,
+        telnyxNumberOrderId,
+        phoneNumberStatus,
+      }).returning();
+      
       res.status(201).json(application);
     } catch (error: any) {
       console.error("[Compliance] Error creating application:", error);
