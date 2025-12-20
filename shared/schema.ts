@@ -4900,6 +4900,33 @@ export const insertTelegramMessageSchema = createInsertSchema(telegramMessages).
 export type TelegramMessage = typeof telegramMessages.$inferSelect;
 export type InsertTelegramMessage = z.infer<typeof insertTelegramMessageSchema>;
 
+// User Telegram Bots - Each user can connect their own Telegram bot
+export const userTelegramBots = pgTable("user_telegram_bots", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  userId: varchar("user_id").notNull().references(() => users.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  botToken: text("bot_token").notNull(),
+  botUsername: text("bot_username"),
+  botFirstName: text("bot_first_name"),
+  webhookSecret: text("webhook_secret").notNull(),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  userIdIdx: index("user_telegram_bots_user_id_idx").on(table.userId),
+  companyIdIdx: index("user_telegram_bots_company_id_idx").on(table.companyId),
+  webhookSecretIdx: index("user_telegram_bots_webhook_secret_idx").on(table.webhookSecret),
+  uniqueUserBot: unique().on(table.userId),
+}));
+
+export const insertUserTelegramBotSchema = createInsertSchema(userTelegramBots).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type UserTelegramBot = typeof userTelegramBots.$inferSelect;
+export type InsertUserTelegramBot = z.infer<typeof insertUserTelegramBotSchema>;
+
 // =====================================================
 // TELNYX GLOBAL PRICING (Super Admin Configuration)
 // =====================================================
