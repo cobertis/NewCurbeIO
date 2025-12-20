@@ -170,13 +170,13 @@ export default function ComplianceInfo() {
                     : "U.S. carriers require 10DLC registration to send business SMS. Messages from unregistered numbers may be blocked or severely rate-limited."
                   }
                 </p>
-                <div className="flex flex-wrap items-center gap-4">
+                <div className="flex flex-wrap items-center justify-center gap-6 w-full">
                   {carrierLogos.map((carrier) => (
                     <img
                       key={carrier.name}
                       src={carrier.logo}
                       alt={carrier.name}
-                      className="h-5 object-contain"
+                      className="h-7 object-contain"
                       data-testid={`carrier-${carrier.name.toLowerCase().replace(/[^a-z0-9]/g, "")}`}
                     />
                   ))}
@@ -204,7 +204,7 @@ export default function ComplianceInfo() {
         </Card>
 
         <div className="flex items-center justify-between mt-8">
-          <Link href={`/compliance/choose-number${application?.numberType === "10dlc" ? "?type=10dlc" : ""}`}>
+          <Link href={`/compliance/choose-number?id=${applicationId}${application?.numberType === "10dlc" ? "&type=10dlc" : ""}`}>
             <span className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium cursor-pointer flex items-center gap-2" data-testid="button-back">
               <ArrowLeft className="w-4 h-4" />
               Back
