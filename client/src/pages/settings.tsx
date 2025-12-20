@@ -844,6 +844,40 @@ export default function Settings() {
     updateInsuranceProfileMutation.mutate(insuranceForm);
   };
 
+  // Combined save handler for Overview tab - saves profile, address, and company info
+  const handleSaveOverview = () => {
+    // Save profile info
+    updateProfileInfoMutation.mutate(profileForm);
+    
+    // Save physical address to company
+    const addressData: any = {
+      address: addressValue || addressRef.current?.value || "",
+      addressLine2: addressLine2Ref.current?.value ?? "",
+      city: cityRef.current?.value ?? "",
+      state: stateRef.current?.value ?? "",
+      postalCode: postalCodeRef.current?.value ?? "",
+      country: countryRef.current?.value || "United States",
+    };
+    
+    // If admin, also save company information
+    if (isAdmin) {
+      const companyData: any = {
+        ...addressData,
+        name: companyNameRef.current?.value ?? "",
+        slug: slugRef.current?.value ?? "",
+        businessCategory: selectedCategory ?? "",
+        businessNiche: selectedNiche ?? "",
+        email: companyEmailRef.current?.value ?? "",
+        phone: companyPhoneValue ? formatE164(companyPhoneValue) : "",
+        website: websiteValue ?? "",
+        platformLanguage: platformLanguageRef.current?.value ?? "",
+      };
+      updateCompanyMutation.mutate(companyData);
+    } else {
+      updateCompanyMutation.mutate(addressData);
+    }
+  };
+
   const handleSendTestEmail = (e: React.FormEvent) => {
     e.preventDefault();
     if (emailTestAddress) {
@@ -1519,48 +1553,48 @@ export default function Settings() {
         {/* Right Column - Settings Tabs */}
         <div className="lg:col-span-8 xl:col-span-9">
           <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setLocation(`/settings/${value}`); }} className="space-y-6">
-            <TabsList className="inline-flex h-auto flex-wrap w-full lg:w-auto">
-              <TabsTrigger value="overview" className="gap-2" data-testid="tab-overview">
-                <UserIcon className="h-4 w-4" />
-                Overview
-              </TabsTrigger>
-              <TabsTrigger value="automations" className="gap-2" data-testid="tab-automations">
-                <Zap className="h-4 w-4" />
-                Automations
-              </TabsTrigger>
-              {isAdmin && (
-                <TabsTrigger value="team" className="gap-2" data-testid="tab-team">
-                  <Users className="h-4 w-4" />
-                  Team
+            <div className="flex items-center justify-between gap-4 flex-wrap">
+              <TabsList className="inline-flex h-auto flex-wrap">
+                <TabsTrigger value="overview" className="gap-2" data-testid="tab-overview">
+                  <UserIcon className="h-4 w-4" />
+                  Overview
                 </TabsTrigger>
+                <TabsTrigger value="automations" className="gap-2" data-testid="tab-automations">
+                  <Zap className="h-4 w-4" />
+                  Automations
+                </TabsTrigger>
+                {isAdmin && (
+                  <TabsTrigger value="team" className="gap-2" data-testid="tab-team">
+                    <Users className="h-4 w-4" />
+                    Team
+                  </TabsTrigger>
+                )}
+                <TabsTrigger value="security" className="gap-2" data-testid="tab-security">
+                  <Shield className="h-4 w-4" />
+                  Security
+                </TabsTrigger>
+              </TabsList>
+              {activeTab === "overview" && (
+                <Button
+                  onClick={handleSaveOverview}
+                  disabled={updateProfileInfoMutation.isPending || updateCompanyMutation.isPending}
+                  data-testid="button-save-overview"
+                >
+                  {(updateProfileInfoMutation.isPending || updateCompanyMutation.isPending) ? "Saving..." : "Save Changes"}
+                </Button>
               )}
-              <TabsTrigger value="security" className="gap-2" data-testid="tab-security">
-                <Shield className="h-4 w-4" />
-                Security
-              </TabsTrigger>
-              
-            </TabsList>
+            </div>
 
             {/* Overview Tab - Profile + Company */}
             <TabsContent value="overview" className="space-y-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Profile Information Card */}
                 <Card>
-                  <CardHeader className="flex flex-row items-start justify-between space-y-0 pb-4">
-                    <div className="space-y-1.5">
-                      <CardTitle>Profile Information</CardTitle>
-                      <CardDescription>
-                        Update your personal information and contact details.
-                      </CardDescription>
-                    </div>
-                    <Button
-                      type="submit"
-                      form="profile-info-form"
-                      disabled={updateProfileInfoMutation.isPending}
-                      data-testid="button-save-profile"
-                    >
-                      {updateProfileInfoMutation.isPending ? "Saving..." : "Save Changes"}
-                    </Button>
+                  <CardHeader className="pb-4">
+                    <CardTitle>Profile Information</CardTitle>
+                    <CardDescription>
+                      Update your personal information and contact details.
+                    </CardDescription>
                   </CardHeader>
                   <CardContent>
                     <form id="profile-info-form" onSubmit={handleProfileInfoSubmit} className="space-y-4">
@@ -1735,20 +1769,11 @@ export default function Settings() {
               {/* Company Information - Admin Only */}
               {isAdmin && (
                 <Card className="lg:col-span-1">
-                  <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-                    <div className="space-y-1">
-                      <CardTitle>Company Information</CardTitle>
-                      <CardDescription>
-                        Basic company details and contact information
-                      </CardDescription>
-                    </div>
-                    <Button 
-                      onClick={handleSaveCompanyInformation}
-                      disabled={updateCompanyMutation.isPending && savingSection === "companyInfo"}
-                      data-testid="button-save-company-information"
-                    >
-                      {updateCompanyMutation.isPending && savingSection === "companyInfo" ? "Saving..." : "Save"}
-                    </Button>
+                  <CardHeader className="pb-2">
+                    <CardTitle>Company Information</CardTitle>
+                    <CardDescription>
+                      Basic company details and contact information
+                    </CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
