@@ -39,39 +39,6 @@ export function ProtectedRoute({ children, fallbackPath = "/login" }: ProtectedR
             setLocation("/getting-started");
             return;
           }
-          
-          // Check if user needs to select a plan
-          // Only ADMINS need to have a subscription - agents are covered by admin's plan
-          // Superadmins bypass this check entirely
-          if (data.user && data.user.role === "admin" && location !== "/select-plan") {
-            // Check if user's company has an active subscription
-            try {
-              const subscriptionResponse = await fetch("/api/billing/subscription", {
-                credentials: "include",
-              });
-              
-              // If response is not OK (404, 500, etc), redirect to plan selection
-              if (!subscriptionResponse.ok) {
-                setLocation("/select-plan");
-                return;
-              }
-              
-              const subscriptionData = await subscriptionResponse.json();
-              const subscription = subscriptionData?.subscription;
-              
-              // Redirect if no subscription, cancelled, or past_due (trial expired)
-              const invalidStatuses = ['cancelled', 'canceled', 'past_due'];
-              if (!subscription || invalidStatuses.includes(subscription.status)) {
-                setLocation("/select-plan");
-                return;
-              }
-            } catch (error) {
-              // On any error fetching subscription, redirect to plan selection to be safe
-              console.error("Failed to check subscription:", error);
-              setLocation("/select-plan");
-              return;
-            }
-          }
         } else {
           setLocation(fallbackPath);
         }
