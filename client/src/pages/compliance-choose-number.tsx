@@ -37,6 +37,301 @@ const steps = [
   { id: "review", label: "Review" },
 ];
 
+const usAreaCodes = [
+  { code: "201", state: "NJ", name: "New Jersey" },
+  { code: "202", state: "DC", name: "Washington DC" },
+  { code: "203", state: "CT", name: "Connecticut" },
+  { code: "205", state: "AL", name: "Alabama" },
+  { code: "206", state: "WA", name: "Washington" },
+  { code: "207", state: "ME", name: "Maine" },
+  { code: "208", state: "ID", name: "Idaho" },
+  { code: "209", state: "CA", name: "California" },
+  { code: "210", state: "TX", name: "Texas" },
+  { code: "212", state: "NY", name: "New York" },
+  { code: "213", state: "CA", name: "California" },
+  { code: "214", state: "TX", name: "Texas" },
+  { code: "215", state: "PA", name: "Pennsylvania" },
+  { code: "216", state: "OH", name: "Ohio" },
+  { code: "217", state: "IL", name: "Illinois" },
+  { code: "218", state: "MN", name: "Minnesota" },
+  { code: "219", state: "IN", name: "Indiana" },
+  { code: "224", state: "IL", name: "Illinois" },
+  { code: "225", state: "LA", name: "Louisiana" },
+  { code: "228", state: "MS", name: "Mississippi" },
+  { code: "229", state: "GA", name: "Georgia" },
+  { code: "231", state: "MI", name: "Michigan" },
+  { code: "234", state: "OH", name: "Ohio" },
+  { code: "239", state: "FL", name: "Florida" },
+  { code: "240", state: "MD", name: "Maryland" },
+  { code: "248", state: "MI", name: "Michigan" },
+  { code: "251", state: "AL", name: "Alabama" },
+  { code: "252", state: "NC", name: "North Carolina" },
+  { code: "253", state: "WA", name: "Washington" },
+  { code: "254", state: "TX", name: "Texas" },
+  { code: "256", state: "AL", name: "Alabama" },
+  { code: "260", state: "IN", name: "Indiana" },
+  { code: "262", state: "WI", name: "Wisconsin" },
+  { code: "267", state: "PA", name: "Pennsylvania" },
+  { code: "269", state: "MI", name: "Michigan" },
+  { code: "270", state: "KY", name: "Kentucky" },
+  { code: "281", state: "TX", name: "Texas" },
+  { code: "301", state: "MD", name: "Maryland" },
+  { code: "302", state: "DE", name: "Delaware" },
+  { code: "303", state: "CO", name: "Colorado" },
+  { code: "304", state: "WV", name: "West Virginia" },
+  { code: "305", state: "FL", name: "Florida" },
+  { code: "307", state: "WY", name: "Wyoming" },
+  { code: "308", state: "NE", name: "Nebraska" },
+  { code: "309", state: "IL", name: "Illinois" },
+  { code: "310", state: "CA", name: "California" },
+  { code: "312", state: "IL", name: "Illinois" },
+  { code: "313", state: "MI", name: "Michigan" },
+  { code: "314", state: "MO", name: "Missouri" },
+  { code: "315", state: "NY", name: "New York" },
+  { code: "316", state: "KS", name: "Kansas" },
+  { code: "317", state: "IN", name: "Indiana" },
+  { code: "318", state: "LA", name: "Louisiana" },
+  { code: "319", state: "IA", name: "Iowa" },
+  { code: "320", state: "MN", name: "Minnesota" },
+  { code: "321", state: "FL", name: "Florida" },
+  { code: "323", state: "CA", name: "California" },
+  { code: "330", state: "OH", name: "Ohio" },
+  { code: "331", state: "IL", name: "Illinois" },
+  { code: "334", state: "AL", name: "Alabama" },
+  { code: "336", state: "NC", name: "North Carolina" },
+  { code: "337", state: "LA", name: "Louisiana" },
+  { code: "339", state: "MA", name: "Massachusetts" },
+  { code: "346", state: "TX", name: "Texas" },
+  { code: "347", state: "NY", name: "New York" },
+  { code: "351", state: "MA", name: "Massachusetts" },
+  { code: "352", state: "FL", name: "Florida" },
+  { code: "360", state: "WA", name: "Washington" },
+  { code: "361", state: "TX", name: "Texas" },
+  { code: "385", state: "UT", name: "Utah" },
+  { code: "386", state: "FL", name: "Florida" },
+  { code: "401", state: "RI", name: "Rhode Island" },
+  { code: "402", state: "NE", name: "Nebraska" },
+  { code: "404", state: "GA", name: "Georgia" },
+  { code: "405", state: "OK", name: "Oklahoma" },
+  { code: "406", state: "MT", name: "Montana" },
+  { code: "407", state: "FL", name: "Florida" },
+  { code: "408", state: "CA", name: "California" },
+  { code: "409", state: "TX", name: "Texas" },
+  { code: "410", state: "MD", name: "Maryland" },
+  { code: "412", state: "PA", name: "Pennsylvania" },
+  { code: "413", state: "MA", name: "Massachusetts" },
+  { code: "414", state: "WI", name: "Wisconsin" },
+  { code: "415", state: "CA", name: "California" },
+  { code: "417", state: "MO", name: "Missouri" },
+  { code: "419", state: "OH", name: "Ohio" },
+  { code: "423", state: "TN", name: "Tennessee" },
+  { code: "424", state: "CA", name: "California" },
+  { code: "425", state: "WA", name: "Washington" },
+  { code: "430", state: "TX", name: "Texas" },
+  { code: "432", state: "TX", name: "Texas" },
+  { code: "434", state: "VA", name: "Virginia" },
+  { code: "435", state: "UT", name: "Utah" },
+  { code: "440", state: "OH", name: "Ohio" },
+  { code: "443", state: "MD", name: "Maryland" },
+  { code: "469", state: "TX", name: "Texas" },
+  { code: "470", state: "GA", name: "Georgia" },
+  { code: "475", state: "CT", name: "Connecticut" },
+  { code: "478", state: "GA", name: "Georgia" },
+  { code: "479", state: "AR", name: "Arkansas" },
+  { code: "480", state: "AZ", name: "Arizona" },
+  { code: "484", state: "PA", name: "Pennsylvania" },
+  { code: "501", state: "AR", name: "Arkansas" },
+  { code: "502", state: "KY", name: "Kentucky" },
+  { code: "503", state: "OR", name: "Oregon" },
+  { code: "504", state: "LA", name: "Louisiana" },
+  { code: "505", state: "NM", name: "New Mexico" },
+  { code: "507", state: "MN", name: "Minnesota" },
+  { code: "508", state: "MA", name: "Massachusetts" },
+  { code: "509", state: "WA", name: "Washington" },
+  { code: "510", state: "CA", name: "California" },
+  { code: "512", state: "TX", name: "Texas" },
+  { code: "513", state: "OH", name: "Ohio" },
+  { code: "515", state: "IA", name: "Iowa" },
+  { code: "516", state: "NY", name: "New York" },
+  { code: "517", state: "MI", name: "Michigan" },
+  { code: "518", state: "NY", name: "New York" },
+  { code: "520", state: "AZ", name: "Arizona" },
+  { code: "530", state: "CA", name: "California" },
+  { code: "531", state: "NE", name: "Nebraska" },
+  { code: "534", state: "WI", name: "Wisconsin" },
+  { code: "539", state: "OK", name: "Oklahoma" },
+  { code: "540", state: "VA", name: "Virginia" },
+  { code: "541", state: "OR", name: "Oregon" },
+  { code: "551", state: "NJ", name: "New Jersey" },
+  { code: "559", state: "CA", name: "California" },
+  { code: "561", state: "FL", name: "Florida" },
+  { code: "562", state: "CA", name: "California" },
+  { code: "563", state: "IA", name: "Iowa" },
+  { code: "567", state: "OH", name: "Ohio" },
+  { code: "571", state: "VA", name: "Virginia" },
+  { code: "573", state: "MO", name: "Missouri" },
+  { code: "574", state: "IN", name: "Indiana" },
+  { code: "575", state: "NM", name: "New Mexico" },
+  { code: "580", state: "OK", name: "Oklahoma" },
+  { code: "585", state: "NY", name: "New York" },
+  { code: "586", state: "MI", name: "Michigan" },
+  { code: "601", state: "MS", name: "Mississippi" },
+  { code: "602", state: "AZ", name: "Arizona" },
+  { code: "603", state: "NH", name: "New Hampshire" },
+  { code: "605", state: "SD", name: "South Dakota" },
+  { code: "606", state: "KY", name: "Kentucky" },
+  { code: "607", state: "NY", name: "New York" },
+  { code: "608", state: "WI", name: "Wisconsin" },
+  { code: "609", state: "NJ", name: "New Jersey" },
+  { code: "610", state: "PA", name: "Pennsylvania" },
+  { code: "612", state: "MN", name: "Minnesota" },
+  { code: "614", state: "OH", name: "Ohio" },
+  { code: "615", state: "TN", name: "Tennessee" },
+  { code: "616", state: "MI", name: "Michigan" },
+  { code: "617", state: "MA", name: "Massachusetts" },
+  { code: "618", state: "IL", name: "Illinois" },
+  { code: "619", state: "CA", name: "California" },
+  { code: "620", state: "KS", name: "Kansas" },
+  { code: "623", state: "AZ", name: "Arizona" },
+  { code: "626", state: "CA", name: "California" },
+  { code: "628", state: "CA", name: "California" },
+  { code: "629", state: "TN", name: "Tennessee" },
+  { code: "630", state: "IL", name: "Illinois" },
+  { code: "631", state: "NY", name: "New York" },
+  { code: "636", state: "MO", name: "Missouri" },
+  { code: "641", state: "IA", name: "Iowa" },
+  { code: "646", state: "NY", name: "New York" },
+  { code: "650", state: "CA", name: "California" },
+  { code: "651", state: "MN", name: "Minnesota" },
+  { code: "657", state: "CA", name: "California" },
+  { code: "660", state: "MO", name: "Missouri" },
+  { code: "661", state: "CA", name: "California" },
+  { code: "662", state: "MS", name: "Mississippi" },
+  { code: "669", state: "CA", name: "California" },
+  { code: "678", state: "GA", name: "Georgia" },
+  { code: "681", state: "WV", name: "West Virginia" },
+  { code: "682", state: "TX", name: "Texas" },
+  { code: "701", state: "ND", name: "North Dakota" },
+  { code: "702", state: "NV", name: "Nevada" },
+  { code: "703", state: "VA", name: "Virginia" },
+  { code: "704", state: "NC", name: "North Carolina" },
+  { code: "706", state: "GA", name: "Georgia" },
+  { code: "707", state: "CA", name: "California" },
+  { code: "708", state: "IL", name: "Illinois" },
+  { code: "712", state: "IA", name: "Iowa" },
+  { code: "713", state: "TX", name: "Texas" },
+  { code: "714", state: "CA", name: "California" },
+  { code: "715", state: "WI", name: "Wisconsin" },
+  { code: "716", state: "NY", name: "New York" },
+  { code: "717", state: "PA", name: "Pennsylvania" },
+  { code: "718", state: "NY", name: "New York" },
+  { code: "719", state: "CO", name: "Colorado" },
+  { code: "720", state: "CO", name: "Colorado" },
+  { code: "724", state: "PA", name: "Pennsylvania" },
+  { code: "725", state: "NV", name: "Nevada" },
+  { code: "727", state: "FL", name: "Florida" },
+  { code: "731", state: "TN", name: "Tennessee" },
+  { code: "732", state: "NJ", name: "New Jersey" },
+  { code: "734", state: "MI", name: "Michigan" },
+  { code: "737", state: "TX", name: "Texas" },
+  { code: "740", state: "OH", name: "Ohio" },
+  { code: "747", state: "CA", name: "California" },
+  { code: "754", state: "FL", name: "Florida" },
+  { code: "757", state: "VA", name: "Virginia" },
+  { code: "760", state: "CA", name: "California" },
+  { code: "762", state: "GA", name: "Georgia" },
+  { code: "763", state: "MN", name: "Minnesota" },
+  { code: "765", state: "IN", name: "Indiana" },
+  { code: "769", state: "MS", name: "Mississippi" },
+  { code: "770", state: "GA", name: "Georgia" },
+  { code: "772", state: "FL", name: "Florida" },
+  { code: "773", state: "IL", name: "Illinois" },
+  { code: "774", state: "MA", name: "Massachusetts" },
+  { code: "775", state: "NV", name: "Nevada" },
+  { code: "779", state: "IL", name: "Illinois" },
+  { code: "781", state: "MA", name: "Massachusetts" },
+  { code: "785", state: "KS", name: "Kansas" },
+  { code: "786", state: "FL", name: "Florida" },
+  { code: "801", state: "UT", name: "Utah" },
+  { code: "802", state: "VT", name: "Vermont" },
+  { code: "803", state: "SC", name: "South Carolina" },
+  { code: "804", state: "VA", name: "Virginia" },
+  { code: "805", state: "CA", name: "California" },
+  { code: "806", state: "TX", name: "Texas" },
+  { code: "808", state: "HI", name: "Hawaii" },
+  { code: "810", state: "MI", name: "Michigan" },
+  { code: "812", state: "IN", name: "Indiana" },
+  { code: "813", state: "FL", name: "Florida" },
+  { code: "814", state: "PA", name: "Pennsylvania" },
+  { code: "815", state: "IL", name: "Illinois" },
+  { code: "816", state: "MO", name: "Missouri" },
+  { code: "817", state: "TX", name: "Texas" },
+  { code: "818", state: "CA", name: "California" },
+  { code: "828", state: "NC", name: "North Carolina" },
+  { code: "830", state: "TX", name: "Texas" },
+  { code: "831", state: "CA", name: "California" },
+  { code: "832", state: "TX", name: "Texas" },
+  { code: "843", state: "SC", name: "South Carolina" },
+  { code: "845", state: "NY", name: "New York" },
+  { code: "847", state: "IL", name: "Illinois" },
+  { code: "848", state: "NJ", name: "New Jersey" },
+  { code: "850", state: "FL", name: "Florida" },
+  { code: "856", state: "NJ", name: "New Jersey" },
+  { code: "857", state: "MA", name: "Massachusetts" },
+  { code: "858", state: "CA", name: "California" },
+  { code: "859", state: "KY", name: "Kentucky" },
+  { code: "860", state: "CT", name: "Connecticut" },
+  { code: "862", state: "NJ", name: "New Jersey" },
+  { code: "863", state: "FL", name: "Florida" },
+  { code: "864", state: "SC", name: "South Carolina" },
+  { code: "865", state: "TN", name: "Tennessee" },
+  { code: "870", state: "AR", name: "Arkansas" },
+  { code: "878", state: "PA", name: "Pennsylvania" },
+  { code: "901", state: "TN", name: "Tennessee" },
+  { code: "903", state: "TX", name: "Texas" },
+  { code: "904", state: "FL", name: "Florida" },
+  { code: "906", state: "MI", name: "Michigan" },
+  { code: "907", state: "AK", name: "Alaska" },
+  { code: "908", state: "NJ", name: "New Jersey" },
+  { code: "909", state: "CA", name: "California" },
+  { code: "910", state: "NC", name: "North Carolina" },
+  { code: "912", state: "GA", name: "Georgia" },
+  { code: "913", state: "KS", name: "Kansas" },
+  { code: "914", state: "NY", name: "New York" },
+  { code: "915", state: "TX", name: "Texas" },
+  { code: "916", state: "CA", name: "California" },
+  { code: "917", state: "NY", name: "New York" },
+  { code: "918", state: "OK", name: "Oklahoma" },
+  { code: "919", state: "NC", name: "North Carolina" },
+  { code: "920", state: "WI", name: "Wisconsin" },
+  { code: "925", state: "CA", name: "California" },
+  { code: "928", state: "AZ", name: "Arizona" },
+  { code: "929", state: "NY", name: "New York" },
+  { code: "931", state: "TN", name: "Tennessee" },
+  { code: "936", state: "TX", name: "Texas" },
+  { code: "937", state: "OH", name: "Ohio" },
+  { code: "938", state: "AL", name: "Alabama" },
+  { code: "940", state: "TX", name: "Texas" },
+  { code: "941", state: "FL", name: "Florida" },
+  { code: "947", state: "MI", name: "Michigan" },
+  { code: "949", state: "CA", name: "California" },
+  { code: "951", state: "CA", name: "California" },
+  { code: "952", state: "MN", name: "Minnesota" },
+  { code: "954", state: "FL", name: "Florida" },
+  { code: "956", state: "TX", name: "Texas" },
+  { code: "959", state: "CT", name: "Connecticut" },
+  { code: "970", state: "CO", name: "Colorado" },
+  { code: "971", state: "OR", name: "Oregon" },
+  { code: "972", state: "TX", name: "Texas" },
+  { code: "973", state: "NJ", name: "New Jersey" },
+  { code: "978", state: "MA", name: "Massachusetts" },
+  { code: "979", state: "TX", name: "Texas" },
+  { code: "980", state: "NC", name: "North Carolina" },
+  { code: "984", state: "NC", name: "North Carolina" },
+  { code: "985", state: "LA", name: "Louisiana" },
+  { code: "989", state: "MI", name: "Michigan" },
+];
+
 export default function ComplianceChooseNumber() {
   const [location, setLocation] = useLocation();
 
@@ -44,6 +339,7 @@ export default function ComplianceChooseNumber() {
   const [country] = useState("US");
   const [numberType, setNumberType] = useState<"toll-free" | "10dlc">("toll-free");
   const [selectedNumber, setSelectedNumber] = useState<string>("");
+  const [selectedAreaCode, setSelectedAreaCode] = useState<string>("");
   const [showSwitchDialog, setShowSwitchDialog] = useState(false);
   const [pendingType, setPendingType] = useState<"toll-free" | "10dlc" | null>(null);
 
@@ -80,15 +376,22 @@ export default function ComplianceChooseNumber() {
   }, []);
 
   const phoneNumberType = numberType === "toll-free" ? "toll_free" : "local";
+  const areaCodeParam = numberType === "10dlc" && selectedAreaCode ? `&npa=${selectedAreaCode}` : "";
   const { data: numbersData, isLoading: loadingNumbers } = useQuery<{ numbers: AvailableNumber[] }>({
-    queryKey: [`/api/telnyx/available-numbers?phone_number_type=${phoneNumberType}&limit=20`],
+    queryKey: [`/api/telnyx/available-numbers?phone_number_type=${phoneNumberType}&limit=20${areaCodeParam}`],
+    enabled: numberType === "toll-free" || (numberType === "10dlc" && !!selectedAreaCode),
   });
 
   const numbers = numbersData?.numbers || [];
 
   useEffect(() => {
     setSelectedNumber("");
+    setSelectedAreaCode("");
   }, [numberType]);
+
+  useEffect(() => {
+    setSelectedNumber("");
+  }, [selectedAreaCode]);
 
   const formatPhoneNumber = (phone: string) => {
     const cleaned = phone.replace(/\D/g, "");
@@ -104,7 +407,7 @@ export default function ComplianceChooseNumber() {
 
   const subtitle = numberType === "toll-free"
     ? "Please choose the desired virtual toll-free number for your business."
-    : "Please choose the desired virtual local number for your business.";
+    : "Please choose the area code and the desired virtual number for your business.";
 
   return (
     <div className="flex-1 overflow-y-auto">
@@ -214,12 +517,37 @@ export default function ComplianceChooseNumber() {
                 </RadioGroup>
               </div>
 
-              {/* Choose Number */}
+              {/* Area Code - Only for 10DLC */}
+              {numberType === "10dlc" && (
+                <div className="grid grid-cols-[140px_1fr] items-center gap-4">
+                  <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 text-right">
+                    Area code
+                  </Label>
+                  <Select value={selectedAreaCode} onValueChange={setSelectedAreaCode}>
+                    <SelectTrigger className="w-full" data-testid="select-area-code">
+                      <SelectValue placeholder="Select an area code" />
+                    </SelectTrigger>
+                    <SelectContent className="max-h-[300px]">
+                      {usAreaCodes.map((ac) => (
+                        <SelectItem key={ac.code} value={ac.code}>
+                          {ac.code} – {ac.name} ({ac.state})
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Available Number */}
               <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                 <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 text-right">
-                  Choose number
+                  {numberType === "10dlc" ? "Available number" : "Choose number"}
                 </Label>
-                {loadingNumbers ? (
+                {numberType === "10dlc" && !selectedAreaCode ? (
+                  <div className="flex items-center py-2">
+                    <span className="text-sm text-gray-500">Select an area code first</span>
+                  </div>
+                ) : loadingNumbers ? (
                   <div className="flex items-center py-2">
                     <Loader2 className="w-4 h-4 animate-spin text-gray-400 mr-2" />
                     <span className="text-sm text-gray-500">Loading...</span>
