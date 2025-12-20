@@ -539,6 +539,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     { title: "Customers", url: "/customers" },
     { title: "Leads", url: "/leads" },
     { title: "Tasks", url: "/tasks" },
+    { title: "Integrations", url: "/integrations" },
   ];
   
   const navigationItems = user?.role === 'superadmin' 
