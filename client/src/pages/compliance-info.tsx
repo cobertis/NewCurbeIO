@@ -6,6 +6,13 @@ import { Check, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ComplianceApplication } from "@shared/schema";
 import complianceImage from "@assets/image_1766269959786.png";
+import attLogo from "@assets/att-logo.svg";
+import verizonLogo from "@assets/verizon-logo.svg";
+import tmobileLogo from "@assets/tmobile-logo.svg";
+import bellLogo from "@assets/bell-logo.svg";
+import rogersLogo from "@assets/rogers-logo.svg";
+import telusLogo from "@assets/telus-logo.svg";
+import uscellularLogo from "@assets/uscellular-logo.svg";
 
 const steps = [
   { id: "number", label: "Number" },
@@ -16,12 +23,13 @@ const steps = [
 ];
 
 const carrierLogos = [
-  { name: "AT&T", bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-400" },
-  { name: "Verizon", bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-700 dark:text-red-400" },
-  { name: "T-Mobile", bg: "bg-pink-100 dark:bg-pink-900/30", text: "text-pink-700 dark:text-pink-400" },
-  { name: "Bell", bg: "bg-blue-100 dark:bg-blue-900/30", text: "text-blue-700 dark:text-blue-400" },
-  { name: "Rogers", bg: "bg-red-100 dark:bg-red-900/30", text: "text-red-700 dark:text-red-400" },
-  { name: "Telus", bg: "bg-green-100 dark:bg-green-900/30", text: "text-green-700 dark:text-green-400" },
+  { name: "AT&T", logo: attLogo },
+  { name: "Verizon", logo: verizonLogo },
+  { name: "T-Mobile", logo: tmobileLogo },
+  { name: "Bell", logo: bellLogo },
+  { name: "Rogers", logo: rogersLogo },
+  { name: "Telus", logo: telusLogo },
+  { name: "US Cellular", logo: uscellularLogo },
 ];
 
 const bulletPoints = [
@@ -160,19 +168,15 @@ export default function ComplianceInfo() {
               </div>
             </div>
 
-            <div className="flex flex-wrap justify-center gap-3 mb-8">
+            <div className="flex flex-wrap justify-center items-center gap-6 mb-8">
               {carrierLogos.map((carrier) => (
-                <span
+                <img
                   key={carrier.name}
-                  className={cn(
-                    "px-4 py-2 rounded-lg text-sm font-semibold",
-                    carrier.bg,
-                    carrier.text
-                  )}
+                  src={carrier.logo}
+                  alt={carrier.name}
+                  className="h-6 object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all"
                   data-testid={`carrier-${carrier.name.toLowerCase().replace(/[^a-z0-9]/g, "")}`}
-                >
-                  {carrier.name}
-                </span>
+                />
               ))}
             </div>
 
