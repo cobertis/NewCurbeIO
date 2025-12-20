@@ -1427,7 +1427,7 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/compliance/info">
+      <Route path="/compliance/info/:id">
         <ProtectedRoute>
           <DashboardLayout>
             <ComplianceInfo />
