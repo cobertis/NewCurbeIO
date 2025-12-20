@@ -443,9 +443,18 @@ export default function ComplianceBrand() {
                       Business registration number (EIN) <span className="text-gray-400">(Optional)</span>
                     </Label>
                     <Input
-                      placeholder="Enter tax number"
+                      placeholder="XX-XXXXXXX"
                       className="mt-1.5"
-                      {...form.register("ein")}
+                      maxLength={10}
+                      {...form.register("ein", {
+                        onChange: (e) => {
+                          let value = e.target.value.replace(/[^0-9]/g, '');
+                          if (value.length > 2) {
+                            value = value.slice(0, 2) + '-' + value.slice(2, 9);
+                          }
+                          form.setValue("ein", value);
+                        }
+                      })}
                       data-testid="input-ein"
                     />
                     <p className="text-gray-500 text-xs mt-1">Correct EIN format: XX-XXXXXXX</p>
