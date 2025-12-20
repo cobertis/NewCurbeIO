@@ -727,7 +727,7 @@ export default function GettingStarted() {
                           <p className="text-xs text-muted-foreground mt-1">Brand: near instant; Campaign: manually reviewed by DCA.</p>
                         </td>
                       </tr>
-                      <tr className="border-b">
+                      <tr>
                         <td className="p-3 font-medium">Cost / fees</td>
                         <td className="p-3">
                           <div className="flex items-center gap-2">
@@ -739,24 +739,9 @@ export default function GettingStarted() {
                         <td className="p-3">
                           <div className="flex items-center gap-2">
                             <span className="text-yellow-600">💰</span>
-                            <span className="font-medium">€10 / month</span>
+                            <span className="font-medium">$10 / month</span>
                           </div>
                           <p className="text-xs text-muted-foreground mt-1">Monthly fee; extra cost for resubmission.</p>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-3 font-medium">Video tutorial</td>
-                        <td className="p-3">
-                          <button className="text-blue-600 hover:text-blue-700 flex items-center gap-1 text-sm">
-                            <Video className="w-4 h-4" />
-                            Watch tutorial
-                          </button>
-                        </td>
-                        <td className="p-3">
-                          <button className="text-blue-600 hover:text-blue-700 flex items-center gap-1 text-sm">
-                            <Video className="w-4 h-4" />
-                            Watch tutorial
-                          </button>
                         </td>
                       </tr>
                     </tbody>
