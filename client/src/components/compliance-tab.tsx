@@ -89,6 +89,18 @@ interface TenDLCCampaign {
   createdAt?: string;
   sample1?: string;
   sample2?: string;
+  sample3?: string;
+  sample4?: string;
+  sample5?: string;
+  messageFlow?: string;
+  optinMessage?: string;
+  optoutMessage?: string;
+  helpMessage?: string;
+  optinKeywords?: string;
+  optoutKeywords?: string;
+  helpKeywords?: string;
+  rejectionReason?: string;
+  reasons?: Array<{ description: string; fields?: string[] }>;
 }
 
 interface CampaignPhoneNumber {
@@ -475,6 +487,18 @@ export function ComplianceTab() {
   const [selectedNumbersToAssign, setSelectedNumbersToAssign] = useState<string[]>([]);
   const [campaignPhoneNumbers, setCampaignPhoneNumbers] = useState<Record<string, CampaignPhoneNumber[]>>({});
 
+  // Campaign Detail Sheet State
+  const [showCampaignDetailSheet, setShowCampaignDetailSheet] = useState(false);
+  const [appealReason, setAppealReason] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editMessageFlow, setEditMessageFlow] = useState("");
+  const [editSample1, setEditSample1] = useState("");
+  const [editSample2, setEditSample2] = useState("");
+  const [editSample3, setEditSample3] = useState("");
+  const [editOptInMessage, setEditOptInMessage] = useState("");
+  const [editOptOutMessage, setEditOptOutMessage] = useState("");
+  const [editHelpMessage, setEditHelpMessage] = useState("");
+
   // Auto-refresh campaign numbers when sheet is open (polling every 5 seconds)
   useEffect(() => {
     if (!showAssignNumbersSheet || !selectedCampaign) return;
@@ -557,6 +581,43 @@ export function ComplianceTab() {
     },
     onError: (error: any) => {
       toast({ title: "Capability check failed", description: error.message || "An error occurred", variant: "destructive" });
+    },
+  });
+
+  // Campaign Detail Query
+  const { data: campaignDetail, isLoading: isLoadingCampaignDetail, refetch: refetchCampaignDetail } = useQuery<TenDLCCampaign>({
+    queryKey: ["/api/phone-system/campaigns", selectedCampaign?.campaignId],
+    enabled: showCampaignDetailSheet && !!selectedCampaign?.campaignId,
+  });
+
+  // Update Campaign Mutation
+  const updateCampaignMutation = useMutation({
+    mutationFn: async (data: Partial<TenDLCCampaign>) => {
+      return await apiRequest("PUT", `/api/phone-system/campaigns/${selectedCampaign?.campaignId}`, data);
+    },
+    onSuccess: () => {
+      toast({ title: "Campaign updated", description: "Your campaign modifications have been saved." });
+      queryClient.invalidateQueries({ queryKey: ["/api/phone-system/campaigns"] });
+      refetchCampaignDetail();
+    },
+    onError: (error: any) => {
+      toast({ title: "Update failed", description: error.message || "Failed to update campaign", variant: "destructive" });
+    },
+  });
+
+  // Appeal Campaign Mutation
+  const appealCampaignMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", `/api/phone-system/campaigns/${selectedCampaign?.campaignId}/appeal`, { appealReason });
+    },
+    onSuccess: () => {
+      toast({ title: "Appeal submitted", description: "Your appeal has been submitted for review." });
+      queryClient.invalidateQueries({ queryKey: ["/api/phone-system/campaigns"] });
+      setShowCampaignDetailSheet(false);
+      setAppealReason("");
+    },
+    onError: (error: any) => {
+      toast({ title: "Appeal failed", description: error.message || "Failed to submit appeal", variant: "destructive" });
     },
   });
 
@@ -1610,7 +1671,24 @@ export function ComplianceTab() {
                   }
                   
                   return (
-                    <TableRow key={campaign.campaignId}>
+                    <TableRow 
+                      key={campaign.campaignId}
+                      className="cursor-pointer hover:bg-muted/50"
+                      data-testid={`row-campaign-${campaign.campaignId}`}
+                      onClick={() => {
+                        setSelectedCampaign(campaign);
+                        setEditDescription(campaign.description || "");
+                        setEditMessageFlow(campaign.messageFlow || "");
+                        setEditSample1(campaign.sample1 || "");
+                        setEditSample2(campaign.sample2 || "");
+                        setEditSample3(campaign.sample3 || "");
+                        setEditOptInMessage(campaign.optinMessage || "");
+                        setEditOptOutMessage(campaign.optoutMessage || "");
+                        setEditHelpMessage(campaign.helpMessage || "");
+                        setAppealReason("");
+                        setShowCampaignDetailSheet(true);
+                      }}
+                    >
                       <TableCell className="font-mono text-xs text-muted-foreground">{campaign.campaignId}</TableCell>
                       <TableCell className="font-mono text-xs text-muted-foreground">{campaign.tcrCampaignId || "-"}</TableCell>
                       <TableCell>{USE_CASES.find(uc => uc.value === campaign.usecase)?.label || campaign.usecase}</TableCell>
@@ -1629,7 +1707,8 @@ export function ComplianceTab() {
                             size="sm"
                             variant="outline"
                             data-testid={`btn-manage-campaign-${campaign.campaignId}`}
-                            onClick={() => {
+                            onClick={(e) => {
+                              e.stopPropagation();
                               setSelectedCampaign(campaign);
                               setSelectedNumbersToAssign([]);
                               setShowAssignNumbersSheet(true);
@@ -2419,6 +2498,328 @@ export function ComplianceTab() {
                   `Assign ${selectedNumbersToAssign.length} Number${selectedNumbersToAssign.length !== 1 ? 's' : ''}`
                 )}
               </Button>
+          </div>
+        </SheetContent>
+      </Sheet>
+
+      {/* Campaign Detail Sheet */}
+      <Sheet open={showCampaignDetailSheet} onOpenChange={setShowCampaignDetailSheet}>
+        <SheetContent className="w-full sm:max-w-lg flex flex-col h-full">
+          <SheetHeader>
+            <SheetTitle>Campaign Details</SheetTitle>
+            <SheetDescription>
+              View campaign information and status
+            </SheetDescription>
+          </SheetHeader>
+          
+          <ScrollArea className="flex-1 mt-4">
+            {isLoadingCampaignDetail ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-6 pr-4">
+                {/* Campaign Status & IDs */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">Status</span>
+                    {(() => {
+                      const status = (campaignDetail?.status || selectedCampaign?.status)?.toUpperCase();
+                      if (status === "ACTIVE" || status === "APPROVED") {
+                        return <Badge variant="default" className="bg-green-600"><CheckCircle2 className="h-3 w-3 mr-1" />Active</Badge>;
+                      } else if (status === "PENDING" || status === "IN_REVIEW") {
+                        return <Badge variant="secondary"><Clock className="h-3 w-3 mr-1" />Pending</Badge>;
+                      } else if (status === "REJECTED" || status === "FAILED") {
+                        return <Badge variant="destructive"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>;
+                      }
+                      return <Badge variant="outline">{status || "Unknown"}</Badge>;
+                    })()}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <span className="text-muted-foreground block">Campaign ID</span>
+                      <span className="font-mono text-xs" data-testid="text-campaign-id">{campaignDetail?.campaignId || selectedCampaign?.campaignId}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block">TCR ID</span>
+                      <span className="font-mono text-xs" data-testid="text-tcr-id">{campaignDetail?.tcrCampaignId || selectedCampaign?.tcrCampaignId || "-"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Rejection Reasons - Displayed Prominently */}
+                {((campaignDetail?.status || selectedCampaign?.status)?.toUpperCase() === "REJECTED" || 
+                  (campaignDetail?.status || selectedCampaign?.status)?.toUpperCase() === "FAILED") && (
+                  <div className="border border-destructive/50 bg-destructive/10 rounded-lg p-4 space-y-2" data-testid="section-rejection-reasons">
+                    <div className="flex items-center gap-2 text-destructive font-medium">
+                      <AlertCircle className="h-4 w-4" />
+                      Rejection Information
+                    </div>
+                    {(campaignDetail?.rejectionReason || selectedCampaign?.rejectionReason) && (
+                      <p className="text-sm text-destructive/90">{campaignDetail?.rejectionReason || selectedCampaign?.rejectionReason}</p>
+                    )}
+                    {(campaignDetail?.reasons || selectedCampaign?.reasons) && (campaignDetail?.reasons || selectedCampaign?.reasons)!.length > 0 && (
+                      <div className="space-y-2 mt-2">
+                        {(campaignDetail?.reasons || selectedCampaign?.reasons)!.map((reason, idx) => (
+                          <div key={idx} className="text-sm border-l-2 border-destructive/50 pl-3">
+                            <p className="text-destructive/90">{reason.description}</p>
+                            {reason.fields && reason.fields.length > 0 && (
+                              <p className="text-xs text-muted-foreground mt-1">Fields: {reason.fields.join(", ")}</p>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Campaign Details */}
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm">Campaign Information</h4>
+                  <div className="space-y-2 text-sm">
+                    <div>
+                      <span className="text-muted-foreground block">Use Case</span>
+                      <span data-testid="text-usecase">{USE_CASES.find(uc => uc.value === (campaignDetail?.usecase || selectedCampaign?.usecase))?.label || campaignDetail?.usecase || selectedCampaign?.usecase}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block">Description</span>
+                      <span data-testid="text-description">{campaignDetail?.description || selectedCampaign?.description || "-"}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block">Message Flow</span>
+                      <span data-testid="text-message-flow">{campaignDetail?.messageFlow || selectedCampaign?.messageFlow || "-"}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Sample Messages */}
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm">Sample Messages</h4>
+                  <div className="space-y-2 text-sm">
+                    {(campaignDetail?.sample1 || selectedCampaign?.sample1) && (
+                      <div className="bg-muted/50 rounded p-2">
+                        <span className="text-xs text-muted-foreground">Sample 1:</span>
+                        <p className="text-sm" data-testid="text-sample1">{campaignDetail?.sample1 || selectedCampaign?.sample1}</p>
+                      </div>
+                    )}
+                    {(campaignDetail?.sample2 || selectedCampaign?.sample2) && (
+                      <div className="bg-muted/50 rounded p-2">
+                        <span className="text-xs text-muted-foreground">Sample 2:</span>
+                        <p className="text-sm" data-testid="text-sample2">{campaignDetail?.sample2 || selectedCampaign?.sample2}</p>
+                      </div>
+                    )}
+                    {(campaignDetail?.sample3 || selectedCampaign?.sample3) && (
+                      <div className="bg-muted/50 rounded p-2">
+                        <span className="text-xs text-muted-foreground">Sample 3:</span>
+                        <p className="text-sm" data-testid="text-sample3">{campaignDetail?.sample3 || selectedCampaign?.sample3}</p>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* Keywords & Messages */}
+                <div className="space-y-3">
+                  <h4 className="font-medium text-sm">Keywords & Auto-Responses</h4>
+                  <div className="grid grid-cols-1 gap-3 text-sm">
+                    <div className="border rounded p-3">
+                      <span className="text-muted-foreground block text-xs">Opt-In Keywords</span>
+                      <span data-testid="text-optin-keywords">{campaignDetail?.optinKeywords || selectedCampaign?.optinKeywords || "-"}</span>
+                      {(campaignDetail?.optinMessage || selectedCampaign?.optinMessage) && (
+                        <p className="text-xs text-muted-foreground mt-1 italic" data-testid="text-optin-message">"{campaignDetail?.optinMessage || selectedCampaign?.optinMessage}"</p>
+                      )}
+                    </div>
+                    <div className="border rounded p-3">
+                      <span className="text-muted-foreground block text-xs">Opt-Out Keywords</span>
+                      <span data-testid="text-optout-keywords">{campaignDetail?.optoutKeywords || selectedCampaign?.optoutKeywords || "-"}</span>
+                      {(campaignDetail?.optoutMessage || selectedCampaign?.optoutMessage) && (
+                        <p className="text-xs text-muted-foreground mt-1 italic" data-testid="text-optout-message">"{campaignDetail?.optoutMessage || selectedCampaign?.optoutMessage}"</p>
+                      )}
+                    </div>
+                    <div className="border rounded p-3">
+                      <span className="text-muted-foreground block text-xs">Help Keywords</span>
+                      <span data-testid="text-help-keywords">{campaignDetail?.helpKeywords || selectedCampaign?.helpKeywords || "-"}</span>
+                      {(campaignDetail?.helpMessage || selectedCampaign?.helpMessage) && (
+                        <p className="text-xs text-muted-foreground mt-1 italic" data-testid="text-help-message">"{campaignDetail?.helpMessage || selectedCampaign?.helpMessage}"</p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+
+                {/* Edit Form for Rejected Campaigns */}
+                {((campaignDetail?.status || selectedCampaign?.status)?.toUpperCase() === "REJECTED" || 
+                  (campaignDetail?.status || selectedCampaign?.status)?.toUpperCase() === "FAILED") && (
+                  <div className="space-y-4 border-t pt-4" data-testid="section-edit-campaign">
+                    <h4 className="font-medium text-sm">Modify Campaign Content</h4>
+                    <p className="text-xs text-muted-foreground">Update the fields below to address the rejection reasons, then save your changes.</p>
+                    
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <Label htmlFor="edit-description" className="text-sm">Description</Label>
+                        <Textarea
+                          id="edit-description"
+                          data-testid="input-edit-description"
+                          value={editDescription}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                          placeholder="Campaign description..."
+                          className="min-h-[80px]"
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="edit-message-flow" className="text-sm">Message Flow</Label>
+                        <Textarea
+                          id="edit-message-flow"
+                          data-testid="input-edit-message-flow"
+                          value={editMessageFlow}
+                          onChange={(e) => setEditMessageFlow(e.target.value)}
+                          placeholder="Describe how users opt-in to receive messages..."
+                          className="min-h-[80px]"
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="edit-sample1" className="text-sm">Sample Message 1</Label>
+                        <Textarea
+                          id="edit-sample1"
+                          data-testid="input-edit-sample1"
+                          value={editSample1}
+                          onChange={(e) => setEditSample1(e.target.value)}
+                          placeholder="Sample message..."
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="edit-sample2" className="text-sm">Sample Message 2</Label>
+                        <Textarea
+                          id="edit-sample2"
+                          data-testid="input-edit-sample2"
+                          value={editSample2}
+                          onChange={(e) => setEditSample2(e.target.value)}
+                          placeholder="Sample message..."
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="edit-sample3" className="text-sm">Sample Message 3 (Optional)</Label>
+                        <Textarea
+                          id="edit-sample3"
+                          data-testid="input-edit-sample3"
+                          value={editSample3}
+                          onChange={(e) => setEditSample3(e.target.value)}
+                          placeholder="Sample message..."
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="edit-optin-message" className="text-sm">Opt-In Message</Label>
+                        <Textarea
+                          id="edit-optin-message"
+                          data-testid="input-edit-optin-message"
+                          value={editOptInMessage}
+                          onChange={(e) => setEditOptInMessage(e.target.value)}
+                          placeholder="Message sent when users opt-in..."
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="edit-optout-message" className="text-sm">Opt-Out Message</Label>
+                        <Textarea
+                          id="edit-optout-message"
+                          data-testid="input-edit-optout-message"
+                          value={editOptOutMessage}
+                          onChange={(e) => setEditOptOutMessage(e.target.value)}
+                          placeholder="Message sent when users opt-out..."
+                        />
+                      </div>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="edit-help-message" className="text-sm">Help Message</Label>
+                        <Textarea
+                          id="edit-help-message"
+                          data-testid="input-edit-help-message"
+                          value={editHelpMessage}
+                          onChange={(e) => setEditHelpMessage(e.target.value)}
+                          placeholder="Message sent when users request help..."
+                        />
+                      </div>
+                      
+                      <Button
+                        className="w-full"
+                        data-testid="btn-save-campaign-changes"
+                        disabled={updateCampaignMutation.isPending}
+                        onClick={() => {
+                          updateCampaignMutation.mutate({
+                            description: editDescription,
+                            messageFlow: editMessageFlow,
+                            sample1: editSample1,
+                            sample2: editSample2,
+                            sample3: editSample3,
+                            optinMessage: editOptInMessage,
+                            optoutMessage: editOptOutMessage,
+                            helpMessage: editHelpMessage,
+                          });
+                        }}
+                      >
+                        {updateCampaignMutation.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Saving...
+                          </>
+                        ) : (
+                          "Save Changes"
+                        )}
+                      </Button>
+                    </div>
+
+                    {/* Appeal Section */}
+                    <div className="space-y-3 border-t pt-4">
+                      <h4 className="font-medium text-sm">Submit an Appeal</h4>
+                      <p className="text-xs text-muted-foreground">If you believe the rejection was in error, provide additional context for your appeal.</p>
+                      
+                      <div className="space-y-1">
+                        <Label htmlFor="appeal-reason" className="text-sm">Appeal Reason</Label>
+                        <Textarea
+                          id="appeal-reason"
+                          data-testid="input-appeal-reason"
+                          value={appealReason}
+                          onChange={(e) => setAppealReason(e.target.value)}
+                          placeholder="Explain why you believe the campaign should be approved..."
+                          className="min-h-[100px]"
+                        />
+                      </div>
+                      
+                      <Button
+                        variant="outline"
+                        className="w-full"
+                        data-testid="btn-submit-appeal"
+                        disabled={!appealReason.trim() || appealCampaignMutation.isPending}
+                        onClick={() => appealCampaignMutation.mutate()}
+                      >
+                        {appealCampaignMutation.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Submitting Appeal...
+                          </>
+                        ) : (
+                          "Submit Appeal"
+                        )}
+                      </Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+          </ScrollArea>
+          
+          <div className="flex gap-3 pt-4 border-t mt-4 shrink-0">
+            <Button
+              variant="outline"
+              className="flex-1"
+              data-testid="btn-close-campaign-detail"
+              onClick={() => setShowCampaignDetailSheet(false)}
+            >
+              Close
+            </Button>
           </div>
         </SheetContent>
       </Sheet>

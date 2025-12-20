@@ -30409,6 +30409,119 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       res.status(500).json({ message: error.message });
     }
   });
+
+  // PUT /api/phone-system/campaigns/:id - Update 10DLC campaign (for rejected campaigns)
+  app.put("/api/phone-system/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session.user?.companyId;
+      const { id } = req.params;
+      const { 
+        description, messageFlow, 
+        sample1, sample2, sample3, sample4, sample5,
+        optinKeywords, optinMessage, optoutKeywords, optoutMessage,
+        helpKeywords, helpMessage, subscriberOptin, subscriberOptout, subscriberHelp,
+        embeddedLink, embeddedPhone, numberPool, ageGated, directLending,
+        privacyPolicyLink, termsAndConditionsLink, embeddedLinkSample
+      } = req.body;
+      
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey || !managedAccountId) {
+        return res.status(400).json({ message: "Telnyx not configured" });
+      }
+
+      const updateData: Record<string, any> = {};
+      if (description) updateData.description = description;
+      if (messageFlow) updateData.messageFlow = messageFlow;
+      if (sample1) updateData.sample1 = sample1;
+      if (sample2) updateData.sample2 = sample2;
+      if (sample3) updateData.sample3 = sample3;
+      if (sample4) updateData.sample4 = sample4;
+      if (sample5) updateData.sample5 = sample5;
+      if (optinKeywords) updateData.optinKeywords = optinKeywords;
+      if (optinMessage) updateData.optinMessage = optinMessage;
+      if (optoutKeywords) updateData.optoutKeywords = optoutKeywords;
+      if (optoutMessage) updateData.optoutMessage = optoutMessage;
+      if (helpKeywords) updateData.helpKeywords = helpKeywords;
+      if (helpMessage) updateData.helpMessage = helpMessage;
+      if (typeof subscriberOptin === 'boolean') updateData.subscriberOptin = subscriberOptin;
+      if (typeof subscriberOptout === 'boolean') updateData.subscriberOptout = subscriberOptout;
+      if (typeof subscriberHelp === 'boolean') updateData.subscriberHelp = subscriberHelp;
+      if (typeof embeddedLink === 'boolean') updateData.embeddedLink = embeddedLink;
+      if (typeof embeddedPhone === 'boolean') updateData.embeddedPhone = embeddedPhone;
+      if (typeof numberPool === 'boolean') updateData.numberPool = numberPool;
+      if (typeof ageGated === 'boolean') updateData.ageGated = ageGated;
+      if (typeof directLending === 'boolean') updateData.directLending = directLending;
+      if (privacyPolicyLink) updateData.privacyPolicyLink = privacyPolicyLink;
+      if (termsAndConditionsLink) updateData.termsAndConditionsLink = termsAndConditionsLink;
+      if (embeddedLinkSample) updateData.embeddedLinkSample = embeddedLinkSample;
+
+      console.log("[10DLC Campaign] Updating campaign:", id, JSON.stringify(updateData, null, 2));
+      
+      const response = await fetch(`https://api.telnyx.com/v2/10dlc/campaign/\${id}`, {
+        method: "PUT",
+        headers: { "Authorization": `Bearer \${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify(updateData),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        console.error("[10DLC Campaign] Error updating campaign:", result);
+        return res.status(response.status).json({ message: result.errors?.[0]?.detail || result.message || "Failed to update campaign" });
+      }
+      
+      console.log("[10DLC Campaign] Updated:", result);
+      res.json({ success: true, campaign: result.data || result });
+    } catch (error: any) {
+      console.error("Error updating 10DLC campaign:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  // POST /api/phone-system/campaigns/:id/appeal - Appeal a rejected 10DLC campaign
+  app.post("/api/phone-system/campaigns/:id/appeal", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = req.session.user?.companyId;
+      const { id } = req.params;
+      const { appealReason } = req.body;
+      
+      if (!appealReason || appealReason.trim().length < 20) {
+        return res.status(400).json({ message: "Please provide a detailed appeal reason (minimum 20 characters)" });
+      }
+      
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      
+      if (!telnyxApiKey || !managedAccountId) {
+        return res.status(400).json({ message: "Telnyx not configured" });
+      }
+
+      console.log("[10DLC Campaign] Appealing campaign:", id, "Reason:", appealReason);
+      
+      const response = await fetch(`https://api.telnyx.com/v2/10dlc/campaign/\${id}/appeal`, {
+        method: "POST",
+        headers: { "Authorization": `Bearer \${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
+        body: JSON.stringify({ reason: appealReason.trim() }),
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        console.error("[10DLC Campaign] Error appealing campaign:", result);
+        return res.status(response.status).json({ message: result.errors?.[0]?.detail || result.message || "Failed to submit appeal" });
+      }
+      
+      console.log("[10DLC Campaign] Appeal submitted:", result);
+      res.json({ success: true, campaign: result.data || result });
+    } catch (error: any) {
+      console.error("Error appealing 10DLC campaign:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
   // GET /api/phone-system/campaigns/:id/phone-numbers - Get phone numbers assigned to campaign
   // Telnyx API: GET https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[telnyx_campaign_id]=...
   app.get("/api/phone-system/campaigns/:id/phone-numbers", requireActiveCompany, async (req: Request, res: Response) => {
