@@ -1,10 +1,11 @@
 import { useQuery } from "@tanstack/react-query";
-import { useLocation, Link } from "wouter";
+import { useLocation, Link, useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Shield, Check, ArrowLeft } from "lucide-react";
+import { Check, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { ComplianceApplication } from "@shared/schema";
+import complianceImage from "@assets/image_1766269959786.png";
 
 const steps = [
   { id: "number", label: "Number" },
@@ -33,9 +34,8 @@ const bulletPoints = [
 
 export default function ComplianceInfo() {
   const [location, setLocation] = useLocation();
-  
-  const urlParams = new URLSearchParams(window.location.search);
-  const applicationId = urlParams.get("id");
+  const [, params] = useRoute("/compliance/info/:id");
+  const applicationId = params?.id;
   
   const { data: application, isLoading } = useQuery<ComplianceApplication>({
     queryKey: ["/api/compliance/applications", applicationId],
@@ -117,14 +117,12 @@ export default function ComplianceInfo() {
         <Card className="bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700">
           <CardContent className="p-10">
             <div className="flex flex-col items-center mb-8">
-              <div className="relative mb-4">
-                <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/30 rounded-full flex items-center justify-center">
-                  <Shield className="w-10 h-10 text-blue-600 dark:text-blue-400" />
-                </div>
-                <div className="absolute -bottom-1 -right-1 bg-green-600 text-white text-xs font-bold px-2 py-1 rounded">
-                  100% COMPLIANCE
-                </div>
-              </div>
+              <img 
+                src={complianceImage} 
+                alt="100% Compliance with industry-wide requirements" 
+                className="h-24 object-contain mb-4"
+                data-testid="img-compliance-badge"
+              />
               <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 text-center" data-testid="text-verification-title">
                 {verificationTitle}
               </h2>
