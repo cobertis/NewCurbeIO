@@ -384,6 +384,60 @@ export default function ComplianceBrand() {
     }
   };
 
+  // Auto-save current step data silently when switching steps
+  const autoSaveCurrentStep = async (currentOpenStep: number) => {
+    const values = form.getValues();
+    try {
+      if (currentOpenStep === 1) {
+        const { legalName, brandName, legalForm, website, vertical, ein } = values;
+        if (legalName || legalForm || website || vertical || ein) {
+          await apiRequest("PATCH", `/api/compliance/applications/${applicationId}`, {
+            businessName: legalName,
+            brandDisplayName: brandName || legalName,
+            businessType: legalForm,
+            website: website,
+            businessVertical: vertical,
+            ein: ein,
+          });
+        }
+      } else if (currentOpenStep === 2) {
+        const { street, streetLine2, city, postalCode, state, country } = values;
+        if (street || city || postalCode || state) {
+          await apiRequest("PATCH", `/api/compliance/applications/${applicationId}`, {
+            businessAddress: street,
+            businessAddressLine2: streetLine2,
+            businessCity: city,
+            businessState: state,
+            businessZip: postalCode,
+            country: country,
+          });
+        }
+      } else if (currentOpenStep === 3) {
+        const { firstName, lastName, phone, email } = values;
+        if (firstName || lastName || phone || email) {
+          await apiRequest("PATCH", `/api/compliance/applications/${applicationId}`, {
+            contactFirstName: firstName,
+            contactLastName: lastName,
+            contactPhone: phone,
+            contactEmail: email,
+          });
+        }
+      }
+      queryClient.invalidateQueries({ queryKey: [`/api/compliance/applications/${applicationId}`] });
+    } catch (error) {
+      // Silent save - don't show error toast
+      console.log("[AutoSave] Error saving step data:", error);
+    }
+  };
+
+  const handleStepChange = async (targetStep: number) => {
+    // Save current step before switching
+    if (openStep !== 0 && openStep !== targetStep) {
+      await autoSaveCurrentStep(openStep);
+    }
+    setOpenStep(openStep === targetStep ? 0 : targetStep);
+  };
+
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -447,7 +501,7 @@ export default function ComplianceBrand() {
 
         <Card className="bg-white dark:bg-gray-900 shadow-sm">
           <CardContent className="p-0">
-            <Collapsible open={openStep === 1} onOpenChange={() => setOpenStep(openStep === 1 ? 0 : 1)}>
+            <Collapsible open={openStep === 1} onOpenChange={() => handleStepChange(1)}>
               <CollapsibleTrigger className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <span className="font-semibold text-gray-900 dark:text-gray-100">
                   Step 1: Organization details
@@ -586,7 +640,7 @@ export default function ComplianceBrand() {
 
             <div className="border-t border-gray-200 dark:border-gray-700" />
 
-            <Collapsible open={openStep === 2} onOpenChange={() => setOpenStep(openStep === 2 ? 0 : 2)}>
+            <Collapsible open={openStep === 2} onOpenChange={() => handleStepChange(2)}>
               <CollapsibleTrigger className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <span className="font-semibold text-gray-900 dark:text-gray-100">
                   Step 2: Organization address
@@ -726,7 +780,7 @@ export default function ComplianceBrand() {
 
             <div className="border-t border-gray-200 dark:border-gray-700" />
 
-            <Collapsible open={openStep === 3} onOpenChange={() => setOpenStep(openStep === 3 ? 0 : 3)}>
+            <Collapsible open={openStep === 3} onOpenChange={() => handleStepChange(3)}>
               <CollapsibleTrigger className="w-full px-6 py-4 flex items-center justify-between hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors">
                 <span className="font-semibold text-gray-900 dark:text-gray-100">
                   Step 3: Point of contact
