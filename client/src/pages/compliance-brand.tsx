@@ -313,7 +313,7 @@ export default function ComplianceBrand() {
         });
         queryClient.invalidateQueries({ queryKey: [`/api/compliance/applications/${applicationId}`] });
         setStep1Complete(true);
-        setOpenStep(2);
+        setOpenStep(0);
       } catch (error: any) {
         toast({
           title: "Error saving data",
@@ -340,7 +340,7 @@ export default function ComplianceBrand() {
         });
         queryClient.invalidateQueries({ queryKey: [`/api/compliance/applications/${applicationId}`] });
         setStep2Complete(true);
-        setOpenStep(3);
+        setOpenStep(0);
       } catch (error: any) {
         toast({
           title: "Error saving data",
@@ -365,6 +365,7 @@ export default function ComplianceBrand() {
         });
         queryClient.invalidateQueries({ queryKey: [`/api/compliance/applications/${applicationId}`] });
         setStep3Complete(true);
+        setOpenStep(0);
       } catch (error: any) {
         toast({
           title: "Error saving data",
