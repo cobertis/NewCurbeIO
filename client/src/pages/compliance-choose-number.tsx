@@ -411,7 +411,7 @@ export default function ComplianceChooseNumber() {
 
   return (
     <div className="flex-1 overflow-y-auto">
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="max-w-5xl mx-auto px-8 py-12">
         {/* Header */}
         <div className="text-center mb-8">
           <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-3">
@@ -459,7 +459,7 @@ export default function ComplianceChooseNumber() {
 
         {/* Card */}
         <Card className="bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700">
-          <CardContent className="p-8">
+          <CardContent className="p-10">
             {/* Card Header */}
             <div className="text-center mb-8">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100 mb-2">
@@ -471,7 +471,7 @@ export default function ComplianceChooseNumber() {
             </div>
 
             {/* Form Fields */}
-            <div className="space-y-6 max-w-xl mx-auto">
+            <div className="space-y-6 max-w-2xl mx-auto">
               {/* Country */}
               <div className="grid grid-cols-[140px_1fr] items-center gap-4">
                 <Label className="text-sm font-medium text-gray-700 dark:text-gray-300 text-right">
