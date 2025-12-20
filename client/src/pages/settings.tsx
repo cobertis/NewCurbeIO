@@ -811,10 +811,23 @@ export default function Settings() {
     },
   });
 
-  // Handler for Profile Information form
+  // Handler for Profile Information form (also saves physical address)
   const handleProfileInfoSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    
+    // Save profile info
     updateProfileInfoMutation.mutate(profileForm);
+    
+    // Also save physical address to company
+    const addressData: any = {
+      address: addressValue || addressRef.current?.value || "",
+      addressLine2: addressLine2Ref.current?.value ?? "",
+      city: cityRef.current?.value ?? "",
+      state: stateRef.current?.value ?? "",
+      postalCode: postalCodeRef.current?.value ?? "",
+      country: countryRef.current?.value || "United States",
+    };
+    updateCompanyMutation.mutate(addressData);
   };
 
   // Handler for Insurance Profile Information form
@@ -1599,17 +1612,8 @@ export default function Settings() {
                     </div>
 
                     {/* Physical Address Fields */}
-                    <div className="flex justify-between items-center mb-2">
+                    <div className="mb-2">
                       <Label className="text-base font-medium">Physical Address</Label>
-                      <Button 
-                        type="button"
-                        onClick={handleSavePhysicalAddress}
-                        disabled={updateCompanyMutation.isPending && savingSection === "physicalAddress"}
-                        data-testid="button-save-physical-address"
-                        size="sm"
-                      >
-                        {updateCompanyMutation.isPending && savingSection === "physicalAddress" ? "Saving..." : "Save Address"}
-                      </Button>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2 md:col-span-2">
