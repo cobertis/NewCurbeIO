@@ -849,13 +849,13 @@ export default function Settings() {
     // Save profile info
     updateProfileInfoMutation.mutate(profileForm);
     
-    // Save physical address to company
+    // Save physical address to company - use state variables for controlled inputs
     const addressData: any = {
-      address: addressValue || addressRef.current?.value || "",
+      address: addressValue || "",
       addressLine2: addressLine2Ref.current?.value ?? "",
-      city: cityRef.current?.value ?? "",
-      state: stateRef.current?.value ?? "",
-      postalCode: postalCodeRef.current?.value ?? "",
+      city: cityValue || "",
+      state: stateValue || "",
+      postalCode: postalCodeValue || "",
       country: countryRef.current?.value || "United States",
     };
     
