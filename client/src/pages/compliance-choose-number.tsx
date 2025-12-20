@@ -6,7 +6,13 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Loader2, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface AvailableNumber {
@@ -38,6 +44,32 @@ export default function ComplianceChooseNumber() {
   const [country] = useState("US");
   const [numberType, setNumberType] = useState<"toll-free" | "10dlc">("toll-free");
   const [selectedNumber, setSelectedNumber] = useState<string>("");
+  const [showSwitchDialog, setShowSwitchDialog] = useState(false);
+  const [pendingType, setPendingType] = useState<"toll-free" | "10dlc" | null>(null);
+
+  const handleNumberTypeChange = (val: string) => {
+    const newType = val as "toll-free" | "10dlc";
+    if (numberType === "toll-free" && newType === "10dlc") {
+      setPendingType("10dlc");
+      setShowSwitchDialog(true);
+    } else if (numberType === "10dlc" && newType === "toll-free") {
+      setPendingType("toll-free");
+      setShowSwitchDialog(true);
+    }
+  };
+
+  const confirmSwitch = () => {
+    if (pendingType) {
+      setNumberType(pendingType);
+    }
+    setShowSwitchDialog(false);
+    setPendingType(null);
+  };
+
+  const cancelSwitch = () => {
+    setShowSwitchDialog(false);
+    setPendingType(null);
+  };
 
   useEffect(() => {
     const urlParams = new URLSearchParams(window.location.search);
@@ -164,7 +196,7 @@ export default function ComplianceChooseNumber() {
                 </Label>
                 <RadioGroup
                   value={numberType}
-                  onValueChange={(val) => setNumberType(val as "toll-free" | "10dlc")}
+                  onValueChange={handleNumberTypeChange}
                   className="flex gap-6"
                 >
                   <div className="flex items-center space-x-2">
@@ -248,6 +280,49 @@ export default function ComplianceChooseNumber() {
           </Button>
         </div>
       </div>
+
+      {/* Switch Confirmation Dialog */}
+      <Dialog open={showSwitchDialog} onOpenChange={setShowSwitchDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader className="flex flex-row items-start justify-between">
+            <DialogTitle className="text-xl font-semibold text-gray-900 dark:text-gray-100">
+              {pendingType === "10dlc" 
+                ? "Switch to the 10DLC number flow" 
+                : "Switch to the toll-free number flow"}
+            </DialogTitle>
+            <button
+              onClick={cancelSwitch}
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+              data-testid="button-close-dialog"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </DialogHeader>
+          <div className="mt-4">
+            <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
+              {pendingType === "10dlc"
+                ? "Are you sure that you want to move away from the toll-free registration flow, and instead get started with a 10DLC number? All your progress will be restarted."
+                : "Are you sure that you want to move away from the 10DLC registration flow, and instead get started with a toll-free number? All your progress will be restarted."}
+            </p>
+          </div>
+          <div className="flex items-center justify-end gap-3 mt-6">
+            <Button
+              variant="outline"
+              onClick={cancelSwitch}
+              data-testid="button-stay"
+            >
+              {numberType === "toll-free" ? "Stay on toll-free" : "Stay on 10DLC"}
+            </Button>
+            <Button
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={confirmSwitch}
+              data-testid="button-continue-switch"
+            >
+              {pendingType === "10dlc" ? "Continue with 10DLC" : "Continue with toll-free"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
