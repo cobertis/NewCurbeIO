@@ -441,6 +441,7 @@ export default function Settings() {
   const [cityValue, setCityValue] = useState("");
   const [stateValue, setStateValue] = useState("");
   const [postalCodeValue, setPostalCodeValue] = useState("");
+  const [websiteValue, setWebsiteValue] = useState("");
   
   const user = userData?.user;
 
@@ -656,6 +657,7 @@ export default function Settings() {
       setCityValue(companyData.company.city || "");
       setStateValue(companyData.company.state || "");
       setPostalCodeValue(companyData.company.postalCode || "");
+      setWebsiteValue(companyData.company.website || "");
     }
   }, [companyData]);
 
@@ -1935,13 +1937,17 @@ export default function Settings() {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="website">Website</Label>
+                        <Label htmlFor="website">
+                          Website
+                          {!websiteValue && <span className="required-field-dot" title="Required field" />}
+                        </Label>
                         <Input
                           id="website"
                           ref={websiteRef}
                           type="url"
                           placeholder="https://example.com"
-                          defaultValue={companyData?.company?.website || ""}
+                          value={websiteValue}
+                          onChange={(e) => setWebsiteValue(e.target.value)}
                           data-testid="input-website"
                         />
                       </div>
