@@ -31438,7 +31438,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         phone_number_type: req.query.phone_number_type as "local" | "toll_free" | "national" | "mobile" | undefined,
         locality: req.query.locality as string | undefined,
         administrative_area: req.query.administrative_area as string | undefined,
-        national_destination_code: req.query.area_code as string | undefined,
+        national_destination_code: (req.query.npa as string) || (req.query.area_code as string) || undefined,
         starts_with: req.query.starts_with as string | undefined,
         ends_with: req.query.ends_with as string | undefined,
         contains: req.query.contains as string | undefined,
