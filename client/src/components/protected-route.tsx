@@ -33,10 +33,10 @@ export function ProtectedRoute({ children, fallbackPath = "/login" }: ProtectedR
           setIsAuthenticated(true);
           
           // Check if user needs to complete onboarding
-          // Skip this check if we're on allowed pages during onboarding
-          const allowedDuringOnboarding = ["/getting-started", "/onboarding", "/settings"];
-          const isAllowedPage = allowedDuringOnboarding.some(page => location === page || location.startsWith(page + "/"));
-          if (data.user && !data.user.onboardingCompleted && !isAllowedPage) {
+          // Only redirect to getting-started when trying to access dashboard
+          const dashboardPaths = ["/", "/dashboard"];
+          const isDashboardAccess = dashboardPaths.includes(location) || location.startsWith("/dashboard/");
+          if (data.user && !data.user.onboardingCompleted && isDashboardAccess) {
             console.log("[ONBOARDING] User has not completed onboarding, redirecting to getting-started");
             setLocation("/getting-started");
             return;
