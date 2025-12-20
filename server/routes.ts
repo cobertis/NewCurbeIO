@@ -27186,13 +27186,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
 
   // =====================================================
+  // =====================================================
   // TELEGRAM INTEGRATION ROUTES
   // =====================================================
 
-  // Helper: Send Telegram message
-  async function sendTelegramMessage(chatId: string, text: string): Promise<any> {
-    const telegramCreds = await credentialProvider.getTelegram();
-    const botToken = telegramCreds.botToken;
+  // Helper: Send Telegram message (uses user's bot token)
+  async function sendTelegramMessage(chatId: string, text: string, botToken: string): Promise<any> {
     if (!botToken) return null;
     
     const response = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
@@ -27214,13 +27213,25 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       )
     });
     
+    // Look up the user's bot token for sending messages
+    const userBot = connectCode ? await db.query.userTelegramBots.findFirst({
+      where: eq(userTelegramBots.userId, connectCode.createdByUserId)
+    }) : null;
+    
+    // Decrypt the bot token if found
+    const botToken = userBot?.botToken ? decryptToken(userBot.botToken) : null;
+    
     if (!connectCode) {
-      await sendTelegramMessage(chatId, "Invalid or expired code. Please generate a new connection link.");
+      if (botToken) {
+        await sendTelegramMessage(chatId, "Invalid or expired code. Please generate a new connection link.", botToken);
+      }
       return;
     }
     
     if (new Date() > new Date(connectCode.expiresAt)) {
-      await sendTelegramMessage(chatId, "This code has expired. Please generate a new connection link.");
+      if (botToken) {
+        await sendTelegramMessage(chatId, "This code has expired. Please generate a new connection link.", botToken);
+      }
       return;
     }
     
@@ -27259,7 +27270,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       ? `Connected to ${company?.name || "your workspace"}. You can now send messages.`
       : `Group connected to ${company?.name || "your workspace"}. Messages will appear in your inbox.`;
     
-    await sendTelegramMessage(chatId, confirmMsg);
+    if (botToken) {
+      await sendTelegramMessage(chatId, confirmMsg, botToken);
+    }
     console.log(`[Telegram] Chat ${chatId} connected to company ${connectCode.companyId}`);
   }
 
@@ -28003,6 +28016,17 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
     
     try {
+      // Look up user's Telegram bot
+      const userBot = await db.query.userTelegramBots.findFirst({
+        where: eq(userTelegramBots.userId, user.id)
+      });
+      
+      if (!userBot) {
+        return res.status(400).json({ error: "Please set up your Telegram bot first" });
+      }
+      
+      const botToken = decryptToken(userBot.botToken);
+      
       const conversation = await db.query.telegramConversations.findFirst({
         where: and(
           eq(telegramConversations.id, conversationId),
@@ -28014,8 +28038,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(404).json({ error: "Conversation not found" });
       }
       
-      // Send via Telegram API
-      const result = await sendTelegramMessage(conversation.chatId, text);
+      // Send via Telegram API using user's bot token
+      const result = await sendTelegramMessage(conversation.chatId, text, botToken);
       
       if (!result?.ok) {
         return res.status(500).json({ error: "Failed to send message", details: result });
@@ -36581,13 +36605,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           // Extract chatId from the phone number field (format: telegram:chatId)
           const telegramChatId = conversation.phoneNumber.replace("telegram:", "");
           
-          // Send via Telegram API
-          const telegramCreds = await credentialProvider.getTelegram();
-          const botToken = telegramCreds.botToken;
+          // Look up user's Telegram bot
+          const userBot = await db.query.userTelegramBots.findFirst({
+            where: eq(userTelegramBots.userId, userId)
+          });
           
-          if (!botToken) {
-            return res.status(500).json({ message: "Telegram bot not configured" });
+          if (!userBot) {
+            return res.status(400).json({ message: "Please set up your Telegram bot first in the Integrations page" });
           }
+          
+          const botToken = decryptToken(userBot.botToken);
           
           try {
             let telegramData: any;
