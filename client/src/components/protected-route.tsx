@@ -83,7 +83,7 @@ export function ProtectedRoute({ children, fallbackPath = "/login" }: ProtectedR
     };
 
     checkAuth();
-  }, [setLocation, fallbackPath]);
+  }, [location, setLocation, fallbackPath]);
 
   if (isChecking) {
     return (
