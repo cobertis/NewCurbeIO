@@ -29,15 +29,22 @@ const carrierLogos = [
   { name: "Bell", logo: bellLogo },
   { name: "Rogers", logo: rogersLogo },
   { name: "Telus", logo: telusLogo },
-  { name: "US Cellular", logo: uscellularLogo },
 ];
 
-const bulletPoints = [
-  "Messages will be delivered directly to the handsets",
-  "Increased throughput for high-volume messaging",
-  "Brand recognition with your verified business name",
-  "Reduced carrier filtering and blocking",
-  "Compliance with industry regulations",
+const tollFreeBulletPoints = [
+  { text: "Toll-free verification is ", bold: "free of charge" },
+  { text: "The form takes around ", bold: "10-15 minutes", suffix: " to complete" },
+  { text: "You can ", bold: "save and return", suffix: " to the form at any time" },
+  { text: "We ", bold: "don't need", suffix: " your tax ID (EIN number) or any company documents" },
+  { text: "The approval period usually takes ", bold: "3-5 business days" },
+];
+
+const tenDlcBulletPoints = [
+  { text: "10DLC registration is ", bold: "required for all business messaging" },
+  { text: "The form takes around ", bold: "15-20 minutes", suffix: " to complete" },
+  { text: "You can ", bold: "save and return", suffix: " to the form at any time" },
+  { text: "You will need your ", bold: "EIN number", suffix: " for registration" },
+  { text: "The approval period usually takes ", bold: "3-5 business days" },
 ];
 
 export default function ComplianceInfo() {
@@ -136,63 +143,62 @@ export default function ComplianceInfo() {
               </h2>
             </div>
 
-            <div className="space-y-6 mb-8">
+            <div className="space-y-6 mb-6">
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
                   {isTollFree ? "What is toll-free verification?" : "What is 10DLC registration?"}
                 </h3>
                 <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
                   {isTollFree 
-                    ? "Toll-free verification is a process required by carriers to verify your business identity and messaging use case. This ensures your messages are delivered reliably to recipients."
-                    : "10DLC (10-Digit Long Code) registration is a process required by carriers to register your brand and messaging campaigns. This ensures higher throughput and better deliverability."
+                    ? <>The toll-free number (TFN) verification is an <strong className="text-gray-900 dark:text-gray-100">industry-wide requirement</strong> and a trust-building measure created to protect consumers from unwanted spam and fraud. By verifying your number, you'll benefit from rapid and reliable message delivery, with an <strong className="text-gray-900 dark:text-gray-100">average delivery rate of 98%</strong>.</>
+                    : <>10DLC (10-Digit Long Code) registration is an <strong className="text-gray-900 dark:text-gray-100">industry-wide requirement</strong> and a trust-building measure for A2P messaging. Registration ensures higher throughput and better deliverability for your business messages.</>
                   }
                 </p>
+                <a href="#" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm font-medium inline-flex items-center gap-1 mt-2">
+                  Learn more about {isTollFree ? "toll-free verification" : "10DLC registration"}
+                  <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14" /></svg>
+                </a>
               </div>
 
               <div>
                 <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
                   Why do I need it?
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                  Major carriers require verification to prevent spam and ensure legitimate business messaging. Without verification, your messages may be filtered or blocked entirely.
+                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed mb-4">
+                  {isTollFree 
+                    ? "U.S. and Canadian carriers, the messaging aggregator, and Curbe will block any SMS campaigns that are sent from unverified toll-free numbers and do not comply with regulations."
+                    : "U.S. carriers require 10DLC registration to send business SMS. Messages from unregistered numbers may be blocked or severely rate-limited."
+                  }
                 </p>
+                <div className="flex flex-wrap items-center gap-4">
+                  {carrierLogos.map((carrier) => (
+                    <img
+                      key={carrier.name}
+                      src={carrier.logo}
+                      alt={carrier.name}
+                      className="h-5 object-contain"
+                      data-testid={`carrier-${carrier.name.toLowerCase().replace(/[^a-z0-9]/g, "")}`}
+                    />
+                  ))}
+                  <span className="text-gray-500 dark:text-gray-400 text-sm">+ all local carriers</span>
+                </div>
               </div>
 
               <div>
-                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3">
                   What else do I need to know?
                 </h3>
-                <p className="text-gray-600 dark:text-gray-400 text-sm leading-relaxed">
-                  The verification process typically takes 2-5 business days. You'll need to provide basic business information, your EIN, and describe how you plan to use messaging.
-                </p>
+                <ul className="space-y-2">
+                  {(isTollFree ? tollFreeBulletPoints : tenDlcBulletPoints).map((point, index) => (
+                    <li key={index} className="flex items-start gap-3">
+                      <Check className="w-4 h-4 text-green-600 dark:text-green-400 mt-0.5 flex-shrink-0" />
+                      <span className="text-gray-700 dark:text-gray-300 text-sm" data-testid={`bullet-point-${index}`}>
+                        {point.text}<strong className="text-gray-900 dark:text-gray-100">{point.bold}</strong>{point.suffix || ""}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
               </div>
-            </div>
-
-            <div className="flex flex-wrap justify-center items-center gap-6 mb-8">
-              {carrierLogos.map((carrier) => (
-                <img
-                  key={carrier.name}
-                  src={carrier.logo}
-                  alt={carrier.name}
-                  className="h-6 object-contain grayscale opacity-70 hover:grayscale-0 hover:opacity-100 transition-all"
-                  data-testid={`carrier-${carrier.name.toLowerCase().replace(/[^a-z0-9]/g, "")}`}
-                />
-              ))}
-            </div>
-
-            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-              <ul className="space-y-3">
-                {bulletPoints.map((point, index) => (
-                  <li key={index} className="flex items-start gap-3">
-                    <div className="flex-shrink-0 w-5 h-5 bg-green-100 dark:bg-green-900/30 rounded-full flex items-center justify-center mt-0.5">
-                      <Check className="w-3 h-3 text-green-600 dark:text-green-400" />
-                    </div>
-                    <span className="text-gray-700 dark:text-gray-300 text-sm" data-testid={`bullet-point-${index}`}>
-                      {point}
-                    </span>
-                  </li>
-                ))}
-              </ul>
             </div>
           </CardContent>
         </Card>
