@@ -557,7 +557,7 @@ export default function GettingStarted() {
                     </div>
                     <div className="flex items-center gap-2">
                       <Check className="w-4 h-4 text-muted-foreground" />
-                      <span>Preferred by Textmagic customers</span>
+                      <span>Preferred by Curbe.io customers</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <Shield className="w-4 h-4 text-muted-foreground" />
@@ -761,6 +761,27 @@ export default function GettingStarted() {
                       </tr>
                     </tbody>
                   </table>
+                </div>
+              </div>
+
+              {/* Key Takeaways */}
+              <div className="border rounded-lg p-5 bg-muted/30">
+                <div className="flex items-center gap-2 mb-3">
+                  <div className="w-6 h-6 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
+                    <Check className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <h4 className="font-semibold">Key takeaways</h4>
+                </div>
+                <div className="space-y-3 text-sm text-muted-foreground">
+                  <p>
+                    <strong className="text-foreground">Toll-free</strong> numbers use 8XX prefixes and work for most use-cases with professional appearance. They're faster to submit and easier to comply with, typically approved within 5 business days. Perfect for most businesses.
+                  </p>
+                  <p>
+                    <strong className="text-foreground">10DLC</strong> numbers appear as local numbers from specific areas but require more rigorous documentation and legal requirements with manual campaign review. Only choose if you need local presence or specialized messaging features.
+                  </p>
+                  <p>
+                    Approval rates reflect this complexity: toll-free is around <strong className="text-foreground">80%</strong>, while 10DLC often falls below <strong className="text-foreground">50%</strong>.
+                  </p>
                 </div>
               </div>
             </div>
