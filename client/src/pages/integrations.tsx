@@ -1240,11 +1240,23 @@ function TikTokCard() {
 function TelegramCard() {
   const { toast } = useToast();
   const [disconnectDialogOpen, setDisconnectDialogOpen] = useState(false);
+  const [removeBotDialogOpen, setRemoveBotDialogOpen] = useState(false);
   const [selectedChatId, setSelectedChatId] = useState<string | null>(null);
   const [deepLink, setDeepLink] = useState<string | null>(null);
   const [helpOpen, setHelpOpen] = useState(false);
+  const [botToken, setBotToken] = useState("");
+  const [showBotSetup, setShowBotSetup] = useState(false);
 
-  const { data: status, isLoading } = useQuery<{
+  const { data: botStatus, isLoading: isLoadingBot } = useQuery<{
+    hasBot: boolean;
+    botUsername: string | null;
+    botFirstName: string | null;
+    isActive: boolean;
+  }>({
+    queryKey: ["/api/integrations/telegram/bot-status"],
+  });
+
+  const { data: status, isLoading: isLoadingChats } = useQuery<{
     connected: boolean;
     chats: Array<{
       id: string;
@@ -1256,9 +1268,11 @@ function TelegramCard() {
   }>({
     queryKey: ["/api/integrations/telegram/status"],
     refetchInterval: deepLink ? 2000 : false,
+    enabled: botStatus?.hasBot === true,
   });
 
-  const isConnected = status?.connected && status.chats.length > 0;
+  const hasBot = botStatus?.hasBot === true;
+  const isConnected = hasBot && status?.connected && status.chats.length > 0;
 
   useEffect(() => {
     if (deepLink && isConnected) {
@@ -1266,6 +1280,36 @@ function TelegramCard() {
       toast({ title: "Connected!", description: "Your Telegram chat has been connected successfully" });
     }
   }, [deepLink, isConnected, toast]);
+
+  const setupBotMutation = useMutation({
+    mutationFn: async (token: string) => {
+      return await apiRequest("POST", "/api/integrations/telegram/setup-bot", { botToken: token });
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations/telegram/bot-status"] });
+      setBotToken("");
+      setShowBotSetup(false);
+      toast({ title: "Bot Connected!", description: `@${data.botUsername} is now ready to receive messages` });
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to setup bot. Check your token.", variant: "destructive" });
+    },
+  });
+
+  const removeBotMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("DELETE", "/api/integrations/telegram/remove-bot");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations/telegram/bot-status"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations/telegram/status"] });
+      setRemoveBotDialogOpen(false);
+      toast({ title: "Bot Removed", description: "Your Telegram bot has been disconnected" });
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to remove bot", variant: "destructive" });
+    },
+  });
 
   const connectMutation = useMutation({
     mutationFn: async () => {
@@ -1275,8 +1319,13 @@ function TelegramCard() {
       setDeepLink(data.deepLink);
       toast({ title: "Link Generated", description: "Open the link in Telegram and press Start" });
     },
-    onError: () => {
-      toast({ title: "Error", description: "Failed to generate connection link", variant: "destructive" });
+    onError: (error: any) => {
+      if (error.needsBotSetup) {
+        setShowBotSetup(true);
+        toast({ title: "Setup Required", description: "Please set up your Telegram bot first", variant: "destructive" });
+      } else {
+        toast({ title: "Error", description: "Failed to generate connection link", variant: "destructive" });
+      }
     },
   });
 
@@ -1305,7 +1354,15 @@ function TelegramCard() {
     }
   };
 
-  if (isLoading) {
+  const handleSetupBot = () => {
+    if (!botToken.trim()) {
+      toast({ title: "Error", description: "Please enter your bot token", variant: "destructive" });
+      return;
+    }
+    setupBotMutation.mutate(botToken.trim());
+  };
+
+  if (isLoadingBot) {
     return (
       <Card data-testid="card-telegram-loading">
         <CardContent className="flex items-center justify-center py-12">
@@ -1327,14 +1384,16 @@ function TelegramCard() {
               </div>
               <div>
                 <CardTitle className="text-lg">Telegram</CardTitle>
-                <CardDescription>Connect your Telegram bot</CardDescription>
+                <CardDescription>
+                  {hasBot ? `@${botStatus.botUsername}` : "Connect your own Telegram bot"}
+                </CardDescription>
               </div>
             </div>
-            <Badge variant={isConnected ? "default" : "secondary"} className={isConnected ? "bg-green-500" : ""}>
-              {isConnected ? (
+            <Badge variant={hasBot ? "default" : "secondary"} className={hasBot ? "bg-green-500" : ""}>
+              {hasBot ? (
                 <>
                   <CheckCircle className="h-3 w-3 mr-1" />
-                  Connected
+                  Bot Connected
                 </>
               ) : (
                 "Not Connected"
@@ -1342,7 +1401,63 @@ function TelegramCard() {
             </Badge>
           </CardHeader>
           <CardContent className="space-y-4">
-            {connectMutation.isPending ? (
+            {!hasBot || showBotSetup ? (
+              <>
+                <p className="text-sm text-muted-foreground">
+                  Connect your own Telegram bot to receive messages from customers.
+                </p>
+
+                <div className="space-y-3">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Bot Token</label>
+                    <Input
+                      type="password"
+                      placeholder="123456789:ABCdefGHIjklMNOpqrsTUVwxyz"
+                      value={botToken}
+                      onChange={(e) => setBotToken(e.target.value)}
+                      data-testid="input-telegram-bot-token"
+                    />
+                  </div>
+                  <Button
+                    className="w-full bg-[#0088cc] hover:bg-[#006699] text-white"
+                    onClick={handleSetupBot}
+                    disabled={setupBotMutation.isPending || !botToken.trim()}
+                    data-testid="button-setup-telegram-bot"
+                  >
+                    {setupBotMutation.isPending ? (
+                      <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />
+                    ) : (
+                      <Plus className="h-4 w-4 mr-2" />
+                    )}
+                    {setupBotMutation.isPending ? "Setting up..." : "Connect Bot"}
+                  </Button>
+                </div>
+
+                <Collapsible open={helpOpen} onOpenChange={setHelpOpen}>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground" data-testid="button-telegram-help">
+                      <span className="flex items-center gap-1">
+                        <HelpCircle className="h-4 w-4 mr-2" />
+                        How to create a Telegram bot?
+                      </span>
+                      <ChevronDown className={`h-4 w-4 transition-transform ${helpOpen ? "rotate-180" : ""}`} />
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent className="mt-2 space-y-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+                    <ol className="list-decimal list-inside space-y-1">
+                      <li>Open Telegram and search for <strong>@BotFather</strong></li>
+                      <li>Send <code>/newbot</code> and follow the instructions</li>
+                      <li>Copy the bot token provided by BotFather</li>
+                      <li>Paste it above and click Connect Bot</li>
+                    </ol>
+                  </CollapsibleContent>
+                </Collapsible>
+              </>
+            ) : isLoadingChats ? (
+              <div className="flex items-center justify-center py-6">
+                <LoadingSpinner fullScreen={false} />
+              </div>
+            ) : connectMutation.isPending ? (
               <div className="text-center py-6">
                 <RefreshCw className="h-8 w-8 animate-spin text-[#0088cc] mx-auto mb-3" />
                 <p className="font-medium">Generating Link...</p>
@@ -1406,11 +1521,21 @@ function TelegramCard() {
                     Add Chat
                   </Button>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-red-500 hover:text-red-600"
+                  onClick={() => setRemoveBotDialogOpen(true)}
+                  data-testid="button-remove-telegram-bot"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Remove Bot
+                </Button>
               </>
             ) : (
               <>
                 <p className="text-sm text-muted-foreground">
-                  Connect Telegram to handle support and sales from the Curbe inbox.
+                  Your bot <strong>@{botStatus?.botUsername}</strong> is ready. Connect a chat to start receiving messages.
                 </p>
 
                 {deepLink ? (
@@ -1437,32 +1562,20 @@ function TelegramCard() {
                     data-testid="button-connect-telegram"
                   >
                     <Plus className="h-4 w-4 mr-2" />
-                    Connect Telegram
+                    Connect Chat
                   </Button>
                 )}
                 
-                <p className="text-xs text-muted-foreground text-center">
-                  We'll generate a link for you to open in Telegram.
-                </p>
-
-                <Collapsible open={helpOpen} onOpenChange={setHelpOpen}>
-                  <CollapsibleTrigger asChild>
-                    <Button variant="ghost" size="sm" className="w-full justify-between text-muted-foreground" data-testid="button-telegram-help">
-                      <span className="flex items-center gap-1">
-                        <HelpCircle className="h-4 w-4 mr-2" />
-                        Need help connecting?
-                      </span>
-                      <ChevronDown className={`h-4 w-4 transition-transform ${helpOpen ? "rotate-180" : ""}`} />
-                    </Button>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent className="mt-2 space-y-2 text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
-                    <ul className="list-disc list-inside space-y-1">
-                      <li>Telegram works via a bot. Customers must start a chat with the bot to receive responses.</li>
-                      <li>To connect a group, run the connection link inside the group and press Start.</li>
-                      <li>You can connect multiple chats to your account.</li>
-                    </ul>
-                  </CollapsibleContent>
-                </Collapsible>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full text-red-500 hover:text-red-600"
+                  onClick={() => setRemoveBotDialogOpen(true)}
+                  data-testid="button-remove-telegram-bot"
+                >
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Remove Bot
+                </Button>
               </>
             )}
           </CardContent>
@@ -1484,6 +1597,27 @@ function TelegramCard() {
                 data-testid="button-confirm-disconnect-telegram"
               >
                 {disconnectMutation.isPending ? "Disconnecting..." : "Disconnect"}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
+
+        <AlertDialog open={removeBotDialogOpen} onOpenChange={setRemoveBotDialogOpen}>
+          <AlertDialogContent data-testid="dialog-remove-telegram-bot">
+            <AlertDialogHeader>
+              <AlertDialogTitle>Remove Telegram Bot?</AlertDialogTitle>
+              <AlertDialogDescription>
+                This will disconnect your Telegram bot and all linked chats. You'll need to set up a new bot to use Telegram again.
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel data-testid="button-cancel-remove-bot">Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={() => removeBotMutation.mutate()}
+                className="bg-red-500 hover:bg-red-600"
+                data-testid="button-confirm-remove-bot"
+              >
+                {removeBotMutation.isPending ? "Removing..." : "Remove Bot"}
               </AlertDialogAction>
             </AlertDialogFooter>
           </AlertDialogContent>
