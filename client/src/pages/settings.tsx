@@ -1558,7 +1558,10 @@ export default function Settings() {
                     <form id="profile-info-form" onSubmit={handleProfileInfoSubmit} className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="firstName">First Name</Label>
+                        <Label htmlFor="firstName">
+                          First Name
+                          {!profileForm.firstName && <span className="required-field-dot" title="Required field" />}
+                        </Label>
                         <Input
                           id="firstName"
                           name="firstName"
@@ -1569,7 +1572,10 @@ export default function Settings() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="lastName">Last Name</Label>
+                        <Label htmlFor="lastName">
+                          Last Name
+                          {!profileForm.lastName && <span className="required-field-dot" title="Required field" />}
+                        </Label>
                         <Input
                           id="lastName"
                           name="lastName"
@@ -1583,7 +1589,10 @@ export default function Settings() {
                     
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="email">Email</Label>
+                        <Label htmlFor="email">
+                          Email
+                          {!profileForm.email && <span className="required-field-dot" title="Required field" />}
+                        </Label>
                         <Input
                           id="email"
                           name="email"
@@ -1595,7 +1604,10 @@ export default function Settings() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="phone">Phone Number</Label>
+                        <Label htmlFor="phone">
+                          Phone Number
+                          {!profileForm.phone && <span className="required-field-dot" title="Required field" />}
+                        </Label>
                         <Input
                           id="phone"
                           name="phone"
@@ -1613,7 +1625,10 @@ export default function Settings() {
 
                     {/* Physical Address Fields */}
                     <div className="mb-2">
-                      <Label className="text-base font-medium">Physical Address</Label>
+                      <Label className="text-base font-medium">
+                        Physical Address
+                        {!addressValue && <span className="required-field-dot" title="Required field" />}
+                      </Label>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2 md:col-span-2">
@@ -1657,7 +1672,10 @@ export default function Settings() {
 
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="city">City</Label>
+                        <Label htmlFor="city">
+                          City
+                          {!companyData?.company?.city && <span className="required-field-dot" title="Required field" />}
+                        </Label>
                         <Input
                           id="city"
                           ref={cityRef}
@@ -1666,7 +1684,10 @@ export default function Settings() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="state">State / Province</Label>
+                        <Label htmlFor="state">
+                          State / Province
+                          {!companyData?.company?.state && <span className="required-field-dot" title="Required field" />}
+                        </Label>
                         <Input
                           id="state"
                           ref={stateRef}
@@ -1675,7 +1696,10 @@ export default function Settings() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="postalCode">Postal Code</Label>
+                        <Label htmlFor="postalCode">
+                          Postal Code
+                          {!companyData?.company?.postalCode && <span className="required-field-dot" title="Required field" />}
+                        </Label>
                         <Input
                           id="postalCode"
                           ref={postalCodeRef}
@@ -1715,7 +1739,10 @@ export default function Settings() {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="companyName">Company Name</Label>
+                        <Label htmlFor="companyName">
+                          Company Name
+                          {!companyData?.company?.name && <span className="required-field-dot" title="Required field" />}
+                        </Label>
                         <Input
                           id="companyName"
                           ref={companyNameRef}
@@ -1736,7 +1763,10 @@ export default function Settings() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="businessCategory">Business Category</Label>
+                        <Label htmlFor="businessCategory">
+                          Business Category
+                          {!selectedCategory && <span className="required-field-dot" title="Required field" />}
+                        </Label>
                         <Popover open={openCategory} onOpenChange={setOpenCategory}>
                           <PopoverTrigger asChild>
                             <Button
@@ -1796,7 +1826,10 @@ export default function Settings() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="businessNiche">Business Niche</Label>
+                        <Label htmlFor="businessNiche">
+                          Business Niche
+                          {!selectedNiche && <span className="required-field-dot" title="Required field" />}
+                        </Label>
                         <Popover open={openNiche} onOpenChange={setOpenNiche}>
                           <PopoverTrigger asChild>
                             <Button
@@ -1857,7 +1890,10 @@ export default function Settings() {
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label htmlFor="companyEmail">Company Email</Label>
+                        <Label htmlFor="companyEmail">
+                          Company Email
+                          {!companyData?.company?.email && <span className="required-field-dot" title="Required field" />}
+                        </Label>
                         <Input
                           id="companyEmail"
                           ref={companyEmailRef}
@@ -1867,7 +1903,10 @@ export default function Settings() {
                         />
                       </div>
                       <div className="space-y-2">
-                        <Label htmlFor="companyPhone">Company Phone</Label>
+                        <Label htmlFor="companyPhone">
+                          Company Phone
+                          {!companyPhoneValue && <span className="required-field-dot" title="Required field" />}
+                        </Label>
                         <Input
                           id="companyPhone"
                           type="tel"
