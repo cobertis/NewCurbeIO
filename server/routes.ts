@@ -184,7 +184,99 @@ function detectStopKeyword(messageBody: string): boolean {
   const normalizedBody = messageBody.trim().toUpperCase();
   return stopKeywords.some(keyword => normalizedBody === keyword || normalizedBody.startsWith(keyword + " "));
   // ============================================================
+  // DELETE /api/inbox/conversations/:id - Delete conversation and all messages
+  app.delete("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { id } = req.params;
+    const companyId = (req.user as any).companyId;
+    const userRole = (req.user as any).role;
+    
+    // Only allow admin or superadmin to delete conversations
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({ message: "Only administrators can delete conversations" });
+    }
+    
+    try {
+      // Verify conversation belongs to company
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Delete all messages for this conversation first
+      await db.delete(telnyxMessages).where(eq(telnyxMessages.conversationId, id));
+      
+      // Delete the conversation
+      await db.delete(telnyxConversations).where(eq(telnyxConversations.id, id));
+      
+      console.log(`[Inbox] Deleted conversation ${id} and all messages for company ${companyId}`);
+      
+      // Broadcast conversation update to refresh UI
+      if (req.app.get('wsService')) {
+        const wsService = req.app.get('wsService');
+        wsService.broadcastConversationUpdate();
+      }
+      
+      res.json({ success: true, message: "Conversation deleted successfully" });
+    } catch (error: any) {
+      console.error("[Inbox] Error deleting conversation:", error);
+      res.status(500).json({ message: "Failed to delete conversation" });
+    }
+  });
+
   return httpServer;
+  // DELETE /api/inbox/conversations/:id - Delete conversation and all messages
+  app.delete("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { id } = req.params;
+    const companyId = (req.user as any).companyId;
+    const userRole = (req.user as any).role;
+    
+    // Only allow admin or superadmin to delete conversations
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({ message: "Only administrators can delete conversations" });
+    }
+    
+    try {
+      // Verify conversation belongs to company
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Delete all messages for this conversation first
+      await db.delete(telnyxMessages).where(eq(telnyxMessages.conversationId, id));
+      
+      // Delete the conversation
+      await db.delete(telnyxConversations).where(eq(telnyxConversations.id, id));
+      
+      console.log(`[Inbox] Deleted conversation ${id} and all messages for company ${companyId}`);
+      
+      // Broadcast conversation update to refresh UI
+      if (req.app.get('wsService')) {
+        const wsService = req.app.get('wsService');
+        wsService.broadcastConversationUpdate();
+      }
+      
+      res.json({ success: true, message: "Conversation deleted successfully" });
+    } catch (error: any) {
+      console.error("[Inbox] Error deleting conversation:", error);
+      res.status(500).json({ message: "Failed to delete conversation" });
+    }
+  });
+
   return httpServer;
 }
 // Verify ffmpeg is available at startup
@@ -215,7 +307,99 @@ async function extractAudioDuration(audioPath: string): Promise<number> {
     return Math.floor(stats.size / 3000);
   }
   // ============================================================
+  // DELETE /api/inbox/conversations/:id - Delete conversation and all messages
+  app.delete("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { id } = req.params;
+    const companyId = (req.user as any).companyId;
+    const userRole = (req.user as any).role;
+    
+    // Only allow admin or superadmin to delete conversations
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({ message: "Only administrators can delete conversations" });
+    }
+    
+    try {
+      // Verify conversation belongs to company
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Delete all messages for this conversation first
+      await db.delete(telnyxMessages).where(eq(telnyxMessages.conversationId, id));
+      
+      // Delete the conversation
+      await db.delete(telnyxConversations).where(eq(telnyxConversations.id, id));
+      
+      console.log(`[Inbox] Deleted conversation ${id} and all messages for company ${companyId}`);
+      
+      // Broadcast conversation update to refresh UI
+      if (req.app.get('wsService')) {
+        const wsService = req.app.get('wsService');
+        wsService.broadcastConversationUpdate();
+      }
+      
+      res.json({ success: true, message: "Conversation deleted successfully" });
+    } catch (error: any) {
+      console.error("[Inbox] Error deleting conversation:", error);
+      res.status(500).json({ message: "Failed to delete conversation" });
+    }
+  });
+
   return httpServer;
+  // DELETE /api/inbox/conversations/:id - Delete conversation and all messages
+  app.delete("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { id } = req.params;
+    const companyId = (req.user as any).companyId;
+    const userRole = (req.user as any).role;
+    
+    // Only allow admin or superadmin to delete conversations
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({ message: "Only administrators can delete conversations" });
+    }
+    
+    try {
+      // Verify conversation belongs to company
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Delete all messages for this conversation first
+      await db.delete(telnyxMessages).where(eq(telnyxMessages.conversationId, id));
+      
+      // Delete the conversation
+      await db.delete(telnyxConversations).where(eq(telnyxConversations.id, id));
+      
+      console.log(`[Inbox] Deleted conversation ${id} and all messages for company ${companyId}`);
+      
+      // Broadcast conversation update to refresh UI
+      if (req.app.get('wsService')) {
+        const wsService = req.app.get('wsService');
+        wsService.broadcastConversationUpdate();
+      }
+      
+      res.json({ success: true, message: "Conversation deleted successfully" });
+    } catch (error: any) {
+      console.error("[Inbox] Error deleting conversation:", error);
+      res.status(500).json({ message: "Failed to delete conversation" });
+    }
+  });
+
   return httpServer;
 }
 // Helper function to generate real waveform from audio file
@@ -291,7 +475,99 @@ async function generateAudioWaveform(audioPath: string, targetSamples: number = 
     return waveform;
   }
   // ============================================================
+  // DELETE /api/inbox/conversations/:id - Delete conversation and all messages
+  app.delete("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { id } = req.params;
+    const companyId = (req.user as any).companyId;
+    const userRole = (req.user as any).role;
+    
+    // Only allow admin or superadmin to delete conversations
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({ message: "Only administrators can delete conversations" });
+    }
+    
+    try {
+      // Verify conversation belongs to company
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Delete all messages for this conversation first
+      await db.delete(telnyxMessages).where(eq(telnyxMessages.conversationId, id));
+      
+      // Delete the conversation
+      await db.delete(telnyxConversations).where(eq(telnyxConversations.id, id));
+      
+      console.log(`[Inbox] Deleted conversation ${id} and all messages for company ${companyId}`);
+      
+      // Broadcast conversation update to refresh UI
+      if (req.app.get('wsService')) {
+        const wsService = req.app.get('wsService');
+        wsService.broadcastConversationUpdate();
+      }
+      
+      res.json({ success: true, message: "Conversation deleted successfully" });
+    } catch (error: any) {
+      console.error("[Inbox] Error deleting conversation:", error);
+      res.status(500).json({ message: "Failed to delete conversation" });
+    }
+  });
+
   return httpServer;
+  // DELETE /api/inbox/conversations/:id - Delete conversation and all messages
+  app.delete("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { id } = req.params;
+    const companyId = (req.user as any).companyId;
+    const userRole = (req.user as any).role;
+    
+    // Only allow admin or superadmin to delete conversations
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({ message: "Only administrators can delete conversations" });
+    }
+    
+    try {
+      // Verify conversation belongs to company
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Delete all messages for this conversation first
+      await db.delete(telnyxMessages).where(eq(telnyxMessages.conversationId, id));
+      
+      // Delete the conversation
+      await db.delete(telnyxConversations).where(eq(telnyxConversations.id, id));
+      
+      console.log(`[Inbox] Deleted conversation ${id} and all messages for company ${companyId}`);
+      
+      // Broadcast conversation update to refresh UI
+      if (req.app.get('wsService')) {
+        const wsService = req.app.get('wsService');
+        wsService.broadcastConversationUpdate();
+      }
+      
+      res.json({ success: true, message: "Conversation deleted successfully" });
+    } catch (error: any) {
+      console.error("[Inbox] Error deleting conversation:", error);
+      res.status(500).json({ message: "Failed to delete conversation" });
+    }
+  });
+
   return httpServer;
 }
 async function convertWebMToCAF(inputPath: string, tryOpus: boolean = true): Promise<{ path: string, metadata: AudioMetadata }> {
@@ -380,7 +656,99 @@ async function convertWebMToCAF(inputPath: string, tryOpus: boolean = true): Pro
       .save(outputPath);
   });
   // ============================================================
+  // DELETE /api/inbox/conversations/:id - Delete conversation and all messages
+  app.delete("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { id } = req.params;
+    const companyId = (req.user as any).companyId;
+    const userRole = (req.user as any).role;
+    
+    // Only allow admin or superadmin to delete conversations
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({ message: "Only administrators can delete conversations" });
+    }
+    
+    try {
+      // Verify conversation belongs to company
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Delete all messages for this conversation first
+      await db.delete(telnyxMessages).where(eq(telnyxMessages.conversationId, id));
+      
+      // Delete the conversation
+      await db.delete(telnyxConversations).where(eq(telnyxConversations.id, id));
+      
+      console.log(`[Inbox] Deleted conversation ${id} and all messages for company ${companyId}`);
+      
+      // Broadcast conversation update to refresh UI
+      if (req.app.get('wsService')) {
+        const wsService = req.app.get('wsService');
+        wsService.broadcastConversationUpdate();
+      }
+      
+      res.json({ success: true, message: "Conversation deleted successfully" });
+    } catch (error: any) {
+      console.error("[Inbox] Error deleting conversation:", error);
+      res.status(500).json({ message: "Failed to delete conversation" });
+    }
+  });
+
   return httpServer;
+  // DELETE /api/inbox/conversations/:id - Delete conversation and all messages
+  app.delete("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { id } = req.params;
+    const companyId = (req.user as any).companyId;
+    const userRole = (req.user as any).role;
+    
+    // Only allow admin or superadmin to delete conversations
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({ message: "Only administrators can delete conversations" });
+    }
+    
+    try {
+      // Verify conversation belongs to company
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Delete all messages for this conversation first
+      await db.delete(telnyxMessages).where(eq(telnyxMessages.conversationId, id));
+      
+      // Delete the conversation
+      await db.delete(telnyxConversations).where(eq(telnyxConversations.id, id));
+      
+      console.log(`[Inbox] Deleted conversation ${id} and all messages for company ${companyId}`);
+      
+      // Broadcast conversation update to refresh UI
+      if (req.app.get('wsService')) {
+        const wsService = req.app.get('wsService');
+        wsService.broadcastConversationUpdate();
+      }
+      
+      res.json({ success: true, message: "Conversation deleted successfully" });
+    } catch (error: any) {
+      console.error("[Inbox] Error deleting conversation:", error);
+      res.status(500).json({ message: "Failed to delete conversation" });
+    }
+  });
+
   return httpServer;
 }
 interface AudioMetadata {
@@ -391,7 +759,99 @@ interface AudioMetadata {
   codec: string;
   sampleRate: number;
   // ============================================================
+  // DELETE /api/inbox/conversations/:id - Delete conversation and all messages
+  app.delete("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { id } = req.params;
+    const companyId = (req.user as any).companyId;
+    const userRole = (req.user as any).role;
+    
+    // Only allow admin or superadmin to delete conversations
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({ message: "Only administrators can delete conversations" });
+    }
+    
+    try {
+      // Verify conversation belongs to company
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Delete all messages for this conversation first
+      await db.delete(telnyxMessages).where(eq(telnyxMessages.conversationId, id));
+      
+      // Delete the conversation
+      await db.delete(telnyxConversations).where(eq(telnyxConversations.id, id));
+      
+      console.log(`[Inbox] Deleted conversation ${id} and all messages for company ${companyId}`);
+      
+      // Broadcast conversation update to refresh UI
+      if (req.app.get('wsService')) {
+        const wsService = req.app.get('wsService');
+        wsService.broadcastConversationUpdate();
+      }
+      
+      res.json({ success: true, message: "Conversation deleted successfully" });
+    } catch (error: any) {
+      console.error("[Inbox] Error deleting conversation:", error);
+      res.status(500).json({ message: "Failed to delete conversation" });
+    }
+  });
+
   return httpServer;
+  // DELETE /api/inbox/conversations/:id - Delete conversation and all messages
+  app.delete("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { id } = req.params;
+    const companyId = (req.user as any).companyId;
+    const userRole = (req.user as any).role;
+    
+    // Only allow admin or superadmin to delete conversations
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({ message: "Only administrators can delete conversations" });
+    }
+    
+    try {
+      // Verify conversation belongs to company
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Delete all messages for this conversation first
+      await db.delete(telnyxMessages).where(eq(telnyxMessages.conversationId, id));
+      
+      // Delete the conversation
+      await db.delete(telnyxConversations).where(eq(telnyxConversations.id, id));
+      
+      console.log(`[Inbox] Deleted conversation ${id} and all messages for company ${companyId}`);
+      
+      // Broadcast conversation update to refresh UI
+      if (req.app.get('wsService')) {
+        const wsService = req.app.get('wsService');
+        wsService.broadcastConversationUpdate();
+      }
+      
+      res.json({ success: true, message: "Conversation deleted successfully" });
+    } catch (error: any) {
+      console.error("[Inbox] Error deleting conversation:", error);
+      res.status(500).json({ message: "Failed to delete conversation" });
+    }
+  });
+
   return httpServer;
 }
 async function ensureUserSlug(userId: string, companyId: string): Promise<string> {
@@ -432,7 +892,99 @@ async function ensureUserSlug(userId: string, companyId: string): Promise<string
   }
   return finalSlug;
   // ============================================================
+  // DELETE /api/inbox/conversations/:id - Delete conversation and all messages
+  app.delete("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { id } = req.params;
+    const companyId = (req.user as any).companyId;
+    const userRole = (req.user as any).role;
+    
+    // Only allow admin or superadmin to delete conversations
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({ message: "Only administrators can delete conversations" });
+    }
+    
+    try {
+      // Verify conversation belongs to company
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Delete all messages for this conversation first
+      await db.delete(telnyxMessages).where(eq(telnyxMessages.conversationId, id));
+      
+      // Delete the conversation
+      await db.delete(telnyxConversations).where(eq(telnyxConversations.id, id));
+      
+      console.log(`[Inbox] Deleted conversation ${id} and all messages for company ${companyId}`);
+      
+      // Broadcast conversation update to refresh UI
+      if (req.app.get('wsService')) {
+        const wsService = req.app.get('wsService');
+        wsService.broadcastConversationUpdate();
+      }
+      
+      res.json({ success: true, message: "Conversation deleted successfully" });
+    } catch (error: any) {
+      console.error("[Inbox] Error deleting conversation:", error);
+      res.status(500).json({ message: "Failed to delete conversation" });
+    }
+  });
+
   return httpServer;
+  // DELETE /api/inbox/conversations/:id - Delete conversation and all messages
+  app.delete("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { id } = req.params;
+    const companyId = (req.user as any).companyId;
+    const userRole = (req.user as any).role;
+    
+    // Only allow admin or superadmin to delete conversations
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({ message: "Only administrators can delete conversations" });
+    }
+    
+    try {
+      // Verify conversation belongs to company
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Delete all messages for this conversation first
+      await db.delete(telnyxMessages).where(eq(telnyxMessages.conversationId, id));
+      
+      // Delete the conversation
+      await db.delete(telnyxConversations).where(eq(telnyxConversations.id, id));
+      
+      console.log(`[Inbox] Deleted conversation ${id} and all messages for company ${companyId}`);
+      
+      // Broadcast conversation update to refresh UI
+      if (req.app.get('wsService')) {
+        const wsService = req.app.get('wsService');
+        wsService.broadcastConversationUpdate();
+      }
+      
+      res.json({ success: true, message: "Conversation deleted successfully" });
+    } catch (error: any) {
+      console.error("[Inbox] Error deleting conversation:", error);
+      res.status(500).json({ message: "Failed to delete conversation" });
+    }
+  });
+
   return httpServer;
 }
 export async function registerRoutes(app: Express, sessionStore?: any): Promise<Server> {
@@ -36877,5 +37429,51 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       res.status(500).json({ message: "Failed to update conversation" });
     }
   });
+  // DELETE /api/inbox/conversations/:id - Delete conversation and all messages
+  app.delete("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { id } = req.params;
+    const companyId = (req.user as any).companyId;
+    const userRole = (req.user as any).role;
+    
+    // Only allow admin or superadmin to delete conversations
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({ message: "Only administrators can delete conversations" });
+    }
+    
+    try {
+      // Verify conversation belongs to company
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Delete all messages for this conversation first
+      await db.delete(telnyxMessages).where(eq(telnyxMessages.conversationId, id));
+      
+      // Delete the conversation
+      await db.delete(telnyxConversations).where(eq(telnyxConversations.id, id));
+      
+      console.log(`[Inbox] Deleted conversation ${id} and all messages for company ${companyId}`);
+      
+      // Broadcast conversation update to refresh UI
+      if (req.app.get('wsService')) {
+        const wsService = req.app.get('wsService');
+        wsService.broadcastConversationUpdate();
+      }
+      
+      res.json({ success: true, message: "Conversation deleted successfully" });
+    } catch (error: any) {
+      console.error("[Inbox] Error deleting conversation:", error);
+      res.status(500).json({ message: "Failed to delete conversation" });
+    }
+  });
+
   return httpServer;
 }

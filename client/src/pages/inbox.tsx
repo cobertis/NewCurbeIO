@@ -15,7 +15,7 @@ import {
   Plus, 
   Send, 
   Paperclip, 
-  MoreVertical,
+  Trash2,
   MessageSquare,
   User,
   Mail,
@@ -73,6 +73,16 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface TelnyxConversation {
   id: string;
@@ -150,6 +160,7 @@ export default function InboxPage() {
   const [isInternalNote, setIsInternalNote] = useState(false);
   const [contactInfoOpen, setContactInfoOpen] = useState(true);
   const [insightsOpen, setInsightsOpen] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [isEditingDetails, setIsEditingDetails] = useState(false);
   const [editForm, setEditForm] = useState({
     displayName: "",
@@ -307,6 +318,28 @@ export default function InboxPage() {
     onError: (error: any) => {
       toast({
         title: "Failed to update",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const deleteConversationMutation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      return apiRequest("DELETE", `/api/inbox/conversations/${conversationId}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      setSelectedConversationId(null);
+      setDeleteDialogOpen(false);
+      toast({
+        title: "Conversation deleted",
+        description: "The conversation and all messages have been permanently deleted.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to delete",
         description: error.message || "Please try again",
         variant: "destructive",
       });
@@ -705,13 +738,14 @@ export default function InboxPage() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => setMobileView("details")}
-                        data-testid="btn-show-details"
+                        onClick={() => setDeleteDialogOpen(true)}
+                        data-testid="btn-delete-conversation"
+                        className="text-destructive hover:text-destructive hover:bg-destructive/10"
                       >
-                        <MoreVertical className="h-4 w-4" />
+                        <Trash2 className="h-4 w-4" />
                       </Button>
                     </TooltipTrigger>
-                    <TooltipContent>More options</TooltipContent>
+                    <TooltipContent>Delete conversation</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
               </div>
@@ -1612,6 +1646,32 @@ export default function InboxPage() {
           />
         </div>
       )}
+
+      {/* Delete Conversation Confirmation Dialog */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete conversation?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this conversation and all its messages. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="btn-cancel-delete">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (selectedConversationId) {
+                  deleteConversationMutation.mutate(selectedConversationId);
+                }
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              data-testid="btn-confirm-delete"
+            >
+              {deleteConversationMutation.isPending ? "Deleting..." : "Delete"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
