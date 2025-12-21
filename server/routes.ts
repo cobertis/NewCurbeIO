@@ -29753,6 +29753,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.json({ numbers: [] });
       }
       
+      // Get company name for fallback
+      const company = await db.query.companies.findFirst({
+        where: eq(companies.id, companyId),
+        columns: { name: true },
+      });
+      const companyName = company?.name || null;
+
       // Get all phone numbers for the company with owner info
       const phoneNumbers = await db
         .select({
@@ -29803,7 +29810,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         ownerUserId: num.ownerUserId,
         ownerName: num.ownerFirstName && num.ownerLastName 
           ? `${num.ownerFirstName} ${num.ownerLastName}` 
-          : num.ownerFirstName || num.ownerLastName || null,
+          : num.ownerFirstName || num.ownerLastName || companyName,
         complianceStatus: complianceMap.get(num.phoneNumber)?.status || null,
         complianceApplicationId: complianceMap.get(num.phoneNumber)?.id || null,
       }));
