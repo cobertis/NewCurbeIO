@@ -52,11 +52,7 @@ export default function ComplianceReview() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/compliance/applications/${applicationId}`] });
-      toast({
-        title: "Application Submitted",
-        description: "Your toll-free verification application has been submitted successfully.",
-      });
-      setLocation("/phone-system");
+      setLocation(`/compliance/success/${applicationId}`);
     },
     onError: (error: any) => {
       toast({

@@ -104,6 +104,7 @@ import ComplianceInfo from "@/pages/compliance-info";
 import ComplianceBrand from "@/pages/compliance-brand";
 import ComplianceCampaign from "@/pages/compliance-campaign";
 import ComplianceReview from "@/pages/compliance-review";
+import ComplianceSuccess from "@/pages/compliance-success";
 import NotFound from "@/pages/not-found";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -1456,6 +1457,11 @@ function Router() {
           <DashboardLayout>
             <ComplianceReview />
           </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/compliance/success/:id">
+        <ProtectedRoute>
+          <ComplianceSuccess />
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard">
