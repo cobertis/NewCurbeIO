@@ -37063,19 +37063,61 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           const sampleMessages = (existing.sampleMessages as string[] | null) || [];
           const optInImageUrls = (existing.optInWorkflowImageUrls as string[] | null) || [];
           
+          // Helper: Format phone number to E.164 format
+          const formatPhoneE164 = (phone: string | null | undefined): string => {
+            if (!phone) return "+18001234567";
+            // Remove all non-digit characters
+            const digits = phone.replace(/\D/g, '');
+            // If 10 digits, assume US and add +1
+            if (digits.length === 10) return `+1${digits}`;
+            // If 11 digits and starts with 1, add +
+            if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+            // Already has country code
+            if (digits.length > 10) return `+${digits}`;
+            return `+1${digits}`;
+          };
+          
+          // Helper: Format message volume to simple number string
+          const formatMessageVolume = (volume: string | null | undefined): string => {
+            if (!volume) return "1000";
+            // Extract first number from ranges like "100001-250000"
+            const match = volume.match(/\d+/);
+            return match ? match[0] : "1000";
+          };
+          
+          // Helper: Convert state abbreviation to full name (Telnyx may require full names)
+          const stateNames: Record<string, string> = {
+            AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California",
+            CO: "Colorado", CT: "Connecticut", DE: "Delaware", FL: "Florida", GA: "Georgia",
+            HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa",
+            KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine", MD: "Maryland",
+            MA: "Massachusetts", MI: "Michigan", MN: "Minnesota", MS: "Mississippi", MO: "Missouri",
+            MT: "Montana", NE: "Nebraska", NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey",
+            NM: "New Mexico", NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio",
+            OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island", SC: "South Carolina",
+            SD: "South Dakota", TN: "Tennessee", TX: "Texas", UT: "Utah", VT: "Vermont",
+            VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming",
+            DC: "District of Columbia", PR: "Puerto Rico"
+          };
+          const getFullStateName = (stateAbbr: string | null | undefined): string => {
+            if (!stateAbbr) return "Florida";
+            const upper = stateAbbr.toUpperCase().trim();
+            return stateNames[upper] || stateAbbr;
+          };
+          
           // Build Telnyx request body with correct field mapping
           const telnyxRequestBody: any = {
             businessName: existing.businessName,
             corporateWebsite: existing.website,
             businessAddr1: existing.businessAddress,
             businessCity: existing.businessCity,
-            businessState: existing.businessState,
+            businessState: getFullStateName(existing.businessState),
             businessZip: existing.businessZip,
             businessContactFirstName: existing.contactFirstName,
             businessContactLastName: existing.contactLastName,
             businessContactEmail: existing.contactEmail,
-            businessContactPhone: existing.contactPhone,
-            messageVolume: existing.estimatedVolume || "100",
+            businessContactPhone: formatPhoneE164(existing.contactPhone),
+            messageVolume: formatMessageVolume(existing.estimatedVolume),
             phoneNumbers: [{ phoneNumber: existing.selectedPhoneNumber }],
             useCase: existing.smsUseCase || existing.useCase || "MIXED",
             useCaseSummary: existing.campaignDescription || existing.messageContent || "SMS messaging campaign",
@@ -37083,14 +37125,20 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             optInWorkflow: existing.optInDescription || existing.optInMethod || "User opts in via web form",
           };
           
-          // Required Telnyx fields must always be present
+          // Required Telnyx fields - optInWorkflowImageURLs needs actual image URLs
+          // If user provided image URLs, use them; otherwise omit the field (it's recommended but not required)
           if (optInImageUrls.length > 0) {
-            telnyxRequestBody.optInWorkflowImageURLs = optInImageUrls.map((url: string) => ({ url }));
-          } else if (existing.optInScreenshotUrl) {
+            // Filter to only include URLs that look like actual images
+            const imageUrls = optInImageUrls.filter((url: string) => 
+              url.match(/\.(jpg|jpeg|png|gif|webp)$/i) || url.includes('/image') || url.includes('/screenshot')
+            );
+            if (imageUrls.length > 0) {
+              telnyxRequestBody.optInWorkflowImageURLs = imageUrls.map((url: string) => ({ url }));
+            }
+          } else if (existing.optInScreenshotUrl && existing.optInScreenshotUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
             telnyxRequestBody.optInWorkflowImageURLs = [{ url: existing.optInScreenshotUrl }];
-          } else {
-            telnyxRequestBody.optInWorkflowImageURLs = [{ url: existing.website || "https://example.com/opt-in" }];
           }
+          // Don't include optInWorkflowImageURLs if we don't have valid image URLs - it's recommended but not strictly required
 
           telnyxRequestBody.additionalInformation = existing.additionalInformation
             || existing.campaignDescription
