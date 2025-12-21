@@ -29825,6 +29825,84 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
 
 
+  // GET /api/telnyx/verification-request/by-phone/:phoneNumber - Get verification request by phone number from Telnyx API
+  app.get("/api/telnyx/verification-request/by-phone/:phoneNumber", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { phoneNumber } = req.params;
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ message: "Phone number is required" });
+      }
+      
+      const apiKey = await getTelnyxMasterApiKey();
+      
+      // Use the list API with phone_number filter
+      const response = await fetch(`https://api.telnyx.com/messaging_tollfree/verification/requests?page=1&page_size=10&phone_number=${encodeURIComponent(phoneNumber)}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[Telnyx] Error listing verification requests:", errorText);
+        return res.status(response.status).json({ 
+          message: "Failed to fetch verification requests from Telnyx",
+          error: errorText 
+        });
+      }
+      
+      const data = await response.json();
+      const records = data.records || [];
+      
+      if (records.length === 0) {
+        return res.status(404).json({ message: "No verification request found for this phone number" });
+      }
+      
+      // Get the most recent verification request
+      const raw = records[0];
+      
+      // Flatten the response to match frontend interface
+      const businessProfile = raw.business_profile || {};
+      const trafficProfile = raw.traffic_profile || {};
+      const businessAddress = businessProfile.business_address || {};
+      
+      const flattened = {
+        id: raw.id,
+        verification_status: raw.status || raw.verification_status,
+        business_name: businessProfile.business_name || raw.business_name,
+        brand_display_name: businessProfile.dba || businessProfile.brand_display_name || raw.brand_display_name,
+        business_type: businessProfile.business_type || raw.business_type,
+        business_vertical: businessProfile.business_vertical || trafficProfile.vertical || raw.business_vertical,
+        website_url: businessProfile.website_url || raw.website_url,
+        street_address: businessAddress.street_address || businessAddress.address_line_1 || raw.street_address,
+        city: businessAddress.city || raw.city,
+        region: businessAddress.region || businessAddress.state || raw.region,
+        postal_code: businessAddress.postal_code || businessAddress.zip || raw.postal_code,
+        first_name: businessProfile.first_name || raw.first_name,
+        last_name: businessProfile.last_name || raw.last_name,
+        contact_phone: businessProfile.phone_number || businessProfile.contact_phone || raw.contact_phone,
+        contact_email: businessProfile.email || businessProfile.contact_email || raw.contact_email,
+        use_case: trafficProfile.use_case || raw.use_case,
+        campaign_description: trafficProfile.description || trafficProfile.campaign_description || raw.campaign_description,
+        sample_messages: trafficProfile.sample_messages || raw.sample_messages || [],
+      };
+      
+      res.json({ verification: flattened });
+    } catch (error: any) {
+      console.error("[Telnyx] Error fetching verification request by phone:", error);
+      res.status(500).json({ message: "Failed to fetch verification request" });
+    }
+  });
+
+
   // GET /api/telnyx/verification-request/:id - Get verification request from Telnyx API
   app.get("/api/telnyx/verification-request/:id", requireAuth, async (req: Request, res: Response) => {
     try {

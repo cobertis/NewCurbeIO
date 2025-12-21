@@ -93,15 +93,15 @@ function getComplianceStatusBadge(status: string | null) {
 
 export default function SmsVoice() {
   const [, setLocation] = useLocation();
-  const [selectedVerificationId, setSelectedVerificationId] = useState<string | null>(null);
+  const [selectedPhoneNumber, setSelectedPhoneNumber] = useState<string | null>(null);
 
   const { data: numbersData, isLoading } = useQuery<{ numbers: SmsVoiceNumber[] }>({
     queryKey: ["/api/sms-voice/numbers"],
   });
 
   const { data: verificationData, isLoading: isLoadingVerification } = useQuery<{ verification: TelnyxVerificationRequest }>({
-    queryKey: ["/api/telnyx/verification-request", selectedVerificationId],
-    enabled: !!selectedVerificationId,
+    queryKey: ["/api/telnyx/verification-request/by-phone", selectedPhoneNumber],
+    enabled: !!selectedPhoneNumber,
   });
 
   const numbers = numbersData?.numbers || [];
@@ -323,27 +323,15 @@ export default function SmsVoice() {
                             {nextRenewal ? format(nextRenewal, "MMM dd, yyyy") : "—"}
                           </TableCell>
                           <TableCell className="text-right">
-                            {number.telnyxVerificationRequestId ? (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                data-testid={`button-view-form-${number.id}`}
-                                onClick={() => setSelectedVerificationId(number.telnyxVerificationRequestId)}
-                              >
-                                View form
-                                <ChevronRight className="h-4 w-4 ml-1" />
-                              </Button>
-                            ) : (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                data-testid={`button-start-verification-${number.id}`}
-                                onClick={() => setLocation("/compliance/choose-number")}
-                              >
-                                Start verification
-                                <ExternalLink className="h-4 w-4 ml-1" />
-                              </Button>
-                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              data-testid={`button-view-form-${number.id}`}
+                              onClick={() => setSelectedPhoneNumber(number.phoneNumber)}
+                            >
+                              View form
+                              <ChevronRight className="h-4 w-4 ml-1" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       );
@@ -409,7 +397,7 @@ export default function SmsVoice() {
         </Card>
       </div>
 
-      <Dialog open={!!selectedVerificationId} onOpenChange={(open) => !open && setSelectedVerificationId(null)}>
+      <Dialog open={!!selectedPhoneNumber} onOpenChange={(open) => !open && setSelectedPhoneNumber(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh]" data-testid="dialog-view-form">
           <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <DialogTitle className="text-lg font-semibold">Toll-free verification form</DialogTitle>
