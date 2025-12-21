@@ -37185,6 +37185,56 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             telnyxRequestBody.businessRegistrationCountry = existing.businessRegistrationCountry || "US";
           }
           
+          // Entity type mapping
+          const entityTypeMap: Record<string, string> = {
+            "Private Company": "PRIVATE_PROFIT",
+            "Publicly Traded Company": "PUBLIC_PROFIT",
+            "Charity/ Non-Profit Organization": "NON_PROFIT",
+            "Sole Proprietor": "SOLE_PROPRIETOR",
+            "Government": "GOVERNMENT",
+            "PRIVATE_PROFIT": "PRIVATE_PROFIT",
+            "PUBLIC_PROFIT": "PUBLIC_PROFIT",
+            "NON_PROFIT": "NON_PROFIT",
+            "SOLE_PROPRIETOR": "SOLE_PROPRIETOR",
+            "GOVERNMENT": "GOVERNMENT"
+          };
+          if (existing.entityType) {
+            telnyxRequestBody.entityType = entityTypeMap[existing.entityType] || "PRIVATE_PROFIT";
+          }
+          
+          // DBA / brand name
+          if (existing.doingBusinessAs || existing.brandDisplayName) {
+            telnyxRequestBody.doingBusinessAs = existing.doingBusinessAs || existing.brandDisplayName;
+          }
+          
+          // Opt-in keywords
+          if (existing.optInKeywords) {
+            telnyxRequestBody.optInKeywords = existing.optInKeywords;
+          }
+          
+          // Opt-in confirmation response
+          if (existing.optInConfirmationResponse) {
+            telnyxRequestBody.optInConfirmationResponse = existing.optInConfirmationResponse;
+          }
+          
+          // Help message response
+          if (existing.helpMessageResponse) {
+            telnyxRequestBody.helpMessageResponse = existing.helpMessageResponse;
+          }
+          
+          // Privacy policy URL
+          if (existing.privacyPolicyUrl) {
+            telnyxRequestBody.privacyPolicyURL = makeAbsoluteUrl(existing.privacyPolicyUrl);
+          }
+          
+          // Terms and conditions URL
+          if (existing.smsTermsUrl) {
+            telnyxRequestBody.termsAndConditionURL = makeAbsoluteUrl(existing.smsTermsUrl);
+          }
+          
+          // Age-gated content
+          telnyxRequestBody.ageGatedContent = existing.ageGatedContent || false;
+          
           console.log("[Toll-Free Compliance] Submitting verification request:", {
             managedAccountId: managedAccountId,
             businessName: telnyxRequestBody.businessName,

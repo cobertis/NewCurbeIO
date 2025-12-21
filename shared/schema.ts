@@ -6605,6 +6605,11 @@ export const complianceApplications = pgTable("compliance_applications", {
   businessRegistrationType: text("business_registration_type"), // EIN, SSN, DUNS, VAT
   businessRegistrationCountry: text("business_registration_country").default("US"),
   entityType: text("entity_type"), // SOLE_PROPRIETOR, CORPORATION, LLC, etc.
+  doingBusinessAs: text("doing_business_as"), // DBA or brand name
+  optInKeywords: text("opt_in_keywords"), // e.g., "START, YES, SUBSCRIBE"
+  optInConfirmationResponse: text("opt_in_confirmation_response"), // Opt-in confirmation message
+  helpMessageResponse: text("help_message_response"), // Help message response
+  ageGatedContent: boolean("age_gated_content").default(false), // Whether content is age-gated
   
   // Telnyx Integration
   telnyxManagedAccountId: text("telnyx_managed_account_id"),
