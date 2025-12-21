@@ -10,10 +10,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import { Plus, AlertTriangle, ExternalLink, Phone, Flag, ChevronRight, Mail, Settings, Building, CreditCard, Users, Zap, Plug, User as UserIcon, X } from "lucide-react";
+import { Plus, AlertTriangle, ExternalLink, Phone, ChevronRight, Mail, Settings, Building, CreditCard, Users, Zap, Plug, User as UserIcon, X } from "lucide-react";
 import { SiWhatsapp, SiFacebook, SiInstagram } from "react-icons/si";
 import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+
+function formatPhoneNumber(phone: string): string {
+  const cleaned = phone.replace(/^\+1/, '');
+  if (cleaned.length === 10) {
+    return `(${cleaned.slice(0,3)}) ${cleaned.slice(3,6)}-${cleaned.slice(6)}`;
+  }
+  return phone;
+}
 
 interface SmsVoiceNumber {
   id: string;
@@ -284,12 +293,22 @@ export default function SmsVoice() {
                         <TableRow key={number.id} data-testid={`row-number-${number.id}`}>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <div className="flex items-center justify-center w-6 h-4 bg-slate-100 dark:bg-slate-800 rounded text-xs font-medium">
-                                <Flag className="h-3 w-3 text-blue-600" />
-                              </div>
-                              <span className="font-mono" data-testid={`text-phone-${number.id}`}>
-                                {number.phoneNumber}
+                              <span className="text-base">🇺🇸</span>
+                              <span className="text-orange-500 font-medium" data-testid={`text-phone-${number.id}`}>
+                                {formatPhoneNumber(number.phoneNumber)}
                               </span>
+                              {number.complianceStatus !== "approved" && number.complianceStatus !== "verified" && (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <AlertTriangle className="h-4 w-4 text-amber-500 cursor-help" />
+                                    </TooltipTrigger>
+                                    <TooltipContent className="max-w-xs">
+                                      <p>This number cannot be used for sending messages, because the toll-free verification form has not yet been fully verified.</p>
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              )}
                             </div>
                           </TableCell>
                           <TableCell data-testid={`text-owner-${number.id}`}>
