@@ -298,13 +298,15 @@ export default function SmsVoice() {
                                 {formatPhoneNumber(number.phoneNumber)}
                               </span>
                               {number.complianceStatus !== "approved" && number.complianceStatus !== "verified" && (
-                                <TooltipProvider>
+                                <TooltipProvider delayDuration={0}>
                                   <Tooltip>
                                     <TooltipTrigger asChild>
-                                      <AlertTriangle className="h-4 w-4 text-amber-500 cursor-help" />
+                                      <span className="inline-flex">
+                                        <AlertTriangle className="h-4 w-4 text-amber-500" />
+                                      </span>
                                     </TooltipTrigger>
-                                    <TooltipContent className="max-w-xs">
-                                      <p>This number cannot be used for sending messages, because the toll-free verification form has not yet been fully verified.</p>
+                                    <TooltipContent side="top" className="max-w-xs bg-slate-900 text-white px-3 py-2">
+                                      <p>This number cannot be used for sending messages, because the toll-free verification form <strong>has not yet been fully verified</strong>.</p>
                                     </TooltipContent>
                                   </Tooltip>
                                 </TooltipProvider>
