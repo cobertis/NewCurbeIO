@@ -83,7 +83,7 @@ export default function ComplianceReview() {
   if (!application) {
     return (
       <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-6">
-        <div className="max-w-4xl mx-auto text-center">
+        <div className="max-w-5xl mx-auto text-center">
           <p className="text-gray-600 dark:text-gray-400">Application not found</p>
         </div>
       </div>
@@ -95,7 +95,7 @@ export default function ComplianceReview() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-6">
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-5xl mx-auto px-8 py-12">
         <Button
           variant="ghost"
           className="mb-4 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
