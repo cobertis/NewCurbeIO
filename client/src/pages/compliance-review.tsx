@@ -94,32 +94,21 @@ export default function ComplianceReview() {
   const useCaseLabel = application.smsUseCase || "";
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-6">
+    <div className="flex-1 overflow-y-auto">
       <div className="max-w-5xl mx-auto px-8 py-12">
-        <Button
-          variant="ghost"
-          className="mb-4 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-100"
-          onClick={() => setLocation(`/compliance/campaign/${applicationId}`)}
-          data-testid="button-back-top"
-        >
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back
-        </Button>
-
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
+          <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 mb-3" data-testid="text-page-title">
             Submit toll-free verification
           </h1>
           <p className="text-gray-600 dark:text-gray-400">
             For more information about filling out this form, watch our{" "}
-            <a href="#" className="text-blue-600 dark:text-blue-400 hover:underline">
+            <a href="#" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium" data-testid="link-video-guide">
               video guide
-            </a>{" "}
-            or read our{" "}
-            <a href="#" className="text-blue-600 dark:text-blue-400 hover:underline">
-              support article
             </a>
-            .
+            {" "}or read our{" "}
+            <a href="#" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 font-medium" data-testid="link-support-article">
+              support article
+            </a>.
           </p>
         </div>
 
