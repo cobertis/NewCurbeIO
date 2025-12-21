@@ -381,7 +381,41 @@ export default function ComplianceBrand() {
   const handleSubmit = async () => {
     const isValid = await form.trigger();
     if (isValid) {
-      createBrandMutation.mutate(form.getValues());
+      try {
+        const data = form.getValues();
+        await apiRequest("PATCH", `/api/compliance/applications/${applicationId}`, {
+          businessName: data.legalName,
+          brandDisplayName: data.brandName || data.legalName,
+          businessType: data.legalForm,
+          website: data.website,
+          businessVertical: data.vertical,
+          ein: data.ein,
+          businessAddress: data.street,
+          businessAddressLine2: data.streetLine2,
+          businessCity: data.city,
+          businessState: data.state,
+          businessZip: data.postalCode,
+          country: data.country,
+          contactFirstName: data.firstName,
+          contactLastName: data.lastName,
+          contactPhone: data.phone,
+          contactEmail: data.email,
+          currentStep: 4,
+          status: "step_3_complete",
+        });
+        queryClient.invalidateQueries({ queryKey: [`/api/compliance/applications/${applicationId}`] });
+        toast({
+          title: "Brand info saved",
+          description: "Continuing to campaign registration.",
+        });
+        setLocation(`/compliance/campaign/${applicationId}`);
+      } catch (error: any) {
+        toast({
+          title: "Error saving data",
+          description: error.message || "Please try again",
+          variant: "destructive",
+        });
+      }
     }
   };
 
