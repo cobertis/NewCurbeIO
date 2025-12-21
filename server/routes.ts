@@ -37125,18 +37125,31 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             optInWorkflow: existing.optInDescription || existing.optInMethod || "User opts in via web form",
           };
           
-          // Required Telnyx fields - optInWorkflowImageURLs needs actual image URLs
+          // Required Telnyx fields - optInWorkflowImageURLs needs ABSOLUTE image URLs
+          // Convert relative URLs to absolute URLs using the domain
+          const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+            : (process.env.REPLIT_DEPLOYMENT_URL || 'https://example.com');
+          
+          const makeAbsoluteUrl = (url: string): string => {
+            if (!url) return '';
+            // Already absolute URL
+            if (url.startsWith('http://') || url.startsWith('https://')) return url;
+            // Relative URL - make it absolute
+            return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+          };
+          
           // If user provided image URLs, use them; otherwise omit the field (it's recommended but not required)
           if (optInImageUrls.length > 0) {
             // Filter to only include URLs that look like actual images
             const imageUrls = optInImageUrls.filter((url: string) => 
-              url.match(/\.(jpg|jpeg|png|gif|webp)$/i) || url.includes('/image') || url.includes('/screenshot')
+              url.match(/\.(jpg|jpeg|png|gif|webp)$/i) || url.includes('/image') || url.includes('/screenshot') || url.includes('/uploads')
             );
             if (imageUrls.length > 0) {
-              telnyxRequestBody.optInWorkflowImageURLs = imageUrls.map((url: string) => ({ url }));
+              telnyxRequestBody.optInWorkflowImageURLs = imageUrls.map((url: string) => ({ url: makeAbsoluteUrl(url) }));
             }
-          } else if (existing.optInScreenshotUrl && existing.optInScreenshotUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-            telnyxRequestBody.optInWorkflowImageURLs = [{ url: existing.optInScreenshotUrl }];
+          } else if (existing.optInScreenshotUrl && (existing.optInScreenshotUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) || existing.optInScreenshotUrl.includes('/uploads'))) {
+            telnyxRequestBody.optInWorkflowImageURLs = [{ url: makeAbsoluteUrl(existing.optInScreenshotUrl) }];
           }
           // Don't include optInWorkflowImageURLs if we don't have valid image URLs - it's recommended but not strictly required
 
