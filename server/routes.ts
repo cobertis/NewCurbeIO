@@ -29842,7 +29842,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const apiKey = await getTelnyxMasterApiKey();
       
       // Use the list API with phone_number filter
-      const response = await fetch(`https://api.telnyx.com/messaging_tollfree/verification/requests?page=1&page_size=10&phone_number=${encodeURIComponent(phoneNumber)}`, {
+      const response = await fetch(`https://api.telnyx.com/v2/messaging_tollfree/verification/requests?page=1&page_size=10&phone_number=${encodeURIComponent(phoneNumber)}`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${apiKey}`,
