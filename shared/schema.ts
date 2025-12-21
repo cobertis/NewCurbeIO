@@ -6586,6 +6586,18 @@ export const complianceApplications = pgTable("compliance_applications", {
   optOutKeywords: text("opt_out_keywords"),
   helpKeywords: text("help_keywords"),
   
+  // Step 4: Additional Campaign Fields
+  smsUseCase: text("sms_use_case"),
+  messageAudience: text("message_audience"),
+  messageContent: text("message_content"),
+  estimatedVolume: text("estimated_volume"),
+  canadianTraffic: text("canadian_traffic"),
+  optInDescription: text("opt_in_description"),
+  optInScreenshotUrl: text("opt_in_screenshot_url"),
+  optInEvidence: text("opt_in_evidence"),
+  smsTermsUrl: text("sms_terms_url"),
+  privacyPolicyUrl: text("privacy_policy_url"),
+  
   // Telnyx Integration
   telnyxManagedAccountId: text("telnyx_managed_account_id"),
   telnyxPhoneNumberId: text("telnyx_phone_number_id"),
