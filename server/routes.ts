@@ -37031,6 +37031,34 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             return res.status(400).json({ message: "Telnyx not configured for this company" });
           }
           
+          // Verify the phone number exists in the managed account before submitting
+          console.log(`[Toll-Free Compliance] Verifying phone number ${existing.selectedPhoneNumber} exists in managed account ${managedAccountId}`);
+          const verifyHeaders: Record<string, string> = {
+            "Authorization": `Bearer ${telnyxApiKey}`,
+            "Accept": "application/json",
+          };
+          if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+            verifyHeaders["x-managed-account-id"] = managedAccountId;
+          }
+          
+          const verifyResponse = await fetch(
+            `https://api.telnyx.com/v2/phone_numbers?filter[phone_number][eq]=${encodeURIComponent(existing.selectedPhoneNumber)}`,
+            { method: "GET", headers: verifyHeaders }
+          );
+          const verifyResult = await verifyResponse.json();
+          console.log(`[Toll-Free Compliance] Phone number verification result:`, JSON.stringify(verifyResult, null, 2));
+          
+          const foundNumbers = verifyResult.data || [];
+          if (foundNumbers.length === 0) {
+            console.error(`[Toll-Free Compliance] Phone number ${existing.selectedPhoneNumber} NOT FOUND in managed account ${managedAccountId}`);
+            return res.status(400).json({ 
+              message: `Phone number ${existing.selectedPhoneNumber} was not found in your Telnyx account. The number may need to be re-purchased under your company's managed account.`,
+              details: "The toll-free verification requires the phone number to be owned by your company's Telnyx account."
+            });
+          }
+          
+          console.log(`[Toll-Free Compliance] Phone number verified: ${foundNumbers[0]?.phone_number}, ID: ${foundNumbers[0]?.id}`);
+          
           // Map compliance application fields to Telnyx API format
           const sampleMessages = (existing.sampleMessages as string[] | null) || [];
           const optInImageUrls = (existing.optInWorkflowImageUrls as string[] | null) || [];
@@ -37082,6 +37110,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           }
           
           console.log("[Toll-Free Compliance] Submitting verification request:", {
+            managedAccountId: managedAccountId,
             businessName: telnyxRequestBody.businessName,
             phoneNumber: existing.selectedPhoneNumber,
             useCase: telnyxRequestBody.useCase,
