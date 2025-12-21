@@ -37077,12 +37077,26 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             return `+1${digits}`;
           };
           
-          // Helper: Format message volume to simple number string
+          // Helper: Format message volume to Telnyx enum values (with commas)
+          // Valid values: "10", "100", "1,000", "10,000", "100,000", "250,000", "500,000", "750,000", "1,000,000", "5,000,000", "10,000,000+"
           const formatMessageVolume = (volume: string | null | undefined): string => {
-            if (!volume) return "1000";
+            if (!volume) return "1,000";
             // Extract first number from ranges like "100001-250000"
             const match = volume.match(/\d+/);
-            return match ? match[0] : "1000";
+            const num = match ? parseInt(match[0].replace(/,/g, ""), 10) : 1000;
+            
+            // Map to nearest valid Telnyx enum value
+            if (num >= 10000000) return "10,000,000+";
+            if (num >= 5000000) return "5,000,000";
+            if (num >= 1000000) return "1,000,000";
+            if (num >= 750000) return "750,000";
+            if (num >= 500000) return "500,000";
+            if (num >= 250000) return "250,000";
+            if (num >= 100000) return "100,000";
+            if (num >= 10000) return "10,000";
+            if (num >= 1000) return "1,000";
+            if (num >= 100) return "100";
+            return "10";
           };
           
           // Helper: Convert state abbreviation to full name (Telnyx may require full names)
@@ -37119,7 +37133,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             businessContactPhone: formatPhoneE164(existing.contactPhone),
             messageVolume: formatMessageVolume(existing.estimatedVolume),
             phoneNumbers: [{ phoneNumber: existing.selectedPhoneNumber }],
-            useCase: existing.smsUseCase || existing.useCase || "MIXED",
+            useCase: existing.smsUseCase || existing.useCase || "Mixed",
             useCaseSummary: existing.campaignDescription || existing.messageContent || "SMS messaging campaign",
             productionMessageContent: sampleMessages[0] || existing.messageContent || "Sample message content",
             optInWorkflow: existing.optInDescription || existing.optInMethod || "User opts in via web form",
