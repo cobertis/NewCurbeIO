@@ -507,36 +507,48 @@ export default function ComplianceCampaign() {
           {title}
         </h1>
 
-        <div className="flex items-center justify-between mb-8 px-4">
+        <div className="flex items-center justify-between w-full mb-8">
           {steps.map((step, index) => (
-            <div key={step.id} className="flex items-center gap-3">
-              <div
-                className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold border-2 transition-colors",
-                  index < currentStep
-                    ? "bg-green-600 border-green-600 text-white"
-                    : index === currentStep
-                    ? "bg-blue-600 border-blue-600 text-white"
-                    : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500"
-                )}
-                data-testid={`step-indicator-${index + 1}`}
-              >
-                {index < currentStep ? (
-                  <Check className="w-5 h-5" />
-                ) : (
-                  index + 1
-                )}
+            <div key={step.id} className="flex items-center flex-1 last:flex-none">
+              <div className="flex flex-col items-center gap-2">
+                <div
+                  className={cn(
+                    "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold border-2 transition-colors",
+                    index < currentStep
+                      ? "bg-white dark:bg-gray-900 border-blue-600 text-blue-600"
+                      : index === currentStep
+                      ? "bg-blue-600 border-blue-600 text-white"
+                      : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500"
+                  )}
+                  data-testid={`step-indicator-${index + 1}`}
+                >
+                  {index < currentStep ? (
+                    <Check className="w-5 h-5" />
+                  ) : (
+                    index + 1
+                  )}
+                </div>
+                <span
+                  className={cn(
+                    "text-sm font-medium whitespace-nowrap",
+                    index <= currentStep
+                      ? "text-gray-900 dark:text-gray-100"
+                      : "text-gray-400 dark:text-gray-500"
+                  )}
+                >
+                  {step.label}
+                </span>
               </div>
-              <span
-                className={cn(
-                  "text-sm font-medium",
-                  index <= currentStep
-                    ? "text-gray-900 dark:text-gray-100"
-                    : "text-gray-400 dark:text-gray-500"
-                )}
-              >
-                {step.label}
-              </span>
+              {index < steps.length - 1 && (
+                <div
+                  className={cn(
+                    "flex-1 h-0.5 mx-4 mt-[-24px]",
+                    index < currentStep
+                      ? "bg-blue-600"
+                      : "bg-gray-300 dark:bg-gray-600"
+                  )}
+                />
+              )}
             </div>
           ))}
         </div>
