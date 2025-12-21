@@ -23,6 +23,7 @@ import {
 import { Check, ArrowLeft, ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
+import { StepIndicator } from "@/components/compliance/step-indicator";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { GooglePlacesAddressAutocomplete } from "@/components/google-places-address-autocomplete";
 import type { ComplianceApplication } from "@shared/schema";
@@ -500,26 +501,7 @@ export default function ComplianceBrand() {
           </p>
         </div>
 
-        <div className="flex items-center justify-between w-full mb-10">
-          {steps.map((step, index) => (
-            <div key={step.id} className="flex items-center flex-1 last:flex-none">
-              <div className="flex flex-col items-center gap-2">
-                <div
-                  className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold border-2 bg-blue-600 border-blue-600 text-white"
-                  data-testid={`step-indicator-${index + 1}`}
-                >
-                  {index + 1}
-                </div>
-                <span className="text-sm font-medium whitespace-nowrap text-gray-900 dark:text-gray-100">
-                  {step.label}
-                </span>
-              </div>
-              {index < steps.length - 1 && (
-                <div className="flex-1 h-0.5 mx-4 mt-[-24px] bg-blue-600" />
-              )}
-            </div>
-          ))}
-        </div>
+        <StepIndicator />
 
         <Card className="bg-white dark:bg-gray-900 shadow-sm">
           <CardContent className="p-0">

@@ -2,8 +2,8 @@ import { useQuery } from "@tanstack/react-query";
 import { useLocation, Link, useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Check, ArrowLeft } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { ArrowLeft, Check } from "lucide-react";
+import { StepIndicator } from "@/components/compliance/step-indicator";
 import type { ComplianceApplication } from "@shared/schema";
 import complianceImage from "@assets/image_1766269959786.png";
 import attLogo from "@assets/att-logo.svg";
@@ -95,39 +95,7 @@ export default function ComplianceInfo() {
           </p>
         </div>
 
-        <div className="flex items-center justify-center gap-12 mb-10">
-          {steps.map((step, index) => (
-            <div key={step.id} className="flex flex-col items-center gap-2">
-              <div
-                className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold border-2",
-                  index < currentStep
-                    ? "bg-green-600 border-green-600 text-white"
-                    : index === currentStep
-                    ? "bg-blue-600 border-blue-600 text-white"
-                    : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500"
-                )}
-                data-testid={`step-indicator-${index + 1}`}
-              >
-                {index < currentStep ? (
-                  <Check className="w-5 h-5" />
-                ) : (
-                  index + 1
-                )}
-              </div>
-              <span
-                className={cn(
-                  "text-sm font-medium",
-                  index <= currentStep
-                    ? "text-gray-900 dark:text-gray-100"
-                    : "text-gray-400 dark:text-gray-500"
-                )}
-              >
-                {step.label}
-              </span>
-            </div>
-          ))}
-        </div>
+        <StepIndicator />
 
         <Card className="bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700">
           <CardContent className="p-10">

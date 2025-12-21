@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Check, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { StepIndicator } from "@/components/compliance/step-indicator";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import type { ComplianceApplication } from "@shared/schema";
@@ -122,40 +123,7 @@ export default function ComplianceReview() {
           </p>
         </div>
 
-        <div className="flex items-center justify-center mb-10">
-          {steps.map((step, index) => {
-            const isCompleted = index < 4;
-            const isActive = index === 4;
-
-            return (
-              <div key={step.id} className="flex items-center">
-                <div className="flex flex-col items-center">
-                  <div
-                    className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium ${
-                      isCompleted
-                        ? "bg-blue-500 text-white"
-                        : isActive
-                        ? "bg-blue-500 text-white"
-                        : "bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400"
-                    }`}
-                  >
-                    {isCompleted ? <Check className="w-4 h-4" /> : index + 1}
-                  </div>
-                  <span className="text-xs mt-1 text-gray-600 dark:text-gray-400">
-                    {step.label}
-                  </span>
-                </div>
-                {index < steps.length - 1 && (
-                  <div
-                    className={`w-16 h-0.5 mx-2 ${
-                      isCompleted ? "bg-blue-500" : "bg-gray-200 dark:bg-gray-700"
-                    }`}
-                  />
-                )}
-              </div>
-            );
-          })}
-        </div>
+        <StepIndicator />
 
         <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 mb-6">
           <CardContent className="p-8">

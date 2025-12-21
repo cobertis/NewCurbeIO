@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/popover";
 import { Loader2, X, Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { StepIndicator } from "@/components/compliance/step-indicator";
 
 interface AvailableNumber {
   phone_number: string;
@@ -473,33 +474,7 @@ export default function ComplianceChooseNumber() {
           </p>
         </div>
 
-        {/* Steps */}
-        <div className="flex items-center justify-center gap-12 mb-10">
-          {steps.map((step, index) => (
-            <div key={step.id} className="flex flex-col items-center gap-2">
-              <div
-                className={cn(
-                  "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold border-2",
-                  index === currentStep
-                    ? "bg-blue-600 border-blue-600 text-white"
-                    : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500"
-                )}
-              >
-                {index + 1}
-              </div>
-              <span
-                className={cn(
-                  "text-sm font-medium",
-                  index === currentStep
-                    ? "text-gray-900 dark:text-gray-100"
-                    : "text-gray-400 dark:text-gray-500"
-                )}
-              >
-                {step.label}
-              </span>
-            </div>
-          ))}
-        </div>
+        <StepIndicator />
 
         {/* Card */}
         <Card className="bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700">
