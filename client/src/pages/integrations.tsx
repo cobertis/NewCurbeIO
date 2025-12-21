@@ -13,8 +13,9 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/comp
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
+import { cn } from "@/lib/utils";
 import { SiWhatsapp, SiInstagram, SiFacebook, SiTiktok, SiTelegram } from "react-icons/si";
-import { CheckCircle, XCircle, Clock, AlertTriangle, Plus, Trash2, RefreshCw, ExternalLink, Settings, HelpCircle, ChevronDown, Info, User as UserIcon, Users } from "lucide-react";
+import { CheckCircle, XCircle, Clock, AlertTriangle, Plus, Trash2, RefreshCw, ExternalLink, Settings, HelpCircle, ChevronDown, Info, User as UserIcon, Users, Phone, Mail, Building, CreditCard, Plug, MessageSquare, Zap } from "lucide-react";
 import type { ChannelConnection, User } from "@shared/schema";
 
 type ChannelType = "whatsapp" | "instagram" | "facebook";
@@ -1672,25 +1673,138 @@ function ComingSoonCard({
 }
 
 export default function IntegrationsPage() {
+  const [, setLocation] = useLocation();
+
+  const menuItems = {
+    channels: [
+      { label: "SMS & Voice", href: "/phone-system", icon: Phone, active: false },
+      { label: "Email", href: "/settings/email", icon: Mail, active: false },
+      { label: "WhatsApp", href: "#whatsapp", icon: SiWhatsapp, active: false },
+      { label: "Facebook", href: "#facebook", icon: SiFacebook, active: false },
+      { label: "Instagram", href: "#instagram", icon: SiInstagram, active: false },
+    ],
+    features: [
+      { label: "API & Integrations", href: "/integrations", icon: Plug, active: true },
+      { label: "Contacts", href: "/contacts", icon: Users, active: false },
+      { label: "Auto-responders", href: "/campaigns", icon: Zap, active: false },
+    ],
+    administration: [
+      { label: "Workspace", href: "/settings/company", icon: Building, active: false },
+      { label: "Billing", href: "/billing", icon: CreditCard, active: false },
+      { label: "My account", href: "/settings/profile", icon: UserIcon, active: false },
+    ],
+  };
+
+  const handleNavigation = (href: string) => {
+    if (href.startsWith("#")) {
+      const cardId = href.substring(1);
+      const element = document.querySelector(`[data-card-id="${cardId}"]`);
+      if (element) {
+        element.scrollIntoView({ behavior: "smooth", block: "center" });
+        element.classList.add("ring-2", "ring-blue-500", "ring-offset-2");
+        setTimeout(() => {
+          element.classList.remove("ring-2", "ring-blue-500", "ring-offset-2");
+        }, 2000);
+      }
+    } else {
+      setLocation(href);
+    }
+  };
+
   return (
-    <div className="space-y-6" data-testid="page-integrations">
-      <div>
-        <h1 className="text-2xl font-semibold">Integrations</h1>
-        <p className="text-muted-foreground">
-          Connect your social media accounts to manage all conversations in one place.
-        </p>
+    <div className="flex gap-6" data-testid="page-integrations">
+      <div className="w-60 shrink-0 hidden lg:block">
+        <div className="sticky top-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
+          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+            <Settings className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Settings</span>
+          </div>
+
+          <div className="py-2">
+            <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Channels</p>
+            {menuItems.channels.map((item) => (
+              <button
+                key={item.label}
+                onClick={() => handleNavigation(item.href)}
+                data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
+                  item.active && "border-l-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="py-2">
+            <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Features</p>
+            {menuItems.features.map((item) => (
+              <button
+                key={item.label}
+                onClick={() => handleNavigation(item.href)}
+                data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
+                  item.active && "border-l-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="py-2 pb-3">
+            <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Administration</p>
+            {menuItems.administration.map((item) => (
+              <button
+                key={item.label}
+                onClick={() => handleNavigation(item.href)}
+                data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
+                  item.active && "border-l-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </button>
+            ))}
+          </div>
+        </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        <WhatsAppCard />
-        
-        <InstagramCard />
-        
-        <FacebookCard />
-        
-        <TikTokCard />
-        
-        <TelegramCard />
+      <div className="flex-1 min-w-0 space-y-6">
+        <div>
+          <h1 className="text-2xl font-semibold">Integrations</h1>
+          <p className="text-muted-foreground">
+            Connect your social media accounts to manage all conversations in one place.
+          </p>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div data-card-id="whatsapp">
+            <WhatsAppCard />
+          </div>
+          
+          <div data-card-id="instagram">
+            <InstagramCard />
+          </div>
+          
+          <div data-card-id="facebook">
+            <FacebookCard />
+          </div>
+          
+          <div data-card-id="tiktok">
+            <TikTokCard />
+          </div>
+          
+          <div data-card-id="telegram">
+            <TelegramCard />
+          </div>
+        </div>
       </div>
     </div>
   );
