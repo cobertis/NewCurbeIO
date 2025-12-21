@@ -100,7 +100,7 @@ export default function SmsVoice() {
   });
 
   const { data: verificationData, isLoading: isLoadingVerification } = useQuery<{ verification: TelnyxVerificationRequest }>({
-    queryKey: ["/api/telnyx/verification-request/by-phone", selectedPhoneNumber],
+    queryKey: [`/api/telnyx/verification-request/by-phone/${encodeURIComponent(selectedPhoneNumber || '')}`],
     enabled: !!selectedPhoneNumber,
   });
 
