@@ -353,7 +353,7 @@ export default function GettingStarted() {
                             "Your verification was rejected. Please contact support."}
                         </p>
                         <div className="flex items-center gap-2 pl-8">
-                          <Button variant="outline" size="sm" onClick={() => setLocation("/compliance/review")} className="gap-2" data-testid="button-view-status">
+                          <Button variant="outline" size="sm" onClick={() => setLocation("/settings/sms-voice")} className="gap-2" data-testid="button-view-status">
                             <FileText className="w-4 h-4" />
                             View status
                           </Button>
