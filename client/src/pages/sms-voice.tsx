@@ -100,7 +100,7 @@ export default function SmsVoice() {
   });
 
   const { data: applicationData, isLoading: isLoadingApplication } = useQuery<{ application: ComplianceApplication }>({
-    queryKey: ["/api/compliance/applications", selectedApplicationId],
+    queryKey: [`/api/compliance/applications/${selectedApplicationId}`],
     enabled: !!selectedApplicationId,
   });
 
