@@ -30896,7 +30896,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const response = await fetch(
         "https://api.telnyx.com/v2/messaging_tollfree/verification/requests",
         {
-          method: "PUT",
+          method: "POST",
           headers: { ...buildTelnyxHeaders(telnyxApiKey, managedAccountId), "Accept": "application/json" },
           body: JSON.stringify(requestBody),
         }
@@ -37120,7 +37120,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           const telnyxResponse = await fetch(
             "https://api.telnyx.com/v2/messaging_tollfree/verification/requests",
             {
-              method: "PUT",
+              method: "POST",
               headers: {
                 "Content-Type": "application/json",
                 "Accept": "application/json",
