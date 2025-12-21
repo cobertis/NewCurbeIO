@@ -36965,6 +36965,33 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
   
+  // GET /api/compliance/applications/active - Get active (non-draft) application
+  app.get("/api/compliance/applications/active", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const [application] = await db
+        .select()
+        .from(complianceApplications)
+        .where(
+          and(
+            eq(complianceApplications.companyId, user.companyId),
+            ne(complianceApplications.status, "draft")
+          )
+        )
+        .orderBy(desc(complianceApplications.createdAt))
+        .limit(1);
+      
+      res.json({ application: application || null });
+    } catch (error: any) {
+      console.error("[Compliance] Error getting active application:", error);
+      res.status(500).json({ message: "Failed to get active application" });
+    }
+  });
+  
   // GET /api/compliance/applications/:id - Get application by ID
   app.get("/api/compliance/applications/:id", requireAuth, async (req: Request, res: Response) => {
     try {

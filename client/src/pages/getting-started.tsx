@@ -30,6 +30,8 @@ import {
   Calendar,
   DollarSign,
   Video,
+  Loader2,
+  Copy,
   X
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
@@ -66,6 +68,23 @@ export default function GettingStarted() {
     queryKey: ["/api/onboarding/progress"],
     enabled: !!sessionData?.user,
   });
+
+  const { data: complianceData } = useQuery<{ application: any }>({
+    queryKey: ["/api/compliance/applications/active"],
+    enabled: !!sessionData?.user,
+  });
+
+  const activeApplication = complianceData?.application;
+
+  const formatPhoneNumber = (phone: string) => {
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 11 && cleaned.startsWith('1')) {
+      return `(${cleaned.slice(1, 4)}) ${cleaned.slice(4, 7)}-${cleaned.slice(7)}`;
+    } else if (cleaned.length === 10) {
+      return `(${cleaned.slice(0, 3)}) ${cleaned.slice(3, 6)}-${cleaned.slice(6)}`;
+    }
+    return phone;
+  };
 
   const completeOnboardingMutation = useMutation({
     mutationFn: async () => {
@@ -281,30 +300,97 @@ export default function GettingStarted() {
             </AccordionTrigger>
             <AccordionContent className="px-5 pb-5">
               <div className="space-y-4 pl-11">
-                <Card className="border-gray-200 dark:border-gray-700">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <Phone className="w-5 h-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <h4 className="font-medium text-gray-900 dark:text-gray-100">Get a Curbe number</h4>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Choose your number from our available pool of numbers.
-                          </p>
+                {activeApplication?.selectedPhoneNumber ? (
+                  <Card className="border-gray-200 dark:border-gray-700">
+                    <CardContent className="p-4">
+                      <div className="space-y-3">
+                        <div className="flex items-start justify-between">
+                          <div className="flex items-start gap-3">
+                            <Phone className="w-5 h-5 text-blue-600 mt-0.5" />
+                            <div>
+                              <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Your Toll-Free Number</p>
+                              <div className="flex items-center gap-2 mt-1">
+                                <h4 className="font-semibold text-lg text-gray-900 dark:text-gray-100" data-testid="text-toll-free-number">
+                                  {formatPhoneNumber(activeApplication.selectedPhoneNumber)}
+                                </h4>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 w-7 p-0"
+                                  onClick={() => navigator.clipboard.writeText(activeApplication.selectedPhoneNumber)}
+                                  data-testid="button-copy-number"
+                                >
+                                  <Copy className="w-4 h-4 text-gray-400" />
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                          {(activeApplication.status === 'submitted' || activeApplication.status === 'pending_review') && (
+                            <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
+                              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                              Verification in progress
+                            </Badge>
+                          )}
+                          {activeApplication.status === 'approved' && (
+                            <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                              <Check className="w-3 h-3 mr-1" />
+                              Verified
+                            </Badge>
+                          )}
+                          {activeApplication.status === 'rejected' && (
+                            <Badge className="bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">
+                              <X className="w-3 h-3 mr-1" />
+                              Rejected
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm text-gray-500 dark:text-gray-400 pl-8">
+                          {(activeApplication.status === 'submitted' || activeApplication.status === 'pending_review') && 
+                            "We've submitted your toll-free verification. Please wait for approval to start texting."}
+                          {activeApplication.status === 'approved' && 
+                            "Your toll-free number is verified and ready to use."}
+                          {activeApplication.status === 'rejected' && 
+                            "Your verification was rejected. Please contact support."}
+                        </p>
+                        <div className="flex items-center gap-2 pl-8">
+                          <Button variant="outline" size="sm" onClick={() => setLocation("/compliance/review")} className="gap-2" data-testid="button-view-status">
+                            <FileText className="w-4 h-4" />
+                            View status
+                          </Button>
+                          <Button variant="outline" size="sm" onClick={() => setLocation("/phone-system")} className="gap-2" data-testid="button-call-forwarding">
+                            <Phone className="w-4 h-4" />
+                            Set up call forwarding
+                          </Button>
                         </div>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" className="gap-2" data-testid="button-watch-number-tutorial">
-                          <PlayCircle className="w-4 h-4" />
-                          Watch tutorial
-                        </Button>
-                        <Button size="sm" onClick={() => setShowNumberTypeDialog(true)} className="gap-2 bg-blue-600 hover:bg-blue-700" data-testid="button-choose-number">
-                          Choose number
-                        </Button>
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card className="border-gray-200 dark:border-gray-700">
+                    <CardContent className="p-4">
+                      <div className="flex items-start justify-between">
+                        <div className="flex items-start gap-3">
+                          <Phone className="w-5 h-5 text-gray-400 mt-0.5" />
+                          <div>
+                            <h4 className="font-medium text-gray-900 dark:text-gray-100">Get a Curbe number</h4>
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              Choose your number from our available pool of numbers.
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Button variant="outline" size="sm" className="gap-2" data-testid="button-watch-number-tutorial">
+                            <PlayCircle className="w-4 h-4" />
+                            Watch tutorial
+                          </Button>
+                          <Button size="sm" onClick={() => setShowNumberTypeDialog(true)} className="gap-2 bg-blue-600 hover:bg-blue-700" data-testid="button-choose-number">
+                            Choose number
+                          </Button>
+                        </div>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </CardContent>
+                  </Card>
+                )}
 
                 <Card className="border-gray-200 dark:border-gray-700">
                   <CardContent className="p-4">
