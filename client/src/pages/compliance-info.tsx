@@ -95,7 +95,7 @@ export default function ComplianceInfo() {
           </p>
         </div>
 
-        <StepIndicator />
+        <StepIndicator currentStep={1} />
 
         <Card className="bg-white dark:bg-gray-800 shadow-lg border border-gray-200 dark:border-gray-700">
           <CardContent className="p-10">

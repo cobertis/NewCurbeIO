@@ -501,7 +501,7 @@ export default function ComplianceBrand() {
           </p>
         </div>
 
-        <StepIndicator />
+        <StepIndicator currentStep={2} />
 
         <Card className="bg-white dark:bg-gray-900 shadow-sm">
           <CardContent className="p-0">

@@ -508,7 +508,7 @@ export default function ComplianceCampaign() {
           {title}
         </h1>
 
-        <StepIndicator />
+        <StepIndicator currentStep={3} />
 
         <Card className="bg-white dark:bg-gray-900 shadow-sm">
           <CardContent className="p-0">

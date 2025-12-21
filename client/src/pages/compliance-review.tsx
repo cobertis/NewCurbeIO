@@ -123,7 +123,7 @@ export default function ComplianceReview() {
           </p>
         </div>
 
-        <StepIndicator />
+        <StepIndicator currentStep={4} />
 
         <Card className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 mb-6">
           <CardContent className="p-8">
