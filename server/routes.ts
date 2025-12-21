@@ -37115,7 +37115,11 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             businessName: telnyxRequestBody.businessName,
             phoneNumber: existing.selectedPhoneNumber,
             useCase: telnyxRequestBody.useCase,
+            optInWorkflowImageURLs: telnyxRequestBody.optInWorkflowImageURLs,
+            additionalInformation: telnyxRequestBody.additionalInformation,
+            isvReseller: telnyxRequestBody.isvReseller,
           });
+          console.log("[Toll-Free Compliance] Full request body:", JSON.stringify(telnyxRequestBody, null, 2));
           
           // Call Telnyx API
           const telnyxResponse = await fetch(
@@ -37135,10 +37139,20 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           const telnyxResult = await telnyxResponse.json();
           
           if (!telnyxResponse.ok) {
-            console.error("[Toll-Free Compliance] Telnyx API error:", telnyxResult);
+            console.error("[Toll-Free Compliance] Telnyx API error:", JSON.stringify(telnyxResult, null, 2));
+            // Extract detailed validation errors from meta if present
+            const errors = telnyxResult.errors || [];
+            const validationErrors = errors.map((e: any) => ({
+              code: e.code,
+              title: e.title,
+              detail: e.detail,
+              meta: e.meta
+            }));
+            console.error("[Toll-Free Compliance] Validation details:", JSON.stringify(validationErrors, null, 2));
             return res.status(telnyxResponse.status).json({
               message: telnyxResult.errors?.[0]?.detail || "Failed to submit toll-free verification to Telnyx",
               telnyxError: telnyxResult,
+              validationErrors,
             });
           }
           
