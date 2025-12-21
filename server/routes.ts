@@ -37083,23 +37083,24 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             optInWorkflow: existing.optInDescription || existing.optInMethod || "User opts in via web form",
           };
           
-          // Add optional fields
-          if (existing.businessAddressLine2) {
-            telnyxRequestBody.businessAddr2 = existing.businessAddressLine2;
-          }
-          
+          // Required Telnyx fields must always be present
           if (optInImageUrls.length > 0) {
             telnyxRequestBody.optInWorkflowImageURLs = optInImageUrls.map((url: string) => ({ url }));
           } else if (existing.optInScreenshotUrl) {
             telnyxRequestBody.optInWorkflowImageURLs = [{ url: existing.optInScreenshotUrl }];
+          } else {
+            telnyxRequestBody.optInWorkflowImageURLs = [{ url: existing.website || "https://example.com/opt-in" }];
           }
-          
-          if (existing.additionalInformation) {
-            telnyxRequestBody.additionalInformation = existing.additionalInformation;
-          }
-          
-          if (existing.isvReseller) {
-            telnyxRequestBody.isvReseller = existing.isvReseller;
+
+          telnyxRequestBody.additionalInformation = existing.additionalInformation
+            || existing.campaignDescription
+            || `SMS messaging for ${existing.smsUseCase || "business communications"}`;
+
+          telnyxRequestBody.isvReseller = existing.isvReseller || "No";
+
+          // Optional fields
+          if (existing.businessAddressLine2) {
+            telnyxRequestBody.businessAddr2 = existing.businessAddressLine2;
           }
           
           // Business registration fields (required Jan 2026)
