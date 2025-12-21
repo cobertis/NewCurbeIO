@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation } from "wouter";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -5,8 +6,11 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { LoadingSpinner } from "@/components/loading-spinner";
-import { Plus, AlertTriangle, ExternalLink, Phone, Flag, ChevronRight, Mail, Settings, Building, CreditCard, Users, Zap, Plug, User as UserIcon } from "lucide-react";
+import { Plus, AlertTriangle, ExternalLink, Phone, Flag, ChevronRight, Mail, Settings, Building, CreditCard, Users, Zap, Plug, User as UserIcon, X } from "lucide-react";
 import { SiWhatsapp, SiFacebook, SiInstagram } from "react-icons/si";
 import { format, addDays } from "date-fns";
 import { cn } from "@/lib/utils";
@@ -22,6 +26,28 @@ interface SmsVoiceNumber {
   ownerName: string | null;
   complianceStatus: string | null;
   complianceApplicationId: string | null;
+}
+
+interface ComplianceApplication {
+  id: string;
+  brandId: number | null;
+  businessName: string | null;
+  brandDisplayName: string | null;
+  businessType: string | null;
+  businessVertical: string | null;
+  website: string | null;
+  businessAddress: string | null;
+  businessCity: string | null;
+  businessState: string | null;
+  businessZip: string | null;
+  contactFirstName: string | null;
+  contactLastName: string | null;
+  contactPhone: string | null;
+  contactEmail: string | null;
+  status: string;
+  useCase: string | null;
+  campaignDescription: string | null;
+  sampleMessages: string[] | null;
 }
 
 function getComplianceStatusBadge(status: string | null) {
@@ -58,12 +84,19 @@ function getComplianceStatusBadge(status: string | null) {
 
 export default function SmsVoice() {
   const [, setLocation] = useLocation();
+  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
 
   const { data: numbersData, isLoading } = useQuery<{ numbers: SmsVoiceNumber[] }>({
     queryKey: ["/api/sms-voice/numbers"],
   });
 
+  const { data: applicationData, isLoading: isLoadingApplication } = useQuery<{ application: ComplianceApplication }>({
+    queryKey: ["/api/compliance/applications", selectedApplicationId],
+    enabled: !!selectedApplicationId,
+  });
+
   const numbers = numbersData?.numbers || [];
+  const application = applicationData?.application;
 
   const menuItems = {
     channels: [
@@ -274,7 +307,7 @@ export default function SmsVoice() {
                                 variant="ghost"
                                 size="sm"
                                 data-testid={`button-view-form-${number.id}`}
-                                onClick={() => setLocation(`/compliance/info/${number.complianceApplicationId}`)}
+                                onClick={() => setSelectedApplicationId(number.complianceApplicationId)}
                               >
                                 View form
                                 <ChevronRight className="h-4 w-4 ml-1" />
@@ -354,6 +387,141 @@ export default function SmsVoice() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={!!selectedApplicationId} onOpenChange={(open) => !open && setSelectedApplicationId(null)}>
+        <DialogContent className="max-w-2xl max-h-[85vh]" data-testid="dialog-view-form">
+          <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+            <DialogTitle className="text-lg font-semibold">Toll-free verification form</DialogTitle>
+          </DialogHeader>
+          
+          {isLoadingApplication ? (
+            <div className="flex items-center justify-center py-8">
+              <LoadingSpinner message="Loading application details..." />
+            </div>
+          ) : application ? (
+            <ScrollArea className="max-h-[calc(85vh-120px)] pr-4">
+              <div className="space-y-6">
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Brand details</h3>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <span className="text-slate-500 dark:text-slate-400">Brand ID</span>
+                      <span className="text-slate-900 dark:text-slate-100" data-testid="text-brand-id">
+                        {application.brandId || "—"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <span className="text-slate-500 dark:text-slate-400">Legal organization name</span>
+                      <span className="text-slate-900 dark:text-slate-100" data-testid="text-business-name">
+                        {application.businessName || "—"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <span className="text-slate-500 dark:text-slate-400">DBA or Brand name</span>
+                      <span className="text-slate-900 dark:text-slate-100" data-testid="text-brand-display-name">
+                        {application.brandDisplayName || "—"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <span className="text-slate-500 dark:text-slate-400">Organization type</span>
+                      <span className="text-slate-900 dark:text-slate-100" data-testid="text-business-type">
+                        {application.businessType || "—"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <span className="text-slate-500 dark:text-slate-400">Organization website</span>
+                      <span className="text-slate-900 dark:text-slate-100" data-testid="text-website">
+                        {application.website ? (
+                          <a href={application.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                            {application.website}
+                          </a>
+                        ) : "—"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <span className="text-slate-500 dark:text-slate-400">Vertical type</span>
+                      <span className="text-slate-900 dark:text-slate-100" data-testid="text-vertical">
+                        {application.businessVertical || "—"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <span className="text-slate-500 dark:text-slate-400">Organization address</span>
+                      <span className="text-slate-900 dark:text-slate-100" data-testid="text-address">
+                        {[
+                          application.businessAddress,
+                          application.businessCity,
+                          application.businessState,
+                          application.businessZip
+                        ].filter(Boolean).join(", ") || "—"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <span className="text-slate-500 dark:text-slate-400">Contact person</span>
+                      <span className="text-slate-900 dark:text-slate-100" data-testid="text-contact-name">
+                        {[application.contactFirstName, application.contactLastName].filter(Boolean).join(" ") || "—"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <span className="text-slate-500 dark:text-slate-400">Contact phone number</span>
+                      <span className="text-slate-900 dark:text-slate-100" data-testid="text-contact-phone">
+                        {application.contactPhone || "—"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <span className="text-slate-500 dark:text-slate-400">Contact e-mail address</span>
+                      <span className="text-slate-900 dark:text-slate-100" data-testid="text-contact-email">
+                        {application.contactEmail || "—"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <span className="text-slate-500 dark:text-slate-400">Status</span>
+                      <span data-testid="text-status">
+                        {getComplianceStatusBadge(application.status)}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <Separator />
+
+                <div>
+                  <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Campaign details</h3>
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <span className="text-slate-500 dark:text-slate-400">Use case</span>
+                      <span className="text-slate-900 dark:text-slate-100" data-testid="text-use-case">
+                        {application.useCase || "—"}
+                      </span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      <span className="text-slate-500 dark:text-slate-400">Campaign description</span>
+                      <span className="text-slate-900 dark:text-slate-100" data-testid="text-campaign-description">
+                        {application.campaignDescription || "—"}
+                      </span>
+                    </div>
+                    {application.sampleMessages && Array.isArray(application.sampleMessages) && application.sampleMessages.length > 0 && (
+                      <>
+                        {application.sampleMessages.map((message, index) => (
+                          <div key={index} className="grid grid-cols-2 gap-2 text-sm">
+                            <span className="text-slate-500 dark:text-slate-400">Sample message {index + 1}</span>
+                            <span className="text-slate-900 dark:text-slate-100" data-testid={`text-sample-message-${index + 1}`}>
+                              {message || "—"}
+                            </span>
+                          </div>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </ScrollArea>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              Application not found
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
