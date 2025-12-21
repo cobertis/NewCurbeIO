@@ -106,6 +106,12 @@ import ComplianceCampaign from "@/pages/compliance-campaign";
 import ComplianceReview from "@/pages/compliance-review";
 import ComplianceSuccess from "@/pages/compliance-success";
 import SmsVoice from "@/pages/sms-voice";
+import SmsVoiceNumbers from "@/pages/integrations/sms-voice-numbers";
+import SmsVoiceTollFree from "@/pages/integrations/sms-voice-toll-free";
+import SmsVoice10dlc from "@/pages/integrations/sms-voice-10dlc";
+import SmsVoiceSenderSettings from "@/pages/integrations/sms-voice-sender-settings";
+import SmsVoiceVirtualPbx from "@/pages/integrations/sms-voice-virtual-pbx";
+import SmsVoiceCpaas from "@/pages/integrations/sms-voice-cpaas";
 import NotFound from "@/pages/not-found";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -1754,9 +1760,54 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/settings/sms-voice">
+        <Redirect to="/integrations/sms-voice" />
+      </Route>
+      <Route path="/integrations/sms-voice">
         <ProtectedRoute>
           <DashboardLayout>
             <SmsVoice />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/integrations/sms-voice/numbers">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SmsVoiceNumbers />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/integrations/sms-voice/toll-free-verification">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SmsVoiceTollFree />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/integrations/sms-voice/10dlc-verification">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SmsVoice10dlc />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/integrations/sms-voice/sender-settings">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SmsVoiceSenderSettings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/integrations/sms-voice/virtual-pbx">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SmsVoiceVirtualPbx />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/integrations/sms-voice/cpaas">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SmsVoiceCpaas />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
