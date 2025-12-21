@@ -357,7 +357,7 @@ export default function ComplianceCampaign() {
       formData.append("file", file);
       formData.append("folder", "compliance");
       
-      const response = await fetch("/api/upload", {
+      const response = await fetch("/api/compliance/upload", {
         method: "POST",
         body: formData,
         credentials: "include",

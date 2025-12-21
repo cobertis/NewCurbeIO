@@ -37036,5 +37036,63 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
 
+  // POST /api/compliance/upload - Upload file for compliance applications
+  app.post("/api/compliance/upload", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'compliance');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      const complianceStorage = multer.diskStorage({
+        destination: (req, file, cb) => {
+          cb(null, uploadsDir);
+        },
+        filename: (req, file, cb) => {
+          const uniqueSuffix = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
+          const ext = path.extname(file.originalname);
+          cb(null, `compliance-${uniqueSuffix}${ext}`);
+        },
+      });
+      const complianceUpload = multer({
+        storage: complianceStorage,
+        limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+        fileFilter: (req, file, cb) => {
+          const allowed = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+          if (!allowed.includes(file.mimetype)) {
+            return cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and PDF allowed.'));
+          }
+          cb(null, true);
+        },
+      });
+      await new Promise<void>((resolve, reject) => {
+        complianceUpload.single('file')(req, res, (err: any) => {
+          if (err) {
+            if (err instanceof multer.MulterError) {
+              if (err.code === 'LIMIT_FILE_SIZE') {
+                return reject(new Error('File size exceeds 10MB limit'));
+              }
+              return reject(new Error(`Upload error: ${err.message}`));
+            }
+            return reject(err);
+          }
+          resolve();
+        });
+      });
+      const file = (req as any).file;
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      const url = `/uploads/compliance/${file.filename}`;
+      res.json({ url });
+    } catch (error: any) {
+      console.error("[Compliance Upload] Error:", error);
+      res.status(500).json({ message: error.message || "Upload failed" });
+    }
+  });
+
   return httpServer;
 }
