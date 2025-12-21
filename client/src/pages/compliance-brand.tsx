@@ -505,42 +505,17 @@ export default function ComplianceBrand() {
             <div key={step.id} className="flex items-center flex-1 last:flex-none">
               <div className="flex flex-col items-center gap-2">
                 <div
-                  className={cn(
-                    "w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold border-2",
-                    index < currentStep
-                      ? "bg-white dark:bg-gray-900 border-blue-600 text-blue-600"
-                      : index === currentStep
-                      ? "bg-blue-600 border-blue-600 text-white"
-                      : "bg-white dark:bg-gray-800 border-gray-300 dark:border-gray-600 text-gray-400 dark:text-gray-500"
-                  )}
+                  className="w-10 h-10 rounded-full flex items-center justify-center text-sm font-semibold border-2 bg-blue-600 border-blue-600 text-white"
                   data-testid={`step-indicator-${index + 1}`}
                 >
-                  {index < currentStep ? (
-                    <Check className="w-5 h-5" />
-                  ) : (
-                    index + 1
-                  )}
+                  {index + 1}
                 </div>
-                <span
-                  className={cn(
-                    "text-sm font-medium whitespace-nowrap",
-                    index <= currentStep
-                      ? "text-gray-900 dark:text-gray-100"
-                      : "text-gray-400 dark:text-gray-500"
-                  )}
-                >
+                <span className="text-sm font-medium whitespace-nowrap text-gray-900 dark:text-gray-100">
                   {step.label}
                 </span>
               </div>
               {index < steps.length - 1 && (
-                <div
-                  className={cn(
-                    "flex-1 h-0.5 mx-4 mt-[-24px]",
-                    index < currentStep
-                      ? "bg-blue-600"
-                      : "bg-gray-300 dark:bg-gray-600"
-                  )}
-                />
+                <div className="flex-1 h-0.5 mx-4 mt-[-24px] bg-blue-600" />
               )}
             </div>
           ))}
