@@ -37096,7 +37096,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
                 "Content-Type": "application/json",
                 "Accept": "application/json",
                 "Authorization": `Bearer ${telnyxApiKey}`,
-                "x-telnyx-managed-account-id": managedAccountId,
+                "x-managed-account-id": managedAccountId,
               },
               body: JSON.stringify(telnyxRequestBody),
             }
