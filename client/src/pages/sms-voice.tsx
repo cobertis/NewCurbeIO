@@ -35,28 +35,28 @@ interface SmsVoiceNumber {
   ownerName: string | null;
   complianceStatus: string | null;
   complianceApplicationId: string | null;
+  telnyxVerificationRequestId: string | null;
 }
 
-interface ComplianceApplication {
+interface TelnyxVerificationRequest {
   id: string;
-  brandId: number | null;
-  businessName: string | null;
-  brandDisplayName: string | null;
-  businessType: string | null;
-  businessVertical: string | null;
-  website: string | null;
-  businessAddress: string | null;
-  businessCity: string | null;
-  businessState: string | null;
-  businessZip: string | null;
-  contactFirstName: string | null;
-  contactLastName: string | null;
-  contactPhone: string | null;
-  contactEmail: string | null;
-  status: string;
-  useCase: string | null;
-  campaignDescription: string | null;
-  sampleMessages: string[] | null;
+  business_name?: string;
+  brand_display_name?: string;
+  business_type?: string;
+  business_vertical?: string;
+  website_url?: string;
+  street_address?: string;
+  city?: string;
+  region?: string;
+  postal_code?: string;
+  first_name?: string;
+  last_name?: string;
+  contact_phone?: string;
+  contact_email?: string;
+  verification_status?: string;
+  use_case?: string;
+  campaign_description?: string;
+  sample_messages?: string[];
 }
 
 function getComplianceStatusBadge(status: string | null) {
@@ -93,19 +93,19 @@ function getComplianceStatusBadge(status: string | null) {
 
 export default function SmsVoice() {
   const [, setLocation] = useLocation();
-  const [selectedApplicationId, setSelectedApplicationId] = useState<string | null>(null);
+  const [selectedVerificationId, setSelectedVerificationId] = useState<string | null>(null);
 
   const { data: numbersData, isLoading } = useQuery<{ numbers: SmsVoiceNumber[] }>({
     queryKey: ["/api/sms-voice/numbers"],
   });
 
-  const { data: applicationData, isLoading: isLoadingApplication } = useQuery<{ application: ComplianceApplication }>({
-    queryKey: [`/api/compliance/applications/${selectedApplicationId}`],
-    enabled: !!selectedApplicationId,
+  const { data: verificationData, isLoading: isLoadingVerification } = useQuery<{ verification: TelnyxVerificationRequest }>({
+    queryKey: ["/api/telnyx/verification-request", selectedVerificationId],
+    enabled: !!selectedVerificationId,
   });
 
   const numbers = numbersData?.numbers || [];
-  const application = applicationData?.application;
+  const verification = verificationData?.verification;
 
   const menuItems = {
     channels: [
@@ -323,12 +323,12 @@ export default function SmsVoice() {
                             {nextRenewal ? format(nextRenewal, "MMM dd, yyyy") : "—"}
                           </TableCell>
                           <TableCell className="text-right">
-                            {number.complianceApplicationId ? (
+                            {number.telnyxVerificationRequestId ? (
                               <Button
                                 variant="ghost"
                                 size="sm"
                                 data-testid={`button-view-form-${number.id}`}
-                                onClick={() => setSelectedApplicationId(number.complianceApplicationId)}
+                                onClick={() => setSelectedVerificationId(number.telnyxVerificationRequestId)}
                               >
                                 View form
                                 <ChevronRight className="h-4 w-4 ml-1" />
@@ -409,52 +409,52 @@ export default function SmsVoice() {
         </Card>
       </div>
 
-      <Dialog open={!!selectedApplicationId} onOpenChange={(open) => !open && setSelectedApplicationId(null)}>
+      <Dialog open={!!selectedVerificationId} onOpenChange={(open) => !open && setSelectedVerificationId(null)}>
         <DialogContent className="max-w-2xl max-h-[85vh]" data-testid="dialog-view-form">
           <DialogHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
             <DialogTitle className="text-lg font-semibold">Toll-free verification form</DialogTitle>
           </DialogHeader>
           
-          {isLoadingApplication ? (
+          {isLoadingVerification ? (
             <div className="flex items-center justify-center py-8">
-              <LoadingSpinner message="Loading application details..." />
+              <LoadingSpinner message="Loading verification details..." />
             </div>
-          ) : application ? (
+          ) : verification ? (
             <ScrollArea className="max-h-[calc(85vh-120px)] pr-4">
               <div className="space-y-6">
                 <div>
                   <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Brand details</h3>
                   <div className="space-y-3">
                     <div className="grid grid-cols-2 gap-2 text-sm">
-                      <span className="text-slate-500 dark:text-slate-400">Brand ID</span>
+                      <span className="text-slate-500 dark:text-slate-400">Verification ID</span>
                       <span className="text-slate-900 dark:text-slate-100" data-testid="text-brand-id">
-                        {application.brandId || "—"}
+                        {verification.id || "—"}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <span className="text-slate-500 dark:text-slate-400">Legal organization name</span>
                       <span className="text-slate-900 dark:text-slate-100" data-testid="text-business-name">
-                        {application.businessName || "—"}
+                        {verification.business_name || "—"}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <span className="text-slate-500 dark:text-slate-400">DBA or Brand name</span>
                       <span className="text-slate-900 dark:text-slate-100" data-testid="text-brand-display-name">
-                        {application.brandDisplayName || "—"}
+                        {verification.brand_display_name || "—"}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <span className="text-slate-500 dark:text-slate-400">Organization type</span>
                       <span className="text-slate-900 dark:text-slate-100" data-testid="text-business-type">
-                        {application.businessType || "—"}
+                        {verification.business_type || "—"}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <span className="text-slate-500 dark:text-slate-400">Organization website</span>
                       <span className="text-slate-900 dark:text-slate-100" data-testid="text-website">
-                        {application.website ? (
-                          <a href={application.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
-                            {application.website}
+                        {verification.website_url ? (
+                          <a href={verification.website_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">
+                            {verification.website_url}
                           </a>
                         ) : "—"}
                       </span>
@@ -462,42 +462,42 @@ export default function SmsVoice() {
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <span className="text-slate-500 dark:text-slate-400">Vertical type</span>
                       <span className="text-slate-900 dark:text-slate-100" data-testid="text-vertical">
-                        {application.businessVertical || "—"}
+                        {verification.business_vertical || "—"}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <span className="text-slate-500 dark:text-slate-400">Organization address</span>
                       <span className="text-slate-900 dark:text-slate-100" data-testid="text-address">
                         {[
-                          application.businessAddress,
-                          application.businessCity,
-                          application.businessState,
-                          application.businessZip
+                          verification.street_address,
+                          verification.city,
+                          verification.region,
+                          verification.postal_code
                         ].filter(Boolean).join(", ") || "—"}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <span className="text-slate-500 dark:text-slate-400">Contact person</span>
                       <span className="text-slate-900 dark:text-slate-100" data-testid="text-contact-name">
-                        {[application.contactFirstName, application.contactLastName].filter(Boolean).join(" ") || "—"}
+                        {[verification.first_name, verification.last_name].filter(Boolean).join(" ") || "—"}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <span className="text-slate-500 dark:text-slate-400">Contact phone number</span>
                       <span className="text-slate-900 dark:text-slate-100" data-testid="text-contact-phone">
-                        {application.contactPhone || "—"}
+                        {verification.contact_phone || "—"}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <span className="text-slate-500 dark:text-slate-400">Contact e-mail address</span>
                       <span className="text-slate-900 dark:text-slate-100" data-testid="text-contact-email">
-                        {application.contactEmail || "—"}
+                        {verification.contact_email || "—"}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <span className="text-slate-500 dark:text-slate-400">Status</span>
                       <span data-testid="text-status">
-                        {getComplianceStatusBadge(application.status)}
+                        {getComplianceStatusBadge(verification.verification_status || null)}
                       </span>
                     </div>
                   </div>
@@ -511,18 +511,18 @@ export default function SmsVoice() {
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <span className="text-slate-500 dark:text-slate-400">Use case</span>
                       <span className="text-slate-900 dark:text-slate-100" data-testid="text-use-case">
-                        {application.useCase || "—"}
+                        {verification.use_case || "—"}
                       </span>
                     </div>
                     <div className="grid grid-cols-2 gap-2 text-sm">
                       <span className="text-slate-500 dark:text-slate-400">Campaign description</span>
                       <span className="text-slate-900 dark:text-slate-100" data-testid="text-campaign-description">
-                        {application.campaignDescription || "—"}
+                        {verification.campaign_description || "—"}
                       </span>
                     </div>
-                    {application.sampleMessages && Array.isArray(application.sampleMessages) && application.sampleMessages.length > 0 && (
+                    {verification.sample_messages && Array.isArray(verification.sample_messages) && verification.sample_messages.length > 0 && (
                       <>
-                        {application.sampleMessages.map((message, index) => (
+                        {verification.sample_messages.map((message, index) => (
                           <div key={index} className="grid grid-cols-2 gap-2 text-sm">
                             <span className="text-slate-500 dark:text-slate-400">Sample message {index + 1}</span>
                             <span className="text-slate-900 dark:text-slate-100" data-testid={`text-sample-message-${index + 1}`}>
@@ -538,7 +538,7 @@ export default function SmsVoice() {
             </ScrollArea>
           ) : (
             <div className="text-center py-8 text-muted-foreground">
-              Application not found
+              Verification data not found
             </div>
           )}
         </DialogContent>

@@ -29785,6 +29785,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
               id: complianceApplications.id,
               selectedPhoneNumber: complianceApplications.selectedPhoneNumber,
               status: complianceApplications.status,
+              telnyxVerificationRequestId: complianceApplications.telnyxVerificationRequestId,
             })
             .from(complianceApplications)
             .where(
@@ -29797,7 +29798,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       // Map compliance status to phone numbers
       const complianceMap = new Map(
-        complianceApps.map(app => [app.selectedPhoneNumber, { id: app.id, status: app.status }])
+        complianceApps.map(app => [app.selectedPhoneNumber, { id: app.id, status: app.status, telnyxVerificationRequestId: app.telnyxVerificationRequestId }])
       );
       
       const numbersWithCompliance = phoneNumbers.map(num => ({
@@ -29813,12 +29814,84 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           : num.ownerFirstName || num.ownerLastName || companyName,
         complianceStatus: complianceMap.get(num.phoneNumber)?.status || null,
         complianceApplicationId: complianceMap.get(num.phoneNumber)?.id || null,
+        telnyxVerificationRequestId: complianceMap.get(num.phoneNumber)?.telnyxVerificationRequestId || null,
       }));
       
       res.json({ numbers: numbersWithCompliance });
     } catch (error) {
       console.error("[SMS-Voice] Error fetching numbers:", error);
       res.status(500).json({ message: "Failed to fetch phone numbers" });
+    }
+  });
+
+
+  // GET /api/telnyx/verification-request/:id - Get verification request from Telnyx API
+  app.get("/api/telnyx/verification-request/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      if (!id) {
+        return res.status(400).json({ message: "Verification request ID is required" });
+      }
+      
+      const apiKey = await getTelnyxMasterApiKey();
+      
+      const response = await fetch(`https://api.telnyx.com/v2/verification_requests/${id}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[Telnyx] Error fetching verification request:", errorText);
+        return res.status(response.status).json({ 
+          message: "Failed to fetch verification request from Telnyx",
+          error: errorText 
+        });
+      }
+      
+      const data = await response.json();
+      const raw = data.data || {};
+      
+      // Flatten the Telnyx response to match frontend interface
+      // Telnyx API has nested structures under business_profile, traffic_profile, etc.
+      const businessProfile = raw.business_profile || {};
+      const trafficProfile = raw.traffic_profile || {};
+      const businessAddress = businessProfile.business_address || {};
+      
+      const flattened = {
+        id: raw.id,
+        verification_status: raw.status || raw.verification_status,
+        business_name: businessProfile.business_name || raw.business_name,
+        brand_display_name: businessProfile.dba || businessProfile.brand_display_name || raw.brand_display_name,
+        business_type: businessProfile.business_type || raw.business_type,
+        business_vertical: businessProfile.business_vertical || trafficProfile.vertical || raw.business_vertical,
+        website_url: businessProfile.website_url || raw.website_url,
+        street_address: businessAddress.street_address || businessAddress.address_line_1 || raw.street_address,
+        city: businessAddress.city || raw.city,
+        region: businessAddress.region || businessAddress.state || raw.region,
+        postal_code: businessAddress.postal_code || businessAddress.zip || raw.postal_code,
+        first_name: businessProfile.first_name || raw.first_name,
+        last_name: businessProfile.last_name || raw.last_name,
+        contact_phone: businessProfile.phone_number || businessProfile.contact_phone || raw.contact_phone,
+        contact_email: businessProfile.email || businessProfile.contact_email || raw.contact_email,
+        use_case: trafficProfile.use_case || raw.use_case,
+        campaign_description: trafficProfile.description || trafficProfile.campaign_description || raw.campaign_description,
+        sample_messages: trafficProfile.sample_messages || raw.sample_messages || [],
+      };
+      
+      res.json({ verification: flattened });
+    } catch (error: any) {
+      console.error("[Telnyx] Error fetching verification request:", error);
+      res.status(500).json({ message: "Failed to fetch verification request" });
     }
   });
 
