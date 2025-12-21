@@ -1461,7 +1461,9 @@ function Router() {
       </Route>
       <Route path="/compliance/success/:id">
         <ProtectedRoute>
-          <ComplianceSuccess />
+          <DashboardLayout>
+            <ComplianceSuccess />
+          </DashboardLayout>
         </ProtectedRoute>
       </Route>
       <Route path="/dashboard">
