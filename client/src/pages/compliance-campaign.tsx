@@ -22,7 +22,20 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Check, ArrowLeft, ChevronDown, Plus, Trash2, Upload } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { Check, ArrowLeft, ChevronDown, Plus, Trash2, Upload, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -37,19 +50,49 @@ const steps = [
 ];
 
 const smsUseCaseOptions = [
-  { value: "2FA", label: "2FA / Authentication" },
-  { value: "ACCOUNT_NOTIFICATIONS", label: "Account Notifications" },
-  { value: "CUSTOMER_CARE", label: "Customer Care" },
-  { value: "DELIVERY_NOTIFICATIONS", label: "Delivery Notifications" },
-  { value: "FRAUD_ALERTS", label: "Fraud Alert Messaging" },
-  { value: "HIGHER_EDUCATION", label: "Higher Education" },
-  { value: "LOW_VOLUME", label: "Low Volume Mixed" },
-  { value: "MARKETING", label: "Marketing" },
+  { value: "2FA", label: "2FA" },
+  { value: "APP_NOTIFICATIONS", label: "App Notifications" },
+  { value: "APPOINTMENTS", label: "Appointments" },
+  { value: "AUCTIONS", label: "Auctions" },
+  { value: "AUTO_REPAIR_SERVICES", label: "Auto Repair Services" },
+  { value: "BANK_TRANSFERS", label: "Bank Transfers" },
+  { value: "BILLING", label: "Billing" },
+  { value: "BOOKING_CONFIRMATIONS", label: "Booking Confirmations" },
+  { value: "BUSINESS_UPDATES", label: "Business Updates" },
+  { value: "COVID_19_ALERTS", label: "COVID-19 Alerts" },
+  { value: "CAREER_TRAINING", label: "Career Training" },
+  { value: "CHATBOT", label: "Chatbot" },
+  { value: "CONVERSATIONAL_ALERTS", label: "Conversational / Alerts" },
+  { value: "COURIER_SERVICES", label: "Courier Services & Deliveries" },
+  { value: "EMERGENCY_ALERTS", label: "Emergency Alerts" },
+  { value: "EVENTS_PLANNING", label: "Events & Planning" },
+  { value: "FINANCIAL_SERVICES", label: "Financial Services" },
+  { value: "FRAUD_ALERTS", label: "Fraud Alerts" },
+  { value: "FUNDRAISING", label: "Fundraising" },
+  { value: "GENERAL_MARKETING", label: "General Marketing" },
+  { value: "GENERAL_SCHOOL_UPDATES", label: "General School Updates" },
+  { value: "HR_STAFFING", label: "HR / Staffing" },
+  { value: "HEALTHCARE_ALERTS", label: "Healthcare Alerts" },
+  { value: "HOUSING_COMMUNITY_UPDATES", label: "Housing Community Updates" },
+  { value: "INSURANCE_SERVICES", label: "Insurance Services" },
+  { value: "JOB_DISPATCH", label: "Job Dispatch" },
+  { value: "LEGAL_SERVICES", label: "Legal Services" },
   { value: "MIXED", label: "Mixed" },
+  { value: "MOTIVATIONAL_REMINDERS", label: "Motivational Reminders" },
+  { value: "NOTARY_NOTIFICATIONS", label: "Notary Notifications" },
+  { value: "ORDER_NOTIFICATIONS", label: "Order Notifications" },
   { value: "POLITICAL", label: "Political" },
-  { value: "POLLING_VOTING", label: "Polling and Voting" },
-  { value: "PUBLIC_SERVICE", label: "Public Service Announcement" },
-  { value: "SECURITY_ALERTS", label: "Security Alerts" },
+  { value: "PUBLIC_WORKS", label: "Public Works" },
+  { value: "REAL_ESTATE_SERVICES", label: "Real Estate Services" },
+  { value: "RELIGIOUS_SERVICES", label: "Religious Services" },
+  { value: "REPAIR_DIAGNOSTICS_ALERTS", label: "Repair and Diagnostics Alerts" },
+  { value: "REWARDS_PROGRAM", label: "Rewards Program" },
+  { value: "SURVEYS", label: "Surveys" },
+  { value: "SYSTEM_ALERTS", label: "System Alerts" },
+  { value: "VOTING_REMINDERS", label: "Voting Reminders" },
+  { value: "WAITLIST_ALERTS", label: "Waitlist Alerts" },
+  { value: "WEBINAR_REMINDERS", label: "Webinar Reminders" },
+  { value: "WORKSHOP_ALERTS", label: "Workshop Alerts" },
 ];
 
 const estimatedVolumeOptions = [
@@ -97,6 +140,7 @@ export default function ComplianceCampaign() {
   const [step2Complete, setStep2Complete] = useState(false);
   const [step3Complete, setStep3Complete] = useState(false);
   const [uploadingFile, setUploadingFile] = useState(false);
+  const [useCaseOpen, setUseCaseOpen] = useState(false);
   
   const { data: application, isLoading } = useQuery<ComplianceApplication>({
     queryKey: [`/api/compliance/applications/${applicationId}`],
@@ -476,21 +520,50 @@ export default function ComplianceCampaign() {
                     <Label className="text-gray-700 dark:text-gray-300">
                       SMS use case <span className="text-red-500">*</span>
                     </Label>
-                    <Select
-                      value={form.watch("smsUseCase")}
-                      onValueChange={(value) => form.setValue("smsUseCase", value)}
-                    >
-                      <SelectTrigger className="mt-1.5" data-testid="select-sms-use-case">
-                        <SelectValue placeholder="- Select SMS use case -" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {smsUseCaseOptions.map((option) => (
-                          <SelectItem key={option.value} value={option.value}>
-                            {option.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={useCaseOpen} onOpenChange={setUseCaseOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={useCaseOpen}
+                          className="w-full justify-between mt-1.5 font-normal"
+                          data-testid="select-sms-use-case"
+                        >
+                          {form.watch("smsUseCase")
+                            ? smsUseCaseOptions.find((option) => option.value === form.watch("smsUseCase"))?.label
+                            : "- Select SMS use case -"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Search use case..." />
+                          <CommandList>
+                            <CommandEmpty>No use case found.</CommandEmpty>
+                            <CommandGroup>
+                              {smsUseCaseOptions.map((option) => (
+                                <CommandItem
+                                  key={option.value}
+                                  value={option.label}
+                                  onSelect={() => {
+                                    form.setValue("smsUseCase", option.value);
+                                    setUseCaseOpen(false);
+                                  }}
+                                >
+                                  <Check
+                                    className={cn(
+                                      "mr-2 h-4 w-4",
+                                      form.watch("smsUseCase") === option.value ? "opacity-100" : "opacity-0"
+                                    )}
+                                  />
+                                  {option.label}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                     {form.formState.errors.smsUseCase && (
                       <p className="text-red-500 text-sm mt-1">{form.formState.errors.smsUseCase.message}</p>
                     )}
