@@ -416,7 +416,35 @@ export default function ComplianceCampaign() {
 
   const handleSubmit = async () => {
     const isValid = await form.trigger();
-    if (!isValid) return;
+    if (!isValid) {
+      const errors = form.formState.errors;
+      const errorFields = Object.keys(errors);
+      if (errorFields.length > 0) {
+        const step1Fields = ["smsUseCase", "messageAudience", "messageContent", "estimatedVolume", "canadianTraffic", "isvReseller"];
+        const step2Fields = ["optInDescription", "optInEvidence"];
+        const step3Fields = ["sampleMessages"];
+        
+        const hasStep1Errors = errorFields.some(f => step1Fields.includes(f));
+        const hasStep2Errors = errorFields.some(f => step2Fields.includes(f));
+        const hasStep3Errors = errorFields.some(f => step3Fields.includes(f));
+        
+        let errorStep = "";
+        if (hasStep1Errors) errorStep = "Step 1";
+        else if (hasStep2Errors) errorStep = "Step 2";
+        else if (hasStep3Errors) errorStep = "Step 3";
+        
+        toast({
+          title: "Please complete all required fields",
+          description: errorStep ? `Check ${errorStep} for missing information` : "Some required fields are missing",
+          variant: "destructive",
+        });
+        
+        if (hasStep1Errors) setOpenStep(1);
+        else if (hasStep2Errors) setOpenStep(2);
+        else if (hasStep3Errors) setOpenStep(3);
+      }
+      return;
+    }
     
     try {
       const values = form.getValues();
@@ -910,7 +938,6 @@ export default function ComplianceCampaign() {
           <Button
             className="bg-blue-600 hover:bg-blue-700"
             onClick={handleSubmit}
-            disabled={!allStepsComplete}
             data-testid="button-submit"
           >
             Continue to review
