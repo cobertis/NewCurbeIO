@@ -123,7 +123,7 @@ export default function ComplianceReview() {
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setLocation(`/compliance/choose-number`)}
+                onClick={() => setLocation(`/compliance/campaign/${applicationId}`)}
                 data-testid="button-edit-summary"
               >
                 <Pencil className="w-4 h-4 mr-2" />
