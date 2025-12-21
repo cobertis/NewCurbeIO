@@ -105,6 +105,7 @@ import ComplianceBrand from "@/pages/compliance-brand";
 import ComplianceCampaign from "@/pages/compliance-campaign";
 import ComplianceReview from "@/pages/compliance-review";
 import ComplianceSuccess from "@/pages/compliance-success";
+import SmsVoice from "@/pages/sms-voice";
 import NotFound from "@/pages/not-found";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -1749,6 +1750,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <Settings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/sms-voice">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SmsVoice />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

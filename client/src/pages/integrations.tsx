@@ -1677,7 +1677,7 @@ export default function IntegrationsPage() {
 
   const menuItems = {
     channels: [
-      { label: "SMS & Voice", href: "/phone-system", icon: Phone, active: false },
+      { label: "SMS & Voice", href: "/settings/sms-voice", icon: Phone, active: false },
       { label: "Email", href: "/settings/email", icon: Mail, active: false },
       { label: "WhatsApp", href: "#whatsapp", icon: SiWhatsapp, active: false },
       { label: "Facebook", href: "#facebook", icon: SiFacebook, active: false },

@@ -29743,6 +29743,78 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       res.status(500).json({ message: "Failed to delete config" });
     }
   });
+  // GET /api/sms-voice/numbers - Get toll-free numbers with compliance status for SMS & Voice page
+  app.get("/api/sms-voice/numbers", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user as User;
+      const companyId = currentUser.companyId;
+      
+      if (!companyId) {
+        return res.json({ numbers: [] });
+      }
+      
+      // Get all phone numbers for the company with owner info
+      const phoneNumbers = await db
+        .select({
+          id: telnyxPhoneNumbers.id,
+          phoneNumber: telnyxPhoneNumbers.phoneNumber,
+          displayName: telnyxPhoneNumbers.displayName,
+          status: telnyxPhoneNumbers.status,
+          monthlyFee: telnyxPhoneNumbers.monthlyFee,
+          purchasedAt: telnyxPhoneNumbers.purchasedAt,
+          ownerUserId: telnyxPhoneNumbers.ownerUserId,
+          ownerFirstName: users.firstName,
+          ownerLastName: users.lastName,
+        })
+        .from(telnyxPhoneNumbers)
+        .leftJoin(users, eq(telnyxPhoneNumbers.ownerUserId, users.id))
+        .where(eq(telnyxPhoneNumbers.companyId, companyId));
+      
+      // Get compliance applications for these numbers
+      const phoneNumberList = phoneNumbers.map(p => p.phoneNumber);
+      const complianceApps = phoneNumberList.length > 0 
+        ? await db
+            .select({
+              id: complianceApplications.id,
+              selectedPhoneNumber: complianceApplications.selectedPhoneNumber,
+              status: complianceApplications.status,
+            })
+            .from(complianceApplications)
+            .where(
+              and(
+                eq(complianceApplications.companyId, companyId),
+                inArray(complianceApplications.selectedPhoneNumber, phoneNumberList)
+              )
+            )
+        : [];
+      
+      // Map compliance status to phone numbers
+      const complianceMap = new Map(
+        complianceApps.map(app => [app.selectedPhoneNumber, { id: app.id, status: app.status }])
+      );
+      
+      const numbersWithCompliance = phoneNumbers.map(num => ({
+        id: num.id,
+        phoneNumber: num.phoneNumber,
+        displayName: num.displayName,
+        status: num.status,
+        monthlyFee: num.monthlyFee,
+        purchasedAt: num.purchasedAt,
+        ownerUserId: num.ownerUserId,
+        ownerName: num.ownerFirstName && num.ownerLastName 
+          ? `${num.ownerFirstName} ${num.ownerLastName}` 
+          : num.ownerFirstName || num.ownerLastName || null,
+        complianceStatus: complianceMap.get(num.phoneNumber)?.status || null,
+        complianceApplicationId: complianceMap.get(num.phoneNumber)?.id || null,
+      }));
+      
+      res.json({ numbers: numbersWithCompliance });
+    } catch (error) {
+      console.error("[SMS-Voice] Error fetching numbers:", error);
+      res.status(500).json({ message: "Failed to fetch phone numbers" });
+    }
+  });
+
   // GET /api/telnyx/phone-system-access - Check if current user has access to Phone System tab
   app.get("/api/telnyx/phone-system-access", requireAuth, async (req: Request, res: Response) => {
     try {
