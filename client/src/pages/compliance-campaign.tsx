@@ -51,59 +51,62 @@ const steps = [
 
 const smsUseCaseOptions = [
   { value: "2FA", label: "2FA" },
-  { value: "APP_NOTIFICATIONS", label: "App Notifications" },
-  { value: "APPOINTMENTS", label: "Appointments" },
-  { value: "AUCTIONS", label: "Auctions" },
-  { value: "AUTO_REPAIR_SERVICES", label: "Auto Repair Services" },
-  { value: "BANK_TRANSFERS", label: "Bank Transfers" },
-  { value: "BILLING", label: "Billing" },
-  { value: "BOOKING_CONFIRMATIONS", label: "Booking Confirmations" },
-  { value: "BUSINESS_UPDATES", label: "Business Updates" },
-  { value: "COVID_19_ALERTS", label: "COVID-19 Alerts" },
-  { value: "CAREER_TRAINING", label: "Career Training" },
-  { value: "CHATBOT", label: "Chatbot" },
-  { value: "CONVERSATIONAL_ALERTS", label: "Conversational / Alerts" },
-  { value: "COURIER_SERVICES", label: "Courier Services & Deliveries" },
-  { value: "EMERGENCY_ALERTS", label: "Emergency Alerts" },
-  { value: "EVENTS_PLANNING", label: "Events & Planning" },
-  { value: "FINANCIAL_SERVICES", label: "Financial Services" },
-  { value: "FRAUD_ALERTS", label: "Fraud Alerts" },
-  { value: "FUNDRAISING", label: "Fundraising" },
-  { value: "GENERAL_MARKETING", label: "General Marketing" },
-  { value: "GENERAL_SCHOOL_UPDATES", label: "General School Updates" },
-  { value: "HR_STAFFING", label: "HR / Staffing" },
-  { value: "HEALTHCARE_ALERTS", label: "Healthcare Alerts" },
-  { value: "HOUSING_COMMUNITY_UPDATES", label: "Housing Community Updates" },
-  { value: "INSURANCE_SERVICES", label: "Insurance Services" },
-  { value: "JOB_DISPATCH", label: "Job Dispatch" },
-  { value: "LEGAL_SERVICES", label: "Legal Services" },
-  { value: "MIXED", label: "Mixed" },
-  { value: "MOTIVATIONAL_REMINDERS", label: "Motivational Reminders" },
-  { value: "NOTARY_NOTIFICATIONS", label: "Notary Notifications" },
-  { value: "ORDER_NOTIFICATIONS", label: "Order Notifications" },
-  { value: "POLITICAL", label: "Political" },
-  { value: "PUBLIC_WORKS", label: "Public Works" },
-  { value: "REAL_ESTATE_SERVICES", label: "Real Estate Services" },
-  { value: "RELIGIOUS_SERVICES", label: "Religious Services" },
-  { value: "REPAIR_DIAGNOSTICS_ALERTS", label: "Repair and Diagnostics Alerts" },
-  { value: "REWARDS_PROGRAM", label: "Rewards Program" },
-  { value: "SURVEYS", label: "Surveys" },
-  { value: "SYSTEM_ALERTS", label: "System Alerts" },
-  { value: "VOTING_REMINDERS", label: "Voting Reminders" },
-  { value: "WAITLIST_ALERTS", label: "Waitlist Alerts" },
-  { value: "WEBINAR_REMINDERS", label: "Webinar Reminders" },
-  { value: "WORKSHOP_ALERTS", label: "Workshop Alerts" },
+  { value: "App Notifications", label: "App Notifications" },
+  { value: "Appointments", label: "Appointments" },
+  { value: "Auctions", label: "Auctions" },
+  { value: "Auto Repair Services", label: "Auto Repair Services" },
+  { value: "Bank Transfers", label: "Bank Transfers" },
+  { value: "Billing", label: "Billing" },
+  { value: "Booking Confirmations", label: "Booking Confirmations" },
+  { value: "Business Updates", label: "Business Updates" },
+  { value: "COVID-19 Alerts", label: "COVID-19 Alerts" },
+  { value: "Career Training", label: "Career Training" },
+  { value: "Chatbot", label: "Chatbot" },
+  { value: "Conversational / Alerts", label: "Conversational / Alerts" },
+  { value: "Courier Services & Deliveries", label: "Courier Services & Deliveries" },
+  { value: "Emergency Alerts", label: "Emergency Alerts" },
+  { value: "Events & Planning", label: "Events & Planning" },
+  { value: "Financial Services", label: "Financial Services" },
+  { value: "Fraud Alerts", label: "Fraud Alerts" },
+  { value: "Fundraising", label: "Fundraising" },
+  { value: "General Marketing", label: "General Marketing" },
+  { value: "General School Updates", label: "General School Updates" },
+  { value: "HR / Staffing", label: "HR / Staffing" },
+  { value: "Healthcare Alerts", label: "Healthcare Alerts" },
+  { value: "Housing Community Updates", label: "Housing Community Updates" },
+  { value: "Insurance Services", label: "Insurance Services" },
+  { value: "Job Dispatch", label: "Job Dispatch" },
+  { value: "Legal Services", label: "Legal Services" },
+  { value: "Mixed", label: "Mixed" },
+  { value: "Motivational Reminders", label: "Motivational Reminders" },
+  { value: "Notary Notifications", label: "Notary Notifications" },
+  { value: "Order Notifications", label: "Order Notifications" },
+  { value: "Political", label: "Political" },
+  { value: "Public Works", label: "Public Works" },
+  { value: "Real Estate Services", label: "Real Estate Services" },
+  { value: "Religious Services", label: "Religious Services" },
+  { value: "Repair and Diagnostics Alerts", label: "Repair and Diagnostics Alerts" },
+  { value: "Rewards Program", label: "Rewards Program" },
+  { value: "Surveys", label: "Surveys" },
+  { value: "System Alerts", label: "System Alerts" },
+  { value: "Voting Reminders", label: "Voting Reminders" },
+  { value: "Waitlist Alerts", label: "Waitlist Alerts" },
+  { value: "Webinar Reminders", label: "Webinar Reminders" },
+  { value: "Workshop Alerts", label: "Workshop Alerts" },
 ];
 
 const estimatedVolumeOptions = [
-  { value: "1-1000", label: "1 - 1,000 messages/month" },
-  { value: "1001-10000", label: "1,001 - 10,000 messages/month" },
-  { value: "10001-100000", label: "10,001 - 100,000 messages/month" },
-  { value: "100001-250000", label: "100,001 - 250,000 messages/month" },
-  { value: "250001-500000", label: "250,001 - 500,000 messages/month" },
-  { value: "500001-750000", label: "500,001 - 750,000 messages/month" },
-  { value: "750001-1000000", label: "750,001 - 1,000,000 messages/month" },
-  { value: "1000001+", label: "1,000,001+ messages/month" },
+  { value: "10", label: "10 messages/month" },
+  { value: "100", label: "100 messages/month" },
+  { value: "1,000", label: "1,000 messages/month" },
+  { value: "10,000", label: "10,000 messages/month" },
+  { value: "100,000", label: "100,000 messages/month" },
+  { value: "250,000", label: "250,000 messages/month" },
+  { value: "500,000", label: "500,000 messages/month" },
+  { value: "750,000", label: "750,000 messages/month" },
+  { value: "1,000,000", label: "1,000,000 messages/month" },
+  { value: "5,000,000", label: "5,000,000 messages/month" },
+  { value: "10,000,000+", label: "10,000,000+ messages/month" },
 ];
 
 const campaignFormSchema = z.object({
@@ -124,6 +127,8 @@ const campaignFormSchema = z.object({
   smsTermsUrl: z.string().optional(),
   privacyPolicyUrl: z.string().optional(),
   sampleMessages: z.array(z.string().min(1, "Sample message is required")).min(1, "At least one sample message is required"),
+  additionalInformation: z.string().optional(),
+  isvReseller: z.string().min(1, "Please select an option"),
 });
 
 type CampaignFormData = z.infer<typeof campaignFormSchema>;
@@ -168,6 +173,8 @@ export default function ComplianceCampaign() {
       smsTermsUrl: "",
       privacyPolicyUrl: "",
       sampleMessages: [""],
+      additionalInformation: "",
+      isvReseller: "",
     },
   });
 
@@ -183,13 +190,15 @@ export default function ComplianceCampaign() {
       if (application.optInEvidence) form.setValue("optInEvidence", application.optInEvidence);
       if (application.smsTermsUrl) form.setValue("smsTermsUrl", application.smsTermsUrl);
       if (application.privacyPolicyUrl) form.setValue("privacyPolicyUrl", application.privacyPolicyUrl);
+      if (application.additionalInformation) form.setValue("additionalInformation", application.additionalInformation);
+      if (application.isvReseller) form.setValue("isvReseller", application.isvReseller);
       
       const savedMessages = application.sampleMessages as string[] | null;
       if (savedMessages && Array.isArray(savedMessages) && savedMessages.length > 0) {
         form.setValue("sampleMessages", savedMessages);
       }
       
-      const hasStep1 = application.smsUseCase && application.messageAudience && application.messageContent && application.estimatedVolume && application.canadianTraffic;
+      const hasStep1 = application.smsUseCase && application.messageAudience && application.messageContent && application.estimatedVolume && application.canadianTraffic && application.isvReseller;
       const hasStep2 = application.optInDescription && application.optInEvidence;
       const hasStep3 = savedMessages && savedMessages.length > 0 && savedMessages[0];
       
@@ -207,14 +216,16 @@ export default function ComplianceCampaign() {
     const values = form.getValues();
     try {
       if (currentOpenStep === 1) {
-        const { smsUseCase, messageAudience, messageContent, estimatedVolume, canadianTraffic } = values;
-        if (smsUseCase || messageAudience || messageContent || estimatedVolume || canadianTraffic) {
+        const { smsUseCase, messageAudience, messageContent, estimatedVolume, canadianTraffic, isvReseller, additionalInformation } = values;
+        if (smsUseCase || messageAudience || messageContent || estimatedVolume || canadianTraffic || isvReseller) {
           await apiRequest("PATCH", `/api/compliance/applications/${applicationId}`, {
             smsUseCase,
             messageAudience,
             messageContent,
             estimatedVolume,
             canadianTraffic,
+            isvReseller,
+            additionalInformation,
           });
         }
       } else if (currentOpenStep === 2) {
@@ -250,11 +261,11 @@ export default function ComplianceCampaign() {
   };
 
   const handleStep1Save = async () => {
-    const { smsUseCase, messageAudience, messageContent, estimatedVolume, canadianTraffic } = form.getValues();
+    const { smsUseCase, messageAudience, messageContent, estimatedVolume, canadianTraffic, isvReseller, additionalInformation } = form.getValues();
     const audienceValid = messageAudience.trim().split(/\s+/).length >= 5;
     const contentValid = messageContent.trim().split(/\s+/).length >= 10;
     
-    if (smsUseCase && audienceValid && contentValid && estimatedVolume && canadianTraffic) {
+    if (smsUseCase && audienceValid && contentValid && estimatedVolume && canadianTraffic && isvReseller) {
       try {
         await apiRequest("PATCH", `/api/compliance/applications/${applicationId}`, {
           smsUseCase,
@@ -262,6 +273,8 @@ export default function ComplianceCampaign() {
           messageContent,
           estimatedVolume,
           canadianTraffic,
+          isvReseller,
+          additionalInformation,
         });
         queryClient.invalidateQueries({ queryKey: [`/api/compliance/applications/${applicationId}`] });
         setStep1Complete(true);
@@ -274,7 +287,7 @@ export default function ComplianceCampaign() {
         });
       }
     } else {
-      form.trigger(["smsUseCase", "messageAudience", "messageContent", "estimatedVolume", "canadianTraffic"]);
+      form.trigger(["smsUseCase", "messageAudience", "messageContent", "estimatedVolume", "canadianTraffic", "isvReseller"]);
     }
   };
 
@@ -419,6 +432,8 @@ export default function ComplianceCampaign() {
         smsTermsUrl: values.smsTermsUrl,
         privacyPolicyUrl: values.privacyPolicyUrl,
         sampleMessages: values.sampleMessages.filter(m => m.trim()),
+        additionalInformation: values.additionalInformation,
+        isvReseller: values.isvReseller,
         currentStep: 5,
         status: "step_4_complete",
       });
@@ -644,6 +659,41 @@ export default function ComplianceCampaign() {
                     {form.formState.errors.canadianTraffic && (
                       <p className="text-red-500 text-sm mt-1">{form.formState.errors.canadianTraffic.message}</p>
                     )}
+                  </div>
+
+                  <div>
+                    <Label className="text-gray-700 dark:text-gray-300">
+                      Are you an ISV/Reseller? <span className="text-red-500">*</span>
+                    </Label>
+                    <RadioGroup
+                      value={form.watch("isvReseller")}
+                      onValueChange={(value) => form.setValue("isvReseller", value)}
+                      className="flex gap-6 mt-2"
+                    >
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="Yes" id="isv-yes" data-testid="radio-isv-yes" />
+                        <Label htmlFor="isv-yes" className="font-normal">Yes</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="No" id="isv-no" data-testid="radio-isv-no" />
+                        <Label htmlFor="isv-no" className="font-normal">No</Label>
+                      </div>
+                    </RadioGroup>
+                    {form.formState.errors.isvReseller && (
+                      <p className="text-red-500 text-sm mt-1">{form.formState.errors.isvReseller.message}</p>
+                    )}
+                  </div>
+
+                  <div>
+                    <Label className="text-gray-700 dark:text-gray-300">
+                      Additional Information (Optional)
+                    </Label>
+                    <Textarea
+                      placeholder="Any additional information about your messaging campaign"
+                      className="mt-1.5 min-h-[80px]"
+                      {...form.register("additionalInformation")}
+                      data-testid="input-additional-info"
+                    />
                   </div>
                 </div>
                 <Button

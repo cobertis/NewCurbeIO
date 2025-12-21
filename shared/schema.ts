@@ -6597,6 +6597,9 @@ export const complianceApplications = pgTable("compliance_applications", {
   optInEvidence: text("opt_in_evidence"),
   smsTermsUrl: text("sms_terms_url"),
   privacyPolicyUrl: text("privacy_policy_url"),
+  additionalInformation: text("additional_information"),
+  isvReseller: text("isv_reseller"),
+  optInWorkflowImageUrls: jsonb("opt_in_workflow_image_urls").default([]),
   
   // Telnyx Integration
   telnyxManagedAccountId: text("telnyx_managed_account_id"),
