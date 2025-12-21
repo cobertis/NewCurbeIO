@@ -37020,122 +37020,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(404).json({ message: "Application not found" });
       }
       
-      // Check if this is a submission request to Telnyx
-      if (req.body.status === "submitted" && existing.status !== "submitted") {
-        try {
-          const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
-          const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
-          const managedAccountId = await getCompanyManagedAccountId(user.companyId);
-          
-          if (!telnyxApiKey || !managedAccountId) {
-            return res.status(400).json({ message: "Telnyx not configured for this company" });
-          }
-          
-          // Map compliance application fields to Telnyx API format
-          const sampleMessages = (existing.sampleMessages as string[] | null) || [];
-          const optInImageUrls = (existing.optInWorkflowImageUrls as string[] | null) || [];
-          
-          // Build Telnyx request body with correct field mapping
-          const telnyxRequestBody: any = {
-            businessName: existing.businessName,
-            corporateWebsite: existing.website,
-            businessAddr1: existing.businessAddress,
-            businessCity: existing.businessCity,
-            businessState: existing.businessState,
-            businessZip: existing.businessZip,
-            businessContactFirstName: existing.contactFirstName,
-            businessContactLastName: existing.contactLastName,
-            businessContactEmail: existing.contactEmail,
-            businessContactPhone: existing.contactPhone,
-            messageVolume: existing.estimatedVolume || "100",
-            phoneNumbers: [{ phoneNumber: existing.selectedPhoneNumber }],
-            useCase: existing.smsUseCase || existing.useCase || "MIXED",
-            useCaseSummary: existing.campaignDescription || existing.messageContent || "SMS messaging campaign",
-            productionMessageContent: sampleMessages[0] || existing.messageContent || "Sample message content",
-            optInWorkflow: existing.optInDescription || existing.optInMethod || "User opts in via web form",
-          };
-          
-          // Add optional fields
-          if (existing.businessAddressLine2) {
-            telnyxRequestBody.businessAddr2 = existing.businessAddressLine2;
-          }
-          
-          if (optInImageUrls.length > 0) {
-            telnyxRequestBody.optInWorkflowImageURLs = optInImageUrls.map((url: string) => ({ url }));
-          } else if (existing.optInScreenshotUrl) {
-            telnyxRequestBody.optInWorkflowImageURLs = [{ url: existing.optInScreenshotUrl }];
-          }
-          
-          if (existing.additionalInformation) {
-            telnyxRequestBody.additionalInformation = existing.additionalInformation;
-          }
-          
-          if (existing.isvReseller) {
-            telnyxRequestBody.isvReseller = existing.isvReseller;
-          }
-          
-          // Business registration fields (required Jan 2026)
-          if (existing.ein) {
-            telnyxRequestBody.businessRegistrationNumber = existing.ein;
-            telnyxRequestBody.businessRegistrationType = existing.businessRegistrationType || "EIN";
-            telnyxRequestBody.businessRegistrationCountry = existing.businessRegistrationCountry || "US";
-          }
-          
-          console.log("[Toll-Free Compliance] Submitting verification request:", {
-            businessName: telnyxRequestBody.businessName,
-            phoneNumber: existing.selectedPhoneNumber,
-            useCase: telnyxRequestBody.useCase,
-          });
-          
-          // Call Telnyx API
-          const telnyxResponse = await fetch(
-            "https://api.telnyx.com/v2/messaging_tollfree/verification/requests",
-            {
-              method: "PUT",
-              headers: {
-                "Content-Type": "application/json",
-                "Accept": "application/json",
-                "Authorization": `Bearer ${telnyxApiKey}`,
-                "x-telnyx-managed-account-id": managedAccountId,
-              },
-              body: JSON.stringify(telnyxRequestBody),
-            }
-          );
-          
-          const telnyxResult = await telnyxResponse.json();
-          
-          if (!telnyxResponse.ok) {
-            console.error("[Toll-Free Compliance] Telnyx API error:", telnyxResult);
-            return res.status(telnyxResponse.status).json({
-              message: telnyxResult.errors?.[0]?.detail || "Failed to submit toll-free verification to Telnyx",
-              telnyxError: telnyxResult,
-            });
-          }
-          
-          console.log("[Toll-Free Compliance] Verification submitted successfully:", telnyxResult.data?.id);
-          
-          // Update application with Telnyx verification ID and status
-          const [updated] = await db
-            .update(complianceApplications)
-            .set({
-              ...req.body,
-              telnyxVerificationRequestId: telnyxResult.data?.id,
-              submittedAt: new Date(),
-              updatedAt: new Date(),
-            })
-            .where(eq(complianceApplications.id, id))
-            .returning();
-          
-          return res.json(updated);
-        } catch (telnyxError: any) {
-          console.error("[Toll-Free Compliance] Error calling Telnyx API:", telnyxError);
-          return res.status(500).json({ 
-            message: "Failed to submit verification to Telnyx: " + telnyxError.message 
-          });
-        }
-      }
-      
-      // Regular update (not submission)
       const [updated] = await db
         .update(complianceApplications)
         .set({
@@ -37151,6 +37035,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       res.status(500).json({ message: "Failed to update application" });
     }
   });
+
   // POST /api/compliance/upload - Upload file for compliance applications
   app.post("/api/compliance/upload", requireActiveCompany, async (req: Request, res: Response) => {
     try {

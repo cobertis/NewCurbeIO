@@ -6601,10 +6601,16 @@ export const complianceApplications = pgTable("compliance_applications", {
   isvReseller: text("isv_reseller"),
   optInWorkflowImageUrls: jsonb("opt_in_workflow_image_urls").default([]),
   
+  // Business Registration (Required by Telnyx Jan 2026)
+  businessRegistrationType: text("business_registration_type"), // EIN, SSN, DUNS, VAT
+  businessRegistrationCountry: text("business_registration_country").default("US"),
+  entityType: text("entity_type"), // SOLE_PROPRIETOR, CORPORATION, LLC, etc.
+  
   // Telnyx Integration
   telnyxManagedAccountId: text("telnyx_managed_account_id"),
   telnyxPhoneNumberId: text("telnyx_phone_number_id"),
   telnyxNumberOrderId: text("telnyx_number_order_id"),
+  telnyxVerificationRequestId: text("telnyx_verification_request_id"),
   phoneNumberStatus: text("phone_number_status").default("pending"),
   
   // Metadata
