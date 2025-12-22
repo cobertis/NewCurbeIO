@@ -32,7 +32,11 @@ import {
   Video,
   Loader2,
   Copy,
-  X
+  X,
+  Globe,
+  Headphones,
+  Building2,
+  ArrowRight
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
 
@@ -59,6 +63,7 @@ export default function GettingStarted() {
   const [faqTab, setFaqTab] = useState("sms");
   const [activeAccordion, setActiveAccordion] = useState<string | undefined>("profile");
   const [showNumberTypeDialog, setShowNumberTypeDialog] = useState(false);
+  const [showCallSetupDialog, setShowCallSetupDialog] = useState(false);
 
   const { data: sessionData, isLoading } = useQuery<{ user: User }>({
     queryKey: ["/api/session"],
@@ -357,9 +362,9 @@ export default function GettingStarted() {
                             <FileText className="w-4 h-4" />
                             View status
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => setLocation("/phone-system")} className="gap-2" data-testid="button-call-forwarding">
+                          <Button variant="outline" size="sm" onClick={() => setShowCallSetupDialog(true)} className="gap-2" data-testid="button-call-setup">
                             <Phone className="w-4 h-4" />
-                            Set up call forwarding
+                            Configure calls
                           </Button>
                         </div>
                       </div>
@@ -857,6 +862,110 @@ export default function GettingStarted() {
               </div>
             </div>
           </ScrollArea>
+        </DialogContent>
+      </Dialog>
+
+      {/* Call Setup Dialog */}
+      <Dialog open={showCallSetupDialog} onOpenChange={setShowCallSetupDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-semibold">How do you want to receive calls?</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 pt-4">
+            <p className="text-sm text-muted-foreground">
+              Choose how you'd like to handle incoming calls to your Curbe number.
+            </p>
+            
+            <div className="grid gap-4">
+              {/* Direct Web Calls Option */}
+              <div 
+                className="border rounded-lg p-5 hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 cursor-pointer transition-all"
+                onClick={() => {
+                  setShowCallSetupDialog(false);
+                  setLocation("/integrations");
+                }}
+                data-testid="option-direct-calls"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center shrink-0">
+                    <Globe className="w-6 h-6 text-green-600 dark:text-green-400" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">Receive calls directly in the browser</h3>
+                      <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-0">
+                        Recommended
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Answer calls right from your Curbe dashboard. No additional hardware or software needed.
+                    </p>
+                    <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <Check className="w-4 h-4 text-green-500" />
+                        <span>Works instantly</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Check className="w-4 h-4 text-green-500" />
+                        <span>No setup required</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Check className="w-4 h-4 text-green-500" />
+                        <span>Call from any device</span>
+                      </div>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-muted-foreground shrink-0 mt-2" />
+                </div>
+              </div>
+
+              {/* PBX Configuration Option */}
+              <div 
+                className="border rounded-lg p-5 hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 cursor-pointer transition-all"
+                onClick={() => {
+                  setShowCallSetupDialog(false);
+                  setLocation("/phone-system");
+                }}
+                data-testid="option-pbx-setup"
+              >
+                <div className="flex items-start gap-4">
+                  <div className="w-12 h-12 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center shrink-0">
+                    <Building2 className="w-6 h-6 text-purple-600 dark:text-purple-400" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2 mb-1">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">Configure a professional PBX system</h3>
+                      <Badge variant="outline" className="text-purple-600 dark:text-purple-400 border-purple-200 dark:border-purple-800">
+                        Advanced
+                      </Badge>
+                    </div>
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Set up IVR menus, call queues, extensions, and advanced call routing for your team.
+                    </p>
+                    <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
+                      <div className="flex items-center gap-1.5">
+                        <Headphones className="w-4 h-4 text-purple-500" />
+                        <span>IVR menus</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Headphones className="w-4 h-4 text-purple-500" />
+                        <span>Call queues</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Headphones className="w-4 h-4 text-purple-500" />
+                        <span>Team extensions</span>
+                      </div>
+                    </div>
+                  </div>
+                  <ArrowRight className="w-5 h-5 text-muted-foreground shrink-0 mt-2" />
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-center text-muted-foreground pt-2">
+              You can change this setting anytime from Settings.
+            </p>
+          </div>
         </DialogContent>
       </Dialog>
     </div>
