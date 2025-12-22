@@ -556,6 +556,14 @@ export default function SmsVoiceTollFree() {
                       {verification.verification_status?.replace(/_/g, ' ') || 'Unknown'}
                     </span>
                   </div>
+                  {verification.id && (
+                    <div className="mt-3 text-sm">
+                      <span className="text-slate-500 dark:text-slate-400">Verification ID</span>
+                      <p className="font-mono text-xs text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded mt-1 break-all">
+                        {verification.id}
+                      </p>
+                    </div>
+                  )}
                 </div>
 
                 <Separator />
