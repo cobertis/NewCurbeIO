@@ -26360,6 +26360,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[WhatsApp OAuth] Missing code or state");
         return errorRedirect("missing_params");
       }
+      console.log("[WhatsApp OAuth] Callback received, code length:", (code as string).length, "state:", (state as string).substring(0, 8) + "...");
       
       // Validate state/nonce
       const oauthState = await db.query.oauthStates.findFirst({
@@ -26374,6 +26375,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return errorRedirect("invalid_state");
       }
       
+      console.log("[WhatsApp OAuth] State validated for company:", oauthState.companyId);
       // Check if expired
       if (new Date() > new Date(oauthState.expiresAt)) {
         console.error("[WhatsApp OAuth] State expired");
