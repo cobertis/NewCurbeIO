@@ -329,171 +329,185 @@ export default function GettingStarted() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-5 pb-5">
-              <div className="space-y-4 pl-11">
-                {activeApplication?.selectedPhoneNumber ? (
-                  <Card className="border-gray-200 dark:border-gray-700">
-                    <CardContent className="p-4">
-                      <div className="space-y-3">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-3">
-                            <Phone className="w-5 h-5 text-blue-600 mt-0.5" />
-                            <div>
-                              <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Your Toll-Free Number</p>
-                              <div className="flex items-center gap-2 mt-1">
-                                <h4 className="font-semibold text-lg text-gray-900 dark:text-gray-100" data-testid="text-toll-free-number">
-                                  {formatPhoneNumber(activeApplication.selectedPhoneNumber)}
-                                </h4>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 w-7 p-0"
-                                  onClick={() => navigator.clipboard.writeText(activeApplication.selectedPhoneNumber)}
-                                  data-testid="button-copy-number"
-                                >
-                                  <Copy className="w-4 h-4 text-gray-400" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                          {(activeApplication.status === 'submitted' || activeApplication.status === 'pending_review') && (
-                            <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
-                              <Loader2 className="w-3 h-3 mr-1 animate-spin" />
-                              Verification in progress
-                            </Badge>
-                          )}
-                          {activeApplication.status === 'approved' && (
-                            <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                              <Check className="w-3 h-3 mr-1" />
-                              Verified
-                            </Badge>
-                          )}
-                          {activeApplication.status === 'rejected' && (
-                            <Badge className="bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">
-                              <X className="w-3 h-3 mr-1" />
-                              Rejected
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-500 dark:text-gray-400 pl-8">
-                          {(activeApplication.status === 'submitted' || activeApplication.status === 'pending_review') && 
-                            "We've submitted your toll-free verification. Please wait for approval to start texting."}
-                          {activeApplication.status === 'approved' && 
-                            "Your toll-free number is verified and ready to use."}
-                          {activeApplication.status === 'rejected' && 
-                            "Your verification was rejected. Please contact support."}
-                        </p>
-                        <div className="flex items-center gap-2 pl-8">
-                          <Button 
-                            variant="outline" 
-                            size="sm" 
-                            onClick={() => setLocation(
-                              activeApplication.numberType === '10dlc' 
-                                ? "/integrations/sms-voice/10dlc" 
-                                : "/integrations/sms-voice/toll-free-verification"
-                            )} 
-                            className="gap-2" 
-                            data-testid="button-view-status"
-                          >
-                            <FileText className="w-4 h-4" />
-                            View status
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  <Card className="border-gray-200 dark:border-gray-700">
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-3">
-                          <Phone className="w-5 h-5 text-gray-400 mt-0.5" />
-                          <div>
-                            <h4 className="font-medium text-gray-900 dark:text-gray-100">Get a Curbe number</h4>
-                            <p className="text-sm text-gray-500 dark:text-gray-400">
-                              Choose your number from our available pool of numbers.
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm" className="gap-2" data-testid="button-watch-number-tutorial">
-                            <PlayCircle className="w-4 h-4" />
-                            Watch tutorial
-                          </Button>
-                          <Button size="sm" onClick={() => setShowNumberTypeDialog(true)} className="gap-2 bg-blue-600 hover:bg-blue-700" data-testid="button-choose-number">
-                            Choose number
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                )}
-
-                <Card className="border-gray-200 dark:border-gray-700">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <Phone className={`w-5 h-5 mt-0.5 ${user?.sipEnabled ? 'text-green-600' : 'text-gray-400'}`} />
-                        <div>
-                          <h4 className="font-medium text-gray-900 dark:text-gray-100">Call configuration</h4>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {user?.sipEnabled 
-                              ? "Your calling is configured and ready. Make and receive calls directly from your browser."
-                              : "Set up how you want to handle calls. Choose between direct calling or PBX with IVR options."}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {user?.sipEnabled ? (
-                          <>
-                            <Button variant="outline" size="sm" className="gap-2" data-testid="button-watch-call-tutorial">
-                              <PlayCircle className="w-4 h-4" />
-                              Watch tutorial
-                            </Button>
-                            <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                              <Check className="w-3 h-3 mr-1" />
-                              Configured
-                            </Badge>
-                          </>
-                        ) : (
-                          <>
-                            <Button variant="outline" size="sm" className="gap-2" data-testid="button-watch-call-tutorial">
-                              <PlayCircle className="w-4 h-4" />
-                              Watch tutorial
-                            </Button>
-                            <Button size="sm" onClick={() => setShowCallSetupDialog(true)} className="gap-2 bg-blue-600 hover:bg-blue-700" data-testid="button-setup-calling">
-                              Configure calls
-                            </Button>
-                          </>
+              <div className="space-y-6 pl-11">
+                {/* Phone number compliance */}
+                <div>
+                  {activeApplication?.selectedPhoneNumber ? (
+                    <>
+                      <div className="flex items-center gap-2 mb-2">
+                        <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Your Toll-Free Number</p>
+                        {(activeApplication.status === 'submitted' || activeApplication.status === 'pending_review') && (
+                          <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
+                            <Loader2 className="w-3 h-3 mr-1 animate-spin" />
+                            Verification in progress
+                          </Badge>
+                        )}
+                        {activeApplication.status === 'approved' && (
+                          <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                            <Check className="w-3 h-3 mr-1" />
+                            Verified
+                          </Badge>
+                        )}
+                        {activeApplication.status === 'rejected' && (
+                          <Badge className="bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300">
+                            <X className="w-3 h-3 mr-1" />
+                            Rejected
+                          </Badge>
                         )}
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-gray-200 dark:border-gray-700">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <Smartphone className="w-5 h-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <h4 className="font-medium text-gray-900 dark:text-gray-100">Port your existing number</h4>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Transfer your current phone number to Curbe.io. Keep your same number while gaining access to all platform features.
-                          </p>
-                        </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h4 className="font-semibold text-lg text-gray-900 dark:text-gray-100" data-testid="text-toll-free-number">
+                          {formatPhoneNumber(activeApplication.selectedPhoneNumber)}
+                        </h4>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 w-7 p-0"
+                          onClick={() => navigator.clipboard.writeText(activeApplication.selectedPhoneNumber)}
+                          data-testid="button-copy-number"
+                        >
+                          <Copy className="w-4 h-4 text-gray-400" />
+                        </Button>
                       </div>
-                      <div className="flex items-center gap-2">
-                        <Button variant="outline" size="sm" className="gap-2" data-testid="button-watch-byod-tutorial">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        {(activeApplication.status === 'submitted' || activeApplication.status === 'pending_review') && 
+                          "We've submitted your toll-free verification. Please wait for approval to start texting."}
+                        {activeApplication.status === 'approved' && 
+                          "Your toll-free number is verified and ready to use."}
+                        {activeApplication.status === 'rejected' && 
+                          "Your verification was rejected. Please contact support."}
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => window.open("https://youtu.be/example", "_blank")}
+                          className="gap-2" 
+                          data-testid="button-watch-number-tutorial"
+                        >
                           <PlayCircle className="w-4 h-4" />
                           Watch tutorial
                         </Button>
-                        <Button size="sm" onClick={() => setLocation("/integrations")} className="gap-2 bg-blue-600 hover:bg-blue-700" data-testid="button-connect-provider">
-                          Start porting
+                        <Button 
+                          size="sm" 
+                          onClick={() => setLocation(
+                            activeApplication.numberType === '10dlc' 
+                              ? "/integrations/sms-voice/10dlc" 
+                              : "/integrations/sms-voice/toll-free-verification"
+                          )} 
+                          className="gap-2 bg-blue-600 hover:bg-blue-700" 
+                          data-testid="button-view-status"
+                        >
+                          View status
+                          <ChevronRight className="w-4 h-4" />
                         </Button>
                       </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                    </>
+                  ) : (
+                    <>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        Get a dedicated phone number for your business. Choose from toll-free or local numbers.
+                      </p>
+                      <div className="flex items-center gap-3">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={() => window.open("https://youtu.be/example", "_blank")}
+                          className="gap-2" 
+                          data-testid="button-watch-number-tutorial"
+                        >
+                          <PlayCircle className="w-4 h-4" />
+                          Watch tutorial
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          onClick={() => setShowNumberTypeDialog(true)} 
+                          className="gap-2 bg-blue-600 hover:bg-blue-700" 
+                          data-testid="button-choose-number"
+                        >
+                          Choose number
+                          <ChevronRight className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-gray-200 dark:border-gray-700" />
+
+                {/* Call configuration */}
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <h4 className="font-medium text-gray-900 dark:text-gray-100">Call configuration</h4>
+                    {user?.sipEnabled && (
+                      <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                        <Check className="w-3 h-3 mr-1" />
+                        Configured
+                      </Badge>
+                    )}
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    {user?.sipEnabled 
+                      ? "Your calling is configured and ready. Make and receive calls directly from your browser."
+                      : "Set up how you want to handle calls. Choose between direct calling or PBX with IVR options."}
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => window.open("https://youtu.be/example", "_blank")}
+                      className="gap-2" 
+                      data-testid="button-watch-call-tutorial"
+                    >
+                      <PlayCircle className="w-4 h-4" />
+                      Watch tutorial
+                    </Button>
+                    {!user?.sipEnabled && (
+                      <Button 
+                        size="sm" 
+                        onClick={() => setShowCallSetupDialog(true)} 
+                        className="gap-2 bg-blue-600 hover:bg-blue-700" 
+                        data-testid="button-setup-calling"
+                      >
+                        Configure calls
+                        <ChevronRight className="w-4 h-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                {/* Divider */}
+                <div className="border-t border-gray-200 dark:border-gray-700" />
+
+                {/* Port existing number */}
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Port your existing number</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Transfer your current phone number to Curbe.io. Keep your same number while gaining access to all platform features.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => window.open("https://youtu.be/example", "_blank")}
+                      className="gap-2" 
+                      data-testid="button-watch-byod-tutorial"
+                    >
+                      <PlayCircle className="w-4 h-4" />
+                      Watch tutorial
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      onClick={() => setLocation("/integrations")} 
+                      className="gap-2 bg-blue-600 hover:bg-blue-700" 
+                      data-testid="button-connect-provider"
+                    >
+                      Start porting
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -520,46 +534,67 @@ export default function GettingStarted() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-5 pb-5">
-              <div className="space-y-4 pl-11">
-                <Card className="border-gray-200 dark:border-gray-700">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <Settings className="w-5 h-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <h4 className="font-medium text-gray-900 dark:text-gray-100">Configure email settings</h4>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Set up your sending domain and customize email templates.
-                          </p>
-                        </div>
-                      </div>
-                      <Button size="sm" onClick={() => setLocation("/settings/email")} className="gap-2 bg-blue-600 hover:bg-blue-700" data-testid="button-configure-email">
-                        Configure
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+              <div className="space-y-6 pl-11">
+                {/* Configure email settings */}
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Configure email settings</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Set up your sending domain and customize email templates.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => window.open("https://youtu.be/example", "_blank")}
+                      className="gap-2" 
+                      data-testid="button-watch-email-tutorial"
+                    >
+                      <PlayCircle className="w-4 h-4" />
+                      Watch tutorial
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      onClick={() => setLocation("/settings/email")} 
+                      className="gap-2 bg-blue-600 hover:bg-blue-700" 
+                      data-testid="button-configure-email"
+                    >
+                      Configure
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
 
-                <Card className="border-gray-200 dark:border-gray-700">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <Send className="w-5 h-5 text-gray-400 mt-0.5" />
-                        <div>
-                          <h4 className="font-medium text-gray-900 dark:text-gray-100">Create your first campaign</h4>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Start engaging your contacts with email marketing.
-                          </p>
-                        </div>
-                      </div>
-                      <Button size="sm" onClick={() => setLocation("/campaigns")} className="gap-2 bg-blue-600 hover:bg-blue-700" data-testid="button-create-campaign">
-                        <Plus className="w-4 h-4" />
-                        Create campaign
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* Divider */}
+                <div className="border-t border-gray-200 dark:border-gray-700" />
+
+                {/* Create campaign */}
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Create your first campaign</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Start engaging your contacts with email marketing.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => window.open("https://youtu.be/example", "_blank")}
+                      className="gap-2" 
+                      data-testid="button-watch-campaign-tutorial"
+                    >
+                      <PlayCircle className="w-4 h-4" />
+                      Watch tutorial
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      onClick={() => setLocation("/campaigns")} 
+                      className="gap-2 bg-blue-600 hover:bg-blue-700" 
+                      data-testid="button-create-campaign"
+                    >
+                      Create campaign
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -576,46 +611,67 @@ export default function GettingStarted() {
               </div>
             </AccordionTrigger>
             <AccordionContent className="px-5 pb-5">
-              <div className="space-y-4 pl-11">
-                <Card className="border-gray-200 dark:border-gray-700">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <MessageSquare className="w-5 h-5 text-green-500 mt-0.5" />
-                        <div>
-                          <h4 className="font-medium text-gray-900 dark:text-gray-100">iMessage</h4>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Connect your Apple device to send iMessages.
-                          </p>
-                        </div>
-                      </div>
-                      <Button size="sm" onClick={() => setLocation("/imessage")} className="gap-2 bg-blue-600 hover:bg-blue-700" data-testid="button-setup-imessage">
-                        Set up
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+              <div className="space-y-6 pl-11">
+                {/* iMessage */}
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">iMessage</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Connect your Apple device to send iMessages.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => window.open("https://youtu.be/example", "_blank")}
+                      className="gap-2" 
+                      data-testid="button-watch-imessage-tutorial"
+                    >
+                      <PlayCircle className="w-4 h-4" />
+                      Watch tutorial
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      onClick={() => setLocation("/imessage")} 
+                      className="gap-2 bg-blue-600 hover:bg-blue-700" 
+                      data-testid="button-setup-imessage"
+                    >
+                      Set up
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
 
-                <Card className="border-gray-200 dark:border-gray-700">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <MessageSquare className="w-5 h-5 text-green-600 mt-0.5" />
-                        <div>
-                          <h4 className="font-medium text-gray-900 dark:text-gray-100">WhatsApp Business</h4>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Connect your WhatsApp Business account.
-                          </p>
-                        </div>
-                      </div>
-                      <Button size="sm" onClick={() => setLocation("/integrations")} className="gap-2 bg-blue-600 hover:bg-blue-700" data-testid="button-setup-whatsapp">
-                        Connect
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </CardContent>
-                </Card>
+                {/* Divider */}
+                <div className="border-t border-gray-200 dark:border-gray-700" />
+
+                {/* WhatsApp */}
+                <div>
+                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">WhatsApp Business</h4>
+                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                    Connect your WhatsApp Business account.
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      onClick={() => window.open("https://youtu.be/example", "_blank")}
+                      className="gap-2" 
+                      data-testid="button-watch-whatsapp-tutorial"
+                    >
+                      <PlayCircle className="w-4 h-4" />
+                      Watch tutorial
+                    </Button>
+                    <Button 
+                      size="sm" 
+                      onClick={() => setLocation("/integrations")} 
+                      className="gap-2 bg-blue-600 hover:bg-blue-700" 
+                      data-testid="button-setup-whatsapp"
+                    >
+                      Connect
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </div>
+                </div>
               </div>
             </AccordionContent>
           </AccordionItem>
