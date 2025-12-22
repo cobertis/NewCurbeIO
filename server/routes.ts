@@ -29852,13 +29852,26 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       // Query Telnyx API directly for real-time verification status
       const apiKey = await getTelnyxMasterApiKey();
       
-      // Get all verification requests and filter locally (phone_number filter may not work as expected)
+      // Get managed account ID for this company
+      const { getCompanyTelnyxAccountId } = await import("./services/wallet-service");
+      const managedAccountId = await getCompanyTelnyxAccountId(user.companyId);
+      
+      console.log("[Telnyx TFV] Using managed account ID:", managedAccountId);
+      
+      // Build headers with managed account if available
+      const headers: Record<string, string> = {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      };
+      
+      if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+        headers["x-managed-account-id"] = managedAccountId;
+      }
+      
+      // Get all verification requests and filter locally
       const response = await fetch(`https://api.telnyx.com/v2/messaging_tollfree/verification/requests?page=1&page_size=100`, {
         method: "GET",
-        headers: {
-          "Authorization": `Bearer ${apiKey}`,
-          "Content-Type": "application/json",
-        },
+        headers,
       });
       
       if (!response.ok) {
@@ -29871,14 +29884,17 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const records = data.records || [];
       
       console.log("[Telnyx TFV] Total records returned:", records.length);
+      if (records.length > 0) {
+        console.log("[Telnyx TFV] First record sample:", JSON.stringify(records[0], null, 2).substring(0, 500));
+      }
       
       // Find the verification request that contains this phone number
       let foundRecord = null;
       for (const record of records) {
         // Check phone_numbers array in the record
-        const phoneNumbers = record.phone_numbers || [];
+        const phoneNumbers = record.phone_numbers || record.phoneNumbers || [];
         for (const pn of phoneNumbers) {
-          const recordPhone = pn.phone_number || pn;
+          const recordPhone = pn.phone_number || pn.phoneNumber || pn;
           const recordDigits = normalizePhone(String(recordPhone));
           console.log("[Telnyx TFV] Checking record phone:", recordPhone, "normalized:", recordDigits);
           if (recordDigits === targetDigits) {
@@ -29904,7 +29920,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       const flattened = {
         id: raw.id,
-        verification_status: raw.status || raw.verification_status,
+        verification_status: raw.status || raw.verification_status || raw.verificationStatus,
         business_name: businessProfile.business_name || raw.business_name || raw.businessName,
         brand_display_name: businessProfile.dba || businessProfile.brand_display_name || raw.brand_display_name,
         business_type: businessProfile.business_type || raw.business_type,
@@ -29920,12 +29936,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         contact_email: businessProfile.email || businessProfile.contact_email || raw.contact_email || raw.businessContactEmail,
         use_case: trafficProfile.use_case || raw.use_case || raw.useCase,
         campaign_description: trafficProfile.description || trafficProfile.campaign_description || raw.campaign_description || raw.useCaseSummary,
-        sample_messages: trafficProfile.sample_messages || raw.sample_messages || raw.productionMessageContent ? [raw.productionMessageContent] : [],
+        sample_messages: trafficProfile.sample_messages || raw.sample_messages || (raw.productionMessageContent ? [raw.productionMessageContent] : []),
         message_flow: trafficProfile.message_flow || raw.message_flow || raw.optInWorkflow,
         opt_in_method: trafficProfile.opt_in_method || raw.opt_in_method,
         opt_in_description: trafficProfile.opt_in_description || raw.opt_in_description || raw.optInWorkflow,
         estimated_volume: trafficProfile.message_volume || raw.estimated_volume || raw.messageVolume,
-        phone_numbers: raw.phone_numbers || [],
+        phone_numbers: raw.phone_numbers || raw.phoneNumbers || [],
         reason: raw.reason,
         created_at: raw.created_at || raw.createdAt,
         updated_at: raw.updated_at || raw.updatedAt,
