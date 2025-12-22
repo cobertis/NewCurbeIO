@@ -1,0 +1,99 @@
+Necesito implementar WhatsApp Embedded Signup (Meta) correctamente en app.curbe.io (multi-tenant). Ahora mismo falla porque el OAuth está mal armado (a veces sale redirect_uri=undefined/... y Meta bloquea/rompe el flujo). Quiero replicar exactamente lo que funciona en Embedded Signup Builder.
+
+1) Endpoint para iniciar conexión (server genera la URL, no el frontend)
+
+Crear:
+
+GET /api/integrations/meta/whatsapp/connect
+
+Debe:
+
+Generar state aleatorio (y guardarlo en DB con tenant_id, expiración 10 min).
+
+Construir el URL de OAuth con redirect fijo y correcto:
+
+redirect_uri = https://app.curbe.io/api/integrations/meta/whatsapp/callback (exacto)
+
+client_id = META_APP_ID
+
+response_type=code
+
+scope=whatsapp_business_management,whatsapp_business_messaging,business_management
+
+state=<state>
+
+Redirigir a Facebook o devolver el URL al frontend para abrir popup.
+
+Validación dura: si redirect_uri no existe o no es https, abortar (no permitir undefined nunca).
+
+2) Callback OAuth (recibe code y hace token exchange en backend)
+
+Crear:
+
+GET /api/integrations/meta/whatsapp/callback
+
+Debe:
+
+Leer code y state del querystring.
+
+Validar state contra DB (tenant + no expirado). Si no, 403.
+
+Intercambiar code por access token (server-to-server):
+
+GET https://graph.facebook.com/v21.0/oauth/access_token?client_id=...&client_secret=...&redirect_uri=<MISMO_REDIRECT_URI>&code=<code>
+
+Guardar access_token cifrado + token_expires_in asociado al tenant_id.
+
+Luego resolver y guardar los IDs de WhatsApp:
+
+waba_id y phone_number_id
+
+Si no vienen directos, consultarlos vía Graph con el token y persistirlos.
+
+3) Webhooks (verificación + eventos)
+
+Crear:
+
+GET /webhooks/meta/whatsapp
+
+Implementar verificación: responder hub.challenge cuando hub.mode=subscribe y hub.verify_token coincida con META_VERIFY_TOKEN.
+
+POST /webhooks/meta/whatsapp
+
+Recibir eventos (mensajes entrantes, status, etc) y enrutar por phone_number_id/waba_id al tenant correcto.
+
+4) Configuración Meta que debe coincidir
+
+En Meta Developer Console:
+
+App Domains: app.curbe.io y curbe.io
+
+Valid OAuth Redirect URIs incluir EXACTO:
+
+https://app.curbe.io/api/integrations/meta/whatsapp/callback
+
+Activar Client OAuth Login = YES y Web OAuth Login = YES
+
+No usar redirect dinámico por tenant. Siempre el mismo callback y adentro resolvemos tenant por state.
+
+5) Logging para depurar (obligatorio)
+
+Agregar logs (sin secretos):
+
+URL final de OAuth que se genera (verificar que NO contenga undefined)
+
+state creado y tenant asociado
+
+Resultado del token exchange (sin imprimir token completo)
+
+IDs guardados: waba_id, phone_number_id
+
+6) Seguridad
+
+state es obligatorio para evitar ataques.
+
+Guardar tokens cifrados.
+
+Rotación/refresh si aplica (si el flujo da token de corta duración, implementar intercambio a long-lived cuando corresponda).
+
+Objetivo final: desde Curbe, cada tenant hace “Connect WhatsApp”, completa signup en popup, volvemos al callback, guardamos token + WABA + phone number, y ya podemos manejar templates y mensajes desde el CRM.

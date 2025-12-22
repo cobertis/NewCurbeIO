@@ -26218,6 +26218,76 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // =====================================================
 
 
+  // GET /api/integrations/meta/whatsapp/connect - Start OAuth flow with redirect
+  app.get("/api/integrations/meta/whatsapp/connect", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      console.log("[WhatsApp OAuth] /connect endpoint called");
+      
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).send("OAuth configuration error. Contact administrator.");
+      }
+      console.log("[WhatsApp OAuth] Validated redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+      
+      const user = req.user as any;
+      if (!user.companyId) {
+        console.error("[WhatsApp OAuth] No company associated with user");
+        return res.status(400).send("No company associated with user");
+      }
+      console.log("[WhatsApp OAuth] Company ID:", user.companyId);
+      
+      // Get Meta credentials dynamically from credential provider
+      const { appId } = await credentialProvider.getMeta();
+      
+      if (!appId) {
+        console.error("[WhatsApp OAuth] META_APP_ID not configured");
+        return res.status(500).send("Meta App ID not configured. Contact administrator.");
+      }
+      console.log("[WhatsApp OAuth] App ID retrieved (first 4 chars):", appId.substring(0, 4) + "...");
+      
+      // Generate cryptographically secure nonce for state
+      const nonce = randomBytes(32).toString("hex");
+      console.log("[WhatsApp OAuth] Generated state/nonce:", nonce.substring(0, 8) + "...");
+      
+      // Store in oauth_states with 10 min expiry
+      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
+      
+      await db.insert(oauthStates).values({
+        companyId: user.companyId,
+        provider: "meta_whatsapp",
+        nonce,
+        expiresAt,
+        metadata: {
+          ip: req.ip || req.connection.remoteAddress,
+          userAgent: req.get("user-agent") || undefined
+        }
+      });
+      console.log("[WhatsApp OAuth] State saved to DB, expires:", expiresAt.toISOString());
+      
+      // Build OAuth URL for Meta Embedded Signup
+      const authUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
+      authUrl.searchParams.set("client_id", appId);
+      authUrl.searchParams.set("redirect_uri", META_WHATSAPP_REDIRECT_URI);
+      authUrl.searchParams.set("response_type", "code");
+      authUrl.searchParams.set("scope", META_WHATSAPP_SCOPES);
+      authUrl.searchParams.set("state", nonce);
+      authUrl.searchParams.set("extras", JSON.stringify({
+        feature: "whatsapp_embedded_signup",
+        setup: { business: { name: "", email: "" } }
+      }));
+      
+      const finalUrl = authUrl.toString();
+      console.log("[WhatsApp OAuth] Final OAuth URL:", finalUrl);
+      console.log("[WhatsApp OAuth] Redirecting user to Facebook OAuth...");
+      
+      return res.redirect(finalUrl);
+    } catch (error) {
+      console.error("[WhatsApp OAuth] /connect error:", error);
+      return res.status(500).send("Failed to start OAuth flow");
+    }
+  });
+
   // POST /api/integrations/meta/whatsapp/start - Start OAuth flow
   app.post("/api/integrations/meta/whatsapp/start", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -26334,7 +26404,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token?` +
         `client_id=${appId}&` +
         `client_secret=${appSecret}&` +
-        `redirect_uri=${encodeURIComponent(META_REDIRECT_URI)}&` +
+        `redirect_uri=${encodeURIComponent(META_WHATSAPP_REDIRECT_URI)}&` +
         `code=${code}`
       );
       
