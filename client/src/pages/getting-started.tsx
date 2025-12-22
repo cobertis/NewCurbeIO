@@ -104,6 +104,8 @@ export default function GettingStarted() {
 
   const { toast } = useToast();
 
+  const [browserCallingSuccess, setBrowserCallingSuccess] = useState<{ extension: string } | null>(null);
+
   const enableBrowserCallingMutation = useMutation({
     mutationFn: async () => {
       return await apiRequest("POST", "/api/onboarding/enable-browser-calling");
@@ -111,13 +113,8 @@ export default function GettingStarted() {
     onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["/api/session"] });
       queryClient.invalidateQueries({ queryKey: ["/api/webrtc/extension-credentials"] });
-      setShowCallSetupDialog(false);
-      toast({
-        title: data.alreadyConfigured ? "Already configured" : "Browser calling enabled",
-        description: data.alreadyConfigured 
-          ? `Your extension ${data.extension} is ready to use.`
-          : `Extension ${data.extension} created. You can now make and receive calls.`,
-      });
+      queryClient.invalidateQueries({ queryKey: ["/api/onboarding/progress"] });
+      setBrowserCallingSuccess({ extension: data.extension });
     },
     onError: (error: any) => {
       toast({
@@ -903,8 +900,54 @@ export default function GettingStarted() {
       </Dialog>
 
       {/* Call Setup Dialog */}
-      <Dialog open={showCallSetupDialog} onOpenChange={setShowCallSetupDialog}>
+      <Dialog open={showCallSetupDialog} onOpenChange={(open) => {
+        setShowCallSetupDialog(open);
+        if (!open) setBrowserCallingSuccess(null);
+      }}>
         <DialogContent className="max-w-2xl">
+          {browserCallingSuccess ? (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-xl font-semibold text-green-700 dark:text-green-400">Browser calling enabled</DialogTitle>
+              </DialogHeader>
+              <div className="py-8 text-center space-y-4">
+                <div className="w-16 h-16 rounded-full bg-green-100 dark:bg-green-900 flex items-center justify-center mx-auto">
+                  <Check className="w-8 h-8 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <p className="text-lg font-medium text-gray-900 dark:text-gray-100">You can now make and receive calls</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Extension <span className="font-mono font-semibold">{browserCallingSuccess.extension}</span> has been configured
+                  </p>
+                </div>
+                <div className="flex flex-wrap justify-center gap-4 text-sm text-muted-foreground pt-2">
+                  <div className="flex items-center gap-1.5">
+                    <Check className="w-4 h-4 text-green-500" />
+                    <span>Inbound calls ready</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Check className="w-4 h-4 text-green-500" />
+                    <span>Outbound calls ready</span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    <Check className="w-4 h-4 text-green-500" />
+                    <span>WebRTC configured</span>
+                  </div>
+                </div>
+                <Button 
+                  className="mt-4 bg-green-600 hover:bg-green-700"
+                  onClick={() => {
+                    setShowCallSetupDialog(false);
+                    setBrowserCallingSuccess(null);
+                  }}
+                  data-testid="button-close-success"
+                >
+                  Done
+                </Button>
+              </div>
+            </>
+          ) : (
+            <>
           <DialogHeader>
             <DialogTitle className="text-xl font-semibold">How do you want to receive calls?</DialogTitle>
           </DialogHeader>
@@ -1017,6 +1060,8 @@ export default function GettingStarted() {
               You can change this setting anytime from Settings.
             </p>
           </div>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </div>

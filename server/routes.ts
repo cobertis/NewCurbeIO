@@ -3567,7 +3567,23 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       if (user.companyId) {
         const company = await storage.getCompany(user.companyId);
-        phoneSetup = !!(company?.phone);
+        
+        // Check phone setup: company phone, user sipEnabled, or active compliance application with phone number
+        const hasCompanyPhone = !!(company?.phone);
+        const hasSipEnabled = !!(user.sipEnabled);
+        
+        // Check for active compliance application with selected phone number
+        const activeApp = await db
+          .select()
+          .from(complianceApplications)
+          .where(and(
+            eq(complianceApplications.companyId, user.companyId),
+            isNotNull(complianceApplications.selectedPhoneNumber)
+          ))
+          .limit(1);
+        const hasCompliancePhone = activeApp.length > 0;
+        
+        phoneSetup = hasCompanyPhone || hasSipEnabled || hasCompliancePhone;
         
         // Check company email settings
         const settings = await storage.getCompanySettings(user.companyId);
