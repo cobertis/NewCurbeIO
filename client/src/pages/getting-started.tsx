@@ -46,6 +46,7 @@ interface User {
   phone: string | null;
   onboardingCompleted: boolean;
   sipEnabled?: boolean;
+  role?: string;
 }
 
 interface OnboardingProgress {
@@ -77,7 +78,14 @@ export default function GettingStarted() {
     enabled: !!sessionData?.user,
   });
 
+  const { data: subscriptionData } = useQuery<{ subscription: any }>({
+    queryKey: ["/api/billing/subscription"],
+    enabled: !!sessionData?.user && sessionData?.user?.role === "admin",
+  });
+
   const activeApplication = complianceData?.application;
+  const subscription = subscriptionData?.subscription;
+  const selectedPlan = subscription?.plan;
 
   const formatPhoneNumber = (phone: string) => {
     const cleaned = phone.replace(/\D/g, '');
@@ -222,18 +230,61 @@ export default function GettingStarted() {
             </AccordionTrigger>
             <AccordionContent className="px-5 pb-5">
               <div className="pl-11">
-                <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                  Choose the plan that best fits your needs. Start with a 14-day free trial - no credit card required.
-                </p>
-                <Button
-                    size="sm"
-                    onClick={() => setLocation("/select-plan")}
-                    className="gap-2 bg-blue-600 hover:bg-blue-700"
-                    data-testid="button-select-plan"
-                  >
-                    {progress.planSelected ? "Change plan" : "Start free trial"}
-                    <ChevronRight className="w-4 h-4" />
-                  </Button>
+                {progress.planSelected && selectedPlan ? (
+                  <>
+                    <div className="flex items-center gap-2 mb-2">
+                      <p className="text-xs font-medium text-blue-600 uppercase tracking-wide">Your Current Plan</p>
+                      {subscription?.status === 'trial' && (
+                        <Badge className="bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300">
+                          Trial
+                        </Badge>
+                      )}
+                      {subscription?.status === 'active' && (
+                        <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                          <Check className="w-3 h-3 mr-1" />
+                          Active
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-3 mb-2">
+                      <h4 className="font-semibold text-lg text-gray-900 dark:text-gray-100" data-testid="text-plan-name">
+                        {selectedPlan.name}
+                      </h4>
+                      <span className="text-gray-500 dark:text-gray-400">
+                        ${(selectedPlan.price / 100).toFixed(2)}/month
+                      </span>
+                    </div>
+                    {selectedPlan.description && (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        {selectedPlan.description}
+                      </p>
+                    )}
+                    <Button
+                      size="sm"
+                      onClick={() => setLocation("/select-plan")}
+                      className="gap-2 bg-blue-600 hover:bg-blue-700"
+                      data-testid="button-select-plan"
+                    >
+                      Change plan
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                      Choose the plan that best fits your needs. Start with a 14-day free trial - no credit card required.
+                    </p>
+                    <Button
+                      size="sm"
+                      onClick={() => setLocation("/select-plan")}
+                      className="gap-2 bg-blue-600 hover:bg-blue-700"
+                      data-testid="button-select-plan"
+                    >
+                      Start free trial
+                      <ChevronRight className="w-4 h-4" />
+                    </Button>
+                  </>
+                )}
               </div>
             </AccordionContent>
           </AccordionItem>
