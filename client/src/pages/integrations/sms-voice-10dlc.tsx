@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
+import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -91,9 +92,12 @@ function USFlagIcon({ className }: { className?: string }) {
 
 export default function SmsVoice10dlc() {
   const [, setLocation] = useLocation();
+  const { user } = useAuth();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  const isSuperAdmin = user?.role === "superadmin";
 
   const { data: numbersData, isLoading } = useQuery<{ numbers: SmsVoiceNumber[] }>({
     queryKey: ["/api/sms-voice/numbers"],
@@ -221,31 +225,33 @@ export default function SmsVoice10dlc() {
           </p>
         </div>
 
-        <Card className="border-slate-200 dark:border-slate-800">
-          <CardContent className="py-12">
-            <div className="flex flex-col items-center justify-center text-center space-y-4">
-              <div className="p-4 rounded-lg bg-slate-100 dark:bg-slate-800">
-                <FileText className="h-12 w-12 text-slate-400 dark:text-slate-500" />
+        {!isSuperAdmin && (
+          <Card className="border-slate-200 dark:border-slate-800">
+            <CardContent className="py-12">
+              <div className="flex flex-col items-center justify-center text-center space-y-4">
+                <div className="p-4 rounded-lg bg-slate-100 dark:bg-slate-800">
+                  <FileText className="h-12 w-12 text-slate-400 dark:text-slate-500" />
+                </div>
+                <div className="space-y-2">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                    Get started with 10DLC
+                  </h2>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md">
+                    10-digit local U.S. numbers approved by the mobile network operators for sending texts.
+                  </p>
+                </div>
+                <Link href="/compliance/10dlc">
+                  <Button 
+                    className="bg-blue-600 hover:bg-blue-700 text-white"
+                    data-testid="button-register-brand"
+                  >
+                    Register brand and campaign
+                  </Button>
+                </Link>
               </div>
-              <div className="space-y-2">
-                <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                  Get started with 10DLC
-                </h2>
-                <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md">
-                  10-digit local U.S. numbers approved by the mobile network operators for sending texts.
-                </p>
-              </div>
-              <Link href="/compliance/10dlc">
-                <Button 
-                  className="bg-blue-600 hover:bg-blue-700 text-white"
-                  data-testid="button-register-brand"
-                >
-                  Register brand and campaign
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         <div className="space-y-4">
           <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
