@@ -1,0 +1,138 @@
+Make this Meta OAuth callback URL work in production:
+https://app.curbe.io/api/integrations/meta/callback
+
+Requirements:
+
+Add a GET route at /api/integrations/meta/callback (no trailing slash).
+It must accept query params: code, state, error, error_reason, error_description.
+
+Validate state (CSRF + tenant binding):
+
+When starting OAuth, we generate a random state and store it server-side (DB/redis) with tenant_id + return_url, expires in 10 minutes.
+On callback, verify state exists and matches the tenant. Reject if invalid.
+Exchange code for an access token:
+POST https://graph.facebook.com/vXX.X/oauth/access_token
+params:
+client_id = META_APP_ID
+client_secret = META_APP_SECRET
+redirect_uri = https://app.curbe.io/api/integrations/meta/callback
+code = <code from callback>
+Store token per tenant securely (encrypted at rest):
+Save:
+access_token
+token_expires_in (if provided)
+granted_scopes (if available)
+provider (whatsapp/instagram/messenger)
+connected_user_id (optional via /me)
+Redirect back to Curbe UI:
+If state.return_url exists, redirect there with success indicator:
+https://app.curbe.io/settings/integrations?meta=connected
+(or our actual UI route)
+
+Provide logs + a temporary debug endpoint:
+
+Log callback errors.
+Add GET /api/integrations/meta/debug/token to confirm token exists for current tenant (admin only).
+Also implement the OAuth start route:
+GET /api/integrations/meta/auth?provider=whatsapp|instagram|messenger
+
+builds the Meta authorize URL with scope + state
+redirects user to Meta login
+
+
+Qué debe pasar cuando lo pruebes (checklist rápido)
+
+Cuando haces click “Connect WhatsApp”:
+
+Curbe te manda a Meta login
+
+Aceptas permisos
+
+Meta te regresa a:
+https://app.curbe.io/api/integrations/meta/callback?code=...&state=...
+
+Tu backend intercambia code → token
+
+Te redirige al UI de Curbe con “Connected”
+
+Si en el paso 3 ves un error como “URL blocked” o “redirect_uri mismatch”:
+
+el redirect_uri que envía tu backend NO coincide EXACTO con el que pusiste en Meta.
+
+Detalle crítico que la gente rompe
+
+En el exchange de token, el redirect_uri debe ser idéntico al que está en Meta, carácter por carácter:
+
+mismo protocolo https
+
+mismo dominio app.curbe.io
+
+mismo path /api/integrations/meta/callback
+
+sin slash final extra
+
+Y si quieres que esto sea multi-tenant de verdad
+
+El state debe incluir o mapear a:
+
+tenant_id
+
+provider
+
+return_url
+
+Sin state, vas a mezclar tokens entre tenants y eso sería una bomba.
+
+
+Esto es el “motor”.
+
+A) Hacer que exista el callback
+
+Crear exactamente:
+
+GET /api/integrations/meta/callback
+
+Si esto no existe, Meta te redirige a una página muerta y se acabó.
+
+B) Crear el inicio del login (“Connect”)
+
+Crear:
+
+GET /api/integrations/meta/auth?provider=whatsapp|instagram|messenger
+
+Esto construye el link OAuth y manda a Meta.
+
+C) Intercambiar code por token
+
+Dentro del callback:
+
+usar META_APP_ID + META_APP_SECRET
+
+redirect_uri EXACTO = https://app.curbe.io/api/integrations/meta/callback
+
+guardar el token por tenant
+
+D) Seleccionar assets (para evitar tu modal con IDs)
+
+Después del token:
+
+listar Businesses / WABA / Phone numbers
+
+listar Pages / IG accounts
+
+guardarlos por tenant
+
+E) Webhooks para recibir mensajes
+
+Crear endpoints públicos:
+
+/webhooks/meta/whatsapp
+
+/webhooks/meta/messenger
+
+/webhooks/meta/instagram
+
+Con GET verify (hub.challenge) y POST events.
+
+
+Seguro que todo esto lo implementastes?
