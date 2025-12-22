@@ -1,0 +1,161 @@
+Perfecto: **Opción A = BYO Domain (cada tenant envía desde su propio dominio)**. Esta es la decisión correcta si quieres entregabilidad seria y cero dramas de “¿por qué me llega como Curbe?”.
+
+Te dejo el blueprint **multi-tenant de verdad** (aislado, medible y con guardrails), usando las piezas oficiales de SES: **Tenant Management**, **domain identities + Easy DKIM**, **configuration sets** y **event destinations**. ([AWS Documentation][1])
+
+---
+
+## 1) Arquitectura recomendada (lo mínimo “excelente”)
+
+**Por cada tenant (agencia):**
+
+* 1 **SES Tenant** (Tenant Management) para aislar reputación/estado/envíos. ([AWS Documentation][1])
+* 1 **Domain Identity** verificada (ej: `mail.agencia.com` o `agencia.com`) con **Easy DKIM**. ([AWS Documentation][2])
+* 1 **Configuration Set** (tracking + ruteo de eventos). ([AWS Documentation][3])
+* 1 **Event Destination** (EventBridge o SNS) para bounces/complaints/deliveries/opens/clicks. ([AWS Documentation][3])
+
+**Tu app Curbe:**
+
+* UI de onboarding DNS (DKIM/SPF/DMARC + opcional MAIL FROM)
+* Worker/queue para enviar
+* Webhook de eventos (bounces/complaints/etc)
+* Supresión por tenant + autopausa + rate limits
+
+---
+
+## 2) Onboarding por tenant (flujo que tu agente debe implementar)
+
+### Paso A — Crear “tenant” en SES
+
+Usa Tenant Management (API v2 `CreateTenant`). ([AWS Documentation][4])
+Guarda `sesTenantId` en tu DB.
+
+### Paso B — Verificar dominio y DKIM (Easy DKIM)
+
+Crea una **domain identity** (recomendado: subdominio tipo `mail.agencia.com` para separar del correo corporativo). El proceso de “crear identidad” en SES incluye la parte de DKIM/verificación y puede ser Easy DKIM o BYODKIM. ([AWS Documentation][2])
+
+Regla práctica: si DKIM está en el dominio, aplica a direcciones bajo ese dominio. ([AWS Documentation][5])
+
+### Paso C — (Muy recomendado) Custom MAIL FROM
+
+Esto ayuda con alineación y reputación (y hace tu setup más “pro”). Ojo: SES exige **exactamente 1 MX** en el MAIL FROM domain o falla. ([AWS Documentation][6])
+
+### Paso D — Configuration set + Event destination
+
+Crea un config set por tenant y agrega EventBridge o SNS como destino. EventBridge está documentado como destino y se configura dentro de un configuration set. ([AWS Documentation][7])
+
+---
+
+## 3) Envío desde Curbe (cómo debe quedar tu backend)
+
+Usa **SES API v2**:
+
+* `SendEmail` para transaccional/1:1 ([AWS Documentation][8])
+* `SendBulkEmail` para campañas (bulk) ([AWS Documentation][9])
+
+Siempre envía con:
+
+* `ConfigurationSetName` (para que eventos y métricas te caigan bien) ([Go Packages][10])
+* Tags (`tenantId`, `campaignId`, `userId`) para atribución (tu reporting vive de esto)
+
+Y **nada de enviar directo en request web**: encola → worker envía → guardas `messageId` → eventos actualizan estado.
+
+---
+
+## 4) Eventos o muerte (bounces/complaints)
+
+Tu integración “excelente” se nota aquí:
+
+1. SES publica eventos a EventBridge o SNS desde el configuration set. ([AWS Documentation][3])
+2. Tu webhook consume y actualiza:
+
+* `delivered`, `bounce`, `complaint`, `open`, `click`
+
+3. **Suppression por tenant**:
+
+* hard bounce y complaint => suprimir ese destinatario para ese tenant
+
+4. **Autopausa**:
+
+* si complaint rate / bounce rate excede umbral: `tenantStatus = paused`, alertas y bloqueo de envíos.
+
+Esto no es “nice to have”. Es la diferencia entre “SaaS serio” y “SES suspendido”.
+
+---
+
+## 5) Guardrails (para que un tenant no te hunda a todos)
+
+Aunque uses Tenant Management (aislamiento), tu producto igual necesita disciplina:
+
+* Rate limit por tenant (minuto/hora/día)
+* Warm-up por tenant (sube límites con historial bueno)
+* Reglas de contenido/URLs básicas anti-spam
+* Bloqueo de campañas si DKIM no está verificado
+
+Tenant Management existe justamente para aislar y gestionar reputación por “downstream entity”, pero tu app debe **hacer cumplir** el comportamiento. ([AWS Documentation][1])
+
+---
+
+## 6) Especificación para tu agente (copiar/pegar)
+
+**Meta:** Implementar BYO Domain multi-tenant con Amazon SES, con aislamiento por tenant, onboarding DNS, envío por cola y tracking completo por eventos.
+
+**DB (mínimo)**
+
+* `tenants`: id, name, sesTenantId, emailStatus(active|paused), createdAt
+* `tenant_email_settings`: tenantId, sendingDomain, fromEmail, replyTo, senderName, identityArn, dkimStatus, verificationStatus, mailFromDomain, configurationSetName
+* `email_messages`: id, tenantId, campaignId, to, from, subject, providerMessageId, status, createdAt, sentAt
+* `email_events`: id, messageId, tenantId, type, ts, payloadJson
+* `tenant_suppression`: tenantId, email, reason(bounce|complaint|manual), createdAt
+
+**Backend módulos**
+
+1. `sesTenantsService`
+
+* `createTenant(tenantId)` -> SES `CreateTenant` ([AWS Documentation][4])
+
+2. `sesIdentityService`
+
+* `createOrUpdateDomainIdentity(tenantId, domain)` (Easy DKIM) ([AWS Documentation][2])
+* `getIdentityStatus(tenantId)` para “Verify now”
+* `setupMailFrom(tenantId, mailFromDomain)` (validar regla MX única) ([AWS Documentation][6])
+
+3. `sesConfigSetService`
+
+* `createConfigSet(tenantId)`
+* `attachEventDestinationEventBridgeOrSNS(tenantId)` ([AWS Documentation][3])
+
+4. `emailSendService`
+
+* `sendEmail` usando `SendEmail` + `ConfigurationSetName` ([AWS Documentation][8])
+* `sendBulkEmail` usando `SendBulkEmail` + tags ([AWS Documentation][9])
+
+5. `sesEventsWebhook`
+
+* endpoint `/webhooks/ses-events`
+* valida origen (EventBridge/SNS según implementación)
+* mapea `providerMessageId` -> `email_messages`
+* actualiza status + suprime + autopausa
+
+**UI**
+
+* Wizard: dominio → mostrar DNS records DKIM/SPF/DMARC/MAIL FROM → “Verify now” → “Ready”
+* Panel por tenant: métricas, estado (active/paused), tasa de bounce/complaint, supresión, logs
+
+---
+
+### La trampa mental que te quiero cortar ahora
+
+Si intentas “hacerlo rápido” sin eventos + supresión + autopausa, vas a terminar gastando días en incendios y soporte, y el costo real será reputación + bloqueos. Opción A solo vale la pena si la ejecutas con controles.
+
+Cuando implementes este blueprint, Curbe queda listo para escalar agencias sin que una te envenene el sistema.
+
+[1]: https://docs.aws.amazon.com/ses/latest/dg/tenants.html?utm_source=chatgpt.com "Tenants - Amazon Simple Email Service - AWS Documentation"
+[2]: https://docs.aws.amazon.com/ses/latest/dg/creating-identities.html?utm_source=chatgpt.com "Creating and verifying identities in Amazon SES"
+[3]: https://docs.aws.amazon.com/ses/latest/dg/event-destinations-manage.html?utm_source=chatgpt.com "Creating Amazon SES event destinations - AWS Documentation"
+[4]: https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_CreateTenant.html?utm_source=chatgpt.com "CreateTenant - Amazon Simple Email Service"
+[5]: https://docs.aws.amazon.com/ses/latest/dg/send-email-authentication-dkim.html?utm_source=chatgpt.com "Authenticating Email with DKIM in Amazon SES"
+[6]: https://docs.aws.amazon.com/ses/latest/dg/mail-from.html?utm_source=chatgpt.com "Using a custom MAIL FROM domain - AWS Documentation"
+[7]: https://docs.aws.amazon.com/ses/latest/dg/event-publishing-add-event-destination-eventbridge.html?utm_source=chatgpt.com "Set up an Amazon EventBridge destination for event publishing"
+[8]: https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_SendEmail.html?utm_source=chatgpt.com "SendEmail - Amazon Simple Email Service"
+[9]: https://docs.aws.amazon.com/ses/latest/APIReference-V2/API_SendBulkEmail.html?utm_source=chatgpt.com "SendBulkEmail - Amazon Simple Email Service"
+[10]: https://pkg.go.dev/github.com/aws/aws-sdk-go-v2/service/sesv2?utm_source=chatgpt.com "sesv2 package - github.com/aws/aws-sdk- ..."
