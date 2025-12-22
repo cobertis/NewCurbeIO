@@ -4,9 +4,7 @@ import { useLocation } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
@@ -62,7 +60,6 @@ interface OnboardingProgress {
 
 export default function GettingStarted() {
   const [, setLocation] = useLocation();
-  const [faqTab, setFaqTab] = useState("sms");
   const [activeAccordion, setActiveAccordion] = useState<string | undefined>("profile");
   const [showNumberTypeDialog, setShowNumberTypeDialog] = useState(false);
   const [showCallSetupDialog, setShowCallSetupDialog] = useState(false);
@@ -150,51 +147,6 @@ export default function GettingStarted() {
       setActiveAccordion("other");
     }
   }, [progress.profileCompleted, progress.planSelected, progress.messagingSetup, progress.emailSetup]);
-
-  const faqItems = {
-    sms: [
-      {
-        question: "What is the difference between 10DLC and toll-free numbers?",
-        answer: "10DLC (10-Digit Long Code) numbers are standard local phone numbers optimized for application-to-person messaging. Toll-free numbers (800, 888, etc.) are better for high-volume messaging and have higher throughput limits."
-      },
-      {
-        question: "When and why choose a toll-free number for texting?",
-        answer: "Choose toll-free for high-volume campaigns, national reach, and professional branding. They offer faster sending speeds and don't require 10DLC registration."
-      },
-      {
-        question: "How do I register my 10DLC campaign?",
-        answer: "10DLC registration involves verifying your business and use case with carriers. This ensures better deliverability and compliance with messaging regulations."
-      }
-    ],
-    email: [
-      {
-        question: "How do I set up my email sending domain?",
-        answer: "Navigate to Settings > Email Configuration and add your custom domain. You'll need to add DNS records to verify ownership and enable DKIM/SPF."
-      },
-      {
-        question: "What are the email sending limits?",
-        answer: "New accounts start with 10,000 free emails. Limits increase based on your plan and sending reputation over time."
-      },
-      {
-        question: "How can I improve my email deliverability?",
-        answer: "Use verified domains, maintain a clean contact list, personalize content, and avoid spam trigger words. Monitor your bounce and complaint rates."
-      }
-    ],
-    other: [
-      {
-        question: "Can I integrate my existing phone system?",
-        answer: "Yes! You can connect numbers from Twilio, Sinch, Vonage, Telnyx, or Bandwidth through our integrations page."
-      },
-      {
-        question: "How does the unified inbox work?",
-        answer: "All messages from SMS, email, and other channels appear in a single inbox, organized by contact. Reply through any channel from one place."
-      },
-      {
-        question: "Is my data secure?",
-        answer: "Yes. We use enterprise-grade encryption, regular security audits, and comply with SOC 2 and GDPR requirements."
-      }
-    ]
-  };
 
   if (isLoading) {
     return <LoadingSpinner />;
@@ -697,49 +649,7 @@ export default function GettingStarted() {
           </div>
         )}
 
-        <div className="mt-12 text-center">
-          <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
-            Getting started FAQ
-          </h2>
-          <p className="text-sm text-gray-500 dark:text-gray-400 mb-6">
-            Haven't found what you were looking for?{" "}
-            <a href="/support" className="text-blue-600 hover:text-blue-700 dark:text-blue-400">
-              Contact us
-            </a>
-          </p>
-
-          <Tabs value={faqTab} onValueChange={setFaqTab} className="w-full">
-            <TabsList className="mb-6">
-              <TabsTrigger value="sms" data-testid="tab-faq-sms">SMS</TabsTrigger>
-              <TabsTrigger value="email" data-testid="tab-faq-email">Email</TabsTrigger>
-              <TabsTrigger value="other" data-testid="tab-faq-other">Other channels</TabsTrigger>
-            </TabsList>
-
-            {Object.entries(faqItems).map(([key, items]) => (
-              <TabsContent key={key} value={key} className="text-left">
-                <div className="space-y-3">
-                  {items.map((item, index) => (
-                    <Accordion key={index} type="single" collapsible>
-                      <AccordionItem value={`faq-${index}`} className="border rounded-lg bg-white dark:bg-gray-800 shadow-sm">
-                        <AccordionTrigger className="px-5 py-4 hover:no-underline text-left" data-testid={`faq-${key}-${index}`}>
-                          <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                            {item.question}
-                          </span>
-                        </AccordionTrigger>
-                        <AccordionContent className="px-5 pb-4">
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {item.answer}
-                          </p>
-                        </AccordionContent>
-                      </AccordionItem>
-                    </Accordion>
-                  ))}
-                </div>
-              </TabsContent>
-            ))}
-          </Tabs>
-        </div>
-      </div>
+              </div>
 
       {/* Number Type Selection Dialog */}
       <Dialog open={showNumberTypeDialog} onOpenChange={setShowNumberTypeDialog}>
