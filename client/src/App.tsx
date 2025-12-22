@@ -71,6 +71,7 @@ import IncomingSms from "@/pages/incoming-sms";
 import SystemAlerts from "@/pages/system-alerts";
 import SystemSettings from "@/pages/system-settings";
 import Unsubscribe from "@/pages/unsubscribe";
+import DataDeletionPage from "@/pages/data-deletion";
 import Billing from "@/pages/billing";
 import PlanSelection from "@/pages/plan-selection";
 import Tickets from "@/pages/tickets";
@@ -1973,6 +1974,7 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/data-deletion" component={DataDeletionPage} />
       <Route path="/l/:slug" component={PublicLandingPage} />
       <Route path="/consent/:token" component={PublicConsentPage} />
       <Route path="/unsubscribe" component={Unsubscribe} />
