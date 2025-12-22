@@ -29899,6 +29899,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       // Extract all available fields from Telnyx response (camelCase format)
       const raw = foundRecord;
+      // Debug: Log all available fields from Telnyx
+      console.log("[Telnyx TFV] Raw verification data keys:", Object.keys(raw));
+      console.log("[Telnyx TFV] Raw verification data:", JSON.stringify(raw, null, 2));
       
       const flattened = {
         id: raw.id,
