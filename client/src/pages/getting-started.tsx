@@ -479,26 +479,6 @@ export default function GettingStarted() {
                       <ChevronRight className="w-4 h-4" />
                     </Button>
                 </div>
-
-                {/* Divider */}
-                <div className="border-t border-gray-200 dark:border-gray-700" />
-
-                {/* Create campaign */}
-                <div>
-                  <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-2">Create your first campaign</h4>
-                  <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-                    Start engaging your contacts with email marketing.
-                  </p>
-                  <Button 
-                      size="sm" 
-                      onClick={() => setLocation("/campaigns")} 
-                      className="gap-2 bg-blue-600 hover:bg-blue-700" 
-                      data-testid="button-create-campaign"
-                    >
-                      Create campaign
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                </div>
               </div>
             </AccordionContent>
           </AccordionItem>
