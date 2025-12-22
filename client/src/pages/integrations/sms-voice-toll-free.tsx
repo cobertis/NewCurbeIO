@@ -669,7 +669,7 @@ export default function SmsVoiceTollFree() {
                           Campaign name
                         </td>
                         <td className="px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-                          {verification.brand_display_name || '-'}
+                          -
                         </td>
                       </tr>
                       <tr className="border-b border-slate-200 dark:border-slate-700">
