@@ -3594,7 +3594,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         // Check if company has any BulkVS phone numbers (messaging channels)
         const bulkvsNumbers = await storage.getBulkvsPhoneNumbersByCompany(user.companyId);
-        messagingSetup = bulkvsNumbers.length > 0;
+        messagingSetup = bulkvsNumbers.length > 0 || hasSipEnabled || hasCompliancePhone;
         
         // Check if user has selected a plan (has subscription)
         const subscription = await storage.getSubscriptionByCompany(user.companyId);
