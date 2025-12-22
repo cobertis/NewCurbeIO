@@ -39,6 +39,7 @@ import {
   ArrowRight
 } from "lucide-react";
 import { LoadingSpinner } from "@/components/loading-spinner";
+import { useToast } from "@/hooks/use-toast";
 
 interface User {
   id: number;
@@ -98,6 +99,32 @@ export default function GettingStarted() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/session"] });
       setLocation("/");
+    },
+  });
+
+  const { toast } = useToast();
+
+  const enableBrowserCallingMutation = useMutation({
+    mutationFn: async () => {
+      return await apiRequest("POST", "/api/onboarding/enable-browser-calling");
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/session"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/webrtc/extension-credentials"] });
+      setShowCallSetupDialog(false);
+      toast({
+        title: data.alreadyConfigured ? "Already configured" : "Browser calling enabled",
+        description: data.alreadyConfigured 
+          ? `Your extension ${data.extension} is ready to use.`
+          : `Extension ${data.extension} created. You can now make and receive calls.`,
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Setup failed",
+        description: error.message || "Please ensure your phone system is configured first.",
+        variant: "destructive",
+      });
     },
   });
 
@@ -879,26 +906,36 @@ export default function GettingStarted() {
             <div className="grid gap-4">
               {/* Direct Web Calls Option */}
               <div 
-                className="border rounded-lg p-5 hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 cursor-pointer transition-all"
+                className={`border rounded-lg p-5 hover:border-blue-500 hover:bg-blue-50/50 dark:hover:bg-blue-950/20 cursor-pointer transition-all ${enableBrowserCallingMutation.isPending ? 'opacity-70 pointer-events-none' : ''}`}
                 onClick={() => {
-                  setShowCallSetupDialog(false);
-                  setLocation("/integrations");
+                  if (!enableBrowserCallingMutation.isPending) {
+                    enableBrowserCallingMutation.mutate();
+                  }
                 }}
                 data-testid="option-direct-calls"
               >
                 <div className="flex items-start gap-4">
                   <div className="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center shrink-0">
-                    <Globe className="w-6 h-6 text-green-600 dark:text-green-400" />
+                    {enableBrowserCallingMutation.isPending ? (
+                      <Loader2 className="w-6 h-6 text-green-600 dark:text-green-400 animate-spin" />
+                    ) : (
+                      <Globe className="w-6 h-6 text-green-600 dark:text-green-400" />
+                    )}
                   </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">Receive calls directly in the browser</h3>
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100">
+                        {enableBrowserCallingMutation.isPending ? "Setting up..." : "Receive calls directly in the browser"}
+                      </h3>
                       <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-0">
                         Recommended
                       </Badge>
                     </div>
                     <p className="text-sm text-muted-foreground mb-3">
-                      Answer calls right from your Curbe dashboard. No additional hardware or software needed.
+                      {enableBrowserCallingMutation.isPending 
+                        ? "Creating your extension and configuring SIP credentials..."
+                        : "Answer calls right from your Curbe dashboard. No additional hardware or software needed."
+                      }
                     </p>
                     <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
                       <div className="flex items-center gap-1.5">
@@ -915,7 +952,11 @@ export default function GettingStarted() {
                       </div>
                     </div>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-muted-foreground shrink-0 mt-2" />
+                  {enableBrowserCallingMutation.isPending ? (
+                    <Loader2 className="w-5 h-5 text-muted-foreground shrink-0 mt-2 animate-spin" />
+                  ) : (
+                    <ArrowRight className="w-5 h-5 text-muted-foreground shrink-0 mt-2" />
+                  )}
                 </div>
               </div>
 
