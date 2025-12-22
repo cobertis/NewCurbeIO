@@ -90,8 +90,8 @@ export function getComplianceStatusBadge(status: string | null) {
       );
     default:
       return (
-        <Badge data-testid="badge-status-unverified" variant="outline" className="text-muted-foreground">
-          Unverified
+        <Badge data-testid="badge-status-pending" className="bg-yellow-500/10 text-yellow-600 border-yellow-500/20">
+          Pending
         </Badge>
       );
   }
