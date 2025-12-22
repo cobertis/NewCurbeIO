@@ -103,6 +103,29 @@ export default function SmsVoice10dlc() {
     queryKey: ["/api/sms-voice/numbers"],
   });
 
+  // Fetch 10DLC brands
+  interface Brand {
+    id: string;
+    brandId: string;
+    tcrBrandId?: string;
+    displayName: string;
+    companyName: string;
+    email?: string;
+    entityType?: string;
+    vertical?: string;
+    status: string;
+    identityStatus?: string;
+    country?: string;
+    website?: string;
+    createdAt?: string;
+  }
+  
+  const { data: brandsData, isLoading: isLoadingBrands } = useQuery<Brand[]>({
+    queryKey: ["/api/phone-system/brands"],
+  });
+
+  const primaryBrand = brandsData?.[0];
+
   const numbers = numbersData?.numbers || [];
   const localNumbers = numbers.filter(n => {
     const areaCode = n.phoneNumber.replace(/^\+1/, '').slice(0, 3);
@@ -227,28 +250,135 @@ export default function SmsVoice10dlc() {
 
         {!isSuperAdmin && (
           <Card className="border-slate-200 dark:border-slate-800">
-            <CardContent className="py-12">
-              <div className="flex flex-col items-center justify-center text-center space-y-4">
-                <div className="p-4 rounded-lg bg-slate-100 dark:bg-slate-800">
-                  <FileText className="h-12 w-12 text-slate-400 dark:text-slate-500" />
+            <CardContent className="py-6">
+              {isLoadingBrands ? (
+                <div className="py-8">
+                  <LoadingSpinner fullScreen={false} message="Loading brand information..." />
                 </div>
-                <div className="space-y-2">
-                  <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                    Get started with 10DLC
-                  </h2>
-                  <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md">
-                    10-digit local U.S. numbers approved by the mobile network operators for sending texts.
-                  </p>
+              ) : primaryBrand ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                      Registered Brand
+                    </h2>
+                    <span className={cn(
+                      "px-2.5 py-0.5 text-xs font-medium rounded-full",
+                      primaryBrand.status === "verified" || primaryBrand.status === "VERIFIED" 
+                        ? "bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400"
+                        : primaryBrand.status === "pending" || primaryBrand.status === "PENDING"
+                        ? "bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400"
+                        : "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-400"
+                    )}>
+                      {primaryBrand.status}
+                    </span>
+                  </div>
+                  <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                    <table className="w-full text-sm">
+                      <tbody>
+                        <tr className="border-b border-slate-200 dark:border-slate-700">
+                          <td className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium w-[160px]">
+                            Brand Name
+                          </td>
+                          <td className="px-4 py-2.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                            {primaryBrand.displayName || '-'}
+                          </td>
+                        </tr>
+                        <tr className="border-b border-slate-200 dark:border-slate-700">
+                          <td className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">
+                            Company Name
+                          </td>
+                          <td className="px-4 py-2.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                            {primaryBrand.companyName || '-'}
+                          </td>
+                        </tr>
+                        <tr className="border-b border-slate-200 dark:border-slate-700">
+                          <td className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">
+                            Brand ID
+                          </td>
+                          <td className="px-4 py-2.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono text-xs">
+                            {primaryBrand.brandId || '-'}
+                          </td>
+                        </tr>
+                        {primaryBrand.tcrBrandId && (
+                          <tr className="border-b border-slate-200 dark:border-slate-700">
+                            <td className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">
+                              TCR Brand ID
+                            </td>
+                            <td className="px-4 py-2.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-mono text-xs">
+                              {primaryBrand.tcrBrandId}
+                            </td>
+                          </tr>
+                        )}
+                        <tr className="border-b border-slate-200 dark:border-slate-700">
+                          <td className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">
+                            Entity Type
+                          </td>
+                          <td className="px-4 py-2.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                            {primaryBrand.entityType || '-'}
+                          </td>
+                        </tr>
+                        <tr className="border-b border-slate-200 dark:border-slate-700">
+                          <td className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">
+                            Vertical
+                          </td>
+                          <td className="px-4 py-2.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                            {primaryBrand.vertical || '-'}
+                          </td>
+                        </tr>
+                        {primaryBrand.website && (
+                          <tr className="border-b border-slate-200 dark:border-slate-700">
+                            <td className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">
+                              Website
+                            </td>
+                            <td className="px-4 py-2.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                              <a href={primaryBrand.website} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
+                                {primaryBrand.website}
+                              </a>
+                            </td>
+                          </tr>
+                        )}
+                        <tr>
+                          <td className="px-4 py-2.5 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium">
+                            Identity Status
+                          </td>
+                          <td className="px-4 py-2.5 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                            {primaryBrand.identityStatus || '-'}
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                  <div className="flex gap-2">
+                    <Link href="/compliance/10dlc">
+                      <Button variant="outline" size="sm" data-testid="button-manage-brand">
+                        Manage brand
+                      </Button>
+                    </Link>
+                  </div>
                 </div>
-                <Link href="/compliance/10dlc">
-                  <Button 
-                    className="bg-blue-600 hover:bg-blue-700 text-white"
-                    data-testid="button-register-brand"
-                  >
-                    Register brand and campaign
-                  </Button>
-                </Link>
-              </div>
+              ) : (
+                <div className="flex flex-col items-center justify-center text-center space-y-4 py-6">
+                  <div className="p-4 rounded-lg bg-slate-100 dark:bg-slate-800">
+                    <FileText className="h-12 w-12 text-slate-400 dark:text-slate-500" />
+                  </div>
+                  <div className="space-y-2">
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                      Get started with 10DLC
+                    </h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400 max-w-md">
+                      10-digit local U.S. numbers approved by the mobile network operators for sending texts.
+                    </p>
+                  </div>
+                  <Link href="/compliance/10dlc">
+                    <Button 
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                      data-testid="button-register-brand"
+                    >
+                      Register brand and campaign
+                    </Button>
+                  </Link>
+                </div>
+              )}
             </CardContent>
           </Card>
         )}
