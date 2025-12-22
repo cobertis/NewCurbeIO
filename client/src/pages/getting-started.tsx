@@ -323,7 +323,7 @@ export default function GettingStarted() {
                       </div>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                         {(activeApplication.status === 'submitted' || activeApplication.status === 'pending_review') && 
-                          "We've submitted your toll-free verification. Please wait for approval to start texting."}
+                          "We've assigned a toll-free number to your account for 1 month for free, so you can start engaging with your audience sooner. Please complete a free verification to start texting."}
                         {activeApplication.status === 'approved' && 
                           "Your toll-free number is verified and ready to use."}
                         {activeApplication.status === 'rejected' && 
