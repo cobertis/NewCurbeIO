@@ -25802,8 +25802,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // Meta OAuth configuration
   const META_APP_ID = process.env.META_APP_ID;
   const META_APP_SECRET = process.env.META_APP_SECRET;
-  const APP_BASE_URL = process.env.APP_BASE_URL || process.env.BASE_URL || "https://app.curbe.io";
-  const META_REDIRECT_URI = process.env.META_REDIRECT_URI || `${APP_BASE_URL}/api/integrations/meta/callback`;
+  const META_BASE_URL = "https://app.curbe.io";
+  const META_WHATSAPP_REDIRECT_URI = `${META_BASE_URL}/api/integrations/meta/whatsapp/callback`;
   const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v21.0";
   
   // Scopes required for WhatsApp Business Platform Embedded Signup
@@ -25818,7 +25818,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // =====================================================
   
   // Hardcoded production redirect URI for Meta OAuth
-  const UNIFIED_META_REDIRECT_URI = "https://app.curbe.io/api/integrations/meta/callback";
+  const UNIFIED_META_REDIRECT_URI = `${META_BASE_URL}/api/integrations/meta/callback`;
   
   // Provider-specific scopes
   const META_PROVIDER_SCOPES: Record<string, string> = {
@@ -26235,7 +26235,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       // Using response_type=code for server-side flow
       const authUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
       authUrl.searchParams.set("client_id", appId);
-      authUrl.searchParams.set("redirect_uri", META_REDIRECT_URI);
+      authUrl.searchParams.set("redirect_uri", META_WHATSAPP_REDIRECT_URI);
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("scope", META_WHATSAPP_SCOPES);
       authUrl.searchParams.set("state", nonce);
@@ -26254,7 +26254,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // GET /api/integrations/meta/whatsapp/callback - OAuth callback from Meta
   app.get("/api/integrations/meta/whatsapp/callback", async (req: Request, res: Response) => {
-    const frontendUrl = process.env.APP_BASE_URL || process.env.BASE_URL || "https://app.curbe.io";
+    const frontendUrl = META_BASE_URL;
     const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?whatsapp=error&reason=${encodeURIComponent(reason)}`);
     
     try {
@@ -26631,7 +26631,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // INSTAGRAM DIRECT OAUTH INTEGRATION
   // =====================================================
 
-  const META_INSTAGRAM_REDIRECT_URI = process.env.META_INSTAGRAM_REDIRECT_URI || `${APP_BASE_URL}/api/integrations/meta/callback`;
+  const META_INSTAGRAM_REDIRECT_URI = `${META_BASE_URL}/api/integrations/meta/instagram/callback`;
   const META_INSTAGRAM_SCOPES = [
     "instagram_basic",
     "instagram_manage_messages",
@@ -26679,7 +26679,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // GET /api/integrations/meta/instagram/callback - OAuth callback from Meta
   app.get("/api/integrations/meta/instagram/callback", async (req: Request, res: Response) => {
-    const frontendUrl = process.env.APP_BASE_URL || process.env.BASE_URL || "https://app.curbe.io";
+    const frontendUrl = META_BASE_URL;
     const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?instagram=error&reason=${encodeURIComponent(reason)}`);
     
     try {
@@ -26864,7 +26864,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // FACEBOOK MESSENGER OAUTH INTEGRATION
   // =====================================================
 
-  const META_FACEBOOK_REDIRECT_URI = process.env.META_FACEBOOK_REDIRECT_URI || `${APP_BASE_URL}/api/integrations/meta/callback`;
+  const META_FACEBOOK_REDIRECT_URI = `${META_BASE_URL}/api/integrations/meta/messenger/callback`;
   const META_FACEBOOK_SCOPES = [
     "pages_messaging",
     "pages_manage_metadata",
@@ -26912,7 +26912,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // GET /api/integrations/meta/facebook/callback - OAuth callback from Meta
   app.get("/api/integrations/meta/facebook/callback", async (req: Request, res: Response) => {
-    const frontendUrl = process.env.APP_BASE_URL || process.env.BASE_URL || "https://app.curbe.io";
+    const frontendUrl = META_BASE_URL;
     const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?facebook=error&reason=${encodeURIComponent(reason)}`);
     
     try {
@@ -27143,7 +27143,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // GET /api/integrations/tiktok/callback - OAuth callback from TikTok
   app.get("/api/integrations/tiktok/callback", async (req: Request, res: Response) => {
-    const frontendUrl = process.env.APP_BASE_URL || process.env.BASE_URL || "https://app.curbe.io";
+    const frontendUrl = META_BASE_URL;
     const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?tiktok=error&reason=${encodeURIComponent(reason)}`);
     
     try {
