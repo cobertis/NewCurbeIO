@@ -317,7 +317,7 @@ export default function GettingStarted() {
                   <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-900 flex items-center justify-center">
                     <MessageSquare className="w-4 h-4 text-purple-600 dark:text-purple-400" />
                   </div>
-                  <span className="font-medium text-gray-900 dark:text-gray-100">Número de teléfono</span>
+                  <span className="font-medium text-gray-900 dark:text-gray-100">Phone number</span>
                   {progress.messagingSetup && (
                     <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 ml-2">
                       <Check className="w-3 h-3 mr-1" />
@@ -437,9 +437,9 @@ export default function GettingStarted() {
                       <div className="flex items-start gap-3">
                         <Smartphone className="w-5 h-5 text-gray-400 mt-0.5" />
                         <div>
-                          <h4 className="font-medium text-gray-900 dark:text-gray-100">Transfiere tu número existente</h4>
+                          <h4 className="font-medium text-gray-900 dark:text-gray-100">Port your existing number</h4>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Porta tu número actual a Curbe.io. Mantienes tu mismo número mientras obtienes todas las funcionalidades de la plataforma.
+                            Transfer your current phone number to Curbe.io. Keep your same number while gaining access to all platform features.
                           </p>
                         </div>
                       </div>
@@ -449,7 +449,7 @@ export default function GettingStarted() {
                           Watch tutorial
                         </Button>
                         <Button size="sm" onClick={() => setLocation("/integrations")} className="gap-2 bg-blue-600 hover:bg-blue-700" data-testid="button-connect-provider">
-                          Iniciar portabilidad
+                          Start porting
                         </Button>
                       </div>
                     </div>
