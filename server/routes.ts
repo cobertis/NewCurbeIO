@@ -25830,6 +25830,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/integrations/meta/auth - Unified OAuth start endpoint
   app.get("/api/integrations/meta/auth", requireActiveCompany, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
       
@@ -26000,6 +26006,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/integrations/meta/:provider/businesses - List businesses
   app.get("/api/integrations/meta/:provider/businesses", requireActiveCompany, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       const provider = req.params.provider;
       
@@ -26036,6 +26048,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/integrations/meta/:provider/assets - List provider-specific assets
   app.get("/api/integrations/meta/:provider/assets", requireActiveCompany, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       const provider = req.params.provider;
       const businessId = req.query.business_id as string;
@@ -26204,6 +26222,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   app.post("/api/integrations/meta/whatsapp/start", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
       
@@ -26245,6 +26269,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         setup: { business: { name: "", email: "" } }
       }));
       
+      console.log("[WhatsApp OAuth] Generated OAuth URL:", authUrl.toString());
+      console.log("[WhatsApp OAuth] redirect_uri:", META_WHATSAPP_REDIRECT_URI);
       return res.json({ authUrl: authUrl.toString(), state: nonce });
     } catch (error) {
       console.error("[WhatsApp OAuth] Start error:", error);
@@ -26466,7 +26492,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/integrations/whatsapp/status - Get WhatsApp connection status
   app.get("/api/integrations/whatsapp/status", requireActiveCompany, async (req: Request, res: Response) => {
     
-    const user = req.user as any;
+    // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
+      const user = req.user as any;
     if (!user.companyId) return res.json({ connected: false, connection: null });
     
     const connection = await db.query.channelConnections.findFirst({
@@ -26499,7 +26531,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // This is kept for admin debugging purposes
   app.post("/api/integrations/whatsapp/connect", requireActiveCompany, async (req: Request, res: Response) => {
     
-    const user = req.user as any;
+    // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
+      const user = req.user as any;
     if (!user.companyId) return res.status(400).json({ error: "No company" });
     
     // Only allow admins to use manual connect
@@ -26570,7 +26608,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/integrations/whatsapp/disconnect - Disconnect WhatsApp
   app.post("/api/integrations/whatsapp/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
     
-    const user = req.user as any;
+    // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
+      const user = req.user as any;
     if (!user.companyId) return res.status(400).json({ error: "No company" });
     
     const connection = await db.query.channelConnections.findFirst({
@@ -26600,7 +26644,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // DELETE /api/integrations/whatsapp/disconnect - Disconnect WhatsApp (legacy support)
   app.delete("/api/integrations/whatsapp/disconnect", async (req: Request, res: Response) => {
     if (!req.user) return res.status(401).json({ error: "Unauthorized" });
-    const user = req.user as any;
+    // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
+      const user = req.user as any;
     if (!user.companyId) return res.status(400).json({ error: "No company" });
     
     const connection = await db.query.channelConnections.findFirst({
@@ -26642,6 +26692,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/integrations/meta/instagram/start - Start Instagram OAuth flow
   app.post("/api/integrations/meta/instagram/start", requireActiveCompany, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
       
@@ -26670,6 +26726,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       authUrl.searchParams.set("scope", META_INSTAGRAM_SCOPES);
       authUrl.searchParams.set("state", nonce);
       
+      console.log("[WhatsApp OAuth] Generated OAuth URL:", authUrl.toString());
+      console.log("[WhatsApp OAuth] redirect_uri:", META_WHATSAPP_REDIRECT_URI);
       return res.json({ authUrl: authUrl.toString(), state: nonce });
     } catch (error) {
       console.error("[Instagram OAuth] Start error:", error);
@@ -26809,6 +26867,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/integrations/instagram/status - Get Instagram connection status
   app.get("/api/integrations/instagram/status", requireActiveCompany, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
       
@@ -26829,6 +26893,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/integrations/instagram/disconnect - Disconnect Instagram
   app.post("/api/integrations/instagram/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
       
@@ -26875,6 +26945,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/integrations/meta/facebook/start - Start Facebook OAuth flow
   app.post("/api/integrations/meta/facebook/start", requireActiveCompany, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
       
@@ -26903,6 +26979,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       authUrl.searchParams.set("scope", META_FACEBOOK_SCOPES);
       authUrl.searchParams.set("state", nonce);
       
+      console.log("[WhatsApp OAuth] Generated OAuth URL:", authUrl.toString());
+      console.log("[WhatsApp OAuth] redirect_uri:", META_WHATSAPP_REDIRECT_URI);
       return res.json({ authUrl: authUrl.toString(), state: nonce });
     } catch (error) {
       console.error("[Facebook OAuth] Start error:", error);
@@ -27037,6 +27115,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/integrations/facebook/status - Get Facebook connection status
   app.get("/api/integrations/facebook/status", requireActiveCompany, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
       
@@ -27057,6 +27141,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/integrations/facebook/disconnect - Disconnect Facebook
   app.post("/api/integrations/facebook/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
       
@@ -27097,6 +27187,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/integrations/tiktok/start - Start TikTok OAuth flow
   app.post("/api/integrations/tiktok/start", requireActiveCompany, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
       
@@ -27134,6 +27230,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       authUrl.searchParams.set("scope", TIKTOK_SCOPES);
       authUrl.searchParams.set("state", nonce);
       
+      console.log("[WhatsApp OAuth] Generated OAuth URL:", authUrl.toString());
+      console.log("[WhatsApp OAuth] redirect_uri:", META_WHATSAPP_REDIRECT_URI);
       return res.json({ authUrl: authUrl.toString(), state: nonce });
     } catch (error) {
       console.error("[TikTok OAuth] Start error:", error);
@@ -27308,6 +27406,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/integrations/tiktok/status - Get TikTok connection status
   app.get("/api/integrations/tiktok/status", requireActiveCompany, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
       
@@ -27328,6 +27432,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/integrations/tiktok/disconnect - Disconnect TikTok
   app.post("/api/integrations/tiktok/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
       
@@ -27681,7 +27791,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // POST /admin/telegram/setupWebhook - Setup Telegram webhook (Admin only)
   app.post("/admin/telegram/setupWebhook", requireAuth, async (req: Request, res: Response) => {
-    const user = req.user as any;
+    // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
+      const user = req.user as any;
     if (user.role !== "super_admin") {
       return res.status(403).json({ error: "Super admin access required" });
     }
@@ -27717,7 +27833,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // POST /api/integrations/telegram/start - Generate connect code
   app.post("/api/integrations/telegram/start", requireActiveCompany, async (req: Request, res: Response) => {
-    const user = req.user as any;
+    // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
+      const user = req.user as any;
     
     // Check if user has their own bot configured
     const userBot = await db.query.userTelegramBots.findFirst({
@@ -27762,7 +27884,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // GET /api/integrations/telegram/status - Get connected chats
   app.get("/api/integrations/telegram/status", requireActiveCompany, async (req: Request, res: Response) => {
-    const user = req.user as any;
+    // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
+      const user = req.user as any;
     
     try {
       const chats = await db.query.telegramChatLinks.findMany({
@@ -27782,7 +27910,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // POST /api/integrations/telegram/disconnect - Disconnect a chat
   app.post("/api/integrations/telegram/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
-    const user = req.user as any;
+    // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
+      const user = req.user as any;
     const { chatId } = req.body;
     
     if (!chatId) return res.status(400).json({ error: "chatId required" });
@@ -27804,7 +27938,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // POST /api/integrations/telegram/setup-bot - User submits their own bot token
   app.post("/api/integrations/telegram/setup-bot", requireActiveCompany, async (req: Request, res: Response) => {
-    const user = req.user as any;
+    // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
+      const user = req.user as any;
     const { botToken } = req.body;
     
     if (!botToken) return res.status(400).json({ error: "botToken required" });
@@ -27872,7 +28012,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // DELETE /api/integrations/telegram/remove-bot - Remove user's bot
   app.delete("/api/integrations/telegram/remove-bot", requireActiveCompany, async (req: Request, res: Response) => {
-    const user = req.user as any;
+    // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
+      const user = req.user as any;
     
     try {
       // Find user's bot
@@ -27906,7 +28052,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // GET /api/integrations/telegram/bot-status - Get user's bot status
   app.get("/api/integrations/telegram/bot-status", requireActiveCompany, async (req: Request, res: Response) => {
-    const user = req.user as any;
+    // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
+      const user = req.user as any;
     
     try {
       const userBot = await db.query.userTelegramBots.findFirst({
@@ -28266,7 +28418,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // POST /api/telegram/messages/send - Send outbound message
   app.post("/api/telegram/messages/send", requireActiveCompany, async (req: Request, res: Response) => {
-    const user = req.user as any;
+    // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
+      const user = req.user as any;
     const { conversationId, text } = req.body;
     
     if (!conversationId || !text) {
@@ -30216,6 +30374,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // Queries Telnyx API directly for real-time verification status
   app.get("/api/telnyx/verification-request/by-phone/:phoneNumber", requireAuth, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -30332,6 +30496,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
   app.get("/api/telnyx/verification-request/:id", requireAuth, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -33206,6 +33376,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/telnyx/global-pricing - Get global pricing configuration
   app.get("/api/telnyx/global-pricing", requireAuth, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (user.role !== "superadmin") {
         return res.status(403).json({ message: "Super Admin access required" });
@@ -33326,6 +33502,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // PUT /api/telnyx/global-pricing - Update global pricing configuration
   app.put("/api/telnyx/global-pricing", requireAuth, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (user.role !== "superadmin") {
         return res.status(403).json({ message: "Super Admin access required" });
@@ -33827,6 +34009,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/telnyx/sync-recordings - Sync recordings from Telnyx to call logs
   app.post("/api/telnyx/sync-recordings", requireAuth, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (user.role !== 'admin') {
         return res.status(403).json({ error: "Admin access required" });
@@ -33923,7 +34111,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
   // GET /api/telnyx/cdr - Get Call Detail Records from Telnyx for billing analysis
   app.get("/api/telnyx/cdr", requireAuth, async (req: Request, res: Response) => {
-    const user = req.user as any;
+    // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
+      const user = req.user as any;
     if (user.role !== "admin" && user.role !== "super_admin" && user.role !== "superadmin") {
       return res.status(403).json({ error: "Admin access required" });
     }
@@ -34003,7 +34197,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
   // GET /api/telnyx/call-billing - Get call billing analytics (client cost vs Telnyx cost)
   app.get("/api/telnyx/call-billing", requireAuth, async (req: Request, res: Response) => {
-    const user = req.user as any;
+    // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
+      const user = req.user as any;
     if (user.role !== "admin" && user.role !== "super_admin" && user.role !== "superadmin") {
       return res.status(403).json({ error: "Admin access required" });
     }
@@ -37521,6 +37721,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/compliance/applications - Create new compliance application
   app.post("/api/compliance/applications", requireAuth, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -37597,6 +37803,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/compliance/applications/current - Get current user draft application
   app.get("/api/compliance/applications/current", requireAuth, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -37624,6 +37836,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/compliance/applications/active - Get active (non-draft) application
   app.get("/api/compliance/applications/active", requireAuth, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -37651,6 +37869,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/compliance/applications/:id - Get application by ID
   app.get("/api/compliance/applications/:id", requireAuth, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -37682,6 +37906,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // PATCH /api/compliance/applications/:id - Update application
   app.patch("/api/compliance/applications/:id", requireAuth, async (req: Request, res: Response) => {
     try {
+      // Fail fast if redirect URI is invalid
+      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
+        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
+        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
+      }
+
       const user = req.user as any;
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
