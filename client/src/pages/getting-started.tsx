@@ -437,9 +437,9 @@ export default function GettingStarted() {
                       <div className="flex items-start gap-3">
                         <Smartphone className="w-5 h-5 text-gray-400 mt-0.5" />
                         <div>
-                          <h4 className="font-medium text-gray-900 dark:text-gray-100">Bring your own number</h4>
+                          <h4 className="font-medium text-gray-900 dark:text-gray-100">Transfiere tu número existente</h4>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Connect your number from Twilio, Sinch, Vonage, or Bandwidth.
+                            Porta tu número actual a Curbe.io. Mantienes tu mismo número mientras obtienes todas las funcionalidades de la plataforma.
                           </p>
                         </div>
                       </div>
@@ -449,7 +449,7 @@ export default function GettingStarted() {
                           Watch tutorial
                         </Button>
                         <Button size="sm" onClick={() => setLocation("/integrations")} className="gap-2 bg-blue-600 hover:bg-blue-700" data-testid="button-connect-provider">
-                          Connect provider
+                          Iniciar portabilidad
                         </Button>
                       </div>
                     </div>
