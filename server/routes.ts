@@ -25802,7 +25802,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // Meta OAuth configuration
   const META_APP_ID = process.env.META_APP_ID;
   const META_APP_SECRET = process.env.META_APP_SECRET;
-  const META_REDIRECT_URI = process.env.META_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/meta/whatsapp/callback`;
+  const APP_BASE_URL = process.env.APP_BASE_URL || process.env.BASE_URL || "https://app.curbe.io";
+  const META_REDIRECT_URI = process.env.META_REDIRECT_URI || `${APP_BASE_URL}/api/integrations/meta/whatsapp/callback`;
   const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v21.0";
   
   // Scopes required for WhatsApp Business Platform Embedded Signup
@@ -26253,7 +26254,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // GET /api/integrations/meta/whatsapp/callback - OAuth callback from Meta
   app.get("/api/integrations/meta/whatsapp/callback", async (req: Request, res: Response) => {
-    const frontendUrl = process.env.BASE_URL || "";
+    const frontendUrl = process.env.APP_BASE_URL || process.env.BASE_URL || "https://app.curbe.io";
     const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?whatsapp=error&reason=${encodeURIComponent(reason)}`);
     
     try {
@@ -26630,7 +26631,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // INSTAGRAM DIRECT OAUTH INTEGRATION
   // =====================================================
 
-  const META_INSTAGRAM_REDIRECT_URI = process.env.META_INSTAGRAM_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/meta/instagram/callback`;
+  const META_INSTAGRAM_REDIRECT_URI = process.env.META_INSTAGRAM_REDIRECT_URI || `${APP_BASE_URL}/api/integrations/meta/instagram/callback`;
   const META_INSTAGRAM_SCOPES = [
     "instagram_basic",
     "instagram_manage_messages",
@@ -26678,7 +26679,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // GET /api/integrations/meta/instagram/callback - OAuth callback from Meta
   app.get("/api/integrations/meta/instagram/callback", async (req: Request, res: Response) => {
-    const frontendUrl = process.env.BASE_URL || "";
+    const frontendUrl = process.env.APP_BASE_URL || process.env.BASE_URL || "https://app.curbe.io";
     const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?instagram=error&reason=${encodeURIComponent(reason)}`);
     
     try {
@@ -26863,7 +26864,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // FACEBOOK MESSENGER OAUTH INTEGRATION
   // =====================================================
 
-  const META_FACEBOOK_REDIRECT_URI = process.env.META_FACEBOOK_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/meta/facebook/callback`;
+  const META_FACEBOOK_REDIRECT_URI = process.env.META_FACEBOOK_REDIRECT_URI || `${APP_BASE_URL}/api/integrations/meta/facebook/callback`;
   const META_FACEBOOK_SCOPES = [
     "pages_messaging",
     "pages_manage_metadata",
@@ -26911,7 +26912,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // GET /api/integrations/meta/facebook/callback - OAuth callback from Meta
   app.get("/api/integrations/meta/facebook/callback", async (req: Request, res: Response) => {
-    const frontendUrl = process.env.BASE_URL || "";
+    const frontendUrl = process.env.APP_BASE_URL || process.env.BASE_URL || "https://app.curbe.io";
     const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?facebook=error&reason=${encodeURIComponent(reason)}`);
     
     try {
@@ -27142,7 +27143,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // GET /api/integrations/tiktok/callback - OAuth callback from TikTok
   app.get("/api/integrations/tiktok/callback", async (req: Request, res: Response) => {
-    const frontendUrl = process.env.BASE_URL || "";
+    const frontendUrl = process.env.APP_BASE_URL || process.env.BASE_URL || "https://app.curbe.io";
     const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?tiktok=error&reason=${encodeURIComponent(reason)}`);
     
     try {
