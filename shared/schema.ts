@@ -6636,3 +6636,284 @@ export const insertComplianceApplicationSchema = createInsertSchema(complianceAp
 
 export type ComplianceApplication = typeof complianceApplications.$inferSelect;
 export type InsertComplianceApplication = z.infer<typeof insertComplianceApplicationSchema>;
+
+// =====================================================
+// AWS SES MULTI-TENANT EMAIL SYSTEM
+// =====================================================
+
+// Email status enum for company-level email sending
+export const companyEmailStatusEnum = pgEnum("company_email_status", [
+  "pending_setup", "pending_verification", "active", "paused", "suspended"
+]);
+
+// DKIM status enum
+export const dkimStatusEnum = pgEnum("dkim_status", [
+  "pending", "success", "failed", "temporary_failure", "not_started"
+]);
+
+// Company Email Settings - Per-tenant SES configuration
+export const companyEmailSettings = pgTable("company_email_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }).unique(),
+  
+  // SES Tenant Management
+  sesTenantId: text("ses_tenant_id"), // SES Tenant ID from CreateTenant API
+  
+  // Domain Identity
+  sendingDomain: text("sending_domain"), // e.g., "mail.agency.com"
+  fromEmail: text("from_email"), // Default from email
+  replyToEmail: text("reply_to_email"), // Default reply-to email
+  senderName: text("sender_name"), // Default sender name
+  identityArn: text("identity_arn"), // SES Identity ARN
+  
+  // Verification Status
+  domainVerificationStatus: text("domain_verification_status").default("not_started"), // pending, success, failed
+  dkimStatus: dkimStatusEnum("dkim_status").default("not_started"),
+  dkimTokens: jsonb("dkim_tokens").default([]), // Array of DKIM CNAME tokens
+  spfRecord: text("spf_record"), // SPF TXT record value
+  dmarcRecord: text("dmarc_record"), // DMARC TXT record value
+  
+  // Custom MAIL FROM domain
+  mailFromDomain: text("mail_from_domain"), // e.g., "bounce.agency.com"
+  mailFromStatus: text("mail_from_status").default("not_configured"), // not_configured, pending, success, failed
+  mailFromMxRecord: text("mail_from_mx_record"), // MX record for MAIL FROM
+  
+  // Configuration Set
+  configurationSetName: text("configuration_set_name"), // SES Configuration Set name
+  eventDestinationName: text("event_destination_name"), // EventBridge/SNS destination name
+  
+  // Sending Status & Controls
+  emailStatus: companyEmailStatusEnum("email_status").default("pending_setup"),
+  
+  // Rate Limits & Warm-up
+  dailySendLimit: integer("daily_send_limit").default(200), // Daily send quota
+  hourlySendLimit: integer("hourly_send_limit").default(50), // Hourly rate limit
+  minuteSendLimit: integer("minute_send_limit").default(10), // Per-minute rate limit
+  warmUpStage: integer("warm_up_stage").default(1), // Current warm-up stage (1-10)
+  warmUpStartedAt: timestamp("warm_up_started_at"), // When warm-up started
+  
+  // Metrics (cached, updated periodically)
+  totalSent: integer("total_sent").default(0),
+  totalDelivered: integer("total_delivered").default(0),
+  totalBounced: integer("total_bounced").default(0),
+  totalComplaints: integer("total_complaints").default(0),
+  bounceRate: numeric("bounce_rate", { precision: 5, scale: 4 }).default("0"), // e.g., 0.0234 = 2.34%
+  complaintRate: numeric("complaint_rate", { precision: 5, scale: 4 }).default("0"),
+  lastMetricsUpdateAt: timestamp("last_metrics_update_at"),
+  
+  // Auto-pause thresholds
+  bounceRateThreshold: numeric("bounce_rate_threshold", { precision: 5, scale: 4 }).default("0.05"), // 5% default
+  complaintRateThreshold: numeric("complaint_rate_threshold", { precision: 5, scale: 4 }).default("0.001"), // 0.1% default
+  autoPauseEnabled: boolean("auto_pause_enabled").default(true),
+  pausedAt: timestamp("paused_at"),
+  pauseReason: text("pause_reason"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("company_email_settings_company_id_idx").on(table.companyId),
+}));
+
+export const insertCompanyEmailSettingsSchema = createInsertSchema(companyEmailSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type CompanyEmailSettings = typeof companyEmailSettings.$inferSelect;
+export type InsertCompanyEmailSettings = z.infer<typeof insertCompanyEmailSettingsSchema>;
+
+// SES Email Message Status Enum
+export const sesEmailStatusEnum = pgEnum("ses_email_status", [
+  "queued", "sending", "sent", "delivered", "bounced", "complained", "rejected", "failed"
+]);
+
+// SES Email Messages - Individual emails with tracking
+export const sesEmailMessages = pgTable("ses_email_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Optional campaign association
+  campaignId: varchar("campaign_id").references(() => emailCampaigns.id, { onDelete: "set null" }),
+  
+  // Sender info
+  fromEmail: text("from_email").notNull(),
+  fromName: text("from_name"),
+  replyTo: text("reply_to"),
+  
+  // Recipient info
+  toEmail: text("to_email").notNull(),
+  toName: text("to_name"),
+  
+  // Content
+  subject: text("subject").notNull(),
+  htmlContent: text("html_content"),
+  textContent: text("text_content"),
+  
+  // Provider tracking
+  providerMessageId: text("provider_message_id"), // SES MessageId
+  configurationSetName: text("configuration_set_name"),
+  
+  // Status tracking
+  status: sesEmailStatusEnum("status").default("queued"),
+  
+  // Timestamps
+  queuedAt: timestamp("queued_at").defaultNow(),
+  sentAt: timestamp("sent_at"),
+  deliveredAt: timestamp("delivered_at"),
+  bouncedAt: timestamp("bounced_at"),
+  complainedAt: timestamp("complained_at"),
+  
+  // Error handling
+  errorCode: text("error_code"),
+  errorMessage: text("error_message"),
+  
+  // Tracking
+  openCount: integer("open_count").default(0),
+  clickCount: integer("click_count").default(0),
+  firstOpenedAt: timestamp("first_opened_at"),
+  firstClickedAt: timestamp("first_clicked_at"),
+  
+  // Tags for attribution
+  tags: jsonb("tags").default({}), // e.g., { tenantId, campaignId, userId, type }
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("ses_email_messages_company_id_idx").on(table.companyId),
+  providerMessageIdIdx: index("ses_email_messages_provider_message_id_idx").on(table.providerMessageId),
+  statusIdx: index("ses_email_messages_status_idx").on(table.status),
+  createdAtIdx: index("ses_email_messages_created_at_idx").on(table.createdAt),
+}));
+
+export const insertSesEmailMessageSchema = createInsertSchema(sesEmailMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type SesEmailMessage = typeof sesEmailMessages.$inferSelect;
+export type InsertSesEmailMessage = z.infer<typeof insertSesEmailMessageSchema>;
+
+// SES Event Type Enum
+export const sesEventTypeEnum = pgEnum("ses_event_type", [
+  "send", "delivery", "bounce", "complaint", "reject", "open", "click", "rendering_failure", "delivery_delay"
+]);
+
+// SES Email Events - Webhook events from SES
+export const sesEmailEvents = pgTable("ses_email_events", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  
+  // Link to message
+  messageId: varchar("message_id").references(() => sesEmailMessages.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Provider reference
+  providerMessageId: text("provider_message_id"), // SES MessageId
+  
+  // Event info
+  eventType: sesEventTypeEnum("event_type").notNull(),
+  eventTimestamp: timestamp("event_timestamp").notNull(),
+  
+  // Event details
+  bounceType: text("bounce_type"), // Permanent, Transient
+  bounceSubType: text("bounce_sub_type"), // General, NoEmail, Suppressed, etc.
+  complaintFeedbackType: text("complaint_feedback_type"), // abuse, auth-failure, etc.
+  diagnosticCode: text("diagnostic_code"),
+  
+  // Raw payload for debugging
+  rawPayload: jsonb("raw_payload").default({}),
+  
+  // Processing status
+  processed: boolean("processed").default(false),
+  processedAt: timestamp("processed_at"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  messageIdIdx: index("ses_email_events_message_id_idx").on(table.messageId),
+  companyIdIdx: index("ses_email_events_company_id_idx").on(table.companyId),
+  providerMessageIdIdx: index("ses_email_events_provider_message_id_idx").on(table.providerMessageId),
+  eventTypeIdx: index("ses_email_events_event_type_idx").on(table.eventType),
+  createdAtIdx: index("ses_email_events_created_at_idx").on(table.createdAt),
+}));
+
+export const insertSesEmailEventSchema = createInsertSchema(sesEmailEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type SesEmailEvent = typeof sesEmailEvents.$inferSelect;
+export type InsertSesEmailEvent = z.infer<typeof insertSesEmailEventSchema>;
+
+// Suppression Reason Enum
+export const suppressionReasonEnum = pgEnum("suppression_reason", [
+  "hard_bounce", "complaint", "manual", "unsubscribe"
+]);
+
+// Company Email Suppression - Per-tenant suppression list
+export const companyEmailSuppression = pgTable("company_email_suppression", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  email: text("email").notNull(),
+  reason: suppressionReasonEnum("reason").notNull(),
+  
+  // Source info
+  sourceMessageId: varchar("source_message_id").references(() => sesEmailMessages.id, { onDelete: "set null" }),
+  sourceEventId: varchar("source_event_id").references(() => sesEmailEvents.id, { onDelete: "set null" }),
+  
+  // Details
+  bounceType: text("bounce_type"),
+  diagnosticCode: text("diagnostic_code"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  companyEmailUnique: unique("company_email_suppression_unique").on(table.companyId, table.email),
+  companyIdIdx: index("company_email_suppression_company_id_idx").on(table.companyId),
+  emailIdx: index("company_email_suppression_email_idx").on(table.email),
+}));
+
+export const insertCompanyEmailSuppressionSchema = createInsertSchema(companyEmailSuppression).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type CompanyEmailSuppression = typeof companyEmailSuppression.$inferSelect;
+export type InsertCompanyEmailSuppression = z.infer<typeof insertCompanyEmailSuppressionSchema>;
+
+// Email Queue - For queue-based async sending
+export const sesEmailQueue = pgTable("ses_email_queue", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Reference to the message
+  messageId: varchar("message_id").notNull().references(() => sesEmailMessages.id, { onDelete: "cascade" }),
+  
+  // Priority (lower = higher priority)
+  priority: integer("priority").default(5),
+  
+  // Scheduling
+  scheduledFor: timestamp("scheduled_for").defaultNow(),
+  attempts: integer("attempts").default(0),
+  maxAttempts: integer("max_attempts").default(3),
+  lastAttemptAt: timestamp("last_attempt_at"),
+  nextAttemptAt: timestamp("next_attempt_at"),
+  
+  // Processing status
+  status: text("status").default("pending"), // pending, processing, completed, failed
+  errorMessage: text("error_message"),
+  
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  completedAt: timestamp("completed_at"),
+}, (table) => ({
+  companyIdIdx: index("ses_email_queue_company_id_idx").on(table.companyId),
+  statusIdx: index("ses_email_queue_status_idx").on(table.status),
+  scheduledForIdx: index("ses_email_queue_scheduled_for_idx").on(table.scheduledFor),
+  priorityIdx: index("ses_email_queue_priority_idx").on(table.priority),
+}));
+
+export const insertSesEmailQueueSchema = createInsertSchema(sesEmailQueue).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type SesEmailQueue = typeof sesEmailQueue.$inferSelect;
+export type InsertSesEmailQueue = z.infer<typeof insertSesEmailQueueSchema>;
