@@ -103,6 +103,7 @@ import fs from "fs";
 import { promises as fsPromises } from "fs";
 import crypto from "crypto";
 import multer from "multer";
+import { registerSesRoutes } from "./ses-routes";
 // Temporary in-memory storage for MMS attachments (files expire after 10 minutes)
 const mmsFileCache = new Map<string, { buffer: Buffer; contentType: string; expiresAt: number }>();
 // Helper to build absolute URL from request for external services (Telnyx)
@@ -37798,6 +37799,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Compliance Upload] Error:", error);
       res.status(500).json({ message: error.message || "Upload failed" });
     }
+  // Register SES routes
+  registerSesRoutes(app, requireActiveCompany);
   });
 
   return httpServer;

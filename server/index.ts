@@ -13,6 +13,7 @@ import { startBounceProcessor } from "./bounce-processor";
 import { startMonthlyBillingScheduler } from "./monthly-billing-scheduler";
 import { startPaymentReminderScheduler } from "./payment-reminder-scheduler";
 import { seedCampaignStudioData } from "./scripts/seedCampaignStudio";
+import { startSesQueueScheduler } from "./ses-queue-scheduler";
 
 // Handle unhandled promise rejections to prevent server crashes
 process.on('unhandledRejection', (reason: any, promise: Promise<any>) => {
@@ -204,6 +205,8 @@ app.use((req, res, next) => {
     
     // Start the payment reminder scheduler for proactive collection alerts
     startPaymentReminderScheduler();
+    // Start the SES email queue scheduler
+    startSesQueueScheduler();
     
     // Test email service on startup
     import("./email").then(({ emailService }) => {

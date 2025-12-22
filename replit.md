@@ -44,10 +44,21 @@ Supports Apple Wallet (PKPass) and Google Wallet with smart links, analytics, an
 **Security Architecture:**
 Includes session security, webhook signature validation (Twilio, BulkVS, BlueBubbles), Zod schema validation, open redirect protection, unsubscribe token enforcement, user-scoped data isolation, iMessage webhook secret isolation, multi-tenant WhatsApp session isolation, and token encryption for sensitive data.
 
+**AWS SES Multi-Tenant Email System:**
+Implements per-tenant BYO (Bring Your Own) domain email sending via AWS SES. Key components:
+- **Domain Identity Management:** Per-company sending domains with DKIM verification, MAIL FROM configuration, and SES configuration sets.
+- **Queue-Based Sending:** Asynchronous email queue with exponential backoff retry logic, per-tenant rate limits (daily/hourly/minute), and warm-up stages.
+- **Event Processing:** Webhook endpoint (`/api/webhooks/ses-events`) handles SNS notifications for delivery, bounce, and complaint events.
+- **Auto-Pause:** Automatically pauses sending when bounce rate exceeds 5% or complaint rate exceeds 0.1% (configurable per tenant).
+- **Suppression Lists:** Automatic suppression for hard bounces and complaints, with manual addition/removal via API.
+- **UI:** Domain onboarding wizard at `/settings/email` with DNS records display, verification status, metrics dashboard, and suppression list management.
+- **Database Tables:** `company_email_settings`, `ses_email_messages`, `ses_email_events`, `company_email_suppression`, `ses_email_queue`.
+- **Scheduler:** Runs every 10 seconds to process email queue.
+
 ## External Dependencies
 
 - **Database:** PostgreSQL, Drizzle ORM, `postgres`.
-- **Email:** Nodemailer.
+- **Email:** Nodemailer, AWS SES (multi-tenant BYO domain).
 - **SMS/MMS/iMessage:** Twilio, BulkVS, BlueBubbles.
 - **Payments:** Stripe.
 - **Telephony:** Telnyx (WebRTC SDK, Call Control API).
