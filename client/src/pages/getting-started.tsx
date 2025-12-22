@@ -432,6 +432,37 @@ export default function GettingStarted() {
                   <CardContent className="p-4">
                     <div className="flex items-start justify-between">
                       <div className="flex items-start gap-3">
+                        <Phone className={`w-5 h-5 mt-0.5 ${user?.sipEnabled ? 'text-green-600' : 'text-gray-400'}`} />
+                        <div>
+                          <h4 className="font-medium text-gray-900 dark:text-gray-100">Call configuration</h4>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {user?.sipEnabled 
+                              ? "Your calling is configured and ready. Make and receive calls directly from your browser."
+                              : "Set up how you want to handle calls. Choose between direct calling or PBX with IVR options."}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {user?.sipEnabled ? (
+                          <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                            <Check className="w-3 h-3 mr-1" />
+                            Configured
+                          </Badge>
+                        ) : (
+                          <Button size="sm" onClick={() => setShowCallSetupDialog(true)} className="gap-2 bg-blue-600 hover:bg-blue-700" data-testid="button-setup-calling">
+                            Configure calls
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-gray-200 dark:border-gray-700">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
                         <Smartphone className="w-5 h-5 text-gray-400 mt-0.5" />
                         <div>
                           <h4 className="font-medium text-gray-900 dark:text-gray-100">Port your existing number</h4>
@@ -448,37 +479,6 @@ export default function GettingStarted() {
                         <Button size="sm" onClick={() => setLocation("/integrations")} className="gap-2 bg-blue-600 hover:bg-blue-700" data-testid="button-connect-provider">
                           Start porting
                         </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card className="border-gray-200 dark:border-gray-700">
-                  <CardContent className="p-4">
-                    <div className="flex items-start justify-between">
-                      <div className="flex items-start gap-3">
-                        <Phone className={`w-5 h-5 mt-0.5 ${user?.sipEnabled ? 'text-green-600' : 'text-gray-400'}`} />
-                        <div>
-                          <h4 className="font-medium text-gray-900 dark:text-gray-100">Browser calling</h4>
-                          <p className="text-sm text-gray-500 dark:text-gray-400">
-                            {user?.sipEnabled 
-                              ? "Make and receive calls directly from your browser. Your extension is configured and ready."
-                              : "Enable browser-based calling to make and receive calls without any additional software."}
-                          </p>
-                        </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        {user?.sipEnabled ? (
-                          <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
-                            <Check className="w-3 h-3 mr-1" />
-                            Configured
-                          </Badge>
-                        ) : (
-                          <Button size="sm" onClick={() => setShowCallSetupDialog(true)} className="gap-2 bg-blue-600 hover:bg-blue-700" data-testid="button-setup-browser-calling">
-                            Enable calling
-                            <ChevronRight className="w-4 h-4" />
-                          </Button>
-                        )}
                       </div>
                     </div>
                   </CardContent>
