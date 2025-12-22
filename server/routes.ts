@@ -3722,6 +3722,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       });
     }
   });
+
   // ==================== LOCATIONIQ AUTOCOMPLETE ====================
   app.get("/api/locationiq/autocomplete", async (req: Request, res: Response) => {
     try {
@@ -25911,8 +25912,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // Meta OAuth configuration
   const META_APP_ID = process.env.META_APP_ID;
   const META_APP_SECRET = process.env.META_APP_SECRET;
-  const META_BASE_URL = "https://app.curbe.io";
-  const META_WHATSAPP_REDIRECT_URI = `${META_BASE_URL}/api/integrations/meta/whatsapp/callback`;
+  const META_REDIRECT_URI = process.env.META_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/meta/whatsapp/callback`;
   const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v21.0";
   
   // Scopes required for WhatsApp Business Platform Embedded Signup
@@ -25922,491 +25922,11 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     "whatsapp_business_messaging",
     "business_management"
   ].join(",");
-  // =====================================================
-  // UNIFIED META OAUTH INTEGRATION (WhatsApp, Instagram, Messenger)
-  // =====================================================
-  
-  // Hardcoded production redirect URI for Meta OAuth
-  const UNIFIED_META_REDIRECT_URI = `${META_BASE_URL}/api/integrations/meta/callback`;
-  
-  // Provider-specific scopes
-  const META_PROVIDER_SCOPES: Record<string, string> = {
-    whatsapp: "whatsapp_business_management,whatsapp_business_messaging,business_management",
-    instagram: "instagram_basic,instagram_manage_messages,pages_messaging,pages_show_list",
-    messenger: "pages_messaging,pages_manage_metadata,pages_read_engagement"
-  };
-
-  // GET /api/integrations/meta/auth - Unified OAuth start endpoint
-  app.get("/api/integrations/meta/auth", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
-      const user = req.user as any;
-      if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
-      
-      const provider = req.query.provider as string;
-      const returnUrl = req.query.return_url as string | undefined;
-      
-      if (!provider || !META_PROVIDER_SCOPES[provider]) {
-        return res.status(400).json({ error: "Invalid provider. Must be: whatsapp, instagram, or messenger" });
-      }
-      
-      const { appId } = await credentialProvider.getMeta();
-      if (!appId) {
-        return res.status(500).json({ error: "Meta App ID not configured. Contact administrator." });
-      }
-      
-      const nonce = randomBytes(32).toString("hex");
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-      
-      await db.insert(oauthStates).values({
-        companyId: user.companyId,
-        provider: `meta_${provider}`,
-        nonce,
-        expiresAt,
-        metadata: {
-          ip: req.ip || req.connection.remoteAddress,
-          userAgent: req.get("user-agent") || undefined,
-          returnUrl: returnUrl || undefined,
-          provider
-        }
-      });
-      
-      const authUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
-      authUrl.searchParams.set("client_id", appId);
-      authUrl.searchParams.set("redirect_uri", UNIFIED_META_REDIRECT_URI);
-      authUrl.searchParams.set("response_type", "code");
-      authUrl.searchParams.set("scope", META_PROVIDER_SCOPES[provider]);
-      authUrl.searchParams.set("state", nonce);
-      
-      if (provider === "whatsapp") {
-        authUrl.searchParams.set("extras", JSON.stringify({
-          feature: "whatsapp_embedded_signup",
-          setup: { business: { name: "", email: "" } }
-        }));
-      }
-      
-      return res.redirect(authUrl.toString());
-    } catch (error) {
-      console.error("[Unified Meta OAuth] Start error:", error);
-      return res.status(500).json({ error: "Failed to start OAuth flow" });
-    }
-  });
-
-  // GET /api/integrations/meta/callback - Unified OAuth callback
-  app.get("/api/integrations/meta/callback", async (req: Request, res: Response) => {
-    const defaultRedirect = process.env.BASE_URL || "https://app.curbe.io";
-    const errorRedirect = (reason: string, returnUrl?: string) => {
-      const baseUrl = returnUrl || `${defaultRedirect}/integrations`;
-      const url = new URL(baseUrl);
-      url.searchParams.set("meta", "error");
-      url.searchParams.set("reason", reason);
-      return res.redirect(url.toString());
-    };
-    
-    try {
-      const { code, state, error: metaError } = req.query;
-      
-      if (metaError) {
-        console.error("[Unified Meta OAuth] Error from Meta:", metaError);
-        return errorRedirect("connection_cancelled");
-      }
-      
-      if (!code || !state) {
-        console.error("[Unified Meta OAuth] Missing code or state");
-        return errorRedirect("connection_cancelled");
-      }
-      
-      const oauthState = await db.query.oauthStates.findFirst({
-        where: and(
-          eq(oauthStates.nonce, state as string),
-          sql`${oauthStates.provider} LIKE 'meta_%'`
-        )
-      });
-      
-      if (!oauthState) {
-        console.error("[Unified Meta OAuth] Invalid state");
-        return errorRedirect("connection_failed");
-      }
-      
-      const metadata = oauthState.metadata as any;
-      const returnUrl = metadata?.returnUrl;
-      const provider = metadata?.provider || oauthState.provider.replace("meta_", "");
-      
-      if (new Date() > new Date(oauthState.expiresAt)) {
-        console.error("[Unified Meta OAuth] State expired");
-        return errorRedirect("connection_failed", returnUrl);
-      }
-      
-      if (oauthState.usedAt) {
-        console.error("[Unified Meta OAuth] State already used");
-        return errorRedirect("connection_failed", returnUrl);
-      }
-      
-      await db.update(oauthStates)
-        .set({ usedAt: new Date() })
-        .where(eq(oauthStates.id, oauthState.id));
-      
-      const { appId, appSecret } = await credentialProvider.getMeta();
-      if (!appId || !appSecret) {
-        console.error("[Unified Meta OAuth] Meta credentials not configured");
-        return errorRedirect("server_config_error", returnUrl);
-      }
-      
-      const tokenResponse = await fetch(
-        `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token?` +
-        `client_id=${appId}&` +
-        `client_secret=${appSecret}&` +
-        `redirect_uri=${encodeURIComponent(UNIFIED_META_REDIRECT_URI)}&` +
-        `code=${code}`
-      );
-      
-      const tokenData = await tokenResponse.json() as any;
-      
-      if (tokenData.error || !tokenData.access_token) {
-        console.error("[Unified Meta OAuth] Token exchange failed:", tokenData.error);
-        return errorRedirect("token_exchange_failed", returnUrl);
-      }
-      
-      const accessToken = tokenData.access_token;
-      const encryptedToken = encryptToken(accessToken);
-      
-      const existing = await db.query.channelConnections.findFirst({
-        where: and(
-          eq(channelConnections.companyId, oauthState.companyId),
-          eq(channelConnections.channel, provider)
-        )
-      });
-      
-      if (existing) {
-        await db.update(channelConnections)
-          .set({
-            accessTokenEnc: encryptedToken,
-            connectedAt: new Date(),
-            disconnectedAt: null,
-            updatedAt: new Date(),
-          })
-          .where(eq(channelConnections.id, existing.id));
-      } else {
-        await db.insert(channelConnections).values({
-          companyId: oauthState.companyId,
-          channel: provider,
-          accessTokenEnc: encryptedToken,
-          connectedAt: new Date(),
-        });
-      }
-      
-      console.log(`[Unified Meta OAuth] Connected ${provider} for company ${oauthState.companyId}`);
-      
-      const successUrl = new URL(returnUrl || `${defaultRedirect}/integrations`);
-      successUrl.searchParams.set("meta", "success");
-      successUrl.searchParams.set("provider", provider);
-      return res.redirect(successUrl.toString());
-    } catch (error) {
-      console.error("[Unified Meta OAuth] Callback error:", error);
-      return errorRedirect("connection_failed");
-    }
-  });
-
-  // GET /api/integrations/meta/:provider/businesses - List businesses
-  app.get("/api/integrations/meta/:provider/businesses", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
-      const user = req.user as any;
-      const provider = req.params.provider;
-      
-      const connection = await db.query.channelConnections.findFirst({
-        where: and(
-          eq(channelConnections.companyId, user.companyId),
-          eq(channelConnections.channel, provider)
-        )
-      });
-      
-      if (!connection || !connection.accessTokenEnc) {
-        return res.status(404).json({ error: "No connection found for this provider" });
-      }
-      
-      const accessToken = decryptToken(connection.accessTokenEnc);
-      
-      const response = await fetch(
-        `https://graph.facebook.com/${META_GRAPH_VERSION}/me/businesses?fields=id,name,verification_status&access_token=${accessToken}`
-      );
-      const data = await response.json() as any;
-      
-      if (data.error) {
-        console.error(`[Meta ${provider}] Businesses fetch error:`, data.error);
-        return res.status(400).json({ error: data.error.message || "Failed to fetch businesses" });
-      }
-      
-      return res.json({ businesses: data.data || [] });
-    } catch (error) {
-      console.error(`[Meta] Businesses error:`, error);
-      return res.status(500).json({ error: "Failed to fetch businesses" });
-    }
-  });
-
-  // GET /api/integrations/meta/:provider/assets - List provider-specific assets
-  app.get("/api/integrations/meta/:provider/assets", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
-      const user = req.user as any;
-      const provider = req.params.provider;
-      const businessId = req.query.business_id as string;
-      
-      const connection = await db.query.channelConnections.findFirst({
-        where: and(
-          eq(channelConnections.companyId, user.companyId),
-          eq(channelConnections.channel, provider)
-        )
-      });
-      
-      if (!connection || !connection.accessTokenEnc) {
-        return res.status(404).json({ error: "No connection found for this provider" });
-      }
-      
-      const accessToken = decryptToken(connection.accessTokenEnc);
-      let assets: any[] = [];
-      
-      if (provider === "whatsapp") {
-        const endpoint = businessId 
-          ? `https://graph.facebook.com/${META_GRAPH_VERSION}/${businessId}/owned_whatsapp_business_accounts?fields=id,name,timezone_id,phone_numbers{id,display_phone_number,verified_name}&access_token=${accessToken}`
-          : `https://graph.facebook.com/${META_GRAPH_VERSION}/me/businesses?fields=owned_whatsapp_business_accounts{id,name,phone_numbers{id,display_phone_number,verified_name}}&access_token=${accessToken}`;
-        
-        const response = await fetch(endpoint);
-        const data = await response.json() as any;
-        
-        if (data.data) {
-          for (const business of data.data) {
-            const wabas = business.owned_whatsapp_business_accounts?.data || [];
-            for (const waba of wabas) {
-              assets.push({
-                type: "waba",
-                id: waba.id,
-                name: waba.name,
-                phoneNumbers: waba.phone_numbers?.data || []
-              });
-            }
-          }
-        }
-      } else if (provider === "instagram" || provider === "messenger") {
-        const response = await fetch(
-          `https://graph.facebook.com/${META_GRAPH_VERSION}/me/accounts?fields=id,name,access_token,instagram_business_account{id,username}&access_token=${accessToken}`
-        );
-        const data = await response.json() as any;
-        
-        if (data.data) {
-          for (const page of data.data) {
-            if (provider === "instagram" && page.instagram_business_account) {
-              assets.push({
-                type: "instagram_account",
-                id: page.instagram_business_account.id,
-                username: page.instagram_business_account.username,
-                pageId: page.id,
-                pageName: page.name
-              });
-            } else if (provider === "messenger") {
-              assets.push({
-                type: "page",
-                id: page.id,
-                name: page.name,
-                pageAccessToken: page.access_token
-              });
-            }
-          }
-        }
-      }
-      
-      return res.json({ assets });
-    } catch (error) {
-      console.error(`[Meta] Assets error:`, error);
-      return res.status(500).json({ error: "Failed to fetch assets" });
-    }
-  });
-
-  // =====================================================
-  // META WEBHOOKS (Public, no auth required)
-  // =====================================================
-
-  // WhatsApp Webhook - Verify
-  app.get("/webhooks/meta/whatsapp", (req: Request, res: Response) => {
-    const mode = req.query["hub.mode"];
-    const token = req.query["hub.verify_token"];
-    const challenge = req.query["hub.challenge"];
-    
-    const verifyToken = process.env.META_WEBHOOK_VERIFY_TOKEN || "curbe_meta_verify";
-    
-    if (mode === "subscribe" && token === verifyToken) {
-      console.log("[Meta WhatsApp Webhook] Verified");
-      return res.status(200).send(challenge);
-    }
-    return res.sendStatus(403);
-  });
-
-  // WhatsApp Webhook - Receive events
-  app.post("/webhooks/meta/whatsapp", async (req: Request, res: Response) => {
-    try {
-      console.log("[Meta WhatsApp Webhook] Received:", JSON.stringify(req.body));
-      // TODO: Process WhatsApp webhook events
-      return res.sendStatus(200);
-    } catch (error) {
-      console.error("[Meta WhatsApp Webhook] Error:", error);
-      return res.sendStatus(500);
-    }
-  });
-
-  // Messenger Webhook - Verify
-  app.get("/webhooks/meta/messenger", (req: Request, res: Response) => {
-    const mode = req.query["hub.mode"];
-    const token = req.query["hub.verify_token"];
-    const challenge = req.query["hub.challenge"];
-    
-    const verifyToken = process.env.META_WEBHOOK_VERIFY_TOKEN || "curbe_meta_verify";
-    
-    if (mode === "subscribe" && token === verifyToken) {
-      console.log("[Meta Messenger Webhook] Verified");
-      return res.status(200).send(challenge);
-    }
-    return res.sendStatus(403);
-  });
-
-  // Messenger Webhook - Receive events
-  app.post("/webhooks/meta/messenger", async (req: Request, res: Response) => {
-    try {
-      console.log("[Meta Messenger Webhook] Received:", JSON.stringify(req.body));
-      // TODO: Process Messenger webhook events
-      return res.sendStatus(200);
-    } catch (error) {
-      console.error("[Meta Messenger Webhook] Error:", error);
-      return res.sendStatus(500);
-    }
-  });
-
-  // Instagram Webhook - Verify
-  app.get("/webhooks/meta/instagram", (req: Request, res: Response) => {
-    const mode = req.query["hub.mode"];
-    const token = req.query["hub.verify_token"];
-    const challenge = req.query["hub.challenge"];
-    
-    const verifyToken = process.env.META_WEBHOOK_VERIFY_TOKEN || "curbe_meta_verify";
-    
-    if (mode === "subscribe" && token === verifyToken) {
-      console.log("[Meta Instagram Webhook] Verified");
-      return res.status(200).send(challenge);
-    }
-    return res.sendStatus(403);
-  });
-
-  // Instagram Webhook - Receive events
-  app.post("/webhooks/meta/instagram", async (req: Request, res: Response) => {
-    try {
-      console.log("[Meta Instagram Webhook] Received:", JSON.stringify(req.body));
-      // TODO: Process Instagram webhook events
-      return res.sendStatus(200);
-    } catch (error) {
-      console.error("[Meta Instagram Webhook] Error:", error);
-      return res.sendStatus(500);
-    }
-  });
-
-  // =====================================================
-  // END UNIFIED META OAUTH INTEGRATION
-  // =====================================================
-
-
-  // GET /api/integrations/meta/whatsapp/connect - Start OAuth flow with redirect
-  app.get("/api/integrations/meta/whatsapp/connect", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      console.log("[WhatsApp OAuth] /connect endpoint called");
-      
-      // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).send("OAuth configuration error. Contact administrator.");
-      }
-      console.log("[WhatsApp OAuth] Validated redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-      
-      const user = req.user as any;
-      if (!user.companyId) {
-        console.error("[WhatsApp OAuth] No company associated with user");
-        return res.status(400).send("No company associated with user");
-      }
-      console.log("[WhatsApp OAuth] Company ID:", user.companyId);
-      
-      // Get Meta credentials dynamically from credential provider
-      const { appId } = await credentialProvider.getMeta();
-      
-      if (!appId) {
-        console.error("[WhatsApp OAuth] META_APP_ID not configured");
-        return res.status(500).send("Meta App ID not configured. Contact administrator.");
-      }
-      console.log("[WhatsApp OAuth] App ID retrieved (first 4 chars):", appId.substring(0, 4) + "...");
-      
-      // Generate cryptographically secure nonce for state
-      const nonce = randomBytes(32).toString("hex");
-      console.log("[WhatsApp OAuth] Generated state/nonce:", nonce.substring(0, 8) + "...");
-      
-      // Store in oauth_states with 10 min expiry
-      const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
-      
-      await db.insert(oauthStates).values({
-        companyId: user.companyId,
-        provider: "meta_whatsapp",
-        nonce,
-        expiresAt,
-        metadata: {
-          ip: req.ip || req.connection.remoteAddress,
-          userAgent: req.get("user-agent") || undefined
-        }
-      });
-      console.log("[WhatsApp OAuth] State saved to DB, expires:", expiresAt.toISOString());
-      
-      // Build OAuth URL for Meta Embedded Signup
-      const authUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
-      authUrl.searchParams.set("client_id", appId);
-      authUrl.searchParams.set("redirect_uri", META_WHATSAPP_REDIRECT_URI);
-      authUrl.searchParams.set("response_type", "code");
-      authUrl.searchParams.set("scope", META_WHATSAPP_SCOPES);
-      authUrl.searchParams.set("state", nonce);
-      authUrl.searchParams.set("extras", JSON.stringify({
-        feature: "whatsapp_embedded_signup",
-        setup: { business: { name: "", email: "" } }
-      }));
-      
-      const finalUrl = authUrl.toString();
-      console.log("[WhatsApp OAuth] Final OAuth URL:", finalUrl);
-      console.log("[WhatsApp OAuth] Redirecting user to Facebook OAuth...");
-      
-      return res.redirect(finalUrl);
-    } catch (error) {
-      console.error("[WhatsApp OAuth] /connect error:", error);
-      return res.status(500).send("Failed to start OAuth flow");
-    }
-  });
 
   // POST /api/integrations/meta/whatsapp/start - Start OAuth flow
   app.post("/api/integrations/meta/whatsapp/start", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       
-      // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
       
@@ -26438,7 +25958,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       // Using response_type=code for server-side flow
       const authUrl = new URL(`https://www.facebook.com/${META_GRAPH_VERSION}/dialog/oauth`);
       authUrl.searchParams.set("client_id", appId);
-      authUrl.searchParams.set("redirect_uri", META_WHATSAPP_REDIRECT_URI);
+      authUrl.searchParams.set("redirect_uri", META_REDIRECT_URI);
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("scope", META_WHATSAPP_SCOPES);
       authUrl.searchParams.set("state", nonce);
@@ -26448,8 +25968,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         setup: { business: { name: "", email: "" } }
       }));
       
-      console.log("[WhatsApp OAuth] Generated OAuth URL:", authUrl.toString());
-      console.log("[WhatsApp OAuth] redirect_uri:", META_WHATSAPP_REDIRECT_URI);
       return res.json({ authUrl: authUrl.toString(), state: nonce });
     } catch (error) {
       console.error("[WhatsApp OAuth] Start error:", error);
@@ -26459,7 +25977,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // GET /api/integrations/meta/whatsapp/callback - OAuth callback from Meta
   app.get("/api/integrations/meta/whatsapp/callback", async (req: Request, res: Response) => {
-    const frontendUrl = META_BASE_URL;
+    const frontendUrl = process.env.BASE_URL || "";
     const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?whatsapp=error&reason=${encodeURIComponent(reason)}`);
     
     try {
@@ -26469,7 +25987,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[WhatsApp OAuth] Missing code or state");
         return errorRedirect("missing_params");
       }
-      console.log("[WhatsApp OAuth] Callback received, code length:", (code as string).length, "state:", (state as string).substring(0, 8) + "...");
       
       // Validate state/nonce
       const oauthState = await db.query.oauthStates.findFirst({
@@ -26484,7 +26001,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return errorRedirect("invalid_state");
       }
       
-      console.log("[WhatsApp OAuth] State validated for company:", oauthState.companyId);
       // Check if expired
       if (new Date() > new Date(oauthState.expiresAt)) {
         console.error("[WhatsApp OAuth] State expired");
@@ -26515,7 +26031,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token?` +
         `client_id=${appId}&` +
         `client_secret=${appSecret}&` +
-        `redirect_uri=${encodeURIComponent(META_WHATSAPP_REDIRECT_URI)}&` +
+        `redirect_uri=${encodeURIComponent(META_REDIRECT_URI)}&` +
         `code=${code}`
       );
       
@@ -26673,13 +26189,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/integrations/whatsapp/status - Get WhatsApp connection status
   app.get("/api/integrations/whatsapp/status", requireActiveCompany, async (req: Request, res: Response) => {
     
-    // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
-      const user = req.user as any;
+    const user = req.user as any;
     if (!user.companyId) return res.json({ connected: false, connection: null });
     
     const connection = await db.query.channelConnections.findFirst({
@@ -26712,13 +26222,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // This is kept for admin debugging purposes
   app.post("/api/integrations/whatsapp/connect", requireActiveCompany, async (req: Request, res: Response) => {
     
-    // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
-      const user = req.user as any;
+    const user = req.user as any;
     if (!user.companyId) return res.status(400).json({ error: "No company" });
     
     // Only allow admins to use manual connect
@@ -26789,13 +26293,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/integrations/whatsapp/disconnect - Disconnect WhatsApp
   app.post("/api/integrations/whatsapp/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
     
-    // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
-      const user = req.user as any;
+    const user = req.user as any;
     if (!user.companyId) return res.status(400).json({ error: "No company" });
     
     const connection = await db.query.channelConnections.findFirst({
@@ -26825,13 +26323,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // DELETE /api/integrations/whatsapp/disconnect - Disconnect WhatsApp (legacy support)
   app.delete("/api/integrations/whatsapp/disconnect", async (req: Request, res: Response) => {
     if (!req.user) return res.status(401).json({ error: "Unauthorized" });
-    // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
-      const user = req.user as any;
+    const user = req.user as any;
     if (!user.companyId) return res.status(400).json({ error: "No company" });
     
     const connection = await db.query.channelConnections.findFirst({
@@ -26862,7 +26354,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // INSTAGRAM DIRECT OAUTH INTEGRATION
   // =====================================================
 
-  const META_INSTAGRAM_REDIRECT_URI = `${META_BASE_URL}/api/integrations/meta/instagram/callback`;
+  const META_INSTAGRAM_REDIRECT_URI = process.env.META_INSTAGRAM_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/meta/instagram/callback`;
   const META_INSTAGRAM_SCOPES = [
     "instagram_basic",
     "instagram_manage_messages",
@@ -26873,12 +26365,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/integrations/meta/instagram/start - Start Instagram OAuth flow
   app.post("/api/integrations/meta/instagram/start", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
       
@@ -26907,8 +26393,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       authUrl.searchParams.set("scope", META_INSTAGRAM_SCOPES);
       authUrl.searchParams.set("state", nonce);
       
-      console.log("[WhatsApp OAuth] Generated OAuth URL:", authUrl.toString());
-      console.log("[WhatsApp OAuth] redirect_uri:", META_WHATSAPP_REDIRECT_URI);
       return res.json({ authUrl: authUrl.toString(), state: nonce });
     } catch (error) {
       console.error("[Instagram OAuth] Start error:", error);
@@ -26918,7 +26402,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // GET /api/integrations/meta/instagram/callback - OAuth callback from Meta
   app.get("/api/integrations/meta/instagram/callback", async (req: Request, res: Response) => {
-    const frontendUrl = META_BASE_URL;
+    const frontendUrl = process.env.BASE_URL || "";
     const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?instagram=error&reason=${encodeURIComponent(reason)}`);
     
     try {
@@ -27048,12 +26532,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/integrations/instagram/status - Get Instagram connection status
   app.get("/api/integrations/instagram/status", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
       
@@ -27074,12 +26552,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/integrations/instagram/disconnect - Disconnect Instagram
   app.post("/api/integrations/instagram/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
       
@@ -27115,7 +26587,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // FACEBOOK MESSENGER OAUTH INTEGRATION
   // =====================================================
 
-  const META_FACEBOOK_REDIRECT_URI = `${META_BASE_URL}/api/integrations/meta/messenger/callback`;
+  const META_FACEBOOK_REDIRECT_URI = process.env.META_FACEBOOK_REDIRECT_URI || `${process.env.BASE_URL}/api/integrations/meta/facebook/callback`;
   const META_FACEBOOK_SCOPES = [
     "pages_messaging",
     "pages_manage_metadata",
@@ -27126,12 +26598,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/integrations/meta/facebook/start - Start Facebook OAuth flow
   app.post("/api/integrations/meta/facebook/start", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
       
@@ -27160,8 +26626,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       authUrl.searchParams.set("scope", META_FACEBOOK_SCOPES);
       authUrl.searchParams.set("state", nonce);
       
-      console.log("[WhatsApp OAuth] Generated OAuth URL:", authUrl.toString());
-      console.log("[WhatsApp OAuth] redirect_uri:", META_WHATSAPP_REDIRECT_URI);
       return res.json({ authUrl: authUrl.toString(), state: nonce });
     } catch (error) {
       console.error("[Facebook OAuth] Start error:", error);
@@ -27171,7 +26635,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // GET /api/integrations/meta/facebook/callback - OAuth callback from Meta
   app.get("/api/integrations/meta/facebook/callback", async (req: Request, res: Response) => {
-    const frontendUrl = META_BASE_URL;
+    const frontendUrl = process.env.BASE_URL || "";
     const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?facebook=error&reason=${encodeURIComponent(reason)}`);
     
     try {
@@ -27296,12 +26760,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/integrations/facebook/status - Get Facebook connection status
   app.get("/api/integrations/facebook/status", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
       
@@ -27322,12 +26780,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/integrations/facebook/disconnect - Disconnect Facebook
   app.post("/api/integrations/facebook/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
       
@@ -27368,12 +26820,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/integrations/tiktok/start - Start TikTok OAuth flow
   app.post("/api/integrations/tiktok/start", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company associated with user" });
       
@@ -27411,8 +26857,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       authUrl.searchParams.set("scope", TIKTOK_SCOPES);
       authUrl.searchParams.set("state", nonce);
       
-      console.log("[WhatsApp OAuth] Generated OAuth URL:", authUrl.toString());
-      console.log("[WhatsApp OAuth] redirect_uri:", META_WHATSAPP_REDIRECT_URI);
       return res.json({ authUrl: authUrl.toString(), state: nonce });
     } catch (error) {
       console.error("[TikTok OAuth] Start error:", error);
@@ -27422,7 +26866,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // GET /api/integrations/tiktok/callback - OAuth callback from TikTok
   app.get("/api/integrations/tiktok/callback", async (req: Request, res: Response) => {
-    const frontendUrl = META_BASE_URL;
+    const frontendUrl = process.env.BASE_URL || "";
     const errorRedirect = (reason: string) => res.redirect(`${frontendUrl}/integrations?tiktok=error&reason=${encodeURIComponent(reason)}`);
     
     try {
@@ -27587,12 +27031,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/integrations/tiktok/status - Get TikTok connection status
   app.get("/api/integrations/tiktok/status", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
       
@@ -27613,12 +27051,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/integrations/tiktok/disconnect - Disconnect TikTok
   app.post("/api/integrations/tiktok/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
       const user = req.user as any;
       if (!user.companyId) return res.status(400).json({ error: "No company" });
       
@@ -27972,13 +27404,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // POST /admin/telegram/setupWebhook - Setup Telegram webhook (Admin only)
   app.post("/admin/telegram/setupWebhook", requireAuth, async (req: Request, res: Response) => {
-    // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
-      const user = req.user as any;
+    const user = req.user as any;
     if (user.role !== "super_admin") {
       return res.status(403).json({ error: "Super admin access required" });
     }
@@ -28014,13 +27440,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // POST /api/integrations/telegram/start - Generate connect code
   app.post("/api/integrations/telegram/start", requireActiveCompany, async (req: Request, res: Response) => {
-    // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
-      const user = req.user as any;
+    const user = req.user as any;
     
     // Check if user has their own bot configured
     const userBot = await db.query.userTelegramBots.findFirst({
@@ -28065,13 +27485,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // GET /api/integrations/telegram/status - Get connected chats
   app.get("/api/integrations/telegram/status", requireActiveCompany, async (req: Request, res: Response) => {
-    // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
-      const user = req.user as any;
+    const user = req.user as any;
     
     try {
       const chats = await db.query.telegramChatLinks.findMany({
@@ -28091,13 +27505,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // POST /api/integrations/telegram/disconnect - Disconnect a chat
   app.post("/api/integrations/telegram/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
-    // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
-      const user = req.user as any;
+    const user = req.user as any;
     const { chatId } = req.body;
     
     if (!chatId) return res.status(400).json({ error: "chatId required" });
@@ -28119,13 +27527,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // POST /api/integrations/telegram/setup-bot - User submits their own bot token
   app.post("/api/integrations/telegram/setup-bot", requireActiveCompany, async (req: Request, res: Response) => {
-    // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
-      const user = req.user as any;
+    const user = req.user as any;
     const { botToken } = req.body;
     
     if (!botToken) return res.status(400).json({ error: "botToken required" });
@@ -28193,13 +27595,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // DELETE /api/integrations/telegram/remove-bot - Remove user's bot
   app.delete("/api/integrations/telegram/remove-bot", requireActiveCompany, async (req: Request, res: Response) => {
-    // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
-      const user = req.user as any;
+    const user = req.user as any;
     
     try {
       // Find user's bot
@@ -28233,13 +27629,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // GET /api/integrations/telegram/bot-status - Get user's bot status
   app.get("/api/integrations/telegram/bot-status", requireActiveCompany, async (req: Request, res: Response) => {
-    // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
-      const user = req.user as any;
+    const user = req.user as any;
     
     try {
       const userBot = await db.query.userTelegramBots.findFirst({
@@ -28599,13 +27989,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // POST /api/telegram/messages/send - Send outbound message
   app.post("/api/telegram/messages/send", requireActiveCompany, async (req: Request, res: Response) => {
-    // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
-      const user = req.user as any;
+    const user = req.user as any;
     const { conversationId, text } = req.body;
     
     if (!conversationId || !text) {
@@ -30555,12 +29939,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // Queries Telnyx API directly for real-time verification status
   app.get("/api/telnyx/verification-request/by-phone/:phoneNumber", requireAuth, async (req: Request, res: Response) => {
     try {
-      // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
       const user = req.user as any;
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -30677,12 +30055,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
   app.get("/api/telnyx/verification-request/:id", requireAuth, async (req: Request, res: Response) => {
     try {
-      // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
       const user = req.user as any;
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
@@ -33557,12 +32929,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // GET /api/telnyx/global-pricing - Get global pricing configuration
   app.get("/api/telnyx/global-pricing", requireAuth, async (req: Request, res: Response) => {
     try {
-      // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
       const user = req.user as any;
       if (user.role !== "superadmin") {
         return res.status(403).json({ message: "Super Admin access required" });
@@ -33683,12 +33049,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // PUT /api/telnyx/global-pricing - Update global pricing configuration
   app.put("/api/telnyx/global-pricing", requireAuth, async (req: Request, res: Response) => {
     try {
-      // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
       const user = req.user as any;
       if (user.role !== "superadmin") {
         return res.status(403).json({ message: "Super Admin access required" });
@@ -34190,12 +33550,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // POST /api/telnyx/sync-recordings - Sync recordings from Telnyx to call logs
   app.post("/api/telnyx/sync-recordings", requireAuth, async (req: Request, res: Response) => {
     try {
-      // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
       const user = req.user as any;
       if (user.role !== 'admin') {
         return res.status(403).json({ error: "Admin access required" });
@@ -34292,13 +33646,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
   // GET /api/telnyx/cdr - Get Call Detail Records from Telnyx for billing analysis
   app.get("/api/telnyx/cdr", requireAuth, async (req: Request, res: Response) => {
-    // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
-      const user = req.user as any;
+    const user = req.user as any;
     if (user.role !== "admin" && user.role !== "super_admin" && user.role !== "superadmin") {
       return res.status(403).json({ error: "Admin access required" });
     }
@@ -34378,13 +33726,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
   // GET /api/telnyx/call-billing - Get call billing analytics (client cost vs Telnyx cost)
   app.get("/api/telnyx/call-billing", requireAuth, async (req: Request, res: Response) => {
-    // Fail fast if redirect URI is invalid
-      if (!META_WHATSAPP_REDIRECT_URI || META_WHATSAPP_REDIRECT_URI.includes("undefined")) {
-        console.error("[WhatsApp OAuth] CRITICAL: Invalid redirect_uri:", META_WHATSAPP_REDIRECT_URI);
-        return res.status(500).json({ error: "OAuth configuration error. Contact administrator." });
-      }
-
-      const user = req.user as any;
+    const user = req.user as any;
     if (user.role !== "admin" && user.role !== "super_admin" && user.role !== "superadmin") {
       return res.status(403).json({ error: "Admin access required" });
     }
@@ -36267,23 +35609,2180 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       );
       
       if (!sipResult.success) {
-        console.error(`[BrowserCalling] SIP provisioning failed: ${sipResult.error}`);
-        return res.status(500).json({ 
-          error: sipResult.error || "Failed to provision SIP credentials",
-          details: "Please ensure your phone system is set up first."
+        return res.status(500).json({ error: sipResult.error || "Failed to provision SIP credentials" });
+      }
+      
+      console.log(`[PBX] Provisioned independent SIP connection for extension ${extension.extension}: ${sipResult.sipUsername}`);
+      return res.json({ 
+        success: true, 
+        sipUsername: sipResult.sipUsername,
+        sipDomain: sipResult.sipDomain,
+        credentialConnectionId: sipResult.credentialConnectionId,
+        message: "SIP connection provisioned successfully" 
+      });
+    } catch (error: any) {
+      console.error("[PBX] Error provisioning SIP credentials:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // POST /api/pbx/extensions/repair-rtcp-mux - Repair RTCP-MUX for all extensions (required for WebRTC)
+  app.post("/api/pbx/extensions/repair-rtcp-mux", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const result = await telephonyProvisioningService.repairAllExtensionsRtcpMux(user.companyId);
+      
+      console.log(`[PBX] RTCP-MUX repair for company ${user.companyId}: ${result.repairedCount} repaired, ${result.failedCount} failed`);
+      return res.json(result);
+    } catch (error: any) {
+      console.error("[PBX] Error repairing RTCP-MUX:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // POST /api/pbx/extensions/repair-outbound-profile - Repair outbound voice profile for all extensions (required for outbound calls)
+  app.post("/api/pbx/extensions/repair-outbound-profile", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const result = await telephonyProvisioningService.repairAllExtensionsOutboundProfile(user.companyId);
+      
+      console.log(`[PBX] Outbound profile repair for company ${user.companyId}: ${result.repairedCount} repaired, ${result.failedCount} failed`);
+      return res.json(result);
+    } catch (error: any) {
+      console.error("[PBX] Error repairing outbound profile:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // GET /api/webrtc/extension-credentials - Get SIP credentials for the authenticated user's extension
+  app.get("/api/webrtc/extension-credentials", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      // Get the user's extension
+      const [extension] = await db
+        .select({
+          id: pbxExtensions.id,
+          extension: pbxExtensions.extension,
+          displayName: pbxExtensions.displayName,
+          sipUsername: pbxExtensions.sipUsername,
+          sipPassword: pbxExtensions.sipPassword,
+          telnyxCredentialConnectionId: pbxExtensions.telnyxCredentialConnectionId,
+        })
+        .from(pbxExtensions)
+        .where(and(
+          eq(pbxExtensions.companyId, user.companyId),
+          eq(pbxExtensions.userId, user.id),
+          eq(pbxExtensions.isActive, true)
+        ));
+      
+      if (!extension) {
+        return res.status(404).json({ error: "No extension found for this user" });
+      }
+      
+      if (!extension.sipUsername || !extension.sipPassword) {
+        // Auto-provision SIP credentials if missing
+        console.log(`[WebRTC] Extension ${extension.id} needs SIP provisioning, auto-provisioning...`);
+        const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+        const provisionResult = await telephonyProvisioningService.provisionExtensionSipConnection(
+          user.companyId,
+          extension.id
+        );
+        
+        if (!provisionResult.success) {
+          console.error(`[WebRTC] Auto-provisioning failed:`, provisionResult.error);
+          return res.status(400).json({ 
+            error: `Failed to provision SIP credentials: ${provisionResult.error}`, 
+            extensionId: extension.id,
+            needsProvisioning: true 
+          });
+        }
+        
+        console.log(`[WebRTC] Auto-provisioned SIP credentials for extension ${extension.id}`);
+        
+        // Return the newly provisioned credentials
+        const [settings] = await db
+          .select({ sipDomain: telephonySettings.sipDomain })
+          .from(telephonySettings)
+          .where(eq(telephonySettings.companyId, user.companyId));
+        
+        const sipDomain = settings?.sipDomain || "sip.telnyx.com";
+        
+        return res.json({
+          extensionId: extension.id,
+          extension: extension.extension,
+          displayName: extension.displayName,
+          sipUsername: provisionResult.sipUsername,
+          sipPassword: provisionResult.sipPassword,
+          sipDomain: provisionResult.sipDomain || sipDomain,
+          credentialConnectionId: provisionResult.credentialConnectionId,
         });
       }
-
-      // Step 5: Persist SIP credentials to the extension record
-      console.log(`[BrowserCalling] Persisting SIP credentials to extension ${extension.id}...`);
+      
+      // Get company SIP domain from telephonySettings (must match what Call Control uses for dialing)
+      const [settings] = await db
+        .select({ sipDomain: telephonySettings.sipDomain })
+        .from(telephonySettings)
+        .where(eq(telephonySettings.companyId, user.companyId));
+      
+      // Use company SIP subdomain so WebRTC registers on same domain that queue dials
+      const sipDomain = settings?.sipDomain || "sip.telnyx.com";
+      
+      return res.json({
+        extensionId: extension.id,
+        extension: extension.extension,
+        displayName: extension.displayName,
+        sipUsername: extension.sipUsername,
+        sipPassword: extension.sipPassword,
+        sipDomain: sipDomain,
+        credentialConnectionId: extension.telnyxCredentialConnectionId,
+      });
+    } catch (error: any) {
+      console.error("[WebRTC] Error getting extension credentials:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // PATCH /api/pbx/extensions/:extensionId - Update extension
+  app.patch("/api/pbx/extensions/:extensionId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      // Get current extension to check if user is being assigned
+      const [currentExtension] = await db
+        .select({ userId: pbxExtensions.userId })
+        .from(pbxExtensions)
+        .where(eq(pbxExtensions.id, req.params.extensionId));
+      
+      const extension = await pbxService.updateExtension(user.companyId, req.params.extensionId, req.body);
+      
+      // Auto-provision SIP credentials if a new user was assigned to this extension
+      if (extension.userId && 
+          extension.extension && 
+          extension.displayName &&
+          currentExtension?.userId !== extension.userId) {
+        try {
+          const { createUserSipCredentialWithExtension } = await import("./services/telnyx-e911-service");
+          const sipResult = await createUserSipCredentialWithExtension(
+            user.companyId,
+            extension.userId,
+            extension.extension,
+            extension.displayName
+          );
+          if (sipResult.success) {
+            console.log(`[PBX] Auto-provisioned SIP credentials for updated extension ${extension.extension}: ${sipResult.sipUsername}`);
+          } else {
+            console.warn(`[PBX] Failed to auto-provision SIP credentials on update: ${sipResult.error}`);
+          }
+        } catch (sipError) {
+          console.error("[PBX] Error auto-provisioning SIP credentials on update:", sipError);
+        }
+      }
+      
+      return res.json(extension);
+    } catch (error: any) {
+      console.error("[PBX] Error updating extension:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // DELETE /api/pbx/extensions/:extensionId - Delete extension
+  app.delete("/api/pbx/extensions/:extensionId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.deleteExtension(user.companyId, req.params.extensionId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting extension:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // =====================================================
+  // IVR (Interactive Voice Response) Management Routes
+  // =====================================================
+  // GET /api/pbx/ivrs - Get all IVRs for the company
+  app.get("/api/pbx/ivrs", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const ivrs = await pbxService.getIvrs(user.companyId);
+      return res.json(ivrs);
+    } catch (error: any) {
+      console.error("[PBX] Error getting IVRs:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // GET /api/pbx/ivrs/next-extension - Get next available IVR extension number
+  app.get("/api/pbx/ivrs/next-extension", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const extension = await pbxService.getNextIvrExtension(user.companyId);
+      return res.json({ extension });
+    } catch (error: any) {
+      console.error("[PBX] Error getting next IVR extension:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // GET /api/pbx/ivrs/:ivrId - Get single IVR
+  app.get("/api/pbx/ivrs/:ivrId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const ivr = await pbxService.getIvr(user.companyId, req.params.ivrId);
+      if (!ivr) {
+        return res.status(404).json({ error: "IVR not found" });
+      }
+      return res.json(ivr);
+    } catch (error: any) {
+      console.error("[PBX] Error getting IVR:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // POST /api/pbx/ivrs - Create new IVR
+  app.post("/api/pbx/ivrs", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const ivr = await pbxService.createIvr(user.companyId, req.body);
+      return res.json(ivr);
+    } catch (error: any) {
+      console.error("[PBX] Error creating IVR:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // PATCH /api/pbx/ivrs/:ivrId - Update IVR
+  app.patch("/api/pbx/ivrs/:ivrId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const ivr = await pbxService.updateIvr(user.companyId, req.params.ivrId, req.body);
+      if (!ivr) {
+        return res.status(404).json({ error: "IVR not found" });
+      }
+      return res.json(ivr);
+    } catch (error: any) {
+      console.error("[PBX] Error updating IVR:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // DELETE /api/pbx/ivrs/:ivrId - Delete IVR
+  app.delete("/api/pbx/ivrs/:ivrId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.deleteIvr(user.companyId, req.params.ivrId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting IVR:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // GET /api/pbx/ivrs/:ivrId/menu-options - Get menu options for specific IVR
+  app.get("/api/pbx/ivrs/:ivrId/menu-options", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const options = await pbxService.getIvrMenuOptions(user.companyId, req.params.ivrId);
+      return res.json(options);
+    } catch (error: any) {
+      console.error("[PBX] Error getting IVR menu options:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // POST /api/pbx/ivrs/:ivrId/menu-options - Create menu option for IVR
+  app.post("/api/pbx/ivrs/:ivrId/menu-options", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const option = await pbxService.createIvrMenuOption(user.companyId, req.params.ivrId, req.body);
+      return res.json(option);
+    } catch (error: any) {
+      console.error("[PBX] Error creating IVR menu option:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // PATCH /api/pbx/ivrs/:ivrId/menu-options/:optionId - Update IVR menu option
+  app.patch("/api/pbx/ivrs/:ivrId/menu-options/:optionId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const option = await pbxService.updateIvrMenuOption(user.companyId, req.params.optionId, req.body);
+      if (!option) {
+        return res.status(404).json({ error: "Menu option not found" });
+      }
+      return res.json(option);
+    } catch (error: any) {
+      console.error("[PBX] Error updating IVR menu option:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // DELETE /api/pbx/ivrs/:ivrId/menu-options/:optionId - Delete IVR menu option
+  app.delete("/api/pbx/ivrs/:ivrId/menu-options/:optionId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.deleteIvrMenuOption(user.companyId, req.params.optionId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting IVR menu option:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // POST /api/pbx/ivrs/:ivrId/upload-greeting - Upload greeting audio for IVR
+  app.post("/api/pbx/ivrs/:ivrId/upload-greeting", requireActiveCompany, (req: Request, res: Response, next: NextFunction) => {
+    uploadMiddleware.single("audio")(req, res, (err: any) => {
+      if (err) {
+        console.error("[PBX] Multer error:", err);
+        return res.status(400).json({ error: err.message });
+      }
+      next();
+    });
+  }, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const file = req.file;
+      
+      if (!file) {
+        return res.status(400).json({ error: "No audio file provided" });
+      }
+      const ivr = await pbxService.getIvr(user.companyId, req.params.ivrId);
+      if (!ivr) {
+        return res.status(404).json({ error: "IVR not found" });
+      }
+      const fileName = `ivr-greeting-${ivr.id}-${Date.now()}.${file.originalname.split('.').pop()}`;
+      const audioUrl = await storageService.uploadFile(file.buffer, fileName, file.mimetype);
+      
+      const mediaName = `ivr-greeting-${ivr.id}`;
+      const { uploadAudioToTelnyxMedia } = await import("./services/call-control-webhook-service");
+      await uploadAudioToTelnyxMedia(audioUrl, mediaName, user.companyId);
+      
+      const updatedIvr = await pbxService.updateIvr(user.companyId, req.params.ivrId, {
+        greetingAudioUrl: audioUrl,
+        greetingMediaName: mediaName,
+        useTextToSpeech: false,
+      });
+      
+      return res.json({ success: true, audioUrl, ivr: updatedIvr });
+    } catch (error: any) {
+      console.error("[PBX] Error uploading IVR greeting:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // DELETE /api/pbx/ivrs/:ivrId/greeting - Delete IVR greeting audio
+  app.delete("/api/pbx/ivrs/:ivrId/greeting", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      const ivr = await pbxService.getIvr(user.companyId, req.params.ivrId);
+      if (!ivr) {
+        return res.status(404).json({ error: "IVR not found" });
+      }
+      if (ivr.greetingAudioUrl) {
+        try {
+          await storageService.deleteFile(ivr.greetingAudioUrl);
+        } catch (deleteError) {
+          console.error("[PBX] Error deleting IVR greeting file:", deleteError);
+        }
+      }
+      const updatedIvr = await pbxService.updateIvr(user.companyId, req.params.ivrId, {
+        greetingAudioUrl: null,
+        greetingMediaName: null,
+      });
+      return res.json({ success: true, ivr: updatedIvr });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting IVR greeting:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // GET /api/pbx/menu-options - Get menu options for the companys PBX settings
+  app.get("/api/pbx/menu-options", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const settings = await pbxService.getPbxSettings(user.companyId);
+      if (!settings) {
+        return res.json([]);
+      }
+      const options = await pbxService.getMenuOptions(user.companyId, settings.id);
+      return res.json(options);
+    } catch (error: any) {
+      console.error("[PBX] Error getting menu options:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // GET /api/pbx/menu-options/:settingsId - Get menu options
+  app.get("/api/pbx/menu-options/:settingsId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const options = await pbxService.getMenuOptions(user.companyId, req.params.settingsId);
+      return res.json(options);
+    } catch (error: any) {
+      console.error("[PBX] Error getting menu options:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // POST /api/pbx/menu-options - Create menu option
+  app.post("/api/pbx/menu-options", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const option = await pbxService.createMenuOption(user.companyId, req.body);
+      return res.json(option);
+    } catch (error: any) {
+      console.error("[PBX] Error creating menu option:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // PATCH /api/pbx/menu-options/:optionId - Update menu option
+  app.patch("/api/pbx/menu-options/:optionId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const option = await pbxService.updateMenuOption(user.companyId, req.params.optionId, req.body);
+      return res.json(option);
+    } catch (error: any) {
+      console.error("[PBX] Error updating menu option:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // DELETE /api/pbx/menu-options/:optionId - Delete menu option
+  app.delete("/api/pbx/menu-options/:optionId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.deleteMenuOption(user.companyId, req.params.optionId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting menu option:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // GET /api/pbx/audio-files - Get audio files
+  app.get("/api/pbx/audio-files", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const audioType = req.query.type as string | undefined;
+      const files = await pbxService.getAudioFiles(user.companyId, audioType);
+      return res.json(files);
+    } catch (error: any) {
+      console.error("[PBX] Error getting audio files:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // POST /api/pbx/audio-files - Create audio file record
+  app.post("/api/pbx/audio-files", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const file = await pbxService.createAudioFile(user.companyId, req.body);
+      return res.json(file);
+    } catch (error: any) {
+      console.error("[PBX] Error creating audio file:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // DELETE /api/pbx/audio-files/:fileId - Delete audio file
+  app.delete("/api/pbx/audio-files/:fileId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      await pbxService.deleteAudioFile(user.companyId, req.params.fileId);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX] Error deleting audio file:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // GET /api/pbx/agent-status - Get current agent status
+  app.get("/api/pbx/agent-status", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const status = await pbxService.getAgentStatus(user.companyId, user.id);
+      return res.json(status);
+    } catch (error: any) {
+      console.error("[PBX] Error getting agent status:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // POST /api/pbx/agent-status - Update agent status
+  app.post("/api/pbx/agent-status", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { status, callId } = req.body;
+      const result = await pbxService.updateAgentStatus(user.companyId, user.id, status, callId);
+      return res.json(result);
+    } catch (error: any) {
+      console.error("[PBX] Error updating agent status:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // POST /api/pbx/check-extension - Check what type an extension is
+  app.post("/api/pbx/check-extension", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { extension } = req.body;
+      
+      if (!extension) {
+        return res.status(400).json({ error: "Extension required" });
+      }
+      
+      // Check if it's the IVR extension
+      const settings = await pbxService.getPbxSettings(user.companyId);
+      if (settings?.ivrEnabled && settings.ivrExtension === extension) {
+        return res.json({ type: "ivr", extension });
+      }
+      
+      // Check if it's a queue extension
+      const [queue] = await db
+        .select({ id: pbxQueues.id, name: pbxQueues.name, extension: pbxQueues.extension })
+        .from(pbxQueues)
+        .where(and(
+          eq(pbxQueues.companyId, user.companyId),
+          eq(pbxQueues.extension, extension),
+          eq(pbxQueues.status, "active")
+        ));
+      
+      if (queue) {
+        return res.json({ type: "queue", extension, queueId: queue.id, name: queue.name });
+      }
+      
+      // Check if it's a user extension
+      const [userExt] = await db
+        .select()
+        .from(pbxExtensions)
+        .where(and(
+          eq(pbxExtensions.companyId, user.companyId),
+          eq(pbxExtensions.extension, extension),
+          eq(pbxExtensions.isActive, true)
+        ));
+      
+      if (userExt) {
+        return res.json({ type: "user", extension, userId: userExt.userId, online: false });
+      }
+      
+      // Extension not found
+      return res.json({ type: "unknown", extension });
+    } catch (error: any) {
+      console.error("[PBX] Error checking extension:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // GET /api/pbx/special-extensions - Get IVR and queue extensions for WebPhone
+  app.get("/api/pbx/special-extensions", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      
+      // Get PBX settings for IVR extension
+      const settings = await pbxService.getPbxSettings(user.companyId);
+      const ivrExtension = settings?.ivrEnabled ? settings.ivrExtension : null;
+      
+      // Get all active queues with extensions
+      const allQueues = await db
+        .select({ id: pbxQueues.id, extension: pbxQueues.extension, name: pbxQueues.name })
+        .from(pbxQueues)
+        .where(and(
+          eq(pbxQueues.companyId, user.companyId),
+          eq(pbxQueues.status, "active")
+        ));
+      
+      const queues = allQueues.filter(q => q.extension).map(q => ({
+        id: q.id,
+        extension: q.extension!,
+        name: q.name,
+      }));
+      
+      return res.json({ ivrExtension, queues });
+    } catch (error: any) {
+      console.error("[PBX] Error getting special extensions:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // POST /api/pbx/internal-call - Initiate internal call to IVR or Queue via Telnyx
+  app.post("/api/pbx/internal-call", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      const { targetType, queueId } = req.body; // targetType: 'ivr' | 'queue'
+      
+      // Get user's SIP credentials
+      const [credential] = await db
+        .select()
+        .from(telephonyCredentials)
+        .where(and(
+          eq(telephonyCredentials.companyId, user.companyId),
+          eq(telephonyCredentials.userId, user.id)
+        ));
+      
+      if (!credential) {
+        return res.status(400).json({ error: "No SIP credentials configured" });
+      }
+      
+      // Get company's main phone number for outbound caller ID
+      const [phoneNumber] = await db
+        .select()
+        .from(telnyxPhoneNumbers)
+        .where(eq(telnyxPhoneNumbers.companyId, user.companyId));
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ error: "No phone number configured" });
+      }
+      
+      // Get Call Control App ID from telephony settings
+      const [settings] = await db
+        .select({ callControlAppId: telephonySettings.callControlAppId })
+        .from(telephonySettings)
+        .where(eq(telephonySettings.companyId, user.companyId));
+      
+      if (!settings?.callControlAppId) {
+        return res.status(400).json({ error: "Call Control App not configured. Please set up phone system first." });
+      }
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ error: "No phone number configured" });
+      }
+      
+      const TELNYX_API_KEY = await getTelnyxMasterApiKey();
+      const userSipUri = `sip:${credential.sipUsername}@sip.telnyx.com`;
+      
+      // Create client_state with routing info
+      const clientState = Buffer.from(JSON.stringify({
+        companyId: user.companyId,
+        userId: user.id,
+        targetType,
+        queueId: queueId || null,
+        internalCall: true
+      })).toString("base64");
+      
+      // Initiate call from user's SIP to company number (triggers IVR/queue routing)
+      const response = await fetch("https://api.telnyx.com/v2/calls", {
+        method: "PUT",
+        headers: {
+          Authorization: `Bearer ${TELNYX_API_KEY}`,
+          "Content-Type": "application/json",
+      "Accept": "application/json",
+        },
+        body: JSON.stringify({
+          to: userSipUri,  // Call TO the user
+          from: phoneNumber.phoneNumber,  // FROM company number
+          connection_id: settings?.callControlAppId || "",
+          timeout_secs: 60,
+          client_state: clientState,
+          webhook_url: `${process.env.REPLIT_DEV_DOMAIN ? `https://${process.env.REPLIT_DEV_DOMAIN}` : ""}/api/webhooks/telnyx/call-control`,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error("[PBX Internal Call] Telnyx API error:", errorData);
+        return res.status(500).json({ error: "Failed to initiate call" });
+      }
+      
+      const data = await response.json();
+      console.log(`[PBX Internal Call] Initiated ${targetType} call for user ${user.id}:`, data.data?.call_control_id);
+      
+      return res.json({ 
+        success: true, 
+        callControlId: data.data?.call_control_id,
+        targetType
+      });
+    } catch (error: any) {
+      console.error("[PBX Internal Call] Error:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // ============================================================
+  // PBX Audio Library
+  // ============================================================
+  
+  // GET /api/pbx/audio - List all audio files for company
+  app.get("/api/pbx/audio", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      const audioFiles = await db
+        .select()
+        .from(pbxAudioFiles)
+        .where(eq(pbxAudioFiles.companyId, user.companyId))
+        .orderBy(desc(pbxAudioFiles.createdAt));
+      // Get usage information for each audio file
+      const audioFilesWithUsage = await Promise.all(audioFiles.map(async (audio) => {
+        const usage: { type: string; name: string; id: string }[] = [];
+        
+        // Check IVRs using this audio as greeting
+        const ivrsUsingAsGreeting = await db
+          .select({ id: pbxIvrs.id, name: pbxIvrs.name })
+          .from(pbxIvrs)
+          .where(and(
+            eq(pbxIvrs.companyId, user.companyId!),
+            eq(pbxIvrs.greetingAudioUrl, audio.fileUrl)
+          ));
+        
+        ivrsUsingAsGreeting.forEach(ivr => {
+          usage.push({ type: 'ivr_greeting', name: ivr.name, id: ivr.id });
+        });
+        
+        // Check Queues using this audio as hold music
+        const queuesUsingAsHoldMusic = await db
+          .select({ id: pbxQueues.id, name: pbxQueues.name })
+          .from(pbxQueues)
+          .where(and(
+            eq(pbxQueues.companyId, user.companyId!),
+            eq(pbxQueues.holdMusicUrl, audio.fileUrl)
+          ));
+        
+        queuesUsingAsHoldMusic.forEach(queue => {
+          usage.push({ type: 'queue_hold_music', name: queue.name, id: queue.id });
+        });
+        // Check Queue Ads (announcements) using this audio
+        const queueAdsUsingAudio = await db
+          .select({ 
+            adId: pbxQueueAds.id,
+            queueId: pbxQueueAds.queueId,
+            queueName: pbxQueues.name 
+          })
+          .from(pbxQueueAds)
+          .innerJoin(pbxQueues, eq(pbxQueueAds.queueId, pbxQueues.id))
+          .where(and(
+            eq(pbxQueueAds.companyId, user.companyId!),
+            eq(pbxQueueAds.audioFileId, audio.id)
+          ));
+        
+        queueAdsUsingAudio.forEach(ad => {
+          usage.push({ type: 'queue_announcement', name: ad.queueName, id: ad.queueId });
+        });
+        return { ...audio, usage };
+      }));
+      return res.json({ audioFiles: audioFilesWithUsage });
+    } catch (error: any) {
+      console.error("[PBX Audio] List error:", error);
+      return res.status(500).json({ message: "Failed to get audio files" });
+    }
+  });
+  // Multer configuration for PBX audio library uploads
+  const pbxAudioUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 10 * 1024 * 1024 }, // 10MB limit for audio files
+    fileFilter: (req, file, cb) => {
+      const allowedTypes = ["audio/mpeg", "audio/wav", "audio/mp3", "audio/ogg", "audio/aac", "audio/x-wav"];
+      if (allowedTypes.includes(file.mimetype)) {
+        cb(null, true);
+      } else {
+        cb(new Error("Invalid file type. Only audio files (mp3, wav, ogg, aac) are allowed."));
+      }
+    },
+  });
+  // POST /api/pbx/audio - Upload new audio file
+  app.post("/api/pbx/audio", requireActiveCompany, (req: Request, res: Response, next: NextFunction) => {
+    pbxAudioUpload.single("audio")(req, res, async (err: any) => {
+      try {
+        if (err) {
+          console.error("[PBX Audio] Multer error:", err);
+          return res.status(400).json({ message: err.message });
+        }
+        const user = req.user!;
+        if (!user.companyId) {
+          return res.status(400).json({ message: "No company associated with user" });
+        }
+        const file = req.file;
+        if (!file) {
+          return res.status(400).json({ message: "No audio file provided" });
+        }
+        const { name, description, notes, audioType } = req.body;
+        if (!name) {
+          return res.status(400).json({ message: "Audio name is required" });
+        }
+        if (!audioType || !['greeting', 'hold_music', 'announcement', 'voicemail_greeting'].includes(audioType)) {
+          return res.status(400).json({ message: "Valid audio type is required (greeting, hold_music, announcement, voicemail_greeting)" });
+        }
+        // Upload to Telnyx Media Storage for fast playback during calls
+        // CRITICAL: Pass companyId to upload to the managed account (not master account)
+        const { uploadMediaToTelnyx } = await import("./services/telnyx-media-service");
+        const uploadResult = await uploadMediaToTelnyx(
+          file.buffer,
+          file.originalname,
+          file.mimetype,
+          user.companyId
+        );
+        if (!uploadResult.success || !uploadResult.mediaId) {
+          console.error("[PBX Audio] Telnyx upload failed:", uploadResult.error);
+          return res.status(500).json({ message: uploadResult.error || "Failed to upload audio file to Telnyx" });
+        }
+        // Save to database
+        const [audioFile] = await db
+          .insert(pbxAudioFiles)
+          .values({
+            companyId: user.companyId,
+            name,
+            description: description || null,
+            notes: notes || null,
+            fileUrl: uploadResult.mediaUrl!,
+            fileName: file.originalname,
+            fileSize: file.size,
+            mimeType: file.mimetype,
+            audioType,
+            telnyxMediaId: uploadResult.mediaId,
+          })
+          .returning();
+        return res.json({ success: true, audioFile });
+      } catch (error: any) {
+        console.error("[PBX Audio] Upload error:", error);
+        return res.status(500).json({ message: "Failed to upload audio file" });
+      }
+    });
+  });
+  // PATCH /api/pbx/audio/:audioId - Update audio file details
+  app.patch("/api/pbx/audio/:audioId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      const { audioId } = req.params;
+      const { name, description, notes, audioType } = req.body;
+      // Verify audio belongs to company
+      const [existing] = await db
+        .select()
+        .from(pbxAudioFiles)
+        .where(and(
+          eq(pbxAudioFiles.id, audioId),
+          eq(pbxAudioFiles.companyId, user.companyId)
+        ));
+      if (!existing) {
+        return res.status(404).json({ message: "Audio file not found" });
+      }
+      const updateData: Record<string, any> = {};
+      if (name !== undefined) updateData.name = name;
+      if (description !== undefined) updateData.description = description;
+      if (notes !== undefined) updateData.notes = notes;
+      if (audioType !== undefined && ['greeting', 'hold_music', 'announcement', 'voicemail_greeting'].includes(audioType)) {
+        updateData.audioType = audioType;
+      }
+      const [updated] = await db
+        .update(pbxAudioFiles)
+        .set(updateData)
+        .where(eq(pbxAudioFiles.id, audioId))
+        .returning();
+      return res.json({ success: true, audioFile: updated });
+    } catch (error: any) {
+      console.error("[PBX Audio] Update error:", error);
+      return res.status(500).json({ message: "Failed to update audio file" });
+    }
+  });
+  // DELETE /api/pbx/audio/:audioId - Delete audio file
+  app.delete("/api/pbx/audio/:audioId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      const { audioId } = req.params;
+      // Verify audio belongs to company
+      const [existing] = await db
+        .select()
+        .from(pbxAudioFiles)
+        .where(and(
+          eq(pbxAudioFiles.id, audioId),
+          eq(pbxAudioFiles.companyId, user.companyId)
+        ));
+      if (!existing) {
+        return res.status(404).json({ message: "Audio file not found" });
+      }
+      // Check if audio is in use
+      const ivrsUsingAsGreeting = await db
+        .select({ id: pbxIvrs.id })
+        .from(pbxIvrs)
+        .where(and(
+          eq(pbxIvrs.companyId, user.companyId),
+          eq(pbxIvrs.greetingAudioUrl, existing.fileUrl)
+        ));
+      const queuesUsingAsHoldMusic = await db
+        .select({ id: pbxQueues.id })
+        .from(pbxQueues)
+        .where(and(
+          eq(pbxQueues.companyId, user.companyId),
+          eq(pbxQueues.holdMusicUrl, existing.fileUrl)
+        ));
+      // Check force parameter - if true, clear references instead of blocking
+      const forceDelete = req.query.force === 'true';
+      if (ivrsUsingAsGreeting.length > 0 || queuesUsingAsHoldMusic.length > 0) {
+        if (!forceDelete) {
+          return res.status(400).json({ 
+            message: "Cannot delete audio file that is currently in use",
+            usedBy: {
+              ivrs: ivrsUsingAsGreeting.length,
+              queues: queuesUsingAsHoldMusic.length
+            }
+          });
+        }
+        // Force delete: clear references in IVRs
+        if (ivrsUsingAsGreeting.length > 0) {
+          console.log(`[PBX Audio] Force delete: clearing ${ivrsUsingAsGreeting.length} IVR references`);
+          await db
+            .update(pbxIvrs)
+            .set({ greetingAudioUrl: null, telnyxMediaName: null, updatedAt: new Date() })
+            .where(and(
+              eq(pbxIvrs.companyId, user.companyId),
+              eq(pbxIvrs.greetingAudioUrl, existing.fileUrl)
+            ));
+        }
+        // Force delete: clear references in Queues
+        if (queuesUsingAsHoldMusic.length > 0) {
+          console.log(`[PBX Audio] Force delete: clearing ${queuesUsingAsHoldMusic.length} Queue references`);
+          await db
+            .update(pbxQueues)
+            .set({ holdMusicUrl: null, holdMusicTelnyxMediaName: null, updatedAt: new Date() })
+            .where(and(
+              eq(pbxQueues.companyId, user.companyId),
+              eq(pbxQueues.holdMusicUrl, existing.fileUrl)
+            ));
+        }
+      }
+      // Delete from storage (Telnyx or legacy Object Storage)
+      if (existing.telnyxMediaId) {
+        // Delete from Telnyx Media Storage
+        try {
+          const { deleteMediaFromTelnyx } = await import("./services/telnyx-media-service");
+          await deleteMediaFromTelnyx(existing.telnyxMediaId, user.companyId);
+        } catch (telnyxError) {
+          console.error("[PBX Audio] Failed to delete from Telnyx:", telnyxError);
+        }
+      } else if (existing.fileUrl && !existing.telnyxMediaId) {
+        // Legacy: Delete from Object Storage for records without telnyxMediaId
+        try {
+          const { deleteFile } = await import("./services/object-storage-service");
+          await deleteFile(existing.fileUrl);
+        } catch (storageError) {
+          console.error("[PBX Audio] Failed to delete from Object Storage:", storageError);
+        }
+      }
+      // Delete from database
       await db
-        .update(pbxExtensions)
-        .set({
-          telnyxCredentialConnectionId: sipResult.credentialConnectionId,
-          sipCredentialId: sipResult.sipCredentialId,
-          sipUsername: sipResult.sipUsername,
-          sipPassword: sipResult.sipPassword,
+        .delete(pbxAudioFiles)
+        .where(eq(pbxAudioFiles.id, audioId));
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[PBX Audio] Delete error:", error);
+      return res.status(500).json({ message: "Failed to delete audio file" });
+    }
+  });
+  // ============================================================
+  // Telnyx Call Control Webhook (PBX/IVR)
+  // ============================================================
+  app.post("/api/webhooks/telnyx/call-control", async (req: Request, res: Response) => {
+    try {
+      console.log(`[CallControl Webhook] Received event:`, JSON.stringify(req.body, null, 2));
+      
+      const { callControlWebhookService } = await import("./services/call-control-webhook-service");
+      await callControlWebhookService.handleWebhook(req.body);
+      
+      return res.status(200).json({ success: true });
+    } catch (error: any) {
+      console.error("[CallControl Webhook] Error:", error);
+      return res.status(500).json({ error: error.message });
+    }
+  });
+  // ============================================================
+  // ONBOARDING - Complete user profile after registration
+  // ============================================================
+  
+  app.post("/api/onboarding/complete", async (req: Request, res: Response) => {
+    try {
+      const userId = req.session.userId;
+      if (!userId) {
+        return res.status(401).json({ message: "Not authenticated" });
+      }
+      
+      const user = await storage.getUser(userId);
+      if (!user) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      const {
+        firstName,
+        lastName,
+        phone,
+        dateOfBirth,
+        preferredLanguage,
+        timezone,
+        address,
+        agentInternalCode,
+        instructionLevel,
+        nationalProducerNumber,
+        federallyFacilitatedMarketplace,
+        referredBy,
+      } = req.body;
+      
+      if (!firstName || !lastName) {
+        return res.status(400).json({ message: "First name and last name are required" });
+      }
+      
+      await storage.updateUser(userId, {
+        firstName: firstName.trim(),
+        lastName: lastName.trim(),
+        phone: phone?.trim() || null,
+        dateOfBirth: dateOfBirth || null,
+        preferredLanguage: preferredLanguage || "en",
+        timezone: timezone || "America/New_York",
+        address: address?.trim() || null,
+        agentInternalCode: agentInternalCode?.trim() || null,
+        instructionLevel: instructionLevel || null,
+        nationalProducerNumber: nationalProducerNumber?.trim() || null,
+        federallyFacilitatedMarketplace: federallyFacilitatedMarketplace?.trim() || null,
+        referredBy: referredBy?.trim() || null,
+        onboardingCompleted: true, // Mark onboarding as completed
+      });
+      
+      const updatedUser = await storage.getUser(userId);
+      
+      res.json({
+        success: true,
+        user: {
+          id: updatedUser?.id,
+          email: updatedUser?.email,
+          firstName: updatedUser?.firstName,
+          lastName: updatedUser?.lastName,
+          phone: updatedUser?.phone,
+          role: updatedUser?.role,
+          companyId: updatedUser?.companyId,
+        },
+      });
+    } catch (error: any) {
+      console.error("[Onboarding] Error completing profile:", error);
+      res.status(500).json({ message: "Failed to complete profile" });
+    }
+  });
+  // ============================================================
+  // TELNYX SMS INBOX ROUTES
+  // ============================================================
+  // POST /api/inbox/repair - Repair SMS inbox configuration (webhooks + number assignments)
+  app.post("/api/inbox/repair", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const companyId = (req.user as any).companyId;
+    if (!companyId) {
+      return res.status(400).json({ message: "No company associated with user" });
+    }
+    try {
+      const results: any = {
+        webhookUpdate: null,
+        numberAssignment: null,
+        diagnostics: null,
+      };
+      
+      // Step 1: Get company messaging profile
+      const { getCompanyMessagingProfileId } = await import("./services/telnyx-manager-service");
+      const { getCompanyTelnyxAccountId } = await import("./services/wallet-service");
+      const { getTelnyxMasterApiKey, assignMessagingProfileToAllNumbers } = await import("./services/telnyx-numbers-service");
+      
+      const messagingProfileId = await getCompanyMessagingProfileId(companyId);
+      const managedAccountId = await getCompanyTelnyxAccountId(companyId);
+      
+      if (!messagingProfileId) {
+        return res.status(400).json({ 
+          message: "No messaging profile configured. Please set up Phone System first.",
+          diagnostics: { messagingProfileId: null, managedAccountId }
+        });
+      }
+      
+      results.diagnostics = {
+        messagingProfileId,
+        managedAccountId,
+        companyId,
+      };
+      
+      // Step 2: Update webhook URL on messaging profile
+      const webhookBaseUrl = process.env.REPLIT_DEV_DOMAIN
+        ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+        : "https://api.curbe.io";
+      const smsWebhookUrl = `${webhookBaseUrl}/webhooks/telnyx/messages`;
+      
+      const apiKey = await getTelnyxMasterApiKey();
+      const headers: Record<string, string> = {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      };
+      
+      if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+        headers["x-managed-account-id"] = managedAccountId;
+      }
+      
+      console.log(`[Inbox Repair] Updating webhook for profile ${messagingProfileId} to ${smsWebhookUrl}`);
+      
+      const webhookResponse = await fetch(`https://api.telnyx.com/v2/messaging_profiles/${messagingProfileId}`, {
+        method: "PATCH",
+        headers,
+        body: JSON.stringify({
+          webhook_url: smsWebhookUrl,
+          webhook_api_version: "2",
+        }),
+      });
+      
+      if (webhookResponse.ok) {
+        results.webhookUpdate = { success: true, url: smsWebhookUrl };
+        console.log(`[Inbox Repair] Webhook updated successfully`);
+      } else {
+        const errorText = await webhookResponse.text();
+        results.webhookUpdate = { success: false, error: errorText };
+        console.error(`[Inbox Repair] Webhook update failed: ${webhookResponse.status} - ${errorText}`);
+      }
+      
+      // Step 3: Assign messaging profile to all phone numbers
+      console.log(`[Inbox Repair] Assigning messaging profile to all numbers...`);
+      const assignResult = await assignMessagingProfileToAllNumbers(companyId);
+      results.numberAssignment = assignResult;
+      
+      console.log(`[Inbox Repair] Repair complete:`, JSON.stringify(results, null, 2));
+      
+      res.json({
+        message: "Inbox repair completed",
+        ...results,
+      });
+    } catch (error: any) {
+      console.error("[Inbox Repair] Error:", error);
+      res.status(500).json({ message: error.message || "Failed to repair inbox" });
+    }
+  });
+  // GET /api/inbox/conversations - List all conversations for the company
+  app.get("/api/inbox/conversations", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const companyId = (req.user as any).companyId;
+    if (!companyId) {
+      return res.status(400).json({ message: "No company associated with user" });
+    }
+    try {
+      const conversations = await db
+        .select()
+        .from(telnyxConversations)
+        .where(eq(telnyxConversations.companyId, companyId))
+        .orderBy(desc(telnyxConversations.lastMessageAt));
+      console.log("[Inbox] Returning", conversations.length, "conversations for company", companyId, JSON.stringify(conversations[0] || {}));
+      res.json({ conversations });
+    } catch (error: any) {
+      console.error("[Inbox] Error fetching conversations:", error);
+      res.status(500).json({ message: "Failed to fetch conversations" });
+    }
+  });
+  // GET /api/inbox/conversations/:id/messages - Get messages for a conversation
+  app.get("/api/inbox/conversations/:id/messages", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const companyId = (req.user as any).companyId;
+    if (!companyId) {
+      return res.status(400).json({ message: "No company associated with user" });
+    }
+    const { id } = req.params;
+    try {
+      // Verify conversation belongs to company
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      // Mark as read (reset unread count)
+      await db
+        .update(telnyxConversations)
+        .set({ unreadCount: 0, updatedAt: new Date() })
+        .where(eq(telnyxConversations.id, id));
+      // Fetch messages
+      const messages = await db
+        .select()
+        .from(telnyxMessages)
+        .where(eq(telnyxMessages.conversationId, id))
+        .orderBy(asc(telnyxMessages.createdAt));
+      res.json({ conversation, messages });
+    } catch (error: any) {
+      console.error("[Inbox] Error fetching messages:", error);
+      res.status(500).json({ message: "Failed to fetch messages" });
+    }
+  });
+  // POST /api/inbox/conversations - Create new conversation and send first message
+  app.post("/api/inbox/conversations", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const companyId = (req.user as any).companyId;
+    const userId = (req.user as any).id;
+    if (!companyId) {
+      return res.status(400).json({ message: "No company associated with user" });
+    }
+    const { phoneNumber, companyPhoneNumber, text, displayName } = req.body;
+    if (!phoneNumber || !companyPhoneNumber || !text) {
+      return res.status(400).json({ message: "phoneNumber, companyPhoneNumber, and text are required" });
+    }
+    try {
+      // Check if conversation already exists
+      let [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(
+          eq(telnyxConversations.companyId, companyId),
+          eq(telnyxConversations.phoneNumber, phoneNumber),
+          eq(telnyxConversations.companyPhoneNumber, companyPhoneNumber)
+        ));
+      if (!conversation) {
+        // Create new conversation
+        const [newConversation] = await db
+          .insert(telnyxConversations)
+          .values({
+            companyId,
+            phoneNumber,
+            companyPhoneNumber,
+            displayName: displayName || null,
+            lastMessage: text.substring(0, 100),
+            lastMessageAt: new Date(),
+            unreadCount: 0,
+          })
+          .returning();
+        conversation = newConversation;
+      } else {
+        // Update existing conversation
+        await db
+          .update(telnyxConversations)
+          .set({ lastMessage: text.substring(0, 100), lastMessageAt: new Date(), updatedAt: new Date() })
+          .where(eq(telnyxConversations.id, conversation.id));
+      }
+      // Send message via Telnyx API using managed account
+      const { sendTelnyxMessage } = await import("./services/telnyx-messaging-service");
+      const sendResult = await sendTelnyxMessage({
+        from: companyPhoneNumber,
+        to: phoneNumber,
+        text,
+        companyId,
+      });
+      
+      // Mock response structure for compatibility
+      const telnyxResponse = { ok: sendResult.success };
+      const telnyxData: any = sendResult.success 
+        ? { data: { id: sendResult.messageId } }
+        : { errors: [{ detail: sendResult.error }] };
+      let status: "sent" | "failed" = "sent";
+      let errorMessage: string | null = null;
+      let telnyxMessageId: string | null = null;
+      if (!telnyxResponse.ok) {
+        status = "failed";
+        errorMessage = telnyxData?.errors?.[0]?.detail || "Failed to send message";
+        console.error("[Inbox] Telnyx error:", telnyxData);
+      } else {
+        telnyxMessageId = telnyxData?.data?.id || null;
+      }
+      // Create message record
+      const [message] = await db
+        .insert(telnyxMessages)
+        .values({
+          conversationId: conversation.id,
+          direction: "outbound",
+          text,
+          status,
+          telnyxMessageId,
+          sentBy: userId,
+          sentAt: new Date(),
+          errorMessage,
         })
-        .where(eq(pbxExtensions.id, extension.id));
+        .returning();
+      res.status(201).json({ conversation, message });
+    } catch (error: any) {
+      console.error("[Inbox] Error creating conversation:", error);
+      res.status(500).json({ message: "Failed to create conversation" });
+    }
+  });
+  // POST /api/inbox/conversations/:id/messages - Send message or internal note to existing conversation (with optional file attachments)
+  const inboxAttachmentUpload = multer({
+    storage: multer.memoryStorage(),
+    limits: { fileSize: 25 * 1024 * 1024 }, // 25MB max per file
+  });
+  app.post("/api/inbox/conversations/:id/messages", requireActiveCompany, (req: Request, res: Response) => {
+    inboxAttachmentUpload.array('files', 10)(req, res, async (multerError: any) => {
+      if (multerError) {
+        console.error("[Inbox] Multer error:", multerError);
+        if (multerError.code === 'LIMIT_FILE_SIZE') {
+          return res.status(400).json({ message: "File too large. Maximum size is 25MB." });
+        }
+        return res.status(400).json({ message: multerError.message || "Upload failed" });
+      }
+      if (!req.user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const companyId = (req.user as any).companyId;
+      const userId = (req.user as any).id;
+      if (!companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      const { id } = req.params;
+      const { text, isInternalNote } = req.body;
+      const files = (req as any).files as Express.Multer.File[] | undefined;
+      
+      // Text is required only if no files attached
+      if (!text && (!files || files.length === 0)) {
+        return res.status(400).json({ message: "text or files required" });
+      }
+      
+      try {
+        // Verify conversation belongs to company
+        const [conversation] = await db
+          .select()
+          .from(telnyxConversations)
+          .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+        if (!conversation) {
+          return res.status(404).json({ message: "Conversation not found" });
+        }
+        // Upload files to permanent object storage for MMS
+        let mediaUrls: string[] = [];
+        if (files && files.length > 0) {
+          for (const file of files) {
+            try {
+              const extension = file.mimetype.split("/")[1] || "bin";
+              const filename = `outbound_mms_${Date.now()}_${Math.random().toString(36).substring(7)}.${extension}`;
+              
+              // Upload to object storage for permanent URL
+              try {
+                const { signedUrl } = await objectStorage.uploadInboxAttachment(
+                  file.buffer,
+                  file.mimetype,
+                  filename,
+                  companyId
+                );
+                
+                mediaUrls.push(signedUrl);
+                console.log("[Inbox] MMS file uploaded to storage:", filename, "URL:", signedUrl);
+              } catch (storageError) {
+                // Fallback: Save to database for persistence across restarts
+                console.log("[Inbox] Object storage failed, using database fallback:", (storageError as Error).message);
+                const fileId = randomUUID();
+                await db.insert(mmsMediaCache).values({
+                  id: fileId,
+                  data: file.buffer.toString('base64'),
+                  contentType: file.mimetype,
+                });
+                const fallbackUrl = `/api/mms-file/${fileId}`;
+                mediaUrls.push(fallbackUrl);
+                console.log("[Inbox] Using fallback URL:", fallbackUrl);
+              }
+            } catch (uploadError) {
+              console.error("[Inbox] MMS upload error:", uploadError);
+            }
+          }
+        }
+        // If internal note, just save to database (no Telnyx send)
+        if (isInternalNote === 'true' || isInternalNote === true) {
+          const [message] = await db
+            .insert(telnyxMessages)
+            .values({
+              conversationId: id,
+              direction: "outbound",
+              messageType: "internal_note",
+              channel: conversation.channel || "sms",
+              text: text || "(attachment)",
+              contentType: mediaUrls.length > 0 ? "media" : "text",
+              status: "sent",
+              telnyxMessageId: null,
+              sentBy: userId,
+              sentAt: new Date(),
+              errorMessage: null,
+            })
+            .returning();
+          return res.status(201).json(message);
+        }
+        // === TELEGRAM CHANNEL ROUTING ===
+        if (conversation.channel === "telegram") {
+          // Extract chatId from the phone number field (format: telegram:chatId)
+          const telegramChatId = conversation.phoneNumber.replace("telegram:", "");
+          
+          // Look up user's Telegram bot
+          const userBot = await db.query.userTelegramBots.findFirst({
+            where: eq(userTelegramBots.userId, userId)
+          });
+          
+          if (!userBot) {
+            return res.status(400).json({ message: "Please set up your Telegram bot first in the Integrations page" });
+          }
+          
+          const botToken = decryptToken(userBot.botToken);
+          
+          try {
+            let telegramData: any;
+            let sentMediaUrls: string[] = [];
+            
+            // Helper to determine Telegram API method based on mimetype
+            const getTelegramMethod = (mimetype: string): string => {
+              if (mimetype.startsWith("image/gif")) return "sendAnimation";
+              if (mimetype.startsWith("image/")) return "sendPhoto";
+              if (mimetype.startsWith("video/")) return "sendVideo";
+              if (mimetype.startsWith("audio/ogg") || mimetype.startsWith("audio/opus")) return "sendVoice";
+              if (mimetype.startsWith("audio/")) return "sendAudio";
+              return "sendDocument";
+            };
+            
+            // Helper to get the form field name for Telegram API
+            const getTelegramFieldName = (method: string): string => {
+              switch (method) {
+                case "sendPhoto": return "photo";
+                case "sendVideo": return "video";
+                case "sendAnimation": return "animation";
+                case "sendVoice": return "voice";
+                case "sendAudio": return "audio";
+                default: return "document";
+              }
+            };
+            
+            // Send files if present
+            if (files && files.length > 0) {
+              for (let i = 0; i < files.length; i++) {
+                const file = files[i];
+                const method = getTelegramMethod(file.mimetype);
+                const fieldName = getTelegramFieldName(method);
+                
+                // Use FormData for file upload
+                const FormData = (await import("form-data")).default;
+                const formData = new FormData();
+                formData.append("chat_id", telegramChatId);
+                formData.append(fieldName, file.buffer, {
+                  filename: file.originalname || `file_${Date.now()}`,
+                  contentType: file.mimetype,
+                });
+                
+                // Only add caption to the first file (or if it's the only file)
+                if (text && i === 0) {
+                  formData.append("caption", text);
+                  formData.append("parse_mode", "HTML");
+                }
+                
+                const telegramResponse = await fetch(`https://api.telegram.org/bot${botToken}/${method}`, {
+                  method: "POST",
+                  body: formData as any,
+                  headers: formData.getHeaders(),
+                });
+                telegramData = await telegramResponse.json();
+                
+                if (!telegramData.ok) {
+                  console.error(`[Telegram] Failed to send ${method}:`, telegramData.description);
+                }
+                
+                // Track sent media for message record
+                if (telegramData.ok) {
+                  // Store the URL if available
+                  const mediaUrl = mediaUrls[i] || `telegram:${method}:${file.originalname}`;
+                  sentMediaUrls.push(mediaUrl);
+                }
+              }
+            } else if (text) {
+              // Text-only message (emojis work naturally with text)
+              const telegramResponse = await fetch(`https://api.telegram.org/bot${botToken}/sendMessage`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  chat_id: telegramChatId,
+                  text: text,
+                  parse_mode: "HTML"
+                })
+              });
+              telegramData = await telegramResponse.json();
+            }
+            
+            let status: "sent" | "failed" = telegramData?.ok ? "sent" : "failed";
+            let errorMessage: string | null = telegramData?.ok ? null : (telegramData?.description || "Telegram send failed");
+            let telnyxMessageId = telegramData?.ok ? `${telegramChatId}:${telegramData.result?.message_id}` : null;
+            
+            // Determine content type
+            const hasMedia = files && files.length > 0;
+            const contentType = hasMedia ? "media" : "text";
+            
+            // Create message record
+            const [message] = await db
+              .insert(telnyxMessages)
+              .values({
+                conversationId: id,
+                direction: "outbound",
+                messageType: "outgoing",
+                channel: "telegram",
+                text: text || (hasMedia ? "(media)" : ""),
+                contentType,
+                mediaUrls: sentMediaUrls.length > 0 ? sentMediaUrls : null,
+                status,
+                telnyxMessageId,
+                sentBy: userId,
+                sentAt: new Date(),
+                errorMessage,
+              })
+              .returning();
+            
+            // Update conversation
+            const lastMsgPreview = text ? text.substring(0, 100) : (hasMedia ? "[Media]" : "");
+            await db
+              .update(telnyxConversations)
+              .set({ lastMessage: lastMsgPreview, lastMessageAt: new Date(), updatedAt: new Date() })
+              .where(eq(telnyxConversations.id, id));
+            
+            // Broadcast for real-time update
+            broadcastInboxMessage(companyId, id);
+            
+            return res.status(201).json(message);
+          } catch (telegramError: any) {
+            console.error("[Inbox Telegram] Send error:", telegramError);
+            return res.status(500).json({ message: "Failed to send Telegram message" });
+          }
+        }
+        // === END TELEGRAM CHANNEL ROUTING ===
+        // Send message via Telnyx API using managed account
+        const { sendTelnyxMessage } = await import("./services/telnyx-messaging-service");
+        const sendResult = await sendTelnyxMessage({
+          from: conversation.companyPhoneNumber,
+          to: conversation.phoneNumber,
+          text: text || "",
+          mediaUrls: mediaUrls.length > 0 ? mediaUrls.map(url => url.startsWith("/") ? buildAbsoluteUrl(req, url) : url) : undefined,
+          companyId,
+        });
+        
+        // Mock response structure for compatibility
+        const telnyxResponse = { ok: sendResult.success };
+        const telnyxData: any = sendResult.success 
+          ? { data: { id: sendResult.messageId } }
+          : { errors: [{ detail: sendResult.error }] };
+        let status: "sent" | "failed" = "sent";
+        let errorMessage: string | null = null;
+        let telnyxMessageId: string | null = null;
+        if (!telnyxResponse.ok) {
+          status = "failed";
+          errorMessage = telnyxData?.errors?.[0]?.detail || "Failed to send message";
+          console.error("[Inbox] Telnyx error:", telnyxData);
+        } else {
+          telnyxMessageId = telnyxData?.data?.id || null;
+        }
+        // Create message record
+        const [message] = await db
+          .insert(telnyxMessages)
+          .values({
+            conversationId: id,
+            direction: "outbound",
+            messageType: "outgoing",
+            channel: conversation.channel || "sms",
+            text: text || "(attachment)",
+            contentType: mediaUrls.length > 0 ? "media" : "text",
+            status,
+            telnyxMessageId,
+            sentBy: userId,
+            sentAt: new Date(),
+            errorMessage,
+            mediaUrls: mediaUrls.length > 0 ? mediaUrls : null,
+          })
+          .returning();
+        // Update conversation
+        await db
+          .update(telnyxConversations)
+          .set({ lastMessage: (text || "(attachment)").substring(0, 100), lastMediaUrls: mediaUrls.length > 0 ? mediaUrls : null, lastMessageAt: new Date(), updatedAt: new Date() })
+          .where(eq(telnyxConversations.id, id));
+        res.status(201).json(message);
+      } catch (error: any) {
+        console.error("[Inbox] Error sending message:", error);
+        res.status(500).json({ message: "Failed to send message" });
+      }
+    });
+  });
+  // PATCH /api/inbox/conversations/:id - Update conversation details
+  app.patch("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { id } = req.params;
+    const { displayName, email, jobTitle, organization } = req.body;
+    const companyId = (req.user as any).companyId;
+    
+    try {
+      await db.update(telnyxConversations)
+        .set({ displayName: displayName || null, email: email || null, jobTitle: jobTitle || null, organization: organization || null, updatedAt: new Date() })
+        .where(and(
+          eq(telnyxConversations.id, id),
+          eq(telnyxConversations.companyId, companyId)
+        ));
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Inbox] Error updating conversation:", error);
+      res.status(500).json({ message: "Failed to update conversation" });
+    }
+  });
+  // DELETE /api/inbox/conversations/:id - Delete conversation and all messages
+  app.delete("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { id } = req.params;
+    const companyId = (req.user as any).companyId;
+    const userRole = (req.user as any).role;
+    
+    // Only allow admin or superadmin to delete conversations
+    if (userRole !== 'admin' && userRole !== 'superadmin') {
+      return res.status(403).json({ message: "Only administrators can delete conversations" });
+    }
+    
+    try {
+      // Verify conversation belongs to company
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(eq(telnyxConversations.id, id), eq(telnyxConversations.companyId, companyId)));
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      // Delete all messages for this conversation first
+      await db.delete(telnyxMessages).where(eq(telnyxMessages.conversationId, id));
+      
+      // Delete the conversation
+      await db.delete(telnyxConversations).where(eq(telnyxConversations.id, id));
+      
+      console.log(`[Inbox] Deleted conversation ${id} and all messages for company ${companyId}`);
+      
+      // Broadcast conversation update to refresh UI
+      if (req.app.get('wsService')) {
+        const wsService = req.app.get('wsService');
+        wsService.broadcastConversationUpdate();
+      }
+      
+      res.json({ success: true, message: "Conversation deleted successfully" });
+    } catch (error: any) {
+      console.error("[Inbox] Error deleting conversation:", error);
+      res.status(500).json({ message: "Failed to delete conversation" });
+    }
+  });
 
-      // Step 6: Enable SIP on user
+  // =====================================================
+  // COMPLIANCE APPLICATIONS API
+  // =====================================================
+  
+  // POST /api/compliance/applications - Create new compliance application
+  app.post("/api/compliance/applications", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const validation = insertComplianceApplicationSchema.safeParse({
+        ...req.body,
+        companyId: user.companyId,
+        userId: user.id,
+      });
+      
+      if (!validation.success) {
+        return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
+      }
+      
+      const { selectedPhoneNumber } = validation.data;
+      let telnyxManagedAccountId: string | undefined;
+      let telnyxPhoneNumberId: string | undefined;
+      let telnyxNumberOrderId: string | undefined;
+      let phoneNumberStatus = "pending";
+      
+      // Step 1: Setup company managed account (creates or links Telnyx sub-account)
+      if (selectedPhoneNumber) {
+        console.log(`[Compliance] Setting up Telnyx managed account for company ${user.companyId}`);
+        const { setupCompanyManagedAccount } = await import("./services/telnyx-managed-accounts");
+        const managedAccountResult = await setupCompanyManagedAccount(user.companyId);
+        
+        if (!managedAccountResult.success) {
+          console.error(`[Compliance] Failed to setup managed account: ${managedAccountResult.error}`);
+          return res.status(400).json({ 
+            message: "Failed to setup phone account. Please try again.",
+            error: managedAccountResult.error 
+          });
+        }
+        
+        telnyxManagedAccountId = managedAccountResult.managedAccountId;
+        console.log(`[Compliance] Managed account ready: ${telnyxManagedAccountId}`);
+        
+        // Step 2: Purchase the selected phone number
+        console.log(`[Compliance] Purchasing phone number ${selectedPhoneNumber} for company ${user.companyId}`);
+        const { purchasePhoneNumber } = await import("./services/telnyx-numbers-service");
+        const purchaseResult = await purchasePhoneNumber(selectedPhoneNumber, user.companyId);
+        
+        if (!purchaseResult.success) {
+          console.error(`[Compliance] Failed to purchase number: ${purchaseResult.error}`);
+          return res.status(400).json({ 
+            message: "Failed to purchase phone number. It may no longer be available.",
+            error: purchaseResult.error 
+          });
+        }
+        
+        telnyxPhoneNumberId = purchaseResult.phoneNumberId;
+        telnyxNumberOrderId = purchaseResult.orderId;
+        phoneNumberStatus = "active";
+        console.log(`[Compliance] Phone number purchased: ${selectedPhoneNumber}, ID: ${telnyxPhoneNumberId}, Order: ${telnyxNumberOrderId}`);
+      }
+      
+      // Create the compliance application with Telnyx integration data
+      const [application] = await db.insert(complianceApplications).values({
+        ...validation.data,
+        telnyxManagedAccountId,
+        telnyxPhoneNumberId,
+        telnyxNumberOrderId,
+        phoneNumberStatus,
+      }).returning();
+      
+      res.status(201).json(application);
+    } catch (error: any) {
+      console.error("[Compliance] Error creating application:", error);
+      res.status(500).json({ message: "Failed to create compliance application" });
+    }
+  });
+  
+  // GET /api/compliance/applications/current - Get current user draft application
+  app.get("/api/compliance/applications/current", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const [application] = await db
+        .select()
+        .from(complianceApplications)
+        .where(
+          and(
+            eq(complianceApplications.companyId, user.companyId),
+            eq(complianceApplications.status, "draft")
+          )
+        )
+        .orderBy(desc(complianceApplications.createdAt))
+        .limit(1);
+      
+      res.json({ application: application || null });
+    } catch (error: any) {
+      console.error("[Compliance] Error getting current application:", error);
+      res.status(500).json({ message: "Failed to get current application" });
+    }
+  });
+  
+  // GET /api/compliance/applications/active - Get active (non-draft) application
+  app.get("/api/compliance/applications/active", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const [application] = await db
+        .select()
+        .from(complianceApplications)
+        .where(
+          and(
+            eq(complianceApplications.companyId, user.companyId),
+            ne(complianceApplications.status, "draft")
+          )
+        )
+        .orderBy(desc(complianceApplications.createdAt))
+        .limit(1);
+      
+      res.json({ application: application || null });
+    } catch (error: any) {
+      console.error("[Compliance] Error getting active application:", error);
+      res.status(500).json({ message: "Failed to get active application" });
+    }
+  });
+  
+  // GET /api/compliance/applications/:id - Get application by ID
+  app.get("/api/compliance/applications/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      const [application] = await db
+        .select()
+        .from(complianceApplications)
+        .where(
+          and(
+            eq(complianceApplications.id, id),
+            eq(complianceApplications.companyId, user.companyId)
+          )
+        );
+      
+      if (!application) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      
+      res.json(application);
+    } catch (error: any) {
+      console.error("[Compliance] Error getting application:", error);
+      res.status(500).json({ message: "Failed to get application" });
+    }
+  });
+  
+  // PATCH /api/compliance/applications/:id - Update application
+  app.patch("/api/compliance/applications/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      const [existing] = await db
+        .select()
+        .from(complianceApplications)
+        .where(
+          and(
+            eq(complianceApplications.id, id),
+            eq(complianceApplications.companyId, user.companyId)
+          )
+        );
+      
+      if (!existing) {
+        return res.status(404).json({ message: "Application not found" });
+      }
+      
+      // Check if this is a submission request to Telnyx
+      if (req.body.status === "submitted" && existing.status !== "submitted") {
+        try {
+          const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+          const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+          const managedAccountId = await getCompanyManagedAccountId(user.companyId);
+          
+          if (!telnyxApiKey || !managedAccountId) {
+            return res.status(400).json({ message: "Telnyx not configured for this company" });
+          }
+          
+          // Verify the phone number exists in the managed account before submitting
+          console.log(`[Toll-Free Compliance] Verifying phone number ${existing.selectedPhoneNumber} exists in managed account ${managedAccountId}`);
+          const verifyHeaders: Record<string, string> = {
+            "Authorization": `Bearer ${telnyxApiKey}`,
+            "Accept": "application/json",
+          };
+          if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+            verifyHeaders["x-managed-account-id"] = managedAccountId;
+          }
+          
+          const verifyResponse = await fetch(
+            `https://api.telnyx.com/v2/phone_numbers?filter[phone_number][eq]=${encodeURIComponent(existing.selectedPhoneNumber)}`,
+            { method: "GET", headers: verifyHeaders }
+          );
+          const verifyResult = await verifyResponse.json();
+          console.log(`[Toll-Free Compliance] Phone number verification result:`, JSON.stringify(verifyResult, null, 2));
+          
+          const foundNumbers = verifyResult.data || [];
+          if (foundNumbers.length === 0) {
+            console.error(`[Toll-Free Compliance] Phone number ${existing.selectedPhoneNumber} NOT FOUND in managed account ${managedAccountId}`);
+            return res.status(400).json({ 
+              message: `Phone number ${existing.selectedPhoneNumber} was not found in your Telnyx account. The number may need to be re-purchased under your company's managed account.`,
+              details: "The toll-free verification requires the phone number to be owned by your company's Telnyx account."
+            });
+          }
+          
+          console.log(`[Toll-Free Compliance] Phone number verified: ${foundNumbers[0]?.phone_number}, ID: ${foundNumbers[0]?.id}`);
+          
+          // Map compliance application fields to Telnyx API format
+          const sampleMessages = (existing.sampleMessages as string[] | null) || [];
+          const optInImageUrls = (existing.optInWorkflowImageUrls as string[] | null) || [];
+          
+          // Helper: Format phone number to E.164 format
+          const formatPhoneE164 = (phone: string | null | undefined): string => {
+            if (!phone) return "+18001234567";
+            // Remove all non-digit characters
+            const digits = phone.replace(/\D/g, '');
+            // If 10 digits, assume US and add +1
+            if (digits.length === 10) return `+1${digits}`;
+            // If 11 digits and starts with 1, add +
+            if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+            // Already has country code
+            if (digits.length > 10) return `+${digits}`;
+            return `+1${digits}`;
+          };
+          
+          // Helper: Format message volume to Telnyx enum values (with commas)
+          // Valid values: "10", "100", "1,000", "10,000", "100,000", "250,000", "500,000", "750,000", "1,000,000", "5,000,000", "10,000,000+"
+          const formatMessageVolume = (volume: string | null | undefined): string => {
+            if (!volume) return "1,000";
+            // Extract first number from ranges like "100001-250000"
+            const match = volume.match(/\d+/);
+            const num = match ? parseInt(match[0].replace(/,/g, ""), 10) : 1000;
+            
+            // Map to nearest valid Telnyx enum value
+            if (num >= 10000000) return "10,000,000+";
+            if (num >= 5000000) return "5,000,000";
+            if (num >= 1000000) return "1,000,000";
+            if (num >= 750000) return "750,000";
+            if (num >= 500000) return "500,000";
+            if (num >= 250000) return "250,000";
+            if (num >= 100000) return "100,000";
+            if (num >= 10000) return "10,000";
+            if (num >= 1000) return "1,000";
+            if (num >= 100) return "100";
+            return "10";
+          };
+          
+          // Helper: Convert state abbreviation to full name (Telnyx may require full names)
+          const stateNames: Record<string, string> = {
+            AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California",
+            CO: "Colorado", CT: "Connecticut", DE: "Delaware", FL: "Florida", GA: "Georgia",
+            HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa",
+            KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine", MD: "Maryland",
+            MA: "Massachusetts", MI: "Michigan", MN: "Minnesota", MS: "Mississippi", MO: "Missouri",
+            MT: "Montana", NE: "Nebraska", NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey",
+            NM: "New Mexico", NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio",
+            OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island", SC: "South Carolina",
+            SD: "South Dakota", TN: "Tennessee", TX: "Texas", UT: "Utah", VT: "Vermont",
+            VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming",
+            DC: "District of Columbia", PR: "Puerto Rico"
+          };
+          const getFullStateName = (stateAbbr: string | null | undefined): string => {
+            if (!stateAbbr) return "Florida";
+            const upper = stateAbbr.toUpperCase().trim();
+            return stateNames[upper] || stateAbbr;
+          };
+          
+          // Build Telnyx request body with correct field mapping
+          const telnyxRequestBody: any = {
+            businessName: existing.businessName,
+            corporateWebsite: existing.website,
+            businessAddr1: existing.businessAddress,
+            businessCity: existing.businessCity,
+            businessState: getFullStateName(existing.businessState),
+            businessZip: existing.businessZip,
+            businessContactFirstName: existing.contactFirstName,
+            businessContactLastName: existing.contactLastName,
+            businessContactEmail: existing.contactEmail,
+            businessContactPhone: formatPhoneE164(existing.contactPhone),
+            messageVolume: formatMessageVolume(existing.estimatedVolume),
+            phoneNumbers: [{ phoneNumber: existing.selectedPhoneNumber }],
+            useCase: existing.smsUseCase || existing.useCase || "Mixed",
+            useCaseSummary: existing.campaignDescription || existing.messageContent || "SMS messaging campaign",
+            productionMessageContent: sampleMessages[0] || existing.messageContent || "Sample message content",
+            optInWorkflow: existing.optInDescription || existing.optInMethod || "User opts in via web form",
+          };
+          
+          // Required Telnyx fields - optInWorkflowImageURLs needs ABSOLUTE image URLs
+          // Convert relative URLs to absolute URLs using the domain
+          const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+            : (process.env.REPLIT_DEPLOYMENT_URL || 'https://example.com');
+          
+          const makeAbsoluteUrl = (url: string): string => {
+            if (!url) return '';
+            // Already absolute URL
+            if (url.startsWith('http://') || url.startsWith('https://')) return url;
+            // Relative URL - make it absolute
+            return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+          };
+          
+          // If user provided image URLs, use them; otherwise omit the field (it's recommended but not required)
+          if (optInImageUrls.length > 0) {
+            // Filter to only include URLs that look like actual images
+            const imageUrls = optInImageUrls.filter((url: string) => 
+              url.match(/\.(jpg|jpeg|png|gif|webp)$/i) || url.includes('/image') || url.includes('/screenshot') || url.includes('/uploads')
+            );
+            if (imageUrls.length > 0) {
+              telnyxRequestBody.optInWorkflowImageURLs = imageUrls.map((url: string) => ({ url: makeAbsoluteUrl(url) }));
+            }
+          } else if (existing.optInScreenshotUrl && (existing.optInScreenshotUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) || existing.optInScreenshotUrl.includes('/uploads'))) {
+            telnyxRequestBody.optInWorkflowImageURLs = [{ url: makeAbsoluteUrl(existing.optInScreenshotUrl) }];
+          }
+          // Don't include optInWorkflowImageURLs if we don't have valid image URLs - it's recommended but not strictly required
+
+          telnyxRequestBody.additionalInformation = existing.additionalInformation
+            || existing.campaignDescription
+            || `SMS messaging for ${existing.smsUseCase || "business communications"}`;
+
+          telnyxRequestBody.isvReseller = existing.isvReseller || "No";
+
+          // Optional fields
+          if (existing.businessAddressLine2) {
+            telnyxRequestBody.businessAddr2 = existing.businessAddressLine2;
+          }
+          
+          // Business registration fields (required Jan 2026)
+          if (existing.ein) {
+            telnyxRequestBody.businessRegistrationNumber = existing.ein;
+            telnyxRequestBody.businessRegistrationType = existing.businessRegistrationType || "EIN";
+            telnyxRequestBody.businessRegistrationCountry = existing.businessRegistrationCountry || "US";
+          }
+          
+          // Entity type mapping
+          const entityTypeMap: Record<string, string> = {
+            "Private Company": "PRIVATE_PROFIT",
+            "Publicly Traded Company": "PUBLIC_PROFIT",
+            "Charity/ Non-Profit Organization": "NON_PROFIT",
+            "Sole Proprietor": "SOLE_PROPRIETOR",
+            "Government": "GOVERNMENT",
+            "PRIVATE_PROFIT": "PRIVATE_PROFIT",
+            "PUBLIC_PROFIT": "PUBLIC_PROFIT",
+            "NON_PROFIT": "NON_PROFIT",
+            "SOLE_PROPRIETOR": "SOLE_PROPRIETOR",
+            "GOVERNMENT": "GOVERNMENT"
+          };
+          if (existing.entityType) {
+            telnyxRequestBody.entityType = entityTypeMap[existing.entityType] || "PRIVATE_PROFIT";
+          }
+          
+          // DBA / brand name
+          if (existing.doingBusinessAs || existing.brandDisplayName) {
+            telnyxRequestBody.doingBusinessAs = existing.doingBusinessAs || existing.brandDisplayName;
+          }
+          
+          // Opt-in keywords
+          if (existing.optInKeywords) {
+            telnyxRequestBody.optInKeywords = existing.optInKeywords;
+          }
+          
+          // Opt-in confirmation response
+          if (existing.optInConfirmationResponse) {
+            telnyxRequestBody.optInConfirmationResponse = existing.optInConfirmationResponse;
+          }
+          
+          // Help message response
+          if (existing.helpMessageResponse) {
+            telnyxRequestBody.helpMessageResponse = existing.helpMessageResponse;
+          }
+          
+          // Privacy policy URL
+          if (existing.privacyPolicyUrl) {
+            telnyxRequestBody.privacyPolicyURL = makeAbsoluteUrl(existing.privacyPolicyUrl);
+          }
+          
+          // Terms and conditions URL
+          if (existing.smsTermsUrl) {
+            telnyxRequestBody.termsAndConditionURL = makeAbsoluteUrl(existing.smsTermsUrl);
+          }
+          
+          // Age-gated content
+          telnyxRequestBody.ageGatedContent = existing.ageGatedContent || false;
+          
+          console.log("[Toll-Free Compliance] Submitting verification request:", {
+            managedAccountId: managedAccountId,
+            businessName: telnyxRequestBody.businessName,
+            phoneNumber: existing.selectedPhoneNumber,
+            useCase: telnyxRequestBody.useCase,
+            optInWorkflowImageURLs: telnyxRequestBody.optInWorkflowImageURLs,
+            additionalInformation: telnyxRequestBody.additionalInformation,
+            isvReseller: telnyxRequestBody.isvReseller,
+          });
+          console.log("[Toll-Free Compliance] Full request body:", JSON.stringify(telnyxRequestBody, null, 2));
+          
+          // Call Telnyx API
+          const telnyxResponse = await fetch(
+            "https://api.telnyx.com/v2/messaging_tollfree/verification/requests",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Authorization": `Bearer ${telnyxApiKey}`,
+                "x-managed-account-id": managedAccountId,
+              },
+              body: JSON.stringify(telnyxRequestBody),
+            }
+          );
+          
+          const telnyxResult = await telnyxResponse.json();
+          
+          if (!telnyxResponse.ok) {
+            console.error("[Toll-Free Compliance] Telnyx API error:", JSON.stringify(telnyxResult, null, 2));
+            // Extract detailed validation errors from meta if present
+            const errors = telnyxResult.errors || [];
+            const validationErrors = errors.map((e: any) => ({
+              code: e.code,
+              title: e.title,
+              detail: e.detail,
+              meta: e.meta
+            }));
+            console.error("[Toll-Free Compliance] Validation details:", JSON.stringify(validationErrors, null, 2));
+            return res.status(telnyxResponse.status).json({
+              message: telnyxResult.errors?.[0]?.detail || "Failed to submit toll-free verification to Telnyx",
+              telnyxError: telnyxResult,
+              validationErrors,
+            });
+          }
+          
+          console.log("[Toll-Free Compliance] Verification submitted successfully:", telnyxResult.data?.id);
+          
+          // Update application with Telnyx verification ID and status
+          const [updated] = await db
+            .update(complianceApplications)
+            .set({
+              ...req.body,
+              telnyxVerificationRequestId: telnyxResult.data?.id,
+              submittedAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(eq(complianceApplications.id, id))
+            .returning();
+          
+          return res.json(updated);
+        } catch (telnyxError: any) {
+          console.error("[Toll-Free Compliance] Error calling Telnyx API:", telnyxError);
+          return res.status(500).json({ 
+            message: "Failed to submit verification to Telnyx: " + telnyxError.message 
+          });
+        }
+      }
+      
+      // Regular update (not submission)
+      const [updated] = await db
+        .update(complianceApplications)
+        .set({
+          ...req.body,
+          updatedAt: new Date(),
+        })
+        .where(eq(complianceApplications.id, id))
+        .returning();
+      
+      res.json(updated);
+    } catch (error: any) {
+      console.error("[Compliance] Error updating application:", error);
+      res.status(500).json({ message: "Failed to update application" });
+    }
+  });
+  // POST /api/compliance/upload - Upload file for compliance applications
+  app.post("/api/compliance/upload", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = (req as any).user;
+      if (!user) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      const uploadsDir = path.join(process.cwd(), 'uploads', 'compliance');
+      if (!fs.existsSync(uploadsDir)) {
+        fs.mkdirSync(uploadsDir, { recursive: true });
+      }
+      const complianceStorage = multer.diskStorage({
+        destination: (req, file, cb) => {
+          cb(null, uploadsDir);
+        },
+        filename: (req, file, cb) => {
+          const uniqueSuffix = `${Date.now()}-${crypto.randomBytes(6).toString('hex')}`;
+          const ext = path.extname(file.originalname);
+          cb(null, `compliance-${uniqueSuffix}${ext}`);
+        },
+      });
+      const complianceUpload = multer({
+        storage: complianceStorage,
+        limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
+        fileFilter: (req, file, cb) => {
+          const allowed = ['image/jpeg', 'image/png', 'image/gif', 'application/pdf'];
+          if (!allowed.includes(file.mimetype)) {
+            return cb(new Error('Invalid file type. Only JPEG, PNG, GIF, and PDF allowed.'));
+          }
+          cb(null, true);
+        },
+      });
+      await new Promise<void>((resolve, reject) => {
+        complianceUpload.single('file')(req, res, (err: any) => {
+          if (err) {
+            if (err instanceof multer.MulterError) {
+              if (err.code === 'LIMIT_FILE_SIZE') {
+                return reject(new Error('File size exceeds 10MB limit'));
+              }
+              return reject(new Error(`Upload error: ${err.message}`));
+            }
+            return reject(err);
+          }
+          resolve();
+        });
+      });
+      const file = (req as any).file;
+      if (!file) {
+        return res.status(400).json({ message: "No file uploaded" });
+      }
+      const url = `/uploads/compliance/${file.filename}`;
+      res.json({ url });
+    } catch (error: any) {
+      console.error("[Compliance Upload] Error:", error);
+      res.status(500).json({ message: error.message || "Upload failed" });
+    }
+  });
+
+  return httpServer;
+}
