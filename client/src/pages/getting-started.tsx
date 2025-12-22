@@ -401,7 +401,7 @@ export default function GettingStarted() {
                   </div>
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                     {user?.sipEnabled 
-                      ? "Your calling is configured and ready. Make and receive calls directly from your browser."
+                      ? "Your calling is configured. Incoming and outgoing calls will ring directly in your web browser. Add funds to your account to start using the service."
                       : "Set up how you want to handle calls. Choose between direct calling or PBX with IVR options."}
                   </p>
                   <div className="flex items-center gap-3">
