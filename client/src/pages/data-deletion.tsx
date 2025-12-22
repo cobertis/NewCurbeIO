@@ -105,7 +105,7 @@ export default function DataDeletionPage() {
             </a>
           </p>
           <p>
-            Curbe.io - A product of Curbe Technologies LLC
+            Curbe.io - A product of WYNTON LLC
           </p>
         </div>
       </div>
