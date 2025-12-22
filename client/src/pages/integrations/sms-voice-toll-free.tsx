@@ -37,7 +37,6 @@ import {
   Sparkles,
   Plus,
   ExternalLink,
-  X,
   Search,
   ChevronLeft,
   ChevronRight,
@@ -520,26 +519,17 @@ export default function SmsVoiceTollFree() {
       </div>
 
       <Dialog open={!!selectedPhoneNumber} onOpenChange={(open) => !open && setSelectedPhoneNumber(null)}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden" aria-describedby="verification-form-description">
-          <DialogHeader className="flex flex-row items-center justify-between">
+        <DialogContent className="max-w-4xl max-h-[95vh]" aria-describedby="verification-form-description">
+          <DialogHeader>
             <DialogTitle className="text-lg font-semibold">
               Verification Details - {selectedPhoneNumber ? formatPhoneNumber(selectedPhoneNumber) : ''}
             </DialogTitle>
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setSelectedPhoneNumber(null)}
-              className="h-8 w-8 p-0"
-              data-testid="button-close-dialog"
-            >
-              <X className="h-4 w-4" />
-            </Button>
           </DialogHeader>
           <p id="verification-form-description" className="sr-only">
             View the verification form details for this phone number
           </p>
           
-          <ScrollArea className="max-h-[60vh] pr-4">
+          <ScrollArea className="max-h-[85vh] pr-4">
             {isLoadingVerification ? (
               <div className="py-8">
                 <LoadingSpinner fullScreen={false} message="Loading verification details..." />
