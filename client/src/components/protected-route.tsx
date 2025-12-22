@@ -34,9 +34,11 @@ export function ProtectedRoute({ children, fallbackPath = "/login" }: ProtectedR
           
           // Check if user needs to complete onboarding
           // Only redirect to getting-started when trying to access dashboard
+          // Exception: superadmin users skip onboarding entirely
+          const isSuperAdmin = data.user?.role === "superadmin";
           const dashboardPaths = ["/", "/dashboard"];
           const isDashboardAccess = dashboardPaths.includes(location) || location.startsWith("/dashboard/");
-          if (data.user && !data.user.onboardingCompleted && isDashboardAccess) {
+          if (data.user && !data.user.onboardingCompleted && isDashboardAccess && !isSuperAdmin) {
             console.log("[ONBOARDING] User has not completed onboarding, redirecting to getting-started");
             setLocation("/getting-started");
             return;
