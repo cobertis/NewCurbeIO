@@ -1,13 +1,23 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger,
+  DropdownMenuSeparator 
+} from "@/components/ui/dropdown-menu";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { 
   Phone, 
@@ -25,15 +35,20 @@ import {
   ListTodo,
   DollarSign,
   Sparkles,
-  ArrowLeft,
   Plus,
   ExternalLink,
-  X
+  X,
+  Search,
+  ChevronLeft,
+  ChevronRight,
+  MoreVertical,
+  Info,
+  Trash2,
+  Edit
 } from "lucide-react";
 import { SiWhatsapp, SiFacebook, SiInstagram } from "react-icons/si";
 import { cn } from "@/lib/utils";
-import { format, addDays } from "date-fns";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { format, addMonths } from "date-fns";
 import { 
   formatPhoneNumber, 
   getComplianceStatusBadge, 
@@ -66,9 +81,27 @@ function NavigationLink({ item, onClick }: { item: NavigationItem; onClick: (hre
   );
 }
 
+function USFlagIcon({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 24 18" className={className} xmlns="http://www.w3.org/2000/svg">
+      <rect width="24" height="18" fill="#B22234"/>
+      <rect y="1.38" width="24" height="1.38" fill="white"/>
+      <rect y="4.15" width="24" height="1.38" fill="white"/>
+      <rect y="6.92" width="24" height="1.38" fill="white"/>
+      <rect y="9.69" width="24" height="1.38" fill="white"/>
+      <rect y="12.46" width="24" height="1.38" fill="white"/>
+      <rect y="15.23" width="24" height="1.38" fill="white"/>
+      <rect width="9.6" height="9.69" fill="#3C3B6E"/>
+    </svg>
+  );
+}
+
 export default function SmsVoiceTollFree() {
   const [, setLocation] = useLocation();
   const [selectedPhoneNumber, setSelectedPhoneNumber] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   const { data: numbersData, isLoading } = useQuery<{ numbers: SmsVoiceNumber[] }>({
     queryKey: ["/api/sms-voice/numbers"],
@@ -84,11 +117,28 @@ export default function SmsVoiceTollFree() {
     const areaCode = n.phoneNumber.replace(/^\+1/, '').slice(0, 3);
     return ['800', '833', '844', '855', '866', '877', '888'].includes(areaCode);
   });
+
+  const filteredNumbers = useMemo(() => {
+    if (!searchQuery.trim()) return tollFreeNumbers;
+    const query = searchQuery.toLowerCase();
+    return tollFreeNumbers.filter(n => 
+      n.phoneNumber.toLowerCase().includes(query) ||
+      n.ownerName?.toLowerCase().includes(query) ||
+      formatPhoneNumber(n.phoneNumber).toLowerCase().includes(query)
+    );
+  }, [tollFreeNumbers, searchQuery]);
+
+  const totalNumbers = filteredNumbers.length;
+  const totalPages = Math.ceil(totalNumbers / pageSize);
+  const startIndex = (currentPage - 1) * pageSize;
+  const endIndex = Math.min(startIndex + pageSize, totalNumbers);
+  const paginatedNumbers = filteredNumbers.slice(startIndex, endIndex);
+
   const verification = verificationData?.verification;
 
   const menuItems: { channels: NavigationItem[]; features: NavigationItem[]; administration: NavigationItem[] } = {
     channels: [
-      { label: "SMS & voice", href: "/integrations/sms-voice", icon: Phone, active: true },
+      { label: "SMS & voice", href: "/integrations/sms-voice", icon: Phone, active: true, hasWarning: true },
       { label: "Email", href: "/settings/email", icon: Mail },
       { label: "Chat widget", href: "/integrations", icon: MessageSquare },
       { label: "WhatsApp", href: "/integrations", icon: SiWhatsapp },
@@ -115,6 +165,11 @@ export default function SmsVoiceTollFree() {
 
   const handleNavigation = (href: string) => {
     setLocation(href);
+  };
+
+  const handlePageSizeChange = (value: string) => {
+    setPageSize(Number(value));
+    setCurrentPage(1);
   };
 
   if (isLoading) {
@@ -154,59 +209,84 @@ export default function SmsVoiceTollFree() {
       </div>
 
       <div className="flex-1 min-w-0 space-y-6">
-        <div className="flex items-center gap-4">
-          <Link href="/integrations/sms-voice">
-            <Button variant="ghost" size="sm" className="gap-2" data-testid="link-back-sms-voice">
-              <ArrowLeft className="h-4 w-4" />
-              Back to SMS & Voice
-            </Button>
+        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+          <Link href="/integrations/sms-voice" className="hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1">
+            <ChevronLeft className="h-4 w-4" />
+            Settings
           </Link>
+          <span>&gt;</span>
+          <span className="text-slate-700 dark:text-slate-300">SMS & voice</span>
         </div>
 
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100" data-testid="text-page-title">
-              Toll-Free Verification
-            </h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-              Verify and manage your toll-free numbers to ensure compliance and enhance your business's credibility.
-            </p>
-          </div>
-          <Link href="/compliance">
-            <Button size="sm" className="gap-2" data-testid="button-new-verification">
+        <div>
+          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100" data-testid="text-page-title">
+            Toll-free verification
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
+            To send messages, you need to buy a virtual number, verify your use case, and get approved by the mobile network operators. Once your traffic has been approved, you can send and receive SMS, and make voice calls.{" "}
+            <a 
+              href="https://support.telnyx.com/en/articles/4248200-toll-free-messaging-best-practices" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
+              data-testid="link-learn-more"
+            >
+              Learn more about toll-free messaging
+            </a>
+          </p>
+        </div>
+
+        <div className="flex items-center justify-between gap-4">
+          <Link href="/phone/buy">
+            <Button variant="outline" size="sm" className="gap-2" data-testid="button-buy-number">
               <Plus className="h-4 w-4" />
-              New Verification
+              Buy a new number
             </Button>
           </Link>
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Search numbers"
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-10 w-64"
+              data-testid="input-search-numbers"
+            />
+          </div>
         </div>
 
         <Card className="border-slate-200 dark:border-slate-800">
           <CardContent className="p-0">
-            {tollFreeNumbers.length === 0 ? (
+            {paginatedNumbers.length === 0 ? (
               <div className="p-12 text-center">
                 <div className="mx-auto w-12 h-12 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center mb-4">
                   <Phone className="h-6 w-6 text-slate-400" />
                 </div>
                 <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100 mb-1">
-                  No toll-free numbers
+                  {searchQuery ? "No matching toll-free numbers" : "No toll-free numbers"}
                 </h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400">
-                  You don't have any toll-free numbers yet. Purchase a toll-free number to get started.
+                  {searchQuery 
+                    ? "Try adjusting your search terms." 
+                    : "You don't have any toll-free numbers yet. Purchase a toll-free number to get started."}
                 </p>
               </div>
             ) : (
               <Table>
                 <TableHeader>
                   <TableRow className="border-slate-200 dark:border-slate-800">
-                    <TableHead className="text-xs font-medium text-slate-500">Phone Number</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Owner</TableHead>
-                    <TableHead className="text-xs font-medium text-slate-500">Monthly Fee</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">Toll-free number</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">Account</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Status</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">Next renewal</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500 text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {tollFreeNumbers.map((number) => (
+                  {paginatedNumbers.map((number) => (
                     <TableRow 
                       key={number.id} 
                       className="border-slate-200 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/50"
@@ -214,42 +294,48 @@ export default function SmsVoiceTollFree() {
                     >
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-slate-400" />
-                          <span data-testid={`text-phone-${number.id}`}>
+                          <USFlagIcon className="h-4 w-5 rounded-sm shadow-sm" />
+                          <span 
+                            className={cn(
+                              "text-blue-600 dark:text-blue-400",
+                              number.complianceStatus === "in_review" && "flex items-center gap-1"
+                            )}
+                            data-testid={`text-phone-${number.id}`}
+                          >
                             {formatPhoneNumber(number.phoneNumber)}
+                            {number.complianceStatus === "in_review" && (
+                              <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />
+                            )}
                           </span>
                         </div>
                       </TableCell>
                       <TableCell className="text-slate-600 dark:text-slate-400">
-                        {number.ownerName || "Unassigned"}
-                      </TableCell>
-                      <TableCell className="text-slate-600 dark:text-slate-400">
-                        ${number.monthlyFee}/mo
+                        <div className="flex items-center gap-2">
+                          <div className="h-6 w-6 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-medium">
+                            {(number.ownerName || "U").charAt(0).toUpperCase()}
+                          </div>
+                          <span>{number.ownerName || "Unassigned"}</span>
+                        </div>
                       </TableCell>
                       <TableCell>
                         {getComplianceStatusBadge(number.complianceStatus)}
                       </TableCell>
+                      <TableCell className="text-slate-600 dark:text-slate-400" data-testid={`text-renewal-${number.id}`}>
+                        {number.purchasedAt 
+                          ? format(addMonths(new Date(number.purchasedAt), 12), "d MMM yyyy")
+                          : format(addMonths(new Date(), 12), "d MMM yyyy")}
+                      </TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">
                           {number.complianceStatus && number.complianceStatus !== "unverified" ? (
-                            <TooltipProvider>
-                              <Tooltip>
-                                <TooltipTrigger asChild>
-                                  <Button
-                                    variant="ghost"
-                                    size="sm"
-                                    onClick={() => setSelectedPhoneNumber(number.phoneNumber)}
-                                    data-testid={`button-view-form-${number.id}`}
-                                  >
-                                    <ExternalLink className="h-4 w-4 mr-1" />
-                                    View form
-                                  </Button>
-                                </TooltipTrigger>
-                                <TooltipContent>
-                                  <p>View verification details</p>
-                                </TooltipContent>
-                              </Tooltip>
-                            </TooltipProvider>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setSelectedPhoneNumber(number.phoneNumber)}
+                              data-testid={`button-view-form-${number.id}`}
+                            >
+                              View form
+                            </Button>
                           ) : (
                             <Link href="/compliance">
                               <Button
@@ -261,6 +347,39 @@ export default function SmsVoiceTollFree() {
                               </Button>
                             </Link>
                           )}
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button 
+                                variant="ghost" 
+                                size="sm" 
+                                className="h-8 w-8 p-0"
+                                data-testid={`button-actions-${number.id}`}
+                              >
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-48">
+                              <DropdownMenuItem 
+                                onClick={() => setSelectedPhoneNumber(number.phoneNumber)}
+                                data-testid={`menu-view-details-${number.id}`}
+                              >
+                                <ExternalLink className="h-4 w-4 mr-2" />
+                                View details
+                              </DropdownMenuItem>
+                              <DropdownMenuItem data-testid={`menu-edit-${number.id}`}>
+                                <Edit className="h-4 w-4 mr-2" />
+                                Edit verification
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                className="text-red-600 dark:text-red-400"
+                                data-testid={`menu-release-${number.id}`}
+                              >
+                                <Trash2 className="h-4 w-4 mr-2" />
+                                Release number
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </TableCell>
                     </TableRow>
@@ -271,22 +390,133 @@ export default function SmsVoiceTollFree() {
           </CardContent>
         </Card>
 
-        <Card className="border-slate-200 dark:border-slate-800 bg-amber-50 dark:bg-amber-900/10">
+        {totalNumbers > 0 && (
+          <div className="flex items-center justify-between text-sm text-slate-600 dark:text-slate-400">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                className="h-8 w-8 p-0"
+                data-testid="button-prev-page"
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                className="h-8 w-8 p-0"
+                data-testid="button-next-page"
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+              <span data-testid="text-pagination-info">
+                {startIndex + 1}-{endIndex} of {totalNumbers} number{totalNumbers !== 1 ? "s" : ""}
+              </span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span>Show on page</span>
+              <Select value={String(pageSize)} onValueChange={handlePageSizeChange}>
+                <SelectTrigger className="w-20 h-8" data-testid="select-page-size">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10 rows</SelectItem>
+                  <SelectItem value="25">25 rows</SelectItem>
+                  <SelectItem value="50">50 rows</SelectItem>
+                  <SelectItem value="100">100 rows</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        )}
+
+        <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/10">
           <CardContent className="p-4">
             <div className="flex items-start gap-3">
-              <AlertTriangle className="h-5 w-5 text-amber-600 dark:text-amber-400 shrink-0 mt-0.5" />
-              <div>
-                <h4 className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                  Toll-Free Verification Required
-                </h4>
-                <p className="text-xs text-amber-700 dark:text-amber-300 mt-1">
-                  All toll-free numbers must be verified to send SMS messages. Unverified numbers may have messaging restrictions.
-                  Complete the verification process to ensure full messaging capabilities.
-                </p>
+              <div className="h-5 w-5 rounded-full bg-amber-500 flex items-center justify-center shrink-0 mt-0.5">
+                <Info className="h-3 w-3 text-white" />
               </div>
+              <p className="text-sm text-slate-700 dark:text-slate-300">
+                10DLC and toll-free messaging registration is <strong>an industry-wide requirement</strong>. 
+                The industry is moving to <strong>100% registered messaging traffic</strong> to fight spam and fraud. 
+                Registration cannot be skipped.
+              </p>
             </div>
           </CardContent>
         </Card>
+
+        <div className="space-y-4">
+          <div className="text-center">
+            <h2 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Toll-free FAQ</h2>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
+              Haven't found what you were looking for?{" "}
+              <a 
+                href="/support" 
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
+                data-testid="link-contact-us"
+              >
+                Contact us
+              </a>
+            </p>
+          </div>
+
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="item-1" className="border-slate-200 dark:border-slate-800">
+              <AccordionTrigger className="text-sm text-slate-900 dark:text-slate-100 hover:no-underline" data-testid="accordion-why-tollfree">
+                When and why choose a toll-free number for texting?
+              </AccordionTrigger>
+              <AccordionContent className="text-sm text-slate-600 dark:text-slate-400">
+                Toll-free numbers are ideal for businesses that need to send high volumes of messages with a recognizable, professional identity. 
+                They provide national reach and don't require 10DLC registration, making them a good choice for marketing campaigns, 
+                customer notifications, and two-factor authentication.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-2" className="border-slate-200 dark:border-slate-800">
+              <AccordionTrigger className="text-sm text-slate-900 dark:text-slate-100 hover:no-underline" data-testid="accordion-10dlc-difference">
+                What is the difference between 10DLC and toll-free numbers?
+              </AccordionTrigger>
+              <AccordionContent className="text-sm text-slate-600 dark:text-slate-400">
+                10DLC (10-Digit Long Code) numbers are standard local phone numbers used for A2P (Application-to-Person) messaging. 
+                They require brand and campaign registration. Toll-free numbers (800, 833, 844, etc.) have their own verification process 
+                and are better suited for high-volume messaging with nationwide coverage.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-3" className="border-slate-200 dark:border-slate-800">
+              <AccordionTrigger className="text-sm text-slate-900 dark:text-slate-100 hover:no-underline" data-testid="accordion-why-verify">
+                Why do I need to complete a toll-free number verification?
+              </AccordionTrigger>
+              <AccordionContent className="text-sm text-slate-600 dark:text-slate-400">
+                Toll-free verification is required by carriers to ensure legitimate messaging practices and reduce spam. 
+                Unverified toll-free numbers may face message filtering, blocking, or reduced throughput. 
+                Verification helps establish trust with carriers and improves message deliverability.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-4" className="border-slate-200 dark:border-slate-800">
+              <AccordionTrigger className="text-sm text-slate-900 dark:text-slate-100 hover:no-underline" data-testid="accordion-info-required">
+                What information is required for the toll-free verification?
+              </AccordionTrigger>
+              <AccordionContent className="text-sm text-slate-600 dark:text-slate-400">
+                You'll need to provide: business name and type, business address, contact information, 
+                website URL, use case description, sample messages, opt-in method description, 
+                and volume estimates. Having accurate and complete information helps speed up the approval process.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="item-5" className="border-slate-200 dark:border-slate-800">
+              <AccordionTrigger className="text-sm text-slate-900 dark:text-slate-100 hover:no-underline" data-testid="accordion-how-long">
+                How long will it take to complete the verification?
+              </AccordionTrigger>
+              <AccordionContent className="text-sm text-slate-600 dark:text-slate-400">
+                The verification process typically takes 2-7 business days, depending on the completeness of your application 
+                and the volume of requests being processed. Some applications may require additional information, 
+                which can extend the timeline. You'll receive updates on your verification status via email.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
       </div>
 
       <Dialog open={!!selectedPhoneNumber} onOpenChange={(open) => !open && setSelectedPhoneNumber(null)}>
