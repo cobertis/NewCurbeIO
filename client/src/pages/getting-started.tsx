@@ -12,7 +12,6 @@ import {
   Phone, 
   Mail, 
   MessageSquare, 
-  PlayCircle, 
   ChevronRight, 
   Check,
   ExternalLink,
@@ -187,18 +186,7 @@ export default function GettingStarted() {
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                   Add your personal details to personalize your experience and help your team identify you.
                 </p>
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open("https://youtu.be/example", "_blank")}
-                    className="gap-2"
-                    data-testid="button-watch-profile-tutorial"
-                  >
-                    <PlayCircle className="w-4 h-4" />
-                    Watch tutorial
-                  </Button>
-                  <Button
+                <Button
                     size="sm"
                     onClick={() => setLocation("/settings/profile")}
                     className="gap-2 bg-blue-600 hover:bg-blue-700"
@@ -207,7 +195,6 @@ export default function GettingStarted() {
                     {progress.profileCompleted ? "Edit profile" : "Complete profile"}
                     <ChevronRight className="w-4 h-4" />
                   </Button>
-                </div>
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -238,18 +225,7 @@ export default function GettingStarted() {
                 <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                   Choose the plan that best fits your needs. Start with a 14-day free trial - no credit card required.
                 </p>
-                <div className="flex items-center gap-3">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open("https://youtu.be/example", "_blank")}
-                    className="gap-2"
-                    data-testid="button-watch-plan-tutorial"
-                  >
-                    <PlayCircle className="w-4 h-4" />
-                    Watch tutorial
-                  </Button>
-                  <Button
+                <Button
                     size="sm"
                     onClick={() => setLocation("/select-plan")}
                     className="gap-2 bg-blue-600 hover:bg-blue-700"
@@ -258,7 +234,6 @@ export default function GettingStarted() {
                     {progress.planSelected ? "Change plan" : "Start free trial"}
                     <ChevronRight className="w-4 h-4" />
                   </Button>
-                </div>
               </div>
             </AccordionContent>
           </AccordionItem>
@@ -329,18 +304,7 @@ export default function GettingStarted() {
                         {activeApplication.status === 'rejected' && 
                           "Your verification was rejected. Please contact support."}
                       </p>
-                      <div className="flex items-center gap-3">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => window.open("https://youtu.be/example", "_blank")}
-                          className="gap-2" 
-                          data-testid="button-watch-number-tutorial"
-                        >
-                          <PlayCircle className="w-4 h-4" />
-                          Watch tutorial
-                        </Button>
-                        <Button 
+                      <Button 
                           size="sm" 
                           onClick={() => setLocation(
                             activeApplication.numberType === '10dlc' 
@@ -353,25 +317,13 @@ export default function GettingStarted() {
                           View status
                           <ChevronRight className="w-4 h-4" />
                         </Button>
-                      </div>
                     </>
                   ) : (
                     <>
                       <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                         Get a dedicated phone number for your business. Choose from toll-free or local numbers.
                       </p>
-                      <div className="flex items-center gap-3">
-                        <Button 
-                          variant="outline" 
-                          size="sm" 
-                          onClick={() => window.open("https://youtu.be/example", "_blank")}
-                          className="gap-2" 
-                          data-testid="button-watch-number-tutorial"
-                        >
-                          <PlayCircle className="w-4 h-4" />
-                          Watch tutorial
-                        </Button>
-                        <Button 
+                      <Button 
                           size="sm" 
                           onClick={() => setShowNumberTypeDialog(true)} 
                           className="gap-2 bg-blue-600 hover:bg-blue-700" 
@@ -380,7 +332,6 @@ export default function GettingStarted() {
                           Choose number
                           <ChevronRight className="w-4 h-4" />
                         </Button>
-                      </div>
                     </>
                   )}
                 </div>
@@ -404,29 +355,17 @@ export default function GettingStarted() {
                       ? "Your calling is configured. Incoming and outgoing calls will ring directly in your web browser. Add funds to your account to start using the service."
                       : "Set up how you want to handle calls. Choose between direct calling or PBX with IVR options."}
                   </p>
-                  <div className="flex items-center gap-3">
+                  {!user?.sipEnabled && (
                     <Button 
-                      variant="outline" 
                       size="sm" 
-                      onClick={() => window.open("https://youtu.be/example", "_blank")}
-                      className="gap-2" 
-                      data-testid="button-watch-call-tutorial"
+                      onClick={() => setShowCallSetupDialog(true)} 
+                      className="gap-2 bg-blue-600 hover:bg-blue-700" 
+                      data-testid="button-setup-calling"
                     >
-                      <PlayCircle className="w-4 h-4" />
-                      Watch tutorial
+                      Configure calls
+                      <ChevronRight className="w-4 h-4" />
                     </Button>
-                    {!user?.sipEnabled && (
-                      <Button 
-                        size="sm" 
-                        onClick={() => setShowCallSetupDialog(true)} 
-                        className="gap-2 bg-blue-600 hover:bg-blue-700" 
-                        data-testid="button-setup-calling"
-                      >
-                        Configure calls
-                        <ChevronRight className="w-4 h-4" />
-                      </Button>
-                    )}
-                  </div>
+                  )}
                 </div>
 
                 {/* Divider */}
@@ -438,18 +377,7 @@ export default function GettingStarted() {
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                     Transfer your current phone number to Curbe.io. Keep your same number while gaining access to all platform features.
                   </p>
-                  <div className="flex items-center gap-3">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => window.open("https://youtu.be/example", "_blank")}
-                      className="gap-2" 
-                      data-testid="button-watch-byod-tutorial"
-                    >
-                      <PlayCircle className="w-4 h-4" />
-                      Watch tutorial
-                    </Button>
-                    <Button 
+                  <Button 
                       size="sm" 
                       onClick={() => setLocation("/integrations")} 
                       className="gap-2 bg-blue-600 hover:bg-blue-700" 
@@ -458,7 +386,6 @@ export default function GettingStarted() {
                       Start porting
                       <ChevronRight className="w-4 h-4" />
                     </Button>
-                  </div>
                 </div>
               </div>
             </AccordionContent>
@@ -493,18 +420,7 @@ export default function GettingStarted() {
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                     Set up your sending domain and customize email templates.
                   </p>
-                  <div className="flex items-center gap-3">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => window.open("https://youtu.be/example", "_blank")}
-                      className="gap-2" 
-                      data-testid="button-watch-email-tutorial"
-                    >
-                      <PlayCircle className="w-4 h-4" />
-                      Watch tutorial
-                    </Button>
-                    <Button 
+                  <Button 
                       size="sm" 
                       onClick={() => setLocation("/settings/email")} 
                       className="gap-2 bg-blue-600 hover:bg-blue-700" 
@@ -513,7 +429,6 @@ export default function GettingStarted() {
                       Configure
                       <ChevronRight className="w-4 h-4" />
                     </Button>
-                  </div>
                 </div>
 
                 {/* Divider */}
@@ -525,18 +440,7 @@ export default function GettingStarted() {
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                     Start engaging your contacts with email marketing.
                   </p>
-                  <div className="flex items-center gap-3">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => window.open("https://youtu.be/example", "_blank")}
-                      className="gap-2" 
-                      data-testid="button-watch-campaign-tutorial"
-                    >
-                      <PlayCircle className="w-4 h-4" />
-                      Watch tutorial
-                    </Button>
-                    <Button 
+                  <Button 
                       size="sm" 
                       onClick={() => setLocation("/campaigns")} 
                       className="gap-2 bg-blue-600 hover:bg-blue-700" 
@@ -545,7 +449,6 @@ export default function GettingStarted() {
                       Create campaign
                       <ChevronRight className="w-4 h-4" />
                     </Button>
-                  </div>
                 </div>
               </div>
             </AccordionContent>
@@ -570,18 +473,7 @@ export default function GettingStarted() {
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                     Connect your Apple device to send iMessages.
                   </p>
-                  <div className="flex items-center gap-3">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => window.open("https://youtu.be/example", "_blank")}
-                      className="gap-2" 
-                      data-testid="button-watch-imessage-tutorial"
-                    >
-                      <PlayCircle className="w-4 h-4" />
-                      Watch tutorial
-                    </Button>
-                    <Button 
+                  <Button 
                       size="sm" 
                       onClick={() => setLocation("/imessage")} 
                       className="gap-2 bg-blue-600 hover:bg-blue-700" 
@@ -590,7 +482,6 @@ export default function GettingStarted() {
                       Set up
                       <ChevronRight className="w-4 h-4" />
                     </Button>
-                  </div>
                 </div>
 
                 {/* Divider */}
@@ -602,18 +493,7 @@ export default function GettingStarted() {
                   <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
                     Connect your WhatsApp Business account.
                   </p>
-                  <div className="flex items-center gap-3">
-                    <Button 
-                      variant="outline" 
-                      size="sm" 
-                      onClick={() => window.open("https://youtu.be/example", "_blank")}
-                      className="gap-2" 
-                      data-testid="button-watch-whatsapp-tutorial"
-                    >
-                      <PlayCircle className="w-4 h-4" />
-                      Watch tutorial
-                    </Button>
-                    <Button 
+                  <Button 
                       size="sm" 
                       onClick={() => setLocation("/integrations")} 
                       className="gap-2 bg-blue-600 hover:bg-blue-700" 
@@ -622,7 +502,6 @@ export default function GettingStarted() {
                       Connect
                       <ChevronRight className="w-4 h-4" />
                     </Button>
-                  </div>
                 </div>
               </div>
             </AccordionContent>
