@@ -48,6 +48,7 @@ interface User {
   email: string;
   phone: string | null;
   onboardingCompleted: boolean;
+  sipEnabled?: boolean;
 }
 
 interface OnboardingProgress {
@@ -299,7 +300,7 @@ export default function GettingStarted() {
                   <Button
                     size="sm"
                     onClick={() => setLocation("/select-plan")}
-                    className="gap-2 bg-green-600 hover:bg-green-700"
+                    className="gap-2 bg-blue-600 hover:bg-blue-700"
                     data-testid="button-select-plan"
                   >
                     {progress.planSelected ? "Change plan" : "Start free trial"}
@@ -396,10 +397,6 @@ export default function GettingStarted() {
                             <FileText className="w-4 h-4" />
                             View status
                           </Button>
-                          <Button variant="outline" size="sm" onClick={() => setShowCallSetupDialog(true)} className="gap-2" data-testid="button-call-setup">
-                            <Phone className="w-4 h-4" />
-                            Configure calls
-                          </Button>
                         </div>
                       </div>
                     </CardContent>
@@ -451,6 +448,37 @@ export default function GettingStarted() {
                         <Button size="sm" onClick={() => setLocation("/integrations")} className="gap-2 bg-blue-600 hover:bg-blue-700" data-testid="button-connect-provider">
                           Start porting
                         </Button>
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+
+                <Card className="border-gray-200 dark:border-gray-700">
+                  <CardContent className="p-4">
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-start gap-3">
+                        <Phone className={`w-5 h-5 mt-0.5 ${user?.sipEnabled ? 'text-green-600' : 'text-gray-400'}`} />
+                        <div>
+                          <h4 className="font-medium text-gray-900 dark:text-gray-100">Browser calling</h4>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            {user?.sipEnabled 
+                              ? "Make and receive calls directly from your browser. Your extension is configured and ready."
+                              : "Enable browser-based calling to make and receive calls without any additional software."}
+                          </p>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {user?.sipEnabled ? (
+                          <Badge variant="secondary" className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                            <Check className="w-3 h-3 mr-1" />
+                            Configured
+                          </Badge>
+                        ) : (
+                          <Button size="sm" onClick={() => setShowCallSetupDialog(true)} className="gap-2 bg-blue-600 hover:bg-blue-700" data-testid="button-setup-browser-calling">
+                            Enable calling
+                            <ChevronRight className="w-4 h-4" />
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </CardContent>
