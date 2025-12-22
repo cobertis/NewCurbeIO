@@ -29840,11 +29840,20 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(400).json({ message: "Phone number is required" });
       }
       
+      // Normalize phone number for comparison (remove all non-digits except +)
+      const normalizePhone = (phone: string) => {
+        const digits = phone.replace(/[^\d]/g, '');
+        return digits.startsWith('1') ? digits : '1' + digits;
+      };
+      const targetDigits = normalizePhone(phoneNumber);
+      
+      console.log("[Telnyx TFV] Looking for phone:", phoneNumber, "normalized:", targetDigits);
+      
       // Query Telnyx API directly for real-time verification status
       const apiKey = await getTelnyxMasterApiKey();
       
-      // Use the list API with phone_number filter
-      const response = await fetch(`https://api.telnyx.com/v2/messaging_tollfree/verification/requests?page=1&page_size=10&phone_number=${encodeURIComponent(phoneNumber)}`, {
+      // Get all verification requests and filter locally (phone_number filter may not work as expected)
+      const response = await fetch(`https://api.telnyx.com/v2/messaging_tollfree/verification/requests?page=1&page_size=100`, {
         method: "GET",
         headers: {
           "Authorization": `Bearer ${apiKey}`,
@@ -29854,21 +29863,41 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       if (!response.ok) {
         const errorText = await response.text();
-        console.error("[Telnyx] Error listing verification requests:", errorText);
+        console.error("[Telnyx TFV] Error listing verification requests:", errorText);
         return res.status(404).json({ message: "No verification request found for this phone number" });
       }
       
       const data = await response.json();
       const records = data.records || [];
       
-      if (records.length === 0) {
+      console.log("[Telnyx TFV] Total records returned:", records.length);
+      
+      // Find the verification request that contains this phone number
+      let foundRecord = null;
+      for (const record of records) {
+        // Check phone_numbers array in the record
+        const phoneNumbers = record.phone_numbers || [];
+        for (const pn of phoneNumbers) {
+          const recordPhone = pn.phone_number || pn;
+          const recordDigits = normalizePhone(String(recordPhone));
+          console.log("[Telnyx TFV] Checking record phone:", recordPhone, "normalized:", recordDigits);
+          if (recordDigits === targetDigits) {
+            foundRecord = record;
+            break;
+          }
+        }
+        if (foundRecord) break;
+      }
+      
+      if (!foundRecord) {
+        console.log("[Telnyx TFV] No matching record found for:", targetDigits);
         return res.status(404).json({ message: "No verification request found for this phone number" });
       }
       
-      // Get the most recent verification request
-      const raw = records[0];
+      console.log("[Telnyx TFV] Found matching record:", foundRecord.id);
       
       // Flatten the response to match frontend interface
+      const raw = foundRecord;
       const businessProfile = raw.business_profile || {};
       const trafficProfile = raw.traffic_profile || {};
       const businessAddress = businessProfile.business_address || {};
@@ -29876,38 +29905,39 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const flattened = {
         id: raw.id,
         verification_status: raw.status || raw.verification_status,
-        business_name: businessProfile.business_name || raw.business_name,
+        business_name: businessProfile.business_name || raw.business_name || raw.businessName,
         brand_display_name: businessProfile.dba || businessProfile.brand_display_name || raw.brand_display_name,
         business_type: businessProfile.business_type || raw.business_type,
         business_vertical: businessProfile.business_vertical || trafficProfile.vertical || raw.business_vertical,
-        website_url: businessProfile.website_url || raw.website_url,
-        street_address: businessAddress.street_address || businessAddress.address_line_1 || raw.street_address,
-        city: businessAddress.city || raw.city,
-        region: businessAddress.region || businessAddress.state || raw.region,
-        postal_code: businessAddress.postal_code || businessAddress.zip || raw.postal_code,
-        first_name: businessProfile.first_name || raw.first_name,
-        last_name: businessProfile.last_name || raw.last_name,
-        contact_phone: businessProfile.phone_number || businessProfile.contact_phone || raw.contact_phone,
-        contact_email: businessProfile.email || businessProfile.contact_email || raw.contact_email,
-        use_case: trafficProfile.use_case || raw.use_case,
-        campaign_description: trafficProfile.description || trafficProfile.campaign_description || raw.campaign_description,
-        sample_messages: trafficProfile.sample_messages || raw.sample_messages || [],
-        message_flow: trafficProfile.message_flow || raw.message_flow,
+        website_url: businessProfile.website_url || businessProfile.corporate_website || raw.website_url || raw.corporateWebsite,
+        street_address: businessAddress.street_address || businessAddress.address_line_1 || raw.street_address || raw.businessAddr1,
+        city: businessAddress.city || raw.city || raw.businessCity,
+        region: businessAddress.region || businessAddress.state || raw.region || raw.businessState,
+        postal_code: businessAddress.postal_code || businessAddress.zip || raw.postal_code || raw.businessZip,
+        first_name: businessProfile.first_name || raw.first_name || raw.businessContactFirstName,
+        last_name: businessProfile.last_name || raw.last_name || raw.businessContactLastName,
+        contact_phone: businessProfile.phone_number || businessProfile.contact_phone || raw.contact_phone || raw.businessContactPhone,
+        contact_email: businessProfile.email || businessProfile.contact_email || raw.contact_email || raw.businessContactEmail,
+        use_case: trafficProfile.use_case || raw.use_case || raw.useCase,
+        campaign_description: trafficProfile.description || trafficProfile.campaign_description || raw.campaign_description || raw.useCaseSummary,
+        sample_messages: trafficProfile.sample_messages || raw.sample_messages || raw.productionMessageContent ? [raw.productionMessageContent] : [],
+        message_flow: trafficProfile.message_flow || raw.message_flow || raw.optInWorkflow,
         opt_in_method: trafficProfile.opt_in_method || raw.opt_in_method,
-        opt_in_description: trafficProfile.opt_in_description || raw.opt_in_description,
-        estimated_volume: trafficProfile.message_volume || raw.estimated_volume,
+        opt_in_description: trafficProfile.opt_in_description || raw.opt_in_description || raw.optInWorkflow,
+        estimated_volume: trafficProfile.message_volume || raw.estimated_volume || raw.messageVolume,
+        phone_numbers: raw.phone_numbers || [],
+        reason: raw.reason,
+        created_at: raw.created_at || raw.createdAt,
+        updated_at: raw.updated_at || raw.updatedAt,
         source: "telnyx",
       };
       
       res.json({ verification: flattened });
     } catch (error: any) {
-      console.error("[Telnyx] Error fetching verification request by phone:", error);
+      console.error("[Telnyx TFV] Error fetching verification request by phone:", error);
       res.status(500).json({ message: "Failed to fetch verification request" });
     }
   });
-
-
-  // GET /api/telnyx/verification-request/:id - Get verification request from Telnyx API
   app.get("/api/telnyx/verification-request/:id", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user as any;
