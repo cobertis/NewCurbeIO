@@ -25803,7 +25803,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   const META_APP_ID = process.env.META_APP_ID;
   const META_APP_SECRET = process.env.META_APP_SECRET;
   const APP_BASE_URL = process.env.APP_BASE_URL || process.env.BASE_URL || "https://app.curbe.io";
-  const META_REDIRECT_URI = process.env.META_REDIRECT_URI || `${APP_BASE_URL}/api/integrations/meta/whatsapp/callback`;
+  const META_REDIRECT_URI = process.env.META_REDIRECT_URI || `${APP_BASE_URL}/api/integrations/meta/callback`;
   const META_GRAPH_VERSION = process.env.META_GRAPH_VERSION || "v21.0";
   
   // Scopes required for WhatsApp Business Platform Embedded Signup
@@ -26631,7 +26631,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // INSTAGRAM DIRECT OAUTH INTEGRATION
   // =====================================================
 
-  const META_INSTAGRAM_REDIRECT_URI = process.env.META_INSTAGRAM_REDIRECT_URI || `${APP_BASE_URL}/api/integrations/meta/instagram/callback`;
+  const META_INSTAGRAM_REDIRECT_URI = process.env.META_INSTAGRAM_REDIRECT_URI || `${APP_BASE_URL}/api/integrations/meta/callback`;
   const META_INSTAGRAM_SCOPES = [
     "instagram_basic",
     "instagram_manage_messages",
@@ -26864,7 +26864,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // FACEBOOK MESSENGER OAUTH INTEGRATION
   // =====================================================
 
-  const META_FACEBOOK_REDIRECT_URI = process.env.META_FACEBOOK_REDIRECT_URI || `${APP_BASE_URL}/api/integrations/meta/facebook/callback`;
+  const META_FACEBOOK_REDIRECT_URI = process.env.META_FACEBOOK_REDIRECT_URI || `${APP_BASE_URL}/api/integrations/meta/callback`;
   const META_FACEBOOK_SCOPES = [
     "pages_messaging",
     "pages_manage_metadata",
