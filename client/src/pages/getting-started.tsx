@@ -385,7 +385,17 @@ export default function GettingStarted() {
                             "Your verification was rejected. Please contact support."}
                         </p>
                         <div className="flex items-center gap-2 pl-8">
-                          <Button variant="outline" size="sm" onClick={() => setLocation("/settings/sms-voice")} className="gap-2" data-testid="button-view-status">
+                          <Button 
+                            variant="outline" 
+                            size="sm" 
+                            onClick={() => setLocation(
+                              activeApplication.numberType === '10dlc' 
+                                ? "/integrations/sms-voice/10dlc" 
+                                : "/integrations/sms-voice/toll-free-verification"
+                            )} 
+                            className="gap-2" 
+                            data-testid="button-view-status"
+                          >
                             <FileText className="w-4 h-4" />
                             View status
                           </Button>
