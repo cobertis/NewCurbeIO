@@ -546,147 +546,162 @@ export default function SmsVoiceTollFree() {
               </div>
             ) : verification ? (
               <div className="space-y-6">
-                <div>
-                  <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
-                    Verification Status
-                  </h4>
-                  <div className="flex items-center gap-2">
-                    {getComplianceStatusBadge(verification.verification_status || null)}
-                    <span className="text-sm text-slate-600 dark:text-slate-400 capitalize">
-                      {verification.verification_status?.replace(/_/g, ' ') || 'Unknown'}
-                    </span>
-                  </div>
-                  {verification.id && (
-                    <div className="mt-3 text-sm">
-                      <span className="text-slate-500 dark:text-slate-400">Verification ID</span>
-                      <p className="font-mono text-xs text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-800 px-2 py-1 rounded mt-1 break-all">
-                        {verification.id}
-                      </p>
-                    </div>
-                  )}
+                <h4 className="text-base font-semibold text-slate-900 dark:text-slate-100">
+                  1. Brand details
+                </h4>
+                <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <tbody>
+                      <tr className="border-b border-slate-200 dark:border-slate-700">
+                        <td className="px-4 py-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-right w-[180px] align-top">
+                          Brand ID
+                        </td>
+                        <td className="px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                          {verification.id || '-'}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-slate-200 dark:border-slate-700">
+                        <td className="px-4 py-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-right w-[180px] align-top">
+                          Legal organization name
+                        </td>
+                        <td className="px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                          {verification.business_name || '-'}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-slate-200 dark:border-slate-700">
+                        <td className="px-4 py-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-right w-[180px] align-top">
+                          DBA or Brand name
+                        </td>
+                        <td className="px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                          {verification.brand_display_name || '-'}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-slate-200 dark:border-slate-700">
+                        <td className="px-4 py-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-right w-[180px] align-top">
+                          Organization type
+                        </td>
+                        <td className="px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                          {verification.business_type || '-'}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-slate-200 dark:border-slate-700">
+                        <td className="px-4 py-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-right w-[180px] align-top">
+                          Organization website
+                        </td>
+                        <td className="px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                          {verification.website_url ? (
+                            <a href={verification.website_url} target="_blank" rel="noopener noreferrer" className="text-blue-600 dark:text-blue-400 hover:underline">
+                              {verification.website_url}
+                            </a>
+                          ) : '-'}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-slate-200 dark:border-slate-700">
+                        <td className="px-4 py-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-right w-[180px] align-top">
+                          Vertical type
+                        </td>
+                        <td className="px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                          {verification.business_vertical || '-'}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-slate-200 dark:border-slate-700">
+                        <td className="px-4 py-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-right w-[180px] align-top">
+                          Organization address
+                        </td>
+                        <td className="px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                          {[verification.street_address, verification.city, verification.region, verification.postal_code]
+                            .filter(Boolean)
+                            .join(', ') || '-'}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-slate-200 dark:border-slate-700">
+                        <td className="px-4 py-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-right w-[180px] align-top">
+                          Contact person
+                        </td>
+                        <td className="px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                          {[verification.first_name, verification.last_name].filter(Boolean).join(' ') || '-'}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-slate-200 dark:border-slate-700">
+                        <td className="px-4 py-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-right w-[180px] align-top">
+                          Contact phone number
+                        </td>
+                        <td className="px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                          {verification.contact_phone || '-'}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-slate-200 dark:border-slate-700">
+                        <td className="px-4 py-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-right w-[180px] align-top">
+                          Contact e-mail address
+                        </td>
+                        <td className="px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                          {verification.contact_email || '-'}
+                        </td>
+                      </tr>
+                      <tr>
+                        <td className="px-4 py-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-right w-[180px] align-top">
+                          Status
+                        </td>
+                        <td className="px-4 py-3 bg-white dark:bg-slate-900">
+                          {getComplianceStatusBadge(verification.verification_status || null)}
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
                 </div>
 
-                <Separator />
-
-                <div>
-                  <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
-                    Business Information
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-slate-500 dark:text-slate-400">Business Name</span>
-                      <p className="font-medium text-slate-900 dark:text-slate-100">
-                        {verification.business_name || '-'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 dark:text-slate-400">Brand Display Name</span>
-                      <p className="font-medium text-slate-900 dark:text-slate-100">
-                        {verification.brand_display_name || '-'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 dark:text-slate-400">Business Type</span>
-                      <p className="font-medium text-slate-900 dark:text-slate-100">
-                        {verification.business_type || '-'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 dark:text-slate-400">Business Vertical</span>
-                      <p className="font-medium text-slate-900 dark:text-slate-100">
-                        {verification.business_vertical || '-'}
-                      </p>
-                    </div>
-                    <div className="col-span-2">
-                      <span className="text-slate-500 dark:text-slate-400">Website</span>
-                      <p className="font-medium text-slate-900 dark:text-slate-100">
-                        {verification.website_url || '-'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
-                    Address
-                  </h4>
-                  <div className="text-sm">
-                    <p className="text-slate-900 dark:text-slate-100">
-                      {verification.street_address || '-'}
-                    </p>
-                    <p className="text-slate-600 dark:text-slate-400">
-                      {[verification.city, verification.region, verification.postal_code]
-                        .filter(Boolean)
-                        .join(', ') || '-'}
-                    </p>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
-                    Contact Information
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4 text-sm">
-                    <div>
-                      <span className="text-slate-500 dark:text-slate-400">Contact Name</span>
-                      <p className="font-medium text-slate-900 dark:text-slate-100">
-                        {[verification.first_name, verification.last_name].filter(Boolean).join(' ') || '-'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 dark:text-slate-400">Phone</span>
-                      <p className="font-medium text-slate-900 dark:text-slate-100">
-                        {verification.contact_phone || '-'}
-                      </p>
-                    </div>
-                    <div className="col-span-2">
-                      <span className="text-slate-500 dark:text-slate-400">Email</span>
-                      <p className="font-medium text-slate-900 dark:text-slate-100">
-                        {verification.contact_email || '-'}
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <h4 className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-3">
-                    Campaign Details
-                  </h4>
-                  <div className="space-y-4 text-sm">
-                    <div>
-                      <span className="text-slate-500 dark:text-slate-400">Use Case</span>
-                      <p className="font-medium text-slate-900 dark:text-slate-100">
-                        {verification.use_case || '-'}
-                      </p>
-                    </div>
-                    <div>
-                      <span className="text-slate-500 dark:text-slate-400">Campaign Description</span>
-                      <p className="font-medium text-slate-900 dark:text-slate-100">
-                        {verification.campaign_description || '-'}
-                      </p>
-                    </div>
-                    {verification.sample_messages && verification.sample_messages.length > 0 && (
-                      <div>
-                        <span className="text-slate-500 dark:text-slate-400">Sample Messages</span>
-                        <div className="space-y-2 mt-2">
-                          {verification.sample_messages.map((msg, idx) => (
-                            <div 
-                              key={idx} 
-                              className="p-3 bg-slate-100 dark:bg-slate-800 rounded-lg text-slate-900 dark:text-slate-100"
-                            >
-                              {msg}
-                            </div>
-                          ))}
-                        </div>
-                      </div>
-                    )}
-                  </div>
+                <h4 className="text-base font-semibold text-slate-900 dark:text-slate-100 mt-6">
+                  2. Campaign details
+                </h4>
+                <div className="border border-slate-200 dark:border-slate-700 rounded-lg overflow-hidden">
+                  <table className="w-full text-sm">
+                    <tbody>
+                      <tr className="border-b border-slate-200 dark:border-slate-700">
+                        <td className="px-4 py-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-right w-[180px] align-top">
+                          Use case
+                        </td>
+                        <td className="px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                          {verification.use_case || '-'}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-slate-200 dark:border-slate-700">
+                        <td className="px-4 py-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-right w-[180px] align-top">
+                          Campaign name
+                        </td>
+                        <td className="px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                          {verification.brand_display_name || '-'}
+                        </td>
+                      </tr>
+                      <tr className="border-b border-slate-200 dark:border-slate-700">
+                        <td className="px-4 py-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-right w-[180px] align-top">
+                          Campaign description
+                        </td>
+                        <td className="px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                          {verification.campaign_description || '-'}
+                        </td>
+                      </tr>
+                      {verification.sample_messages && verification.sample_messages.length > 0 && verification.sample_messages.map((msg, idx) => (
+                        <tr key={idx} className={idx < verification.sample_messages!.length - 1 ? "border-b border-slate-200 dark:border-slate-700" : ""}>
+                          <td className="px-4 py-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-right w-[180px] align-top">
+                            Sample message {idx + 1}
+                          </td>
+                          <td className="px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                            {msg}
+                          </td>
+                        </tr>
+                      ))}
+                      {(!verification.sample_messages || verification.sample_messages.length === 0) && (
+                        <tr>
+                          <td className="px-4 py-3 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-medium text-right w-[180px] align-top">
+                            Sample message 1
+                          </td>
+                          <td className="px-4 py-3 bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
+                            -
+                          </td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             ) : (
