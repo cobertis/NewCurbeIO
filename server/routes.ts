@@ -29826,7 +29826,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
 
   // GET /api/telnyx/verification-request/by-phone/:phoneNumber - Get verification request by phone number
-  // First checks local database (complianceApplications), then falls back to Telnyx API
+  // Queries Telnyx API directly for real-time verification status
   app.get("/api/telnyx/verification-request/by-phone/:phoneNumber", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user as any;
@@ -29840,58 +29840,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(400).json({ message: "Phone number is required" });
       }
       
-      // First, check local database for compliance application with this phone number
-      const [localApplication] = await db
-        .select()
-        .from(complianceApplications)
-        .where(
-          and(
-            eq(complianceApplications.companyId, user.companyId),
-            eq(complianceApplications.selectedPhoneNumber, phoneNumber)
-          )
-        )
-        .orderBy(desc(complianceApplications.createdAt))
-        .limit(1);
-      
-      if (localApplication) {
-        // Return data from local database
-        const sampleMessages = Array.isArray(localApplication.sampleMessages) 
-          ? localApplication.sampleMessages 
-          : [];
-        
-        const verification = {
-          id: localApplication.id,
-          verification_status: localApplication.status === "approved" ? "verified" : 
-                              localApplication.status === "rejected" ? "rejected" :
-                              localApplication.status === "submitted" ? "in_review" : "pending",
-          business_name: localApplication.businessName,
-          brand_display_name: localApplication.brandDisplayName || localApplication.doingBusinessAs,
-          business_type: localApplication.businessType,
-          business_vertical: localApplication.businessVertical,
-          website_url: localApplication.website,
-          street_address: localApplication.businessAddress,
-          city: localApplication.businessCity,
-          region: localApplication.businessState,
-          postal_code: localApplication.businessZip,
-          first_name: localApplication.contactFirstName,
-          last_name: localApplication.contactLastName,
-          contact_phone: localApplication.contactPhone,
-          contact_email: localApplication.contactEmail,
-          use_case: localApplication.smsUseCase || localApplication.useCase,
-          campaign_description: localApplication.campaignDescription,
-          sample_messages: sampleMessages,
-          message_flow: localApplication.messageFlow,
-          opt_in_method: localApplication.optInMethod,
-          opt_in_description: localApplication.optInDescription,
-          estimated_volume: localApplication.estimatedVolume,
-          telnyx_verification_id: localApplication.telnyxVerificationRequestId,
-          source: "local",
-        };
-        
-        return res.json({ verification });
-      }
-      
-      // Fallback to Telnyx API if no local record found
+      // Query Telnyx API directly for real-time verification status
       const apiKey = await getTelnyxMasterApiKey();
       
       // Use the list API with phone_number filter
@@ -29943,6 +29892,10 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         use_case: trafficProfile.use_case || raw.use_case,
         campaign_description: trafficProfile.description || trafficProfile.campaign_description || raw.campaign_description,
         sample_messages: trafficProfile.sample_messages || raw.sample_messages || [],
+        message_flow: trafficProfile.message_flow || raw.message_flow,
+        opt_in_method: trafficProfile.opt_in_method || raw.opt_in_method,
+        opt_in_description: trafficProfile.opt_in_description || raw.opt_in_description,
+        estimated_volume: trafficProfile.message_volume || raw.estimated_volume,
         source: "telnyx",
       };
       
