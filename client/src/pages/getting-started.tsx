@@ -406,17 +406,15 @@ export default function GettingStarted() {
                       ? "Your calling is configured. Incoming and outgoing calls will ring directly in your web browser. Add funds to your account to start using the service."
                       : "Set up how you want to handle calls. Choose between direct calling or PBX with IVR options."}
                   </p>
-                  {!user?.sipEnabled && (
-                    <Button 
-                      size="sm" 
-                      onClick={() => setShowCallSetupDialog(true)} 
-                      className="gap-2 bg-blue-600 hover:bg-blue-700" 
-                      data-testid="button-setup-calling"
-                    >
-                      Configure calls
-                      <ChevronRight className="w-4 h-4" />
-                    </Button>
-                  )}
+                  <Button 
+                    size="sm" 
+                    onClick={() => setShowCallSetupDialog(true)} 
+                    className="gap-2 bg-blue-600 hover:bg-blue-700" 
+                    data-testid="button-setup-calling"
+                  >
+                    {user?.sipEnabled ? "Change configuration" : "Configure calls"}
+                    <ChevronRight className="w-4 h-4" />
+                  </Button>
                 </div>
 
                 {/* Divider */}
