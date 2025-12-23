@@ -648,6 +648,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[TWILIO STATUS WEBHOOK] Error:", error);
       res.status(500).send("Internal Server Error");
     }
+  });
   // Twilio Incoming Message - Receive SMS replies
   app.post("/api/webhooks/twilio/incoming", async (req: Request, res: Response) => {
     try {
@@ -760,6 +761,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[TWILIO INCOMING WEBHOOK] Error:", error);
       res.status(500).send("Internal Server Error");
     }
+  });
   // ==================== iMESSAGE API ENDPOINTS ====================
   /**
    * MIME type to extension normalization map
@@ -1358,6 +1360,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Still return 200 to prevent webhook retries for processing errors
       res.json({ success: false, message: "Webhook processing error", error: error.message });
     }
+  });
   // Attachment upload endpoint
   // POST /api/imessage/attachments/upload - Upload attachment for iMessage
   app.post("/api/imessage/attachments/upload", requireActiveCompany, async (req: Request, res: Response) => {
@@ -1473,6 +1476,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error uploading iMessage attachment:", error);
       res.status(500).json({ message: error.message || "Failed to upload attachment" });
     }
+  });
   // Attachment serving endpoint  
   // GET /api/imessage/attachments/:guid - Serve attachment from local storage
   app.get("/api/imessage/attachments/:guid", requireActiveCompany, async (req: Request, res: Response) => {
@@ -1604,6 +1608,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error serving iMessage attachment:", error);
       res.status(500).json({ message: "Failed to serve attachment" });
     }
+  });
   // 1. GET /api/imessage/conversations - List company's conversations
   app.get("/api/imessage/conversations", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -1635,6 +1640,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching iMessage conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
     }
+  });
   // 2. GET /api/imessage/conversations/:id/messages - Get messages for a conversation
   app.get("/api/imessage/conversations/:id/messages", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -1679,6 +1685,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching iMessage messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
     }
+  });
   // Multer config for iMessage attachments
   const imessageUpload = multer({
     storage: multer.diskStorage({
@@ -1705,6 +1712,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         cb(new Error('Invalid file type for iMessage'));
       }
     }
+  });
   // 3. POST /api/imessage/messages/send - Send an iMessage
   app.post("/api/imessage/messages/send", imessageUpload.array('attachments', 10), requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -1935,6 +1943,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error sending iMessage:", error);
       res.status(500).json({ message: "Failed to send message" });
     }
+  });
   // 4. POST /api/imessage/messages/:id/reaction - Add/remove reaction to message
   app.post("/api/imessage/messages/:id/reaction", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -1991,6 +2000,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating reaction:", error);
       res.status(500).json({ message: "Failed to update reaction" });
     }
+  });
   // 5. POST /api/imessage/conversations/:id/read - Mark conversation as read
   app.post("/api/imessage/conversations/:id/read", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -2017,6 +2027,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error marking conversation as read:", error);
       res.status(500).json({ message: "Failed to mark as read" });
     }
+  });
   // PUT /api/imessage/conversations/:id/pin - Pin conversation
   app.put("/api/imessage/conversations/:id/pin", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -2037,6 +2048,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error pinning conversation:", error);
       res.status(500).json({ message: "Failed to pin conversation" });
     }
+  });
   // PUT /api/imessage/conversations/:id/unpin - Unpin conversation
   app.put("/api/imessage/conversations/:id/unpin", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -2057,6 +2069,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error unpinning conversation:", error);
       res.status(500).json({ message: "Failed to unpin conversation" });
     }
+  });
   // 6. DELETE /api/imessage/conversations/:id - Delete conversation
   app.delete("/api/imessage/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -2080,6 +2093,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting conversation:", error);
       res.status(500).json({ message: "Failed to delete conversation" });
     }
+  });
   // 7. POST /api/imessage/typing - Send typing indicator
   app.post("/api/imessage/typing", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -2116,6 +2130,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error sending typing indicator:", error);
       res.status(500).json({ message: "Failed to send typing indicator" });
     }
+  });
   // 7. GET /api/imessage/messages/search - Search messages
   app.get("/api/imessage/messages/search", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -2133,6 +2148,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error searching iMessages:", error);
       res.status(500).json({ message: "Failed to search messages" });
     }
+  });
   // 8. DELETE /api/imessage/messages/:messageGuid - Delete/Unsend a message
   app.delete("/api/imessage/messages/:messageGuid", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -2180,6 +2196,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting iMessage:", error);
       res.status(500).json({ message: "Failed to delete message" });
     }
+  });
   // ==================== iMessage CAMPAIGNS ====================
   // 1. GET /api/imessage/campaigns - List all campaigns for logged-in user's company
   app.get("/api/imessage/campaigns", requireActiveCompany, async (req: Request, res: Response) => {
@@ -2220,6 +2237,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error listing iMessage campaigns:", error);
       res.status(500).json({ message: "Failed to list campaigns" });
     }
+  });
   // 1.5 POST /api/imessage/campaigns/upload-media - Upload media file for campaign
   app.post("/api/imessage/campaigns/upload-media", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -2284,6 +2302,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error uploading campaign media:", error);
       res.status(500).json({ message: error.message || "Failed to upload media" });
     }
+  });
   // 2. POST /api/imessage/campaigns - Create new campaign
   app.post("/api/imessage/campaigns", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -2306,6 +2325,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to create campaign" });
     }
+  });
   // 3. GET /api/imessage/campaigns/:id - Get campaign details
   app.get("/api/imessage/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -2328,6 +2348,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error getting iMessage campaign:", error);
       res.status(500).json({ message: "Failed to get campaign" });
     }
+  });
   // 4. PATCH /api/imessage/campaigns/:id - Update campaign
   app.patch("/api/imessage/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -2365,6 +2386,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to update campaign" });
     }
+  });
   // 5. DELETE /api/imessage/campaigns/:id - Delete campaign
   app.delete("/api/imessage/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -2402,6 +2424,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting iMessage campaign:", error);
       res.status(500).json({ message: "Failed to delete campaign" });
     }
+  });
   // 6. POST /api/imessage/campaigns/:id/start - Start/execute campaign
   app.post("/api/imessage/campaigns/:id/start", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -2473,6 +2496,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error starting iMessage campaign:", error);
       res.status(500).json({ message: "Failed to start campaign" });
     }
+  });
   // 7. POST /api/imessage/campaigns/:id/pause - Pause campaign
   app.post("/api/imessage/campaigns/:id/pause", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -2509,6 +2533,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error pausing iMessage campaign:", error);
       res.status(500).json({ message: "Failed to pause campaign" });
     }
+  });
   // 8. POST /api/imessage/campaigns/:id/resume - Resume campaign
   app.post("/api/imessage/campaigns/:id/resume", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -2545,6 +2570,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error resuming iMessage campaign:", error);
       res.status(500).json({ message: "Failed to resume campaign" });
     }
+  });
   // 9. POST /api/imessage/campaigns/:id/stop - Stop campaign
   app.post("/api/imessage/campaigns/:id/stop", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -2584,6 +2610,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error stopping iMessage campaign:", error);
       res.status(500).json({ message: "Failed to stop campaign" });
     }
+  });
   // 10. GET /api/imessage/campaigns/:id/runs - List all runs for a campaign
   app.get("/api/imessage/campaigns/:id/runs", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -2607,6 +2634,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error listing campaign runs:", error);
       res.status(500).json({ message: "Failed to list campaign runs" });
     }
+  });
   // 11. GET /api/imessage/campaigns/runs/:runId - Get single run details with messages
   app.get("/api/imessage/campaigns/runs/:runId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -2654,6 +2682,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error getting campaign run details:", error);
       res.status(500).json({ message: "Failed to get campaign run details" });
     }
+  });
   // ==================== CONSENT PUBLIC ENDPOINTS ====================
   // Rate limiting for consent endpoints to prevent brute force attacks
   const consentRateLimitMap = new Map<string, { count: number; resetAt: number }>();
@@ -2757,6 +2786,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching consent:", error);
       res.status(500).json({ message: "Failed to fetch consent document" });
     }
+  });
   // POST /api/consent/:token/sign - Public endpoint to sign consent (no auth required)
   app.post("/api/consent/:token/sign", consentRateLimiter, async (req: Request, res: Response) => {
     const { token } = req.params;
@@ -2835,6 +2865,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error signing consent:", error);
       res.status(500).json({ message: "Failed to sign consent document" });
     }
+  });
   // ==================== AUTH ENDPOINTS ====================
   app.post("/api/login", async (req: Request, res: Response) => {
     try {
@@ -3116,6 +3147,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
     }
+  });
   app.post("/api/logout", async (req: Request, res: Response) => {
     const userId = req.session.userId;
     const user = userId ? await storage.getUser(userId) : null;
@@ -3131,6 +3163,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.json({ success: true });
     });
+  });
   // Get all active sessions for the current user
   app.get("/api/user/sessions", requireAuth, async (req: Request, res: Response) => {
     const userId = req.session.userId;
@@ -3177,6 +3210,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } finally {
       await sql.end();
     }
+  });
   // Logout from all sessions and clear all security data (sessions + trusted devices)
   app.post("/api/logout-all-sessions", requireAuth, async (req: Request, res: Response) => {
     const userId = req.session.userId;
@@ -3232,6 +3266,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } finally {
       await sql.end();
     }
+  });
   // Get session activity (login attempts - success and failed)
   app.get("/api/session-activity", requireAuth, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -3304,6 +3339,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching session activity:", error);
       res.status(500).json({ message: "Failed to fetch session activity" });
     }
+  });
   // Public registration endpoint - no auth required
   app.post("/api/register", async (req: Request, res: Response) => {
     try {
@@ -3471,6 +3507,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to register company. Please try again." });
     }
+  });
   app.get("/api/session", requireActiveCompany, async (req: Request, res: Response) => {
     const user = req.user!; // User is guaranteed by middleware
     // Get company info if user has a company (includes logo for Settings page optimization)
@@ -3513,6 +3550,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         sipEnabled: user.sipEnabled,
       },
     });
+  });
 
   // ==================== ONBOARDING PROGRESS ====================
   app.get("/api/onboarding/progress", requireAuth, async (req: Request, res: Response) => {
@@ -3579,6 +3617,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[ONBOARDING] Error fetching progress:", error);
       res.status(500).json({ message: "Failed to fetch onboarding progress" });
     }
+  });
 
   // Mark onboarding as complete
   app.post("/api/onboarding/complete", requireAuth, async (req: Request, res: Response) => {
@@ -3590,6 +3629,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[ONBOARDING] Error marking complete:", error);
       res.status(500).json({ message: "Failed to mark onboarding as complete" });
     }
+  });
 
   // Enable browser calling - auto-provision SIP extension for user
   app.post("/api/onboarding/enable-browser-calling", requireActiveCompany, async (req: Request, res: Response) => {
@@ -3698,6 +3738,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: error instanceof Error ? error.message : "Failed to enable browser calling" 
       });
     }
+  });
 
   // ==================== LOCATIONIQ AUTOCOMPLETE ====================
   app.get("/api/locationiq/autocomplete", async (req: Request, res: Response) => {
@@ -3735,6 +3776,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[LOCATIONIQ] Autocomplete error:", error);
       return res.status(500).json({ message: "Failed to fetch address suggestions" });
     }
+  });
   // ==================== GOOGLE PLACES API ====================
   // Google Maps JavaScript API loader endpoint
   app.get("/api/google-maps-js-loader", async (req: Request, res: Response) => {
@@ -3766,6 +3808,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     res.setHeader('Content-Type', 'application/javascript');
     res.setHeader('Cache-Control', 'public, max-age=3600'); // Cache for 1 hour
     res.send(loaderScript);
+  });
   // Google Static Maps API - proxy endpoint for location previews
   app.get("/api/google-maps/static", async (req: Request, res: Response) => {
     try {
@@ -3791,6 +3834,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[GOOGLE_MAPS] Static map error:", error);
       res.status(500).json({ message: "Failed to generate map" });
     }
+  });
   // Autocomplete address using Google Places API
   app.get("/api/google-places/autocomplete-address", async (req: Request, res: Response) => {
     try {
@@ -3854,6 +3898,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[GOOGLE_PLACES] Autocomplete error:", error);
       return res.status(500).json({ message: "Failed to fetch address suggestions" });
     }
+  });
   // Get place details by ID to extract address components
   app.get("/api/google-places/place-details", async (req: Request, res: Response) => {
     try {
@@ -3950,6 +3995,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[GOOGLE_PLACES] Place details error:", error);
       return res.status(500).json({ message: "Failed to fetch place details" });
     }
+  });
   app.get("/api/google-places/search-business", async (req: Request, res: Response) => {
     try {
       const { q } = req.query;
@@ -4087,6 +4133,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[GOOGLE_PLACES] Search error:", error);
       return res.status(500).json({ message: "Failed to fetch business suggestions" });
     }
+  });
   // ==================== GOOGLE OAUTH ENDPOINTS ====================
   app.get("/api/auth/google", async (req: Request, res: Response) => {
     try {
@@ -4113,6 +4160,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[GOOGLE_AUTH] Error initiating OAuth:", error);
       res.redirect('/login?error=oauth_failed');
     }
+  });
   app.get("/api/auth/callback/google", async (req: Request, res: Response) => {
     try {
       const { code, error: oauthError } = req.query;
@@ -4203,6 +4251,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[GOOGLE_AUTH] Callback error:", error);
       res.redirect('/login?error=oauth_callback_failed');
     }
+  });
   // ==================== 2FA/OTP ENDPOINTS ====================
   app.post("/api/auth/send-otp", async (req: Request, res: Response) => {
     try {
@@ -4286,6 +4335,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error sending OTP:", error);
       res.status(500).json({ message: "Failed to send verification code" });
     }
+  });
   app.post("/api/auth/verify-otp", async (req: Request, res: Response) => {
     try {
       const { userId, code, rememberDevice } = req.body;
@@ -4406,6 +4456,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error verifying OTP:", error);
       res.status(500).json({ message: "Failed to verify code" });
     }
+  });
   app.post("/api/auth/resend-otp", async (req: Request, res: Response) => {
     try {
       const { userId, method } = req.body;
@@ -4485,6 +4536,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error resending OTP:", error);
       res.status(500).json({ message: "Failed to resend verification code" });
     }
+  });
   // ==================== ACCOUNT ACTIVATION ENDPOINTS ====================
   // Validate activation token (check if it's valid and not expired)
   app.get("/api/auth/validate-activation-token", async (req: Request, res: Response) => {
@@ -4514,6 +4566,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error validating activation token:", error);
       res.status(500).json({ message: "Failed to validate activation token" });
     }
+  });
   // Activate account - password was already set during registration
   app.post("/api/auth/activate-account", async (req: Request, res: Response) => {
     try {
@@ -4557,6 +4610,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error activating account:", error);
       res.status(500).json({ message: "Failed to activate account" });
     }
+  });
   // ==================== PASSWORD RESET ENDPOINTS ====================
   // Request password reset - send email with reset link
   app.post("/api/auth/request-password-reset", async (req: Request, res: Response) => {
@@ -4649,6 +4703,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error requesting password reset:", error);
       res.status(500).json({ message: "Failed to request password reset" });
     }
+  });
   // Validate password reset token
   app.get("/api/auth/validate-password-reset-token", async (req: Request, res: Response) => {
     try {
@@ -4677,6 +4732,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error validating password reset token:", error);
       res.status(500).json({ message: "Failed to validate token" });
     }
+  });
   // Reset password with token
   app.post("/api/auth/reset-password", async (req: Request, res: Response) => {
     try {
@@ -4757,6 +4813,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error resetting password:", error);
       res.status(500).json({ message: "Failed to reset password" });
     }
+  });
   // ==================== INVITATION ENDPOINTS ====================
   // Create invitation (admin only)
   app.post("/api/invitations", requireActiveCompany, async (req: Request, res: Response) => {
@@ -4812,6 +4869,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[CREATE INVITATION] Error:", error);
       res.status(500).json({ message: "Failed to create invitation" });
     }
+  });
   // Get pending invitations for company
   app.get("/api/invitations", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -4832,6 +4890,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[GET INVITATIONS] Error:", error);
       res.status(500).json({ message: "Failed to fetch invitations" });
     }
+  });
   // Delete/revoke invitation
   app.delete("/api/invitations/:token", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -4860,6 +4919,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[DELETE INVITATION] Error:", error);
       res.status(500).json({ message: "Failed to delete invitation" });
     }
+  });
   // Accept invitation and create user
   app.post("/api/invitations/:token/accept", async (req: Request, res: Response) => {
     try {
@@ -4932,6 +4992,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[ACCEPT INVITATION] Error:", error);
       res.status(500).json({ message: "Failed to accept invitation" });
     }
+  });
   // ==================== STATS ENDPOINTS ====================
   app.get("/api/users", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -4949,6 +5010,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching users:", error);
       res.status(500).json({ message: "Failed to fetch users" });
     }
+  });
   // Get user seat limits for current company
   app.get("/api/users/limits", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -4988,6 +5050,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching user limits:", error);
       res.status(500).json({ message: "Failed to fetch user limits" });
     }
+  });
   // Get single user by ID
   app.get("/api/users/:id", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -5020,6 +5083,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
     }
+  });
   // Update user by ID (admins can update users in their company)
   app.patch("/api/users/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -5084,6 +5148,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating user:", error);
       res.status(500).json({ message: error.message || "Failed to update user" });
     }
+  });
   // Get company agents for dropdowns (policies, quotes, etc.)
   app.get("/api/company/agents", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -5106,6 +5171,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching company agents:", error);
       res.status(500).json({ message: "Failed to fetch company agents" });
     }
+  });
   app.get("/api/stats", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     let users: Awaited<ReturnType<typeof storage.getAllUsers>>;
@@ -5123,6 +5189,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       viewerCount: users.filter((u) => u.role === "member" || u.role === "viewer").length,
     };
     res.json(stats);
+  });
   // Get dashboard stats with billing and company info
   app.get("/api/dashboard-stats", requireActiveCompany, async (req: Request, res: Response) => {
     const startTime = Date.now();
@@ -5498,6 +5565,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Agents leaderboard error:", error);
       res.status(500).json({ message: "Failed to fetch agents data" });
     }
+  });
   app.get("/api/dashboard-carriers", requireActiveCompany, async (req: Request, res: Response) => {
     const startTime = Date.now();
     const currentUser = req.user!;
@@ -5564,6 +5632,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching company agents:", error);
       res.status(500).json({ message: "Failed to fetch company agents" });
     }
+  });
   // Dashboard recent policies endpoint
   app.get("/api/dashboard-recent-policies", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -5609,6 +5678,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching recent policies:", error);
       res.status(500).json({ message: "Failed to fetch recent policies" });
     }
+  });
   // Get all companies (superadmin only) or user's company (admin/agent)
   app.get("/api/companies", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -5629,6 +5699,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching companies:", error);
       res.status(500).json({ message: "Failed to fetch companies" });
     }
+  });
   // Get single company by ID
   app.get("/api/companies/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -5642,6 +5713,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(404).json({ message: "Company not found" });
     }
     res.json({ company });
+  });
   // Update company by ID (admin or superadmin)
   app.patch("/api/companies/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -5698,6 +5770,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[Company Update] Error:", error);
       res.status(400).json({ message: error.message || "Failed to update company" });
     }
+  });
   // Toggle company active status (enable/disable)
   app.patch("/api/companies/:id/toggle-status", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -5728,6 +5801,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       },
     });
     res.json({ company: updatedCompany });
+  });
   app.delete("/api/companies/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
     if (currentUser.role !== "superadmin") {
@@ -5768,6 +5842,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[Company Delete] Error:", error);
       res.status(500).json({ message: "Failed to delete company: " + (error.message || "Unknown error") });
     }
+  });
   // ===================================================================
   // ===================================================================
   // CUSTOM DOMAIN (WHITE LABEL) ENDPOINTS
@@ -5856,6 +5931,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[Custom Domain] Error connecting domain:", error);
       res.status(500).json({ message: error.message || "Failed to connect custom domain" });
     }
+  });
   // Get custom domain status
   app.get("/api/organization/domain", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -5919,6 +5995,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[Custom Domain] Error getting domain status:", error);
       res.status(500).json({ message: error.message || "Failed to get custom domain status" });
     }
+  });
   // Refresh/retry custom domain validation
   app.post("/api/organization/domain/refresh", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -5963,6 +6040,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[Custom Domain] Error refreshing domain:", error);
       res.status(500).json({ message: error.message || "Failed to refresh custom domain" });
     }
+  });
   // Disconnect custom domain
   app.delete("/api/organization/domain", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -6043,6 +6121,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[Custom Domain] Error disconnecting domain:", error);
       res.status(500).json({ message: error.message || "Failed to disconnect custom domain" });
     }
+  });
   // COMPANY SETTINGS ENDPOINTS
   // ===================================================================
   // Get company settings (admin or superadmin)
@@ -6069,6 +6148,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       });
     }
     res.json({ settings });
+  });
   // Update company settings (admin or superadmin)
   app.patch("/api/settings/company", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -6099,6 +6179,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Invalid request" });
     }
+  });
   // Update own profile (any authenticated user)
   app.patch("/api/settings/profile", requireActiveCompany, async (req: Request, res: Response) => {
     const user = req.user!; // User is guaranteed by middleware
@@ -6136,6 +6217,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Invalid request" });
     }
+  });
   // Get user preferences
   app.get("/api/settings/preferences", requireActiveCompany, async (req: Request, res: Response) => {
     const user = req.user!; // User is guaranteed by middleware
@@ -6150,6 +6232,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         theme: "light",
       }
     });
+  });
   // Update user preferences
   app.patch("/api/settings/preferences", requireActiveCompany, async (req: Request, res: Response) => {
     const user = req.user!; // User is guaranteed by middleware
@@ -6183,6 +6266,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
     }
+  });
   // Toggle Email 2FA
   // Update SIP/WebPhone settings
   app.patch("/api/users/sip", requireActiveCompany, async (req: Request, res: Response) => {
@@ -6204,6 +6288,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[SIP Update] Error:", error);
       res.status(400).json({ message: error.message || "Failed to update SIP settings" });
     }
+  });
   app.patch("/api/settings/2fa/email", requireActiveCompany, async (req: Request, res: Response) => {
     const user = req.user!; // User is guaranteed by middleware
     try {
@@ -6221,6 +6306,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Invalid request" });
     }
+  });
   // Toggle SMS 2FA
   app.patch("/api/settings/2fa/sms", requireActiveCompany, async (req: Request, res: Response) => {
     const user = req.user!; // User is guaranteed by middleware
@@ -6243,6 +6329,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       res.status(400).json({ message: error.message || "Invalid request" });
     }
+  });
   // ===================================================================
   // PLANS MANAGEMENT (Superadmin only)
   // ===================================================================
@@ -6254,6 +6341,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       ? await storage.getAllPlans()
       : await storage.getActivePlans();
     res.json({ plans });
+  });
   // Get plan by ID
   app.get("/api/plans/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const plan = await storage.getPlan(req.params.id);
@@ -6261,6 +6349,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(404).json({ message: "Plan not found" });
     }
     res.json({ plan });
+  });
   // Create plan (superadmin only)
   app.post("/api/plans", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -6274,6 +6363,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
     }
+  });
   // Update plan (superadmin only)
   app.patch("/api/plans/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -6290,6 +6380,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
     }
+  });
   // Sync plan with Stripe (superadmin only)
   app.post("/api/plans/:id/sync-stripe", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -6323,6 +6414,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: error.message 
       });
     }
+  });
   // Delete plan (superadmin only)
   app.delete("/api/plans/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -6334,6 +6426,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(404).json({ message: "Plan not found" });
     }
     res.json({ success: true });
+  });
   // ==================== PLAN FEATURE ASSIGNMENTS ====================
   
   // Get all feature assignments for a plan
@@ -6350,6 +6443,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching plan feature assignments:", error);
       res.status(500).json({ message: "Failed to fetch plan feature assignments" });
     }
+  });
   
   // Bulk set feature assignments for a plan (superadmin only)
   app.post("/api/plans/:planId/features", requireActiveCompany, async (req: Request, res: Response) => {
@@ -6374,6 +6468,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to set plan feature assignments" });
     }
+  });
   
   // Update single feature assignment (superadmin only)
   app.put("/api/plans/:planId/features/:featureId", requireActiveCompany, async (req: Request, res: Response) => {
@@ -6400,6 +6495,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating plan feature assignment:", error);
       res.status(500).json({ message: "Failed to update plan feature assignment" });
     }
+  });
   
   // Delete feature assignment (superadmin only)
   app.delete("/api/plans/:planId/features/:featureId", requireActiveCompany, async (req: Request, res: Response) => {
@@ -6422,6 +6518,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting plan feature assignment:", error);
       res.status(500).json({ message: "Failed to delete plan feature assignment" });
     }
+  });
   
   // Sync plans from Stripe (superadmin only - RECOMMENDED METHOD)
   app.post("/api/plans/sync-from-stripe", requireAuth, async (req: Request, res: Response) => {
@@ -6502,6 +6599,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: error.message 
       });
     }
+  });
   // List all Stripe prices (superadmin only - for debugging/syncing)
   app.get("/api/stripe/list-prices", requireAuth, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -6527,6 +6625,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error listing Stripe prices:", error);
       res.status(500).json({ message: error.message });
     }
+  });
   // ===================================================================
   // ===================================================================
   // PLAN FEATURES MANAGEMENT (Superadmin only)
@@ -6536,11 +6635,13 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     // Public endpoint - no auth required for pricing page display
     const features = await storage.getAllPlanFeatures();
     res.json({ features });
+  });
   // Get active plans for public pricing page (no auth required)
   app.get("/api/public/plans", async (req: Request, res: Response) => {
     // Public endpoint - returns only active plans for pricing page
     const plans = await storage.getActivePlans();
     res.json({ plans });
+  });
   // Create plan feature (superadmin only)
   app.post("/api/plan-features", requireAuth, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -6554,6 +6655,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
     }
+  });
   // Update plan feature (superadmin only)
   app.patch("/api/plan-features/:id", requireAuth, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -6570,6 +6672,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(400).json({ message: "Invalid request" });
     }
+  });
   // Delete plan feature (superadmin only)
   app.delete("/api/plan-features/:id", requireAuth, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -6581,6 +6684,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       return res.status(404).json({ message: "Feature not found" });
     }
     res.json({ success: true });
+  });
   // INVOICES & PAYMENTS
   // ===================================================================
   // Get invoices (scoped by company for non-superadmins, all invoices for superadmin without companyId)
@@ -6607,6 +6711,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const invoices = await storage.getInvoicesByCompany(companyId);
       res.json({ invoices });
     }
+  });
   // Get invoice by ID
   app.get("/api/invoices/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -6621,6 +6726,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     // Get invoice items
     const items = await storage.getInvoiceItems(invoice.id);
     res.json({ invoice, items });
+  });
   // Get payments (scoped by company for non-superadmins)
   app.get("/api/payments", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -6632,6 +6738,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     const payments = await storage.getPaymentsByCompany(companyId);
     res.json({ payments });
+  });
   // ===================================================================
   // SUBSCRIPTION & STRIPE CHECKOUT
   // ===================================================================
@@ -6646,6 +6753,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     }
     const subscription = await storage.getSubscriptionByCompany(companyId);
     res.json({ subscription });
+  });
   // Assign plan to company (superadmin only) - Creates or updates subscription without Stripe
   app.post("/api/companies/:companyId/subscription", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -6803,6 +6911,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error assigning plan to company:", error);
       res.status(500).json({ message: error.message || "Failed to assign plan" });
     }
+  });
   // Select plan for own company (any authenticated user)
   app.post("/api/select-plan", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -7014,6 +7123,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error selecting plan:", error);
       res.status(500).json({ message: error.message || "Failed to select plan" });
     }
+  });
   // Create checkout session
   app.post("/api/checkout", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -7044,6 +7154,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
+  });
   // Cancel subscription
   app.post("/api/subscription/cancel", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -7070,6 +7181,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
+  });
   // ===================================================================
   // BILLING ENDPOINTS
   // ===================================================================
@@ -7120,6 +7232,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
+  });
   // Get billing invoices
   app.get("/api/billing/invoices", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -7182,6 +7295,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
+  });
   // Send invoice via email
   app.post("/api/invoices/:invoiceId/send-email", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -7222,6 +7336,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('[INVOICE] Error sending invoice email:', error);
       res.status(500).json({ message: error.message });
     }
+  });
   // Get billing payments
   app.get("/api/billing/payments", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -7247,6 +7362,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
+  });
   // Get billing subscription details from Stripe
   app.get("/api/billing/subscription", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -7309,6 +7425,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
+  });
   // Skip trial period
   app.post("/api/billing/skip-trial", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -7439,6 +7556,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('[SKIP-TRIAL] Error:', error.message);
       res.status(500).json({ message: error.message });
     }
+  });
   // Change subscription plan
   app.post("/api/billing/change-plan", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -7514,6 +7632,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
+  });
   // Cancel subscription
   app.post("/api/billing/cancel", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -7555,6 +7674,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
+  });
   // Reactivate subscription
   app.post("/api/billing/reactivate", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -7603,6 +7723,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
+  });
   // Apply coupon/promo code
   app.post("/api/billing/apply-coupon", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -7635,6 +7756,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
+  });
   // Apply temporary discount (superadmin only)
   app.post("/api/billing/apply-temporary-discount", requireAuth, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -7711,6 +7833,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('Error applying temporary discount:', error);
       res.status(500).json({ message: error.message });
     }
+  });
   // Get active discount for a company
   app.get("/api/billing/active-discount", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -7772,6 +7895,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
+  });
   // Get discount history for a company
   app.get("/api/billing/discount-history", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -7793,6 +7917,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('[BILLING] Error fetching discount history:', error);
       res.status(500).json({ message: "Failed to fetch discount history" });
     }
+  });
   // Remove discount
   app.post("/api/billing/remove-discount", requireAuth, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -7821,6 +7946,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       res.status(500).json({ message: error.message });
     }
+  });
   // Sync company phone numbers to Stripe customers
   app.post("/api/billing/sync-phone-numbers", requireAuth, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -7867,6 +7993,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('[SYNC-PHONES] Fatal error:', error);
       res.status(500).json({ message: error.message });
     }
+  });
   // =====================================================
   // USER-SCOPED BILLING PAYMENT METHODS
   // Each admin has isolated payment methods with their own Stripe customer
@@ -7937,6 +8064,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('[BILLING] Error fetching payment methods:', error);
       res.status(500).json({ message: error.message });
     }
+  });
   // Create SetupIntent for adding a new payment method (USER-SCOPED)
   app.post("/api/billing/create-setup-intent", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -7981,6 +8109,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('[STRIPE] Error creating setup intent:', error);
       res.status(500).json({ message: error.message });
     }
+  });
   // Attach payment method (USER-SCOPED: saves to user_payment_methods table)
   app.post("/api/billing/attach-payment-method", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -8055,6 +8184,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('[STRIPE] Error attaching payment method:', error);
       res.status(500).json({ message: error.message });
     }
+  });
   // Set default payment method (USER-SCOPED)
   app.post("/api/billing/set-default-payment-method", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -8095,6 +8225,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('[STRIPE] Error setting default payment method:', error);
       res.status(500).json({ message: error.message });
     }
+  });
   // Delete payment method (USER-SCOPED)
   app.delete("/api/billing/payment-method/:paymentMethodId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -8144,6 +8275,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('[STRIPE] Error deleting payment method:', error);
       res.status(500).json({ message: error.message });
     }
+  });
   // Get billing address for company
   app.get("/api/billing/address", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -8170,6 +8302,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('[BILLING] Error fetching billing address:', error);
       res.status(500).json({ message: "Failed to fetch billing address" });
     }
+  });
   // Create or update billing address
   app.post("/api/billing/address", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -8239,6 +8372,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('[BILLING] Error saving billing address:', error);
       res.status(500).json({ message: "Failed to save billing address" });
     }
+  });
   // Create financial support ticket
   app.post("/api/billing/financial-support", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -8290,6 +8424,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Error creating support request" });
     }
+  });
   // Removed /api/my-support-tickets endpoint - users no longer have access to view their tickets directly
   // Get all financial support tickets (superadmin only)
   app.get("/api/tickets", requireAuth, async (req: Request, res: Response) => {
@@ -8305,6 +8440,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('[TICKETS] Error fetching tickets:', error);
       res.status(500).json({ message: "Error fetching tickets" });
     }
+  });
   // Get specific financial support ticket (superadmin only)
   app.get("/api/tickets/:id", requireAuth, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -8322,6 +8458,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('[TICKETS] Error fetching ticket:', error);
       res.status(500).json({ message: "Error fetching ticket" });
     }
+  });
   // Update financial support ticket (superadmin only)
   app.patch("/api/tickets/:id", requireAuth, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -8391,6 +8528,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('[TICKETS] Error updating ticket:', error);
       res.status(500).json({ message: "Error updating ticket" });
     }
+  });
   // Delete financial support ticket (superadmin only)
   app.delete("/api/tickets/:id", requireAuth, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -8408,6 +8546,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('[TICKETS] Error deleting ticket:', error);
       res.status(500).json({ message: "Error deleting ticket" });
     }
+  });
   // ===================================================================
   // STRIPE WEBHOOKS
   // ===================================================================
@@ -8632,6 +8771,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Webhook error:", error.message);
       res.status(400).json({ message: `Webhook verification failed: ${error.message}` });
     }
+  });
   // =====================================================
   // EMAIL & NOTIFICATIONS ENDPOINTS
   // =====================================================
@@ -8661,6 +8801,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         message: error.message 
       });
     }
+  });
   // Send test email
   app.post("/api/email/send-test", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -8695,6 +8836,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         message: error.message 
       });
     }
+  });
   // Get user notifications (all authenticated users)
   app.get("/api/notifications", requireAuth, async (req: Request, res: Response) => {
     const user = req.user!; // User is guaranteed by middleware
@@ -8705,6 +8847,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch notifications" });
     }
+  });
   // Mark notification as read (with ownership verification)
   app.patch("/api/notifications/:id/read", requireAuth, async (req: Request, res: Response) => {
     const user = req.user!;
@@ -8724,6 +8867,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to mark notification as read" });
     }
+  });
   // Mark all notifications as read
   app.patch("/api/notifications/read-all", requireAuth, async (req: Request, res: Response) => {
     const user = req.user!;
@@ -8733,6 +8877,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to mark all notifications as read" });
     }
+  });
   // Delete notification (with ownership verification)
   app.delete("/api/notifications/:id", requireAuth, async (req: Request, res: Response) => {
     const user = req.user!;
@@ -8752,6 +8897,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to delete notification" });
     }
+  });
   // Create notification (with optional email)
   app.post("/api/notifications", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -8792,6 +8938,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to create notification" });
     }
+  });
   // Mark notification as read
   app.patch("/api/notifications/:id/read", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -8803,6 +8950,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to update notification" });
     }
+  });
   // Mark all notifications as read
   app.post("/api/notifications/mark-all-read", requireActiveCompany, async (req: Request, res: Response) => {
     const user = req.user!; // User is guaranteed by middleware
@@ -8812,6 +8960,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to mark notifications as read" });
     }
+  });
   // Broadcast notification to all users (superadmin only)
   app.post("/api/notifications/broadcast", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -8852,6 +9001,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('Broadcast notification error:', error);
       res.status(500).json({ message: "Failed to broadcast notification" });
     }
+  });
   // Get broadcast history (superadmin only)
   app.get("/api/notifications/broadcast/history", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -8865,6 +9015,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('Get broadcast history error:', error);
       res.status(500).json({ message: "Failed to get broadcast history" });
     }
+  });
   // Resend broadcast notification (superadmin only)
   app.post("/api/notifications/broadcast/:id/resend", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -8902,6 +9053,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('Resend broadcast error:', error);
       res.status(500).json({ message: "Failed to resend broadcast notification" });
     }
+  });
   // Delete broadcast notification from history (superadmin only)
   app.delete("/api/notifications/broadcast/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -8938,6 +9090,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('Delete broadcast error:', error);
       res.status(500).json({ message: "Failed to delete broadcast notification" });
     }
+  });
   // Create missed call notification
   app.post("/api/notifications/missed-call", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -8970,6 +9123,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error('Create missed call notification error:', error);
       res.status(500).json({ message: "Failed to create notification" });
     }
+  });
   // ==================== EMAIL TEMPLATES ENDPOINTS ====================
   // Get all email templates (superadmin only)
   app.get("/api/email-templates", requireActiveCompany, async (req: Request, res: Response) => {
@@ -8983,6 +9137,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch email templates" });
     }
+  });
   // Get single email template (superadmin only)
   app.get("/api/email-templates/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -8998,6 +9153,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch email template" });
     }
+  });
   // Create email template (superadmin only)
   app.post("/api/email-templates", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -9011,6 +9167,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(400).json({ message: "Invalid template data" });
     }
+  });
   // Update email template (superadmin only)
   app.put("/api/email-templates/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -9027,6 +9184,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(400).json({ message: "Invalid template data" });
     }
+  });
   // Delete email template (superadmin only)
   app.delete("/api/email-templates/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -9042,6 +9200,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to delete template" });
     }
+  });
   // ==================== FEATURES ENDPOINTS ====================
   // Get all features (superadmin only)
   app.get("/api/features", requireActiveCompany, async (req: Request, res: Response) => {
@@ -9055,6 +9214,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch features" });
     }
+  });
   // Create feature (superadmin only)
   app.post("/api/features", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -9068,6 +9228,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       res.status(400).json({ message: "Invalid feature data" });
     }
+  });
   // Update feature (superadmin only)
   app.patch("/api/features/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -9084,6 +9245,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(400).json({ message: "Invalid feature data" });
     }
+  });
   // Delete feature (superadmin only)
   app.delete("/api/features/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -9099,6 +9261,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to delete feature" });
     }
+  });
   // ==================== COMPANY FEATURES ENDPOINTS ====================
   // Get features for a company
   app.get("/api/companies/:companyId/features", requireActiveCompany, async (req: Request, res: Response) => {
@@ -9113,6 +9276,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch company features" });
     }
+  });
   // Add feature to company (superadmin only)
   app.post("/api/companies/:companyId/features", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -9136,6 +9300,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error(`[FEATURES] Error adding feature:`, error);
       res.status(400).json({ message: error.message || "Failed to add feature to company" });
     }
+  });
   // Remove feature from company (superadmin only)
   app.delete("/api/companies/:companyId/features/:featureId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!; // User is guaranteed by middleware
@@ -9154,6 +9319,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to remove feature from company" });
     }
+  });
   // ==================== AUDIT LOGS ENDPOINTS ====================
   // Get audit logs (role-based access)
   app.get("/api/audit-logs", requireActiveCompany, async (req: Request, res: Response) => {
@@ -9214,6 +9380,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch audit logs" });
     }
+  });
   // Resend email from activity log (superadmin only)
   app.post("/api/email/resend", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9241,6 +9408,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Failed to resend email:", error);
       res.status(500).json({ message: error.message || "Failed to resend email" });
     }
+  });
   // ==================== EMAIL CAMPAIGNS ENDPOINTS ====================
   // Get all campaigns (superadmin only)
   app.get("/api/campaigns", requireActiveCompany, async (req: Request, res: Response) => {
@@ -9254,6 +9422,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch campaigns" });
     }
+  });
   // Create a new campaign (superadmin only)
   app.post("/api/campaigns", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9281,6 +9450,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const errorMessage = error instanceof Error ? error.message : "Failed to create campaign";
       res.status(500).json({ message: errorMessage });
     }
+  });
   // Get campaign by ID (superadmin only)
   app.get("/api/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9296,6 +9466,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch campaign" });
     }
+  });
   // Update campaign (superadmin only)
   app.patch("/api/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9320,6 +9491,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(400).json({ message: "Failed to update campaign" });
     }
+  });
   // Delete campaign (superadmin only)
   app.delete("/api/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9339,6 +9511,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to delete campaign" });
     }
+  });
   // Send campaign (superadmin only) - This will be implemented with EmailCampaignService
   app.post("/api/campaigns/:id/send", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9366,6 +9539,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error(`[CAMPAIGN SEND] Exception:`, error);
       res.status(500).json({ message: "Failed to send campaign" });
     }
+  });
   // ==================== SMS CAMPAIGNS ENDPOINTS ====================
   // Get all SMS campaigns (superadmin only)
   app.get("/api/sms-campaigns", requireActiveCompany, async (req: Request, res: Response) => {
@@ -9379,6 +9553,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch SMS campaigns" });
     }
+  });
   // Create a new SMS campaign (superadmin only)
   app.post("/api/sms-campaigns", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9402,6 +9577,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to create SMS campaign" });
     }
+  });
   // Get single SMS campaign with stats (superadmin only)
   app.get("/api/sms-campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9418,6 +9594,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch SMS campaign" });
     }
+  });
   // Get SMS campaign statistics (superadmin only)
   app.get("/api/sms-campaigns/:id/stats", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9449,6 +9626,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch SMS campaign statistics" });
     }
+  });
   // Delete SMS campaign (superadmin only)
   app.delete("/api/sms-campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9465,6 +9643,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to delete SMS campaign" });
     }
+  });
   // Send SMS campaign (superadmin only)
   app.post("/api/sms-campaigns/:id/send", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9547,6 +9726,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error(`[SMS CAMPAIGN SEND] Exception:`, error);
       res.status(500).json({ message: "Failed to send SMS campaign" });
     }
+  });
   // ==================== EMAIL CONTACTS/SUBSCRIPTIONS ENDPOINTS ====================
   // Get all users (contacts) - superadmin only
   app.get("/api/contacts", requireActiveCompany, async (req: Request, res: Response) => {
@@ -9560,6 +9740,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch contacts" });
     }
+  });
   // Get unified contacts from all sources (superadmin and admin)
   app.get("/api/contacts/unified", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9608,6 +9789,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching unified contacts:", error);
       res.status(500).json({ message: "Failed to fetch unified contacts" });
     }
+  });
   // Create manual contact from SMS chat
   app.post("/api/contacts/manual", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9640,6 +9822,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to create manual contact" });
     }
+  });
   // ==================== COMPREHENSIVE CONTACT MANAGEMENT ROUTES ====================
   // Get paginated contacts with filters (replaces the basic get all)
   app.get("/api/contacts/list", requireActiveCompany, async (req: Request, res: Response) => {
@@ -9685,6 +9868,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[CONTACTS] Error listing contacts:", error);
       res.status(500).json({ message: "Failed to fetch contacts" });
     }
+  });
   // Create new contact (enhanced version)
   app.post("/api/contacts/create", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9714,6 +9898,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         res.status(500).json({ message: "Failed to create contact" });
       }
     }
+  });
   // Get single contact by ID
   app.get("/api/contacts/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9735,6 +9920,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[CONTACTS] Error fetching contact:", error);
       res.status(500).json({ message: "Failed to fetch contact" });
     }
+  });
   // Update contact
   app.put("/api/contacts/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9758,6 +9944,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         res.status(500).json({ message: "Failed to update contact" });
       }
     }
+  });
   // Delete single contact
   app.delete("/api/contacts/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9777,6 +9964,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[CONTACTS] Error deleting contact:", error);
       res.status(500).json({ message: "Failed to delete contact" });
     }
+  });
   // Bulk delete contacts
   app.post("/api/contacts/bulk-delete", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9795,6 +9983,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[CONTACTS] Error bulk deleting contacts:", error);
       res.status(500).json({ message: "Failed to delete contacts" });
     }
+  });
   // Import contacts from CSV with preview
   app.post("/api/contacts/import-csv", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9837,6 +10026,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[CONTACTS] Error importing CSV:", error);
       res.status(500).json({ message: "Failed to import contacts" });
     }
+  });
   // Export contacts to CSV
   app.get("/api/contacts/export-csv", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9856,6 +10046,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[CONTACTS] Error exporting CSV:", error);
       res.status(500).json({ message: "Failed to export contacts" });
     }
+  });
   // Bulk list operations
   app.post("/api/contacts/bulk-list-operations", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9901,6 +10092,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[CONTACTS] Error performing bulk list operation:", error);
       res.status(500).json({ message: "Failed to perform operation" });
     }
+  });
   // Import contacts from CSV (superadmin only)
   app.post("/api/contacts/import", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -9959,6 +10151,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[IMPORT CONTACTS] Error:", error);
       res.status(500).json({ message: "Failed to import contacts" });
     }
+  });
   // =====================================================
   // BLACKLIST ENDPOINTS
   // POST /api/contacts/backfill-from-policies - Backfill contacts from existing policies (admin + superadmin)
@@ -9982,6 +10175,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[CONTACTS BACKFILL] Error:", error);
       res.status(500).json({ message: "Failed to backfill contacts", error: error.message });
     }
+  });
   // =====================================================
   // GET /api/blacklist - List blacklist entries (admin + superadmin)
   app.get("/api/blacklist", requireActiveCompany, async (req: Request, res: Response) => {
@@ -10010,6 +10204,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[BLACKLIST] Error fetching blacklist entries:", error);
       res.status(500).json({ message: "Failed to fetch blacklist entries" });
     }
+  });
   // POST /api/blacklist - Add to blacklist (admin + superadmin)
   app.post("/api/blacklist", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10054,6 +10249,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to add to blacklist" });
     }
+  });
   // DELETE /api/blacklist/:id - Remove from blacklist (admin + superadmin)
   app.delete("/api/blacklist/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10087,6 +10283,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[BLACKLIST] Error removing from blacklist:", error);
       res.status(500).json({ message: "Failed to remove from blacklist" });
     }
+  });
   // Update user email subscription
   app.patch("/api/users/:id/subscription", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10108,6 +10305,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to update subscription" });
     }
+  });
   // Public unsubscribe endpoint (no auth required)
   app.post("/api/unsubscribe", async (req: Request, res: Response) => {
     try {
@@ -10147,6 +10345,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to unsubscribe" });
     }
+  });
   // Toggle SMS subscription (authenticated endpoint)
   app.patch("/api/users/:userId/sms-subscription", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10176,6 +10375,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to update SMS subscription" });
     }
+  });
   // ==================== EMAIL TRACKING (Public endpoints) ====================
   // Track email open (transparent pixel)
   app.get("/api/track/open", async (req: Request, res: Response) => {
@@ -10230,6 +10430,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).send();
     }
+  });
   // Track link click and redirect
   app.get("/api/track/click", async (req: Request, res: Response) => {
     try {
@@ -10293,6 +10494,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[TRACKING] Error:", error);
       res.status(500).json({ message: "Tracking failed" });
     }
+  });
   // Get campaign statistics (authenticated, superadmin only)
   app.get("/api/campaigns/:id/stats", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10306,6 +10508,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to get campaign statistics" });
     }
+  });
   // Get campaign emails list (authenticated, superadmin only)
   app.get("/api/campaigns/:id/emails", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10323,6 +10526,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to get campaign emails" });
     }
+  });
   // ==================== CONTACT LISTS ENDPOINTS ====================
   // Get all contact lists (admin and superadmin)
   app.get("/api/contact-lists", requireActiveCompany, async (req: Request, res: Response) => {
@@ -10355,6 +10559,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[CONTACT LISTS] Error fetching lists:", error);
       res.status(500).json({ message: "Failed to fetch contact lists" });
     }
+  });
   // Get contact list by ID (admin and superadmin)
   app.get("/api/contact-lists/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10370,6 +10575,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch contact list" });
     }
+  });
   // Create contact list (admin and superadmin)
   app.post("/api/contact-lists", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10390,6 +10596,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to create contact list" });
     }
+  });
   // Update contact list (admin and superadmin)
   app.patch("/api/contact-lists/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10409,6 +10616,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to update contact list" });
     }
+  });
   // Delete contact list (admin and superadmin)
   app.delete("/api/contact-lists/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10424,6 +10632,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to delete contact list" });
     }
+  });
   // Get members of a contact list (admin and superadmin)
   app.get("/api/contact-lists/:id/members", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10436,6 +10645,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch list members" });
     }
+  });
   // Add member to contact list (admin and superadmin)
   app.post("/api/contact-lists/:id/members", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10452,6 +10662,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to add member to list" });
     }
+  });
   // Bulk add contacts to list (admin and superadmin)
   app.post("/api/contact-lists/:listId/members/bulk-add", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10490,6 +10701,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[CONTACT-LISTS] Error bulk adding contacts:", error);
       res.status(500).json({ message: "Failed to add contacts to list" });
     }
+  });
   // Remove member from contact list (admin and superadmin)
   app.delete("/api/contact-lists/:id/members/:contactId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10505,6 +10717,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to remove member" });
     }
+  });
   // Bulk move contacts between lists (admin and superadmin)
   app.post("/api/contact-lists/bulk-move", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10536,6 +10749,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error moving contacts:", error);
       res.status(500).json({ message: "Failed to move contacts", error: error instanceof Error ? error.message : "Unknown error" });
     }
+  });
   // ==================== INCOMING SMS MESSAGES ====================
   // Get all incoming SMS messages (superadmin only)
   app.get("/api/incoming-sms", requireActiveCompany, async (req: Request, res: Response) => {
@@ -10549,6 +10763,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to fetch incoming SMS messages" });
     }
+  });
   // Mark incoming SMS as read (superadmin only)
   app.patch("/api/incoming-sms/:id/read", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10561,6 +10776,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error) {
       res.status(500).json({ message: "Failed to mark message as read" });
     }
+  });
   // ==================== SMS CHAT ====================
   // Get all chat conversations (superadmin only)
   app.get("/api/chat/conversations", requireActiveCompany, async (req: Request, res: Response) => {
@@ -10584,6 +10800,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
     }
+  });
   // Get unread conversations count (superadmin only)
   app.get("/api/chat/unread-count", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10603,6 +10820,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching unread count:", error);
       res.status(500).json({ message: "Failed to fetch unread count" });
     }
+  });
   // Mark all conversations as read (superadmin only)
   app.post("/api/chat/mark-all-read", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10621,6 +10839,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error marking all as read:", error);
       res.status(500).json({ message: "Failed to mark all as read" });
     }
+  });
   // Get messages for a specific conversation (superadmin only)
   app.get("/api/chat/conversations/:phoneNumber/messages", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10642,6 +10861,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching conversation messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
     }
+  });
   // Send SMS message (superadmin only)
   app.post("/api/chat/send", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10707,6 +10927,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: error instanceof Error ? error.message : "Unknown error"
       });
     }
+  });
   // Mark conversation as read (superadmin only)
   app.post("/api/chat/conversations/:phoneNumber/read", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10723,6 +10944,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error marking conversation as read:", error);
       res.status(500).json({ message: "Failed to mark conversation as read" });
     }
+  });
   // Get notes for a conversation (superadmin only)
   app.get("/api/chat/conversations/:phoneNumber/notes", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10745,6 +10967,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching chat notes:", error);
       res.status(500).json({ message: "Failed to fetch notes" });
     }
+  });
   // Create a note for a conversation (superadmin only)
   app.post("/api/chat/conversations/:phoneNumber/notes", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10775,6 +10998,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error creating chat note:", error);
       res.status(500).json({ message: "Failed to create note" });
     }
+  });
   // Update a note (superadmin only)
   app.patch("/api/chat/notes/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10797,6 +11021,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating chat note:", error);
       res.status(500).json({ message: "Failed to update note" });
     }
+  });
   // Delete a note (superadmin only)
   app.delete("/api/chat/notes/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10812,6 +11037,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting chat note:", error);
       res.status(500).json({ message: "Failed to delete note" });
     }
+  });
   // Delete entire conversation (superadmin only)
   app.delete("/api/chat/conversations/:phoneNumber", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10839,6 +11065,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting conversation:", error);
       res.status(500).json({ message: "Failed to delete conversation" });
     }
+  });
   // ==================== QUOTES ====================
   // Quote stats endpoint
   app.get("/api/quotes/stats", requireActiveCompany, async (req: Request, res: Response) => {
@@ -10910,6 +11137,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching quote stats:", error);
       res.status(500).json({ message: "Failed to fetch quote statistics" });
     }
+  });
   // Quote OEP stats endpoint
   app.get("/api/quotes/oep-stats", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -10920,6 +11148,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       aca: 0,
       medicare: 0
     });
+  });
   // Create quote
   app.post("/api/quotes", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -11030,6 +11259,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error creating quote:", error);
       res.status(400).json({ message: error.message || "Failed to create quote" });
     }
+  });
   // Get all quotes for company (paginated with cursor)
   // WARNING: This endpoint returns PII - SSN must be masked
   app.get("/api/quotes", requireActiveCompany, async (req: Request, res: Response) => {
@@ -11126,6 +11356,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching quotes:", error);
       res.status(500).json({ message: "Failed to fetch quotes" });
     }
+  });
   // Get single quote by ID
   // WARNING: This endpoint returns PII - SSN must be masked
   app.get("/api/quotes/:id", requireActiveCompany, async (req: Request, res: Response) => {
@@ -11157,6 +11388,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching quote:", error);
       res.status(500).json({ message: "Failed to fetch quote" });
     }
+  });
   // Get all members with income and immigration data for a quote
   app.get("/api/quotes/:id/members-details", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -11189,6 +11421,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching members details:", error);
       res.status(500).json({ message: "Failed to fetch members details" });
     }
+  });
   // Get total household income for a quote (sum of all family members)
   app.get("/api/quotes/:id/household-income", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -11223,6 +11456,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error calculating household income:", error);
       res.status(500).json({ message: "Failed to calculate household income" });
     }
+  });
   // UNIFIED QUOTE DETAIL - Gets ALL related data in one call to prevent stale cache issues
   app.get("/api/quotes/:id/detail", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -11252,6 +11486,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to fetch quote details" });
     }
+  });
   // Update quote
   // WARNING: This endpoint handles PII (SSN) - never log full request body or return unmasked SSN
   app.patch("/api/quotes/:id", requireActiveCompany, async (req: Request, res: Response) => {
@@ -11363,6 +11598,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(400).json({ message: error.message || "Failed to update quote" });
     }
+  });
   // Delete quote
   app.delete("/api/quotes/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -11398,6 +11634,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting quote:", error);
       res.status(500).json({ message: "Failed to delete quote" });
     }
+  });
   // Block/Unblock quote
   app.post("/api/quotes/:id/block", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -11444,6 +11681,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating quote block status:", error);
       res.status(400).json({ message: error.message || "Failed to update quote block status" });
     }
+  });
   // Duplicate quote - creates a complete copy with new ID
   app.post("/api/quotes/:id/duplicate", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -11632,6 +11870,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error duplicating quote:", error);
       res.status(500).json({ message: error.message || "Failed to duplicate quote" });
     }
+  });
   // Get quotes by applicant (same SSN or email)
   // WARNING: This endpoint returns PII - SSN must be masked
   app.get("/api/quotes/by-applicant", requireActiveCompany, async (req: Request, res: Response) => {
@@ -11677,6 +11916,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching quotes by applicant:", error);
       res.status(500).json({ message: "Failed to fetch quotes" });
     }
+  });
   // ==================== QUOTE PLANS (Multi-plan support) ====================
   // GET /api/quotes/:id/plans - List all plans for a quote
   app.get("/api/quotes/:id/plans", requireActiveCompany, async (req: Request, res: Response) => {
@@ -11699,6 +11939,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
+  });
   // POST /api/quotes/:id/plans - Add a new plan to a quote (APPEND, don't replace)
   app.post("/api/quotes/:id/plans", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -11745,6 +11986,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
+  });
   // DELETE /api/quotes/:id/plans/:planId - Remove a specific plan
   app.delete("/api/quotes/:id/plans/:planId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -11780,6 +12022,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
+  });
   // POST /api/quotes/:id/plans/:planId/set-primary - Set a plan as primary
   app.post("/api/quotes/:id/plans/:planId/set-primary", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -11813,6 +12056,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
+  });
   // Archive/Unarchive quote
   app.post("/api/quotes/:id/archive", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -11852,6 +12096,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error archiving quote:", error);
       res.status(400).json({ message: error.message || "Failed to update quote status" });
     }
+  });
   // ==================== QUOTE MEMBERS ====================
   // Get all members for a quote
   app.get("/api/quotes/:quoteId/members", requireActiveCompany, async (req: Request, res: Response) => {
@@ -11885,6 +12130,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error getting quote members:", error);
       res.status(500).json({ message: "Failed to get quote members" });
     }
+  });
   // Get single member by ID
   app.get("/api/quotes/:quoteId/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -11925,6 +12171,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error getting quote member:", error);
       res.status(500).json({ message: "Failed to get quote member" });
     }
+  });
   // Create new member
   app.post("/api/quotes/:quoteId/members", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -11968,6 +12215,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(400).json({ message: error.message || "Failed to create quote member" });
     }
+  });
   // Update member
   app.patch("/api/quotes/:quoteId/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -12019,6 +12267,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(400).json({ message: error.message || "Failed to update quote member" });
     }
+  });
   // Delete member
   app.delete("/api/quotes/:quoteId/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -12061,6 +12310,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting quote member:", error);
       res.status(500).json({ message: "Failed to delete quote member" });
     }
+  });
   // Create new quote member (for AddMemberSheet)
   app.post("/api/quotes/:quoteId/members", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -12123,6 +12373,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: error.message || "Failed to create quote member" });
     }
+  });
   // Ensure quote member exists (create or update) - returns memberId
   app.post("/api/quotes/:quoteId/ensure-member", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -12184,6 +12435,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error ensuring quote member:", error);
       res.status(500).json({ message: "Failed to ensure quote member" });
     }
+  });
   // Update member basic data
   app.put("/api/quotes/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -12245,6 +12497,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating member:", error);
       res.status(500).json({ message: "Failed to update member" });
     }
+  });
   // Delete member (and cascading related data)
   app.delete("/api/quotes/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -12290,6 +12543,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting member:", error);
       res.status(500).json({ message: "Failed to delete member" });
     }
+  });
   // ==================== MEMBER INCOME ====================
   // Get member income
   app.get("/api/quotes/members/:memberId/income", requireActiveCompany, async (req: Request, res: Response) => {
@@ -12320,6 +12574,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error getting member income:", error);
       res.status(500).json({ message: "Failed to get member income" });
     }
+  });
   // Create or update member income (upsert) - DELETE if annualIncome is empty
   app.put("/api/quotes/members/:memberId/income", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -12388,6 +12643,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(400).json({ message: error.message || "Failed to save member income" });
     }
+  });
   // Delete member income
   app.delete("/api/quotes/members/:memberId/income", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -12427,6 +12683,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting member income:", error);
       res.status(500).json({ message: "Failed to delete member income" });
     }
+  });
   // ==================== MEMBER IMMIGRATION ====================
   // Get member immigration
   app.get("/api/quotes/members/:memberId/immigration", requireActiveCompany, async (req: Request, res: Response) => {
@@ -12468,6 +12725,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error getting member immigration:", error);
       res.status(500).json({ message: "Failed to get member immigration" });
     }
+  });
   // Create or update member immigration (upsert)
   app.put("/api/quotes/members/:memberId/immigration", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -12517,6 +12775,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(400).json({ message: error.message || "Failed to save member immigration" });
     }
+  });
   // Delete member immigration
   app.delete("/api/quotes/members/:memberId/immigration", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -12556,6 +12815,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting member immigration:", error);
       res.status(500).json({ message: "Failed to delete member immigration" });
     }
+  });
   // ==================== MEMBER DOCUMENTS ====================
   // Get all documents for a member
   app.get("/api/quotes/members/:memberId/documents", requireActiveCompany, async (req: Request, res: Response) => {
@@ -12582,6 +12842,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error getting member documents:", error);
       res.status(500).json({ message: "Failed to get member documents" });
     }
+  });
   // Upload document (base64 JSON)
   app.post("/api/quotes/members/:memberId/documents", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -12681,6 +12942,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(400).json({ message: error.message || "Failed to upload document" });
     }
+  });
   // Get single document metadata
   app.get("/api/quotes/members/:memberId/documents/:docId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -12713,6 +12975,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error getting document:", error);
       res.status(500).json({ message: "Failed to get document" });
     }
+  });
   // Download document file
   app.get("/api/quotes/members/:memberId/documents/:docId/download", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -12763,6 +13026,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error downloading document:", error);
       res.status(500).json({ message: "Failed to download document" });
     }
+  });
   // Delete document and file
   app.delete("/api/quotes/members/:memberId/documents/:docId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -12817,6 +13081,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting document:", error);
       res.status(500).json({ message: "Failed to delete document" });
     }
+  });
   // ==================== QUOTE PAYMENT METHODS ====================
   // Get all payment methods for a quote (PLAIN TEXT - NO ENCRYPTION)
   app.get("/api/quotes/:quoteId/payment-methods", requireActiveCompany, async (req: Request, res: Response) => {
@@ -12850,6 +13115,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error getting payment methods:", error);
       res.status(500).json({ message: "Failed to get payment methods" });
     }
+  });
   // Get single payment method by ID (PLAIN TEXT - NO ENCRYPTION)
   app.get("/api/quotes/:quoteId/payment-methods/:paymentMethodId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -12890,6 +13156,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error getting payment method:", error);
       res.status(500).json({ message: "Failed to get payment method" });
     }
+  });
   // Create new payment method (PLAIN TEXT - NO ENCRYPTION)
   app.post("/api/quotes/:quoteId/payment-methods", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -12935,6 +13202,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(400).json({ message: error.message || "Failed to create payment method" });
     }
+  });
   // Update payment method (PLAIN TEXT - NO ENCRYPTION)
   app.patch("/api/quotes/:quoteId/payment-methods/:paymentMethodId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -12987,6 +13255,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(400).json({ message: error.message || "Failed to update payment method" });
     }
+  });
   // Delete payment method
   app.delete("/api/quotes/:quoteId/payment-methods/:paymentMethodId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -13031,6 +13300,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting payment method:", error);
       res.status(500).json({ message: "Failed to delete payment method" });
     }
+  });
   // Set default payment method
   app.post("/api/quotes/:quoteId/payment-methods/:paymentMethodId/set-default", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -13072,6 +13342,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error setting default payment method:", error);
       res.status(500).json({ message: "Failed to set default payment method" });
     }
+  });
   // ==================== QUOTE NOTES ====================
   // Create a new note for a quote
   app.post("/api/quotes/:quoteId/notes", requireActiveCompany, async (req: Request, res: Response) => {
@@ -13119,6 +13390,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error creating quote note:", error);
       res.status(500).json({ message: "Failed to create quote note" });
     }
+  });
   // Get all notes for a quote
   app.get("/api/quotes/:quoteId/notes", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -13139,6 +13411,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching quote notes:", error);
       res.status(500).json({ message: "Failed to fetch quote notes" });
     }
+  });
   // Update a quote note
   app.patch("/api/quotes/:quoteId/notes/:noteId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -13205,6 +13478,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating quote note:", error);
       res.status(500).json({ message: "Failed to update quote note" });
     }
+  });
   // Delete a quote note
   app.delete("/api/quotes/:quoteId/notes/:noteId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -13253,6 +13527,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting quote note:", error);
       res.status(500).json({ message: "Failed to delete quote note" });
     }
+  });
   // Upload image attachment for quote notes
   app.post("/api/quotes/:quoteId/notes/upload", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -13336,6 +13611,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error uploading note attachment:", error);
       res.status(500).json({ message: error.message || "Failed to upload attachment" });
     }
+  });
   // ==================== QUOTE DOCUMENTS ENDPOINTS ====================
   // Multer configuration for quote documents
   const documentStorage = multer.diskStorage({
@@ -13353,6 +13629,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const ext = path.extname(file.originalname);
       cb(null, `${quoteId}_${timestamp}_${randomString}${ext}`);
     }
+  });
   const documentUpload = multer({
     storage: documentStorage,
     limits: { fileSize: 10 * 1024 * 1024 }, // 10MB
@@ -13370,6 +13647,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         cb(new Error('Invalid file type. Allowed types: PDF, images (JPEG, PNG, GIF, WebP), and Office documents (DOCX, XLSX, PPTX).'));
       }
     }
+  });
   // GET /api/quotes/:quoteId/documents - List all documents for a quote
   app.get("/api/quotes/:quoteId/documents", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -13395,6 +13673,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error listing quote documents:", error);
       res.status(500).json({ message: "Failed to list documents" });
     }
+  });
   // POST /api/quotes/:quoteId/documents/upload - Upload a new document
   app.post("/api/quotes/:quoteId/documents/upload", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -13465,6 +13744,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error uploading document:", error);
       res.status(500).json({ message: error.message || "Failed to upload document" });
     }
+  });
   // GET /api/quotes/:quoteId/documents/:documentId/download - Download a document
   app.get("/api/quotes/:quoteId/documents/:documentId/download", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -13523,6 +13803,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error downloading document:", error);
       res.status(500).json({ message: "Failed to download document" });
     }
+  });
   // DELETE /api/quotes/:quoteId/documents/:documentId - Delete a document
   app.delete("/api/quotes/:quoteId/documents/:documentId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -13583,6 +13864,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting document:", error);
       res.status(500).json({ message: "Failed to delete document" });
     }
+  });
   // ==================== QUOTE REMINDERS ====================
   // GET /api/quotes/:quoteId/reminders - List all reminders for a quote
   app.get("/api/quotes/:quoteId/reminders", requireActiveCompany, async (req: Request, res: Response) => {
@@ -13610,6 +13892,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching reminders:", error);
       res.status(500).json({ message: "Failed to fetch reminders" });
     }
+  });
   // GET /api/quotes/:quoteId/reminders/:reminderId - Get a specific reminder
   app.get("/api/quotes/:quoteId/reminders/:reminderId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -13637,6 +13920,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching reminder:", error);
       res.status(500).json({ message: "Failed to fetch reminder" });
     }
+  });
   // POST /api/quotes/:quoteId/reminders - Create a new reminder
   app.post("/api/quotes/:quoteId/reminders", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -13679,6 +13963,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to create reminder" });
     }
+  });
   // PUT /api/quotes/:quoteId/reminders/:reminderId - Update a reminder
   app.put("/api/quotes/:quoteId/reminders/:reminderId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -13722,6 +14007,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to update reminder" });
     }
+  });
   // DELETE /api/quotes/:quoteId/reminders/:reminderId - Delete a reminder
   app.delete("/api/quotes/:quoteId/reminders/:reminderId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -13763,6 +14049,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting reminder:", error);
       res.status(500).json({ message: "Failed to delete reminder" });
     }
+  });
   // PUT /api/quotes/:quoteId/reminders/:reminderId/complete - Mark reminder as completed
   app.put("/api/quotes/:quoteId/reminders/:reminderId/complete", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -13803,6 +14090,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error completing reminder:", error);
       res.status(500).json({ message: "Failed to complete reminder" });
     }
+  });
   // PUT /api/quotes/:quoteId/reminders/:reminderId/snooze - Snooze reminder
   app.put("/api/quotes/:quoteId/reminders/:reminderId/snooze", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -13877,6 +14165,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error snoozing reminder:", error);
       res.status(500).json({ message: "Failed to snooze reminder" });
     }
+  });
   // ==================== CALENDAR EVENTS ====================
   // Calendar events cache - 60 second TTL
   const calendarEventsCache = new Map<string, { data: any; timestamp: number }>();
@@ -14253,6 +14542,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching calendar events:", error);
       res.status(500).json({ message: "Failed to fetch calendar events" });
     }
+  });
   // POST /api/calendar/events/birthday - Create manual birthday event
   app.post("/api/calendar/events/birthday", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -14285,6 +14575,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to create birthday event" });
     }
+  });
   // GET /api/standalone-reminders - List standalone reminders
   app.get("/api/standalone-reminders", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -14333,6 +14624,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching standalone reminders:", error);
       res.status(500).json({ message: "Failed to fetch reminders" });
     }
+  });
   // POST /api/standalone-reminders - Create standalone reminder
   app.post("/api/standalone-reminders", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -14365,6 +14657,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to create reminder" });
     }
+  });
   // POST /api/calendar/events/reminder - Create standalone reminder event
   app.post("/api/calendar/events/reminder", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -14397,6 +14690,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to create reminder event" });
     }
+  });
   // POST /api/calendar/events/appointment - Create manual appointment event
   app.post("/api/calendar/events/appointment", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -14429,6 +14723,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to create appointment event" });
     }
+  });
   // ==================== PLAN SELECTION ====================
   // POST /api/quotes/:quoteId/select-plan - Select a marketplace plan for a quote
   app.post("/api/quotes/:quoteId/select-plan", requireActiveCompany, async (req: Request, res: Response) => {
@@ -14474,6 +14769,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error selecting plan:", error);
       res.status(500).json({ message: "Failed to select plan" });
     }
+  });
   // POST /api/quotes/:id/submit-policy - Submit quote as policy
   app.post("/api/quotes/:id/submit-policy", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -14515,6 +14811,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
+  });
   // PATCH /api/quotes/:id/statuses - Update quote statuses (status, documentsStatus, paymentStatus)
   app.patch("/api/quotes/:id/statuses", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -14574,6 +14871,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to update quote statuses" });
     }
+  });
   // ==================== CONSENT DOCUMENTS ====================
   // POST /api/quotes/:id/consents/generate - Generate new consent document
   app.post("/api/quotes/:id/consents/generate", requireActiveCompany, async (req: Request, res: Response) => {
@@ -14607,6 +14905,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error generating consent document:", error);
       res.status(500).json({ message: "Failed to generate consent document" });
     }
+  });
   // POST /api/consents/:id/send - Send consent via email/sms/link
   app.post("/api/consents/:id/send", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -14779,6 +15078,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error sending consent:", error);
       res.status(500).json({ message: "Failed to send consent document" });
     }
+  });
   // GET /api/quotes/:id/consents - List all consents for a quote
   app.get("/api/quotes/:id/consents", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -14799,6 +15099,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error listing consents:", error);
       res.status(500).json({ message: "Failed to list consents" });
     }
+  });
   // DELETE /api/consents/:id - Delete consent document
   app.delete("/api/consents/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -14829,6 +15130,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting consent:", error);
       res.status(500).json({ message: "Failed to delete consent document" });
     }
+  });
   // ==================== CMS MARKETPLACE API ====================
   // Get health insurance plans from CMS Marketplace API
   app.post("/api/cms-marketplace/plans", requireActiveCompany, async (req: Request, res: Response) => {
@@ -14919,6 +15221,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
+  });
   // GET endpoint for health insurance plans with server-side pagination
   app.get("/api/quotes/:id/marketplace-plans", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -15056,6 +15359,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
+  });
   // ==================== QUOTE FOLDERS API ====================
   // GET /api/quote-folders - List all folders for current user
   app.get("/api/quote-folders", requireActiveCompany, async (req: Request, res: Response) => {
@@ -15067,6 +15371,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error listing quote folders:", error);
       res.status(500).json({ message: "Failed to list quote folders" });
     }
+  });
   // POST /api/quote-folders - Create new folder
   app.post("/api/quote-folders", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -15096,6 +15401,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to create quote folder" });
     }
+  });
   // PATCH /api/quote-folders/:id - Rename folder
   app.patch("/api/quote-folders/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -15136,6 +15442,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating quote folder:", error);
       res.status(500).json({ message: "Failed to update quote folder" });
     }
+  });
   // DELETE /api/quote-folders/:id - Delete folder
   app.delete("/api/quote-folders/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -15172,6 +15479,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting quote folder:", error);
       res.status(500).json({ message: "Failed to delete quote folder" });
     }
+  });
   // POST /api/quotes/bulk/move-to-folder - Bulk move quotes to folder
   app.post("/api/quotes/bulk/move-to-folder", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -15216,6 +15524,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to move quotes to folder" });
     }
+  });
   // ==================== POLICIES ====================
   // Create policy
   app.post("/api/policies", requireActiveCompany, async (req: Request, res: Response) => {
@@ -15521,6 +15830,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error creating policy:", error);
       res.status(400).json({ message: error.message || "Failed to create policy" });
     }
+  });
   // Get policies statistics for dashboard cards
   app.get("/api/policies/stats", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -15622,6 +15932,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching policies stats:", error);
       res.status(500).json({ message: "Failed to fetch policies statistics" });
     }
+  });
   // Get OEP (Open Enrollment Period) statistics for 2026 renewals
   app.get("/api/policies/oep-stats", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -15677,6 +15988,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching OEP stats:", error);
       res.status(500).json({ message: "Failed to fetch OEP statistics" });
     }
+  });
   // Get policies by applicant (same SSN or email)
   // WARNING: This endpoint returns PII - SSN must be masked
   app.get("/api/policies/by-applicant", requireActiveCompany, async (req: Request, res: Response) => {
@@ -15722,6 +16034,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching policies by applicant:", error);
       res.status(500).json({ message: "Failed to fetch policies" });
     }
+  });
   // Get all policies for company (paginated)
   // WARNING: This endpoint returns PII - SSN must be masked
   app.get("/api/policies", requireActiveCompany, async (req: Request, res: Response) => {
@@ -15818,6 +16131,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching policies:", error);
       res.status(500).json({ message: "Failed to fetch policies" });
     }
+  });
   // Get single policy by ID
   // WARNING: This endpoint returns PII - SSN must be masked
   app.get("/api/policies/:id", requireActiveCompany, async (req: Request, res: Response) => {
@@ -15849,6 +16163,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching policy:", error);
       res.status(500).json({ message: "Failed to fetch policy" });
     }
+  });
   // Get all members with income and immigration data for a policy
   app.get("/api/policies/:id/members-details", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -15881,6 +16196,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching members details:", error);
       res.status(500).json({ message: "Failed to fetch members details" });
     }
+  });
   // Get total household income for a policy (sum of all family members)
   app.get("/api/policies/:id/household-income", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -15915,6 +16231,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error calculating household income:", error);
       res.status(500).json({ message: "Failed to calculate household income" });
     }
+  });
   // UNIFIED QUOTE DETAIL - Gets ALL related data in one call to prevent stale cache issues
   app.get("/api/policies/:id/detail", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -15951,6 +16268,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to fetch policy details" });
     }
+  });
   // Update policy
   // WARNING: This endpoint handles PII (SSN) - never log full request body or return unmasked SSN
   app.patch("/api/policies/:id", requireActiveCompany, async (req: Request, res: Response) => {
@@ -16061,6 +16379,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(400).json({ message: error.message || "Failed to update policy" });
     }
+  });
   // Duplicate policy - creates a complete copy with new ID
   app.post("/api/policies/:id/duplicate", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -16248,6 +16567,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error duplicating policy:", error);
       res.status(500).json({ message: error.message || "Failed to duplicate policy" });
     }
+  });
   // Update policy status
   app.post("/api/policies/:id/status", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -16293,6 +16613,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating policy status:", error);
       res.status(400).json({ message: error.message || "Failed to update policy status" });
     }
+  });
   // Archive/Unarchive policy
   app.post("/api/policies/:id/archive", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -16333,6 +16654,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating policy archive status:", error);
       res.status(400).json({ message: error.message || "Failed to update policy archive status" });
     }
+  });
   // Block/Unblock policy
   app.post("/api/policies/:id/block", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -16379,6 +16701,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating policy block status:", error);
       res.status(400).json({ message: error.message || "Failed to update policy block status" });
     }
+  });
   // Delete policy
   app.delete("/api/policies/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -16417,6 +16740,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting policy:", error);
       res.status(500).json({ message: "Failed to delete policy" });
     }
+  });
   // Create policy renewal for OEP 2026
   app.post("/api/policies/:policyId/renewals", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -16800,6 +17124,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
+  });
   // PATCH /api/policies/:id/plan - Update selected plan for a policy (used after OEP renewal)
   // DEPRECATED: Use POST /api/policies/:id/plans instead for multi-plan support
   app.patch("/api/policies/:id/plan", requireActiveCompany, async (req: Request, res: Response) => {
@@ -16856,6 +17181,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
+  });
   // ==================== POLICY PLANS (Multi-plan support) ====================
   // GET /api/policies/:id/plans - List all plans for a policy
   app.get("/api/policies/:id/plans", requireActiveCompany, async (req: Request, res: Response) => {
@@ -16878,6 +17204,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
+  });
   // POST /api/policies/:id/plans - Add a new plan to a policy (APPEND, don't replace)
   app.post("/api/policies/:id/plans", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -16924,6 +17251,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
+  });
   // PATCH /api/policies/:id/plans/:planId - Update a specific plan
   app.patch("/api/policies/:id/plans/:planId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -17041,6 +17369,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
+  });
   // DELETE /api/policies/:id/plans/:planId - Remove a specific plan
   app.delete("/api/policies/:id/plans/:planId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -17076,6 +17405,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
+  });
   // POST /api/policies/:id/plans/:planId/set-primary - Set a plan as primary
   app.post("/api/policies/:id/plans/:planId/set-primary", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -17109,6 +17439,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: process.env.NODE_ENV === 'development' ? error.stack : undefined
       });
     }
+  });
   // ==================== QUOTE MEMBERS ====================
   // Get all members for a policy
   app.get("/api/policies/:policyId/members", requireActiveCompany, async (req: Request, res: Response) => {
@@ -17142,6 +17473,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error getting policy members:", error);
       res.status(500).json({ message: "Failed to get policy members" });
     }
+  });
   // Get single member by ID
   app.get("/api/policies/:policyId/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -17182,6 +17514,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error getting policy member:", error);
       res.status(500).json({ message: "Failed to get policy member" });
     }
+  });
   // Update member
   app.patch("/api/policies/:policyId/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -17233,6 +17566,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(400).json({ message: error.message || "Failed to update policy member" });
     }
+  });
   // Delete member
   app.delete("/api/policies/:policyId/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -17275,6 +17609,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting policy member:", error);
       res.status(500).json({ message: "Failed to delete policy member" });
     }
+  });
   // Create new policy member (for AddMemberSheet)
   app.post("/api/policies/:policyId/members", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -17325,6 +17660,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: error.message || "Failed to create policy member" });
     }
+  });
   // Ensure policy member exists (create or update) - returns memberId
   app.post("/api/policies/:policyId/ensure-member", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -17374,6 +17710,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error ensuring policy member:", error);
       res.status(500).json({ message: "Failed to ensure policy member" });
     }
+  });
   // Update member basic data
   app.put("/api/policies/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -17433,6 +17770,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating member:", error);
       res.status(500).json({ message: "Failed to update member" });
     }
+  });
   // Delete member (and cascading related data)
   app.delete("/api/policies/members/:memberId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -17478,6 +17816,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting member:", error);
       res.status(500).json({ message: "Failed to delete member" });
     }
+  });
   // ==================== MEMBER INCOME ====================
   // Get member income
   app.get("/api/policies/members/:memberId/income", requireActiveCompany, async (req: Request, res: Response) => {
@@ -17508,6 +17847,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error getting member income:", error);
       res.status(500).json({ message: "Failed to get member income" });
     }
+  });
   // Create or update member income (upsert) - DELETE if annualIncome is empty
   app.put("/api/policies/members/:memberId/income", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -17577,6 +17917,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(400).json({ message: error.message || "Failed to save member income" });
     }
+  });
   // Delete member income
   app.delete("/api/policies/members/:memberId/income", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -17616,6 +17957,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting member income:", error);
       res.status(500).json({ message: "Failed to delete member income" });
     }
+  });
   // ==================== MEMBER IMMIGRATION ====================
   // Get member immigration
   app.get("/api/policies/members/:memberId/immigration", requireActiveCompany, async (req: Request, res: Response) => {
@@ -17657,6 +17999,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error getting member immigration:", error);
       res.status(500).json({ message: "Failed to get member immigration" });
     }
+  });
   // Create or update member immigration (upsert)
   app.put("/api/policies/members/:memberId/immigration", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -17706,6 +18049,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(400).json({ message: error.message || "Failed to save member immigration" });
     }
+  });
   // Delete member immigration
   app.delete("/api/policies/members/:memberId/immigration", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -17745,6 +18089,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting member immigration:", error);
       res.status(500).json({ message: "Failed to delete member immigration" });
     }
+  });
   // ==================== MEMBER DOCUMENTS ====================
   // Get all documents for a member
   app.get("/api/policies/members/:memberId/documents", requireActiveCompany, async (req: Request, res: Response) => {
@@ -17771,6 +18116,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error getting member documents:", error);
       res.status(500).json({ message: "Failed to get member documents" });
     }
+  });
   // Upload document (base64 JSON)
   app.post("/api/policies/members/:memberId/documents", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -17870,6 +18216,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(400).json({ message: error.message || "Failed to upload document" });
     }
+  });
   // Get single document metadata
   app.get("/api/policies/members/:memberId/documents/:docId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -17902,6 +18249,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error getting document:", error);
       res.status(500).json({ message: "Failed to get document" });
     }
+  });
   // Download document file
   app.get("/api/policies/members/:memberId/documents/:docId/download", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -17952,6 +18300,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error downloading document:", error);
       res.status(500).json({ message: "Failed to download document" });
     }
+  });
   // Delete document and file
   app.delete("/api/policies/members/:memberId/documents/:docId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -18006,6 +18355,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting document:", error);
       res.status(500).json({ message: "Failed to delete document" });
     }
+  });
   // ==================== QUOTE PAYMENT METHODS ====================
   // Get all payment methods for a policy (PLAIN TEXT - NO ENCRYPTION)
   // Returns payment methods for ALL policies of this client (shared across policy years)
@@ -18043,6 +18393,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error getting payment methods:", error);
       res.status(500).json({ message: "Failed to get payment methods" });
     }
+  });
   // Get single payment method by ID (PLAIN TEXT - NO ENCRYPTION)
   app.get("/api/policies/:policyId/payment-methods/:paymentMethodId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -18085,6 +18436,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error getting payment method:", error);
       res.status(500).json({ message: "Failed to get payment method" });
     }
+  });
   // Create new payment method (PLAIN TEXT - NO ENCRYPTION)
   app.post("/api/policies/:policyId/payment-methods", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -18130,6 +18482,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(400).json({ message: error.message || "Failed to create payment method" });
     }
+  });
   // Update payment method (PLAIN TEXT - NO ENCRYPTION)
   app.patch("/api/policies/:policyId/payment-methods/:paymentMethodId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -18185,6 +18538,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(400).json({ message: error.message || "Failed to update payment method" });
     }
+  });
   // Delete payment method
   app.delete("/api/policies/:policyId/payment-methods/:paymentMethodId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -18232,6 +18586,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting payment method:", error);
       res.status(500).json({ message: "Failed to delete payment method" });
     }
+  });
   // Set default payment method
   app.post("/api/policies/:policyId/payment-methods/:paymentMethodId/set-default", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -18273,6 +18628,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error setting default payment method:", error);
       res.status(500).json({ message: "Failed to set default payment method" });
     }
+  });
   // ==================== QUOTE NOTES ====================
   // Create a new note for a policy
   app.post("/api/policies/:policyId/notes", requireActiveCompany, async (req: Request, res: Response) => {
@@ -18320,6 +18676,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error creating policy note:", error);
       res.status(500).json({ message: "Failed to create policy note" });
     }
+  });
   // Get all notes for a policy
   // Returns notes for THIS policy AND all related policies of the same client (cross-policy sharing)
   app.get("/api/policies/:policyId/notes", requireActiveCompany, async (req: Request, res: Response) => {
@@ -18344,6 +18701,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching policy notes:", error);
       res.status(500).json({ message: "Failed to fetch policy notes" });
     }
+  });
   // Update a policy note
   app.patch("/api/policies/:policyId/notes/:noteId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -18414,6 +18772,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating policy note:", error);
       res.status(500).json({ message: "Failed to update policy note" });
     }
+  });
   // Delete a policy note
   app.delete("/api/policies/:policyId/notes/:noteId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -18470,6 +18829,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting policy note:", error);
       res.status(500).json({ message: "Failed to delete policy note" });
     }
+  });
   // Upload image attachment for policy notes
   app.post("/api/policies/:policyId/notes/upload", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -18553,6 +18913,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error uploading note attachment:", error);
       res.status(500).json({ message: error.message || "Failed to upload attachment" });
     }
+  });
   // ==================== POLICY DOCUMENTS ENDPOINTS ====================
   // GET /api/policies/:policyId/documents - List all documents for a policy
   // Returns ONLY documents for THIS specific policy (no cross-policy sharing)
@@ -18582,6 +18943,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error listing policy documents:", error);
       res.status(500).json({ message: "Failed to list documents" });
     }
+  });
   // POST /api/policys/:policyId/documents/upload - Upload a new document
   app.post("/api/policies/:policyId/documents/upload", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -18652,6 +19014,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error uploading document:", error);
       res.status(500).json({ message: error.message || "Failed to upload document" });
     }
+  });
   // GET /api/policys/:policyId/documents/:documentId/download - Download a document
   app.get("/api/policies/:policyId/documents/:documentId/download", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -18710,6 +19073,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error downloading document:", error);
       res.status(500).json({ message: "Failed to download document" });
     }
+  });
   // DELETE /api/policys/:policyId/documents/:documentId - Delete a document
   app.delete("/api/policies/:policyId/documents/:documentId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -18772,6 +19136,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting document:", error);
       res.status(500).json({ message: "Failed to delete document" });
     }
+  });
   // ==================== QUOTE REMINDERS ====================
   // GET /api/policys/:policyId/reminders - List all reminders for a policy
   // Returns ONLY reminders for THIS specific policy (no cross-policy sharing)
@@ -18801,6 +19166,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching reminders:", error);
       res.status(500).json({ message: "Failed to fetch reminders" });
     }
+  });
   // GET /api/policys/:policyId/reminders/:reminderId - Get a specific reminder
   app.get("/api/policies/:policyId/reminders/:reminderId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -18828,6 +19194,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching reminder:", error);
       res.status(500).json({ message: "Failed to fetch reminder" });
     }
+  });
   // POST /api/policys/:policyId/reminders - Create a new reminder
   app.post("/api/policies/:policyId/reminders", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -18870,6 +19237,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to create reminder" });
     }
+  });
   // PUT /api/policys/:policyId/reminders/:reminderId - Update a reminder
   app.put("/api/policies/:policyId/reminders/:reminderId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -18913,6 +19281,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to update reminder" });
     }
+  });
   // DELETE /api/policys/:policyId/reminders/:reminderId - Delete a reminder
   app.delete("/api/policies/:policyId/reminders/:reminderId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -18954,6 +19323,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting reminder:", error);
       res.status(500).json({ message: "Failed to delete reminder" });
     }
+  });
   // PUT /api/policys/:policyId/reminders/:reminderId/complete - Mark reminder as completed
   app.put("/api/policies/:policyId/reminders/:reminderId/complete", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -18994,6 +19364,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error completing reminder:", error);
       res.status(500).json({ message: "Failed to complete reminder" });
     }
+  });
   // PUT /api/policys/:policyId/reminders/:reminderId/snooze - Snooze reminder
   app.put("/api/policies/:policyId/reminders/:reminderId/snooze", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -19068,6 +19439,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error snoozing reminder:", error);
       res.status(500).json({ message: "Failed to snooze reminder" });
     }
+  });
   // ==================== PLAN SELECTION ====================
   // POST /api/policies/:policyId/select-plan - Select a marketplace plan for a policy
   app.post("/api/policies/:policyId/select-plan", requireActiveCompany, async (req: Request, res: Response) => {
@@ -19113,6 +19485,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error selecting plan:", error);
       res.status(500).json({ message: "Failed to select plan" });
     }
+  });
   // GET /api/policies/:policyId/marketplace-plan/:planId - Search for a specific plan by ID
   app.get("/api/policies/:policyId/marketplace-plan/:planId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -19238,6 +19611,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         code: "CMS_API_ERROR"
       });
     }
+  });
   // GET /api/policies/:id/marketplace-plans - Get marketplace plans for a policy
   app.get("/api/policies/:id/marketplace-plans", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -19378,6 +19752,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
+  });
   // PATCH /api/policies/:id/statuses - Update policy statuses (status, documentsStatus, paymentStatus)
   app.patch("/api/policies/:id/statuses", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -19437,6 +19812,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to update policy statuses" });
     }
+  });
   // ==================== CONSENT DOCUMENTS ====================
   // POST /api/policys/:id/consents/generate - Generate new consent document
   app.post("/api/policies/:id/consents/generate", requireActiveCompany, async (req: Request, res: Response) => {
@@ -19470,6 +19846,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error generating consent document:", error);
       res.status(500).json({ message: "Failed to generate consent document" });
     }
+  });
   // POST /api/policy-consents/:id/send - Send policy consent via email/sms/link
   app.post("/api/policy-consents/:id/send", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -19642,6 +20019,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error sending consent:", error);
       res.status(500).json({ message: "Failed to send consent document" });
     }
+  });
   // GET /api/policys/:id/consents - List all consents for a policy
   // Returns consents for THIS policy AND all related policies of the same client (cross-policy sharing)
   app.get("/api/policies/:id/consents", requireActiveCompany, async (req: Request, res: Response) => {
@@ -19666,6 +20044,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error listing consents:", error);
       res.status(500).json({ message: "Failed to list consents" });
     }
+  });
   // DELETE /api/policy-consents/:id - Delete policy consent document
   app.delete("/api/policy-consents/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -19696,6 +20075,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting policy consent:", error);
       res.status(500).json({ message: "Failed to delete consent document" });
     }
+  });
   // ==================== POLICY FOLDERS API ====================
   // GET /api/policy-folders - List all folders for current user
   app.get("/api/policy-folders", requireActiveCompany, async (req: Request, res: Response) => {
@@ -19707,6 +20087,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error listing policy folders:", error);
       res.status(500).json({ message: "Failed to list policy folders" });
     }
+  });
   // POST /api/policy-folders - Create new folder
   app.post("/api/policy-folders", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -19736,6 +20117,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to create policy folder" });
     }
+  });
   // PATCH /api/policy-folders/:id - Rename folder
   app.patch("/api/policy-folders/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -19776,6 +20158,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating policy folder:", error);
       res.status(500).json({ message: "Failed to update policy folder" });
     }
+  });
   // DELETE /api/policy-folders/:id - Delete folder
   app.delete("/api/policy-folders/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -19812,6 +20195,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting policy folder:", error);
       res.status(500).json({ message: "Failed to delete policy folder" });
     }
+  });
   // POST /api/policies/bulk/move-to-folder - Bulk move policies to folder
   app.post("/api/policies/bulk/move-to-folder", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -19856,6 +20240,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to move policies to folder" });
     }
+  });
   // ==================== LANDING PAGES API ====================
   // GET /api/landing-pages - List landing pages for current user
   app.get("/api/landing-pages", requireActiveCompany, async (req: Request, res: Response) => {
@@ -19867,6 +20252,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching landing pages:", error);
       res.status(500).json({ message: "Failed to fetch landing pages" });
     }
+  });
   // GET /api/landing-pages/check-slug/:slug - Check if slug is available
   app.get("/api/landing-pages/check-slug/:slug", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -19878,6 +20264,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error checking slug availability:", error);
       res.status(500).json({ message: "Failed to check slug availability" });
     }
+  });
   // GET /api/landing-pages/:id - Get specific landing page with blocks
   app.get("/api/landing-pages/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -19898,6 +20285,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching landing page:", error);
       res.status(500).json({ message: "Failed to fetch landing page" });
     }
+  });
   // GET /l/:slug - Public endpoint to view landing page (no auth required)
   app.get("/l/:slug", async (req: Request, res: Response) => {
     const { slug } = req.params;
@@ -19934,6 +20322,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching public landing page:", error);
       res.status(500).json({ message: "Failed to fetch landing page" });
     }
+  });
   // POST /api/landing-pages - Create new landing page
   app.post("/api/landing-pages", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -19969,6 +20358,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to create landing page" });
     }
+  });
   // PATCH /api/landing-pages/:id - Update landing page
   app.patch("/api/landing-pages/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -20015,6 +20405,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to update landing page" });
     }
+  });
   // DELETE /api/landing-pages/:id - Delete landing page
   app.delete("/api/landing-pages/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -20045,6 +20436,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting landing page:", error);
       res.status(500).json({ message: "Failed to delete landing page" });
     }
+  });
   // GET /api/landing-pages/:id/blocks - Get all blocks for a landing page
   app.get("/api/landing-pages/:id/blocks", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -20065,6 +20457,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching blocks:", error);
       res.status(500).json({ message: "Failed to fetch blocks" });
     }
+  });
   // POST /api/landing-pages/:id/blocks - Create new block
   app.post("/api/landing-pages/:id/blocks", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -20104,6 +20497,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to create block" });
     }
+  });
   // PATCH /api/landing-blocks/:blockId - Update specific block
   app.patch("/api/landing-blocks/:blockId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -20147,6 +20541,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to update block" });
     }
+  });
   // DELETE /api/landing-blocks/:blockId - Delete specific block
   app.delete("/api/landing-blocks/:blockId", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -20181,6 +20576,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting block:", error);
       res.status(500).json({ message: "Failed to delete block" });
     }
+  });
   // POST /api/landing-pages/:id/blocks/reorder - Reorder blocks
   app.post("/api/landing-pages/:id/blocks/reorder", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -20214,6 +20610,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error reordering blocks:", error);
       res.status(500).json({ message: "Failed to reorder blocks" });
     }
+  });
   // POST /api/landing-pages/:id/blocks/sync - Sync blocks (for undo/redo persistence)
   app.post("/api/landing-pages/:id/blocks/sync", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -20261,6 +20658,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error syncing blocks:", error);
       res.status(500).json({ message: "Failed to sync blocks" });
     }
+  });
   // POST /api/landing-pages/:id/view - Track page view (public endpoint - no auth)
   app.post("/api/landing-pages/:id/view", async (req: Request, res: Response) => {
     const { id } = req.params;
@@ -20288,6 +20686,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error tracking view:", error);
       res.status(500).json({ message: "Failed to track view" });
     }
+  });
   // POST /api/landing-blocks/:blockId/click - Track block click (public endpoint - no auth)
   app.post("/api/landing-blocks/:blockId/click", async (req: Request, res: Response) => {
     const { blockId } = req.params;
@@ -20314,6 +20713,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error tracking click:", error);
       res.status(500).json({ message: "Failed to track click" });
     }
+  });
   // GET /api/landing-pages/:id/analytics - Get analytics for a landing page
   app.get("/api/landing-pages/:id/analytics", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -20339,6 +20739,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching analytics:", error);
       res.status(500).json({ message: "Failed to fetch analytics" });
     }
+  });
   // ==================== LANDING PAGE LEADS ====================
   // POST /api/landing-pages/:id/leads - Capture lead (PUBLIC endpoint)
   app.post("/api/landing-pages/:id/leads", async (req: Request, res: Response) => {
@@ -20382,6 +20783,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to capture lead" });
     }
+  });
   // GET /api/landing-pages/:id/leads - List leads (PROTECTED endpoint)
   app.get("/api/landing-pages/:id/leads", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -20407,6 +20809,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching leads:", error);
       res.status(500).json({ message: "Failed to fetch leads" });
     }
+  });
   // ==================== LANDING PAGE APPOINTMENTS ====================
   // POST /api/landing-pages/:id/appointments - Create appointment (PUBLIC endpoint)
   app.post("/api/landing-pages/:id/appointments", async (req: Request, res: Response) => {
@@ -20443,6 +20846,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to create appointment" });
     }
+  });
   // GET /api/landing-pages/:id/appointments - List appointments (PROTECTED endpoint)
   app.get("/api/landing-pages/:id/appointments", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -20469,6 +20873,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching appointments:", error);
       res.status(500).json({ message: "Failed to fetch appointments" });
     }
+  });
   // PATCH /api/appointments/:id/status - Update appointment status (PROTECTED endpoint)
   app.patch("/api/appointments/:id/status", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -20506,6 +20911,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to update appointment status" });
     }
+  });
   // GET /api/landing-blocks/:blockId/available-slots - Get available time slots (PUBLIC endpoint)
   app.get("/api/landing-blocks/:blockId/available-slots", async (req: Request, res: Response) => {
     const { blockId } = req.params;
@@ -20529,6 +20935,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching available slots:", error);
       res.status(500).json({ message: "Failed to fetch available slots" });
     }
+  });
   // ==================== LANDING PAGE APPOINTMENTS API (NEW) ====================
   // POST /api/landing/appointments - Create new appointment (PUBLIC endpoint)
   app.post("/api/landing/appointments", async (req: Request, res: Response) => {
@@ -20652,6 +21059,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to create appointment" });
     }
+  });
   // GET /api/landing/leads - List user's leads (PROTECTED endpoint)
   app.get("/api/landing/leads", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -20668,6 +21076,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching landing leads:", error);
       res.status(500).json({ message: "Failed to fetch leads" });
     }
+  });
   // GET /api/landing/appointments - List user's appointments (PROTECTED endpoint)
   app.get("/api/landing/appointments", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -20684,6 +21093,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching landing appointments:", error);
       res.status(500).json({ message: "Failed to fetch appointments" });
     }
+  });
   // PATCH /api/landing/appointments/:id - Update appointment (PROTECTED endpoint)
   app.patch("/api/landing/appointments/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -20725,6 +21135,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to update appointment" });
     }
+  });
   // DELETE /api/landing/appointments/:id - Delete appointment (PROTECTED endpoint)
   app.delete("/api/landing/appointments/:id", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -20755,6 +21166,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting landing appointment:", error);
       res.status(500).json({ message: "Failed to delete appointment" });
     }
+  });
   // GET /api/landing/appointments/slots - Get available time slots (PUBLIC endpoint)
   app.get("/api/landing/appointments/slots", async (req: Request, res: Response) => {
     const { date, landingPageId, duration } = req.query;
@@ -20802,6 +21214,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching available slots:", error);
       res.status(500).json({ message: "Failed to fetch available slots" });
     }
+  });
   // ==================== APPOINTMENT AVAILABILITY CONFIGURATION API ====================
   // GET /api/appointment-availability - Get current user's availability settings
   app.get("/api/appointment-availability", requireActiveCompany, async (req: Request, res: Response) => {
@@ -20834,6 +21247,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching appointment availability:", error);
       res.status(500).json({ message: "Failed to fetch appointment availability" });
     }
+  });
   // PUT /api/appointment-availability - Update current user's availability settings
   app.put("/api/appointment-availability", requireActiveCompany, async (req: Request, res: Response) => {
     const currentUser = req.user!;
@@ -20867,6 +21281,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       res.status(500).json({ message: "Failed to update appointment availability" });
     }
+  });
   // ==================== HHS POVERTY GUIDELINES API ====================
   // Import HHS Poverty Guidelines service
   const hhsPovertyGuidelines = await import('./hhs-poverty-guidelines.js');
@@ -20887,6 +21302,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
+  });
   // Get Poverty Guideline percentages for a specific household size
   app.get("/api/hhs/poverty-guidelines/percentages", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -20912,6 +21328,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: process.env.NODE_ENV === 'development' ? error.message : undefined
       });
     }
+  });
   // ==================== BULKVS CHAT SYSTEM ====================
   // Multer configuration for BulkVS MMS media uploads
   const bulkvsMediaDir = path.join(process.cwd(), 'uploads', 'bulkvs-media');
@@ -20930,6 +21347,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       const ext = path.extname(file.originalname);
       cb(null, `${userId}_${timestamp}_${random}${ext}`);
     },
+  });
   const bulkvsMediaUpload = multer({
     storage: bulkvsMediaStorage,
     limits: { fileSize: MAX_MMS_SIZE },
@@ -20939,6 +21357,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
       cb(null, true);
     },
+  });
   // POST /api/bulkvs/media/upload - Upload media for MMS
   app.post("/api/bulkvs/media/upload", requireActiveCompany, (req: Request, res: Response) => {
     bulkvsMediaUpload.single('file')(req, res, (err: any) => {
@@ -20964,6 +21383,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         mediaType: req.file.mimetype,
       });
     });
+  });
   // 1. GET /api/bulkvs/numbers/available - Search available phone numbers
   app.get("/api/bulkvs/numbers/available", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -21011,6 +21431,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching available numbers:", error);
       res.status(500).json({ message: "Failed to fetch available numbers", error: error.message });
     }
+  });
   // 2. POST /api/bulkvs/numbers/provision - Purchase and provision a phone number
   app.post("/api/bulkvs/numbers/provision", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -21217,6 +21638,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Other errors are server errors
       res.status(500).json({ message: "Failed to provision phone number", error: error.message });
     }
+  });
   // 3. GET /api/bulkvs/numbers - List current user's phone numbers
   app.get("/api/bulkvs/numbers", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -21236,6 +21658,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching phone numbers:", error);
       res.status(500).json({ message: "Failed to fetch phone numbers" });
     }
+  });
   // 3a. PATCH /api/bulkvs/numbers/:id - Update phone number settings
   app.patch("/api/bulkvs/numbers/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -21307,6 +21730,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating phone number:", error);
       res.status(500).json({ message: "Failed to update phone number" });
     }
+  });
   // 3a-1. PATCH /api/bulkvs/numbers/:id/cnam - Update CNAM (Caller ID Name) manually
   app.patch("/api/bulkvs/numbers/:id/cnam", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -21358,6 +21782,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating CNAM:", error);
       res.status(500).json({ message: "Failed to update CNAM" });
     }
+  });
   // 3b. DELETE /api/bulkvs/numbers/:id - Deactivate phone number and cancel billing
   app.delete("/api/bulkvs/numbers/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -21406,6 +21831,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deactivating phone number:", error);
       res.status(500).json({ message: "Failed to deactivate phone number" });
     }
+  });
   // 3c. POST /api/bulkvs/numbers/:id/reactivate - Reactivate a cancelled phone number
   // SAFE FLOW: Validate BulkVS FIRST, then charge Stripe ONLY if successful
   app.post("/api/bulkvs/numbers/:id/reactivate", requireActiveCompany, async (req: Request, res: Response) => {
@@ -21632,6 +22058,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[REACTIVATION] Unexpected error:", error);
       res.status(500).json({ message: "Failed to reactivate phone number", error: error.message });
     }
+  });
   // 4a. POST /api/webhooks/bulkvs/:companySlug/:webhookToken - Dynamic webhook endpoint for incoming messages
   // This endpoint receives BulkVS webhooks for each individual user
   app.post("/api/webhooks/bulkvs/:companySlug/:webhookToken", async (req: Request, res: Response) => {
@@ -21874,6 +22301,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[BulkVS Webhook] Error:", error);
       res.status(500).json({ message: "Webhook processing failed", error: error.message });
     }
+  });
   // 4b. POST /api/webhooks/bulkvs - Legacy webhook endpoint (kept for backward compatibility)
   app.post("/api/webhooks/bulkvs", async (req: Request, res: Response) => {
     try {
@@ -21994,6 +22422,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[BulkVS Webhook] Error:", error);
       res.status(500).json({ message: "Webhook processing failed", error: error.message });
     }
+  });
   // 5. GET /api/bulkvs/threads - List user's conversation threads
   app.get("/api/bulkvs/threads", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -22015,6 +22444,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching threads:", error);
       res.status(500).json({ message: "Failed to fetch threads" });
     }
+  });
   // 6. GET /api/bulkvs/threads/:id/messages - Get messages for a thread
   app.get("/api/bulkvs/threads/:id/messages", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -22041,6 +22471,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
     }
+  });
   // 7. POST /api/bulkvs/messages/send - Send a message
   app.post("/api/bulkvs/messages/send", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -22143,6 +22574,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error sending message:", error);
       res.status(500).json({ message: "Failed to send message", error: error.message });
     }
+  });
   // 8. PATCH /api/bulkvs/threads/:id - Update thread properties
   app.patch("/api/bulkvs/threads/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -22175,6 +22607,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating thread:", error);
       res.status(500).json({ message: "Failed to update thread" });
     }
+  });
   // 9. DELETE /api/bulkvs/threads/:id - Delete a thread and its messages
   app.delete("/api/bulkvs/threads/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -22203,6 +22636,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting thread:", error);
       res.status(500).json({ message: "Failed to delete thread" });
     }
+  });
   // 10. POST /api/bulkvs/threads/:id/read - Mark thread as read
   app.post("/api/bulkvs/threads/:id/read", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -22228,6 +22662,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error marking thread as read:", error);
       res.status(500).json({ message: "Failed to mark thread as read" });
     }
+  });
   // 10. GET /api/bulkvs/messages/search - Search messages
   app.get("/api/bulkvs/messages/search", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -22245,6 +22680,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error searching messages:", error);
       res.status(500).json({ message: "Failed to search messages" });
     }
+  });
   // 11. GET /api/bulkvs/messages/:refId/status - Check message delivery status
   app.get("/api/bulkvs/messages/:refId/status", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -22270,6 +22706,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         error: error.message 
       });
     }
+  });
   // ==================== TASKS API ====================
   // GET /api/tasks - List tasks with filters
   app.get("/api/tasks", requireActiveCompany, async (req: Request, res: Response) => {
@@ -22334,6 +22771,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error listing tasks:", error);
       res.status(500).json({ message: "Failed to list tasks" });
     }
+  });
   // POST /api/tasks - Create a new task
   app.post("/api/tasks", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -22384,6 +22822,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error creating task:", error);
       res.status(500).json({ message: "Failed to create task" });
     }
+  });
   // GET /api/tasks/:id - Get a single task
   app.get("/api/tasks/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -22419,6 +22858,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error getting task:", error);
       res.status(500).json({ message: "Failed to get task" });
     }
+  });
   // PATCH /api/tasks/:id - Update a task
   app.patch("/api/tasks/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -22473,6 +22913,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating task:", error);
       res.status(500).json({ message: "Failed to update task" });
     }
+  });
   // DELETE /api/tasks/:id - Delete a task
   app.delete("/api/tasks/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -22508,6 +22949,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting task:", error);
       res.status(500).json({ message: "Failed to delete task" });
     }
+  });
   // ==================== BIRTHDAY AUTOMATION ROUTES ====================
   // POST /api/test/run-birthday-scheduler - Manually trigger birthday scheduler (temporary test endpoint - NO AUTH for testing)
   app.post("/api/test/run-birthday-scheduler", async (req: Request, res: Response) => {
@@ -22710,6 +23152,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[TEST] Error running birthday scheduler:", error);
       res.status(500).json({ message: error.message || "Failed to run birthday scheduler" });
     }
+  });
   // GET /api/birthday-images/active - List active birthday images (all authenticated users)
   app.get("/api/birthday-images/active", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -22720,6 +23163,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching active birthday images:", error);
       res.status(500).json({ message: "Failed to fetch birthday images" });
     }
+  });
   // POST /api/birthday-images/upload - Upload custom birthday image (all authenticated users)
   app.post("/api/birthday-images/upload", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -22793,6 +23237,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error uploading birthday image:", error);
       res.status(500).json({ message: error.message || "Failed to upload image" });
     }
+  });
   // GET /api/admin/birthday-images - List all birthday images (superadmin only)
   app.get("/api/admin/birthday-images", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -22809,6 +23254,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching birthday images:", error);
       res.status(500).json({ message: "Failed to fetch birthday images" });
     }
+  });
   // POST /api/admin/birthday-images - Create new birthday image (superadmin only)
   app.post("/api/admin/birthday-images", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -22840,6 +23286,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error creating birthday image:", error);
       res.status(500).json({ message: "Failed to create birthday image" });
     }
+  });
   // PATCH /api/admin/birthday-images/:id - Update birthday image (superadmin only)
   app.patch("/api/admin/birthday-images/:id", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -22869,6 +23316,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating birthday image:", error);
       res.status(500).json({ message: "Failed to update birthday image" });
     }
+  });
   // DELETE /api/admin/birthday-images/:id - Delete birthday image (superadmin only)
   app.delete("/api/admin/birthday-images/:id", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -22898,6 +23346,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting birthday image:", error);
       res.status(500).json({ message: "Failed to delete birthday image" });
     }
+  });
   // GET /api/user/birthday-settings - Get current user's birthday settings
   app.get("/api/user/birthday-settings", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -22920,6 +23369,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching birthday settings:", error);
       res.status(500).json({ message: "Failed to fetch birthday settings" });
     }
+  });
   // PUT /api/user/birthday-settings - Update user's birthday settings
   app.put("/api/user/birthday-settings", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -22951,6 +23401,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating birthday settings:", error);
       res.status(500).json({ message: "Failed to update birthday settings" });
     }
+  });
   // GET /api/birthday-greetings/history - Get birthday greeting history
   app.get("/api/birthday-greetings/history", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -22967,6 +23418,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching birthday greeting history:", error);
       res.status(500).json({ message: "Failed to fetch birthday greeting history" });
     }
+  });
   // ====================================================================
   // iMessage Routes (BlueBubbles Integration)
   // ====================================================================
@@ -23000,6 +23452,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error checking iMessage access:", error);
       return res.json({ hasAccess: false, reason: "error" });
     }
+  });
   // GET /api/imessage/settings - Get iMessage settings for company (superadmin only)
   app.get("/api/imessage/settings", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -23040,6 +23493,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching iMessage settings:", error);
       res.status(500).json({ message: "Failed to fetch iMessage settings" });
     }
+  });
   // PUT /api/imessage/settings - Update iMessage settings (superadmin only)
   app.put("/api/imessage/settings", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -23130,6 +23584,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating iMessage settings:", error);
       res.status(500).json({ message: "Failed to update iMessage settings" });
     }
+  });
   // POST /api/imessage/settings/regenerate-webhook-secret - Regenerate webhook secret (superadmin only)
   app.post("/api/imessage/settings/regenerate-webhook-secret", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -23188,6 +23643,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error regenerating webhook secret:", error);
       res.status(500).json({ message: "Failed to regenerate webhook secret" });
     }
+  });
   // GET /api/imessage/conversations - List all conversations
   app.get("/api/imessage/conversations", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -23206,6 +23662,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching iMessage conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
     }
+  });
   // GET /api/imessage/conversations/:id/messages - Get messages for a conversation
   app.get("/api/imessage/conversations/:id/messages", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -23231,6 +23688,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching iMessage messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
     }
+  });
   // POST /api/imessage/send - Send an iMessage
   app.post("/api/imessage/send", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -23330,6 +23788,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error sending iMessage:", error);
       res.status(500).json({ message: "Failed to send message", error: error.message });
     }
+  });
   // PATCH /api/imessage/conversations/:id - Update conversation (mark as read, pin, etc.)
   app.patch("/api/imessage/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -23368,6 +23827,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating iMessage conversation:", error);
       res.status(500).json({ message: "Failed to update conversation" });
     }
+  });
   // ==================== CAMPAIGN STUDIO ROUTES ====================
   // Template Categories
   app.get("/api/campaign-studio/categories", requireActiveCompany, async (req: Request, res: Response) => {
@@ -23379,6 +23839,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching campaign categories:", error);
       res.status(500).json({ message: "Failed to fetch categories" });
     }
+  });
   app.post("/api/campaign-studio/categories", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -23396,6 +23857,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error creating campaign category:", error);
       res.status(500).json({ message: "Failed to create category" });
     }
+  });
   app.patch("/api/campaign-studio/categories/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -23422,6 +23884,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating campaign category:", error);
       res.status(500).json({ message: "Failed to update category" });
     }
+  });
   app.delete("/api/campaign-studio/categories/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -23450,6 +23913,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting campaign category:", error);
       res.status(500).json({ message: "Failed to delete category" });
     }
+  });
   // Templates
   app.get("/api/campaign-studio/templates", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -23468,6 +23932,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching campaign templates:", error);
       res.status(500).json({ message: "Failed to fetch templates" });
     }
+  });
   app.get("/api/campaign-studio/templates/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -23481,6 +23946,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching campaign template:", error);
       res.status(500).json({ message: "Failed to fetch template" });
     }
+  });
   app.post("/api/campaign-studio/templates", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -23509,6 +23975,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error creating campaign template:", error);
       res.status(500).json({ message: "Failed to create template" });
     }
+  });
   app.patch("/api/campaign-studio/templates/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -23538,6 +24005,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating campaign template:", error);
       res.status(500).json({ message: "Failed to update template" });
     }
+  });
   app.delete("/api/campaign-studio/templates/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -23557,6 +24025,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting campaign template:", error);
       res.status(500).json({ message: "Failed to delete template" });
     }
+  });
   // Placeholders
   app.get("/api/campaign-studio/placeholders", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -23567,6 +24036,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error fetching campaign placeholders:", error);
       res.status(500).json({ message: "Failed to fetch placeholders" });
     }
+  });
   app.post("/api/campaign-studio/placeholders", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -23589,6 +24059,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error creating campaign placeholder:", error);
       res.status(500).json({ message: "Failed to create placeholder" });
     }
+  });
   app.patch("/api/campaign-studio/placeholders/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -23620,6 +24091,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error updating campaign placeholder:", error);
       res.status(500).json({ message: "Failed to update placeholder" });
     }
+  });
   app.delete("/api/campaign-studio/placeholders/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
@@ -23642,6 +24114,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("Error deleting campaign placeholder:", error);
       res.status(500).json({ message: "Failed to delete placeholder" });
     }
+  });
   // =====================================================
   // WHATSAPP EVOLUTION API ROUTES
   // =====================================================
@@ -23769,6 +24242,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[WhatsApp] Error getting instance:", error);
       res.status(500).json({ message: "Failed to get instance" });
     }
+  });
   // POST /api/whatsapp/connect - Create/connect WhatsApp instance
   app.post("/api/whatsapp/connect", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -23877,6 +24351,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[WhatsApp] Error connecting:", error);
       res.status(500).json({ message: error.message || "Failed to connect" });
     }
+  });
   // POST /api/whatsapp/disconnect - Disconnect WhatsApp instance
   app.post("/api/whatsapp/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -23899,6 +24374,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[WhatsApp] Error disconnecting:", error);
       res.status(500).json({ message: "Failed to disconnect" });
     }
+  });
   // GET /api/whatsapp/chats - Get WhatsApp chats
   app.get("/api/whatsapp/chats", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -23953,6 +24429,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[WhatsApp] Error getting chats:", error);
       res.status(500).json({ message: "Failed to get chats" });
     }
+  });
   // GET /api/whatsapp/unread-count - Get total unread count across all WhatsApp conversations
   app.get("/api/whatsapp/unread-count", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -23981,6 +24458,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[WhatsApp] Error getting unread count:", error);
       res.status(500).json({ message: "Failed to get unread count" });
     }
+  });
   // POST /api/whatsapp/profile-picture - Lazy load profile picture for a contact
   // POST /api/whatsapp/profile-picture - Lazy load profile picture for a contact
   app.post("/api/whatsapp/profile-picture", requireActiveCompany, async (req: Request, res: Response) => {
@@ -24037,6 +24515,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[WhatsApp] Error fetching profile picture:", error);
       res.status(500).json({ message: "Failed to fetch profile picture" });
     }
+  });
   // POST /api/whatsapp/refresh-contact - Fetch contact name from Evolution API and update DB
   app.post("/api/whatsapp/refresh-contact", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -24101,6 +24580,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[WhatsApp] Error refreshing contact:", error);
       res.status(500).json({ message: "Failed to refresh contact" });
     }
+  });
   // GET /api/whatsapp/chats/:remoteJid/messages - Get messages for a chat
   app.get("/api/whatsapp/chats/:remoteJid/messages", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -24188,6 +24668,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[WhatsApp] Error getting messages:", error);
       res.status(500).json({ message: "Failed to get messages" });
     }
+  });
   // DELETE /api/whatsapp/chats/:id - Delete WhatsApp conversation
   app.delete("/api/whatsapp/chats/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -24220,6 +24701,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[WhatsApp] Error deleting conversation:", error);
       res.status(500).json({ message: "Failed to delete conversation" });
     }
+  });
   // POST /api/whatsapp/send - Send WhatsApp message
   app.post("/api/whatsapp/send", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -24290,6 +24772,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[WhatsApp] Error sending message:", error);
       res.status(500).json({ message: error.message || "Failed to send" });
     }
+  });
   // POST /api/whatsapp/send-media - Send WhatsApp media message
   app.post("/api/whatsapp/send-media", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -24377,6 +24860,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[WhatsApp] Error sending media:", error);
       res.status(500).json({ message: error.message || "Failed to send media" });
     }
+  });
   // POST /api/whatsapp/send-audio - Send WhatsApp audio message (PTT/voice note)
   app.post("/api/whatsapp/send-audio", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -24452,6 +24936,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[WhatsApp] Error sending audio:", error);
       res.status(500).json({ message: error.message || "Failed to send audio" });
     }
+  });
   // POST /api/whatsapp/send-typing - Send typing indicator
   app.post("/api/whatsapp/send-typing", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -24511,6 +24996,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       res.status(500).json({ message: "Failed to send typing" });
     }
+  });
   // POST /api/whatsapp/send-presence - Set GLOBAL online/offline presence status for the instance
   app.post("/api/whatsapp/send-presence", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -24538,6 +25024,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       res.status(500).json({ message: "Failed to set presence" });
     }
+  });
   // POST /api/whatsapp/download-media/:messageId - Download media for a message
   app.post("/api/whatsapp/download-media/:messageId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -24587,6 +25074,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[WhatsApp] Error downloading media:", error);
       res.status(500).json({ message: error.message || "Failed to download media" });
     }
+  });
   // POST /api/whatsapp/webhook/:companySlug - Webhook from Evolution API
   app.post("/api/whatsapp/webhook/:companySlug", async (req: Request, res: Response) => {
     try {
@@ -25060,6 +25548,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[WhatsApp Webhook] Error:", error);
       res.status(200).send("OK"); // Return 200 to prevent retries
     }
+  });
   // GET /api/whatsapp/sync-chats - Sync chats from Evolution API
   app.post("/api/whatsapp/sync-chats", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -25147,6 +25636,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[WhatsApp] Error syncing chats:", error);
       res.status(500).json({ message: "Failed to sync chats" });
     }
+  });
   // POST /api/whatsapp/sync-messages/:remoteJid - Sync messages for a specific chat from Evolution API
   app.post("/api/whatsapp/sync-messages/:remoteJid", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -25222,6 +25712,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[WhatsApp] Error syncing messages:", error);
       res.status(500).json({ message: "Failed to sync messages" });
     }
+  });
   // POST /api/whatsapp/sync-all-messages - Sync messages for all active conversations
   app.post("/api/whatsapp/sync-all-messages", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -25306,6 +25797,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[WhatsApp] Error syncing all messages:", error);
       res.status(500).json({ message: "Failed to sync messages" });
     }
+  });
   // POST /api/whatsapp/mark-read - Mark messages as read
   app.post("/api/whatsapp/mark-read", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -25374,6 +25866,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[WhatsApp] Mark read error:", error);
       res.status(500).json({ message: "Failed to mark messages as read" });
     }
+  });
   // POST /api/whatsapp/send-reaction - Send a reaction to a message
   app.post("/api/whatsapp/send-reaction", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -25424,6 +25917,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[WhatsApp] Error sending reaction:", error);
       res.status(500).json({ message: "Failed to send reaction" });
     }
+  });
 END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // =====================================================
@@ -25496,6 +25990,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[WhatsApp OAuth] Start error:", error);
       return res.status(500).json({ error: "Failed to start OAuth flow" });
     }
+  });
 
   // GET /api/integrations/meta/whatsapp/callback - OAuth callback from Meta
   app.get("/api/integrations/meta/whatsapp/callback", async (req: Request, res: Response) => {
@@ -25706,6 +26201,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[WhatsApp OAuth] Callback error:", error);
       return errorRedirect("unexpected_error");
     }
+  });
 
   // GET /api/integrations/whatsapp/status - Get WhatsApp connection status
   app.get("/api/integrations/whatsapp/status", requireActiveCompany, async (req: Request, res: Response) => {
@@ -25737,6 +26233,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         updatedAt: connection.updatedAt,
       }
     });
+  });
 
   // POST /api/integrations/whatsapp/connect - Manual connect (Admin/Debug only)
   // This is kept for admin debugging purposes
@@ -25808,6 +26305,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
     
     return res.json({ success: true });
+  });
 
   // POST /api/integrations/whatsapp/disconnect - Disconnect WhatsApp
   app.post("/api/integrations/whatsapp/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
@@ -25837,6 +26335,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       .where(eq(channelConnections.id, connection.id));
     
     return res.json({ success: true });
+  });
 
   // DELETE /api/integrations/whatsapp/disconnect - Disconnect WhatsApp (legacy support)
   app.delete("/api/integrations/whatsapp/disconnect", async (req: Request, res: Response) => {
@@ -25865,6 +26364,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       .where(eq(channelConnections.id, connection.id));
     
     return res.json({ success: true });
+  });
 
 
   // =====================================================
@@ -25915,6 +26415,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Instagram OAuth] Start error:", error);
       return res.status(500).json({ error: "Failed to start OAuth flow" });
     }
+  });
 
   // GET /api/integrations/meta/instagram/callback - OAuth callback from Meta
   app.get("/api/integrations/meta/instagram/callback", async (req: Request, res: Response) => {
@@ -26043,6 +26544,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Instagram OAuth] Callback error:", error);
       return errorRedirect("connection_failed");
     }
+  });
 
   // GET /api/integrations/instagram/status - Get Instagram connection status
   app.get("/api/integrations/instagram/status", requireActiveCompany, async (req: Request, res: Response) => {
@@ -26062,6 +26564,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Instagram] Status error:", error);
       return res.status(500).json({ error: "Failed to get Instagram status" });
     }
+  });
 
   // POST /api/integrations/instagram/disconnect - Disconnect Instagram
   app.post("/api/integrations/instagram/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
@@ -26095,6 +26598,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Instagram] Disconnect error:", error);
       return res.status(500).json({ error: "Failed to disconnect Instagram" });
     }
+  });
 
   // =====================================================
   // FACEBOOK MESSENGER OAUTH INTEGRATION
@@ -26144,6 +26648,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Facebook OAuth] Start error:", error);
       return res.status(500).json({ error: "Failed to start OAuth flow" });
     }
+  });
 
   // GET /api/integrations/meta/facebook/callback - OAuth callback from Meta
   app.get("/api/integrations/meta/facebook/callback", async (req: Request, res: Response) => {
@@ -26267,6 +26772,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Facebook OAuth] Callback error:", error);
       return errorRedirect("connection_failed");
     }
+  });
 
   // GET /api/integrations/facebook/status - Get Facebook connection status
   app.get("/api/integrations/facebook/status", requireActiveCompany, async (req: Request, res: Response) => {
@@ -26286,6 +26792,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Facebook] Status error:", error);
       return res.status(500).json({ error: "Failed to get Facebook status" });
     }
+  });
 
   // POST /api/integrations/facebook/disconnect - Disconnect Facebook
   app.post("/api/integrations/facebook/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
@@ -26320,6 +26827,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Facebook] Disconnect error:", error);
       return res.status(500).json({ error: "Failed to disconnect Facebook" });
     }
+  });
 
   // =====================================================
   // TIKTOK LOGIN KIT OAUTH INTEGRATION
@@ -26371,6 +26879,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[TikTok OAuth] Start error:", error);
       return res.status(500).json({ error: "Failed to start OAuth flow" });
     }
+  });
 
   // GET /api/integrations/tiktok/callback - OAuth callback from TikTok
   app.get("/api/integrations/tiktok/callback", async (req: Request, res: Response) => {
@@ -26534,6 +27043,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[TikTok OAuth] Callback error:", error);
       return errorRedirect("connection_failed");
     }
+  });
 
   // GET /api/integrations/tiktok/status - Get TikTok connection status
   app.get("/api/integrations/tiktok/status", requireActiveCompany, async (req: Request, res: Response) => {
@@ -26553,6 +27063,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[TikTok] Status error:", error);
       return res.status(500).json({ error: "Failed to get TikTok status" });
     }
+  });
 
   // POST /api/integrations/tiktok/disconnect - Disconnect TikTok
   app.post("/api/integrations/tiktok/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
@@ -26610,6 +27121,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[TikTok] Disconnect error:", error);
       return res.status(500).json({ error: "Failed to disconnect TikTok" });
     }
+  });
 
 
   // =====================================================
@@ -26941,6 +27453,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telegram] Webhook setup error:", error);
       return res.status(500).json({ error: "Failed to setup webhook", details: error.message });
     }
+  });
 
   // POST /api/integrations/telegram/start - Generate connect code
   app.post("/api/integrations/telegram/start", requireActiveCompany, async (req: Request, res: Response) => {
@@ -26985,6 +27498,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telegram] Start error:", error);
       return res.status(500).json({ error: "Failed to generate connect code" });
     }
+  });
 
   // GET /api/integrations/telegram/status - Get connected chats
   app.get("/api/integrations/telegram/status", requireActiveCompany, async (req: Request, res: Response) => {
@@ -27004,6 +27518,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telegram] Status error:", error);
       return res.status(500).json({ error: "Failed to get Telegram status" });
     }
+  });
 
   // POST /api/integrations/telegram/disconnect - Disconnect a chat
   app.post("/api/integrations/telegram/disconnect", requireActiveCompany, async (req: Request, res: Response) => {
@@ -27025,6 +27540,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telegram] Disconnect error:", error);
       return res.status(500).json({ error: "Failed to disconnect chat" });
     }
+  });
 
   // POST /api/integrations/telegram/setup-bot - User submits their own bot token
   app.post("/api/integrations/telegram/setup-bot", requireActiveCompany, async (req: Request, res: Response) => {
@@ -27092,6 +27608,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telegram] Setup bot error:", error);
       return res.status(500).json({ error: "Failed to setup bot", details: error.message });
     }
+  });
 
   // DELETE /api/integrations/telegram/remove-bot - Remove user's bot
   app.delete("/api/integrations/telegram/remove-bot", requireActiveCompany, async (req: Request, res: Response) => {
@@ -27125,6 +27642,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telegram] Remove bot error:", error);
       return res.status(500).json({ error: "Failed to remove bot" });
     }
+  });
 
   // GET /api/integrations/telegram/bot-status - Get user's bot status
   app.get("/api/integrations/telegram/bot-status", requireActiveCompany, async (req: Request, res: Response) => {
@@ -27149,6 +27667,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telegram] Bot status error:", error);
       return res.status(500).json({ error: "Failed to get bot status" });
     }
+  });
 
   // POST /webhooks/telegram/user/:webhookSecret - Dynamic webhook for user bots
   app.post("/webhooks/telegram/user/:webhookSecret", async (req: Request, res: Response) => {
@@ -27200,6 +27719,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     } catch (error) {
       console.error("[Telegram User Webhook] Error:", error);
     }
+  });
 
   // Helper: Send message via user's bot
   async function sendUserBotTelegramMessage(botToken: string, chatId: string, text: string): Promise<any> {
@@ -27482,6 +28002,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     } catch (error) {
       console.error("[Telegram Webhook] Error:", error);
     }
+  });
 
   // POST /api/telegram/messages/send - Send outbound message
   app.post("/api/telegram/messages/send", requireActiveCompany, async (req: Request, res: Response) => {
@@ -27550,6 +28071,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telegram] Send message error:", error);
       return res.status(500).json({ error: "Failed to send message" });
     }
+  });
   // POST /webhooks/telnyx/voicemail - Handle voicemail completed events
   app.post("/webhooks/telnyx/voicemail", async (req: Request, res: Response) => {
     try {
@@ -27627,6 +28149,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Voicemail] Error:", error);
       res.status(500).json({ error: "Voicemail processing failed" });
     }
+  });
   // ==================== VOICEMAIL API ====================
   
   // GET /api/voicemails - List voicemails for current user
@@ -27669,6 +28192,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Voicemails] List error:", error);
       res.status(500).json({ message: "Failed to fetch voicemails" });
     }
+  });
   
   // PATCH /api/voicemails/:id/read - Mark voicemail as read
   app.patch("/api/voicemails/:id/read", requireAuth, async (req: Request, res: Response) => {
@@ -27697,6 +28221,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Voicemails] Mark read error:", error);
       res.status(500).json({ message: "Failed to mark voicemail as read" });
     }
+  });
   
   // DELETE /api/voicemails/:id - Delete voicemail
   app.delete("/api/voicemails/:id", requireAuth, async (req: Request, res: Response) => {
@@ -27724,6 +28249,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Voicemails] Delete error:", error);
       res.status(500).json({ message: "Failed to delete voicemail" });
     }
+  });
   // GET /api/mms-file/:id - Public endpoint to serve MMS files for Telnyx
   app.get("/api/mms-file/:id", async (req: Request, res: Response) => {
     const { id } = req.params;
@@ -27740,6 +28266,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[MMS File] Error fetching from database:", error);
       return res.status(500).send("Error retrieving file");
     }
+  });
   // ==================== WALLET API ====================
   // ==================== WALLET API ====================
   
@@ -27757,6 +28284,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Wallet] Error getting wallet:", error);
       res.status(500).json({ message: "Failed to get wallet" });
     }
+  });
   // GET /api/wallet/transactions - Get wallet transactions with Stripe receipt URLs
   app.get("/api/wallet/transactions", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -27798,6 +28326,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Wallet] Error getting transactions:", error);
       res.status(500).json({ message: "Failed to get transactions" });
     }
+  });
   // POST /api/wallet/deposit - Add funds to wallet (for testing/admin)
   app.post("/api/wallet/deposit", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -27825,6 +28354,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Wallet] Error depositing:", error);
       res.status(500).json({ message: "Failed to deposit" });
     }
+  });
   // POST /api/wallet/charge - Charge wallet (internal use)
   app.post("/api/wallet/charge", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -27855,6 +28385,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Wallet] Error charging:", error);
       res.status(500).json({ message: "Failed to charge wallet" });
     }
+  });
   // GET /api/wallet/balance - Quick balance check
   app.get("/api/wallet/balance", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -27877,6 +28408,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Wallet] Error getting balance:", error);
       res.status(500).json({ message: "Failed to get balance" });
     }
+  });
   // POST /api/wallet/top-up - Add funds using saved payment method
   app.post("/api/wallet/top-up", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -27963,6 +28495,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       res.status(500).json({ message: "Failed to process top-up" });
     }
+  });
   // POST /api/wallet/auto-recharge - Configure auto-recharge settings
   app.post("/api/wallet/auto-recharge", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -28009,6 +28542,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Wallet] Error updating auto-recharge:", error);
       res.status(500).json({ message: "Failed to update auto-recharge settings" });
     }
+  });
   // ==================== TELNYX PHONE SYSTEM API ====================
   
   // POST /api/setup-phone-system - Setup Telnyx sub-account for company
@@ -28036,6 +28570,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx] Error setting up phone system:", error);
       res.status(500).json({ message: "Failed to setup phone system" });
     }
+  });
   // GET /api/phone-system/status - Get phone system status
   app.get("/api/phone-system/status", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -28064,6 +28599,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx] Error getting phone system status:", error);
       res.status(500).json({ message: "Failed to get phone system status" });
     }
+  });
   // GET /api/phone-system/phone-numbers - Get all phone numbers for the company (for 10DLC assignment)
   app.get("/api/phone-system/phone-numbers", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -28100,6 +28636,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Phone System] Error getting phone numbers:", error);
       res.status(500).json({ message: "Failed to get phone numbers" });
     }
+  });
   // POST /webhooks/telnyx - Telnyx webhook for billing automation
   app.post("/webhooks/telnyx", async (req: Request, res: Response) => {
     try {
@@ -28132,6 +28669,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Webhook] Error processing webhook:", error);
       res.status(500).json({ error: "Webhook processing failed" });
     }
+  });
   // POST /webhooks/telnyx/voice/inbound - Handle inbound voice calls (TeXML)
   app.post("/webhooks/telnyx/voice/inbound", async (req: Request, res: Response) => {
     try {
@@ -28153,6 +28691,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Voice Inbound] Error:", error);
       res.status(500).send('<?xml version="1.0" encoding="UTF-8"?><Response><Hangup /></Response>');
     }
+  });
   // POST /webhooks/telnyx/voice/status - Handle voice call status callbacks
   app.post("/webhooks/telnyx/voice/status", async (req: Request, res: Response) => {
     try {
@@ -28173,6 +28712,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Voice Status] Error:", error);
       res.status(500).json({ error: "Status callback processing failed" });
     }
+  });
   // POST /webhooks/telnyx/voice/fallback - Fallback handler for voice errors
   app.post("/webhooks/telnyx/voice/fallback", async (req: Request, res: Response) => {
     try {
@@ -28188,6 +28728,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Voice Fallback] Error:", error);
       res.status(500).send('<?xml version="1.0" encoding="UTF-8"?><Response><Hangup /></Response>');
     }
+  });
   const httpServer = createServer(app);
   // POST /webhooks/telnyx/voice/:companyId - Handle INBOUND voice calls per company (TeXML)
   // This webhook receives calls from PSTN -> routes to WebRTC client
@@ -28322,10 +28863,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   <Hangup/>
 </Response>`);
     }
+  });
   // POST /webhooks/telnyx/dial-complete/:companyId - Handle Dial completion
   app.post("/webhooks/telnyx/dial-complete/:companyId", async (_req: Request, res: Response) => {
     res.set("Content-Type", "application/xml");
     res.status(200).send(`<?xml version="1.0" encoding="UTF-8"?><Response></Response>`);
+  });
   // ==== CALL CONTROL API WEBHOOKS (WebSocket-based routing) ====
   // These handle inbound calls via Call Control Application
   // Delegates to CallControlWebhookService which uses WebSocket to notify agents
@@ -28345,11 +28888,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     } catch (error: any) {
       console.error("[Telnyx Call Control] Webhook error:", error);
     }
+  });
   
   // Fallback handler for Call Control webhooks
   app.post("/webhooks/telnyx/call-control/:companyId/fallback", async (req: Request, res: Response) => {
     console.error("[Telnyx Call Control Fallback] Fallback triggered:", req.body);
     res.status(200).json({ received: true });
+  });
     // POST /webhooks/telnyx/status/:companyId - Handle status callbacks per company
   app.post("/webhooks/telnyx/status/:companyId", async (req: Request, res: Response) => {
     try {
@@ -28361,6 +28906,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Status] Error:", error);
       res.status(500).json({ error: "Status processing failed" });
     }
+  });
   // POST /webhooks/telnyx/messages - Handle incoming SMS messages
   app.post("/webhooks/telnyx/messages", async (req: Request, res: Response) => {
     res.status(200).json({ received: true });
@@ -28542,6 +29088,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     } catch (error: any) {
       console.error("[Telnyx SMS Webhook] Error:", error);
     }
+  });
   // ==================== WALLET API ====================
   
   // GET /api/wallet - Get company wallet
@@ -28558,6 +29105,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Wallet] Error getting wallet:", error);
       res.status(500).json({ message: "Failed to get wallet" });
     }
+  });
   // GET /api/wallet/transactions - Get wallet transactions with Stripe receipt URLs
   app.get("/api/wallet/transactions", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -28599,6 +29147,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Wallet] Error getting transactions:", error);
       res.status(500).json({ message: "Failed to get transactions" });
     }
+  });
   // POST /api/wallet/deposit - Add funds to wallet (for testing/admin)
   app.post("/api/wallet/deposit", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -28626,6 +29175,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Wallet] Error depositing:", error);
       res.status(500).json({ message: "Failed to deposit" });
     }
+  });
   // POST /api/wallet/charge - Charge wallet (internal use)
   app.post("/api/wallet/charge", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -28656,6 +29206,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Wallet] Error charging:", error);
       res.status(500).json({ message: "Failed to charge wallet" });
     }
+  });
   // GET /api/wallet/balance - Quick balance check
   app.get("/api/wallet/balance", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -28678,6 +29229,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Wallet] Error getting balance:", error);
       res.status(500).json({ message: "Failed to get balance" });
     }
+  });
   // =====================================================
   // SYSTEM API CREDENTIALS MANAGEMENT (Superadmin Only)
   // =====================================================
@@ -28697,6 +29249,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[System Credentials] Error listing:", error);
       res.status(500).json({ message: "Failed to list credentials" });
     }
+  });
   // GET /api/system/credentials/providers - Get available providers list
   app.get("/api/system/credentials/providers", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -28873,6 +29426,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[System Credentials] Error getting providers:", error);
       res.status(500).json({ message: "Failed to get providers" });
     }
+  });
   // GET /api/system/credentials/audit - Get audit log
   app.get("/api/system/credentials/audit", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -28891,6 +29445,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[System Credentials] Error getting audit:", error);
       res.status(500).json({ message: "Failed to get audit log" });
     }
+  });
   // POST /api/system/credentials/:id/reveal - Reveal a credential value (requires re-auth)
   app.post("/api/system/credentials/:id/reveal", requireAuth, async (req: Request, res: Response) => {
     const user = req.user!;
@@ -28961,6 +29516,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       await logRevealAttempt(false, "internal_error");
       res.status(500).json({ message: "Failed to reveal credential" });
     }
+  });
   // POST /api/system/credentials - Create or update a credential
   app.post("/api/system/credentials", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -29007,6 +29563,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[System Credentials] Error storing:", error);
       res.status(500).json({ message: "Failed to store credential" });
     }
+  });
   // PATCH /api/system/credentials/:id - Update credential metadata
   app.patch("/api/system/credentials/:id", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -29040,6 +29597,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[System Credentials] Error updating:", error);
       res.status(500).json({ message: "Failed to update credential" });
     }
+  });
   // DELETE /api/system/credentials/:id - Delete a credential
   app.delete("/api/system/credentials/:id", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -29066,6 +29624,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[System Credentials] Error deleting:", error);
       res.status(500).json({ message: "Failed to delete credential" });
     }
+  });
   // DELETE /api/system/credentials/provider/:provider - Delete all credentials for a provider
   app.delete("/api/system/credentials/provider/:provider", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -29098,6 +29657,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[System Credentials] Error bulk deleting:", error);
       res.status(500).json({ message: "Failed to delete credentials" });
     }
+  });
   // POST /api/system/credentials/:id/rotate - Rotate a credential
   app.post("/api/system/credentials/:id/rotate", requireAuth, async (req: Request, res: Response) => {
     const user = req.user!;
@@ -29194,6 +29754,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       await logRotateAttempt(false, undefined, `internal_error: ${error.message}`);
       res.status(500).json({ message: "Failed to rotate credential" });
     }
+  });
   setupWebSocket(httpServer, sessionStore);
   // =====================================================
   // SYSTEM CONFIGURATION ENDPOINTS
@@ -29210,6 +29771,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[System Config] Error getting public config:", error);
       res.status(500).json({ message: "Failed to get public config" });
     }
+  });
   
   // GET /api/system-config/stripe-publishable-key - Get Stripe publishable key (no auth required)
   app.get("/api/system-config/stripe-publishable-key", async (req: Request, res: Response) => {
@@ -29221,6 +29783,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[System Config] Error getting Stripe publishable key:", error);
       res.json({ publishableKey: null });
     }
+  });
   // GET /api/system-config - List all config (superadmin only)
   app.get("/api/system-config", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -29237,6 +29800,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[System Config] Error listing configs:", error);
       res.status(500).json({ message: "Failed to list configs" });
     }
+  });
   // PUT /api/system-config/:key - Update a config value (superadmin only)
   app.put("/api/system-config/:key", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -29264,6 +29828,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[System Config] Error updating config:", error);
       res.status(500).json({ message: "Failed to update config" });
     }
+  });
   // POST /api/system-config - Create a new config (superadmin only)
   app.post("/api/system-config", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -29293,6 +29858,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[System Config] Error creating config:", error);
       res.status(500).json({ message: "Failed to create config" });
     }
+  });
   // DELETE /api/system-config/:key - Delete a config (superadmin only)
   app.delete("/api/system-config/:key", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -29314,6 +29880,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[System Config] Error deleting config:", error);
       res.status(500).json({ message: "Failed to delete config" });
     }
+  });
   // GET /api/sms-voice/numbers - Get toll-free numbers with compliance status for SMS & Voice page
   app.get("/api/sms-voice/numbers", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -29393,6 +29960,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[SMS-Voice] Error fetching numbers:", error);
       res.status(500).json({ message: "Failed to fetch phone numbers" });
     }
+  });
 
 
   // GET /api/telnyx/verification-request/by-phone/:phoneNumber - Get verification request by phone number
@@ -29512,6 +30080,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx TFV] Error fetching verification request by phone:", error);
       res.status(500).json({ message: "Failed to fetch verification request" });
     }
+  });
   app.get("/api/telnyx/verification-request/:id", requireAuth, async (req: Request, res: Response) => {
     try {
       const user = req.user as any;
@@ -29579,6 +30148,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx] Error fetching verification request:", error);
       res.status(500).json({ message: "Failed to fetch verification request" });
     }
+  });
 
   // GET /api/telnyx/phone-system-access - Check if current user has access to Phone System tab
   app.get("/api/telnyx/phone-system-access", requireAuth, async (req: Request, res: Response) => {
@@ -29617,6 +30187,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Phone System Access] Error:", error);
       res.status(500).json({ message: "Failed to check access" });
     }
+  });
   // ==================== 10DLC Brand Registration ====================
   // Helper function to build Telnyx API headers with conditional managed account header
   function buildTelnyxHeaders(apiKey, managedAccountId) {
@@ -29695,6 +30266,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("Error fetching brands:", error);
       res.status(500).json({ message: error.message });
     }
+  });
   // POST /api/phone-system/brands - Create new 10DLC brand
   app.post("/api/phone-system/brands", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -29819,6 +30391,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("Error creating brand:", error);
       res.status(500).json({ message: error.message });
     }
+  });
   // GET /api/phone-system/brands/:id - Get brand details
   app.get("/api/phone-system/brands/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -29842,6 +30415,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("Error fetching brand:", error);
       res.status(500).json({ message: error.message });
     }
+  });
   // ==================== Messaging Profiles ====================
   
   // GET /api/phone-system/messaging-profile - Get messaging profile for company
@@ -29913,6 +30487,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("Error fetching messaging profile:", error);
       res.status(500).json({ message: error.message });
     }
+  });
   
   // POST /api/phone-system/messaging-profile - Create messaging profile
   app.post("/api/phone-system/messaging-profile", requireActiveCompany, async (req: Request, res: Response) => {
@@ -29999,6 +30574,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("Error creating messaging profile:", error);
       res.status(500).json({ message: error.message });
     }
+  });
   
   // DELETE /api/phone-system/messaging-profile - Delete messaging profile
   app.delete("/api/phone-system/messaging-profile", requireActiveCompany, async (req: Request, res: Response) => {
@@ -30045,6 +30621,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("Error deleting messaging profile:", error);
       res.status(500).json({ message: error.message });
     }
+  });
   // POST /api/phone-system/messaging-profile/backfill - Assign messaging profile to all numbers
   app.post("/api/phone-system/messaging-profile/backfill", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -30062,6 +30639,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("Error backfilling messaging profile:", error);
       res.status(500).json({ message: error.message });
     }
+  });
   // ========== TOLL-FREE VERIFICATION ENDPOINTS ==========
   // 10DLC Campaign Management
   // GET /api/phone-system/campaigns - List 10DLC campaigns
@@ -30139,6 +30717,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("Error fetching 10DLC campaigns:", error);
       res.status(500).json({ message: error.message });
     }
+  });
   // POST /api/phone-system/campaigns - Create 10DLC campaign
   app.post("/api/phone-system/campaigns", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -30268,6 +30847,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("Error creating 10DLC campaign:", error);
       res.status(500).json({ message: error.message });
     }
+  });
   // GET /api/phone-system/campaigns/:id - Get campaign details
   app.get("/api/phone-system/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -30298,6 +30878,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("Error fetching 10DLC campaign:", error);
       res.status(500).json({ message: error.message });
     }
+  });
 
   // PUT /api/phone-system/campaigns/:id - Update 10DLC campaign (for rejected campaigns)
   app.put("/api/phone-system/campaigns/:id", requireActiveCompany, async (req: Request, res: Response) => {
@@ -30368,6 +30949,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("Error updating 10DLC campaign:", error);
       res.status(500).json({ message: error.message });
     }
+  });
 
   // POST /api/phone-system/campaigns/:id/appeal - Appeal a rejected 10DLC campaign
   app.post("/api/phone-system/campaigns/:id/appeal", requireActiveCompany, async (req: Request, res: Response) => {
@@ -30409,6 +30991,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("Error appealing 10DLC campaign:", error);
       res.status(500).json({ message: error.message });
     }
+  });
   // GET /api/phone-system/campaigns/:id/phone-numbers - Get phone numbers assigned to campaign
   // Telnyx API: GET https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[telnyx_campaign_id]=...
   app.get("/api/phone-system/campaigns/:id/phone-numbers", requireActiveCompany, async (req: Request, res: Response) => {
@@ -30490,6 +31073,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("Error fetching campaign phone numbers:", error);
       res.status(500).json({ message: error.message });
     }
+  });
   // POST /api/phone-system/campaigns/:id/phone-numbers - Assign phone numbers to campaign
   // Telnyx API: POST https://api.telnyx.com/v2/10dlc/phone_number_campaigns with { phoneNumber, campaignId }
   app.post("/api/phone-system/campaigns/:id/phone-numbers", requireActiveCompany, async (req: Request, res: Response) => {
@@ -30556,6 +31140,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("Error assigning phone numbers to campaign:", error);
       res.status(500).json({ message: error.message });
     }
+  });
   // DELETE /api/phone-system/campaigns/:id/phone-numbers/:phoneNumber - Remove phone number from campaign
   // Telnyx API: DELETE https://api.telnyx.com/v2/10dlc/phone_number_campaigns/:phoneNumber
   app.delete("/api/phone-system/campaigns/:id/phone-numbers/:phoneNumber", requireActiveCompany, async (req: Request, res: Response) => {
@@ -30590,6 +31175,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("Error removing phone number from campaign:", error);
       res.status(500).json({ message: error.message });
     }
+  });
     // GET /api/phone-system/toll-free/verifications - List toll-free verification requests
   app.get("/api/phone-system/toll-free/verifications", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -30631,6 +31217,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Toll-Free Verification] Error:", error);
       res.status(500).json({ message: error.message });
     }
+  });
   // POST /api/phone-system/toll-free/verifications - Submit toll-free verification request
   app.post("/api/phone-system/toll-free/verifications", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -30740,6 +31327,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Toll-Free Verification] Error:", error);
       res.status(500).json({ message: error.message });
     }
+  });
   // GET /api/phone-system/toll-free/verifications/:id - Get specific verification request
   app.get("/api/phone-system/toll-free/verifications/:id", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -30776,6 +31364,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Toll-Free Verification] Error:", error);
       res.status(500).json({ message: error.message });
     }
+  });
 
   // ========== RCS (Rich Communication Services) Management ==========
   
@@ -30814,6 +31403,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[RCS] Error listing agents:", error);
       res.status(500).json({ message: error.message });
     }
+  });
 
   // GET /api/rcs/agents/:agentId - Get single RCS agent details
   app.get("/api/rcs/agents/:agentId", requireActiveCompany, async (req: Request, res: Response) => {
@@ -30848,6 +31438,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[RCS] Error fetching agent:", error);
       res.status(500).json({ message: error.message });
     }
+  });
 
   // PATCH /api/rcs/agents/:agentId - Update RCS agent settings
   app.patch("/api/rcs/agents/:agentId", requireActiveCompany, async (req: Request, res: Response) => {
@@ -30884,6 +31475,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[RCS] Error updating agent:", error);
       res.status(500).json({ message: error.message });
     }
+  });
 
   // POST /api/rcs/check-capabilities - Check if phone number supports RCS
   app.post("/api/rcs/check-capabilities", requireActiveCompany, async (req: Request, res: Response) => {
@@ -30929,6 +31521,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[RCS] Error checking capabilities:", error);
       res.status(500).json({ message: error.message });
     }
+  });
 
   // POST /api/rcs/agents/:agentId/test-numbers - Add test number for RCS agent
   app.post("/api/rcs/agents/:agentId/test-numbers", requireActiveCompany, async (req: Request, res: Response) => {
@@ -30978,6 +31571,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[RCS] Error adding test number:", error);
       res.status(500).json({ message: error.message });
     }
+  });
 
 
 
@@ -31074,6 +31668,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[RCS] Error sending message:", error);
       res.status(500).json({ message: error.message });
     }
+  });
   // GET /api/telnyx/user-phone-status - Check if current user has an assigned phone number for calling
   app.get("/api/telnyx/user-phone-status", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31170,6 +31765,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[User Phone Status] Error:", error);
       res.status(500).json({ message: "Failed to check phone status" });
     }
+  });
   // GET /api/telnyx/number-pricing - Get client pricing for phone numbers
   app.get("/api/telnyx/number-pricing", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31184,6 +31780,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Number Pricing] Error:", error);
       res.status(500).json({ message: "Failed to get pricing" });
     }
+  });
   // GET /api/telnyx/pricing - Get all telephony pricing for clients
   app.get("/api/telnyx/pricing", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31227,6 +31824,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Pricing] Error:", error);
       res.status(500).json({ message: "Failed to get pricing" });
     }
+  });
   // GET /api/telnyx/available-numbers - Search available phone numbers
   app.get("/api/telnyx/available-numbers", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31264,6 +31862,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Numbers] Search error:", error);
       res.status(500).json({ message: "Failed to search phone numbers" });
     }
+  });
   // POST /api/telnyx/purchase-number - Purchase a phone number
   app.post("/api/telnyx/purchase-number", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31391,6 +31990,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Numbers] Purchase error:", error);
       res.status(500).json({ message: "Failed to purchase phone number" });
     }
+  });
   // GET /api/telnyx/my-numbers - Get user's purchased phone numbers (user-scoped)
   app.get("/api/telnyx/my-numbers", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31429,6 +32029,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Numbers] Get numbers error:", error);
       res.status(500).json({ message: "Failed to get phone numbers" });
     }
+  });
   // POST /api/telnyx/repair-phone-connection/:phoneNumberId - Repair phone number credential connection assignment
   app.post("/api/telnyx/repair-phone-connection/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31454,6 +32055,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Repair] Error:", error);
       res.status(500).json({ message: "Failed to repair phone number connection" });
     }
+  });
   // GET /api/telnyx/cnam/:phoneNumberId - Get CNAM settings for a phone number
   app.get("/api/telnyx/cnam/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31479,6 +32081,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx CNAM] Get settings error:", error);
       res.status(500).json({ message: "Failed to get CNAM settings" });
     }
+  });
   // POST /api/telnyx/cnam/:phoneNumberId - Update CNAM settings for a phone number
   app.post("/api/telnyx/cnam/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31520,6 +32123,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx CNAM] Update error:", error);
       res.status(500).json({ message: "Failed to update CNAM settings" });
     }
+  });
   // POST /api/telnyx/assign-number/:phoneNumberId - Assign a phone number to a specific user
   app.post("/api/telnyx/assign-number/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31648,6 +32252,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Assign] Error:", error);
       res.status(500).json({ message: "Failed to assign phone number" });
     }
+  });
   // GET /api/telnyx/voice-settings/:phoneNumberId - Get all voice settings (CNAM, Recording, Spam, etc.)
   app.get("/api/telnyx/voice-settings/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31669,6 +32274,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Voice Settings] Get error:", error);
       res.status(500).json({ message: "Failed to get voice settings" });
     }
+  });
   // POST /api/telnyx/sync-voice-settings/:phoneNumberId - Sync voice settings from Telnyx to local DB
   app.post("/api/telnyx/sync-voice-settings/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31690,6 +32296,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Sync Voice Settings] Error:", error);
       res.status(500).json({ message: "Failed to sync voice settings" });
     }
+  });
   // GET /api/telnyx/routing-debug/:phoneNumberId - Debug: Check current routing config from Telnyx
   app.get("/api/telnyx/routing-debug/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31711,6 +32318,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Routing Debug] Error:", error);
       res.status(500).json({ message: "Failed to get routing config" });
     }
+  });
   // POST /api/telnyx/call-recording/:phoneNumberId - Update call recording settings
   app.post("/api/telnyx/call-recording/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31740,6 +32348,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Call Recording] Update error:", error);
       res.status(500).json({ message: "Failed to update call recording settings" });
     }
+  });
   // POST /api/telnyx/spam-protection/:phoneNumberId - Update spam protection settings
   app.post("/api/telnyx/spam-protection/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31769,6 +32378,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Spam Protection] Update error:", error);
       res.status(500).json({ message: "Failed to update spam protection settings" });
     }
+  });
   // POST /api/telnyx/caller-id-lookup/:phoneNumberId - Update inbound caller ID lookup (note: may be readOnly in API)
   app.post("/api/telnyx/caller-id-lookup/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31831,6 +32441,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Caller ID Lookup] Update error:", error);
       res.status(500).json({ message: "Failed to update caller ID lookup settings" });
     }
+  });
   // POST /api/telnyx/call-forwarding/:phoneNumberId - Update call forwarding settings
   app.post("/api/telnyx/call-forwarding/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31863,6 +32474,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Call Forwarding] Update error:", error);
       res.status(500).json({ message: "Failed to update call forwarding settings" });
     }
+  });
   // GET /api/telnyx/voicemail/:phoneNumberId - Get voicemail settings
   app.get("/api/telnyx/voicemail/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31884,6 +32496,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Voicemail] Get settings error:", error);
       res.status(500).json({ message: "Failed to get voicemail settings" });
     }
+  });
   // POST /api/telnyx/voicemail/:phoneNumberId - Update voicemail settings
   app.post("/api/telnyx/voicemail/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31916,6 +32529,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Voicemail] Update error:", error);
       res.status(500).json({ message: "Failed to update voicemail settings" });
     }
+  });
   // POST /api/telnyx/number-voice-settings/:phoneNumberId - Update per-number voice settings
   app.post("/api/telnyx/number-voice-settings/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31949,6 +32563,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Number Voice Settings] Update error:", error);
       res.status(500).json({ message: "Failed to update voice settings" });
     }
+  });
   // GET /api/telnyx/noise-suppression - Get current noise suppression settings
   app.get("/api/telnyx/noise-suppression", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -31974,6 +32589,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Noise Suppression] Get settings error:", error);
       res.status(500).json({ message: "Failed to get noise suppression settings" });
     }
+  });
   // POST /api/telnyx/noise-suppression - Toggle noise suppression for company
   app.post("/api/telnyx/noise-suppression", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -32075,6 +32691,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Noise Suppression] Update error:", error);
       res.status(500).json({ message: "Failed to update noise suppression settings" });
     }
+  });
   // GET /api/telnyx/billing-features - Get current billing features settings (recording, CNAM)
   app.get("/api/telnyx/billing-features", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -32100,6 +32717,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Billing Features] Get settings error:", error);
       res.status(500).json({ message: "Failed to get billing features settings" });
     }
+  });
   // POST /api/telnyx/billing-features - Update billing features (recording, CNAM)
   app.post("/api/telnyx/billing-features", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -32180,6 +32798,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Billing Features] Update error:", error);
       res.status(500).json({ message: "Failed to update billing features settings" });
     }
+  });
   // =====================================================
   // TELNYX MANAGED ACCOUNTS ENDPOINTS
   // =====================================================
@@ -32206,6 +32825,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Managed] Setup error:", error);
       res.status(500).json({ message: "Failed to setup managed account" });
     }
+  });
   // GET /api/telnyx/managed-accounts/status - Get managed account status for company
   app.get("/api/telnyx/managed-accounts/status", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -32268,6 +32888,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Managed] Status error:", error);
       res.status(500).json({ message: "Failed to get managed account status" });
     }
+  });
   // GET /api/telnyx/managed-accounts - List all managed accounts (superadmin only)
   app.get("/api/telnyx/managed-accounts", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -32287,6 +32908,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Managed] List error:", error);
       res.status(500).json({ message: "Failed to list managed accounts" });
     }
+  });
   // POST /api/telnyx/managed-accounts/:id/disable - Disable a managed account (superadmin only)
   app.post("/api/telnyx/managed-accounts/:id/disable", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -32307,6 +32929,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Managed] Disable error:", error);
       res.status(500).json({ message: "Failed to disable managed account" });
     }
+  });
   // POST /api/telnyx/managed-accounts/:id/enable - Enable a managed account (superadmin only)
   app.post("/api/telnyx/managed-accounts/:id/enable", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -32326,6 +32949,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Telnyx Managed] Enable error:", error);
       res.status(500).json({ message: "Failed to enable managed account" });
     }
+  });
   // =====================================================
   // TELNYX GLOBAL PRICING ENDPOINTS (Super Admin Only)
   // =====================================================
@@ -32449,6 +33073,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Global Pricing] GET error:", error);
       res.status(500).json({ message: "Failed to get pricing configuration" });
     }
+  });
   // PUT /api/telnyx/global-pricing - Update global pricing configuration
   app.put("/api/telnyx/global-pricing", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -32526,6 +33151,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Global Pricing] PUT error:", error);
       res.status(500).json({ message: "Failed to update pricing configuration" });
     }
+  });
   // POST /api/telnyx/provisioning/trigger - Trigger WebRTC infrastructure provisioning
   app.post("/api/telnyx/provisioning/trigger", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -32573,6 +33199,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Provisioning] Trigger error:", error);
       res.status(500).json({ message: "Failed to trigger provisioning" });
     }
+  });
   // GET /api/telnyx/provisioning/status - Get WebRTC provisioning status
   app.get("/api/telnyx/provisioning/status", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -32603,6 +33230,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Provisioning] Status error:", error);
       res.status(500).json({ message: "Failed to get provisioning status" });
     }
+  });
   // POST /api/telnyx/provisioning/retry - Retry failed provisioning
   app.post("/api/telnyx/provisioning/retry", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -32648,6 +33276,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Provisioning] Retry error:", error);
       res.status(500).json({ message: "Failed to retry provisioning" });
     }
+  });
   // POST /api/telnyx/provisioning/repair - Repair phone number routing (fix dual routing conflicts)
   app.post("/api/telnyx/provisioning/repair", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -32675,6 +33304,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Provisioning] Repair error:", error);
       res.status(500).json({ message: "Failed to repair phone number routing" });
     }
+  });
   // POST /api/telnyx/provisioning/fix-webhooks - Fix TeXML webhooks to use company-specific URLs
   app.post("/api/telnyx/provisioning/fix-webhooks", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -32700,6 +33330,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Provisioning] Fix webhooks error:", error);
       res.status(500).json({ message: "Failed to fix TeXML webhooks" });
     }
+  });
   // POST /api/telnyx/provisioning/repair-sip-uri - Enable SIP URI calling on existing credential connections
   app.post("/api/telnyx/provisioning/repair-sip-uri", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -32734,6 +33365,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Provisioning] SIP URI repair error:", error);
       res.status(500).json({ message: "Failed to repair SIP URI calling" });
     }
+  });
   // POST /api/telnyx/provisioning/repair-srtp - Disable SRTP on credential connection for WebRTC compatibility
   app.post("/api/telnyx/provisioning/repair-srtp", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -32759,6 +33391,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Provisioning] SRTP repair error:", error);
       res.status(500).json({ message: "Failed to repair SRTP settings" });
     }
+  });
   // POST /api/telnyx/provisioning/repair-hd-codecs - Configure HD codecs (G.722) on credential connection
   app.post("/api/telnyx/provisioning/repair-hd-codecs", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -32783,6 +33416,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Provisioning] HD codecs repair error:", error);
       res.status(500).json({ message: "Failed to configure HD codecs" });
     }
+  });
   // POST /api/telephony/migrate-to-call-control - Migrate from Credential Connection to Call Control Application
   app.post("/api/telephony/migrate-to-call-control", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -32810,6 +33444,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Migration] Call Control migration error:", error);
       res.status(500).json({ message: "Failed to migrate to Call Control Application" });
     }
+  });
   // GET /api/telnyx/sip-credentials - Get SIP credentials for WebRTC client or Desk Phone
   // Accepts optional ?userId= parameter for admins to get credentials for specific users
   app.get("/api/telnyx/sip-credentials", requireAuth, async (req: Request, res: Response) => {
@@ -32852,6 +33487,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[SIP Credentials] Error:", error);
       res.status(500).json({ message: "Failed to get SIP credentials" });
     }
+  });
   // GET /api/telnyx/turn-credentials - Generate TURN server credentials for WebRTC ICE
   // Per Telnyx docs: SIP credentials authenticate with TURN servers
   // This enables manual ICE server injection for faster call connection (<1 second vs 4+ seconds)
@@ -32908,6 +33544,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[TURN Credentials] Error:", error.message, error.stack);
       res.status(500).json({ message: "Failed to get TURN credentials", error: error.message });
     }
+  });
   // POST /api/telnyx/update-webrtc-config - Update existing credential connection for WebRTC
   app.post("/api/telnyx/update-webrtc-config", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -32937,6 +33574,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[WebRTC Config] Update error:", error);
       res.status(500).json({ message: "Failed to update WebRTC configuration" });
     }
+  });
   // POST /api/telnyx/sync-recordings - Sync recordings from Telnyx to call logs
   app.post("/api/telnyx/sync-recordings", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -33033,6 +33671,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error('[Telnyx Sync] Error:', error);
       res.status(500).json({ error: error.message });
     }
+  });
   // GET /api/telnyx/cdr - Get Call Detail Records from Telnyx for billing analysis
   app.get("/api/telnyx/cdr", requireAuth, async (req: Request, res: Response) => {
     const user = req.user as any;
@@ -33112,6 +33751,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error('[Telnyx CDR] Error:', error);
       res.status(500).json({ error: error.message });
     }
+  });
   // GET /api/telnyx/call-billing - Get call billing analytics (client cost vs Telnyx cost)
   app.get("/api/telnyx/call-billing", requireAuth, async (req: Request, res: Response) => {
     const user = req.user as any;
@@ -33266,6 +33906,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error('[Call Billing] Error:', error);
       res.status(500).json({ error: error.message });
     }
+  });
   // =====================================================
   // E911 EMERGENCY ADDRESS ENDPOINTS
   // =====================================================
@@ -33310,6 +33951,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[E911] Validate error:", error);
       res.status(500).json({ message: "Failed to validate address" });
     }
+  });
   // POST /api/e911/register - Register E911 address and enable on phone number
   app.post("/api/e911/register", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -33351,6 +33993,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[E911] Register error:", error);
       res.status(500).json({ message: "Failed to register E911 address" });
     }
+  });
   // POST /api/webrtc/token - Generate WebRTC token for current user
   // Note: Balance check moved to dial time - phone must always connect
   app.post("/api/webrtc/token", requireAuth, async (req: Request, res: Response) => {
@@ -33404,6 +34047,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[WebRTC] Token generation error:", error);
       res.status(500).json({ message: "Failed to generate WebRTC token" });
     }
+  });
   // POST /api/webrtc/check-balance - Check if user can make calls
   app.post("/api/webrtc/check-balance", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -33429,6 +34073,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[WebRTC] Balance check error:", error);
       res.status(500).json({ canCall: false, message: "Failed to check balance" });
     }
+  });
   // POST /api/webrtc/call-control-hangup - Hang up call using Call Control API with telnyxLegId
   // CRITICAL: The Telnyx WebRTC SDK has a BUG where hangup() ALWAYS sends 486 USER_BUSY
   // This is hardcoded in BaseCall.ts lines 386-387: cause: 'USER_BUSY', causeCode: 17
@@ -33546,6 +34191,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Call Control Hangup] Error:", error);
       res.status(500).json({ success: false, message: error.message || "Hangup failed" });
     }
+  });
   // POST /api/webrtc/server-hangup - Hang up PSTN call from server (avoids 486 Busy)
   // CRITICAL: This endpoint uses Telnyx Call Control API to terminate the PSTN leg cleanly
   // instead of relying on WebRTC SDK's hangup() which sends 486 Busy to the caller
@@ -33630,6 +34276,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[WebRTC Server Hangup] Error:", error);
       res.status(500).json({ success: false, message: error.message || "Hangup failed" });
     }
+  });
     // POST /api/webrtc/call-log - Log WebRTC call events
   app.post("/api/webrtc/call-log", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -33723,6 +34370,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[WebRTC] Call log error:", error);
       res.status(500).json({ message: "Failed to log call" });
     }
+  });
   // GET /api/e911/addresses - Get company's E911 addresses
   app.get("/api/e911/addresses", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -33741,6 +34389,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[E911] Get addresses error:", error);
       res.status(500).json({ message: "Failed to get emergency addresses" });
     }
+  });
   // =====================================================
   // CALL LOGS (Call History for WebPhone)
   // =====================================================
@@ -33864,6 +34513,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Caller Lookup] Unexpected error (returning 200):", error.message);
       res.json({ found: false });
     }
+  });
   // GET /api/call-logs - Get call history for user (user-scoped)
   app.get("/api/call-logs", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -33976,6 +34626,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Call Logs] Get error:", error);
       res.status(500).json({ message: "Failed to get call history" });
     }
+  });
   // POST /api/call-logs - Create a call log entry
   app.post("/api/call-logs", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -34027,6 +34678,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Call Logs] Create error:", error);
       res.status(500).json({ message: "Failed to create call log" });
     }
+  });
   // PATCH /api/call-logs/:id - Update a call log entry
   app.patch("/api/call-logs/:id", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -34121,6 +34773,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Call Logs] Update error:", error);
       res.status(500).json({ message: "Failed to update call log" });
     }
+  });
   // DELETE /api/call-logs/:id - Delete a call log entry
   app.delete("/api/call-logs/:id", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -34141,6 +34794,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Call Logs] Delete error:", error);
       res.status(500).json({ message: "Failed to delete call log" });
     }
+  });
   // DELETE /api/call-logs - Clear all call logs for user (user-scoped)
   app.delete("/api/call-logs", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -34168,6 +34822,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Call Logs] Clear all error:", error);
       res.status(500).json({ message: "Failed to clear call history" });
     }
+  });
   // =====================================================
   // VOICEMAILS
   // =====================================================
@@ -34207,6 +34862,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Voicemails] Get error:", error);
       res.status(500).json({ message: "Failed to get voicemails" });
     }
+  });
   // PATCH /api/voicemails/:id - Update voicemail (mark as read, etc.)
   app.patch("/api/voicemails/:id", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -34238,6 +34894,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Voicemails] Update error:", error);
       res.status(500).json({ message: "Failed to update voicemail" });
     }
+  });
   // DELETE /api/voicemails/:id - Delete a voicemail
   app.delete("/api/voicemails/:id", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -34258,6 +34915,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Voicemails] Delete error:", error);
       res.status(500).json({ message: "Failed to delete voicemail" });
     }
+  });
   // ============================================
   // DEPLOYMENT MANAGEMENT ENDPOINTS
   // ============================================
@@ -34424,6 +35082,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[DEPLOY] GitHub webhook error:", error);
       res.status(500).json({ message: "Failed to trigger deployment" });
     }
+  });
   
   // POST /api/admin/deploy - Super admin trigger for manual deployment
   app.post("/api/admin/deploy", requireAuth, async (req: Request, res: Response) => {
@@ -34472,6 +35131,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[DEPLOY] Admin deploy error:", error);
       res.status(500).json({ message: "Failed to trigger deployment" });
     }
+  });
   
   // GET /api/admin/deploy/status - Get deployment status
   app.get("/api/admin/deploy/status", requireAuth, async (req: Request, res: Response) => {
@@ -34499,6 +35159,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[DEPLOY] Status error:", error);
       res.status(500).json({ message: "Failed to get deployment status" });
     }
+  });
   // PBX (Phone System) API Routes
   // ============================================================
   // GET /api/pbx/settings - Get PBX settings for company
@@ -34511,6 +35172,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error getting settings:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // POST /api/pbx/settings - Create or update PBX settings
   app.post("/api/pbx/settings", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34521,6 +35183,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error updating settings:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // POST /api/pbx/ivr-greeting - Upload IVR greeting audio
   const ivrGreetingUpload = multer({
     storage: multer.memoryStorage(),
@@ -34533,6 +35196,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         cb(new Error('Only MP3 and WAV audio files are allowed'));
       }
     }
+  });
   
   app.post("/api/pbx/ivr-greeting", requireActiveCompany, (req: Request, res: Response, next: NextFunction) => {
     // Wrap multer to handle its errors properly
@@ -34601,6 +35265,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(500).json({ error: error.message || "Upload failed", code: "SERVER_ERROR" });
       }
     });
+  });
   
   // DELETE /api/pbx/ivr-greeting - Delete IVR greeting audio
   app.delete("/api/pbx/ivr-greeting", requireActiveCompany, async (req: Request, res: Response) => {
@@ -34637,6 +35302,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error deleting IVR greeting:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // GET /api/pbx/queues - Get all queues
   app.get("/api/pbx/queues", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34647,6 +35313,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error getting queues:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // POST /api/pbx/queues - Create queue
   app.post("/api/pbx/queues", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34657,6 +35324,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error creating queue:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // PATCH /api/pbx/queues/:queueId - Update queue
   app.patch("/api/pbx/queues/:queueId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34667,6 +35335,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error updating queue:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // DELETE /api/pbx/queues/:queueId - Delete queue
   app.delete("/api/pbx/queues/:queueId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34677,6 +35346,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error deleting queue:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // GET /api/pbx/queues/:queueId/members - Get queue members
   app.get("/api/pbx/queues/:queueId/members", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34687,6 +35357,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error getting queue members:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // POST /api/pbx/queues/:queueId/members - Add queue member
   app.post("/api/pbx/queues/:queueId/members", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34698,6 +35369,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error adding queue member:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // DELETE /api/pbx/queues/:queueId/members/:userId - Remove queue member
   app.delete("/api/pbx/queues/:queueId/members/:userId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34708,6 +35380,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error removing queue member:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // PUT /api/pbx/queues/:queueId/members/sync - Sync queue members
   app.put("/api/pbx/queues/:queueId/members/sync", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34722,6 +35395,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error syncing queue members:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // GET /api/pbx/queues/:queueId/ads - Get queue ads
   app.get("/api/pbx/queues/:queueId/ads", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34732,6 +35406,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error fetching queue ads:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // POST /api/pbx/queues/:queueId/ads - Add queue ad
   app.post("/api/pbx/queues/:queueId/ads", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34746,6 +35421,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error adding queue ad:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // PATCH /api/pbx/queues/:queueId/ads/:adId - Update queue ad
   app.patch("/api/pbx/queues/:queueId/ads/:adId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34760,6 +35436,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error updating queue ad:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // DELETE /api/pbx/queues/:queueId/ads/:adId - Delete queue ad
   app.delete("/api/pbx/queues/:queueId/ads/:adId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34770,6 +35447,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error deleting queue ad:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // GET /api/pbx/queues/:queueId/hold-music - Get queue hold music files
   app.get("/api/pbx/queues/:queueId/hold-music", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34780,6 +35458,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error fetching queue hold music:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // POST /api/pbx/queues/:queueId/hold-music - Add hold music to queue
   app.post("/api/pbx/queues/:queueId/hold-music", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34794,6 +35473,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error adding queue hold music:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // PUT /api/pbx/queues/:queueId/hold-music/sync - Sync hold music files for queue
   app.put("/api/pbx/queues/:queueId/hold-music/sync", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34808,6 +35488,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error syncing queue hold music:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // PATCH /api/pbx/queues/:queueId/hold-music/:holdMusicId - Update hold music
   app.patch("/api/pbx/queues/:queueId/hold-music/:holdMusicId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34822,6 +35503,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error updating queue hold music:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // DELETE /api/pbx/queues/:queueId/hold-music/:holdMusicId - Delete hold music from queue
   app.delete("/api/pbx/queues/:queueId/hold-music/:holdMusicId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34832,6 +35514,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error deleting queue hold music:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // POST /api/pbx/calls/:callControlId/hold - Start hold music on a call
   app.post("/api/pbx/calls/:callControlId/hold", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34844,6 +35527,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error starting hold music:", error);
       return res.status(500).json({ success: false, error: error.message });
     }
+  });
   // DELETE /api/pbx/calls/:callControlId/hold - Stop hold music on a call
   app.delete("/api/pbx/calls/:callControlId/hold", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34855,6 +35539,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error stopping hold music:", error);
       return res.status(500).json({ success: false, error: error.message });
     }
+  });
   // GET /api/pbx/extensions/next - Get next available extension number
   app.get("/api/pbx/extensions/next", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34865,6 +35550,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error getting next extension:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // GET /api/pbx/extensions - Get all extensions
   app.get("/api/pbx/extensions", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34875,6 +35561,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error getting extensions:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // POST /api/pbx/extensions - Create extension
   app.post("/api/pbx/extensions", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34918,6 +35605,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error creating extension:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // POST /api/pbx/extensions/:extensionId/provision-sip - Provision independent SIP Connection for an extension
   app.post("/api/pbx/extensions/:extensionId/provision-sip", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34964,6 +35652,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error provisioning SIP credentials:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // POST /api/pbx/extensions/repair-rtcp-mux - Repair RTCP-MUX for all extensions (required for WebRTC)
   app.post("/api/pbx/extensions/repair-rtcp-mux", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34978,6 +35667,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error repairing RTCP-MUX:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // POST /api/pbx/extensions/repair-outbound-profile - Repair outbound voice profile for all extensions (required for outbound calls)
   app.post("/api/pbx/extensions/repair-outbound-profile", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -34992,6 +35682,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error repairing outbound profile:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // GET /api/webrtc/extension-credentials - Get SIP credentials for the authenticated user's extension
   app.get("/api/webrtc/extension-credentials", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35079,6 +35770,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[WebRTC] Error getting extension credentials:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // PATCH /api/pbx/extensions/:extensionId - Update extension
   app.patch("/api/pbx/extensions/:extensionId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35120,6 +35812,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error updating extension:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // DELETE /api/pbx/extensions/:extensionId - Delete extension
   app.delete("/api/pbx/extensions/:extensionId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35130,6 +35823,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error deleting extension:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // =====================================================
   // IVR (Interactive Voice Response) Management Routes
   // =====================================================
@@ -35143,6 +35837,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error getting IVRs:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // GET /api/pbx/ivrs/next-extension - Get next available IVR extension number
   app.get("/api/pbx/ivrs/next-extension", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35153,6 +35848,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error getting next IVR extension:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // GET /api/pbx/ivrs/:ivrId - Get single IVR
   app.get("/api/pbx/ivrs/:ivrId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35166,6 +35862,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error getting IVR:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // POST /api/pbx/ivrs - Create new IVR
   app.post("/api/pbx/ivrs", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35176,6 +35873,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error creating IVR:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // PATCH /api/pbx/ivrs/:ivrId - Update IVR
   app.patch("/api/pbx/ivrs/:ivrId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35189,6 +35887,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error updating IVR:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // DELETE /api/pbx/ivrs/:ivrId - Delete IVR
   app.delete("/api/pbx/ivrs/:ivrId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35199,6 +35898,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error deleting IVR:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // GET /api/pbx/ivrs/:ivrId/menu-options - Get menu options for specific IVR
   app.get("/api/pbx/ivrs/:ivrId/menu-options", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35209,6 +35909,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error getting IVR menu options:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // POST /api/pbx/ivrs/:ivrId/menu-options - Create menu option for IVR
   app.post("/api/pbx/ivrs/:ivrId/menu-options", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35219,6 +35920,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error creating IVR menu option:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // PATCH /api/pbx/ivrs/:ivrId/menu-options/:optionId - Update IVR menu option
   app.patch("/api/pbx/ivrs/:ivrId/menu-options/:optionId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35232,6 +35934,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error updating IVR menu option:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // DELETE /api/pbx/ivrs/:ivrId/menu-options/:optionId - Delete IVR menu option
   app.delete("/api/pbx/ivrs/:ivrId/menu-options/:optionId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35242,6 +35945,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error deleting IVR menu option:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // POST /api/pbx/ivrs/:ivrId/upload-greeting - Upload greeting audio for IVR
   app.post("/api/pbx/ivrs/:ivrId/upload-greeting", requireActiveCompany, (req: Request, res: Response, next: NextFunction) => {
     uploadMiddleware.single("audio")(req, res, (err: any) => {
@@ -35281,6 +35985,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error uploading IVR greeting:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // DELETE /api/pbx/ivrs/:ivrId/greeting - Delete IVR greeting audio
   app.delete("/api/pbx/ivrs/:ivrId/greeting", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35306,6 +36011,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error deleting IVR greeting:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // GET /api/pbx/menu-options - Get menu options for the companys PBX settings
   app.get("/api/pbx/menu-options", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35320,6 +36026,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error getting menu options:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // GET /api/pbx/menu-options/:settingsId - Get menu options
   app.get("/api/pbx/menu-options/:settingsId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35330,6 +36037,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error getting menu options:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // POST /api/pbx/menu-options - Create menu option
   app.post("/api/pbx/menu-options", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35340,6 +36048,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error creating menu option:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // PATCH /api/pbx/menu-options/:optionId - Update menu option
   app.patch("/api/pbx/menu-options/:optionId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35350,6 +36059,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error updating menu option:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // DELETE /api/pbx/menu-options/:optionId - Delete menu option
   app.delete("/api/pbx/menu-options/:optionId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35360,6 +36070,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error deleting menu option:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // GET /api/pbx/audio-files - Get audio files
   app.get("/api/pbx/audio-files", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35371,6 +36082,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error getting audio files:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // POST /api/pbx/audio-files - Create audio file record
   app.post("/api/pbx/audio-files", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35381,6 +36093,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error creating audio file:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // DELETE /api/pbx/audio-files/:fileId - Delete audio file
   app.delete("/api/pbx/audio-files/:fileId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35391,6 +36104,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error deleting audio file:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // GET /api/pbx/agent-status - Get current agent status
   app.get("/api/pbx/agent-status", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35401,6 +36115,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error getting agent status:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // POST /api/pbx/agent-status - Update agent status
   app.post("/api/pbx/agent-status", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35412,6 +36127,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error updating agent status:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // POST /api/pbx/check-extension - Check what type an extension is
   app.post("/api/pbx/check-extension", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35462,6 +36178,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error checking extension:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // GET /api/pbx/special-extensions - Get IVR and queue extensions for WebPhone
   app.get("/api/pbx/special-extensions", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35491,6 +36208,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX] Error getting special extensions:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // POST /api/pbx/internal-call - Initiate internal call to IVR or Queue via Telnyx
   app.post("/api/pbx/internal-call", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35582,6 +36300,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX Internal Call] Error:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // ============================================================
   // PBX Audio Library
   // ============================================================
@@ -35651,6 +36370,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX Audio] List error:", error);
       return res.status(500).json({ message: "Failed to get audio files" });
     }
+  });
   // Multer configuration for PBX audio library uploads
   const pbxAudioUpload = multer({
     storage: multer.memoryStorage(),
@@ -35663,6 +36383,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         cb(new Error("Invalid file type. Only audio files (mp3, wav, ogg, aac) are allowed."));
       }
     },
+  });
   // POST /api/pbx/audio - Upload new audio file
   app.post("/api/pbx/audio", requireActiveCompany, (req: Request, res: Response, next: NextFunction) => {
     pbxAudioUpload.single("audio")(req, res, async (err: any) => {
@@ -35721,6 +36442,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(500).json({ message: "Failed to upload audio file" });
       }
     });
+  });
   // PATCH /api/pbx/audio/:audioId - Update audio file details
   app.patch("/api/pbx/audio/:audioId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35758,6 +36480,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX Audio] Update error:", error);
       return res.status(500).json({ message: "Failed to update audio file" });
     }
+  });
   // DELETE /api/pbx/audio/:audioId - Delete audio file
   app.delete("/api/pbx/audio/:audioId", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -35854,6 +36577,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[PBX Audio] Delete error:", error);
       return res.status(500).json({ message: "Failed to delete audio file" });
     }
+  });
   // ============================================================
   // Telnyx Call Control Webhook (PBX/IVR)
   // ============================================================
@@ -35869,6 +36593,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[CallControl Webhook] Error:", error);
       return res.status(500).json({ error: error.message });
     }
+  });
   // ============================================================
   // ONBOARDING - Complete user profile after registration
   // ============================================================
@@ -35938,6 +36663,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Onboarding] Error completing profile:", error);
       res.status(500).json({ message: "Failed to complete profile" });
     }
+  });
   // ============================================================
   // TELNYX SMS INBOX ROUTES
   // ============================================================
@@ -36029,6 +36755,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Inbox Repair] Error:", error);
       res.status(500).json({ message: error.message || "Failed to repair inbox" });
     }
+  });
   // GET /api/inbox/conversations - List all conversations for the company
   app.get("/api/inbox/conversations", requireActiveCompany, async (req: Request, res: Response) => {
     if (!req.user) {
@@ -36050,6 +36777,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Inbox] Error fetching conversations:", error);
       res.status(500).json({ message: "Failed to fetch conversations" });
     }
+  });
   // GET /api/inbox/conversations/:id/messages - Get messages for a conversation
   app.get("/api/inbox/conversations/:id/messages", requireActiveCompany, async (req: Request, res: Response) => {
     if (!req.user) {
@@ -36085,6 +36813,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Inbox] Error fetching messages:", error);
       res.status(500).json({ message: "Failed to fetch messages" });
     }
+  });
   // POST /api/inbox/conversations - Create new conversation and send first message
   app.post("/api/inbox/conversations", requireActiveCompany, async (req: Request, res: Response) => {
     if (!req.user) {
@@ -36174,10 +36903,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Inbox] Error creating conversation:", error);
       res.status(500).json({ message: "Failed to create conversation" });
     }
+  });
   // POST /api/inbox/conversations/:id/messages - Send message or internal note to existing conversation (with optional file attachments)
   const inboxAttachmentUpload = multer({
     storage: multer.memoryStorage(),
     limits: { fileSize: 25 * 1024 * 1024 }, // 25MB max per file
+  });
   app.post("/api/inbox/conversations/:id/messages", requireActiveCompany, (req: Request, res: Response) => {
     inboxAttachmentUpload.array('files', 10)(req, res, async (multerError: any) => {
       if (multerError) {
@@ -36464,6 +37195,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         res.status(500).json({ message: "Failed to send message" });
       }
     });
+  });
   // PATCH /api/inbox/conversations/:id - Update conversation details
   app.patch("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
     if (!req.user) {
@@ -36486,6 +37218,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Inbox] Error updating conversation:", error);
       res.status(500).json({ message: "Failed to update conversation" });
     }
+  });
   // DELETE /api/inbox/conversations/:id - Delete conversation and all messages
   app.delete("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
     if (!req.user) {
@@ -36530,6 +37263,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Inbox] Error deleting conversation:", error);
       res.status(500).json({ message: "Failed to delete conversation" });
     }
+  });
 
   // =====================================================
   // COMPLIANCE APPLICATIONS API
@@ -36609,6 +37343,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Compliance] Error creating application:", error);
       res.status(500).json({ message: "Failed to create compliance application" });
     }
+  });
   
   // GET /api/compliance/applications/current - Get current user draft application
   app.get("/api/compliance/applications/current", requireAuth, async (req: Request, res: Response) => {
@@ -36635,6 +37370,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Compliance] Error getting current application:", error);
       res.status(500).json({ message: "Failed to get current application" });
     }
+  });
   
   // GET /api/compliance/applications/active - Get active (non-draft) application
   app.get("/api/compliance/applications/active", requireAuth, async (req: Request, res: Response) => {
@@ -36661,6 +37397,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Compliance] Error getting active application:", error);
       res.status(500).json({ message: "Failed to get active application" });
     }
+  });
   
   // GET /api/compliance/applications/:id - Get application by ID
   app.get("/api/compliance/applications/:id", requireAuth, async (req: Request, res: Response) => {
@@ -36691,6 +37428,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Compliance] Error getting application:", error);
       res.status(500).json({ message: "Failed to get application" });
     }
+  });
   
   // PATCH /api/compliance/applications/:id - Update application
   app.patch("/api/compliance/applications/:id", requireAuth, async (req: Request, res: Response) => {
@@ -37015,6 +37753,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Compliance] Error updating application:", error);
       res.status(500).json({ message: "Failed to update application" });
     }
+  });
   // POST /api/compliance/upload - Upload file for compliance applications
   app.post("/api/compliance/upload", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -37071,9 +37810,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.error("[Compliance Upload] Error:", error);
       res.status(500).json({ message: error.message || "Upload failed" });
     }
-
   // Register SES routes
   registerSesRoutes(app, requireActiveCompany);
+  });
 
   return httpServer;
 }
