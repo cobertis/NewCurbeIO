@@ -31136,6 +31136,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
   // POST /api/phone-system/campaigns/:id/phone-numbers - Assign phone numbers to campaign
   // Telnyx API: POST https://api.telnyx.com/v2/10dlc/phone_number_campaigns with { phoneNumber, campaignId }
+  // STEP 1: Assign messaging profile to number, STEP 2: Assign number to campaign
   app.post("/api/phone-system/campaigns/:id/phone-numbers", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = req.session.user?.companyId;
@@ -31148,11 +31149,19 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const { getCompanyMessagingProfileId } = await import("./services/telnyx-manager-service");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
+      
+      // Get company's messaging profile ID - required for 10DLC
+      const messagingProfileId = await getCompanyMessagingProfileId(companyId!);
+      if (!messagingProfileId) {
+        return res.status(400).json({ message: "No messaging profile configured. Please set up Phone System first." });
+      }
+      console.log("[10DLC Campaign] Using messaging profile:", messagingProfileId);
       
       // Detect if this is a Telnyx UUID or TCR ID
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
@@ -31165,7 +31174,40 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       for (const phoneNumber of phoneNumbers) {
         try {
-          // Use correct field based on ID format - Telnyx API accepts either campaignId (UUID) or tcrCampaignId
+          // STEP 1: Get phone number ID from Telnyx
+          const searchUrl = `https://api.telnyx.com/v2/phone_numbers?filter[phone_number]=${encodeURIComponent(phoneNumber)}`;
+          const searchResponse = await fetch(searchUrl, {
+            method: "GET",
+            headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
+          });
+          const searchResult = await searchResponse.json();
+          
+          if (!searchResponse.ok || !searchResult.data || searchResult.data.length === 0) {
+            console.error("[10DLC Campaign] Could not find phone number in Telnyx:", phoneNumber);
+            errors.push({ phoneNumber, error: "Phone number not found in Telnyx account" });
+            continue;
+          }
+          
+          const phoneNumberId = searchResult.data[0].id;
+          console.log("[10DLC Campaign] Found phone number ID:", phoneNumberId, "for", phoneNumber);
+          
+          // STEP 2: Assign messaging profile to number
+          const msgProfileUrl = `https://api.telnyx.com/v2/phone_numbers/${phoneNumberId}/messaging`;
+          const msgProfileResponse = await fetch(msgProfileUrl, {
+            method: "PATCH",
+            headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
+            body: JSON.stringify({ messaging_profile_id: messagingProfileId }),
+          });
+          const msgProfileResult = await msgProfileResponse.json();
+          
+          if (!msgProfileResponse.ok) {
+            console.error("[10DLC Campaign] Error assigning messaging profile to", phoneNumber, ":", msgProfileResult);
+            errors.push({ phoneNumber, error: msgProfileResult.errors?.[0]?.detail || "Failed to assign messaging profile" });
+            continue;
+          }
+          console.log("[10DLC Campaign] Messaging profile assigned to", phoneNumber);
+          
+          // STEP 3: Assign number to 10DLC campaign
           const assignmentBody = isUUID 
             ? { phoneNumber, campaignId: id }
             : { phoneNumber, tcrCampaignId: id };
@@ -31201,6 +31243,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       res.status(500).json({ message: error.message });
     }
   });
+  // DELETE /api/phone-system/campaigns/:id/phone-numbers/:phoneNumber - Remove phone number from campaign
   // DELETE /api/phone-system/campaigns/:id/phone-numbers/:phoneNumber - Remove phone number from campaign
   // Telnyx API: DELETE https://api.telnyx.com/v2/10dlc/phone_number_campaigns/:phoneNumber
   app.delete("/api/phone-system/campaigns/:id/phone-numbers/:phoneNumber", requireActiveCompany, async (req: Request, res: Response) => {
