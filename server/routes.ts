@@ -8,6 +8,7 @@ import { z } from "zod";
 import { storage } from "./storage";
 import { walletPassService } from "./services/wallet-pass-service";
 import { apnsService } from "./services/apns-service";
+import { sesService } from "./services/ses-service";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
@@ -3591,6 +3592,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (settings?.emailSettings) {
           const emailSettings = settings.emailSettings as { fromEmail?: string; fromName?: string };
           emailSetup = !!(emailSettings.fromEmail && emailSettings.fromName);
+        }
+        
+        // Also check SES email settings (new AWS SES system)
+        if (!emailSetup) {
+          const sesSettings = await sesService.getCompanyEmailSettings(user.companyId);
+          if (sesSettings) {
+            const isDomainVerified = sesSettings.domainVerificationStatus?.toLowerCase() === "success" || 
+                                     sesSettings.dkimStatus?.toLowerCase() === "success";
+            const hasSenders = Array.isArray(sesSettings.senders) && sesSettings.senders.length > 0;
+            emailSetup = isDomainVerified && hasSenders;
+          }
         }
         
         // Check if company has any BulkVS phone numbers (messaging channels)
