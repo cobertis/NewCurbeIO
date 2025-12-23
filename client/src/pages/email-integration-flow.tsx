@@ -300,13 +300,13 @@ export default function EmailIntegrationFlowPage() {
     },
   });
 
-  // Auto-refresh verification status every 30 seconds when on step 2
+  // Auto-refresh verification status every 5 seconds when on step 2
   useEffect(() => {
     if (currentStep === 2 && settings?.sendingDomain) {
       const interval = setInterval(() => {
         queryClient.invalidateQueries({ queryKey: ["/api/ses/settings"] });
         queryClient.invalidateQueries({ queryKey: ["/api/ses/domain/dns-records"] });
-      }, 30000); // Check every 30 seconds
+      }, 5000); // Check every 5 seconds
       
       return () => clearInterval(interval);
     }
