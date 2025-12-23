@@ -114,6 +114,12 @@ export interface BulkEmailSendRequest {
   tags?: Record<string, string>;
 }
 
+// Sanitize tag values for AWS SES - only allows letters, numbers, spaces, and _ . : / = + - @
+function sanitizeTagValue(value: string): string {
+  // Replace any invalid characters with underscores
+  return value.replace(/[^a-zA-Z0-9 _.:/=+\-@]/g, '_');
+}
+
 class SesService {
   async createDomainIdentity(companyId: string, domain: string): Promise<DomainSetupResult> {
     try {
@@ -127,7 +133,7 @@ class SesService {
           NextSigningKeyLength: "RSA_2048_BIT",
         },
         Tags: [
-          { Key: "companyId", Value: companyId },
+          { Key: "companyId", Value: sanitizeTagValue(companyId) },
           { Key: "createdBy", Value: "curbe-ses-service" },
         ],
       };
@@ -326,7 +332,7 @@ class SesService {
           ReputationMetricsEnabled: true,
         },
         Tags: [
-          { Key: "companyId", Value: companyId },
+          { Key: "companyId", Value: sanitizeTagValue(companyId) },
         ],
       }));
       
@@ -500,8 +506,8 @@ class SesService {
         },
         ConfigurationSetName: settings.configurationSetName || undefined,
         EmailTags: [
-          { Name: "companyId", Value: message.companyId },
-          { Name: "messageId", Value: message.id },
+          { Name: "companyId", Value: sanitizeTagValue(message.companyId) },
+          { Name: "messageId", Value: sanitizeTagValue(message.id) },
         ],
       };
       
