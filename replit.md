@@ -44,6 +44,9 @@ Supports Apple Wallet (PKPass) and Google Wallet with smart links, analytics, an
 **Security Architecture:**
 Includes session security, webhook signature validation (Twilio, BulkVS, BlueBubbles), Zod schema validation, open redirect protection, unsubscribe token enforcement, user-scoped data isolation, iMessage webhook secret isolation, multi-tenant WhatsApp session isolation, and token encryption for sensitive data.
 
+**Credential Storage:**
+All service credentials (Stripe, Telnyx, AWS SES, Twilio, BulkVS, Telegram, etc.) are stored encrypted in the `system_credentials` database table with IV and key versioning. Super admins manage credentials via System Settings > API Credentials. The `credentialProvider` service provides a unified abstraction with 5-minute caching and cache invalidation on updates. Environment variables serve as fallback only.
+
 **AWS SES Multi-Tenant Email System:**
 Implements per-tenant BYO (Bring Your Own) domain email sending via AWS SES. Key components:
 - **Domain Identity Management:** Per-company sending domains with DKIM verification, MAIL FROM configuration, and SES configuration sets.
