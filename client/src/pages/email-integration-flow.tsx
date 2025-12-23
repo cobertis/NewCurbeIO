@@ -589,15 +589,17 @@ export default function EmailIntegrationFlowPage() {
                       </div>
                     )}
 
-                    {/* Auto-verification notice */}
-                    <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
-                      <div className="flex items-center gap-2">
-                        <RefreshCw className={`w-4 h-4 text-blue-600 dark:text-blue-400 ${checkingDns ? 'animate-spin' : ''}`} />
-                        <p className="text-xs text-blue-800 dark:text-blue-200">
-                          {checkingDns ? "Checking DNS records..." : "Verification status updates automatically every 5 seconds. You can also click \"Verify records\" to check immediately."}
-                        </p>
+                    {/* Auto-verification notice - only show if not all records verified */}
+                    {!allRecordsVerified() && (
+                      <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                        <div className="flex items-center gap-2">
+                          <RefreshCw className={`w-4 h-4 text-blue-600 dark:text-blue-400 ${checkingDns ? 'animate-spin' : ''}`} />
+                          <p className="text-xs text-blue-800 dark:text-blue-200">
+                            {checkingDns ? "Checking DNS records..." : "Verification status updates automatically every 5 seconds. You can also click \"Verify records\" to check immediately."}
+                          </p>
+                        </div>
                       </div>
-                    </div>
+                    )}
 
                     <div className="flex gap-3">
                       {allRecordsVerified() ? (
