@@ -1357,6 +1357,8 @@ export class DbStorage implements IStorage {
     if (data.sipEnabled !== undefined) mappedData.sipEnabled = data.sipEnabled;
     // Stripe customer ID for user billing
     if (data.stripeCustomerId !== undefined) mappedData.stripeCustomerId = data.stripeCustomerId;
+    // Onboarding completion
+    if (data.onboardingCompleted !== undefined) mappedData.onboardingCompleted = data.onboardingCompleted;
     
     const result = await db.update(users).set(mappedData).where(eq(users.id, id)).returning();
     return result[0];
