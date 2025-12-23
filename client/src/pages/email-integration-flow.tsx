@@ -16,6 +16,7 @@ import {
   RefreshCw,
   ChevronDown,
   ChevronUp,
+  ChevronRight,
   Info,
   ArrowLeft,
   Plus,
@@ -599,26 +600,39 @@ export default function EmailIntegrationFlowPage() {
                     </div>
 
                     <div className="flex gap-3">
-                      <Button
-                        onClick={() => verifyDomainMutation.mutate()}
-                        disabled={verifyDomainMutation.isPending}
-                        className="bg-blue-600 hover:bg-blue-700"
-                        data-testid="button-verify-records"
-                      >
-                        {verifyDomainMutation.isPending ? (
-                          <LoadingSpinner fullScreen={false} />
-                        ) : (
-                          <RefreshCw className="w-4 h-4 mr-2" />
-                        )}
-                        Verify records
-                      </Button>
-                      <Button
-                        variant="outline"
-                        onClick={() => setLocation("/integrations/email")}
-                        data-testid="button-finish-later"
-                      >
-                        Finish later
-                      </Button>
+                      {allRecordsVerified() ? (
+                        <Button
+                          onClick={() => setCurrentStep(3)}
+                          className="bg-blue-600 hover:bg-blue-700"
+                          data-testid="button-continue-step3"
+                        >
+                          Continue to add senders
+                          <ChevronRight className="w-4 h-4 ml-2" />
+                        </Button>
+                      ) : (
+                        <>
+                          <Button
+                            onClick={() => verifyDomainMutation.mutate()}
+                            disabled={verifyDomainMutation.isPending}
+                            className="bg-blue-600 hover:bg-blue-700"
+                            data-testid="button-verify-records"
+                          >
+                            {verifyDomainMutation.isPending ? (
+                              <LoadingSpinner fullScreen={false} />
+                            ) : (
+                              <RefreshCw className="w-4 h-4 mr-2" />
+                            )}
+                            Verify records
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={() => setLocation("/integrations/email")}
+                            data-testid="button-finish-later"
+                          >
+                            Finish later
+                          </Button>
+                        </>
+                      )}
                     </div>
                   </div>
                 )}
@@ -843,20 +857,17 @@ function DnsRecordCard({ title, description, record, expanded, onToggle, onCopy,
             <p className="text-sm text-muted-foreground">{description}</p>
           </div>
           <div className="flex items-center gap-3">
-            {isChecking ? (
+            {isVerified ? (
+              <Badge className="bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-0">
+                <CheckCircle2 className="w-3 h-3 mr-1" />Verified
+              </Badge>
+            ) : isChecking ? (
               <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 border-0 animate-pulse">
                 <RefreshCw className="w-3 h-3 mr-1 animate-spin" />Checking DNS...
               </Badge>
             ) : (
-              <Badge className={isVerified 
-                ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-0" 
-                : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 border-0"
-              }>
-                {isVerified ? (
-                  <><CheckCircle2 className="w-3 h-3 mr-1" />Verified</>
-                ) : (
-                  <><XCircle className="w-3 h-3 mr-1" />Not verified</>
-                )}
+              <Badge className="bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 border-0">
+                <XCircle className="w-3 h-3 mr-1" />Not verified
               </Badge>
             )}
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
