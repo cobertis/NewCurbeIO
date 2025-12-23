@@ -135,7 +135,9 @@ export default function EmailIntegrationPage() {
 
   const settings = settingsResponse?.settings;
   const hasDomainConfigured = !!settings?.sendingDomain;
-  const isDomainVerified = settings?.verificationStatus === "SUCCESS" || settings?.dkimStatus === "SUCCESS";
+  const isDomainVerified = 
+    settings?.verificationStatus?.toLowerCase() === "success" || 
+    settings?.dkimStatus?.toLowerCase() === "success";
 
   const handleNavigation = (href: string) => {
     setLocation(href);
