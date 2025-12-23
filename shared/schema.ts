@@ -6709,6 +6709,9 @@ export const companyEmailSettings = pgTable("company_email_settings", {
   pausedAt: timestamp("paused_at"),
   pauseReason: text("pause_reason"),
   
+  // Sender profiles - array of {fromEmail, fromName, replyToEmail?}
+  senders: jsonb("senders").default([]),
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
