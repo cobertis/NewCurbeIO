@@ -1766,17 +1766,17 @@ function Router() {
       <Route path="/settings/email">
         <Redirect to="/integrations/email" />
       </Route>
-      <Route path="/integrations/email">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <EmailIntegration />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
       <Route path="/integrations/email/flow">
         <ProtectedRoute>
           <DashboardLayout>
             <EmailIntegrationFlow />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/integrations/email">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <EmailIntegration />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
