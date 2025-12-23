@@ -252,6 +252,23 @@ export const credentialProvider = {
     return result;
   },
 
+  async getAwsSes(): Promise<{ accessKeyId: string; secretAccessKey: string; region: string }> {
+    const cacheKey = getCacheKey('aws_ses');
+    const cached = getFromCache<{ accessKeyId: string; secretAccessKey: string; region: string }>(cacheKey);
+    if (cached) return cached;
+
+    const accessKeyId = await secretsService.getCredential("aws_ses" as ApiProvider, "access_key_id") || 
+                        process.env.AWS_ACCESS_KEY_ID || '';
+    const secretAccessKey = await secretsService.getCredential("aws_ses" as ApiProvider, "secret_access_key") || 
+                            process.env.AWS_SECRET_ACCESS_KEY || '';
+    const region = await secretsService.getCredential("aws_ses" as ApiProvider, "region") || 
+                   process.env.AWS_SES_REGION || 'us-east-1';
+    
+    const result = { accessKeyId, secretAccessKey, region };
+    setCache(cacheKey, result);
+    return result;
+  },
+
   async get(service: string, key: string): Promise<string> {
     const cacheKey = getCacheKey(service, key);
     const cached = getFromCache<string>(cacheKey);
