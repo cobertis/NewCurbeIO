@@ -395,6 +395,62 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
     }
   });
   
+  // Email senders management
+  app.post("/api/ses/senders", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = (req as any).companyId;
+      const { senders } = req.body;
+      
+      if (!senders || !Array.isArray(senders)) {
+        return res.status(400).json({ message: "Senders array is required" });
+      }
+      
+      // Validate senders
+      for (const sender of senders) {
+        if (!sender.fromEmail || !sender.fromName) {
+          return res.status(400).json({ message: "Each sender must have fromEmail and fromName" });
+        }
+      }
+      
+      // Update the company email settings with senders
+      const [updated] = await db
+        .update(companyEmailSettings)
+        .set({ 
+          senders: senders,
+          isActive: true,
+          updatedAt: new Date()
+        })
+        .where(eq(companyEmailSettings.companyId, companyId))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ message: "Email settings not found" });
+      }
+      
+      res.json({ success: true, senders: updated.senders });
+    } catch (error: any) {
+      console.error("[SES Routes] Error saving senders:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+
+  app.get("/api/ses/senders", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = (req as any).companyId;
+      
+      const [settings] = await db
+        .select()
+        .from(companyEmailSettings)
+        .where(eq(companyEmailSettings.companyId, companyId))
+        .limit(1);
+      
+      res.json({ senders: settings?.senders || [] });
+    } catch (error: any) {
+      console.error("[SES Routes] Error getting senders:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
   app.post("/api/webhooks/ses-events", async (req: Request, res: Response) => {
     try {
       const body = req.body;
