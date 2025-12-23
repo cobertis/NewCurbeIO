@@ -5512,6 +5512,7 @@ export const apiProviders = [
   "meta",
   "tiktok",
   "telegram",
+  "aws_ses",
 ] as const;
 export type ApiProvider = typeof apiProviders[number];
 
