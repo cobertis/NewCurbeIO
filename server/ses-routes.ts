@@ -180,19 +180,39 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
         status?: string;
       }> = [];
       
-      // Helper function to check DNS records via DNS lookup
+      // Helper function to check DNS records via DNS lookup using Google DNS (8.8.8.8) to bypass local cache
       const checkDnsRecord = async (type: string, name: string, expectedValue: string): Promise<string> => {
         try {
-          const dns = await import("dns").then(m => m.promises);
+          const dns = await import("dns");
+          const resolver = new dns.Resolver();
+          resolver.setServers(['8.8.8.8', '8.8.4.4']); // Use Google DNS for fresh results
+          
+          const resolveCname = (hostname: string): Promise<string[]> => {
+            return new Promise((resolve, reject) => {
+              resolver.resolveCname(hostname, (err, addresses) => {
+                if (err) reject(err);
+                else resolve(addresses || []);
+              });
+            });
+          };
+          
+          const resolveTxt = (hostname: string): Promise<string[][]> => {
+            return new Promise((resolve, reject) => {
+              resolver.resolveTxt(hostname, (err, records) => {
+                if (err) reject(err);
+                else resolve(records || []);
+              });
+            });
+          };
           
           if (type === "CNAME") {
-            const records = await dns.resolveCname(name);
+            const records = await resolveCname(name);
             // Check if any returned CNAME matches expected value (with or without trailing dot)
             const normalizedExpected = expectedValue.replace(/\.$/, "").toLowerCase();
             const found = records.some(r => r.replace(/\.$/, "").toLowerCase() === normalizedExpected);
             return found ? "SUCCESS" : "PENDING";
           } else if (type === "TXT") {
-            const records = await dns.resolveTxt(name);
+            const records = await resolveTxt(name);
             // TXT records are returned as arrays of strings, join them
             const flatRecords = records.map(r => r.join(""));
             // Check if any TXT record contains key parts of expected value
