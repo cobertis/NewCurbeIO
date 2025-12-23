@@ -29409,6 +29409,17 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             { keyName: "webhook_secret", label: "Webhook Secret", required: false, hint: "Optional secret for webhook validation" },
           ]
         },
+        { 
+          provider: "aws_ses", 
+          label: "AWS SES (Email Campaigns)",
+          helpText: "Get your IAM credentials from AWS Console > IAM > Users > Security credentials",
+          helpUrl: "https://console.aws.amazon.com/iam/",
+          keys: [
+            { keyName: "access_key_id", label: "Access Key ID", required: true, hint: "Starts with AKIA..." },
+            { keyName: "secret_access_key", label: "Secret Access Key", required: true, hint: "The secret key for the access key" },
+            { keyName: "region", label: "AWS Region", required: false, hint: "Default: us-east-1" },
+          ]
+        },
       ];
       res.json({ providers: providerConfigs, apiProviders });
     } catch (error: any) {

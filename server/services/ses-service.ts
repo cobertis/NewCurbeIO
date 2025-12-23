@@ -27,29 +27,43 @@ import {
   type SesEmailMessage,
 } from "@shared/schema";
 import { eq, and, lte, sql, or } from "drizzle-orm";
-
-const AWS_REGION = process.env.AWS_SES_REGION || "us-east-1";
+import { credentialProvider } from "./credential-provider";
 
 let sesClient: SESv2Client | null = null;
+let cachedCredentials: { accessKeyId: string; secretAccessKey: string; region: string } | null = null;
 
-function getSesClient(): SESv2Client {
-  if (!sesClient) {
-    const accessKeyId = process.env.AWS_ACCESS_KEY_ID;
-    const secretAccessKey = process.env.AWS_SECRET_ACCESS_KEY;
-    
-    if (!accessKeyId || !secretAccessKey) {
-      throw new Error("AWS credentials not configured. Set AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY.");
-    }
-    
-    sesClient = new SESv2Client({
-      region: AWS_REGION,
-      credentials: {
-        accessKeyId,
-        secretAccessKey,
-      },
-    });
+async function getSesClient(): Promise<SESv2Client> {
+  const credentials = await credentialProvider.getAwsSes();
+  
+  // Check if credentials have changed (forces client recreation)
+  if (sesClient && cachedCredentials && 
+      cachedCredentials.accessKeyId === credentials.accessKeyId &&
+      cachedCredentials.secretAccessKey === credentials.secretAccessKey &&
+      cachedCredentials.region === credentials.region) {
+    return sesClient;
   }
+  
+  if (!credentials.accessKeyId || !credentials.secretAccessKey) {
+    throw new Error("AWS SES credentials not configured. Configure them in System Settings > API Credentials.");
+  }
+  
+  sesClient = new SESv2Client({
+    region: credentials.region,
+    credentials: {
+      accessKeyId: credentials.accessKeyId,
+      secretAccessKey: credentials.secretAccessKey,
+    },
+  });
+  cachedCredentials = credentials;
+  
   return sesClient;
+}
+
+// Function to invalidate client when credentials change
+export function invalidateSesClient(): void {
+  sesClient = null;
+  cachedCredentials = null;
+  credentialProvider.invalidate('aws_ses');
 }
 
 export interface DnsRecord {
@@ -103,7 +117,7 @@ export interface BulkEmailSendRequest {
 class SesService {
   async createDomainIdentity(companyId: string, domain: string): Promise<DomainSetupResult> {
     try {
-      const client = getSesClient();
+      const client = await getSesClient();
       
       const sanitizedDomain = domain.toLowerCase().trim();
       
@@ -220,7 +234,7 @@ class SesService {
         };
       }
       
-      const client = getSesClient();
+      const client = await getSesClient();
       const command = new GetEmailIdentityCommand({
         EmailIdentity: settings.sendingDomain,
       });
@@ -268,7 +282,7 @@ class SesService {
         return { success: false, mxRecord: "", error: "Domain not configured" };
       }
       
-      const client = getSesClient();
+      const client = await getSesClient();
       const command = new PutEmailIdentityMailFromAttributesCommand({
         EmailIdentity: settings.sendingDomain,
         MailFromDomain: mailFromDomain,
@@ -277,7 +291,8 @@ class SesService {
       
       await client.send(command);
       
-      const mxRecord = `feedback-smtp.${AWS_REGION}.amazonses.com`;
+      const awsCredentials = await credentialProvider.getAwsSes();
+      const mxRecord = `feedback-smtp.${awsCredentials.region}.amazonses.com`;
       
       await db.update(companyEmailSettings)
         .set({
@@ -297,7 +312,7 @@ class SesService {
   
   async createConfigurationSet(companyId: string, configSetName: string): Promise<boolean> {
     try {
-      const client = getSesClient();
+      const client = await getSesClient();
       
       await client.send(new CreateConfigurationSetCommand({
         ConfigurationSetName: configSetName,
@@ -339,7 +354,7 @@ class SesService {
         throw new Error("Configuration set not found");
       }
       
-      const client = getSesClient();
+      const client = await getSesClient();
       const eventDestinationName = `events-${companyId.substring(0, 8)}`;
       
       await client.send(new CreateConfigurationSetEventDestinationCommand({
@@ -466,7 +481,7 @@ class SesService {
         return { success: false, error: "Email sending not active" };
       }
       
-      const client = getSesClient();
+      const client = await getSesClient();
       
       const fromAddress = message.fromName 
         ? `"${message.fromName}" <${message.fromEmail}>`
@@ -681,7 +696,7 @@ class SesService {
         return true;
       }
       
-      const client = getSesClient();
+      const client = await getSesClient();
       
       await client.send(new DeleteEmailIdentityCommand({
         EmailIdentity: settings.sendingDomain,
