@@ -172,6 +172,32 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
     }
   });
   
+  // Disconnect/delete domain endpoint
+  app.delete("/api/ses/domain", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = getCompanyId(req);
+      const settings = await sesService.getCompanyEmailSettings(companyId);
+      
+      if (!settings || !settings.sendingDomain) {
+        return res.status(404).json({ message: "No domain configured" });
+      }
+      
+      const deleted = await sesService.deleteDomainIdentity(companyId);
+      
+      if (!deleted) {
+        return res.status(500).json({ message: "Failed to delete domain" });
+      }
+      
+      res.json({
+        success: true,
+        message: "Domain disconnected successfully",
+      });
+    } catch (error: any) {
+      console.error("[SES Routes] Error deleting domain:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
   app.get("/api/ses/domain/dns-records", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = getCompanyId(req);

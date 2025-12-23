@@ -28,6 +28,16 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Link, useLocation } from "wouter";
 import {
   Phone,
@@ -287,6 +297,34 @@ export default function EmailIntegrationFlowPage() {
     },
   });
 
+  // Disconnect domain mutation
+  const [showDisconnectConfirm, setShowDisconnectConfirm] = useState(false);
+  
+  const disconnectDomainMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("DELETE", "/api/ses/domain");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ses/settings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ses/domain/dns-records"] });
+      setCurrentStep(1);
+      setDomain("");
+      setSenders([{ fromEmail: "", fromName: "", replyToEmail: "" }]);
+      setShowDisconnectConfirm(false);
+      toast({
+        title: "Domain disconnected",
+        description: "Your domain has been removed. You can set up a new domain anytime.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Disconnect failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
   // Auto-refresh verification status every 30 seconds when on step 2
   useEffect(() => {
     if (currentStep === 2 && settings?.sendingDomain) {
@@ -406,9 +444,21 @@ export default function EmailIntegrationFlowPage() {
               <div className="flex-1">
                 <h3 className="font-semibold text-lg mb-1">Add your domain</h3>
                 {isStepComplete(1) ? (
-                  <p className="text-sm text-muted-foreground">
-                    You have added the following domain: <strong>{settings?.sendingDomain}</strong>
-                  </p>
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm text-muted-foreground">
+                      You have added the following domain: <strong>{settings?.sendingDomain}</strong>
+                    </p>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowDisconnectConfirm(true)}
+                      className="text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 hover:bg-red-50"
+                      data-testid="button-disconnect-domain"
+                    >
+                      <Trash2 className="w-4 h-4 mr-1" />
+                      Disconnect
+                    </Button>
+                  </div>
                 ) : (
                   <>
                     <p className="text-sm text-muted-foreground mb-4">
@@ -789,6 +839,32 @@ export default function EmailIntegrationFlowPage() {
         </Card>
         </div>
       </div>
+
+      {/* Disconnect Confirmation Dialog */}
+      <AlertDialog open={showDisconnectConfirm} onOpenChange={setShowDisconnectConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Disconnect Domain</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to disconnect <strong>{settings?.sendingDomain}</strong>? 
+              This will remove the domain from AWS SES and delete all configuration. 
+              You will need to set up a new domain to send emails again.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel data-testid="button-cancel-disconnect">Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => disconnectDomainMutation.mutate()}
+              className="bg-red-600 hover:bg-red-700"
+              disabled={disconnectDomainMutation.isPending}
+              data-testid="button-confirm-disconnect"
+            >
+              {disconnectDomainMutation.isPending && <LoadingSpinner fullScreen={false} />}
+              Disconnect
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
