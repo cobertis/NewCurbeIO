@@ -828,7 +828,7 @@ interface DnsRecordCardProps {
 }
 
 function DnsRecordCard({ title, description, record, expanded, onToggle, onCopy }: DnsRecordCardProps) {
-  const isVerified = record.status === "SUCCESS";
+  const isVerified = record.status === "SUCCESS" || record.status === "success";
 
   return (
     <div className="border rounded-lg overflow-hidden">

@@ -180,32 +180,81 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
         status?: string;
       }> = [];
       
+      // Helper function to check DNS records via DNS lookup
+      const checkDnsRecord = async (type: string, name: string, expectedValue: string): Promise<string> => {
+        try {
+          const dns = await import("dns").then(m => m.promises);
+          
+          if (type === "CNAME") {
+            const records = await dns.resolveCname(name);
+            // Check if any returned CNAME matches expected value (with or without trailing dot)
+            const normalizedExpected = expectedValue.replace(/\.$/, "").toLowerCase();
+            const found = records.some(r => r.replace(/\.$/, "").toLowerCase() === normalizedExpected);
+            return found ? "SUCCESS" : "PENDING";
+          } else if (type === "TXT") {
+            const records = await dns.resolveTxt(name);
+            // TXT records are returned as arrays of strings, join them
+            const flatRecords = records.map(r => r.join(""));
+            // Check if any TXT record contains key parts of expected value
+            const found = flatRecords.some(r => {
+              // For SPF, check if it includes amazonses.com
+              if (expectedValue.includes("amazonses.com")) {
+                return r.includes("amazonses.com");
+              }
+              // For DMARC, check if it starts with v=DMARC1
+              if (expectedValue.startsWith("v=DMARC1")) {
+                return r.startsWith("v=DMARC1");
+              }
+              return r === expectedValue;
+            });
+            return found ? "SUCCESS" : "PENDING";
+          }
+          return "PENDING";
+        } catch (error: any) {
+          // DNS lookup failed (record doesn't exist)
+          return "PENDING";
+        }
+      };
+      
       const dkimTokens = (settings.dkimTokens as string[]) || [];
+      
+      // Check each DKIM record individually
       for (const token of dkimTokens) {
+        const recordName = `${token}._domainkey.${settings.sendingDomain}`;
+        const recordValue = `${token}.dkim.amazonses.com`;
+        const status = await checkDnsRecord("CNAME", recordName, recordValue);
+        
         dnsRecords.push({
           type: "CNAME",
-          name: `${token}._domainkey.${settings.sendingDomain}`,
-          value: `${token}.dkim.amazonses.com`,
+          name: recordName,
+          value: recordValue,
           purpose: "DKIM",
-          status: settings.dkimStatus ?? undefined,
+          status,
         });
       }
       
+      // Check SPF record
       if (settings.spfRecord) {
+        const spfStatus = await checkDnsRecord("TXT", settings.sendingDomain, settings.spfRecord);
         dnsRecords.push({
           type: "TXT",
           name: settings.sendingDomain,
           value: settings.spfRecord,
           purpose: "SPF",
+          status: spfStatus,
         });
       }
       
+      // Check DMARC record
       if (settings.dmarcRecord) {
+        const dmarcName = `_dmarc.${settings.sendingDomain}`;
+        const dmarcStatus = await checkDnsRecord("TXT", dmarcName, settings.dmarcRecord);
         dnsRecords.push({
           type: "TXT",
-          name: `_dmarc.${settings.sendingDomain}`,
+          name: dmarcName,
           value: settings.dmarcRecord,
           purpose: "DMARC",
+          status: dmarcStatus,
         });
       }
       
