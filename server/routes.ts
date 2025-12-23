@@ -28613,36 +28613,80 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
   // GET /api/phone-system/phone-numbers - Get all phone numbers for the company (for 10DLC assignment)
+  // IMPORTANT: Fetches directly from Telnyx API, not from local database
   app.get("/api/phone-system/phone-numbers", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated" });
       }
-      const { syncPhoneNumbersFromTelnyx, getCompanyPhoneNumbers } = await import("./services/telnyx-numbers-service");
       
-      // Sync from Telnyx first to ensure we have the latest numbers
-      await syncPhoneNumbersFromTelnyx(user.companyId);
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(user.companyId);
       
-      // Get all company phone numbers
-      const result = await getCompanyPhoneNumbers(user.companyId);
-      
-      if (!result.success) {
-        return res.status(500).json({ message: result.error });
+      if (!telnyxApiKey) {
+        return res.status(400).json({ message: "Telnyx not configured" });
       }
+      
+      // Build headers - add managed account header if not using master account
+      const headers: Record<string, string> = {
+        "Authorization": `Bearer ${telnyxApiKey}`,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      };
+      
+      if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+        headers["Telnyx-Account"] = managedAccountId;
+      }
+      
+      console.log("[Phone System] Fetching numbers from Telnyx API, managedAccount:", managedAccountId || "MASTER_ACCOUNT");
+      
+      // Fetch all phone numbers directly from Telnyx API with pagination
+      const allNumbers: any[] = [];
+      let pageNumber = 1;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const response = await fetch(`https://api.telnyx.com/v2/phone_numbers?page[number]=${pageNumber}&page[size]=250`, {
+          method: "GET",
+          headers
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error("[Phone System] Telnyx API error:", errorData);
+          return res.status(response.status).json({ message: errorData.errors?.[0]?.detail || "Failed to fetch phone numbers from Telnyx" });
+        }
+        
+        const data = await response.json();
+        const numbers = data.data || [];
+        allNumbers.push(...numbers);
+        
+        // Check if there are more pages
+        hasMore = numbers.length === 250;
+        pageNumber++;
+        
+        // Safety limit
+        if (pageNumber > 20) break;
+      }
+      
+      console.log("[Phone System] Fetched", allNumbers.length, "numbers from Telnyx API");
+      
       // Transform to the expected format with phoneNumber and type
-      // Note: Telnyx API uses snake_case (phone_number), we convert to camelCase
-      const numbers = (result.numbers || []).map((num: any) => {
-        const phoneNum = num.phone_number || num.phoneNumber;
+      const numbers = allNumbers.map((num: any) => {
+        const phoneNum = num.phone_number;
         return {
           phoneNumber: phoneNum,
-          type: num.type || (phoneNum?.startsWith("+1800") || phoneNum?.startsWith("+1888") || 
+          type: num.phone_number_type || (phoneNum?.startsWith("+1800") || phoneNum?.startsWith("+1888") || 
                 phoneNum?.startsWith("+1877") || phoneNum?.startsWith("+1866") ||
                 phoneNum?.startsWith("+1855") || phoneNum?.startsWith("+1844") ||
                 phoneNum?.startsWith("+1833") ? "toll-free" : "local"),
-          id: num.id
+          id: num.id,
+          messagingProfileId: num.messaging_profile_id
         };
       });
+      
       res.json({ numbers });
     } catch (error: any) {
       console.error("[Phone System] Error getting phone numbers:", error);
