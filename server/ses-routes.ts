@@ -40,10 +40,18 @@ const updateSettingsSchema = z.object({
   autoPauseEnabled: z.boolean().optional(),
 });
 
+function getCompanyId(req: Request): string {
+  const companyId = req.session?.user?.companyId;
+  if (!companyId) {
+    throw new Error("Company context required");
+  }
+  return companyId;
+}
+
 export function registerSesRoutes(app: Express, requireActiveCompany: any) {
   app.get("/api/ses/settings", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = (req as any).companyId;
+      const companyId = getCompanyId(req);
       const settings = await sesService.getCompanyEmailSettings(companyId);
       
       if (!settings) {
@@ -93,10 +101,7 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
   
   app.post("/api/ses/domain/setup", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = (req as any).companyId;
-      if (!companyId) {
-        return res.status(400).json({ message: "Company context required for domain setup" });
-      }
+      const companyId = getCompanyId(req);
       const { domain } = domainSetupSchema.parse(req.body);
       
       const result = await sesService.createDomainIdentity(companyId, domain);
@@ -123,7 +128,7 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
   
   app.get("/api/ses/domain/status", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = (req as any).companyId;
+      const companyId = getCompanyId(req);
       const status = await sesService.getIdentityStatus(companyId);
       res.json(status);
     } catch (error: any) {
@@ -134,7 +139,7 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
   
   app.get("/api/ses/domain/dns-records", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = (req as any).companyId;
+      const companyId = getCompanyId(req);
       const settings = await sesService.getCompanyEmailSettings(companyId);
       
       if (!settings || !settings.sendingDomain) {
@@ -204,7 +209,7 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
   
   app.post("/api/ses/domain/verify", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = (req as any).companyId;
+      const companyId = getCompanyId(req);
       const status = await sesService.getIdentityStatus(companyId);
       
       res.json({
@@ -221,7 +226,7 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
   
   app.post("/api/ses/mail-from/setup", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = (req as any).companyId;
+      const companyId = getCompanyId(req);
       const { mailFromDomain } = mailFromSetupSchema.parse(req.body);
       
       const result = await sesService.setupMailFrom(companyId, mailFromDomain);
@@ -243,7 +248,7 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
   
   app.patch("/api/ses/settings", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = (req as any).companyId;
+      const companyId = getCompanyId(req);
       const updates = updateSettingsSchema.parse(req.body);
       
       const success = await sesService.updateCompanyEmailSettings(companyId, updates as any);
@@ -264,7 +269,7 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
   
   app.post("/api/ses/resume", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = (req as any).companyId;
+      const companyId = getCompanyId(req);
       const settings = await sesService.getCompanyEmailSettings(companyId);
       
       if (!settings) {
@@ -295,7 +300,7 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
   
   app.post("/api/ses/email/send", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = (req as any).companyId;
+      const companyId = getCompanyId(req);
       const emailData = sendEmailSchema.parse(req.body);
       
       const request: EmailSendRequest = {
@@ -324,7 +329,7 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
   
   app.get("/api/ses/metrics", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = (req as any).companyId;
+      const companyId = getCompanyId(req);
       const days = parseInt(req.query.days as string) || 30;
       
       const metrics = await sesService.getEmailMetrics(companyId, days);
@@ -337,7 +342,7 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
   
   app.get("/api/ses/suppression", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = (req as any).companyId;
+      const companyId = getCompanyId(req);
       const limit = parseInt(req.query.limit as string) || 100;
       const offset = parseInt(req.query.offset as string) || 0;
       
@@ -351,7 +356,7 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
   
   app.post("/api/ses/suppression", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = (req as any).companyId;
+      const companyId = getCompanyId(req);
       const { email } = z.object({ email: z.string().email() }).parse(req.body);
       
       const success = await sesEventsService.addManualSuppression(companyId, email);
@@ -369,7 +374,7 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
   
   app.delete("/api/ses/suppression/:email", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = (req as any).companyId;
+      const companyId = getCompanyId(req);
       const email = decodeURIComponent(req.params.email);
       
       const success = await sesEventsService.removeFromSuppression(companyId, email);
@@ -387,7 +392,7 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
   
   app.delete("/api/ses/domain", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = (req as any).companyId;
+      const companyId = getCompanyId(req);
       const success = await sesService.deleteDomainIdentity(companyId);
       
       if (!success) {
@@ -404,7 +409,7 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
   // Email senders management
   app.post("/api/ses/senders", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = (req as any).companyId;
+      const companyId = getCompanyId(req);
       const { senders } = req.body;
       
       if (!senders || !Array.isArray(senders)) {
@@ -441,7 +446,7 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
 
   app.get("/api/ses/senders", requireActiveCompany, async (req: Request, res: Response) => {
     try {
-      const companyId = (req as any).companyId;
+      const companyId = getCompanyId(req);
       
       const [settings] = await db
         .select()
