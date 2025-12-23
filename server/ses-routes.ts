@@ -3,9 +3,6 @@ import { sesService, type EmailSendRequest } from "./services/ses-service";
 import { sesEventsService, type SesEventPayload } from "./services/ses-events-service";
 import { z } from "zod";
 import crypto from "crypto";
-import { db } from "./db";
-import { companyEmailSettings } from "@shared/schema";
-import { eq } from "drizzle-orm";
 
 const domainSetupSchema = z.object({
   domain: z.string().min(3).max(255),
