@@ -1,4 +1,5 @@
-import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { LoadingSpinner } from "@/components/loading-spinner";
@@ -27,15 +28,35 @@ import {
   MoreVertical,
   ChevronRight,
   Search,
+  X,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { useLocation } from "wouter";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import {
   Accordion,
   AccordionContent,
@@ -139,8 +160,25 @@ function SettingsSidebar({ onNavigate }: { onNavigate: (href: string) => void })
   );
 }
 
+interface EmailSender {
+  fromEmail: string;
+  fromName: string;
+  replyToEmail?: string;
+}
+
 export default function EmailIntegrationPage() {
   const [, setLocation] = useLocation();
+  const { toast } = useToast();
+  
+  // Edit sender dialog state
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editingSender, setEditingSender] = useState<EmailSender | null>(null);
+  const [editingSenderIndex, setEditingSenderIndex] = useState<number>(-1);
+  const [editForm, setEditForm] = useState({ fromName: "", replyToEmail: "" });
+  
+  // Delete sender dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletingSenderIndex, setDeletingSenderIndex] = useState<number>(-1);
 
   const { data: settingsResponse, isLoading } = useQuery<{ configured: boolean; settings: EmailSettings | null }>({
     queryKey: ["/api/ses/settings"],
@@ -151,6 +189,55 @@ export default function EmailIntegrationPage() {
   const isDomainVerified = 
     settings?.verificationStatus?.toLowerCase() === "success" || 
     settings?.dkimStatus?.toLowerCase() === "success";
+
+  // Mutation to update senders
+  const updateSendersMutation = useMutation({
+    mutationFn: async (senders: EmailSender[]) => {
+      return apiRequest("POST", "/api/ses/senders", { senders });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ses/settings"] });
+      toast({ title: "Success", description: "Sender updated successfully." });
+      setEditDialogOpen(false);
+      setDeleteDialogOpen(false);
+    },
+    onError: () => {
+      toast({ title: "Error", description: "Failed to update sender.", variant: "destructive" });
+    },
+  });
+
+  const handleEditSender = (sender: EmailSender, index: number) => {
+    setEditingSender(sender);
+    setEditingSenderIndex(index);
+    setEditForm({
+      fromName: sender.fromName,
+      replyToEmail: sender.replyToEmail || "",
+    });
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveEdit = () => {
+    if (!settings?.senders || editingSenderIndex < 0) return;
+    
+    const updatedSenders = settings.senders.map((s, i) => 
+      i === editingSenderIndex
+        ? { ...s, fromName: editForm.fromName, replyToEmail: editForm.replyToEmail }
+        : s
+    );
+    updateSendersMutation.mutate(updatedSenders);
+  };
+
+  const handleDeleteSender = (index: number) => {
+    setDeletingSenderIndex(index);
+    setDeleteDialogOpen(true);
+  };
+
+  const handleConfirmDelete = () => {
+    if (!settings?.senders || deletingSenderIndex < 0) return;
+    
+    const updatedSenders = settings.senders.filter((_, i) => i !== deletingSenderIndex);
+    updateSendersMutation.mutate(updatedSenders);
+  };
 
   const handleNavigation = (href: string) => {
     setLocation(href);
@@ -268,11 +355,11 @@ export default function EmailIntegrationPage() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setLocation("/integrations/email/flow")}>
+                            <DropdownMenuItem onClick={() => handleEditSender(sender, index)}>
                               <Settings className="w-4 h-4 mr-2" />
                               Edit sender
                             </DropdownMenuItem>
-                            <DropdownMenuItem className="text-red-600">
+                            <DropdownMenuItem className="text-red-600" onClick={() => handleDeleteSender(index)}>
                               <Trash2 className="w-4 h-4 mr-2" />
                               Delete sender
                             </DropdownMenuItem>
@@ -298,6 +385,114 @@ export default function EmailIntegrationPage() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Edit Sender Dialog */}
+        <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>Edit sender</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label>"From" email address *</Label>
+                <Input
+                  value={editingSender?.fromEmail || ""}
+                  disabled
+                  className="bg-slate-50 dark:bg-slate-800"
+                />
+                <p className="text-xs text-muted-foreground">
+                  The recipients will see this email <span className="text-blue-600">{editingSender?.fromEmail}</span> as the "From" address.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>"From" name *</Label>
+                <Input
+                  value={editForm.fromName}
+                  onChange={(e) => setEditForm({ ...editForm, fromName: e.target.value })}
+                  placeholder="Organization or person name"
+                  data-testid="input-edit-from-name"
+                />
+                <p className="text-xs text-muted-foreground">
+                  This name will be displayed as the sender in email clients.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>"Reply-to" email</Label>
+                <Input
+                  value={editForm.replyToEmail}
+                  onChange={(e) => setEditForm({ ...editForm, replyToEmail: e.target.value })}
+                  placeholder={editingSender?.fromEmail || "example@domain.com"}
+                  data-testid="input-edit-reply-to"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Email where replies will be sent. If left blank, replies will go to the sender's email address.
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <Label>Sender preview</Label>
+                <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                  <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 font-semibold">
+                    {editForm.fromName.charAt(0).toUpperCase() || "S"}
+                  </div>
+                  <div>
+                    <p className="font-medium text-sm">
+                      {editForm.fromName || "Sender Name"} &lt;{editingSender?.fromEmail}&gt;
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Reply to: {editForm.replyToEmail || editingSender?.fromEmail}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3">
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSaveEdit}
+                disabled={updateSendersMutation.isPending || !editForm.fromName}
+                className="bg-blue-600 hover:bg-blue-700"
+                data-testid="button-save-sender"
+              >
+                {updateSendersMutation.isPending && <LoadingSpinner fullScreen={false} />}
+                Save changes
+              </Button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Delete Sender Confirmation Dialog */}
+        <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>Delete sender</AlertDialogTitle>
+              <AlertDialogDescription>
+                Are you sure you want to delete this sender? This action cannot be undone.
+                {deletingSenderIndex >= 0 && settings?.senders?.[deletingSenderIndex] && (
+                  <span className="block mt-2 font-medium text-slate-900 dark:text-slate-100">
+                    {settings.senders[deletingSenderIndex].fromEmail}
+                  </span>
+                )}
+              </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel>Cancel</AlertDialogCancel>
+              <AlertDialogAction
+                onClick={handleConfirmDelete}
+                className="bg-red-600 hover:bg-red-700"
+                data-testid="button-confirm-delete-sender"
+              >
+                {updateSendersMutation.isPending && <LoadingSpinner fullScreen={false} />}
+                Delete
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        </AlertDialog>
       </div>
     );
   }
