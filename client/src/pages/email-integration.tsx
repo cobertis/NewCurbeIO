@@ -21,7 +21,20 @@ import {
   ListTodo,
   DollarSign,
   Sparkles,
+  Globe,
+  Plus,
+  Trash2,
+  MoreVertical,
+  ChevronRight,
+  Search,
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useLocation } from "wouter";
 import {
   Accordion,
@@ -153,43 +166,133 @@ export default function EmailIntegrationPage() {
       <div className="flex gap-6" data-testid="page-email-integration">
         <SettingsSidebar onNavigate={handleNavigation} />
         <div className="flex-1 min-w-0 space-y-6">
+          {/* Breadcrumb */}
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            <span>Settings</span>
+            <ChevronRight className="w-4 h-4" />
+            <span className="text-slate-900 dark:text-slate-100">Email</span>
+          </div>
+
+          {/* Header */}
           <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100" data-testid="text-page-title">Email</h1>
-              <p className="text-sm text-muted-foreground">Manage your email sending domain and sender profiles</p>
+            <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100" data-testid="text-page-title">
+              Domains & senders
+            </h1>
+            <div className="relative w-64">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+              <Input
+                placeholder="Search domains"
+                className="pl-9"
+                data-testid="input-search-domains"
+              />
             </div>
-            <Button variant="outline" onClick={() => setLocation("/integrations/email/flow")} data-testid="button-manage-domain">
-              <Settings className="w-4 h-4 mr-2" />
-              Manage Domain
+          </div>
+
+          {/* Action buttons */}
+          <div className="flex items-center gap-3">
+            <Button 
+              variant="outline" 
+              onClick={() => setLocation("/integrations/email/flow")} 
+              data-testid="button-connect-new-domain"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Connect new domain
+            </Button>
+            <Button variant="outline" data-testid="button-get-domain">
+              <Globe className="w-4 h-4 mr-2" />
+              Get a new domain
             </Button>
           </div>
 
+          {/* Domain Card */}
           <Card className="border-slate-200 dark:border-slate-800">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-4 mb-6">
-                <div className="w-12 h-12 rounded-lg bg-green-100 dark:bg-green-900 flex items-center justify-center">
-                  <CheckCircle2 className="w-6 h-6 text-green-600 dark:text-green-400" />
+            <CardContent className="p-0">
+              {/* Domain header */}
+              <div className="flex items-center justify-between p-4 border-b border-slate-200 dark:border-slate-800">
+                <div className="flex items-center gap-3">
+                  <Globe className="w-5 h-5 text-slate-600 dark:text-slate-400" />
+                  <span className="font-semibold text-slate-900 dark:text-slate-100">{settings.sendingDomain}</span>
+                  <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300">
+                    <CheckCircle2 className="w-3 h-3" />
+                    Verified
+                  </span>
                 </div>
-                <div>
-                  <h2 className="text-lg font-semibold">Domain verified</h2>
-                  <p className="text-sm text-muted-foreground">{settings.sendingDomain}</p>
+                <div className="flex items-center gap-2">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setLocation("/integrations/email/flow")}
+                    data-testid="button-add-sender"
+                  >
+                    <Plus className="w-4 h-4 mr-1" />
+                    Add sender
+                  </Button>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="text-red-600 hover:text-red-700 hover:bg-red-50 dark:hover:bg-red-950"
+                    data-testid="button-delete-domain"
+                  >
+                    <Trash2 className="w-4 h-4 mr-1" />
+                    Delete
+                  </Button>
                 </div>
               </div>
 
-              {settings.senders && settings.senders.length > 0 && (
-                <div className="space-y-3">
-                  <h3 className="font-medium text-sm text-muted-foreground">Configured senders</h3>
+              {/* Senders table */}
+              {settings.senders && settings.senders.length > 0 ? (
+                <div>
+                  {/* Table header */}
+                  <div className="grid grid-cols-[1fr_1fr_1fr_40px] gap-4 px-4 py-3 text-xs font-medium text-muted-foreground bg-slate-50 dark:bg-slate-800/50">
+                    <div>Sender email</div>
+                    <div>"From" name</div>
+                    <div>"Reply-to" email</div>
+                    <div></div>
+                  </div>
+                  
+                  {/* Table rows */}
                   {settings.senders.map((sender, index) => (
-                    <div key={index} className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                      <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
-                        <Mail className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                      </div>
-                      <div>
-                        <p className="font-medium text-sm">{sender.fromName}</p>
-                        <p className="text-xs text-muted-foreground">{sender.fromEmail}</p>
+                    <div 
+                      key={index} 
+                      className="grid grid-cols-[1fr_1fr_1fr_40px] gap-4 px-4 py-3 text-sm border-t border-slate-100 dark:border-slate-800 hover:bg-slate-50 dark:hover:bg-slate-800/30"
+                      data-testid={`row-sender-${index}`}
+                    >
+                      <div className="text-slate-900 dark:text-slate-100">{sender.fromEmail}</div>
+                      <div className="text-slate-600 dark:text-slate-400">{sender.fromName}</div>
+                      <div className="text-slate-600 dark:text-slate-400">{sender.replyToEmail || sender.fromEmail}</div>
+                      <div className="flex justify-end">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0" data-testid={`button-sender-menu-${index}`}>
+                              <MoreVertical className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setLocation("/integrations/email/flow")}>
+                              <Settings className="w-4 h-4 mr-2" />
+                              Edit sender
+                            </DropdownMenuItem>
+                            <DropdownMenuItem className="text-red-600">
+                              <Trash2 className="w-4 h-4 mr-2" />
+                              Delete sender
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                     </div>
                   ))}
+                </div>
+              ) : (
+                <div className="p-8 text-center text-muted-foreground">
+                  <Mail className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No senders configured yet</p>
+                  <Button 
+                    variant="link" 
+                    className="mt-2"
+                    onClick={() => setLocation("/integrations/email/flow")}
+                  >
+                    Add your first sender
+                  </Button>
                 </div>
               )}
             </CardContent>
