@@ -20,8 +20,6 @@ import {
   ArrowLeft,
   Plus,
   Trash2,
-  AlertCircle,
-  Wrench,
 } from "lucide-react";
 import {
   Collapsible,
@@ -190,7 +188,6 @@ export default function EmailIntegrationFlowPage() {
   const [domain, setDomain] = useState("");
   const [expandedRecords, setExpandedRecords] = useState<Record<string, boolean>>({
     dkim: true,
-    returnPath: true,
     dmarc: true,
   });
   const [senders, setSenders] = useState<EmailSender[]>([
@@ -269,28 +266,6 @@ export default function EmailIntegrationFlowPage() {
     onError: (error: Error) => {
       toast({
         title: "Verification failed",
-        description: error.message,
-        variant: "destructive",
-      });
-    },
-  });
-
-  // Repair mutation for fixing domains missing MAIL_FROM configuration
-  const repairDomainMutation = useMutation({
-    mutationFn: async () => {
-      return apiRequest("POST", "/api/ses/domain/repair");
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/ses/settings"] });
-      queryClient.invalidateQueries({ queryKey: ["/api/ses/domain/dns-records"] });
-      toast({
-        title: "Domain repaired",
-        description: "MAIL_FROM configuration has been added. Please add the new DNS records.",
-      });
-    },
-    onError: (error: Error) => {
-      toast({
-        title: "Repair failed",
         description: error.message,
         variant: "destructive",
       });
@@ -394,13 +369,12 @@ export default function EmailIntegrationFlowPage() {
   };
 
   const getDkimRecord = () => dnsRecords.find(r => r.purpose === "DKIM");
-  const getReturnPathRecord = () => dnsRecords.find(r => r.purpose === "MAIL_FROM" && r.type === "MX") || dnsRecords.find(r => r.purpose === "MAIL_FROM");
   const getDmarcRecord = () => dnsRecords.find(r => r.purpose === "SPF") || dnsRecords.find(r => r.name?.includes("_dmarc"));
 
   const allRecordsVerified = () => {
     const dkim = getDkimRecord();
-    const returnPath = getReturnPathRecord();
-    return dkim?.status === "SUCCESS" && (returnPath?.status === "SUCCESS" || !returnPath);
+    // Check both DKIM status and overall verification status
+    return dkim?.status === "SUCCESS" || settings?.verificationStatus === "SUCCESS";
   };
 
   const handleNavigation = (href: string) => {
@@ -571,18 +545,6 @@ export default function EmailIntegrationFlowPage() {
                           />
                         )}
 
-                        {/* Return-Path Record */}
-                        {getReturnPathRecord() && (
-                          <DnsRecordCard
-                            title="Return-Path Record (CNAME)"
-                            description="This handles bounces and ensures proper email delivery tracking."
-                            record={getReturnPathRecord()!}
-                            expanded={expandedRecords.returnPath}
-                            onToggle={() => toggleRecord('returnPath')}
-                            onCopy={copyToClipboard}
-                          />
-                        )}
-
                         {/* SPF/DMARC Record */}
                         {getDmarcRecord() && (
                           <DnsRecordCard
@@ -594,34 +556,6 @@ export default function EmailIntegrationFlowPage() {
                             onCopy={copyToClipboard}
                           />
                         )}
-                      </div>
-                    )}
-
-                    {/* Warning if MAIL_FROM records are missing */}
-                    {!getReturnPathRecord() && settings?.sendingDomain && (
-                      <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
-                        <div className="flex items-center justify-between gap-2">
-                          <div className="flex items-center gap-2">
-                            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
-                            <p className="text-sm text-amber-800 dark:text-amber-200">
-                              Missing Return-Path (MAIL_FROM) configuration. Click "Repair" to add the missing DNS records.
-                            </p>
-                          </div>
-                          <Button
-                            size="sm"
-                            onClick={() => repairDomainMutation.mutate()}
-                            disabled={repairDomainMutation.isPending}
-                            className="bg-amber-600 hover:bg-amber-700"
-                            data-testid="button-repair-domain"
-                          >
-                            {repairDomainMutation.isPending ? (
-                              <LoadingSpinner fullScreen={false} />
-                            ) : (
-                              <Wrench className="w-4 h-4 mr-1" />
-                            )}
-                            Repair
-                          </Button>
-                        </div>
                       </div>
                     )}
 
