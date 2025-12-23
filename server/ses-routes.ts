@@ -200,7 +200,7 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
         });
       }
       
-      res.json({ dnsRecords });
+      res.json({ records: dnsRecords });
     } catch (error: any) {
       console.error("[SES Routes] Error getting DNS records:", error);
       res.status(500).json({ message: error.message });
