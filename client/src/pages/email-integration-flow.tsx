@@ -301,9 +301,9 @@ export default function EmailIntegrationFlowPage() {
     },
   });
 
-  // Auto-refresh verification status every 5 seconds when on step 2
+  // Auto-refresh verification status every 5 seconds when on step 2 and not all verified
   useEffect(() => {
-    if (currentStep === 2 && settings?.sendingDomain) {
+    if (currentStep === 2 && settings?.sendingDomain && !allRecordsVerified()) {
       const interval = setInterval(() => {
         queryClient.invalidateQueries({ queryKey: ["/api/ses/settings"] });
         queryClient.invalidateQueries({ queryKey: ["/api/ses/domain/dns-records"] });
@@ -311,7 +311,14 @@ export default function EmailIntegrationFlowPage() {
       
       return () => clearInterval(interval);
     }
-  }, [currentStep, settings?.sendingDomain]);
+  }, [currentStep, settings?.sendingDomain, dnsRecords]);
+
+  // Auto-advance to step 3 when all records are verified
+  useEffect(() => {
+    if (currentStep === 2 && allRecordsVerified()) {
+      setCurrentStep(3);
+    }
+  }, [dnsRecords, currentStep]);
 
   const saveSendersMutation = useMutation({
     mutationFn: async (sendersData: EmailSender[]) => {
