@@ -27,6 +27,107 @@ import {
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Link, useLocation } from "wouter";
+import {
+  Phone,
+  MessageSquare,
+  Building,
+  CreditCard,
+  User as UserIcon,
+  Zap,
+  Plug,
+  Ticket,
+  ListTodo,
+  DollarSign,
+  Sparkles,
+  Settings,
+  Users,
+} from "lucide-react";
+import { SiWhatsapp, SiFacebook, SiInstagram } from "react-icons/si";
+import { cn } from "@/lib/utils";
+
+interface NavigationItem {
+  label: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+  active?: boolean;
+}
+
+function NavigationLink({ item, onClick }: { item: NavigationItem; onClick: (href: string) => void }) {
+  return (
+    <button
+      onClick={() => onClick(item.href)}
+      data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+      className={cn(
+        "w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
+        item.active && "border-l-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+      )}
+    >
+      <item.icon className="h-4 w-4" />
+      <span className="flex-1 text-left">{item.label}</span>
+    </button>
+  );
+}
+
+function SettingsSidebar({ onNavigate }: { onNavigate: (href: string) => void }) {
+  const menuItems: { channels: NavigationItem[]; features: NavigationItem[]; administration: NavigationItem[] } = {
+    channels: [
+      { label: "SMS & voice", href: "/integrations/sms-voice", icon: Phone },
+      { label: "Email", href: "/settings/email", icon: Mail, active: true },
+      { label: "Chat widget", href: "/integrations", icon: MessageSquare },
+      { label: "WhatsApp", href: "/integrations", icon: SiWhatsapp },
+      { label: "Facebook", href: "/integrations", icon: SiFacebook },
+      { label: "Instagram", href: "/integrations", icon: SiInstagram },
+    ],
+    features: [
+      { label: "Messenger", href: "/inbox", icon: MessageSquare },
+      { label: "Contacts", href: "/contacts", icon: Users },
+      { label: "API & Integrations", href: "/integrations", icon: Plug },
+      { label: "Email to SMS", href: "/settings/email-to-sms", icon: Mail },
+      { label: "Auto-responders", href: "/campaigns", icon: Zap },
+      { label: "Tickets", href: "/tickets", icon: Ticket },
+      { label: "Tasks", href: "/tasks", icon: ListTodo },
+      { label: "Deals", href: "/deals", icon: DollarSign },
+      { label: "Point AI", href: "/ai-assistant", icon: Sparkles },
+    ],
+    administration: [
+      { label: "Workspace", href: "/settings/company", icon: Building },
+      { label: "Billing", href: "/billing", icon: CreditCard },
+      { label: "My account", href: "/settings/profile", icon: UserIcon },
+    ],
+  };
+
+  return (
+    <div className="w-60 shrink-0 hidden lg:block">
+      <div className="sticky top-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
+        <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
+          <Settings className="h-4 w-4 text-slate-600 dark:text-slate-400" />
+          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Settings</span>
+        </div>
+
+        <div className="py-2">
+          <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Channels</p>
+          {menuItems.channels.map((item) => (
+            <NavigationLink key={item.label} item={item} onClick={onNavigate} />
+          ))}
+        </div>
+
+        <div className="py-2">
+          <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Features</p>
+          {menuItems.features.map((item) => (
+            <NavigationLink key={item.label} item={item} onClick={onNavigate} />
+          ))}
+        </div>
+
+        <div className="py-2 pb-3">
+          <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Administration</p>
+          {menuItems.administration.map((item) => (
+            <NavigationLink key={item.label} item={item} onClick={onNavigate} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 interface EmailSettings {
   id: string;
@@ -228,27 +329,33 @@ export default function EmailIntegrationFlowPage() {
     return dkim?.status === "SUCCESS" && (returnPath?.status === "SUCCESS" || !returnPath);
   };
 
+  const handleNavigation = (href: string) => {
+    setLocation(href);
+  };
+
   if (loadingSettings) {
     return <LoadingSpinner message="Loading email settings..." />;
   }
 
   return (
-    <div className="container max-w-3xl py-6 space-y-6">
-      <div className="flex items-center gap-4">
-        <Link href="/integrations/email">
-          <Button variant="ghost" size="sm" data-testid="button-back-email">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back
-          </Button>
-        </Link>
-      </div>
+    <div className="flex gap-6" data-testid="page-email-integration-flow">
+      <SettingsSidebar onNavigate={handleNavigation} />
+      <div className="flex-1 min-w-0 space-y-6">
+        <div className="flex items-center gap-4">
+          <Link href="/integrations/email">
+            <Button variant="ghost" size="sm" data-testid="button-back-email">
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back
+            </Button>
+          </Link>
+        </div>
 
-      <div>
-        <h1 className="text-2xl font-semibold mb-1">Email Domain Setup</h1>
-        <p className="text-muted-foreground">Configure your sending domain for email campaigns</p>
-      </div>
+        <div>
+          <h1 className="text-2xl font-semibold mb-1">Email Domain Setup</h1>
+          <p className="text-muted-foreground">Configure your sending domain for email campaigns</p>
+        </div>
 
-      <div className="space-y-4">
+        <div className="space-y-4">
         {/* Step 1: Add your domain */}
         <Card className={`${isStepComplete(1) ? 'border-green-200 bg-green-50/30 dark:border-green-800 dark:bg-green-950/20' : ''}`}>
           <CardContent className="p-6">
@@ -606,6 +713,7 @@ export default function EmailIntegrationFlowPage() {
             </div>
           </CardContent>
         </Card>
+        </div>
       </div>
     </div>
   );
