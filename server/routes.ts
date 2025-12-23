@@ -28673,6 +28673,10 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       console.log("[Phone System] Fetched", allNumbers.length, "numbers from Telnyx API");
       
+      // Log which numbers have messaging profiles (required for 10DLC)
+      const withProfile = allNumbers.filter((n: any) => n.messaging_profile_id).length;
+      console.log("[Phone System] Numbers with messaging profile:", withProfile, "of", allNumbers.length);
+      
       // Transform to the expected format with phoneNumber and type
       const numbers = allNumbers.map((num: any) => {
         const phoneNum = num.phone_number;
