@@ -554,6 +554,7 @@ export default function EmailIntegrationFlowPage() {
                             onToggle={() => toggleRecord(`dkim-${index}`)}
                             onCopy={copyToClipboard}
                             isChecking={checkingDns}
+                            domain={settings?.sendingDomain}
                           />
                         ))}
 
@@ -567,6 +568,7 @@ export default function EmailIntegrationFlowPage() {
                             onToggle={() => toggleRecord('spf')}
                             onCopy={copyToClipboard}
                             isChecking={checkingDns}
+                            domain={settings?.sendingDomain}
                           />
                         )}
 
@@ -580,6 +582,7 @@ export default function EmailIntegrationFlowPage() {
                             onToggle={() => toggleRecord('dmarc')}
                             onCopy={copyToClipboard}
                             isChecking={checkingDns}
+                            domain={settings?.sendingDomain}
                           />
                         )}
                       </div>
@@ -852,10 +855,18 @@ interface DnsRecordCardProps {
   onToggle: () => void;
   onCopy: (text: string) => void;
   isChecking?: boolean;
+  domain?: string;
 }
 
-function DnsRecordCard({ title, description, record, expanded, onToggle, onCopy, isChecking }: DnsRecordCardProps) {
+function DnsRecordCard({ title, description, record, expanded, onToggle, onCopy, isChecking, domain }: DnsRecordCardProps) {
   const isVerified = record.status === "SUCCESS" || record.status === "success";
+  
+  // Strip domain from the name for display and copy (e.g., "token._domainkey.domain.com" -> "token._domainkey")
+  const displayName = domain && record.name.endsWith(`.${domain}`)
+    ? record.name.replace(`.${domain}`, '')
+    : record.name === domain 
+      ? '@'
+      : record.name;
 
   return (
     <div className="border rounded-lg overflow-hidden">
@@ -883,27 +894,30 @@ function DnsRecordCard({ title, description, record, expanded, onToggle, onCopy,
           </div>
         </CollapsibleTrigger>
         <CollapsibleContent>
-          <div className="p-4 pt-0 space-y-3 border-t">
-            <div className="grid grid-cols-[100px_1fr_auto] gap-2 items-start text-sm">
-              <span className="text-muted-foreground">Type</span>
-              <span className="font-mono">{record.type}</span>
-              <div></div>
+          <div className="p-4 pt-0 space-y-4 border-t">
+            <div className="space-y-1">
+              <span className="text-sm text-muted-foreground">Type</span>
+              <div className="font-mono text-sm">{record.type}</div>
             </div>
-            <div className="grid grid-cols-[100px_1fr_auto] gap-2 items-start text-sm">
-              <span className="text-muted-foreground">Name / Host</span>
-              <span className="font-mono text-xs break-all">{record.name}</span>
-              <Button variant="outline" size="sm" onClick={() => onCopy(record.name)} data-testid="button-copy-name">
-                <Copy className="w-3 h-3 mr-1" />
-                Copy
-              </Button>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">Name / Host</span>
+                <Button variant="outline" size="sm" onClick={() => onCopy(displayName)} data-testid="button-copy-name">
+                  <Copy className="w-3 h-3 mr-1" />
+                  Copy
+                </Button>
+              </div>
+              <div className="font-mono text-sm break-all bg-gray-50 dark:bg-gray-800 p-2 rounded">{displayName}</div>
             </div>
-            <div className="grid grid-cols-[100px_1fr_auto] gap-2 items-start text-sm">
-              <span className="text-muted-foreground">{record.type} value</span>
-              <span className="font-mono text-xs break-all">{record.value}</span>
-              <Button variant="outline" size="sm" onClick={() => onCopy(record.value)} data-testid="button-copy-value">
-                <Copy className="w-3 h-3 mr-1" />
-                Copy
-              </Button>
+            <div className="space-y-1">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">{record.type} value</span>
+                <Button variant="outline" size="sm" onClick={() => onCopy(record.value)} data-testid="button-copy-value">
+                  <Copy className="w-3 h-3 mr-1" />
+                  Copy
+                </Button>
+              </div>
+              <div className="font-mono text-xs break-all bg-gray-50 dark:bg-gray-800 p-2 rounded leading-relaxed">{record.value}</div>
             </div>
           </div>
         </CollapsibleContent>
