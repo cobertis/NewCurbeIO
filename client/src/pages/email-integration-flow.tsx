@@ -200,7 +200,7 @@ export default function EmailIntegrationFlowPage() {
 
   const settings = settingsResponse?.settings;
 
-  const { data: dnsRecordsResponse, isLoading: loadingDns, refetch: refetchDns } = useQuery<{ records: DnsRecord[] }>({
+  const { data: dnsRecordsResponse, isLoading: loadingDns, isFetching: checkingDns, refetch: refetchDns } = useQuery<{ records: DnsRecord[] }>({
     queryKey: ["/api/ses/domain/dns-records"],
     enabled: !!settings?.sendingDomain,
   });
@@ -545,6 +545,7 @@ export default function EmailIntegrationFlowPage() {
                             expanded={expandedRecords[`dkim-${index}`] ?? true}
                             onToggle={() => toggleRecord(`dkim-${index}`)}
                             onCopy={copyToClipboard}
+                            isChecking={checkingDns}
                           />
                         ))}
 
@@ -557,6 +558,7 @@ export default function EmailIntegrationFlowPage() {
                             expanded={expandedRecords.spf ?? true}
                             onToggle={() => toggleRecord('spf')}
                             onCopy={copyToClipboard}
+                            isChecking={checkingDns}
                           />
                         )}
 
@@ -569,6 +571,7 @@ export default function EmailIntegrationFlowPage() {
                             expanded={expandedRecords.dmarc ?? true}
                             onToggle={() => toggleRecord('dmarc')}
                             onCopy={copyToClipboard}
+                            isChecking={checkingDns}
                           />
                         )}
                       </div>
@@ -588,9 +591,9 @@ export default function EmailIntegrationFlowPage() {
                     {/* Auto-verification notice */}
                     <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
                       <div className="flex items-center gap-2">
-                        <RefreshCw className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <RefreshCw className={`w-4 h-4 text-blue-600 dark:text-blue-400 ${checkingDns ? 'animate-spin' : ''}`} />
                         <p className="text-xs text-blue-800 dark:text-blue-200">
-                          Verification status updates automatically every 30 seconds. You can also click "Verify records" to check immediately.
+                          {checkingDns ? "Checking DNS records..." : "Verification status updates automatically every 5 seconds. You can also click \"Verify records\" to check immediately."}
                         </p>
                       </div>
                     </div>
@@ -825,9 +828,10 @@ interface DnsRecordCardProps {
   expanded: boolean;
   onToggle: () => void;
   onCopy: (text: string) => void;
+  isChecking?: boolean;
 }
 
-function DnsRecordCard({ title, description, record, expanded, onToggle, onCopy }: DnsRecordCardProps) {
+function DnsRecordCard({ title, description, record, expanded, onToggle, onCopy, isChecking }: DnsRecordCardProps) {
   const isVerified = record.status === "SUCCESS" || record.status === "success";
 
   return (
@@ -839,16 +843,22 @@ function DnsRecordCard({ title, description, record, expanded, onToggle, onCopy 
             <p className="text-sm text-muted-foreground">{description}</p>
           </div>
           <div className="flex items-center gap-3">
-            <Badge className={isVerified 
-              ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-0" 
-              : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 border-0"
-            }>
-              {isVerified ? (
-                <><CheckCircle2 className="w-3 h-3 mr-1" />Verified</>
-              ) : (
-                <><XCircle className="w-3 h-3 mr-1" />Not verified</>
-              )}
-            </Badge>
+            {isChecking ? (
+              <Badge className="bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300 border-0 animate-pulse">
+                <RefreshCw className="w-3 h-3 mr-1 animate-spin" />Checking DNS...
+              </Badge>
+            ) : (
+              <Badge className={isVerified 
+                ? "bg-green-100 text-green-700 dark:bg-green-900 dark:text-green-300 border-0" 
+                : "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300 border-0"
+              }>
+                {isVerified ? (
+                  <><CheckCircle2 className="w-3 h-3 mr-1" />Verified</>
+                ) : (
+                  <><XCircle className="w-3 h-3 mr-1" />Not verified</>
+                )}
+              </Badge>
+            )}
             {expanded ? <ChevronUp className="w-4 h-4" /> : <ChevronDown className="w-4 h-4" />}
           </div>
         </CollapsibleTrigger>
