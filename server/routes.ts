@@ -31172,7 +31172,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           console.log("[10DLC Campaign] Assignment body:", JSON.stringify(assignmentBody));
           
           const response = await fetch(`https://api.telnyx.com/v2/10dlc/phone_number_campaigns`, {
-            method: "PUT",
+            method: "POST",
             headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
             body: JSON.stringify(assignmentBody),
           });
