@@ -368,13 +368,15 @@ export default function EmailIntegrationFlowPage() {
     return false;
   };
 
-  const getDkimRecord = () => dnsRecords.find(r => r.purpose === "DKIM");
-  const getDmarcRecord = () => dnsRecords.find(r => r.purpose === "SPF") || dnsRecords.find(r => r.name?.includes("_dmarc"));
+  const getDkimRecords = () => dnsRecords.filter(r => r.purpose === "DKIM");
+  const getSpfRecord = () => dnsRecords.find(r => r.purpose === "SPF");
+  const getDmarcRecord = () => dnsRecords.find(r => r.purpose === "DMARC" || r.name?.includes("_dmarc"));
 
   const allRecordsVerified = () => {
-    const dkim = getDkimRecord();
-    // Check both DKIM status and overall verification status
-    return dkim?.status === "SUCCESS" || settings?.verificationStatus === "SUCCESS";
+    const dkimRecords = getDkimRecords();
+    // Check if all DKIM records are verified or overall verification is successful
+    const allDkimVerified = dkimRecords.length > 0 && dkimRecords.every(r => r.status === "success" || r.status === "SUCCESS");
+    return allDkimVerified || settings?.verificationStatus === "SUCCESS" || settings?.dkimStatus === "success";
   };
 
   const handleNavigation = (href: string) => {
@@ -533,25 +535,38 @@ export default function EmailIntegrationFlowPage() {
                       <LoadingSpinner message="Loading DNS records..." fullScreen={false} />
                     ) : (
                       <div className="space-y-3">
-                        {/* DKIM Record */}
-                        {getDkimRecord() && (
+                        {/* DKIM Records - ALL 3 are required */}
+                        {getDkimRecords().map((record, index) => (
                           <DnsRecordCard
-                            title="DKIM Record (TXT)"
-                            description="This verifies that emails are authorized to be sent from your domain."
-                            record={getDkimRecord()!}
-                            expanded={expandedRecords.dkim}
-                            onToggle={() => toggleRecord('dkim')}
+                            key={`dkim-${index}`}
+                            title={`DKIM Record ${index + 1} of ${getDkimRecords().length} (CNAME)`}
+                            description={index === 0 ? "All DKIM records must be added to verify your domain. This cryptographically signs emails sent from your domain." : ""}
+                            record={record}
+                            expanded={expandedRecords[`dkim-${index}`] ?? true}
+                            onToggle={() => toggleRecord(`dkim-${index}`)}
+                            onCopy={copyToClipboard}
+                          />
+                        ))}
+
+                        {/* SPF Record */}
+                        {getSpfRecord() && (
+                          <DnsRecordCard
+                            title="SPF Record (TXT)"
+                            description="This authorizes Amazon SES to send emails on behalf of your domain."
+                            record={getSpfRecord()!}
+                            expanded={expandedRecords.spf ?? true}
+                            onToggle={() => toggleRecord('spf')}
                             onCopy={copyToClipboard}
                           />
                         )}
 
-                        {/* SPF/DMARC Record */}
+                        {/* DMARC Record */}
                         {getDmarcRecord() && (
                           <DnsRecordCard
                             title="DMARC Record (TXT)"
                             description="This record protects your domain from unauthorized email use and helps improve deliverability."
                             record={getDmarcRecord()!}
-                            expanded={expandedRecords.dmarc}
+                            expanded={expandedRecords.dmarc ?? true}
                             onToggle={() => toggleRecord('dmarc')}
                             onCopy={copyToClipboard}
                           />
