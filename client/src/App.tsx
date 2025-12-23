@@ -112,6 +112,8 @@ import SmsVoiceTollFree from "@/pages/integrations/sms-voice-toll-free";
 import SmsVoice10dlc from "@/pages/integrations/sms-voice-10dlc";
 import SmsVoiceSenderSettings from "@/pages/integrations/sms-voice-sender-settings";
 import EmailSettings from "@/pages/email-settings";
+import EmailIntegration from "@/pages/email-integration";
+import EmailIntegrationFlow from "@/pages/email-integration-flow";
 import SmsVoiceVirtualPbx from "@/pages/integrations/sms-voice-virtual-pbx";
 import SmsVoiceCpaas from "@/pages/integrations/sms-voice-cpaas";
 import NotFound from "@/pages/not-found";
@@ -1762,9 +1764,19 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/settings/email">
+        <Redirect to="/integrations/email" />
+      </Route>
+      <Route path="/integrations/email">
         <ProtectedRoute>
           <DashboardLayout>
-            <EmailSettings />
+            <EmailIntegration />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/integrations/email/flow">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <EmailIntegrationFlow />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

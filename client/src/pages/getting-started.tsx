@@ -471,7 +471,7 @@ export default function GettingStarted() {
                   </p>
                   <Button 
                       size="sm" 
-                      onClick={() => setLocation("/settings/email")} 
+                      onClick={() => setLocation("/integrations/email")} 
                       className="gap-2 bg-blue-600 hover:bg-blue-700" 
                       data-testid="button-configure-email"
                     >
