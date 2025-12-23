@@ -371,7 +371,7 @@ export default function EmailIntegrationFlowPage() {
 
   const isStepComplete = (step: WizardStep): boolean => {
     if (step === 1) return !!settings?.sendingDomain;
-    if (step === 2) return settings?.verificationStatus === "SUCCESS" || settings?.dkimStatus === "SUCCESS";
+    if (step === 2) return settings?.verificationStatus === "SUCCESS" || settings?.dkimStatus === "SUCCESS" || allRecordsVerified();
     if (step === 3) return (settings?.senders?.length ?? 0) > 0;
     return false;
   };
