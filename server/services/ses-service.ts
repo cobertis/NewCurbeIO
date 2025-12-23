@@ -574,28 +574,55 @@ class SesService {
     let failed = 0;
     
     try {
-      const pendingItems = await db
-        .select()
-        .from(sesEmailQueue)
-        .where(
-          and(
-            eq(sesEmailQueue.status, "pending"),
-            lte(sesEmailQueue.scheduledFor, new Date())
-          )
-        )
-        .orderBy(sesEmailQueue.priority, sesEmailQueue.scheduledFor)
-        .limit(batchSize);
+      // Store items to process outside transaction
+      let itemsToProcess: Array<{ id: string; messageId: string; attempts: number | null; maxAttempts: number | null }> = [];
       
-      for (const item of pendingItems) {
-        await db.update(sesEmailQueue)
-          .set({ status: "processing", lastAttemptAt: new Date() })
-          .where(eq(sesEmailQueue.id, item.id));
+      // Use a transaction with row locking to prevent duplicate processing
+      await db.transaction(async (tx) => {
+        // Select and lock rows atomically with FOR UPDATE SKIP LOCKED
+        const pendingItems = await tx
+          .select()
+          .from(sesEmailQueue)
+          .where(
+            and(
+              eq(sesEmailQueue.status, "pending"),
+              lte(sesEmailQueue.scheduledFor, new Date())
+            )
+          )
+          .orderBy(sesEmailQueue.priority, sesEmailQueue.scheduledFor)
+          .limit(batchSize)
+          .for("update", { skipLocked: true });
         
+        // Update status to processing immediately within transaction
+        for (const item of pendingItems) {
+          await tx.update(sesEmailQueue)
+            .set({ 
+              status: "processing", 
+              lastAttemptAt: new Date(),
+              lockedAt: new Date(),
+            })
+            .where(eq(sesEmailQueue.id, item.id));
+          
+          itemsToProcess.push({
+            id: item.id,
+            messageId: item.messageId,
+            attempts: item.attempts,
+            maxAttempts: item.maxAttempts,
+          });
+        }
+      });
+      
+      // Process emails outside the transaction (sends are idempotent via messageId)
+      for (const item of itemsToProcess) {
         const result = await this.sendEmailDirect(item.messageId);
         
         if (result.success) {
           await db.update(sesEmailQueue)
-            .set({ status: "completed", completedAt: new Date() })
+            .set({ 
+              status: "completed", 
+              completedAt: new Date(),
+              lockedAt: null,
+            })
             .where(eq(sesEmailQueue.id, item.id));
           processed++;
         } else {
@@ -607,6 +634,7 @@ class SesService {
                 status: "failed", 
                 attempts: newAttempts,
                 errorMessage: result.error,
+                lockedAt: null,
               })
               .where(eq(sesEmailQueue.id, item.id));
           } else {
@@ -618,6 +646,7 @@ class SesService {
                 nextAttemptAt: nextAttempt,
                 scheduledFor: nextAttempt,
                 errorMessage: result.error,
+                lockedAt: null,
               })
               .where(eq(sesEmailQueue.id, item.id));
           }

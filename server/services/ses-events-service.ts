@@ -66,6 +66,22 @@ class SesEventsService {
         return { processed: false, error: "Missing event type or message ID" };
       }
       
+      const [existingEvent] = await db
+        .select()
+        .from(sesEmailEvents)
+        .where(
+          and(
+            eq(sesEmailEvents.providerMessageId, providerMessageId),
+            eq(sesEmailEvents.eventType, eventType as any)
+          )
+        )
+        .limit(1);
+      
+      if (existingEvent) {
+        console.log(`[SES Events] Event already processed: ${eventType} for ${providerMessageId}`);
+        return { processed: true };
+      }
+      
       const [message] = await db
         .select()
         .from(sesEmailMessages)
@@ -100,7 +116,15 @@ class SesEventsService {
         eventData.complaintFeedbackType = payload.complaint.complaintFeedbackType;
       }
       
-      const [event] = await db.insert(sesEmailEvents).values(eventData).returning();
+      const [event] = await db.insert(sesEmailEvents)
+        .values(eventData)
+        .onConflictDoNothing()
+        .returning();
+      
+      if (!event) {
+        console.log(`[SES Events] Event already exists (race condition): ${eventType} for ${providerMessageId}`);
+        return { processed: true };
+      }
       
       await this.updateMessageStatus(message.id, message.companyId, eventType, payload, event.id);
       

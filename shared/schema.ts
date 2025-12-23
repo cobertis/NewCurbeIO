@@ -6837,6 +6837,7 @@ export const sesEmailEvents = pgTable("ses_email_events", {
   providerMessageIdIdx: index("ses_email_events_provider_message_id_idx").on(table.providerMessageId),
   eventTypeIdx: index("ses_email_events_event_type_idx").on(table.eventType),
   createdAtIdx: index("ses_email_events_created_at_idx").on(table.createdAt),
+  providerMessageEventUnique: unique("ses_email_events_provider_message_event_unique").on(table.providerMessageId, table.eventType),
 }));
 
 export const insertSesEmailEventSchema = createInsertSchema(sesEmailEvents).omit({
@@ -6904,6 +6905,9 @@ export const sesEmailQueue = pgTable("ses_email_queue", {
   // Processing status
   status: text("status").default("pending"), // pending, processing, completed, failed
   errorMessage: text("error_message"),
+  
+  // Row locking for concurrent processing prevention
+  lockedAt: timestamp("locked_at"),
   
   createdAt: timestamp("created_at").notNull().defaultNow(),
   completedAt: timestamp("completed_at"),
