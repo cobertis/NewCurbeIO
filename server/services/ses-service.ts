@@ -448,6 +448,18 @@ class SesService {
         return { messageId: "", queued: false, error: `Email ${request.toEmail} is suppressed: ${suppressed.reason}` };
       }
       
+      // Check rate limits before queueing
+      const rateLimitCheck = await this.checkRateLimits(request.companyId, settings);
+      if (!rateLimitCheck.allowed) {
+        return { messageId: "", queued: false, error: rateLimitCheck.error };
+      }
+
+      // Check bounce/complaint rates for auto-pause
+      const reputationCheck = await this.checkReputationThresholds(request.companyId, settings);
+      if (!reputationCheck.allowed) {
+        return { messageId: "", queued: false, error: reputationCheck.error };
+      }
+      
       const [message] = await db.insert(sesEmailMessages).values({
         companyId: request.companyId,
         fromEmail: request.fromEmail,
@@ -679,6 +691,100 @@ class SesService {
       console.error("[SES] Error updating settings:", error);
       return false;
     }
+  }
+  
+  private async checkRateLimits(companyId: string, settings: CompanyEmailSettings): Promise<{ allowed: boolean; error?: string }> {
+    const now = new Date();
+    const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const startOfHour = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours());
+    const startOfMinute = new Date(now.getFullYear(), now.getMonth(), now.getDate(), now.getHours(), now.getMinutes());
+    
+    // Count emails sent today
+    const [dailyCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(sesEmailMessages)
+      .where(
+        and(
+          eq(sesEmailMessages.companyId, companyId),
+          sql`${sesEmailMessages.createdAt} >= ${startOfDay}`
+        )
+      );
+    
+    if ((dailyCount?.count || 0) >= (settings.dailySendLimit || 200)) {
+      return { allowed: false, error: `Daily send limit of ${settings.dailySendLimit} reached` };
+    }
+    
+    // Count emails sent this hour
+    const [hourlyCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(sesEmailMessages)
+      .where(
+        and(
+          eq(sesEmailMessages.companyId, companyId),
+          sql`${sesEmailMessages.createdAt} >= ${startOfHour}`
+        )
+      );
+    
+    if ((hourlyCount?.count || 0) >= (settings.hourlySendLimit || 50)) {
+      return { allowed: false, error: `Hourly send limit of ${settings.hourlySendLimit} reached` };
+    }
+    
+    // Count emails sent this minute
+    const [minuteCount] = await db
+      .select({ count: sql<number>`count(*)` })
+      .from(sesEmailMessages)
+      .where(
+        and(
+          eq(sesEmailMessages.companyId, companyId),
+          sql`${sesEmailMessages.createdAt} >= ${startOfMinute}`
+        )
+      );
+    
+    if ((minuteCount?.count || 0) >= (settings.minuteSendLimit || 10)) {
+      return { allowed: false, error: `Per-minute send limit of ${settings.minuteSendLimit} reached` };
+    }
+    
+    return { allowed: true };
+  }
+  
+  private async checkReputationThresholds(companyId: string, settings: CompanyEmailSettings): Promise<{ allowed: boolean; error?: string }> {
+    const totalSent = settings.totalSent || 0;
+    
+    // Only check thresholds if we have a minimum sample size (at least 100 emails sent)
+    if (totalSent < 100) {
+      return { allowed: true };
+    }
+    
+    const totalBounced = settings.totalBounced || 0;
+    const totalComplaints = settings.totalComplaints || 0;
+    
+    const bounceRate = totalBounced / totalSent;
+    const complaintRate = totalComplaints / totalSent;
+    
+    const bounceThreshold = parseFloat(settings.bounceRateThreshold?.toString() || "0.05");
+    const complaintThreshold = parseFloat(settings.complaintRateThreshold?.toString() || "0.001");
+    
+    if (bounceRate >= bounceThreshold) {
+      // Auto-pause the account
+      await db.update(companyEmailSettings)
+        .set({ emailStatus: "paused", updatedAt: new Date() })
+        .where(eq(companyEmailSettings.companyId, companyId));
+      
+      console.log(`[SES] Auto-paused company ${companyId} due to high bounce rate: ${(bounceRate * 100).toFixed(2)}%`);
+      return { allowed: false, error: `Email sending paused due to high bounce rate (${(bounceRate * 100).toFixed(2)}%). Please clean your email list.` };
+    }
+    
+    if (complaintRate >= complaintThreshold) {
+      // Auto-pause the account
+      await db.update(companyEmailSettings)
+        .set({ emailStatus: "paused", updatedAt: new Date() })
+        .where(eq(companyEmailSettings.companyId, companyId));
+      
+      console.log(`[SES] Auto-paused company ${companyId} due to high complaint rate: ${(complaintRate * 100).toFixed(3)}%`);
+      return { allowed: false, error: `Email sending paused due to high complaint rate (${(complaintRate * 100).toFixed(3)}%). Please review your sending practices.` };
+    }
+    
+    return { allowed: true };
   }
   
   async getEmailMetrics(companyId: string, days: number = 30): Promise<{
