@@ -206,14 +206,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.log('[EMAIL] Skipping payment confirmation email for $0.00 invoice:', invoiceNumber);
         return false;
       }
-  });
       // Get company details
       const company = await storage.getCompany(companyId);
       if (!company) {
         console.error('[EMAIL] Company not found:', companyId);
         return false;
       }
-  });
       // Get all admin users for the company
       const users = await storage.getUsersByCompany(companyId);
       const adminUsers = users.filter(u => u.role === 'admin' && u.emailNotifications);
@@ -221,14 +219,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.log('[EMAIL] No admin users with email notifications enabled for company:', companyId);
         return false;
       }
-  });
       // Get payment confirmation template
       const template = await storage.getEmailTemplateBySlug("payment-confirmation");
       if (!template) {
         console.error('[EMAIL] Payment confirmation template not found');
         return false;
       }
-  });
       // Format amount (amount is already in dollars, NOT cents)
       const formattedAmount = new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -302,14 +298,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.log('[EMAIL] Skipping payment failed email for $0.00 invoice:', invoiceNumber);
         return false;
       }
-  });
       // Get company details
       const company = await storage.getCompany(companyId);
       if (!company) {
         console.error('[EMAIL] Company not found:', companyId);
         return false;
       }
-  });
       // Get all admin users for the company
       const users = await storage.getUsersByCompany(companyId);
       const adminUsers = users.filter(u => u.role === 'admin' && u.emailNotifications);
@@ -317,14 +311,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.log('[EMAIL] No admin users with email notifications enabled for company:', companyId);
         return false;
       }
-  });
       // Get payment failed template
       const template = await storage.getEmailTemplateBySlug("payment-failed");
       if (!template) {
         console.error('[EMAIL] Payment failed template not found');
         return false;
       }
-  });
       // Format amount (amount is already in dollars, NOT cents)
       const formattedAmount = new Intl.NumberFormat('en-US', {
         style: 'currency',
@@ -410,7 +402,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error("Activation email template not found");
         return false;
       }
-  });
       // Replace variables in template
       let htmlContent = template.htmlContent
         .replace(/\{\{firstName\}\}/g, user.firstName || 'there')
@@ -449,7 +440,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       req.session.destroy(() => {});
       return res.status(401).json({ message: "Not authenticated" });
     }
-  });
     // Populate session.user for WebSocket compatibility if not already set
     if (!req.session.user) {
       req.session.user = {
@@ -484,7 +474,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!user) {
       return res.status(401).json({ message: "User not found" });
     }
-  });
     // Populate session.user for WebSocket compatibility if not already set
     if (!req.session.user) {
       req.session.user = {
@@ -506,7 +495,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         timezone: user.timezone
       };
     }
-  });
     // Check if user's company is still active (for non-superadmin users)
     if (user.companyId && user.role !== "superadmin") {
       const company = await storage.getCompany(user.companyId);
@@ -523,7 +511,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           deactivated: true 
         });
       }
-  });
       // Check trial expiration for non-superadmin users
       const subscription = await storage.getSubscriptionByCompany(user.companyId);
       if (subscription && subscription.status === 'trialing' && subscription.trialEnd) {
@@ -548,7 +535,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       }
   });
     }
-  });
     // Store user in request for use in route handlers
     req.user = user;
     next();
@@ -569,7 +555,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[TWILIO WEBHOOK] Missing X-Twilio-Signature header");
       return false;
     }
-  });
     // Get the full URL (protocol + host + path)
     const protocol = req.protocol;
     const host = req.get('host');
@@ -608,7 +593,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!MessageSid || !MessageStatus) {
         return res.status(400).send("Missing required fields");
       }
-  });
       // Check if this is a birthday MMS delivery callback
       if (pendingMessageId) {
         console.log(`[BIRTHDAY MMS] Processing MMS delivery callback for pending message: ${pendingMessageId}`);
@@ -699,7 +683,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!MessageSid || !From || !To || !Body) {
         return res.status(400).send("Missing required fields");
       }
-  });
       // Try to find user by phone number (optimized with direct query)
       const matchedUser = await storage.getUserByPhone(From);
       // Check for unsubscribe keywords (STOP, UNSUBSCRIBE, etc.)
@@ -711,7 +694,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         await storage.updateUserSmsSubscription(matchedUser.id, false);
         console.log(`[TWILIO INCOMING] User ${matchedUser.id} unsubscribed from SMS`);
       }
-  });
       // Store incoming message
       const savedMessage = await storage.createIncomingSmsMessage({
         twilioMessageSid: MessageSid,
@@ -751,7 +733,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 isRead: false
               });
             }
-  });
             console.log(`[TWILIO STOP] Created ${adminUsers.length} admin notification(s) for blacklist action`);
           } else {
             console.log(`[TWILIO STOP] No company context for ${From}, blacklist skipped`);
@@ -763,7 +744,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Create notifications for superadmins
       try {
         const allUsers = await storage.getAllUsers();
@@ -793,7 +773,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error("[TWILIO INCOMING] Failed to create notifications:", error);
         // Don't fail the webhook if notifications fail
       }
-  });
       // Broadcast update to WebSocket clients for real-time updates
       broadcastConversationUpdate();
       // Respond to Twilio with TwiML (empty response = no auto-reply)
@@ -852,7 +831,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!attachmentResponse.ok || !attachmentResponse.body) {
         throw new Error(`Failed to download attachment from BlueBubbles: ${attachmentResponse.status}`);
       }
-  });
       // Determine file extension with normalization
       let ext = 'bin';
       if (attachment.mimeType) {
@@ -876,13 +854,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Create uploads/imessage directory if it doesn't exist
       const uploadDir = path.join('uploads', 'imessage');
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
-  });
       // Save file with GUID as filename
       const filename = `${attachment.guid}.${ext}`;
       const filePath = path.join(uploadDir, filename);
@@ -911,7 +887,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error(`[BlueBubbles Webhook] Company not found: ${companySlug}`);
         return res.status(404).json({ message: "Company not found" });
       }
-  });
       // Get company settings for webhook validation
       const companySettings = await storage.getCompanySettings(company.id);
       const imessageSettings = companySettings?.imessageSettings as any;
@@ -919,7 +894,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error(`[BlueBubbles Webhook] iMessage not enabled for company: ${companySlug}`);
         return res.status(403).json({ message: "iMessage not enabled" });
       }
-  });
       // Validate webhook signature if configured (skip in development)
       const isDevelopment = process.env.NODE_ENV === 'development';
       const webhookSecret = imessageSettings.webhookSecret;
@@ -929,7 +903,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.error(`[BlueBubbles Webhook] Missing signature header`);
           return res.status(401).json({ message: "Missing webhook signature" });
         }
-  });
         // Verify HMAC signature
         const { createHmac } = await import("crypto");
         const expectedSignature = createHmac('sha256', webhookSecret)
@@ -942,7 +915,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } else if (isDevelopment) {
         console.log(`[BlueBubbles Webhook] Skipping signature validation in development mode`);
       }
-  });
       // Process webhook payload based on event type
       const payload = req.body;
       const eventType = payload.type || payload.event;
@@ -1032,11 +1004,9 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             } else {
               console.log(`[BlueBubbles Webhook] Could not parse reaction emoji from: "${reactionText}"`);
             }
-  });
             // Don't create a message for reactions - just return success
             break;
           }
-  });
           // Regular message processing (not a reaction)
           // Find or create conversation
           // BlueBubbles sends chat info in chats array
@@ -1065,7 +1035,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               isImessage: true,
             });
           }
-  });
           // Check if message already exists (to avoid duplicates when webhook is called for our own sent messages)
           const messageGuid = messageData.guid || messageData.message_guid || `msg_${Date.now()}`;
           // First, try to find by BlueBubbles GUID
@@ -1088,7 +1057,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 console.log(`[BlueBubbles Webhook] ✓ Match found by tempGuid!`);
                 return true;
               }
-  });
               // Fallback match: text comparison (for legacy messages without tempGuid)
               // Only use for text messages (images have empty text)
               if (msg.text && messageData.text && msg.text === messageData.text) {
@@ -1106,7 +1074,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
   });
           }
-  });
           let newMessage;
           let shouldBroadcastAsNew = true; // Flag to control broadcast behavior
           if (existingMessage) {
@@ -1123,7 +1090,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             if (messageData.dateDelivered) {
               updateData.dateDelivered = new Date(messageData.dateDelivered);
             }
-  });
             // CRITICAL: Always update attachments for ALL message types (replies, regular messages, etc.)
             // Download and save attachments to local storage immediately
             const transformedAttachments = await Promise.all(
@@ -1179,7 +1145,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               shouldBroadcastAsNew = false;
               console.log(`[BlueBubbles Webhook] New message is from us (isFromMe=true) - will not broadcast as incoming`);
             }
-  });
             // Store the message - wrap in try-catch to handle race conditions with duplicate messages
             try {
               // Download and save attachments to local storage immediately
@@ -1265,7 +1230,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
   });
           }
-  });
           // AUTO-RESPONSE: Handle STOP/START keywords BEFORE processing message storage
           // Only process if message is from client (not from us) and has text
           const incomingMessageText = messageData.text || '';
@@ -1318,7 +1282,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
   });
           }
-  });
           // Only proceed if we have a NEW message (not a duplicate)
           if (newMessage) {
             // Generate preview text (like iOS Messages app)
@@ -1344,7 +1307,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               }
   });
             }
-  });
             // CRITICAL: Only broadcast as new message if it's truly incoming (not our echo)
             // When isFromMe=true: NO conversation updates, NO notifications, NO broadcasts
             if (shouldBroadcastAsNew) {
@@ -1374,7 +1336,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                     }),
                   });
                 }
-  });
                 // Broadcast notification update to all clients
                 broadcastNotificationUpdate(company.id);
               }
@@ -1429,7 +1390,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             for (const guid of messageGuids) {
               await storage.updateImessageMessageReadStatus(guid, new Date());
             }
-  });
             // Update unread count
             const unreadCount = await storage.getImessageUnreadCount(conversation.id);
             await storage.updateImessageConversation(conversation.id, { unreadCount });
@@ -1443,7 +1403,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         default:
           console.log(`[BlueBubbles Webhook] Unknown event type: ${eventType}`);
       }
-  });
       // Always return 200 OK to acknowledge webhook receipt
       res.json({ success: true, message: "Webhook processed" });
     } catch (error: any) {
@@ -1461,14 +1420,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-  });
       // Check if company has iMessage configured
       const companySettings = await storage.getCompanySettings(user.companyId);
       const imessageSettings = companySettings?.imessageSettings as any;
       if (!imessageSettings?.isEnabled) {
         return res.status(503).json({ message: "iMessage service is not configured" });
       }
-  });
       // Setup multer for file upload
       const uploadsDir = path.join(process.cwd(), 'uploads', 'imessage');
       if (!fs.existsSync(uploadsDir)) {
@@ -1547,7 +1504,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } else {
         console.log('[iMessage] Non-audio file uploaded:', file.filename, 'Type:', file.mimetype);
       }
-  });
       // Return file info for sending via BlueBubbles
       const attachmentUrl = `/uploads/imessage/${finalFilename}`;
       console.log('[iMessage] File ready for sending:', finalFilename, 'Type:', finalMimeType);
@@ -1623,7 +1579,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // If file found locally, serve it directly
       if (filePath) {
         console.log(`[iMessage Attachment] Serving from local storage: ${filePath}`);
@@ -1645,7 +1600,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
         return;
       }
-  });
       // If file not found locally, try to fetch from BlueBubbles as fallback (for old attachments)
       console.log(`[iMessage Attachment] File not found in local storage: ${guid}, attempting BlueBubbles fallback`);
       const companySettings = await storage.getCompanySettings(user.companyId);
@@ -1653,7 +1607,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!imessageSettings?.isEnabled || !imessageSettings?.serverUrl) {
         return res.status(404).json({ message: "Attachment not found" });
       }
-  });
       // Use BlueBubbles manager for multi-tenant support
       const { blueBubblesManager } = await import("./bluebubbles");
       // Stream attachment from BlueBubbles
@@ -1668,7 +1621,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error('[iMessage Attachment] BlueBubbles returned non-OK status:', attachmentResponse.status);
         return res.status(attachmentResponse.status).json({ message: 'Failed to fetch attachment from BlueBubbles' });
       }
-  });
       // If BlueBubbles returned JSON, it's likely an error message - log it
       const contentType = attachmentResponse.headers.get('content-type');
       if (contentType?.includes('application/json')) {
@@ -1676,7 +1628,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error('[iMessage Attachment] BlueBubbles returned JSON instead of image:', jsonBody);
         return res.status(500).json({ message: 'BlueBubbles returned error: ' + JSON.stringify(jsonBody) });
       }
-  });
       // HEALING MECHANISM: Download and persist attachment to local storage for future use
       console.log('[iMessage Attachment] Persisting attachment from BlueBubbles to heal old attachment:', guid);
       // Determine file extension with normalization
@@ -1695,7 +1646,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Save file with GUID and normalized extension (uploadDir already declared and created above)
       const filename = `${guid}.${ext}`;
       const savedFilePath = path.join(uploadDir, filename);
@@ -1730,7 +1680,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-  });
       // Check if company has iMessage feature enabled
       const company = await storage.getCompany(user.companyId);
       if (!company) {
@@ -1841,7 +1790,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-  });
       // Check if company has iMessage configured
       const companySettings = await storage.getCompanySettings(user.companyId);
       const imessageSettings = companySettings?.imessageSettings as any;
@@ -1856,12 +1804,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!text && uploadedFiles.length === 0) {
         return res.status(400).json({ message: "Either text or attachments required" });
       }
-  });
       // Validate clientGuid for optimistic updates
       if (!clientGuid) {
         return res.status(400).json({ message: "clientGuid is required for message tracking" });
       }
-  });
       // Get or create conversation
       let conversation;
       if (conversationId) {
@@ -1890,7 +1836,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             console.error(`[iMessage] Failed to create BlueBubbles chat:`, createChatError.message);
             // Continue anyway - the chat might already exist or will be created on first message
           }
-  });
           // Create new conversation with normalized phone
           conversation = await storage.createImessageConversation({
             companyId: user.companyId,
@@ -1906,7 +1851,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // CRITICAL: Create message in database FIRST (before sending to BlueBubbles)
       // This prevents webhook race condition where webhook arrives before backend creates message
       const attachmentMetadata: any[] = uploadedFiles.map(file => ({
@@ -1947,13 +1891,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             sendPayload.selectedMessageGuid = replyToGuid;
             sendPayload.partIndex = 0;
           }
-  });
           console.log(`[iMessage] Sending text message via BlueBubbles`);
           const { blueBubblesManager } = await import("./bluebubbles");
           sendResult = await blueBubblesManager.sendMessage(user.companyId, sendPayload);
           console.log(`[iMessage] BlueBubbles response:`, sendResult);
         }
-  });
         // Step 2: Send each attachment one by one
         for (const file of uploadedFiles) {
           let actualFilePath = file.path;
@@ -1981,7 +1923,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               } catch (cleanupErr) {
                 console.error(`[iMessage] Failed to cleanup ${file.path}:`, cleanupErr);
               }
-  });
               // Mark message as failed
               await storage.updateImessageMessageByGuid(user.companyId, clientGuid, {
                 status: 'failed'
@@ -1992,7 +1933,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
   });
           }
-  });
           // If this is a CAF file but wasn't converted (uploaded directly), extract metadata
           if (!audioMetadata && actualMimeType === 'audio/x-caf') {
             console.log(`[iMessage] Extracting metadata from pre-existing CAF file: ${actualFilename}`);
@@ -2027,7 +1967,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             } catch (cleanupErr) {
               console.error(`[iMessage] Failed to cleanup ${actualFilePath}:`, cleanupErr);
             }
-  });
             // Mark message as failed
             await storage.updateImessageMessageByGuid(user.companyId, clientGuid, {
               status: 'failed'
@@ -2036,7 +1975,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               error: 'Voice memo metadata extraction failed - cannot send as native audio message' 
             });
           }
-  });
           console.log(`[iMessage] Sending attachment: ${actualFilename} (${actualMimeType})${isVoiceMemo ? ' as voice memo' : ''}`);
           const { blueBubblesManager } = await import("./bluebubbles");
           const attachmentResult = await blueBubblesManager.sendAttachment(
@@ -2053,7 +1991,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
   });
         }
-  });
         // Return success with the created message (webhook will update it)
         res.json({ 
           success: true, 
@@ -2099,20 +2036,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!reaction || !["❤️", "👍", "👎", "😂", "!!", "?", "❓"].includes(reaction)) {
         return res.status(400).json({ message: "Invalid reaction" });
       }
-  });
       // Get message by GUID to verify it belongs to company
       const message = await storage.getImessageMessageByGuid(user.companyId, messageGuid);
       if (!message) {
         return res.status(404).json({ message: "Message not found" });
       }
-  });
       // Update reactions locally (using database ID)
       if (action === "add") {
         await storage.addMessageReaction(message.id, user.id, reaction);
       } else if (action === "remove") {
         await storage.removeMessageReaction(message.id, user.id, reaction);
       }
-  });
       // Send reaction via BlueBubbles if configured
       const companySettings = await storage.getCompanySettings(user.companyId);
       const imessageSettings = companySettings?.imessageSettings as any;
@@ -2132,7 +2066,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Broadcast update
       const { broadcastImessageReaction } = await import("./websocket");
       broadcastImessageReaction(user.companyId, {
@@ -2192,7 +2125,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!conversation || conversation.companyId !== user.companyId) {
         return res.status(404).json({ message: "Conversation not found" });
       }
-  });
       // Update conversation to set isPinned to true
       const updated = await storage.updateImessageConversation(id, user.companyId, { isPinned: true });
       res.json(updated);
@@ -2215,7 +2147,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!conversation || conversation.companyId !== user.companyId) {
         return res.status(404).json({ message: "Conversation not found" });
       }
-  });
       // Update conversation to set isPinned to false
       const updated = await storage.updateImessageConversation(id, user.companyId, { isPinned: false });
       res.json(updated);
@@ -2238,7 +2169,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!conversation || conversation.companyId !== user.companyId) {
         return res.status(404).json({ message: "Conversation not found" });
       }
-  });
       // Delete the conversation (this will cascade delete all messages)
       const deleted = await storage.deleteImessageConversation(id);
       if (!deleted) {
@@ -2263,13 +2193,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!conversationId) {
         return res.status(400).json({ message: "conversationId is required" });
       }
-  });
       // Verify conversation belongs to company
       const conversation = await storage.getImessageConversation(conversationId);
       if (!conversation || conversation.companyId !== user.companyId) {
         return res.status(404).json({ message: "Conversation not found" });
       }
-  });
       // Send typing indicator via BlueBubbles
       const companySettings = await storage.getCompanySettings(user.companyId);
       const imessageSettings = companySettings?.imessageSettings as any;
@@ -2278,7 +2206,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // const { blueBubblesManager } = await import("./bluebubbles");
         // await blueBubblesManager.sendTypingIndicator(user.companyId, conversation.chatGuid, isTyping);
       }
-  });
       // Broadcast typing update
       const { broadcastImessageUpdate } = await import("./websocket");
       broadcastImessageUpdate(user.companyId, {
@@ -2325,12 +2252,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!message) {
         return res.status(404).json({ message: "Message not found" });
       }
-  });
       // Only allow deleting own messages
       if (!message.fromMe) {
         return res.status(403).json({ message: "You can only delete your own messages" });
       }
-  });
       // Check if company has iMessage configured
       const companySettings = await storage.getCompanySettings(user.companyId);
       const imessageSettings = companySettings?.imessageSettings as any;
@@ -2347,7 +2272,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Mark message as deleted in database
       await storage.updateImessageMessageStatus(message.id, "deleted");
       // Broadcast deletion
@@ -2414,7 +2338,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-  });
       // Setup multer for file upload
       const uploadsDir = path.join(process.cwd(), 'uploads', 'imessage', 'campaigns');
       if (!fs.existsSync(uploadsDir)) {
@@ -2462,7 +2385,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
-  });
       // Return file info
       const mediaUrl = `/uploads/imessage/campaigns/${file.filename}`;
       console.log('[Campaign Media] File uploaded:', file.filename, 'Type:', file.mimetype, 'Size:', file.size);
@@ -2486,7 +2408,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-  });
       // Validate request body using createCampaignWithDetailsSchema
       const validatedData = createCampaignWithDetailsSchema.parse(req.body);
       const campaign = await storage.createImessageCampaignWithDetails(
@@ -2517,12 +2438,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
       }
-  });
       // Verify campaign belongs to user's company
       if (campaign.companyId !== user.companyId) {
         return res.status(403).json({ message: "Access denied" });
       }
-  });
       // Return wrapped response for consistency with other endpoints
       res.json({ campaign });
     } catch (error: any) {
@@ -2543,19 +2462,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
       }
-  });
       // Verify campaign belongs to user's company
       if (campaign.companyId !== user.companyId) {
         return res.status(403).json({ message: "Access denied" });
       }
-  });
       // Only allow updates if status is 'draft' or 'paused'
       if (campaign.status !== 'draft' && campaign.status !== 'paused') {
         return res.status(400).json({ 
           message: "Cannot update campaign with status: " + campaign.status + ". Only draft or paused campaigns can be updated." 
         });
       }
-  });
       // Validate request body using createCampaignWithDetailsSchema
       const validatedData = createCampaignWithDetailsSchema.parse(req.body);
       const updatedCampaign = await storage.updateImessageCampaignWithDetails(
@@ -2586,12 +2502,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
       }
-  });
       // Verify campaign belongs to user's company
       if (campaign.companyId !== user.companyId) {
         return res.status(403).json({ message: "Access denied" });
       }
-  });
       // If campaign is running, stop any active runs first
       if (campaign.status === 'running') {
         const runs = await storage.getImessageCampaignRuns(id);
@@ -2630,12 +2544,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
       }
-  });
       // Verify campaign belongs to user's company
       if (campaign.companyId !== user.companyId) {
         return res.status(403).json({ message: "Access denied" });
       }
-  });
       // Get contacts for the campaign from the specified list
       // Note: targetListId is now required - campaigns must target a specific list
       const contacts = await storage.getListMembers(campaign.targetListId);
@@ -2651,7 +2563,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (validContacts.length === 0) {
         return res.status(400).json({ message: "No valid contacts found for campaign" });
       }
-  });
       // Change campaign status to 'running'
       await storage.updateImessageCampaign(id, { status: 'running' });
       // Get next run number
@@ -2707,19 +2618,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
       }
-  });
       // Verify campaign belongs to user's company
       if (campaign.companyId !== user.companyId) {
         return res.status(403).json({ message: "Access denied" });
       }
-  });
       // Only allow if status is 'running'
       if (campaign.status !== 'running') {
         return res.status(400).json({ 
           message: "Can only pause running campaigns. Current status: " + campaign.status 
         });
       }
-  });
       // Get current run (most recent)
       const runs = await storage.getImessageCampaignRunsByCampaign(id);
       const currentRun = runs[0];
@@ -2749,19 +2657,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
       }
-  });
       // Verify campaign belongs to user's company
       if (campaign.companyId !== user.companyId) {
         return res.status(403).json({ message: "Access denied" });
       }
-  });
       // Only allow if status is 'paused'
       if (campaign.status !== 'paused') {
         return res.status(400).json({ 
           message: "Can only resume paused campaigns. Current status: " + campaign.status 
         });
       }
-  });
       // Get current run (most recent)
       const runs = await storage.getImessageCampaignRunsByCampaign(id);
       const currentRun = runs[0];
@@ -2791,19 +2696,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
       }
-  });
       // Verify campaign belongs to user's company
       if (campaign.companyId !== user.companyId) {
         return res.status(403).json({ message: "Access denied" });
       }
-  });
       // Only allow if status is 'running' or 'paused'
       if (campaign.status !== 'running' && campaign.status !== 'paused') {
         return res.status(400).json({ 
           message: "Can only stop running or paused campaigns. Current status: " + campaign.status 
         });
       }
-  });
       // Get current run (most recent)
       const runs = await storage.getImessageCampaignRunsByCampaign(id);
       const currentRun = runs[0];
@@ -2836,12 +2738,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
       }
-  });
       // Verify campaign belongs to user's company
       if (campaign.companyId !== user.companyId) {
         return res.status(403).json({ message: "Access denied" });
       }
-  });
       // Get all runs for the campaign (already ordered by runNumber desc via createdAt desc)
       const runs = await storage.getImessageCampaignRunsByCampaign(id);
       res.json(runs);
@@ -2864,18 +2764,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!run) {
         return res.status(404).json({ message: "Campaign run not found" });
       }
-  });
       // Get campaign to verify company ownership
       const campaign = await storage.getImessageCampaign(run.campaignId);
       if (!campaign) {
         return res.status(404).json({ message: "Campaign not found" });
       }
-  });
       // Verify run's campaign belongs to user's company
       if (campaign.companyId !== user.companyId) {
         return res.status(403).json({ message: "Access denied" });
       }
-  });
       // Get messages with pagination
       const messages = await storage.getImessageCampaignMessagesByRun(runId, {
         limit: parseInt(limit as string),
@@ -2947,12 +2844,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!consent) {
         return res.status(404).json({ message: "Consent document not found" });
       }
-  });
       // Check if expired
       if (consent.expiresAt && new Date(consent.expiresAt) < new Date()) {
         return res.status(410).json({ message: "Consent document has expired" });
       }
-  });
       // Check if consent is for quote or policy
       const isPolicy = 'policyId' in consent && consent.policyId;
       const quoteOrPolicyId = isPolicy ? (consent as any).policyId : consent.quoteId;
@@ -2967,7 +2862,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!company) {
         return res.status(404).json({ message: "Company not found" });
       }
-  });
       // Get ALL agents (users) from the company with their NPNs
       const allUsers = await storage.getUsersByCompany(consent.companyId);
       console.log('[CONSENT DEBUG] All users:', allUsers.map(u => ({ 
@@ -3024,7 +2918,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!signatureImage) {
         return res.status(400).json({ message: "Signature image is required" });
       }
-  });
       // Get IP address from request (server-side - cannot be spoofed)
       // Extract first IP from x-forwarded-for header (client's real IP when behind proxy)
       const signerIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress || '';
@@ -3059,7 +2952,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!signedConsent) {
         return res.status(404).json({ message: "Consent document not found or expired" });
       }
-  });
       // Get quote or policy information to send notification to the user who sent the consent
       try {
         if (isPolicy) {
@@ -3122,7 +3014,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         await notificationService.notifyFailedLogin(email, ipAddress, userAgent);
         return res.status(401).json({ message: "Invalid credentials" });
       }
-  });
       // Check account status
       if (user.status === 'pending_activation') {
         await logger.logAuth({
@@ -3150,7 +3041,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
         return res.status(401).json({ message: "Your account has been deactivated. Please contact support for assistance." });
       }
-  });
       // Additional safety check: verify password exists (should always exist for active users)
       if (!user.password) {
         await logger.logAuth({
@@ -3163,7 +3053,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
         return res.status(401).json({ message: "Account error. Please contact support." });
       }
-  });
       // Legacy check: verify isActive flag (fallback for accounts deactivated via old system)
       if (!user.isActive && user.status === 'active') {
         // Update status to match isActive if they're out of sync
@@ -3178,7 +3067,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
         return res.status(401).json({ message: "Your account has been deactivated. Please contact support for assistance." });
       }
-  });
       // Check if user's company is active (for non-superadmin users)
       if (user.companyId && user.role !== "superadmin") {
         const company = await storage.getCompany(user.companyId);
@@ -3197,7 +3085,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       console.log(`[LOGIN-DEBUG] Verifying password for user: ${user.email}`);
       const isValidPassword = await verifyPassword(password, user.password);
       console.log(`[LOGIN-DEBUG] Password valid:`, isValidPassword);
@@ -3216,7 +3103,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         await notificationService.notifyFailedLogin(email, ipAddress, userAgent, user.id);
         return res.status(401).json({ message: "Invalid credentials" });
       }
-  });
       // Check if 2FA is enabled for this user
       const has2FAEnabled = user.twoFactorEmailEnabled || user.twoFactorSmsEnabled;
       console.log(`[LOGIN] 2FA Status - Email: ${user.twoFactorEmailEnabled}, SMS: ${user.twoFactorSmsEnabled}, Has 2FA: ${has2FAEnabled}`);
@@ -3293,7 +3179,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           });
         });
       }
-  });
       // Check for trusted device token
       const trustedDeviceToken = req.cookies?.trusted_device;
       console.log(`[LOGIN] Checking trusted device. Token exists: ${!!trustedDeviceToken}, User: ${user.email}`);
@@ -3370,7 +3255,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Set pending user ID - full authentication only after OTP verification
       req.session.pendingUserId = user.id;
       await logger.logAuth({
@@ -3427,7 +3311,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("DATABASE_URL not configured");
       return res.status(500).json({ message: "Database not configured" });
     }
-  });
     // Use regular PostgreSQL driver instead of Neon HTTP driver
     const postgres = await import("postgres");
     const sql = postgres.default(process.env.DATABASE_URL);
@@ -3547,7 +3430,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } else {
         actions.push("auth_login_no_2fa", "auth_login_with_otp", "auth_login_trusted_device", "auth_login_failed");
       }
-  });
       // Get all activity logs matching criteria (last 1000)
       const allLogs = await storage.getAllActivityLogs(1000);
       // Filter logs
@@ -3636,14 +3518,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!adminData.password && !adminData.googleId) {
         return res.status(400).json({ message: "Either password or Google account is required" });
       }
-  });
       
       // Check if email already exists
       const existingUser = await storage.getUserByEmail(adminData.email);
       if (existingUser) {
         return res.status(400).json({ message: "Email already registered" });
       }
-  });
       // Create company first (using admin email as company email)
       const newCompany = await storage.createCompany({
         name: companyData.name,
@@ -3678,7 +3558,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error('[REGISTRATION] Failed to create Stripe customer:', stripeError);
         // Continue with registration even if Stripe fails - can be fixed later
       }
-  });
       // Create admin user for the company
       // Google SSO users are immediately activated (email already verified by Google)
       const isGoogleSSO = !!adminData.googleId;
@@ -3704,7 +3583,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Send notification email to Curbe team about new registration
       try {
         const { emailService } = await import("./email");
@@ -3743,7 +3621,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error('[REGISTRATION] Failed to send notification email:', notificationError);
         // Don't block registration if notification email fails
       }
-  });
       // Log the registration
       await logger.logAuth({
         req,
@@ -3861,7 +3738,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           const emailSettings = settings.emailSettings as { fromEmail?: string; fromName?: string };
           emailSetup = !!(emailSettings.fromEmail && emailSettings.fromName);
         }
-  });
         
         // Check if company has any BulkVS phone numbers (messaging channels)
         const bulkvsNumbers = await storage.getBulkvsPhoneNumbersByCompany(user.companyId);
@@ -3871,7 +3747,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const subscription = await storage.getSubscriptionByCompany(user.companyId);
         planSelected = !!(subscription && subscription.status !== 'cancelled');
       }
-  });
       
       // Calculate if all steps are complete
       const allComplete = profileCompleted && planSelected && phoneSetup && emailSetup && messagingSetup;
@@ -3939,7 +3814,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         console.log(`[BrowserCalling] Created extension ${extension.extension} for user ${user.id}`);
       }
-  });
 
       // Step 3: Check if SIP is already provisioned
       if (extension.telnyxCredentialConnectionId && extension.sipUsername) {
@@ -3961,7 +3835,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           alreadyConfigured: true
         });
       }
-  });
 
       // Step 4: Provision SIP credentials for the extension
       console.log(`[BrowserCalling] Provisioning SIP for extension ${extension.id}...`);
@@ -3979,7 +3852,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           details: "Please ensure your phone system is set up first."
         });
       }
-  });
 
       // Step 5: Persist SIP credentials to the extension record
       console.log(`[BrowserCalling] Persisting SIP credentials to extension ${extension.id}...`);
@@ -4065,7 +3937,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.error("[GOOGLE_MAPS] API KEY not configured");
       return res.status(500).send('console.error("Google Maps API key not configured");');
     }
-  });
     // Simple loader script that loads Google Maps without callback
     // Modern approach - let the app handle initialization
     const loaderScript = `
@@ -4366,7 +4237,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
   });
           }
-  });
           // Clean up the street address
           street = street.trim();
           // If no structured address components, try to parse from formattedAddress
@@ -4377,7 +4247,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
   });
           }
-  });
           // Extract suite/unit/apt from street address if not already in addressLine2
           // Common patterns: "STE 210", "Suite 210", "APT 3B", "Unit 5", "#210", etc.
           if (!addressLine2 && street) {
@@ -4518,7 +4387,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (user.status === 'inactive' || user.status === 'deactivated') {
           return res.redirect('/login?error=account_deactivated');
         }
-  });
         // Update last login
         await storage.updateUser(user.id, { 
           lastLoginAt: new Date(),
@@ -4585,7 +4453,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (method === "sms" && !user.phone) {
         return res.status(400).json({ message: "No phone number associated with this account" });
       }
-  });
       // SECURITY: Invalidate all previous unused OTP codes for this method
       await storage.invalidatePreviousOtpCodes(user.id, method);
       const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -4602,7 +4469,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (!template) {
           throw new Error("OTP email template not found");
         }
-  });
         // Replace variables in template
         let htmlContent = template.htmlContent
           .replace(/\{\{otp_code\}\}/g, code)
@@ -4647,7 +4513,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!userId || !code) {
         return res.status(400).json({ message: "User ID and code are required" });
       }
-  });
       // Verify this matches the pending user
       if (req.session.pendingUserId !== userId) {
         return res.status(401).json({ message: "Invalid session" });
@@ -4667,7 +4532,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
         return res.status(401).json({ message: "Invalid or expired verification code" });
       }
-  });
       // Clear pending user and set authenticated user
       delete req.session.pendingUserId;
       req.session.userId = user.id;
@@ -4749,7 +4613,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
           });
         }
-  });
         console.log(`✓ Session saved successfully for ${user.email}. Trusted device: ${!!deviceToken}`);
         res.json({
           success: true,
@@ -4773,7 +4636,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!userId || !method) {
         return res.status(400).json({ message: "User ID and method are required" });
       }
-  });
       // Verify this matches the pending user
       if (req.session.pendingUserId !== userId) {
         return res.status(401).json({ message: "Invalid session" });
@@ -4798,7 +4660,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (method === "sms" && !user.phone) {
         return res.status(400).json({ message: "No phone number associated with this account" });
       }
-  });
       // SECURITY: Invalidate all previous unused OTP codes for this method
       await storage.invalidatePreviousOtpCodes(user.id, method);
       const code = Math.floor(100000 + Math.random() * 900000).toString();
@@ -4815,7 +4676,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (!template) {
           throw new Error("OTP email template not found");
         }
-  });
         // Replace variables in template
         let htmlContent = template.htmlContent
           .replace(/\{\{otp_code\}\}/g, code)
@@ -4864,13 +4724,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!activationToken) {
         return res.status(404).json({ message: "Invalid activation token" });
       }
-  });
       // Check if token has expired (24 hours)
       const now = new Date();
       if (activationToken.expiresAt < now) {
         return res.status(400).json({ message: "Activation link has expired" });
       }
-  });
       // Check if token has already been used
       if (activationToken.usedAt) {
         return res.status(400).json({ message: "This activation link has already been used" });
@@ -4893,19 +4751,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!token) {
         return res.status(400).json({ message: "Activation token is required" });
       }
-  });
       // Validate and use the token (marks it as used)
       const userId = await storage.validateAndUseToken(token);
       if (!userId) {
         return res.status(400).json({ message: "Invalid or expired activation token" });
       }
-  });
       // Get user to verify they exist
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-  });
       // Update user: mark email as verified, activate account, and set status to active
       await storage.updateUser(userId, {
         emailVerified: true,
@@ -4942,7 +4797,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!identifier) {
         return res.status(400).json({ message: "Email or username is required" });
       }
-  });
       // Try to find user by email
       const user = await storage.getUserByEmail(identifier);
       // Always return success even if user not found (security best practice)
@@ -4953,7 +4807,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "If an account with that email or username exists, a password reset link has been sent."
         });
       }
-  });
       // Check if user is active
       if (user.status !== 'active') {
         return res.json({ 
@@ -4961,7 +4814,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "If an account with that email or username exists, a password reset link has been sent."
         });
       }
-  });
       // Generate reset token
       const crypto = await import('crypto');
       const resetToken = crypto.randomBytes(32).toString('hex');
@@ -4981,7 +4833,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error("Password reset email template not found");
         return res.status(500).json({ message: "Failed to send password reset email" });
       }
-  });
       // Get company name for email
       let companyName = "Curbe";
       if (user.companyId) {
@@ -4991,7 +4842,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Replace variables in template
       let htmlContent = template.htmlContent
         .replace(/\{\{firstName\}\}/g, user.firstName || 'there')
@@ -5045,13 +4895,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!resetToken) {
         return res.status(404).json({ message: "Invalid password reset token" });
       }
-  });
       // Check if token has expired
       const now = new Date();
       if (resetToken.expiresAt < now) {
         return res.status(400).json({ message: "Password reset link has expired" });
       }
-  });
       // Check if token has already been used
       if (resetToken.usedAt) {
         return res.status(400).json({ message: "This password reset link has already been used" });
@@ -5074,7 +4922,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!token || !password) {
         return res.status(400).json({ message: "Token and password are required" });
       }
-  });
       // Validate password complexity
       if (password.length < 8) {
         return res.status(400).json({ message: "Password must be at least 8 characters" });
@@ -5091,19 +4938,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!/[^a-zA-Z0-9]/.test(password)) {
         return res.status(400).json({ message: "Password must contain at least one special character (!@#$%^&*)" });
       }
-  });
       // Validate and use the token (marks it as used)
       const userId = await storage.validateAndUsePasswordResetToken(token);
       if (!userId) {
         return res.status(400).json({ message: "Invalid or expired password reset token" });
       }
-  });
       // Get user to verify they exist
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-  });
       // Hash the new password
       const hashedPassword = await hashPassword(password);
       // Update user with new password and update passwordChangedAt timestamp
@@ -5162,7 +5006,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden - Admin access required" });
     }
-  });
     
     if (!currentUser.companyId) {
       return res.status(400).json({ message: "Company context required" });
@@ -5178,21 +5021,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           code: "USER_LIMIT_REACHED"
         });
       }
-  });
       
       const { email, role } = req.body;
       
       if (!email) {
         return res.status(400).json({ message: "Email is required" });
       }
-  });
       
       // Check if user already exists with this email
       const existingUser = await storage.getUserByEmail(email);
       if (existingUser) {
         return res.status(400).json({ message: "A user with this email already exists" });
       }
-  });
       
       // Generate unique token
       const token = require("crypto").randomUUID();
@@ -5223,7 +5063,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden - Admin access required" });
     }
-  });
     
     if (!currentUser.companyId) {
       return res.status(400).json({ message: "Company context required" });
@@ -5256,13 +5095,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!invitation) {
         return res.status(404).json({ message: "Invitation not found" });
       }
-  });
       
       // Only allow deleting invitations from own company (unless superadmin)
       if (currentUser.role !== "superadmin" && invitation.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden" });
       }
-  });
       
       await storage.deleteInvitation(token);
       res.json({ success: true });
@@ -5281,19 +5118,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!invitation) {
         return res.status(404).json({ message: "Invitation not found or expired" });
       }
-  });
       
       // Check if invitation has expired
       if (new Date() > new Date(invitation.expiresAt)) {
         return res.status(400).json({ message: "Invitation has expired" });
       }
-  });
       
       // Check if already accepted
       if (invitation.acceptedAt) {
         return res.status(400).json({ message: "Invitation has already been accepted" });
       }
-  });
       
       // Check user limit before accepting invitation
       const limitCheck = await storage.canCompanyAddUsers(invitation.companyId);
@@ -5303,21 +5137,18 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           code: "USER_LIMIT_REACHED"
         });
       }
-  });
       
       const { firstName, lastName, password } = req.body;
       
       if (!firstName || !lastName || !password) {
         return res.status(400).json({ message: "First name, last name, and password are required" });
       }
-  });
       
       // Check if user already exists with this email
       const existingUser = await storage.getUserByEmail(invitation.email);
       if (existingUser) {
         return res.status(400).json({ message: "A user with this email already exists" });
       }
-  });
       
       // Hash password
       const bcrypt = require("bcrypt");
@@ -5382,12 +5213,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentUser.role === "superadmin" && req.query.companyId) {
         companyId = req.query.companyId as string;
       }
-  });
       
       if (!companyId) {
         return res.status(400).json({ message: "Company ID required" });
       }
-  });
       
       const result = await storage.canCompanyAddUsers(companyId, 1);
       
@@ -5402,7 +5231,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       
       // Transform response to match frontend expectations
       res.json({
@@ -5428,7 +5256,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!targetUser) {
         return res.status(404).json({ message: "User not found" });
       }
-  });
       
       // Superadmins can view any user
       // Admins can view users in their company
@@ -5436,12 +5263,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentUser.role === "superadmin") {
         return res.json({ user: targetUser });
       }
-  });
       
       if (currentUser.id === targetUserId) {
         return res.json({ user: targetUser });
       }
-  });
       
       if (currentUser.companyId && targetUser.companyId === currentUser.companyId) {
         return res.json({ user: targetUser });
@@ -5465,20 +5290,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
         return res.status(403).json({ message: "Only administrators can update users" });
       }
-  });
       
       // Get the target user
       const targetUser = await storage.getUser(targetUserId);
       if (!targetUser) {
         return res.status(404).json({ message: "User not found" });
       }
-  });
       
       // Admins can only update users in their company
       if (currentUser.role === "admin" && targetUser.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Cannot update users from other companies" });
       }
-  });
       
       // Build allowed fields for update
       const allowedFields: any = {};
@@ -5491,7 +5313,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (!validRoles.includes(req.body.role)) {
           return res.status(400).json({ message: "Invalid role" });
         }
-  });
         // Only superadmins can assign superadmin role
         if (req.body.role === "superadmin" && currentUser.role !== "superadmin") {
           return res.status(403).json({ message: "Only superadmins can assign superadmin role" });
@@ -5511,13 +5332,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (Object.keys(allowedFields).length === 0) {
         return res.status(400).json({ message: "No valid fields to update" });
       }
-  });
       
       const updatedUser = await storage.updateUser(targetUserId, allowedFields);
       if (!updatedUser) {
         return res.status(404).json({ message: "User not found" });
       }
-  });
       
       const { password, ...sanitizedUser } = updatedUser;
       console.log(`[User Update] Admin ${currentUser.email} updated user ${targetUser.email}:`, Object.keys(allowedFields));
@@ -5583,7 +5402,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentUser.role !== "superadmin" && !companyId) {
         return res.status(400).json({ message: "Company ID required" });
       }
-  });
       // Check cache first (only for company-specific stats)
       if (companyId) {
         const { dashboardCache } = await import("./dashboard-cache");
@@ -5592,10 +5410,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.log(`[Dashboard-Stats] Cache HIT for company ${companyId} (${Date.now() - startTime}ms)`);
           return res.json(cached);
         }
-  });
         console.log(`[Dashboard-Stats] Cache MISS for company ${companyId}`);
       }
-  });
       // Get users (filtered by company if companyId is provided)
       let users: Awaited<ReturnType<typeof storage.getAllUsers>>;
       if (companyId) {
@@ -5607,14 +5423,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } else {
         users = [];
       }
-  });
       // Get company count (superadmin only, when viewing global stats)
       let companyCount = 0;
       if (currentUser.role === "superadmin" && !companyId) {
         const companies = await storage.getAllCompanies();
         companyCount = companies.length;
       }
-  });
       // Get billing stats
       let revenue = 0;
       let growthRate = 0;
@@ -5678,14 +5492,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             .reduce((sum, inv) => sum + inv.total, 0);
           totalPreviousRevenue += companyPreviousRevenue;
         }
-  });
         // Calculate overall growth rate
         if (totalPreviousRevenue > 0) {
           growthRate = ((revenue - totalPreviousRevenue) / totalPreviousRevenue) * 100;
         }
   });
       }
-  });
       // Get today's reminders (tasks due today that are not completed)
       let pendingTasks = 0;
       if (companyId) {
@@ -5705,7 +5517,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Get birthdays this week (from all sources: users, quote members, manual contacts)
       let birthdaysThisWeek = 0;
       const today = new Date();
@@ -5729,7 +5540,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           month = dateOfBirth.getMonth();
           day = dateOfBirth.getDate();
         }
-  });
         // Create birthday in current year
         const thisYearBirthday = new Date(today.getFullYear(), month, day, 0, 0, 0, 0);
         return thisYearBirthday >= startOfWeek && thisYearBirthday <= endOfWeek;
@@ -5748,7 +5558,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Count quote member birthdays (with deduplication)
       if (companyId) {
         try {
@@ -5772,7 +5581,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         } catch (error) {
           // Ignore errors
         }
-  });
         // Count manual contact birthdays (with deduplication)
         try {
           const manualContacts = await db.select()
@@ -5793,7 +5601,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         } catch (error) {
           // Ignore errors
         }
-  });
         // Count manual birthdays from calendar (with deduplication)
         try {
           const calendarBirthdays = await db.select()
@@ -5815,7 +5622,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         } catch (error) {
           // Ignore errors
         }
-  });
         // Count birthdays from quotes (clients + members)
         try {
           const allQuotes = await storage.getQuotesByCompany(companyId);
@@ -5839,7 +5645,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         } catch (error) {
           // Ignore errors
         }
-  });
         // Count birthdays from policies (clients + members)
         try {
           // Get year filter from query parameter (optional, default: current year)
@@ -5862,7 +5667,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
   });
           }
-  });
           // Only parse year if it passed validation
           const selectedYear = yearFilter && yearFilter !== 'all' ? parseInt(yearFilter) : null;
           let allPolicies = await storage.getPoliciesByCompany(companyId);
@@ -5894,7 +5698,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         } catch (error) {
           // Ignore errors
         }
-  });
         // Count policy member birthdays (household members) - with deduplication
         try {
           const policyMembers = await db.select()
@@ -5919,7 +5722,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Get failed login attempts (last 14 days) - based on activity logs
       let failedLoginAttempts = 0;
       const fourteenDaysAgo = new Date();
@@ -5940,7 +5742,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error('[DASHBOARD] Error getting activity logs:', error);
         failedLoginAttempts = 0;
       }
-  });
       // Get new leads (last 7 days)
       let newLeads = 0;
       if (companyId) {
@@ -5959,7 +5760,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Get unique policy holders count for totalPolicies
       let totalPolicies = 0;
       if (companyId) {
@@ -6012,7 +5812,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.log(`[Dashboard-Carriers] Cache HIT for company ${companyId} (${Date.now() - startTime}ms)`);
         return res.json(cached);
       }
-  });
       console.log(`[Dashboard-Carriers] Cache MISS for company ${companyId}`);
       // Get all policies for company (all-time data)
       const allPolicies = await storage.getPoliciesByCompany(companyId);
@@ -6092,7 +5891,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           if (policy.agentName) {
             agentName = policy.agentName;
           }
-  });
           // Format dates
           const startDate = policy.effectiveDate 
             ? new Date(policy.effectiveDate).toLocaleDateString('en-US', { year: 'numeric', month: '2-digit', day: '2-digit' })
@@ -6125,7 +5923,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const companies = await storage.getAllCompanies();
         return res.json({ companies });
       }
-  });
       
       if (currentUser.companyId) {
         const company = await storage.getCompany(currentUser.companyId);
@@ -6172,7 +5969,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!company) {
         return res.status(404).json({ message: "Company not found" });
       }
-  });
       // Allow updating company fields including logo
       const { 
         name, slug, logo, phone, email, website, platformLanguage, businessCategory, businessNiche,
@@ -6252,7 +6048,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden - Superadmin only" });
     }
-  });
     
     const companyId = req.params.id;
     const company = await storage.getCompany(companyId);
@@ -6271,7 +6066,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!deleted) {
         return res.status(500).json({ message: "Failed to delete company" });
       }
-  });
       
       await logger.logCrud({
         req,
@@ -6304,19 +6098,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden - Only administrators can manage custom domains" });
     }
-  });
     
     const companyId = currentUser.companyId;
     if (!companyId) {
       return res.status(400).json({ message: "Company ID required" });
     }
-  });
     
     const { hostname } = req.body;
     if (!hostname || typeof hostname !== "string") {
       return res.status(400).json({ message: "Hostname is required" });
     }
-  });
     
     // Validate hostname format
     const hostnameRegex = /^[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?(\.[a-zA-Z0-9]([a-zA-Z0-9-]*[a-zA-Z0-9])?)*\.[a-zA-Z]{2,}$/;
@@ -6331,7 +6122,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!company) {
         return res.status(404).json({ message: "Company not found" });
       }
-  });
       
       // Check if company already has a custom domain
       if (company.customDomain && company.cloudflareHostnameId) {
@@ -6339,7 +6129,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "Company already has a custom domain configured. Please disconnect it first." 
         });
       }
-  });
       
       // Create custom hostname in Cloudflare
       const result = await cloudflareService.createCustomHostname(hostname);
@@ -6347,7 +6136,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!result.success) {
         return res.status(400).json({ message: result.error || "Failed to create custom hostname" });
       }
-  });
       
       // Update company with custom domain info
       await storage.updateCompany(companyId, {
@@ -6396,7 +6184,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden - Only administrators can view custom domain settings" });
     }
-  });
     
     const companyId = currentUser.companyId;
     if (!companyId) {
@@ -6409,7 +6196,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!company) {
         return res.status(404).json({ message: "Company not found" });
       }
-  });
       
       // If no custom domain configured
       if (!company.customDomain || !company.cloudflareHostnameId) {
@@ -6419,7 +6205,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           status: null,
         });
       }
-  });
       
       // Get current status from Cloudflare
       const result = await cloudflareService.getCustomHostname(company.cloudflareHostnameId);
@@ -6433,7 +6218,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           error: result.error,
         });
       }
-  });
       
       // Update status in DB if changed
       if (result.status !== company.customDomainStatus) {
@@ -6467,7 +6251,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden - Only administrators can manage custom domains" });
     }
-  });
     
     const companyId = currentUser.companyId;
     if (!companyId) {
@@ -6480,19 +6263,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!company) {
         return res.status(404).json({ message: "Company not found" });
       }
-  });
       
       if (!company.cloudflareHostnameId) {
         return res.status(400).json({ message: "No custom domain configured" });
       }
-  });
       
       const result = await cloudflareService.refreshCustomHostname(company.cloudflareHostnameId);
       
       if (!result.success) {
         return res.status(400).json({ message: result.error || "Failed to refresh custom hostname" });
       }
-  });
       
       // Update status in DB
       await storage.updateCompany(companyId, {
@@ -6518,7 +6298,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (currentUser.role !== "admin" && currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden - Only administrators can manage custom domains" });
     }
-  });
     
     const companyId = currentUser.companyId;
     if (!companyId) {
@@ -6531,12 +6310,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!company) {
         return res.status(404).json({ message: "Company not found" });
       }
-  });
       
       if (!company.customDomain) {
         return res.status(400).json({ message: "No custom domain configured" });
       }
-  });
       
       const previousDomain = company.customDomain;
       let hostnameIdToDelete = company.cloudflareHostnameId;
@@ -6556,7 +6333,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       
       // STEP 2: Delete from Cloudflare if we have an ID
       if (hostnameIdToDelete) {
@@ -6570,7 +6346,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       
       // Clear custom domain from company
       await storage.updateCompany(companyId, {
@@ -6734,7 +6509,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (typeof preferences.invoiceAlerts === 'boolean') {
         updateData.invoiceAlerts = preferences.invoiceAlerts;
       }
-  });
       // Update user if there are changes
       if (Object.keys(updateData).length > 0) {
         await storage.updateUser(user.id, updateData);
@@ -6891,7 +6665,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!plan) {
         return res.status(404).json({ message: "Plan not found" });
       }
-  });
       // Sync with Stripe
       const { syncPlanWithStripe } = await import("./stripe");
       const stripeIds = await syncPlanWithStripe(plan);
@@ -7088,7 +6861,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       console.log('[SYNC-FROM-STRIPE] Synchronization complete:', {
         created: results.created.length,
         updated: results.updated.length,
@@ -7246,12 +7018,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!invoice) {
       return res.status(404).json({ message: "Invoice not found" });
     }
-  });
     // Check access: superadmin or same company
     if (currentUser.role !== "superadmin" && invoice.companyId !== currentUser.companyId) {
       return res.status(403).json({ message: "Forbidden" });
     }
-  });
     // Get invoice items
     const items = await storage.getInvoiceItems(invoice.id);
     res.json({ invoice, items });
@@ -7294,13 +7064,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!planId) {
       return res.status(400).json({ message: "Plan ID required" });
     }
-  });
     // Verify company exists
     const company = await storage.getCompany(companyId);
     if (!company) {
       return res.status(404).json({ message: "Company not found" });
     }
-  });
     // Verify plan exists
     const plan = await storage.getPlan(planId);
     if (!plan) {
@@ -7314,7 +7082,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "Plan must be synced with Stripe before assigning. Please sync the plan first." 
         });
       }
-  });
       // Create or get Stripe customer with complete company information
       let stripeCustomerId = company.stripeCustomerId;
       if (!stripeCustomerId) {
@@ -7337,7 +7104,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } else {
         console.log('[SUBSCRIPTION] Using existing Stripe customer:', stripeCustomerId);
       }
-  });
       // Check if company already has a subscription
       const existingSubscription = await storage.getSubscriptionByCompany(companyId);
       // Cancel existing Stripe subscription if exists
@@ -7346,7 +7112,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         const { cancelStripeSubscription } = await import("./stripe");
         await cancelStripeSubscription(existingSubscription.stripeSubscriptionId);
       }
-  });
       // Create NEW Stripe subscription
       console.log('[SUBSCRIPTION] Creating new Stripe subscription...');
       const { createStripeSubscription } = await import("./stripe");
@@ -7463,14 +7228,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!planId) {
       return res.status(400).json({ message: "Plan ID required" });
     }
-  });
     console.log('[SELECT-PLAN] Billing period:', billingPeriod);
     // Verify company exists
     const company = await storage.getCompany(companyId);
     if (!company) {
       return res.status(404).json({ message: "Company not found" });
     }
-  });
     // Verify plan exists
     const plan = await storage.getPlan(planId);
     if (!plan) {
@@ -7491,14 +7254,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } else {
         stripePriceId = plan.stripePriceId;
       }
-  });
       // Verify plan has Stripe price configured
       if (!stripePriceId) {
         return res.status(400).json({ 
           message: "Plan must be synced with Stripe before selecting. Please contact support." 
         });
       }
-  });
       console.log('[SELECT-PLAN] Using Stripe price:', stripePriceId, 'for billing period:', billingPeriod);
       // Create or get Stripe customer with complete company information
       let stripeCustomerId = company.stripeCustomerId;
@@ -7544,7 +7305,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Check if company already has a subscription
       const existingSubscription = await storage.getSubscriptionByCompany(companyId);
       // Cancel existing Stripe subscription if exists
@@ -7564,7 +7324,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Create NEW Stripe subscription
       console.log('[SELECT-PLAN] Creating new Stripe subscription...');
       const { createStripeSubscription } = await import("./stripe");
@@ -7759,7 +7518,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!companyId) {
       return res.status(400).json({ message: "Company ID required" });
     }
-  });
     // SECURITY: For non-superadmins, verify the company matches the user's company
     if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
       return res.status(403).json({ message: "Unauthorized access to company portal" });
@@ -7770,7 +7528,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!company) {
         return res.status(404).json({ message: "Company not found" });
       }
-  });
       // Get or create Stripe customer
       let customerId = company.stripeCustomerId;
       if (!customerId) {
@@ -7811,7 +7568,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!companyId) {
       return res.status(400).json({ message: "Company ID required" });
     }
-  });
     // SECURITY: For non-superadmins, verify the company matches the user's company
     if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
       return res.status(403).json({ message: "Unauthorized access to company invoices" });
@@ -7851,7 +7607,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Get invoices from database - subscription invoices should be visible to all admins
       // Don't filter by userId since subscription invoices belong to the company, not individual users
       const allInvoices = await storage.getInvoicesByCompany(companyId);
@@ -7884,18 +7639,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!invoice) {
         return res.status(404).json({ message: "Invoice not found" });
       }
-  });
       // SECURITY: For non-superadmins, verify the invoice belongs to their company
       if (currentUser.role !== "superadmin" && invoice.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Unauthorized access to invoice" });
       }
-  });
       // Get company details
       const company = await storage.getCompany(invoice.companyId);
       if (!company) {
         return res.status(404).json({ message: "Company not found" });
       }
-  });
       // Send email using the payment confirmation template
       const emailSent = await sendPaymentConfirmationEmail(
         invoice.companyId,
@@ -7929,7 +7681,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!companyId) {
       return res.status(400).json({ message: "Company ID required" });
     }
-  });
     // SECURITY: For non-superadmins, verify the company matches the user's company
     if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
       return res.status(403).json({ message: "Unauthorized access to company payments" });
@@ -7966,12 +7717,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.log('[BILLING] No subscription found for company:', companyId);
         return res.json({ subscription: null });
       }
-  });
       // SECURITY: Verify subscription belongs to the company
       if (subscription.companyId !== companyId) {
         return res.status(403).json({ message: "Unauthorized access to subscription" });
       }
-  });
       // Get plan details
       const plan = subscription.planId ? await storage.getPlan(subscription.planId) : null;
       // Special handling for demo company - skip Stripe API calls
@@ -7987,7 +7736,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
         return;
       }
-  });
       // If subscription has Stripe ID, get detailed info from Stripe
       if (subscription.stripeSubscriptionId) {
         const { getSubscriptionDetails } = await import("./stripe");
@@ -8030,7 +7778,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!companyId) {
       return res.status(400).json({ message: "Company ID required" });
     }
-  });
     // SECURITY: For non-superadmins, verify the company matches the user's company
     if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
       return res.status(403).json({ message: "Unauthorized access to company subscription" });
@@ -8043,13 +7790,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!stripeClient) {
         return res.status(500).json({ message: "Stripe is not configured" });
       }
-  });
       
       const subscription = await storage.getSubscriptionByCompany(companyId);
       if (!subscription || !subscription.stripeSubscriptionId || !subscription.stripeCustomerId) {
         return res.status(404).json({ message: "No active subscription found" });
       }
-  });
       // Step 1: Check if USER has a payment method (USER-SCOPED - each admin has their own cards)
       const userPaymentMethods = await storage.getUserPaymentMethods(companyId, currentUser.id);
       if (!userPaymentMethods || userPaymentMethods.length === 0) {
@@ -8057,7 +7802,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "Please add a payment method before activating your subscription" 
         });
       }
-  });
       // Get the default payment method from users saved cards
       const defaultUserPayment = userPaymentMethods.find(pm => pm.isDefault) || userPaymentMethods[0];
       const userPaymentMethodId = defaultUserPayment.stripePaymentMethodId;
@@ -8073,7 +7817,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "Your saved card needs to be re-added. Please delete your current card and add it again, then try to activate."
         });
       }
-  });
       // If payment method has no customer, attach to subscription customer
       if (!paymentMethodDetails.customer) {
         console.log("[SKIP-TRIAL] Attaching PM to subscription customer:", subscription.stripeCustomerId);
@@ -8137,7 +7880,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
   });
         }
-  });
         // Clear trial dates since trial is skipped
         updateData.trialEnd = undefined;
         updateData.trialStart = undefined;
@@ -8174,7 +7916,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!companyId) {
       return res.status(400).json({ message: "Company ID required" });
     }
-  });
     // SECURITY: For non-superadmins, verify the company matches the user's company
     if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
       return res.status(403).json({ message: "Unauthorized access to company subscription" });
@@ -8201,7 +7942,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!plan || !plan.isActive) {
         return res.status(404).json({ message: "Plan not found or inactive" });
       }
-  });
       // Get the correct Stripe price ID based on billing period
       const stripePriceId = billingPeriod === 'yearly' 
         ? plan.stripeAnnualPriceId 
@@ -8209,7 +7949,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!stripePriceId) {
         return res.status(400).json({ message: `${billingPeriod} pricing not available for this plan` });
       }
-  });
       // Update subscription - immediate for upgrades, scheduled for downgrades
       const { changePlan } = await import("./stripe");
       const updatedStripeSubscription = await changePlan(
@@ -8256,7 +7995,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!companyId) {
       return res.status(400).json({ message: "Company ID required" });
     }
-  });
     // SECURITY: For non-superadmins, verify the company matches the user's company
     if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
       return res.status(403).json({ message: "Unauthorized access to company subscription" });
@@ -8300,7 +8038,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!companyId) {
       return res.status(400).json({ message: "Company ID required" });
     }
-  });
     // SECURITY: For non-superadmins, verify the company matches the user's company
     if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
       return res.status(403).json({ message: "Unauthorized access to company subscription" });
@@ -8314,7 +8051,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!subscription.cancelAtPeriodEnd) {
         return res.status(400).json({ message: "Subscription is not scheduled for cancellation" });
       }
-  });
       // Reactivate the subscription in Stripe
       const { getStripeClient: getStripeClientAsync } = await import("./stripe");
       const stripeClientReactivate = await getStripeClientAsync();
@@ -8354,7 +8090,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!companyId) {
       return res.status(400).json({ message: "Company ID required" });
     }
-  });
     // SECURITY: For non-superadmins, verify the company matches the user's company
     if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
       return res.status(403).json({ message: "Unauthorized access to company subscription" });
@@ -8407,7 +8142,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!subscription || !subscription.stripeSubscriptionId) {
         return res.status(404).json({ message: "No active subscription found for this company" });
       }
-  });
       // Create coupon in Stripe
       const { createTemporaryDiscountCoupon, applyTemporaryDiscount } = await import("./stripe");
       const coupon = await createTemporaryDiscountCoupon(percentOff, months, company.name);
@@ -8440,7 +8174,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: `A ${percentOff}% discount has been applied to your subscription for ${months} month${months > 1 ? 's' : ''}. ${months > 1 ? `This discount will remain active for the next ${months} months.` : 'This discount will be active for the current billing period.'}`,
         });
       }
-  });
       // Broadcast notification update via WebSocket
       broadcastNotificationUpdate();
       res.json({ 
@@ -8468,7 +8201,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!companyId) {
       return res.status(400).json({ message: "Company ID required" });
     }
-  });
     // SECURITY: For non-superadmins, verify the company matches the user's company
     if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
       return res.status(403).json({ message: "Unauthorized access to company discount information" });
@@ -8479,7 +8211,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!subscription) {
         return res.json({ discount: null });
       }
-  });
       // Check for active discount in our database
       const activeDiscount = await storage.getActiveDiscountForCompany(companyId);
       // Also get discount from Stripe to verify
@@ -8500,7 +8231,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
             return res.json({ discount: null });
           }
-  });
           // Discount is still active
           res.json({
             discount: {
@@ -8541,7 +8271,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!companyId) {
       return res.status(400).json({ message: "Company ID required" });
     }
-  });
     // SECURITY: For non-superadmins, verify the company matches the user's company
     if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
       return res.status(403).json({ message: "Unauthorized access to company discount history" });
@@ -8573,7 +8302,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!subscription || !subscription.stripeSubscriptionId) {
         return res.status(404).json({ message: "No active subscription found" });
       }
-  });
       // Remove discount from Stripe
       const { removeDiscount } = await import("./stripe");
       await removeDiscount(subscription.stripeSubscriptionId);
@@ -8616,7 +8344,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             console.log(`[SYNC-PHONES] Skipping ${company.name}: ${!company.phone ? 'no phone' : 'no Stripe customer'}`);
             continue;
           }
-  });
           // Update Stripe customer with phone number
           await updateStripeCustomer(company.stripeCustomerId, {
             phone: company.phone,
@@ -8629,7 +8356,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       console.log('[SYNC-PHONES] Sync completed:', results);
       res.json({ 
         message: "Phone number sync completed", 
@@ -8652,7 +8378,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (user?.stripeCustomerId) {
       return user.stripeCustomerId;
     }
-  });
     
     // Fallback: check existing payment methods (for backward compatibility)
     const existingMethods = await storage.getUserPaymentMethods(companyId, userId);
@@ -8661,7 +8386,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await storage.updateUser(userId, { stripeCustomerId: existingMethods[0].stripeCustomerId });
       return existingMethods[0].stripeCustomerId;
     }
-  });
     
     // Create a new Stripe customer for this user
     const { getStripeClient } = await import("./stripe");
@@ -8734,7 +8458,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!stripeClient) {
         return res.status(500).json({ message: "Stripe is not configured" });
       }
-  });
       
       // Get or create user's own Stripe customer
       // Use the SUBSCRIPTION customer (not user personal customer) so payment methods work for billing
@@ -8784,7 +8507,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!stripeClient) {
         return res.status(500).json({ message: "Stripe is not configured" });
       }
-  });
       
       // Use the SUBSCRIPTION customer so payment methods are ready for billing
       const subscription = await storage.getSubscriptionByCompany(companyId);
@@ -8804,10 +8526,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (attachError.code !== 'resource_already_exists') {
           throw attachError;
         }
-  });
         console.log(`[BILLING] Payment method ${paymentMethodId} already attached`);
       }
-  });
       
       // Retrieve the payment method from Stripe to get card details
       const pm = await stripeClient.paymentMethods.retrieve(paymentMethodId);
@@ -8837,7 +8557,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           invoice_settings: { default_payment_method: paymentMethodId }
         });
       }
-  });
       
       console.log(`[BILLING] Added payment method ${paymentMethodId} for user ${currentUser.id}`);
       res.json({ success: true, message: "Payment method added successfully" });
@@ -8865,13 +8584,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!pmRecord) {
         return res.status(404).json({ message: "Payment method not found" });
       }
-  });
       
       // Security check: verify ownership
       if (pmRecord.ownerUserId !== currentUser.id) {
         return res.status(403).json({ message: "Not authorized to modify this payment method" });
       }
-  });
       
       // Update in our database
       await storage.setDefaultUserPaymentMethod(currentUser.id, paymentMethodId);
@@ -8911,19 +8628,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!pmRecord) {
         return res.status(404).json({ message: "Payment method not found" });
       }
-  });
       
       // Security check: verify ownership
       if (pmRecord.ownerUserId !== currentUser.id) {
         return res.status(403).json({ message: "Not authorized to delete this payment method" });
       }
-  });
       
       // Check if this is the default payment method
       if (pmRecord.isDefault) {
         return res.status(400).json({ message: "Cannot delete the default payment method. Please set another card as default first." });
       }
-  });
       
       // Detach from Stripe
       if (pmRecord.stripePaymentMethodId) {
@@ -8937,7 +8651,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       
       // Soft delete in our database
       await storage.deleteUserPaymentMethod(paymentMethodId);
@@ -8963,7 +8676,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!companyId) {
       return res.status(400).json({ message: "Company ID required" });
     }
-  });
     // SECURITY: For non-superadmins, verify the company matches the user's company
     if (currentUser.role !== "superadmin" && companyId !== currentUser.companyId) {
       return res.status(403).json({ message: "Unauthorized access to company billing address" });
@@ -9025,7 +8737,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           postalCode,
         });
       }
-  });
       // Update Stripe customer with new billing information
       const subscription = await storage.getSubscriptionByCompany(companyId);
       if (subscription?.stripeCustomerId) {
@@ -9078,7 +8789,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!company || !user) {
         return res.status(404).json({ message: "Company or user not found" });
       }
-  });
       // Send notification to all superadmins
       const allUsers = await storage.getAllUsers();
       const superadmins = allUsers.filter(u => u.role === 'superadmin');
@@ -9092,7 +8802,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           isRead: false,
         });
       }
-  });
       // Broadcast notification update
       const { broadcastNotificationUpdate } = await import("./websocket");
       broadcastNotificationUpdate();
@@ -9165,7 +8874,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!currentTicket) {
         return res.status(404).json({ message: "Ticket not found" });
       }
-  });
       // Build update data
       const updateData: any = {};
       if (status) {
@@ -9180,7 +8888,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!ticket) {
         return res.status(404).json({ message: "Ticket not found" });
       }
-  });
       // Get full ticket details with relations
       const fullTicket = await storage.getFinancialSupportTicket(ticket.id);
       // Notify the user about changes
@@ -9214,7 +8921,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             });
             broadcastNotificationUpdate();
           }
-  });
           // No notifications for pending, under_review, or closed statuses
         }
   });
@@ -9309,7 +9015,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               } else {
                 console.log('[WEBHOOK] No payment intent found, skipping payment record creation');
               }
-  });
               // CRITICAL: Skip notifications and emails for $0.00 invoices (trial invoices)
               if (amountInCents === 0) {
                 console.log('[WEBHOOK] Skipping notifications and emails for $0.00 invoice:', invoice.invoiceNumber);
@@ -9392,7 +9097,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                   } else {
                     console.error('[EMAIL] Failed to send payment failed email');
                   }
-  });
                   // Mark as sent
                   (global as any)[notificationKey] = now;
                 } else {
@@ -9424,14 +9128,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               console.log('[WEBHOOK] No customer ID in payment intent, skipping');
               break;
             }
-  });
             // Find the company by Stripe customer ID
             const subscription = await storage.getSubscriptionByStripeCustomerId(customerId);
             if (!subscription) {
               console.log('[WEBHOOK] No subscription found for customer:', customerId);
               break;
             }
-  });
             // Get amount in cents
             const amountInCents = paymentIntent.amount || 0;
             const amountInDollars = amountInCents / 100;
@@ -9459,7 +9161,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 } else {
                   console.error('[EMAIL] Failed to send payment failed email for payment intent');
                 }
-  });
                 // Mark as sent
                 (global as any)[notificationKey] = now;
               } else {
@@ -9645,7 +9346,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!userId || !type || !title || !message) {
         return res.status(400).json({ message: "Missing required fields" });
       }
-  });
       // Create notification in database
       const notification = await storage.createNotification({
         userId,
@@ -9742,7 +9442,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           errors: error.errors 
         });
       }
-  });
       console.error('Broadcast notification error:', error);
       res.status(500).json({ message: "Failed to broadcast notification" });
     }
@@ -9776,7 +9475,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!broadcast) {
         return res.status(404).json({ message: "Broadcast not found" });
       }
-  });
       // Resend with same data
       const result = await storage.createBroadcastNotification({
         type: broadcast.type,
@@ -9821,7 +9519,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!deleted) {
         return res.status(500).json({ message: "Failed to delete broadcast" });
       }
-  });
       // Log the operation before sending response
       try {
         await logger.logCrud({
@@ -9854,7 +9551,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!phoneNumber) {
         return res.status(400).json({ message: "Phone number is required" });
       }
-  });
       // Format caller name for notification
       const callerName = displayName || "Unknown Caller";
       // Create notification link if caller was identified
@@ -9862,7 +9558,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (callerType && callerId) {
         link = callerType === 'quote' ? `/quotes/${callerId}` : `/policies/${callerId}`;
       }
-  });
       // Create notification
       const notification: InsertNotification = {
         userId: currentUser.id,
@@ -10072,7 +9767,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!featureId) {
         return res.status(400).json({ message: "Feature ID is required" });
       }
-  });
       console.log(`[FEATURES] Adding feature ${featureId} to company ${req.params.companyId} by user ${currentUser.id}`);
       const companyFeature = await storage.addFeatureToCompany(
         req.params.companyId,
@@ -10133,7 +9827,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
         logs = await storage.getActivityLogsByCompany(currentUser.companyId, limit);
       }
-  });
       // Enrich plan_selected logs with current plan data and subscription info
       const enrichedLogs = await Promise.all(logs.map(async (log: any) => {
         if (log.action === 'plan_selected' && log.metadata?.planId) {
@@ -10339,7 +10032,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (campaign.status === "sent") {
         return res.status(400).json({ message: "Campaign has already been sent" });
       }
-  });
       // Start sending campaign asynchronously (returns immediately)
       await emailCampaignService.sendCampaignAsync(req.params.id, campaign.targetListId || undefined);
       console.log(`[CAMPAIGN SEND] Started sending campaign ${req.params.id} in background`);
@@ -10428,7 +10120,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!campaign) {
         return res.status(404).json({ message: "SMS campaign not found" });
       }
-  });
       // Get all messages for this campaign
       const messages = await storage.getCampaignSmsMessages(req.params.id);
       // Enrich messages with user info
@@ -10485,7 +10176,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (campaign.status === "sent") {
         return res.status(400).json({ message: "Campaign has already been sent" });
       }
-  });
       // Get recipients (users with phone numbers)
       let recipients = [];
       if (campaign.targetListId) {
@@ -10498,7 +10188,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (recipients.length === 0) {
         return res.status(400).json({ message: "No recipients with phone numbers found" });
       }
-  });
       // Update campaign status to sending
       await storage.updateSmsCampaign(req.params.id, {
         status: "sending",
@@ -10541,7 +10230,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
   });
         }
-  });
         // Update final stats
         await storage.updateSmsCampaign(campaign.id, {
           status: "sent",
@@ -10598,7 +10286,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Apply query filters
       if (origin && typeof origin === 'string') {
         params.origin = origin;
@@ -10759,7 +10446,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!contact) {
         return res.status(404).json({ message: "Contact not found" });
       }
-  });
       // Check company access
       if (contact.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Access denied" });
@@ -10973,7 +10659,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!Array.isArray(contacts) || contacts.length === 0) {
         return res.status(400).json({ message: "Contacts array is required" });
       }
-  });
       let imported = 0;
       let skipped = 0;
       const limitErrors: string[] = [];
@@ -10982,14 +10667,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           skipped++;
           continue;
         }
-  });
         // Check if user with this email already exists
         const existing = await storage.getUserByEmail(contact.email);
         if (existing) {
           skipped++;
           continue;
         }
-  });
         // Check user limit for the target company before creating user
         if (contact.companyId) {
           const limitCheck = await storage.canCompanyAddUsers(contact.companyId);
@@ -11000,7 +10683,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
   });
         }
-  });
         // Create new user with default settings
         const userData = {
           email: contact.email,
@@ -11148,12 +10830,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!entry) {
         return res.status(404).json({ message: "Blacklist entry not found" });
       }
-  });
       // Verify entry belongs to user's company
       if (entry.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Access denied. Entry does not belong to your company." });
       }
-  });
       // Remove from blacklist
       const success = await blacklistService.removeFromBlacklist({
         companyId: currentUser.companyId!,
@@ -11204,12 +10884,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!email) {
         return res.status(400).json({ message: "Email is required" });
       }
-  });
       // Token is REQUIRED for security - prevent abuse
       if (!token) {
         return res.status(400).json({ message: "Unsubscribe token is required" });
       }
-  });
       // Validate the token
       const { verifyUnsubscribeToken } = await import("./unsubscribe-token");
       if (!verifyUnsubscribeToken(email, token)) {
@@ -11219,7 +10897,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-  });
       // Update user subscription
       await storage.updateUserSubscription(user.id, false);
       // If campaignId is provided, record the unsubscribe for that campaign
@@ -11249,7 +10926,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (currentUser.role !== "superadmin") {
       return res.status(403).json({ message: "Forbidden - Superadmin only" });
     }
-  });
     // Validate request body
     const smsSubscriptionSchema = z.object({
       subscribed: z.boolean()
@@ -11291,7 +10967,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       )) {
         return res.status(403).send();
       }
-  });
       // Check if this user has already opened this campaign
       const existingOpens = await storage.getEmailOpens(campaignId as string);
       const userAlreadyOpened = existingOpens.some(open => open.userId === userId);
@@ -11316,7 +10991,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } else {
         console.log(`[TRACKING] Duplicate open ignored for user ${userId} in campaign ${campaignId}`);
       }
-  });
       // Return transparent 1x1 pixel GIF
       const pixel = Buffer.from(
         'R0lGODlhAQABAIAAAAAAAP///yH5BAEAAAAALAAAAAABAAEAAAIBRAA7',
@@ -11603,19 +11277,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!contactIds || !Array.isArray(contactIds) || contactIds.length === 0) {
         return res.status(400).json({ message: "Contact IDs array is required" });
       }
-  });
       // Verify list exists and belongs to user's company
       const list = await storage.getContactList(listId);
       if (!list) {
         return res.status(404).json({ message: "Contact list not found" });
       }
-  });
       // Get the list creator to verify company ownership
       const listCreator = await storage.getUser(list.createdBy);
       if (!listCreator || listCreator.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - List does not belong to your company" });
       }
-  });
       // Perform bulk add
       const result = await storage.bulkAddContactsToList(
         currentUser.companyId!,
@@ -11667,7 +11338,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!targetListId) {
         return res.status(400).json({ message: "Target list ID is required" });
       }
-  });
       // Add contacts to target list (onConflictDoNothing handles duplicates)
       let movedCount = 0;
       for (const contactId of contactIds) {
@@ -11823,7 +11493,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!toPhone || !message) {
         return res.status(400).json({ message: "Phone number and message are required" });
       }
-  });
       // Find user by phone number
       const recipientUser = await storage.getUserByPhone(toPhone);
       // Get Twilio phone number
@@ -11939,7 +11608,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!note || typeof note !== 'string' || note.trim().length === 0) {
         return res.status(400).json({ message: "Note content is required" });
       }
-  });
       // Find user by phone number to get their companyId
       const contactUser = await storage.getUserByPhone(phoneNumber);
       // Determine companyId: use currentUser's companyId or contact's if available
@@ -11973,7 +11641,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!note || typeof note !== 'string' || note.trim().length === 0) {
         return res.status(400).json({ message: "Note content is required" });
       }
-  });
       // For updates, companyId can be null for superadmins (they can update any note)
       const updatedNote = await storage.updateChatNote(id, note.trim(), currentUser.companyId || undefined);
       if (!updatedNote) {
@@ -12023,7 +11690,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Delete conversation for all companies (superadmin only)
         await storage.deleteConversationAll(phoneNumber);
       }
-  });
       // Broadcast conversation update to refresh UI
       if (req.app.get('wsService')) {
         const wsService = req.app.get('wsService');
@@ -12045,14 +11711,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!currentUser.companyId) {
         return res.status(400).json({ message: "User must belong to a company" });
       }
-  });
       // Get all quotes for the company
       let allQuotes = await storage.getQuotesByCompany(currentUser.companyId);
       // If user doesn't have viewAllCompanyData permission, filter by agentId
       if (!shouldViewAllCompanyData(currentUser)) {
         allQuotes = allQuotes.filter(quote => quote.agentId === currentUser.id);
       }
-  });
       // IMPORTANT: Deduplicate quotes to avoid double-counting
       // Only count the most recent quote per client (identified by SSN or email)
       const uniqueQuotesMap = new Map<string, any>();
@@ -12074,7 +11738,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Get unique quotes (one per client)
       const uniqueQuotes = Array.from(uniqueQuotesMap.values());
       // Calculate total quotes
@@ -12093,7 +11756,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           uniqueApplicantsSet.add(clientKey);
           if (isArchived) uniqueArchivedApplicantsSet.add(clientKey);
         }
-  });
         // Count members who are applicants
         for (const member of members) {
           if (member.isApplicant) {
@@ -12105,7 +11767,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Return schema matching policies exactly
       res.json({
         totalQuotes,
@@ -12237,7 +11898,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error("Error creating notifications for new quote:", notificationError);
         // Don't fail the quote creation if notifications fail
       }
-  });
       // Return quote with plain text SSN (as stored in database)
       res.status(201).json({ quote });
     } catch (error: any) {
@@ -12255,7 +11915,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!currentUser.companyId) {
         return res.json({ items: [], nextCursor: null });
       }
-  });
       // Build pagination options
       const options: Parameters<typeof storage.getQuotesList>[1] = {};
       // Parse limit (default 50, max 200)
@@ -12266,12 +11925,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Parse cursor
       if (cursor && typeof cursor === 'string') {
         options.cursor = cursor;
       }
-  });
       // Handle agent filtering based on viewAllCompanyData permission
       if (shouldViewAllCompanyData(currentUser)) {
         // User has permission to view all company data - skip agent filter
@@ -12286,24 +11943,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // User does NOT have viewAllCompanyData permission - filter by their agentId
         options.agentId = currentUser.id;
       }
-  });
       // Add productType filter
       if (productType && typeof productType === 'string') {
         options.productType = productType;
       }
-  });
       // Add OEP filter if specified (maps to productType)
       if (oepFilter === "aca") {
         options.productType = "Health Insurance ACA";
       } else if (oepFilter === "medicare") {
         options.productType = "Medicare";
       }
-  });
       // Add status filter
       if (status && typeof status === 'string') {
         options.status = status;
       }
-  });
       // Add date range filters
       if (effectiveDateFrom && typeof effectiveDateFrom === 'string') {
         options.effectiveDateFrom = effectiveDateFrom;
@@ -12311,17 +11964,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (effectiveDateTo && typeof effectiveDateTo === 'string') {
         options.effectiveDateTo = effectiveDateTo;
       }
-  });
       // Add search filter (applied server-side BEFORE limit)
       if (searchTerm && typeof searchTerm === 'string' && searchTerm.trim()) {
         options.searchTerm = searchTerm.trim();
       }
-  });
       // Add family members search flag
       if (searchFamilyMembers === 'true' || searchFamilyMembers === true) {
         options.includeFamilyMembers = true;
       }
-  });
       // Add folder filter
       if (folderId !== undefined) {
         if (folderId === 'null' || folderId === null) {
@@ -12333,7 +11983,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Fetch quotes using optimized function
       const result = await storage.getQuotesList(currentUser.companyId, options);
       // Log PII access
@@ -12369,12 +12018,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check access: superadmin or same company
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden" });
       }
-  });
       // Return quote with plain text SSN (as stored in database)
       await logger.logAuth({
         req,
@@ -12403,12 +12050,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check access: superadmin or same company
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden" });
       }
-  });
       // Get all quote members for this quote
       const members = await storage.getQuoteMembersByQuoteId(id, currentUser.companyId!);
       // Fetch income and immigration data for each member
@@ -12439,12 +12084,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check access: superadmin or same company
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden" });
       }
-  });
       // Get all quote members for this quote
       const members = await storage.getQuoteMembersByQuoteId(id, currentUser.companyId!);
       // Calculate total income by summing all members' annual income
@@ -12514,12 +12157,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!existingQuote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check access: superadmin can edit any quote, others only their company's quotes
       if (currentUser.role !== "superadmin" && existingQuote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "You don't have permission to edit this quote" });
       }
-  });
       // 2. NO date conversions - keep dates as yyyy-MM-dd strings
       // Apply same address field mapping as in create quote
       const payload = {
@@ -12563,7 +12204,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // 4. Update the quote
       const updatedQuote = await storage.updateQuote(id, validatedData);
       // 5. Check if agent was changed and send notification to new agent
@@ -12597,7 +12237,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Log activity (WARNING: Do NOT log the full request body - contains SSN)
       await logger.logCrud({
         req,
@@ -12634,7 +12273,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check access: superadmin or same company admin
       if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
         return res.status(403).json({ message: "Forbidden - Admin or Superadmin only" });
@@ -12673,7 +12311,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!existingQuote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check access: only superadmin and admin can block quotes
       if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
         return res.status(403).json({ message: "Forbidden - Admin or Superadmin only" });
@@ -12681,7 +12318,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentUser.role !== "superadmin" && existingQuote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "You don't have permission to block this quote" });
       }
-  });
       // Toggle block status
       const newBlockStatus = !existingQuote.isBlocked;
       const updatedQuote = await storage.updateQuote(id, { 
@@ -12724,12 +12360,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quoteDetail || !quoteDetail.quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check access: superadmin can duplicate any quote, others only their company's quotes
       if (currentUser.role !== "superadmin" && quoteDetail.quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "You don't have permission to duplicate this quote" });
       }
-  });
       // 2. Generate a new unique quote ID
       const { generateShortId } = await import("./id-generator");
       let newQuoteId = generateShortId();
@@ -12739,7 +12373,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         newQuoteId = generateShortId();
         existingQuote = await storage.getQuote(newQuoteId);
       }
-  });
       console.log(`[DUPLICATE QUOTE] Duplicating quote ${id} to new quote ${newQuoteId}`);
       // 3. Create the new quote with copied data (excluding ID and timestamps)
       const originalQuote = quoteDetail.quote;
@@ -12820,7 +12453,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               totalAnnualIncome: memberDetail.income.totalAnnualIncome,
             });
           }
-  });
           // Copy immigration data if exists
           if (memberDetail.immigration) {
             await storage.createOrUpdateQuoteMemberImmigration({
@@ -12841,13 +12473,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               expirationDate: memberDetail.immigration.expirationDate,
             });
           }
-  });
           // Note: Member documents are NOT copied as they contain file uploads
         }
-  });
         console.log(`[DUPLICATE QUOTE] Copied ${quoteDetail.members.length} member(s)`);
       }
-  });
       // 5. Get and copy all notes (but mark them as copied)
       const notes = await storage.getQuoteNotes(id, currentUser.companyId!);
       if (notes && notes.length > 0) {
@@ -12862,10 +12491,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             imageUrl: note.imageUrl,
           });
         }
-  });
         console.log(`[DUPLICATE QUOTE] Copied ${notes.length} note(s)`);
       }
-  });
       // 6. Get and copy all reminders
       const reminders = await storage.listQuoteReminders(id, currentUser.companyId!);
       if (reminders && reminders.length > 0) {
@@ -12885,10 +12512,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             reminderType: reminder.reminderType || "other",
           });
         }
-  });
         console.log(`[DUPLICATE QUOTE] Copied ${reminders.length} reminder(s)`);
       }
-  });
       // Note: Documents and consents are NOT copied as they contain file uploads
       // and digital signatures that should be unique per quote
       // 7. Log activity
@@ -12940,7 +12565,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (excludeQuoteId) {
         quotes = quotes.filter(q => q.id !== excludeQuoteId);
       }
-  });
       // Log PII access
       if (quotes.length > 0) {
         await logger.logAuth({
@@ -13118,18 +12742,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (typeof isArchived !== "boolean") {
         return res.status(400).json({ message: "Invalid archive value. Must be true or false" });
       }
-  });
       // Get existing quote and verify ownership
       const existingQuote = await storage.getQuote(id);
       if (!existingQuote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check access: superadmin can edit any quote, others only their company's quotes
       if (currentUser.role !== "superadmin" && existingQuote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "You don't have permission to edit this quote" });
       }
-  });
       // Update the quote archive status
       const updatedQuote = await storage.updateQuote(id, { isArchived });
       // Log activity
@@ -13163,7 +12784,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -13198,7 +12818,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -13207,12 +12826,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Verify member belongs to this quote
       if (member.quoteId !== quoteId) {
         return res.status(404).json({ message: "Member not found in this quote" });
       }
-  });
       // Return member with plain text SSN (as stored in database)
       await logger.logAuth({
         req,
@@ -13243,12 +12860,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Validate request body
       const validatedData = insertQuoteMemberSchema.parse({
         ...req.body,
@@ -13291,7 +12906,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -13300,12 +12914,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Verify member belongs to this quote
       if (member.quoteId !== quoteId) {
         return res.status(404).json({ message: "Member not found in this quote" });
       }
-  });
       // Validate request body
       const validatedData = updateQuoteMemberSchema.parse(req.body);
       // SSN stored as plain text (no encryption)
@@ -13348,7 +12960,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -13357,7 +12968,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Verify member belongs to this quote
       if (member.quoteId !== quoteId) {
         return res.status(404).json({ message: "Member not found in this quote" });
@@ -13394,12 +13004,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Validate request body with Zod
       const requestSchema = z.object({
         role: z.string().min(1, "Role is required"),
@@ -13461,12 +13069,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Validate request body with Zod
       const requestSchema = z.object({
         role: z.string().min(1, "Role is required"),
@@ -13487,7 +13093,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (memberData.dateOfBirth && typeof memberData.dateOfBirth === 'string') {
         memberData.dateOfBirth = new Date(memberData.dateOfBirth);
       }
-  });
       // Ensure member exists (create or update)
       const result = await storage.ensureQuoteMember(
         quoteId,
@@ -13527,18 +13132,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get quote to check company ownership
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Validate request body with Zod - use partial schema for updates
       const updateMemberSchema = z.object({
         firstName: z.string().optional(),
@@ -13593,23 +13195,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get quote to check company ownership
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Prevent deletion of primary client
       if (member.role === 'client') {
         return res.status(400).json({ message: "Cannot delete primary client" });
       }
-  });
       // Delete member (cascades to income, immigration, documents)
       const success = await storage.deleteQuoteMember(memberId, quote.companyId);
       if (!success) {
@@ -13645,13 +13243,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get quote to check company ownership
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -13660,7 +13256,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!income) {
         return res.status(404).json({ message: "Income information not found" });
       }
-  });
       // Income is stored as plain text (not encrypted)
       res.json({ income });
     } catch (error: any) {
@@ -13679,18 +13274,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get quote to check company ownership
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Check if annualIncome is empty/null - treat as DELETE request
       const annualIncomeValue = req.body.annualIncome?.toString().trim();
       if (!annualIncomeValue || annualIncomeValue === '' || annualIncomeValue === '0' || annualIncomeValue === '0.00') {
@@ -13710,7 +13302,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
         return res.json({ deleted: true, message: "Income deleted successfully" });
       }
-  });
       // Validate request body (include companyId from member)
       const validatedData = insertQuoteMemberIncomeSchema.parse({
         ...req.body,
@@ -13754,13 +13345,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get quote to check company ownership
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -13798,13 +13387,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get quote to check company ownership
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -13813,7 +13400,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!immigration) {
         return res.status(404).json({ message: "Immigration information not found" });
       }
-  });
       // Return immigration with plain text document numbers (as stored in database)
       await logger.logAuth({
         req,
@@ -13843,18 +13429,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get quote to check company ownership
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Validate request body (include companyId from member)
       const validatedData = insertQuoteMemberImmigrationSchema.parse({
         ...req.body,
@@ -13898,13 +13481,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get quote to check company ownership
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -13942,13 +13523,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get quote to check company ownership
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -13971,13 +13550,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get quote to check company ownership
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -13989,14 +13566,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "Missing required fields: documentType, documentName, fileType, base64Data" 
         });
       }
-  });
       // SECURITY: Validate MIME type against whitelist
       if (!ALLOWED_MIME_TYPES.includes(fileType)) {
         return res.status(400).json({ 
           message: "Invalid file type. Allowed types: PDF, JPEG, PNG, JPG" 
         });
       }
-  });
       // Decode base64 to buffer
       let fileBuffer: Buffer;
       try {
@@ -14004,20 +13579,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } catch (error) {
         return res.status(400).json({ message: "Invalid base64 data" });
       }
-  });
       // SECURITY: Validate file size (10MB max)
       if (fileBuffer.length > MAX_FILE_SIZE) {
         return res.status(400).json({ 
           message: `File too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)}MB` 
         });
       }
-  });
       // Create upload directory with strict path (prevents path traversal)
       const uploadDir = path.join(process.cwd(), 'server', 'uploads', quote.companyId, member.quoteId, memberId);
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
-  });
       // SECURITY: Generate secure filename with crypto random bytes
       // Sanitize original filename and extract extension
       const sanitizedName = documentName.replace(/[^a-zA-Z0-9.-]/g, '_').replace(/\.{2,}/g, '_');
@@ -14080,13 +13652,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get quote to check company ownership
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -14095,7 +13665,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!document) {
         return res.status(404).json({ message: "Document not found" });
       }
-  });
       // Verify document belongs to this member
       if (document.memberId !== memberId) {
         return res.status(404).json({ message: "Document not found for this member" });
@@ -14118,13 +13687,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get quote to check company ownership
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -14133,19 +13700,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!document) {
         return res.status(404).json({ message: "Document not found" });
       }
-  });
       // Verify document belongs to this member
       if (document.memberId !== memberId) {
         return res.status(404).json({ message: "Document not found for this member" });
       }
-  });
       // Get full file path
       const filePath = path.join(process.cwd(), 'server', document.documentPath);
       // Check if file exists
       if (!fs.existsSync(filePath)) {
         return res.status(404).json({ message: "Document file not found on disk" });
       }
-  });
       // SECURITY: Sanitize filename for Content-Disposition header to prevent header injection
       const safeFilename = document.documentName.replace(/["\r\n]/g, '');
       // SECURITY: Validate MIME type against whitelist before serving
@@ -14175,13 +13739,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get quote to check company ownership
       const quote = await storage.getQuote(member.quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -14190,18 +13752,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!document) {
         return res.status(404).json({ message: "Document not found" });
       }
-  });
       // Verify document belongs to this member
       if (document.memberId !== memberId) {
         return res.status(404).json({ message: "Document not found for this member" });
       }
-  });
       // Delete file from disk
       const filePath = path.join(process.cwd(), 'server', document.documentPath);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
-  });
       // Delete document record from database
       const deleted = await storage.deleteQuoteMemberDocument(docId, quote.companyId);
       if (!deleted) {
@@ -14237,7 +13796,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -14272,7 +13830,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -14281,12 +13838,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!paymentMethod) {
         return res.status(404).json({ message: "Payment method not found" });
       }
-  });
       // Verify payment method belongs to this quote
       if (paymentMethod.quoteId !== quoteId) {
         return res.status(404).json({ message: "Payment method not found in this quote" });
       }
-  });
       // Return payment method with plain text data
       await logger.logAuth({
         req,
@@ -14317,12 +13872,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Validate request body (include companyId and quoteId)
       const validatedData = insertPaymentMethodSchema.parse({
         ...req.body,
@@ -14367,12 +13920,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Verify payment method exists and belongs to this quote
       const existingPaymentMethod = await storage.getQuotePaymentMethodById(paymentMethodId, quote.companyId);
       if (!existingPaymentMethod) {
@@ -14381,7 +13932,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (existingPaymentMethod.quoteId !== quoteId) {
         return res.status(404).json({ message: "Payment method not found in this quote" });
       }
-  });
       // Validate request body
       const validatedData = updatePaymentMethodSchema.parse(req.body);
       // Update payment method as plain text (no encryption)
@@ -14425,12 +13975,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Verify payment method exists and belongs to this quote
       const paymentMethod = await storage.getQuotePaymentMethodById(paymentMethodId, quote.companyId);
       if (!paymentMethod) {
@@ -14439,7 +13987,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (paymentMethod.quoteId !== quoteId) {
         return res.status(404).json({ message: "Payment method not found in this quote" });
       }
-  });
       // Delete payment method
       const deleted = await storage.deleteQuotePaymentMethod(paymentMethodId, quote.companyId);
       if (!deleted) {
@@ -14474,12 +14021,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Verify payment method exists and belongs to this quote
       const paymentMethod = await storage.getQuotePaymentMethodById(paymentMethodId, quote.companyId);
       if (!paymentMethod) {
@@ -14488,7 +14033,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (paymentMethod.quoteId !== quoteId) {
         return res.status(404).json({ message: "Payment method not found in this quote" });
       }
-  });
       // Set as default payment method
       await storage.setDefaultPaymentMethod(paymentMethodId, quoteId, quote.companyId);
       await logger.logCrud({
@@ -14521,7 +14065,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -14570,7 +14113,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -14594,12 +14136,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get the note to check permissions
       const [existingNote] = await db
         .select()
@@ -14612,12 +14152,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!existingNote) {
         return res.status(404).json({ message: "Note not found" });
       }
-  });
       // Permission check: only creator can edit (unless superadmin)
       if (currentUser.role !== "superadmin" && existingNote.createdBy !== currentUser.id) {
         return res.status(403).json({ message: "Forbidden - only the note creator can edit this note" });
       }
-  });
       // Build update object with only provided fields
       const updateData: any = {};
       if (note !== undefined) updateData.note = note.trim();
@@ -14628,7 +14166,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (Object.keys(updateData).length === 0) {
         return res.status(400).json({ message: "No fields to update" });
       }
-  });
       // Update the note
       await db.update(quoteNotes)
         .set({ ...updateData, updatedAt: new Date() })
@@ -14666,12 +14203,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get the note to check permissions
       const [existingNote] = await db
         .select()
@@ -14684,12 +14219,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!existingNote) {
         return res.status(404).json({ message: "Note not found" });
       }
-  });
       // Permission check: only creator can delete (unless superadmin)
       if (currentUser.role !== "superadmin" && existingNote.createdBy !== currentUser.id) {
         return res.status(403).json({ message: "Forbidden - only the note creator can delete this note" });
       }
-  });
       // Delete the note (storage method handles company ID filtering)
       await storage.deleteQuoteNote(noteId, currentUser.role === "superadmin" ? undefined : quote.companyId);
       await logger.logCrud({
@@ -14720,12 +14253,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Set up multer for file upload
       const uploadsDir = path.join(process.cwd(), 'uploads', 'notes_attachments');
       if (!fs.existsSync(uploadsDir)) {
@@ -14774,7 +14305,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
-  });
       // Return the file URL/path
       const fileUrl = `/uploads/notes_attachments/${req.file.filename}`;
       await logger.logCrud({
@@ -14853,12 +14383,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // List documents with optional filters
       const documents = await storage.listQuoteDocuments(quoteId, quote.companyId, {
         category: category as string | undefined,
@@ -14881,12 +14409,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Handle upload with promisified multer
       await new Promise<void>((resolve, reject) => {
         documentUpload.single('file')(req, res, (err: any) => {
@@ -14909,7 +14435,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
-  });
       // Get category, description, and belongsTo from body
       const { category, description, belongsTo } = req.body;
       // Validate category if provided
@@ -14959,23 +14484,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get document
       const document = await storage.getQuoteDocument(documentId, quote.companyId);
       if (!document) {
         return res.status(404).json({ message: "Document not found" });
       }
-  });
       // Verify document belongs to quote
       if (document.quoteId !== quoteId) {
         return res.status(403).json({ message: "Document does not belong to this quote" });
       }
-  });
       // Extract filename from fileUrl
       const filename = path.basename(document.fileUrl);
       const filePath = path.join(process.cwd(), 'uploads', 'documents', filename);
@@ -14984,7 +14505,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error(`File not found at path: ${filePath}`);
         return res.status(404).json({ message: "File not found on server" });
       }
-  });
       // Prevent path traversal attacks
       const realPath = fs.realpathSync(filePath);
       const uploadsDir = fs.realpathSync(path.join(process.cwd(), 'uploads', 'documents'));
@@ -14992,7 +14512,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error(`Path traversal attempt detected: ${realPath}`);
         return res.status(403).json({ message: "Invalid file path" });
       }
-  });
       // Set proper headers and stream file
       res.setHeader('Content-Type', document.fileType);
       res.setHeader('Content-Disposition', `attachment; filename="${document.fileName}"`);
@@ -15025,29 +14544,24 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get document
       const document = await storage.getQuoteDocument(documentId, quote.companyId);
       if (!document) {
         return res.status(404).json({ message: "Document not found" });
       }
-  });
       // Verify document belongs to quote
       if (document.quoteId !== quoteId) {
         return res.status(403).json({ message: "Document does not belong to this quote" });
       }
-  });
       // Delete from database first
       const deleted = await storage.deleteQuoteDocument(documentId, quote.companyId);
       if (!deleted) {
         return res.status(500).json({ message: "Failed to delete document from database" });
       }
-  });
       // Extract filename from fileUrl and delete physical file
       const filename = path.basename(document.fileUrl);
       const filePath = path.join(process.cwd(), 'uploads', 'documents', filename);
@@ -15095,12 +14609,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Build filters
       const filters: { status?: string; priority?: string; userId?: string } = {};
       if (status && typeof status === 'string') filters.status = status;
@@ -15124,7 +14636,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -15133,7 +14644,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!reminder) {
         return res.status(404).json({ message: "Reminder not found" });
       }
-  });
       // Verify reminder belongs to quote
       if (reminder.quoteId !== quoteId) {
         return res.status(403).json({ message: "Reminder does not belong to this quote" });
@@ -15156,12 +14666,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Validate request body
       const reminderData = insertQuoteReminderSchema.parse({
         ...req.body,
@@ -15203,12 +14711,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Verify reminder exists and belongs to quote
       const existingReminder = await storage.getQuoteReminder(reminderId, quote.companyId);
       if (!existingReminder) {
@@ -15217,7 +14723,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (existingReminder.quoteId !== quoteId) {
         return res.status(403).json({ message: "Reminder does not belong to this quote" });
       }
-  });
       // Validate update data
       const updateData = updateQuoteReminderSchema.parse(req.body);
       const updatedReminder = await storage.updateQuoteReminder(reminderId, quote.companyId, updateData);
@@ -15252,12 +14757,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Verify reminder exists and belongs to quote
       const existingReminder = await storage.getQuoteReminder(reminderId, quote.companyId);
       if (!existingReminder) {
@@ -15297,12 +14800,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Verify reminder exists and belongs to quote
       const existingReminder = await storage.getQuoteReminder(reminderId, quote.companyId);
       if (!existingReminder) {
@@ -15342,12 +14843,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Verify reminder exists and belongs to quote
       const existingReminder = await storage.getQuoteReminder(reminderId, quote.companyId);
       if (!existingReminder) {
@@ -15359,7 +14858,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!duration) {
         return res.status(400).json({ message: "duration is required" });
       }
-  });
       // Calculate snooze until date based on duration
       const now = new Date();
       let snoozeDate = new Date(now);
@@ -15427,7 +14925,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       console.log(`[Calendar] Cache HIT for ${cacheKey}`);
       return res.json(cached.data);
     }
-  });
     console.log(`[Calendar] Cache MISS for ${cacheKey}`);
     try {
       const events: any[] = [];
@@ -15487,7 +14984,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // ============== POLICIES BIRTHDAYS ==============
       let policies = await storage.getPoliciesByCompany(companyId);
       // Filter by agentId if user doesn't have viewAllCompanyData permission
@@ -15541,7 +15037,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // ============== QUOTE REMINDERS ==============
       let quoteReminders = await storage.getQuoteRemindersByCompany(companyId);
       // Filter reminders by user's quotes if they don't have viewAllCompanyData permission
@@ -15570,7 +15065,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // ============== POLICY REMINDERS ==============
       let policyReminders = await storage.getPolicyRemindersByCompany(companyId);
       // Filter reminders by user's policies if they don't have viewAllCompanyData permission
@@ -15599,7 +15093,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // ============== LANDING PAGE APPOINTMENTS ==============
       // Fetch pending and confirmed appointments for the current user
       // Wrapped in try-catch to prevent breaking the calendar if appointments fail
@@ -15627,7 +15120,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error("Error fetching landing appointments for calendar:", error);
         // Continue without appointments - don't break the entire calendar
       }
-  });
       // ============== USERS/TEAM BIRTHDAYS ==============
       try {
         const users = await storage.getUsersByCompany(companyId);
@@ -15655,7 +15147,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } catch (error: any) {
         console.error("Error fetching team birthdays for calendar:", error);
       }
-  });
       // ============== MANUAL CONTACTS BIRTHDAYS ==============
       try {
         const manualContacts = await storage.getManualContactsByCompany(companyId);
@@ -15683,7 +15174,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } catch (error: any) {
         console.error("Error fetching manual contacts birthdays for calendar:", error);
       }
-  });
       // ============== MANUAL BIRTHDAYS ==============
       try {
         const manualBirthdays = await storage.getManualBirthdaysByCompany(companyId);
@@ -15709,7 +15199,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } catch (error: any) {
         console.error("Error fetching manual birthdays for calendar:", error);
       }
-  });
       // ============== STANDALONE REMINDERS ==============
       try {
         const standaloneReminders = await storage.getStandaloneRemindersByCompany(companyId);
@@ -15734,7 +15223,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } catch (error: any) {
         console.error("Error fetching standalone reminders for calendar:", error);
       }
-  });
       // ============== MANUAL APPOINTMENTS ==============
       try {
         const manualAppointments = await storage.getAppointmentsByCompany(companyId);
@@ -15756,7 +15244,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } catch (error: any) {
         console.error("Error fetching manual appointments for calendar:", error);
       }
-  });
       // ============== TASKS ==============
       try {
         // Build filters for tasks
@@ -15794,7 +15281,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } catch (error: any) {
         console.error("Error fetching tasks for calendar:", error);
       }
-  });
       // ============== PUBLIC HOLIDAYS ==============
       try {
         // Get company settings to determine which country's holidays to display
@@ -15816,7 +15302,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error("Error fetching public holidays for calendar:", error);
         // Continue without holidays - don't break the entire calendar
       }
-  });
       // Cache the result before returning
       const response = { events };
       calendarEventsCache.set(cacheKey, { data: response, timestamp: Date.now() });
@@ -15890,7 +15375,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           (r.description && r.description.toLowerCase().includes(searchLower))
         );
       }
-  });
       // Enrich with creator data
       const enrichedReminders = await Promise.all(
         reminders.map(async (reminder) => {
@@ -16029,18 +15513,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!plan) {
         return res.status(400).json({ message: "Plan data is required" });
       }
-  });
       // Get quote to verify access
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Update quote with selected plan
       const updatedQuote = await storage.updateQuote(quoteId, {
         selectedPlan: plan as any, // Store the complete plan object
@@ -16048,7 +15529,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!updatedQuote) {
         return res.status(500).json({ message: "Failed to update quote with selected plan" });
       }
-  });
       // Log the activity
       await logger.logCrud({
         req,
@@ -16079,17 +15559,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Verify that a plan has been selected
       if (!quote.selectedPlan) {
         return res.status(400).json({ message: "Quote must have a selected plan before submitting as policy" });
       }
-  });
       // Submit quote as policy using transaction
       const policy = await storage.submitQuoteAsPolicy(quoteId);
       // Log the activity
@@ -16125,12 +15602,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Validate request body
       const statusUpdateSchema = z.object({
         status: z.enum(["draft", "active", "submitted", "converted_to_policy"]).optional(),
@@ -16146,7 +15621,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!updatedQuote) {
         return res.status(500).json({ message: "Failed to update quote statuses" });
       }
-  });
       // Log the activity
       await logger.logCrud({
         req,
@@ -16192,12 +15666,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Create consent document
       const consent = await storage.createConsentDocument(quoteId, quote.companyId, currentUser.id);
       await logger.logCrud({
@@ -16228,13 +15700,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!channel || !['email', 'sms', 'link'].includes(channel)) {
         return res.status(400).json({ message: "Invalid channel. Must be 'email', 'sms', or 'link'" });
       }
-  });
       // Get consent document
       const consent = await storage.getConsentById(consentId, currentUser.companyId!);
       if (!consent) {
         return res.status(404).json({ message: "Consent document not found" });
       }
-  });
       // Get quote and company details
       const quote = await storage.getQuote(consent.quoteId);
       if (!quote) {
@@ -16244,7 +15714,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!company) {
         return res.status(404).json({ message: "Company not found" });
       }
-  });
       // Generate consent URL
       const baseUrl = process.env.APP_URL || 'http://localhost:5000';
       const consentUrl = `${baseUrl}/consent/${consent.token}`;
@@ -16255,7 +15724,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (!target) {
           return res.status(400).json({ message: "Email address is required for email delivery" });
         }
-  });
         // Use client's preferred language for simple notification email
         const isSpanish = quote.clientPreferredLanguage === 'spanish' || quote.clientPreferredLanguage === 'es';
         const agentName = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Your Agent';
@@ -16272,7 +15740,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // It's a relative path, convert to absolute URL
           logoUrl = `${baseUrl}${company.logo.startsWith('/') ? '' : '/'}${company.logo}`;
         }
-  });
         // If logo is data URI or null, don't use it (Gmail blocks data URIs)
         // Simple email with just notification message and button (no full document)
         const htmlContent = `
@@ -16350,7 +15817,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (!target) {
           return res.status(400).json({ message: "Phone number is required for SMS delivery" });
         }
-  });
         // Use client's preferred language
         const isSpanish = quote.clientPreferredLanguage === 'spanish' || quote.clientPreferredLanguage === 'es';
         const smsMessage = isSpanish 
@@ -16374,7 +15840,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         sentAt = new Date();
         await storage.createConsentEvent(consentId, 'sent', { channel, url: consentUrl }, currentUser.id);
       }
-  });
       // Update consent document with delivery info
       const updatedConsent = await storage.updateConsentDocument(consentId, {
         status: 'sent',
@@ -16411,7 +15876,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -16434,7 +15898,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!consent) {
         return res.status(404).json({ message: "Consent document not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && consent.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -16466,18 +15929,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quoteId) {
         return res.status(400).json({ message: "Quote ID is required" });
       }
-  });
       // Get quote details
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get quote members
       const members = await storage.getQuoteMembersByQuoteId(quoteId, quote.companyId);
       // Get household income
@@ -16605,18 +16065,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!quoteId) {
         return res.status(400).json({ message: "Quote ID is required" });
       }
-  });
       // Get quote details
       const quote = await storage.getQuote(quoteId);
       if (!quote) {
         return res.status(404).json({ message: "Quote not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && quote.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get quote members
       const members = await storage.getQuoteMembersByQuoteId(quoteId, quote.companyId);
       // Get household income
@@ -16681,7 +16138,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (aptcOverride !== undefined) {
         console.log(`[MARKETPLACE_PLANS] Using saved APTC from quote: $${aptcOverride} (source: ${quote.aptcSource})`);
       }
-  });
       // Fetch plans from CMS Marketplace with pagination and filters
       const marketplaceData = await fetchMarketplacePlans(quoteData, page, pageSize, undefined, filters, aptcOverride);
       // Return EXACTLY what the CMS API returns - NO modifications
@@ -16943,7 +16399,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } catch (error: any) {
         console.error("[POLICY] Failed to create contacts from policy:", error);
       }
-  });
       // Create policy_member for the PRIMARY CLIENT (applicant)
       // This is required so income data can be associated with them
       try {
@@ -16984,7 +16439,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } catch (clientMemberError) {
         console.error(`Error creating client member:`, clientMemberError);
       }
-  });
       // CRITICAL FIX: Create policy_members for spouses and dependents
       // Extract family members from request body (they come as arrays)
       const spouses = req.body.spouses || [];
@@ -17024,7 +16478,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               selfEmployed: spouse.selfEmployed || false,
             });
           }
-  });
           // Create immigration data if provided
           if (spouse.immigrationStatus) {
             await storage.createOrUpdatePolicyMemberImmigration({
@@ -17045,7 +16498,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Create policy members for dependents
       for (const dependent of dependents) {
         try {
@@ -17081,7 +16533,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               selfEmployed: dependent.selfEmployed || false,
             });
           }
-  });
           // Create immigration data if provided
           if (dependent.immigrationStatus) {
             await storage.createOrUpdatePolicyMemberImmigration({
@@ -17142,7 +16593,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error("Error creating notifications for new policy:", notificationError);
         // Don't fail the policy creation if notifications fail
       }
-  });
       // Return policy with plain text SSN (as stored in database)
       // Invalidate dashboard cache
       const { dashboardCache } = await import("./dashboard-cache");
@@ -17200,7 +16650,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!currentUser.companyId) {
         return res.status(400).json({ message: "User must belong to a company" });
       }
-  });
       // Get year filter from query parameter (optional)
       const yearFilter = req.query.year as string | undefined;
       // Validate year parameter
@@ -17220,14 +16669,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Get all policies for the company
       let allPolicies = await storage.getPoliciesByCompany(currentUser.companyId);
       // If user doesn't have viewAllCompanyData permission, filter by agentId
       if (!shouldViewAllCompanyData(currentUser)) {
         allPolicies = allPolicies.filter(policy => policy.agentId === currentUser.id);
       }
-  });
       // Filter by year if specified (e.g., ?year=2025)
       if (yearFilter && yearFilter !== 'all') {
         const year = parseInt(yearFilter);
@@ -17241,7 +16688,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // IMPORTANT: Exclude renewed policies to avoid double-counting
       // Only count the most recent policy per client (identified by SSN or email)
       const uniquePoliciesMap = new Map<string, any>();
@@ -17263,7 +16709,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Get unique policies (one per client)
       const uniquePolicies = Array.from(uniquePoliciesMap.values());
       // Calculate total policies (unique clients only)
@@ -17284,7 +16729,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           uniqueApplicantsSet.add(clientKey);
           if (isCanceled) uniqueCanceledApplicantsSet.add(clientKey);
         }
-  });
         // Count members who are applicants (use SSN or member ID as unique key)
         for (const member of members) {
           if (member.isApplicant) {
@@ -17316,14 +16760,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!currentUser.companyId) {
         return res.status(400).json({ message: "User must belong to a company" });
       }
-  });
       // Get all policies for the company
       let allPolicies = await storage.getPoliciesByCompany(currentUser.companyId);
       // If user doesn't have viewAllCompanyData permission, filter by agentId
       if (!shouldViewAllCompanyData(currentUser)) {
         allPolicies = allPolicies.filter(policy => policy.agentId === currentUser.id);
       }
-  });
       // DEBUG: Log first policy to see structure
       if (allPolicies.length > 0) {
         console.log("[OEP DEBUG] Total policies:", allPolicies.length);
@@ -17335,7 +16777,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           status: allPolicies[0].status
         });
       }
-  });
       // Helper function to check if a policy is eligible for renewal
       const isEligibleForRenewal = (policy: any, productTypeFilter: string) => {
         // Check if effective date is in 2025
@@ -17396,7 +16837,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (excludePolicyId) {
         policies = policies.filter(p => p.id !== excludePolicyId);
       }
-  });
       // Log PII access
       if (policies.length > 0) {
         await logger.logAuth({
@@ -17429,7 +16869,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!currentUser.companyId) {
         return res.json({ items: [], nextCursor: null });
       }
-  });
       // Build pagination options
       const options: Parameters<typeof storage.getPoliciesList>[1] = {};
       // Parse limit (default 50, max 200)
@@ -17440,12 +16879,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Parse cursor
       if (cursor && typeof cursor === 'string') {
         options.cursor = cursor;
       }
-  });
       // Handle agent filtering based on viewAllCompanyData permission
       if (shouldViewAllCompanyData(currentUser)) {
         // User has permission to view all company data - skip agent filter
@@ -17460,24 +16897,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // User does NOT have viewAllCompanyData permission - filter by their agentId
         options.agentId = currentUser.id;
       }
-  });
       // Add productType filter
       if (productType && typeof productType === 'string') {
         options.productType = productType;
       }
-  });
       // Add OEP filter if specified (maps to productType)
       if (oepFilter === "aca") {
         options.productType = "Health Insurance ACA";
       } else if (oepFilter === "medicare") {
         options.productType = "Medicare";
       }
-  });
       // Add status filter
       if (status && typeof status === 'string') {
         options.status = status;
       }
-  });
       // Add date range filters
       if (effectiveDateFrom && typeof effectiveDateFrom === 'string') {
         options.effectiveDateFrom = effectiveDateFrom;
@@ -17485,17 +16918,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (effectiveDateTo && typeof effectiveDateTo === 'string') {
         options.effectiveDateTo = effectiveDateTo;
       }
-  });
       // Add search filter (applied server-side BEFORE limit)
       if (searchTerm && typeof searchTerm === 'string' && searchTerm.trim()) {
         options.searchTerm = searchTerm.trim();
       }
-  });
       // Add family members search flag
       if (searchFamilyMembers === 'true' || searchFamilyMembers === true) {
         options.includeFamilyMembers = true;
       }
-  });
       // Add folder filter
       if (folderId !== undefined) {
         if (folderId === 'null' || folderId === null) {
@@ -17507,7 +16937,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Fetch policies using optimized function
       const result = await storage.getPoliciesList(currentUser.companyId, options);
       // Log PII access
@@ -17543,12 +16972,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check access: superadmin or same company
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden" });
       }
-  });
       // Return policy with plain text SSN (as stored in database)
       await logger.logAuth({
         req,
@@ -17577,12 +17004,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check access: superadmin or same company
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden" });
       }
-  });
       // Get all policy members for this policy
       const members = await storage.getPolicyMembersByPolicyId(id, currentUser.companyId!);
       // Fetch income and immigration data for each member
@@ -17613,12 +17038,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check access: superadmin or same company
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden" });
       }
-  });
       // Get all policy members for this policy
       const members = await storage.getPolicyMembersByPolicyId(id, currentUser.companyId!);
       // Calculate total income by summing all members' annual income
@@ -17660,7 +17083,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Log access to sensitive data
       await logger.logAuth({
         req,
@@ -17697,19 +17119,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!existingPolicy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check access: superadmin can edit any policy, others only their company's policys
       if (currentUser.role !== "superadmin" && existingPolicy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "You don't have permission to edit this policy" });
       }
-  });
       // AUTO-ASSIGN AGENT ON EDIT: If user is editing the policy and not already the agent, assign them
       // This only happens on actual edits, not when just viewing the policy
       if (!req.body.agentId && existingPolicy.agentId !== currentUser.id) {
         req.body.agentId = currentUser.id;
         console.log(`[AUTO-ASSIGN] Policy ${id}: Auto-assigning editor ${currentUser.id} as agent`);
       }
-  });
       // 2. NO date conversions - keep dates as yyyy-MM-dd strings
       // Apply same address field mapping as in create policy
       const payload = {
@@ -17775,7 +17194,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Log activity (WARNING: Do NOT log the full request body - contains SSN)
       await logger.logCrud({
         req,
@@ -17817,12 +17235,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policyDetail || !policyDetail.policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check access: superadmin can duplicate any policy, others only their company's policies
       if (currentUser.role !== "superadmin" && policyDetail.policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "You don't have permission to duplicate this policy" });
       }
-  });
       // 2. Generate a new unique policy ID
       const { generateShortId } = await import("./id-generator");
       let newPolicyId = generateShortId();
@@ -17832,7 +17248,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         newPolicyId = generateShortId();
         existingPolicy = await storage.getPolicy(newPolicyId);
       }
-  });
       console.log(`[DUPLICATE POLICY] Duplicating policy ${id} to new policy ${newPolicyId}`);
       // 3. Create the new policy with copied data (excluding ID and timestamps)
       const originalPolicy = policyDetail.policy;
@@ -17911,7 +17326,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               totalAnnualIncome: memberDetail.income.totalAnnualIncome,
             });
           }
-  });
           // Copy immigration data if exists
           if (memberDetail.immigration) {
             await storage.createOrUpdatePolicyMemberImmigration({
@@ -17932,13 +17346,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               expirationDate: memberDetail.immigration.expirationDate,
             });
           }
-  });
           // Note: Member documents are NOT copied as they contain file uploads
         }
-  });
         console.log(`[DUPLICATE POLICY] Copied ${policyDetail.members.length} member(s)`);
       }
-  });
       // 5. Get and copy all notes (but mark them as copied)
       const notes = await storage.getPolicyNotes(id, currentUser.companyId!);
       if (notes && notes.length > 0) {
@@ -17954,10 +17365,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             attachments: note.attachments || [],
           });
         }
-  });
         console.log(`[DUPLICATE POLICY] Copied ${notes.length} note(s)`);
       }
-  });
       // 6. Get and copy all reminders
       const reminders = await storage.listPolicyReminders(id, currentUser.companyId!);
       if (reminders && reminders.length > 0) {
@@ -17977,10 +17386,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             reminderType: reminder.reminderType || "other",
           });
         }
-  });
         console.log(`[DUPLICATE POLICY] Copied ${reminders.length} reminder(s)`);
       }
-  });
       // Note: Documents and consents are NOT copied as they contain file uploads
       // and digital signatures that should be unique per policy
       // 7. Log activity
@@ -18021,18 +17428,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!status || !validStatuses.includes(status)) {
         return res.status(400).json({ message: "Invalid status. Must be one of: canceled, completed, migrated, new, pending_document, pending_payment, renewed, updated_by_client, waiting_for_approval, waiting_on_agent" });
       }
-  });
       // Get existing policy and verify ownership
       const existingPolicy = await storage.getPolicy(id);
       if (!existingPolicy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check access: superadmin can edit any policy, others only their company's policies
       if (currentUser.role !== "superadmin" && existingPolicy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "You don't have permission to edit this policy" });
       }
-  });
       // Update the policy status
       const updatedPolicy = await storage.updatePolicy(id, { status });
       // Log activity
@@ -18066,18 +17470,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (typeof isArchived !== "boolean") {
         return res.status(400).json({ message: "Invalid archive value. Must be true or false" });
       }
-  });
       // Get existing policy and verify ownership
       const existingPolicy = await storage.getPolicy(id);
       if (!existingPolicy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check access: superadmin can edit any policy, others only their company's policies
       if (currentUser.role !== "superadmin" && existingPolicy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "You don't have permission to edit this policy" });
       }
-  });
       // Update the policy archive status
       const updatedPolicy = await storage.updatePolicy(id, { isArchived });
       // Log activity
@@ -18111,7 +17512,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!existingPolicy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check access: only superadmin and admin can block policies
       if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
         return res.status(403).json({ message: "Forbidden - Admin or Superadmin only" });
@@ -18119,7 +17519,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentUser.role !== "superadmin" && existingPolicy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "You don't have permission to block this policy" });
       }
-  });
       // Toggle block status
       const newBlockStatus = !existingPolicy.isBlocked;
       const updatedPolicy = await storage.updatePolicy(id, { 
@@ -18160,7 +17559,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check access: superadmin or same company admin
       if (currentUser.role !== "superadmin" && currentUser.role !== "admin") {
         return res.status(403).json({ message: "Forbidden - Admin or Superadmin only" });
@@ -18203,12 +17601,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!originalPolicy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check access: superadmin or same company
       if (currentUser.role !== "superadmin" && originalPolicy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "You don't have permission to renew this policy" });
       }
-  });
       // 2. VALIDACIÓN: Verificar que la póliza tiene al menos un plan
       // Puede ser en selectedPlan (legacy) o en policy_plans (new system)
       const policyPlans = await storage.listPolicyPlans(policyId, originalPolicy.companyId);
@@ -18218,7 +17614,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "Policy must have at least one plan before it can be renewed" 
         });
       }
-  });
       // 3. VALIDACIÓN: Verificar que no existe ya una renovación para 2026
       if (originalPolicy.renewedToPolicyId) {
         return res.status(400).json({ 
@@ -18226,7 +17621,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           renewedPolicyId: originalPolicy.renewedToPolicyId
         });
       }
-  });
       // 4. VALIDACIÓN: Verificar que el productType sea ACA o Medicare
       const isACA = originalPolicy.productType === "Health Insurance ACA" || originalPolicy.productType?.toLowerCase() === 'aca';
       const isMedicare = originalPolicy.productType?.startsWith("Medicare") || originalPolicy.productType?.toLowerCase() === 'medicare';
@@ -18236,7 +17630,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           productType: originalPolicy.productType
         });
       }
-  });
       console.log(`[RENEWAL] Validation passed. Creating renewed policy...`);
       // 5. LÓGICA DE RENOVACIÓN: Clonar la póliza con los cambios especificados
       // NOTE: createPolicy() will generate a new ID automatically, so we don't set it here
@@ -18318,7 +17711,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // 8. Actualizar póliza original
       const updatedOriginalPolicy = await storage.updatePolicy(policyId, {
         renewalStatus: "completed",
@@ -18364,7 +17756,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           } catch (incomeError) {
             console.error(`[RENEWAL] Error cloning income for member ${oldMemberId}:`, incomeError);
           }
-  });
           // 9c. Clone member immigration data
           try {
             const immigration = await storage.getPolicyMemberImmigration(oldMemberId, currentUser.companyId!);
@@ -18383,7 +17774,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           } catch (immigrationError) {
             console.error(`[RENEWAL] Error cloning immigration for member ${oldMemberId}:`, immigrationError);
           }
-  });
           // 9d. Clone member documents
           try {
             const memberDocs = await storage.getPolicyMemberDocuments(oldMemberId, currentUser.companyId!);
@@ -18406,7 +17796,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
   });
         }
-  });
         console.log(`[RENEWAL] Cloned ${members.length} policy members with all related data`);
         // 9e. Clone policy documents (not member documents)
         try {
@@ -18436,7 +17825,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         } catch (policyDocError) {
           console.error("[RENEWAL] Error cloning policy documents:", policyDocError);
         }
-  });
         // 9f. Clone payment methods
         try {
           const paymentMethods = await storage.getPolicyPaymentMethods(policyId, currentUser.companyId!);
@@ -18470,7 +17858,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         } catch (pmError) {
           console.error("[RENEWAL] Error cloning payment methods:", pmError);
         }
-  });
         // 9g. Clone notes
         try {
           const notes = await storage.listPolicyNotes(policyId, currentUser.companyId!, {});
@@ -18497,7 +17884,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         } catch (noteError) {
           console.error("[RENEWAL] Error cloning notes:", noteError);
         }
-  });
         // 9h. Clone reminders
         try {
           const reminders = await storage.listPolicyReminders(policyId, currentUser.companyId!, {});
@@ -18525,7 +17911,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         } catch (reminderError) {
           console.error("[RENEWAL] Error cloning reminders:", reminderError);
         }
-  });
         // 9i. Clone consent documents
         try {
           const consents = await storage.listPolicyConsents(policyId, currentUser.companyId!);
@@ -18568,7 +17953,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error("[RENEWAL] Error cloning members (non-fatal):", memberError);
         // Continue even if member cloning fails
       }
-  });
       // 10. Log activity
       await logger.logCrud({
         req,
@@ -18614,17 +17998,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check access: superadmin or same company
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "You don't have permission to update this policy" });
       }
-  });
       // Validate selectedPlan is provided
       if (!selectedPlan) {
         return res.status(400).json({ message: "selectedPlan is required" });
       }
-  });
       // Extract APTC from selected plan if available
       let aptcData: { aptcAmount?: string; aptcSource?: string; aptcCapturedAt?: string } = {};
       if (selectedPlan.household_aptc !== undefined && selectedPlan.household_aptc !== null) {
@@ -18635,13 +18016,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         };
         console.log(`[APTC_SAVE] Saving APTC to policy: $${selectedPlan.household_aptc} (source: calculated)`);
       }
-  });
       // Update the policy's selected plan with APTC data
       const updatedPolicy = await storage.updatePolicySelectedPlan(id, selectedPlan, aptcData);
       if (!updatedPolicy) {
         return res.status(404).json({ message: "Failed to update policy plan" });
       }
-  });
       // Log activity
       await logger.logCrud({
         req,
@@ -18782,7 +18161,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           if (!walletMember && memberIdFromPlan) {
             walletMember = await walletPassService.getMemberByMemberId(policy.companyId, memberIdFromPlan);
           }
-  });
           
           if (walletMember) {
             // Update wallet member with all plan data including memberId if changed
@@ -18804,7 +18182,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               updateData.memberId = memberIdFromPlan;
               console.log(`[Wallet Sync] Updating memberId from ${walletMember.memberId} to ${memberIdFromPlan}`);
             }
-  });
             
             await walletPassService.updateMember(walletMember.id, updateData);
             
@@ -18834,7 +18211,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               }
   });
             }
-  });
             
             // Generate message based on changed field
             const label = changedField ? fieldLabels[changedField] : "Plan";
@@ -18946,7 +18322,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -18981,7 +18356,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -18990,12 +18364,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Verify member belongs to this policy
       if (member.policyId !== policyId) {
         return res.status(404).json({ message: "Member not found in this policy" });
       }
-  });
       // Return member with plain text SSN (as stored in database)
       await logger.logAuth({
         req,
@@ -19026,7 +18398,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -19035,12 +18406,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Verify member belongs to this policy
       if (member.policyId !== policyId) {
         return res.status(404).json({ message: "Member not found in this policy" });
       }
-  });
       // Validate request body
       const validatedData = updatePolicyMemberSchema.parse(req.body);
       // SSN stored as plain text (no encryption)
@@ -19083,7 +18452,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -19092,7 +18460,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Verify member belongs to this policy
       if (member.policyId !== policyId) {
         return res.status(404).json({ message: "Member not found in this policy" });
@@ -19129,7 +18496,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -19138,7 +18504,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!role || !memberData) {
         return res.status(400).json({ message: "Missing required fields: role and memberData" });
       }
-  });
       // Ensure member exists (this will create a new member)
       const result = await storage.ensurePolicyMember(
         policyId,
@@ -19184,7 +18549,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -19193,12 +18557,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!role || !memberData) {
         return res.status(400).json({ message: "Missing required fields: role and memberData" });
       }
-  });
       // Convert dateOfBirth from string to Date if present
       if (memberData.dateOfBirth && typeof memberData.dateOfBirth === 'string') {
         memberData.dateOfBirth = new Date(memberData.dateOfBirth);
       }
-  });
       // Ensure member exists (create or update)
       const result = await storage.ensurePolicyMember(
         policyId,
@@ -19238,18 +18600,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Validate and prepare update data
       const updateData = {
         firstName: req.body.firstName,
@@ -19302,23 +18661,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Prevent deletion of primary client
       if (member.role === 'client') {
         return res.status(400).json({ message: "Cannot delete primary client" });
       }
-  });
       // Delete member (cascades to income, immigration, documents)
       const success = await storage.deletePolicyMember(memberId, policy.companyId);
       if (!success) {
@@ -19354,13 +18709,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -19369,7 +18722,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!income) {
         return res.status(404).json({ message: "Income information not found" });
       }
-  });
       // Income is stored as plain text (not encrypted)
       res.json({ income });
     } catch (error: any) {
@@ -19388,18 +18740,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Check if annualIncome is empty/null - treat as DELETE request
       // Allow zero values (0, 0.00) to be saved - only delete if truly empty
       const annualIncomeValue = req.body.annualIncome?.toString().trim();
@@ -19420,7 +18769,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
         return res.json({ deleted: true, message: "Income deleted successfully" });
       }
-  });
       // Validate request body (include companyId from member)
       const validatedData = insertPolicyMemberIncomeSchema.parse({
         ...req.body,
@@ -19464,13 +18812,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -19508,13 +18854,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -19523,7 +18867,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!immigration) {
         return res.status(404).json({ message: "Immigration information not found" });
       }
-  });
       // Return immigration with plain text document numbers (as stored in database)
       await logger.logAuth({
         req,
@@ -19553,18 +18896,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Validate request body (include companyId from member)
       const validatedData = insertPolicyMemberImmigrationSchema.parse({
         ...req.body,
@@ -19608,13 +18948,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -19652,13 +18990,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -19681,13 +19017,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -19699,14 +19033,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "Missing required fields: documentType, documentName, fileType, base64Data" 
         });
       }
-  });
       // SECURITY: Validate MIME type against whitelist
       if (!ALLOWED_MIME_TYPES.includes(fileType)) {
         return res.status(400).json({ 
           message: "Invalid file type. Allowed types: PDF, JPEG, PNG, JPG" 
         });
       }
-  });
       // Decode base64 to buffer
       let fileBuffer: Buffer;
       try {
@@ -19714,20 +19046,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } catch (error) {
         return res.status(400).json({ message: "Invalid base64 data" });
       }
-  });
       // SECURITY: Validate file size (10MB max)
       if (fileBuffer.length > MAX_FILE_SIZE) {
         return res.status(400).json({ 
           message: `File too large. Maximum size is ${MAX_FILE_SIZE / (1024 * 1024)}MB` 
         });
       }
-  });
       // Create upload directory with strict path (prevents path traversal)
       const uploadDir = path.join(process.cwd(), 'server', 'uploads', policy.companyId, member.policyId, memberId);
       if (!fs.existsSync(uploadDir)) {
         fs.mkdirSync(uploadDir, { recursive: true });
       }
-  });
       // SECURITY: Generate secure filename with crypto random bytes
       // Sanitize original filename and extract extension
       const sanitizedName = documentName.replace(/[^a-zA-Z0-9.-]/g, '_').replace(/\.{2,}/g, '_');
@@ -19790,13 +19119,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -19805,7 +19132,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!document) {
         return res.status(404).json({ message: "Document not found" });
       }
-  });
       // Verify document belongs to this member
       if (document.memberId !== memberId) {
         return res.status(404).json({ message: "Document not found for this member" });
@@ -19828,13 +19154,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -19843,19 +19167,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!document) {
         return res.status(404).json({ message: "Document not found" });
       }
-  });
       // Verify document belongs to this member
       if (document.memberId !== memberId) {
         return res.status(404).json({ message: "Document not found for this member" });
       }
-  });
       // Get full file path
       const filePath = path.join(process.cwd(), 'server', document.documentPath);
       // Check if file exists
       if (!fs.existsSync(filePath)) {
         return res.status(404).json({ message: "Document file not found on disk" });
       }
-  });
       // SECURITY: Sanitize filename for Content-Disposition header to prevent header injection
       const safeFilename = document.documentName.replace(/["\r\n]/g, '');
       // SECURITY: Validate MIME type against whitelist before serving
@@ -19885,13 +19206,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!member) {
         return res.status(404).json({ message: "Member not found" });
       }
-  });
       // Get policy to check company ownership
       const policy = await storage.getPolicy(member.policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -19900,18 +19219,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!document) {
         return res.status(404).json({ message: "Document not found" });
       }
-  });
       // Verify document belongs to this member
       if (document.memberId !== memberId) {
         return res.status(404).json({ message: "Document not found for this member" });
       }
-  });
       // Delete file from disk
       const filePath = path.join(process.cwd(), 'server', document.documentPath);
       if (fs.existsSync(filePath)) {
         fs.unlinkSync(filePath);
       }
-  });
       // Delete document record from database
       const deleted = await storage.deletePolicyMemberDocument(docId, policy.companyId);
       if (!deleted) {
@@ -19948,12 +19264,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get ALL policies for this client to share payment methods across policy years
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       // Get payment methods for ALL policies of this client
@@ -19987,24 +19301,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get ALL policies for this client (payment methods are shared across policy years)
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       const paymentMethod = await storage.getPolicyPaymentMethodById(paymentMethodId, policy.companyId);
       if (!paymentMethod) {
         return res.status(404).json({ message: "Payment method not found" });
       }
-  });
       // Check if payment method belongs to any policy of this client
       if (!canonicalPolicyIds.includes(paymentMethod.policyId)) {
         return res.status(404).json({ message: "Payment method not found in this client's policies" });
       }
-  });
       // Return payment method with plain text data
       await logger.logAuth({
         req,
@@ -20035,12 +19345,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Validate request body (include companyId and policyId)
       const validatedData = insertPolicyPaymentMethodSchema.parse({
         ...req.body,
@@ -20085,12 +19393,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get ALL policies for this client (payment methods are shared across policy years)
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       // Verify payment method exists and belongs to this client's policies
@@ -20098,12 +19404,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!existingPaymentMethod) {
         return res.status(404).json({ message: "Payment method not found" });
       }
-  });
       // Check if payment method belongs to any policy of this client
       if (!canonicalPolicyIds.includes(existingPaymentMethod.policyId)) {
         return res.status(404).json({ message: "Payment method not found in this client's policies" });
       }
-  });
       // Validate request body
       const validatedData = updatePolicyPaymentMethodSchema.parse(req.body);
       // Update payment method as plain text (no encryption)
@@ -20147,12 +19451,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get ALL policies for this client (payment methods are shared across policy years)
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       // Verify payment method exists and belongs to this client's policies
@@ -20160,12 +19462,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!paymentMethod) {
         return res.status(404).json({ message: "Payment method not found" });
       }
-  });
       // Check if payment method belongs to any policy of this client
       if (!canonicalPolicyIds.includes(paymentMethod.policyId)) {
         return res.status(404).json({ message: "Payment method not found in this client's policies" });
       }
-  });
       // Delete payment method
       const deleted = await storage.deletePolicyPaymentMethod(paymentMethodId, policy.companyId);
       if (!deleted) {
@@ -20200,12 +19500,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Verify payment method exists and belongs to this policy
       const paymentMethod = await storage.getPolicyPaymentMethodById(paymentMethodId, policy.companyId);
       if (!paymentMethod) {
@@ -20214,7 +19512,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (paymentMethod.policyId !== policyId) {
         return res.status(404).json({ message: "Payment method not found in this policy" });
       }
-  });
       // Set as default payment method
       await storage.setDefaultPolicyPaymentMethod(paymentMethodId, policyId, policy.companyId);
       await logger.logCrud({
@@ -20247,7 +19544,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -20297,12 +19593,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get canonical policy IDs (includes all policies for this client)
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       // Get notes for ALL policies of this client
@@ -20325,12 +19619,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get ALL policies for this client (notes are shared across policy years)
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       // Get the note to check permissions
@@ -20344,17 +19636,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!existingNote) {
         return res.status(404).json({ message: "Note not found" });
       }
-  });
       // Check if note belongs to any policy of this client
       if (!canonicalPolicyIds.includes(existingNote.policyId)) {
         return res.status(404).json({ message: "Note not found in this client's policies" });
       }
-  });
       // Permission check: only creator can edit (unless superadmin)
       if (currentUser.role !== "superadmin" && existingNote.createdBy !== currentUser.id) {
         return res.status(403).json({ message: "Forbidden - only the note creator can edit this note" });
       }
-  });
       // Build update object with only provided fields
       const updateData: any = {};
       if (note !== undefined) updateData.note = note.trim();
@@ -20365,7 +19654,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (Object.keys(updateData).length === 0) {
         return res.status(400).json({ message: "No fields to update" });
       }
-  });
       // Update the note
       await db.update(policyNotes)
         .set({ ...updateData, updatedAt: new Date() })
@@ -20402,12 +19690,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get ALL policies for this client (notes are shared across policy years)
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       // Get the note to check permissions
@@ -20421,12 +19707,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!existingNote) {
         return res.status(404).json({ message: "Note not found" });
       }
-  });
       // Check if note belongs to any policy of this client
       if (!canonicalPolicyIds.includes(existingNote.policyId)) {
         return res.status(404).json({ message: "Note not found in this client's policies" });
       }
-  });
       // Permission check: only creator, company admin, or superadmin can delete
       const isCreator = existingNote.createdBy === currentUser.id;
       const isCompanyAdmin = currentUser.role === 'admin' && currentUser.companyId === policy.companyId;
@@ -20434,7 +19718,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!isCreator && !isCompanyAdmin && !isSuperAdmin) {
         return res.status(403).json({ message: "Forbidden - only the note creator or company admin can delete this note" });
       }
-  });
       // Delete the note (storage method handles company ID filtering)
       await storage.deletePolicyNote(noteId, currentUser.role === "superadmin" ? undefined : policy.companyId);
       await logger.logCrud({
@@ -20465,12 +19748,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Set up multer for file upload
       const uploadsDir = path.join(process.cwd(), 'uploads', 'notes_attachments');
       if (!fs.existsSync(uploadsDir)) {
@@ -20519,7 +19800,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
-  });
       // Return the file URL/path
       const fileUrl = `/uploads/notes_attachments/${req.file.filename}`;
       await logger.logCrud({
@@ -20560,12 +19840,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get canonical policy IDs (includes all policies for this client)
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       // List documents for ALL policies of this client with optional filters
@@ -20590,12 +19868,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Handle upload with promisified multer
       await new Promise<void>((resolve, reject) => {
         documentUpload.single('file')(req, res, (err: any) => {
@@ -20618,7 +19894,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!req.file) {
         return res.status(400).json({ message: "No file uploaded" });
       }
-  });
       // Get category, description, and belongsTo from body
       const { category, description, belongsTo } = req.body;
       // Validate category if provided
@@ -20668,23 +19943,19 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get document
       const document = await storage.getPolicyDocument(documentId, policy.companyId);
       if (!document) {
         return res.status(404).json({ message: "Document not found" });
       }
-  });
       // Verify document belongs to policy
       if (document.policyId !== policyId) {
         return res.status(403).json({ message: "Document does not belong to this policy" });
       }
-  });
       // Extract filename from fileUrl
       const filename = path.basename(document.fileUrl);
       const filePath = path.join(process.cwd(), 'uploads', 'documents', filename);
@@ -20693,7 +19964,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error(`File not found at path: ${filePath}`);
         return res.status(404).json({ message: "File not found on server" });
       }
-  });
       // Prevent path traversal attacks
       const realPath = fs.realpathSync(filePath);
       const uploadsDir = fs.realpathSync(path.join(process.cwd(), 'uploads', 'documents'));
@@ -20701,7 +19971,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error(`Path traversal attempt detected: ${realPath}`);
         return res.status(403).json({ message: "Invalid file path" });
       }
-  });
       // Set proper headers and stream file
       res.setHeader('Content-Type', document.fileType);
       res.setHeader('Content-Disposition', `attachment; filename="${document.fileName}"`);
@@ -20734,12 +20003,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get ALL policies for this client (documents are shared across policy years)
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       // Get document
@@ -20747,18 +20014,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!document) {
         return res.status(404).json({ message: "Document not found" });
       }
-  });
       // Check if document belongs to any policy of this client
       if (!canonicalPolicyIds.includes(document.policyId)) {
         return res.status(403).json({ message: "Document does not belong to this client's policies" });
       }
-  });
       // Delete from database first
       const deleted = await storage.deletePolicyDocument(documentId, policy.companyId);
       if (!deleted) {
         return res.status(500).json({ message: "Failed to delete document from database" });
       }
-  });
       // Extract filename from fileUrl and delete physical file
       const filename = path.basename(document.fileUrl);
       const filePath = path.join(process.cwd(), 'uploads', 'documents', filename);
@@ -20807,12 +20071,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Build filters
       const filters: { status?: string; priority?: string; userId?: string } = {};
       if (status && typeof status === 'string') filters.status = status;
@@ -20837,7 +20099,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -20846,7 +20107,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!reminder) {
         return res.status(404).json({ message: "Reminder not found" });
       }
-  });
       // Verify reminder belongs to policy
       if (reminder.policyId !== policyId) {
         return res.status(403).json({ message: "Reminder does not belong to this policy" });
@@ -20869,12 +20129,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Validate request body
       const reminderData = insertPolicyReminderSchema.parse({
         ...req.body,
@@ -20916,12 +20174,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Verify reminder exists and belongs to policy
       const existingReminder = await storage.getPolicyReminder(reminderId, policy.companyId);
       if (!existingReminder) {
@@ -20930,7 +20186,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (existingReminder.policyId !== policyId) {
         return res.status(403).json({ message: "Reminder does not belong to this policy" });
       }
-  });
       // Validate update data
       const updateData = updatePolicyReminderSchema.parse(req.body);
       const updatedReminder = await storage.updatePolicyReminder(reminderId, policy.companyId, updateData);
@@ -20965,12 +20220,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Verify reminder exists and belongs to policy
       const existingReminder = await storage.getPolicyReminder(reminderId, policy.companyId);
       if (!existingReminder) {
@@ -21010,12 +20263,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Verify reminder exists and belongs to policy
       const existingReminder = await storage.getPolicyReminder(reminderId, policy.companyId);
       if (!existingReminder) {
@@ -21055,12 +20306,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Verify reminder exists and belongs to policy
       const existingReminder = await storage.getPolicyReminder(reminderId, policy.companyId);
       if (!existingReminder) {
@@ -21072,7 +20321,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!duration) {
         return res.status(400).json({ message: "duration is required" });
       }
-  });
       // Calculate snooze until date based on duration
       const now = new Date();
       let snoozeDate = new Date(now);
@@ -21134,18 +20382,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!plan) {
         return res.status(400).json({ message: "Plan data is required" });
       }
-  });
       // Get policy to verify access
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Update policy with selected plan
       const updatedPolicy = await storage.updatePolicy(policyId, {
         selectedPlan: plan as any, // Store the complete plan object
@@ -21153,7 +20398,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!updatedPolicy) {
         return res.status(500).json({ message: "Failed to update policy with selected plan" });
       }
-  });
       // Log the activity
       await logger.logCrud({
         req,
@@ -21189,7 +20433,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Validate required policy data for CMS API search
       if (!policy.zipCode || !policy.physicalState || !policy.clientDateOfBirth) {
         return res.status(400).json({ 
@@ -21264,7 +20507,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           householdAptc = marketplaceData.household_aptc;
           householdCsr = marketplaceData.household_csr;
         }
-  });
         
         // Search for the plan in current page
         foundPlan = marketplaceData.plans?.find((p: any) => p.id === planId);
@@ -21273,7 +20515,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.log(`[MARKETPLACE_PLAN_SEARCH] Found plan ${planId} on page ${currentPage}`);
           break;
         }
-  });
         
         // Check if there are more pages
         const totalPages = marketplaceData.totalPages || 1;
@@ -21285,7 +20526,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         
         currentPage++;
       }
-  });
       
       if (!foundPlan) {
         return res.status(404).json({ 
@@ -21360,18 +20600,15 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policyId) {
         return res.status(400).json({ message: "Policy ID is required" });
       }
-  });
       // Get policy details
       const policy = await storage.getPolicy(policyId);
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get policy members
       const members = await storage.getPolicyMembersByPolicyId(policyId, policy.companyId);
       // Get household income - PRIORITY: use policy.annualHouseholdIncome if available, otherwise calculate from members
@@ -21395,12 +20632,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }, 0);
         console.log(`[MARKETPLACE_PLANS] Calculated income from ${members.length} members: $${totalIncome}`);
       }
-  });
       // Validate address information
       if (!policy.physical_postal_code || !policy.physical_county || !policy.physical_state) {
         return res.status(400).json({ message: "Policy address information incomplete" });
       }
-  });
       // Use buildCMSPayloadFromPolicy to construct the payload respecting isApplicant flags
       // This ensures accurate APTC/CSR calculations by sending the correct number of applicants
       const policyData = buildCMSPayloadFromPolicy({
@@ -21427,7 +20662,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       console.log(`[MARKETPLACE_PLANS] Fetching plans for policy ${policyId} - Effective Date: ${policy.effectiveDate}, Target Year: ${targetYear}`);
       // Extract saved APTC from policy if available
       const aptcOverride = policy.aptcAmount !== null && policy.aptcAmount !== undefined
@@ -21436,7 +20670,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (aptcOverride !== undefined) {
         console.log(`[MARKETPLACE_PLANS] Using saved APTC from policy: $${aptcOverride} (source: ${policy.aptcSource})`);
       }
-  });
       // Fetch plans from CMS Marketplace with pagination, year, and filters
       const hasFilters = Object.keys(filters).some(key => filters[key as keyof typeof filters]?.length);
       const marketplaceData = await fetchMarketplacePlans(
@@ -21469,12 +20702,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Validate request body
       const statusUpdateSchema = z.object({
         status: z.enum(["new", "pending_document", "pending_payment", "waiting_on_agent", "waiting_for_approval", "updated_by_client", "completed", "renewed", "canceled"]).optional(),
@@ -21490,7 +20721,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!updatedPolicy) {
         return res.status(500).json({ message: "Failed to update policy statuses" });
       }
-  });
       // Log the activity
       await logger.logCrud({
         req,
@@ -21536,12 +20766,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Create consent document
       const consent = await storage.createPolicyConsentDocument(policyId, policy.companyId, currentUser.id);
       await logger.logCrud({
@@ -21572,13 +20800,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!channel || !['email', 'sms', 'link'].includes(channel)) {
         return res.status(400).json({ message: "Invalid channel. Must be 'email', 'sms', or 'link'" });
       }
-  });
       // Get consent document
       const consent = await storage.getPolicyConsentById(consentId, currentUser.companyId!);
       if (!consent) {
         return res.status(404).json({ message: "Consent document not found" });
       }
-  });
       // Get policy and company details
       const policy = await storage.getPolicy(consent.policyId);
       if (!policy) {
@@ -21588,7 +20814,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!company) {
         return res.status(404).json({ message: "Company not found" });
       }
-  });
       // Generate consent URL
       const baseUrl = process.env.APP_URL || 'http://localhost:5000';
       const consentUrl = `${baseUrl}/consent/${consent.token}`;
@@ -21599,7 +20824,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (!target) {
           return res.status(400).json({ message: "Email address is required for email delivery" });
         }
-  });
         // Use client's preferred language for simple notification email
         const isSpanish = policy.clientPreferredLanguage === 'spanish' || policy.clientPreferredLanguage === 'es';
         const agentName = `${currentUser.firstName || ''} ${currentUser.lastName || ''}`.trim() || 'Your Agent';
@@ -21616,7 +20840,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           // It's a relative path, convert to absolute URL
           logoUrl = `${baseUrl}${company.logo.startsWith('/') ? '' : '/'}${company.logo}`;
         }
-  });
         // If logo is data URI or null, don't use it (Gmail blocks data URIs)
         // Simple email with just notification message and button (no full document)
         const htmlContent = `
@@ -21694,7 +20917,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (!target) {
           return res.status(400).json({ message: "Phone number is required for SMS delivery" });
         }
-  });
         // Use client's preferred language
         const isSpanish = policy.clientPreferredLanguage === 'spanish' || policy.clientPreferredLanguage === 'es';
         const smsMessage = isSpanish 
@@ -21718,7 +20940,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         sentAt = new Date();
         await storage.createPolicyConsentEvent(consentId, 'sent', { channel, url: consentUrl }, currentUser.id);
       }
-  });
       // Update consent document with delivery info
       const updatedConsent = await storage.updatePolicyConsentDocument(consentId, {
         status: 'sent',
@@ -21756,12 +20977,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!policy) {
         return res.status(404).json({ message: "Policy not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && policy.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get canonical policy IDs (includes all policies for this client)
       const canonicalPolicyIds = await storage.getCanonicalPolicyIds(policyId);
       // Get consents for ALL policies of this client
@@ -21783,7 +21002,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!consent) {
         return res.status(404).json({ message: "Consent document not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && consent.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -22014,12 +21232,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!landingPage) {
         return res.status(404).json({ message: "Landing page not found" });
       }
-  });
       // Check user ownership - users can only access their OWN landing pages
       if (currentUser.role !== "superadmin" && landingPage.userId !== currentUser.id) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get blocks for this landing page
       const blocks = await storage.getBlocksByLandingPage(id);
       res.json({ landingPage, blocks });
@@ -22037,12 +21253,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!landingPage) {
         return res.status(404).json({ message: "Landing page not found" });
       }
-  });
       // Only show published pages
       if (!landingPage.isPublished) {
         return res.status(404).json({ message: "Landing page not found" });
       }
-  });
       // Check password protection
       if (landingPage.isPasswordProtected) {
         const { password } = req.query;
@@ -22054,7 +21268,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Get visible blocks for this landing page
       const allBlocks = await storage.getBlocksByLandingPage(landingPage.id);
       const blocks = allBlocks.filter(block => block.isVisible);
@@ -22082,7 +21295,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (existingPage) {
         return res.status(400).json({ message: "Slug already exists" });
       }
-  });
       // Create landing page
       const landingPage = await storage.createLandingPage({
         ...validatedData,
@@ -22120,12 +21332,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!existingPage) {
         return res.status(404).json({ message: "Landing page not found" });
       }
-  });
       // Check user ownership - users can only modify their OWN landing pages
       if (currentUser.role !== "superadmin" && existingPage.userId !== currentUser.id) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Validate partial update data
       const validatedData = updateLandingPageSchema.parse(req.body);
       // If slug is being updated, check it doesn't exist
@@ -22136,7 +21346,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Update landing page
       const landingPage = await storage.updateLandingPage(id, validatedData);
       if (!landingPage) {
@@ -22173,7 +21382,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!landingPage) {
         return res.status(404).json({ message: "Landing page not found" });
       }
-  });
       // Check user ownership - users can only delete their OWN landing pages
       if (currentUser.role !== "superadmin" && landingPage.userId !== currentUser.id) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -22206,7 +21414,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!landingPage) {
         return res.status(404).json({ message: "Landing page not found" });
       }
-  });
       // Check user ownership - users can only access blocks from their OWN landing pages
       if (currentUser.role !== "superadmin" && landingPage.userId !== currentUser.id) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -22229,12 +21436,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!landingPage) {
         return res.status(404).json({ message: "Landing page not found" });
       }
-  });
       // Check user ownership - users can only create blocks on their OWN landing pages
       if (currentUser.role !== "superadmin" && landingPage.userId !== currentUser.id) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Validate request body
       const validatedData = insertLandingBlockSchema.parse(req.body);
       // Create block
@@ -22273,7 +21478,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!existingBlock) {
         return res.status(404).json({ message: "Block not found" });
       }
-  });
       // Verify ownership through landing page BEFORE updating
       const landingPage = await storage.getLandingPageById(existingBlock.landingPageId);
       if (!landingPage) {
@@ -22282,7 +21486,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (currentUser.role !== "superadmin" && landingPage.userId !== currentUser.id) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Validate partial update data
       const validatedData = insertLandingBlockSchema.partial().parse(req.body);
       // Update block only after authorization
@@ -22321,7 +21524,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!block) {
         return res.status(404).json({ message: "Block not found" });
       }
-  });
       // Verify ownership through landing page BEFORE deleting
       const landingPage = await storage.getLandingPageById(block.landingPageId);
       if (!landingPage) {
@@ -22359,17 +21561,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!landingPage) {
         return res.status(404).json({ message: "Landing page not found" });
       }
-  });
       // Check user ownership - users can only reorder blocks on their OWN landing pages
       if (currentUser.role !== "superadmin" && landingPage.userId !== currentUser.id) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Validate blockIds is an array
       if (!Array.isArray(blockIds)) {
         return res.status(400).json({ message: "blockIds must be an array" });
       }
-  });
       // Reorder blocks
       await storage.reorderBlocks(landingPageId, blockIds);
       await logger.logCrud({
@@ -22397,17 +21596,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!landingPage) {
         return res.status(404).json({ message: "Landing page not found" });
       }
-  });
       // Check user ownership - users can only sync blocks on their OWN landing pages
       if (currentUser.role !== "superadmin" && landingPage.userId !== currentUser.id) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Validate blocks is an array
       if (!Array.isArray(blocks)) {
         return res.status(400).json({ message: "blocks must be an array" });
       }
-  });
       // Validate all blocks belong to this landing page
       const invalidBlocks = blocks.filter((block: any) => block.landingPageId !== landingPageId);
       if (invalidBlocks.length > 0) {
@@ -22415,7 +21611,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "All blocks must belong to the specified landing page" 
         });
       }
-  });
       // Sync blocks (uses transaction for atomicity)
       const syncedBlocks = await storage.syncLandingBlocks(landingPageId, blocks);
       await logger.logCrud({
@@ -22448,7 +21643,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!landingPage) {
         return res.status(404).json({ message: "Landing page not found" });
       }
-  });
       // Increment view count
       await storage.incrementLandingPageView(id);
       // Create analytics event
@@ -22509,12 +21703,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!landingPage) {
         return res.status(404).json({ message: "Landing page not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get analytics
       const analytics = await storage.getLandingAnalytics(id, {
         eventType: eventType as string | undefined,
@@ -22540,7 +21732,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!landingPage.isPublished) {
         return res.status(403).json({ message: "Landing page is not published" });
       }
-  });
       // Validate request body
       const validatedData = insertLandingLeadSchema.parse({
         ...req.body,
@@ -22586,12 +21777,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!landingPage) {
         return res.status(404).json({ message: "Landing page not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get leads
       const leads = await storage.getLandingLeads(id, {
         limit: limit ? parseInt(limit as string) : undefined,
@@ -22617,7 +21806,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!landingPage.isPublished) {
         return res.status(403).json({ message: "Landing page is not published" });
       }
-  });
       // Validate request body
       const validatedData = insertLandingAppointmentSchema.parse({
         ...req.body,
@@ -22655,12 +21843,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!landingPage) {
         return res.status(404).json({ message: "Landing page not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
       }
-  });
       // Get appointments
       const appointments = await storage.getLandingAppointments(id, {
         limit: limit ? parseInt(limit as string) : undefined,
@@ -22688,13 +21874,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!appointment) {
         return res.status(404).json({ message: "Appointment not found" });
       }
-  });
       // Verify user has access to the landing page
       const landingPage = await storage.getLandingPageById(appointment.landingPageId);
       if (!landingPage) {
         return res.status(404).json({ message: "Landing page not found" });
       }
-  });
       // Check company ownership
       if (currentUser.role !== "superadmin" && landingPage.companyId !== currentUser.companyId) {
         return res.status(403).json({ message: "Forbidden - access denied" });
@@ -22730,7 +21914,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!dateRegex.test(date)) {
         return res.status(400).json({ message: "Invalid date format. Use yyyy-MM-dd" });
       }
-  });
       // Get available slots
       const slots = await storage.getAvailableSlots(blockId, date);
       res.json({ 
@@ -22761,13 +21944,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "Duplicate appointment - you already have an appointment at this time" 
         });
       }
-  });
       // Verify landing page exists to get userId and companyId
       const landingPage = await storage.getLandingPageById(data.landingPageId);
       if (!landingPage) {
         return res.status(404).json({ message: "Landing page not found" });
       }
-  });
       // Check slot availability
       const slotAvailable = await isSlotAvailable({
         date: data.appointmentDate,
@@ -22781,7 +21962,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           message: "Selected time slot is not available" 
         });
       }
-  });
       // Create appointment
       const appointment = await storage.createLandingAppointment(data);
       // Send notification to the landing page owner
@@ -22800,7 +21980,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Log but don't fail the request if notification fails
         console.error('Failed to send appointment notification:', notificationError);
       }
-  });
       // Send SMS confirmation to the customer
       if (data.phone && twilioService.isInitialized()) {
         try {
@@ -22824,7 +22003,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               console.error(`Invalid phone number format: ${data.phone} (${cleanPhone})`);
               throw new Error('Invalid phone number format');
             }
-  });
             // Format date in Spanish (e.g., "jueves 5 de noviembre")
             const appointmentDateObj = new Date(data.appointmentDate);
             const days = ['domingo', 'lunes', 'martes', 'miércoles', 'jueves', 'viernes', 'sábado'];
@@ -22926,13 +22104,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!existingAppointment) {
         return res.status(404).json({ message: "Appointment not found" });
       }
-  });
       // Verify landing page exists and check ownership
       const landingPage = await storage.getLandingPageById(existingAppointment.landingPageId);
       if (!landingPage) {
         return res.status(404).json({ message: "Landing page not found" });
       }
-  });
       // Check authorization: user must own the landing page or be admin/superadmin
       if (
         currentUser.role !== "superadmin" && 
@@ -22941,7 +22117,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       ) {
         return res.status(403).json({ message: "Forbidden - you don't have permission to update this appointment" });
       }
-  });
       // Update appointment
       const updatedAppointment = await storage.updateLandingAppointment(id, validatedData);
       if (!updatedAppointment) {
@@ -22972,13 +22147,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!existingAppointment) {
         return res.status(404).json({ message: "Appointment not found" });
       }
-  });
       // Verify landing page exists and check ownership
       const landingPage = await storage.getLandingPageById(existingAppointment.landingPageId);
       if (!landingPage) {
         return res.status(404).json({ message: "Landing page not found" });
       }
-  });
       // Check authorization: user must own the landing page or be admin/superadmin
       if (
         currentUser.role !== "superadmin" && 
@@ -22987,7 +22160,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       ) {
         return res.status(403).json({ message: "Forbidden - you don't have permission to delete this appointment" });
       }
-  });
       // Delete the appointment
       await storage.deleteLandingAppointment(id);
       res.json({ message: "Appointment deleted successfully" });
@@ -23009,13 +22181,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!landingPageId || typeof landingPageId !== 'string') {
         return res.status(400).json({ message: "landingPageId parameter is required" });
       }
-  });
       // Validate date format
       const dateRegex = /^\d{4}-\d{2}-\d{2}$/;
       if (!dateRegex.test(date)) {
         return res.status(400).json({ message: "Invalid date format. Use yyyy-MM-dd" });
       }
-  });
       // Get landing page to find the user
       console.log("[APPOINTMENT SLOTS] Looking for landing page with ID:", landingPageId);
       const landingPage = await storage.getLandingPageById(landingPageId);
@@ -23023,20 +22193,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!landingPage) {
         return res.status(404).json({ message: "Landing page not found" });
       }
-  });
       // Get user to determine companyId
       const user = await storage.getUser(landingPage.userId);
       if (!user || !user.companyId) {
         return res.status(404).json({ message: "User not found or not associated with a company" });
       }
-  });
       // Parse duration (default to 30)
       const appointmentDuration = duration ? parseInt(duration as string) : 30;
       // Validate duration
       if (appointmentDuration !== 30 && appointmentDuration !== 60) {
         return res.status(400).json({ message: "Duration must be 30 or 60 minutes" });
       }
-  });
       // Get available slots
       const slots = await getAvailableSlots({
         date,
@@ -23220,7 +22387,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!req.file) {
         return res.status(400).json({ message: 'No file uploaded' });
       }
-  });
       // Construct public URL for the uploaded file
       const domain = process.env.PUBLIC_BASE_URL || `${req.protocol}://${req.get('host')}`;
       const mediaUrl = `${domain}/uploads/bulkvs-media/${req.file.filename}`;
@@ -23241,7 +22407,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!npa) {
         return res.status(400).json({ message: "Area code (npa) is required" });
       }
-  });
       // CRITICAL: Prohibit toll-free area codes
       // Toll-free numbers (800, 833, 844, 855, 866, 877, 888) are NOT allowed
       const TOLL_FREE_AREA_CODES = ['800', '833', '844', '855', '866', '877', '888'];
@@ -23295,19 +22460,16 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!did) {
         return res.status(400).json({ message: "DID (phone number) is required" });
       }
-  });
       // Check if user already has a phone number (limit: one per user)
       const userPhoneNumbers = await storage.getBulkvsPhoneNumbersByUser(user.id);
       if (userPhoneNumbers && userPhoneNumbers.length > 0) {
         return res.status(400).json({ message: "You already have a phone number. Each user can only have one phone number." });
       }
-  });
       // Check if number already exists
       const existing = await storage.getBulkvsPhoneNumberByDid(did);
       if (existing) {
         return res.status(400).json({ message: "This number is already provisioned" });
       }
-  });
       // Fixed campaign ID for all numbers
       const FIXED_CAMPAIGN_ID = "C3JXHXH";
       // Purchase the DID from BulkVS
@@ -23318,7 +22480,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error(`[BulkVS] Failed to purchase DID:`, error.message);
         return res.status(500).json({ message: `Failed to purchase phone number: ${error.message}` });
       }
-  });
       // Extract metadata from DID
       const areaCode = did.substring(2, 5); // E.164 format: +1NXXNXXXXXX
       // Get company info for Stripe billing
@@ -23326,7 +22487,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!company) {
         return res.status(404).json({ message: "Company not found" });
       }
-  });
       // Create Stripe subscription for $10/month recurring billing
       const { stripe } = await import("./stripe");
       // Ensure company has a Stripe customer ID
@@ -23343,7 +22503,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         stripeCustomerId = stripeCustomer.id;
         await storage.updateCompany(company.id, { stripeCustomerId });
       }
-  });
       // Create or get BulkVS Phone Number product
       const products = await stripe.products.search({
         query: 'name:"BulkVS Phone Number"',
@@ -23355,7 +22514,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           description: 'Dedicated phone number for SMS/MMS messaging',
         });
       }
-  });
       // Create or get $10/month price
       const prices = await stripe.prices.list({
         product: product.id,
@@ -23373,7 +22531,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           },
         });
       }
-  });
       // Create subscription
       const subscription = await stripe.subscriptions.create({
         customer: stripeCustomerId,
@@ -23411,7 +22568,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error(`[Webhook] Failed to create webhook:`, webhookError.message);
         throw new Error(`Failed to create webhook in BulkVS: ${webhookError.message}`);
       }
-  });
       // Normalize DID to 10-digit format for database storage
       const normalizedDid = formatForStorage(did);
       // Save to database with billing info (initially without full activation)
@@ -23496,7 +22652,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       )) {
         return res.status(400).json({ message: error.message });
       }
-  });
       // Other errors are server errors
       res.status(500).json({ message: "Failed to provision phone number", error: error.message });
     }
@@ -23540,7 +22695,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (phoneNumber.userId !== user.id) {
         return res.status(403).json({ message: "Forbidden" });
       }
-  });
       // Build update object
       const updateData: any = {};
       if (displayName !== undefined) {
@@ -23570,7 +22724,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (callForwardNumber !== undefined) {
         updateData.callForwardNumber = callForwardNumber;
       }
-  });
       // Update Call Forwarding in BulkVS API when settings change
       if (callForwardEnabled !== undefined || callForwardNumber !== undefined) {
         try {
@@ -23593,7 +22746,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Update phone number
       const updated = await storage.updateBulkvsPhoneNumber(id, updateData);
       console.log(`[BulkVS] Phone number ${phoneNumber.did} settings updated:`, updateData);
@@ -23617,13 +22769,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!cnam || typeof cnam !== 'string') {
         return res.status(400).json({ message: "CNAM is required and must be a string" });
       }
-  });
       // Sanitize CNAM: Max 15 alphanumeric characters
       const sanitizedCNAM = cnam.replace(/[^a-zA-Z0-9\s]/g, '').slice(0, 15);
       if (sanitizedCNAM.length === 0) {
         return res.status(400).json({ message: "CNAM must contain at least 1 alphanumeric character" });
       }
-  });
       // Verify phone number belongs to user
       const phoneNumber = await storage.getBulkvsPhoneNumber(id);
       if (!phoneNumber) {
@@ -23632,7 +22782,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (phoneNumber.userId !== user.id) {
         return res.status(403).json({ message: "Forbidden" });
       }
-  });
       console.log(`[BulkVS] Manually updating CNAM for ${phoneNumber.did} to "${sanitizedCNAM}"...`);
       // Update CNAM via BulkVS API
       try {
@@ -23677,7 +22826,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (phoneNumber.userId !== user.id) {
         return res.status(403).json({ message: "Forbidden" });
       }
-  });
       // Cancel Stripe subscription if exists
       if (phoneNumber.stripeSubscriptionId) {
         try {
@@ -23690,7 +22838,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Disassociate webhook and clear call forwarding from BulkVS
       // NOTE: We keep the webhook in BulkVS for reactivation - just disassociate it
       try {
@@ -23702,7 +22849,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error(`[BulkVS] Error managing webhook:`, webhookError.message);
         // Continue with deactivation even if webhook management fails
       }
-  });
       // Update status to inactive
       await storage.updateBulkvsPhoneNumber(id, {
         status: "inactive",
@@ -23732,12 +22878,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (phoneNumber.userId !== user.id) {
         return res.status(403).json({ message: "Forbidden" });
       }
-  });
       // Verify phone number is cancelled
       if (phoneNumber.status !== "inactive" || phoneNumber.billingStatus !== "cancelled") {
         return res.status(400).json({ message: "Phone number is not cancelled" });
       }
-  });
       // Check if user already has an active phone number (1 number per user limit)
       const userPhoneNumbers = await storage.getBulkvsPhoneNumbersByUser(user.id);
       const hasActiveNumber = userPhoneNumbers.some(p => p.id !== id && p.status === "active");
@@ -23748,7 +22892,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!company) {
         return res.status(404).json({ message: "Company not found" });
       }
-  });
       console.log(`[REACTIVATION] Starting safe reactivation for ${phoneNumber.did}...`);
       // ===== STEP 1: VERIFY OR CREATE WEBHOOK =====
       // Hoist all webhook variables to ensure they're accessible throughout the function
@@ -23771,7 +22914,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // If webhook doesn't exist, create a new one
       if (!webhookExists || !webhookName || !webhookToken) {
         console.log(`[REACTIVATION] Creating new webhook...`);
@@ -23804,7 +22946,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         // Wait 1 second before activating
         await new Promise(resolve => setTimeout(resolve, 3000));
       }
-  });
       // ===== STEP 2: ACTIVATE NUMBER IN BULKVS (NO CHARGE YET) =====
       console.log(`[REACTIVATION] Activating number ${phoneNumber.did} in BulkVS...`);
       let activationResult;
@@ -23823,7 +22964,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           error: activationError.message,
         });
       }
-  });
       // ===== STEP 4: ONLY NOW CREATE STRIPE SUBSCRIPTION (CHARGE CUSTOMER) =====
       console.log(`[REACTIVATION] BulkVS activation successful. Now charging customer via Stripe...`);
       const monthlyPrice = parseFloat(phoneNumber.monthlyPrice || "10.00");
@@ -23833,7 +22973,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (!stripe) {
           throw new Error("Stripe is not initialized");
         }
-  });
         // Get or create Stripe customer
         let stripeCustomerId = company.stripeCustomerId;
         if (!stripeCustomerId) {
@@ -23848,7 +22987,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           stripeCustomerId = customer.id;
           await storage.updateCompany(company.id, { stripeCustomerId });
         }
-  });
         // Get or create product
         const products = await stripe.products.search({
           query: `name:"BulkVS Phone Number" AND metadata["companyId"]:"${company.id}"`,
@@ -23866,7 +23004,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             },
           });
         }
-  });
         // Get or create price
         const prices = await stripe.prices.list({
           product: product.id,
@@ -23887,7 +23024,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             },
           });
         }
-  });
         // Create subscription (CHARGE HAPPENS HERE)
         subscription = await stripe.subscriptions.create({
           customer: stripeCustomerId,
@@ -23969,7 +23105,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error(`[BulkVS Webhook] Company not found: ${companySlug}`);
         return res.status(404).json({ message: "Company not found" });
       }
-  });
       // Find phone number by webhook token
       const phoneNumbers = await storage.getBulkvsPhoneNumbersByCompany(company.id);
       const phoneNumber = phoneNumbers.find(pn => pn.webhookToken === webhookToken);
@@ -23977,7 +23112,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error(`[BulkVS Webhook] Invalid webhook token: ${webhookToken}`);
         return res.status(403).json({ message: "Invalid webhook token" });
       }
-  });
       // Get user from phone number
       const user = await storage.getUser(phoneNumber.userId);
       if (!user) {
@@ -23993,7 +23127,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } else {
         console.log("[BulkVS Webhook] Detected OLD/legacy format");
       }
-  });
       // Handle incoming message - Support BOTH webhook formats
       let rawFrom, rawTo, body, mediaUrl, mediaType, providerMsgId;
       if (isNewFormat) {
@@ -24008,7 +23141,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           mediaUrl = data.media[0].url; // Take first media URL
           console.log("[BulkVS Webhook] NEW FORMAT - MMS detected with media:", data.media);
         }
-  });
         mediaType = data.type; // "SMS" or "MMS"
       } else {
         // OLD FORMAT: { From, To, Message, RefId, MediaUrl, DeliveryReceipt }
@@ -24044,7 +23176,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             console.log("[BulkVS Webhook] Text file detected:", textFile);
             // TODO: Download .txt file and set as body if Message field is empty
           }
-  });
           // Filter out .smil files from the list
           const filteredMediaUrls = payload.MediaURLs.filter(url => 
             !url.toLowerCase().endsWith('.smil')
@@ -24062,7 +23193,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
         mediaType = payload.MediaType || payload.mediaType || null;
       }
-  });
       // Proceed only if we have valid message data
       if (rawFrom && rawTo) {
         // PRIORITY 1: Check if payload explicitly marks this as a delivery receipt (OLD format only)
@@ -24070,7 +23200,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.log('[BulkVS Webhook] Ignoring delivery receipt (flagged by payload)');
           return res.status(200).json({ message: "Delivery receipt acknowledged" });
         }
-  });
         // PRIORITY 2: Decode URL-encoded body and check for delivery receipt patterns
         // Messages come URL-encoded: "stat%3ADELIVRD" instead of "stat:DELIVRD"
         // Also, spaces are encoded as "+" signs: "submit+date:" instead of "submit date:"
@@ -24089,7 +23218,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
   });
         }
-  });
         // Filter out delivery receipts - these should NOT be saved as messages
         // Delivery receipts have format like: "id:xxx sub:xxx dlvrd:xxx submit date:xxx done date:xxx stat:DELIVRD err:xxx text:xxx"
         const isDeliveryReceipt = body && (
@@ -24103,7 +23231,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.log('[BulkVS Webhook] Ignoring delivery receipt (content pattern):', body.substring(0, 100));
           return res.status(200).json({ message: "Delivery receipt acknowledged" });
         }
-  });
         console.log(`[Telnyx Sync] Recording ${rec.id}: checking for match...`);
         // Normalize phone numbers to 11-digit format for consistency
         const from = formatForStorage(rawFrom);
@@ -24127,7 +23254,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             lastMessagePreview: body?.substring(0, 100) || "[Media]",
           });
         }
-  });
         // Create message
         const message = await storage.createBulkvsMessage({
           threadId: thread.id,
@@ -24168,7 +23294,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 isRead: false
               });
             }
-  });
             console.log(`[BULKVS STOP] Created ${adminUsers.length} admin notification(s) for blacklist action`);
           } catch (error) {
             // Log error but don't fail webhook (regulatory compliance: always process STOP)
@@ -24176,7 +23301,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
   });
         }
-  });
         // Increment unread count
         await storage.incrementThreadUnread(thread.id);
         // Get updated thread
@@ -24188,7 +23312,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } else {
         console.log("[BulkVS Webhook] Skipping - no valid message data");
       }
-  });
       // Handle DLR (Delivery Receipt)
       if (payload.type === "message.status" || payload.status) {
         const { id: providerMsgId, status, deliveredAt, readAt } = payload;
@@ -24243,7 +23366,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           console.error(`[BulkVS Webhook] Phone number not found: ${to}`);
           return res.status(404).json({ message: "Phone number not found" });
         }
-  });
         // Find or create thread
         let thread = await storage.getBulkvsThreadByPhoneAndExternal(phoneNumber.id, from);
         if (!thread) {
@@ -24263,7 +23385,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             lastMessagePreview: body?.substring(0, 100) || "[Media]",
           });
         }
-  });
         // Create message
         const message = await storage.createBulkvsMessage({
           threadId: thread.id,
@@ -24304,7 +23425,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 isRead: false
               });
             }
-  });
             console.log(`[BULKVS STOP] Created ${adminUsers.length} admin notification(s) for blacklist action`);
           } catch (error) {
             // Log error but don't fail webhook (regulatory compliance: always process STOP)
@@ -24312,7 +23432,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
   });
         }
-  });
         // Increment unread count
         await storage.incrementThreadUnread(thread.id);
         // Get updated thread
@@ -24324,7 +23443,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } else {
         console.log("[BulkVS Webhook] Skipping - no valid message data");
       }
-  });
       // Handle DLR (Delivery Receipt)
       if (payload.type === "message.status" || payload.status) {
         const { id: providerMsgId, status, deliveredAt, readAt } = payload;
@@ -24421,7 +23539,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!body && !mediaUrl) {
         return res.status(400).json({ message: "Either body or mediaUrl is required" });
       }
-  });
       let thread;
       let phoneNumber;
       if (threadId) {
@@ -24440,7 +23557,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         if (userPhones.length === 0) {
           return res.status(400).json({ message: "No phone numbers available. Please provision a number first." });
         }
-  });
         phoneNumber = userPhones[0]; // Use first available number
         // Normalize phone number to 11-digit format for consistency
         const normalizedTo = formatForStorage(to);
@@ -24476,7 +23592,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!phoneNumber) {
         return res.status(400).json({ message: "Phone number not found" });
       }
-  });
       // Send via BulkVS
       // Note: Campaign ID is already configured on the phone number via /tnRecord
       // during provisioning, so it doesn't need to be sent with each message
@@ -24563,13 +23678,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (thread.userId !== user.id) {
         return res.status(403).json({ message: "Forbidden" });
       }
-  });
       // Delete the thread (this will also delete all messages)
       const deleted = await storage.deleteBulkvsThread(id, user.id);
       if (!deleted) {
         return res.status(500).json({ message: "Failed to delete thread" });
       }
-  });
       // Broadcast thread deletion via WebSocket
       broadcastBulkvsThreadUpdate(user.id, null);
       res.json({ success: true, message: "Thread deleted successfully" });
@@ -24639,7 +23752,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!refId) {
         return res.status(400).json({ message: "RefId is required" });
       }
-  });
       console.log(`[BulkVS Status] Checking status for RefId: ${refId}`);
       const status = await bulkVSClient.messageStatus(refId);
       console.log(`[BulkVS Status] Status response:`, JSON.stringify(status, null, 2));
@@ -24681,7 +23793,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (search) {
         filters.search = search as string;
       }
-  });
       // Get tasks
       let tasks = await storage.listTasks(filters);
       // If user doesn't have viewAllCompanyData permission, filter to only their tasks
@@ -24691,7 +23802,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           task.assigneeId === user.id || task.creatorId === user.id
         );
       }
-  });
       // Enrich with assignee data
       const enrichedTasks = await Promise.all(
         tasks.map(async (task) => {
@@ -24729,7 +23839,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-  });
       // Validate request body
       const validationResult = insertTaskSchema.safeParse(req.body);
       if (!validationResult.success) {
@@ -24793,7 +23902,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!task) {
         return res.status(404).json({ message: "Task not found" });
       }
-  });
       // Enrich with assignee data
       let enrichedTask: any = { ...task, assignee: null };
       if (task.assigneeId) {
@@ -24843,7 +23951,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!updatedTask) {
         return res.status(404).json({ message: "Task not found" });
       }
-  });
       // Log the action
       await logger.logCrud({
         userId: user.id,
@@ -24897,7 +24004,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!deleted) {
         return res.status(404).json({ message: "Task not found" });
       }
-  });
       // Log the action
       await logger.logCrud({
         userId: user.id,
@@ -24948,7 +24054,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!settings || !settings.isEnabled) {
         return res.status(400).json({ message: "Birthday automation not enabled" });
       }
-  });
       // Get today's birthdays - using same logic as scheduler
       const birthdays: Array<{ name: string; phone: string | null; dateOfBirth: string }> = [];
       const birthdaySet = new Set<string>();
@@ -24996,7 +24101,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       console.log(`[TEST] Found ${birthdays.length} birthday(s) today`);
       const results: any[] = [];
       // Process each birthday
@@ -25005,7 +24109,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           results.push({ name: birthday.name, status: 'skipped', reason: 'no phone number' });
           continue;
         }
-  });
         // Get birthday image
         let imageUrl: string | null = null;
         if (settings.selectedImageId) {
@@ -25040,7 +24143,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           }
   });
         }
-  });
         // Prepare message using shared helper
         const messageBody = buildBirthdayMessage({
           clientFullName: birthday.name,
@@ -25407,7 +24509,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-  });
       // Superadmins can see all, others see only their company's history
       const history = user.role === "superadmin" 
         ? await storage.getBirthdayGreetingHistory(user.companyId)
@@ -25430,14 +24531,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user || !user.companyId) {
         return res.json({ hasAccess: false, reason: "no_company" });
       }
-  });
       
       // Check if company has iMessage feature enabled
       const hasFeature = await storage.hasFeature(user.companyId, 'imessage');
       if (!hasFeature) {
         return res.json({ hasAccess: false, reason: "feature_not_enabled" });
       }
-  });
       
       // Check if iMessage is enabled in company settings
       const settings = await storage.getCompanySettings(user.companyId);
@@ -25464,14 +24563,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user || user.role !== "superadmin") {
         return res.status(403).json({ message: "Only superadmins can view iMessage settings" });
       }
-  });
       // Allow superadmin to query settings for any company via ?companyId= parameter
       const targetCompanyId = req.query.companyId ? String(req.query.companyId) : user.companyId;
       // Superadmin must have companyId in query
       if (user.role === "superadmin" && !req.query.companyId) {
         return res.status(400).json({ message: "companyId query parameter required for superadmin" });
       }
-  });
       // Check if company has iMessage feature enabled
       const hasFeature = await storage.hasFeature(targetCompanyId, 'imessage');
       if (!hasFeature) {
@@ -25508,20 +24605,17 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user || user.role !== "superadmin") {
         return res.status(403).json({ message: "Only superadmins can update iMessage settings" });
       }
-  });
       // Allow superadmin to update settings for any company via ?companyId= parameter
       const targetCompanyId = req.query.companyId ? String(req.query.companyId) : user.companyId;
       // Superadmin must have companyId in query
       if (user.role === "superadmin" && !req.query.companyId) {
         return res.status(400).json({ message: "companyId query parameter required for superadmin" });
       }
-  });
       // Check if company has iMessage feature enabled
       const hasFeature = await storage.hasFeature(targetCompanyId, 'imessage');
       if (!hasFeature) {
         return res.status(403).json({ message: "iMessage feature not enabled for this company" });
       }
-  });
       // Validate request body with Zod
       const { z } = await import('zod');
       const updateImessageSettingsSchema = z.object({
@@ -25605,14 +24699,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user || user.role !== "superadmin") {
         return res.status(403).json({ message: "Only superadmins can regenerate webhook secret" });
       }
-  });
       // Allow superadmin to regenerate settings for any company via ?companyId= parameter
       const targetCompanyId = req.query.companyId ? String(req.query.companyId) : user.companyId;
       // Superadmin must have companyId in query
       if (user.role === "superadmin" && !req.query.companyId) {
         return res.status(400).json({ message: "companyId query parameter required for superadmin" });
       }
-  });
       // Check if company has iMessage feature enabled
       const hasFeature = await storage.hasFeature(targetCompanyId, 'imessage');
       if (!hasFeature) {
@@ -25667,7 +24759,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-  });
       // Check if company has iMessage feature enabled
       const hasFeature = await storage.hasFeature(user.companyId, 'imessage');
       if (!hasFeature) {
@@ -25688,7 +24779,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-  });
       // Check if company has iMessage feature enabled
       const hasFeature = await storage.hasFeature(user.companyId, 'imessage');
       if (!hasFeature) {
@@ -25716,13 +24806,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-  });
       // Check if company has iMessage feature enabled
       const hasFeature = await storage.hasFeature(user.companyId, 'imessage');
       if (!hasFeature) {
         return res.status(403).json({ message: "iMessage feature not enabled for this company" });
       }
-  });
       // Validate request body with Zod
       const { z } = await import('zod');
       const sendMessageSchema = z.object({
@@ -25754,7 +24842,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!client) {
         return res.status(400).json({ message: "iMessage not configured or disabled" });
       }
-  });
       // Determine chat GUID
       let targetChatGuid = chatGuid;
       if (conversationId && !chatGuid) {
@@ -25765,7 +24852,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   });
         targetChatGuid = conversation.chatGuid;
       }
-  });
       // Send message via BlueBubbles
       const response = await client.sendMessage({
         chatGuid: targetChatGuid,
@@ -25824,7 +24910,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-  });
       // Check if company has iMessage feature enabled
       const hasFeature = await storage.hasFeature(user.companyId, 'imessage');
       if (!hasFeature) {
@@ -25889,7 +24974,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
-  });
       console.error("Error creating campaign category:", error);
       res.status(500).json({ message: "Failed to create category" });
     }
@@ -25918,7 +25002,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
-  });
       console.error("Error updating campaign category:", error);
       res.status(500).json({ message: "Failed to update category" });
     }
@@ -26015,7 +25098,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error("[Campaign Template] Validation error:", JSON.stringify(error.errors, null, 2));
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
-  });
       console.error("Error creating campaign template:", error);
       res.status(500).json({ message: "Failed to create template" });
     }
@@ -26030,12 +25112,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!existingTemplate) {
         return res.status(404).json({ message: "Template not found" });
       }
-  });
       // Only superadmins can modify system templates
       if (existingTemplate.isSystem && user.role !== "superadmin") {
         return res.status(403).json({ message: "Only superadmins can modify system templates" });
       }
-  });
       let updateData = { ...parsed };
       if (parsed.messageBody) {
         const placeholderRegex = /\{\{([a-zA-Z_][a-zA-Z0-9_]*)\}\}/g;
@@ -26049,7 +25129,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
-  });
       console.error("Error updating campaign template:", error);
       res.status(500).json({ message: "Failed to update template" });
     }
@@ -26063,7 +25142,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!existingTemplate) {
         return res.status(404).json({ message: "Template not found" });
       }
-  });
       // Only superadmins can delete system templates
       // Regular users can delete their own company templates
       if (existingTemplate.isSystem && user.role !== "superadmin") {
@@ -26108,7 +25186,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
-  });
       console.error("Error creating campaign placeholder:", error);
       res.status(500).json({ message: "Failed to create placeholder" });
     }
@@ -26142,7 +25219,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (error.name === "ZodError") {
         return res.status(400).json({ message: "Invalid data", errors: error.errors });
       }
-  });
       console.error("Error updating campaign placeholder:", error);
       res.status(500).json({ message: "Failed to update placeholder" });
     }
@@ -26195,7 +25271,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!instance) {
         return res.json({ instance: null, connected: false });
       }
-  });
       // Use fetchInstances to get complete instance info
       try {
         const instances = await evolutionApi.getInstanceInfo(instance.instanceName);
@@ -26217,7 +25292,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               })
               .where(eq(whatsappInstances.id, instance.id));
           }
-  });
           // Auto-verify and reconfigure webhook when connected
           if (connected) {
             try {
@@ -26252,7 +25326,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
   });
           }
-  });
           // If not connected, try to get QR code
           let qrCode = instance.qrCode;
           if (!connected) {
@@ -26282,7 +25355,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             connected 
           });
         }
-  });
         // Instance not found in Evolution API - clear stale QR code
         console.log("[WhatsApp] Instance not found in Evolution API, clearing stale data");
         await db.update(whatsappInstances)
@@ -26337,7 +25409,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }).returning();
         instance = newInstance;
       }
-  });
       // Step 1: Check if instance exists in Evolution API using fetchInstances
       let evolutionState: string | null = null;
       let profileName: string | null = null;
@@ -26354,7 +25425,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.log(`[WhatsApp] Instance ${instanceName} not found in Evolution API`);
         evolutionState = null;
       }
-  });
       // Step 2: If connected, just return success
       if (evolutionState === "open") {
         await db.update(whatsappInstances)
@@ -26368,7 +25438,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           status: "open",
         });
       }
-  });
       // Step 3: If instance exists but disconnected, try to get QR
       if (evolutionState === "close" || evolutionState === "connecting") {
         try {
@@ -26389,7 +25458,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Step 4: Instance does not exist or is broken - create new one
       console.log(`[WhatsApp] Creating new instance: ${instanceName}`);
       // CRITICAL: Clean up all old data from previous connections to prevent data leakage
@@ -26403,7 +25471,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       } catch (e) {
         // Ignore - instance might not exist
       }
-  });
       // Step 4a: Create instance
       console.log(`[WhatsApp] Step 1/3: Creating instance...`);
       const result = await evolutionApi.createInstance(instanceName);
@@ -26466,7 +25533,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!instance) {
         return res.status(404).json({ message: "No WhatsApp instance" });
       }
-  });
       // Get conversations from DB
       const conversations = await db.query.whatsappConversations.findMany({
         where: eq(whatsappConversations.instanceId, instance.id),
@@ -26481,7 +25547,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         });
         contactMap = new Map(contacts.map(c => [c.id, c]));
       }
-  });
       // Also get contacts by remoteJid for conversations without contact_id
       const remoteJidsWithoutContact = conversations
         .filter(c => !c.contactId)
@@ -26498,7 +25563,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Attach contact info to conversations
       const conversationsWithContacts = conversations.map(conv => ({
         ...conv,
@@ -26561,7 +25625,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!instance) {
         return res.status(404).json({ message: "No WhatsApp instance" });
       }
-  });
       // Fetch profile picture from Evolution API
       const result = await evolutionApi.fetchProfilePicture(instance.instanceName, remoteJid);
       const profilePicUrl = (result as any).profilePictureUrl || null;
@@ -26588,7 +25651,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }).returning();
         contactId = newContact.id;
       }
-  });
       // Link contact to conversation
       await db.update(whatsappConversations)
         .set({ contactId, updatedAt: new Date() })
@@ -26683,7 +25745,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!instance) {
         return res.status(404).json({ message: "No WhatsApp instance" });
       }
-  });
       // Get conversation
       const conversation = await db.query.whatsappConversations.findFirst({
         where: and(
@@ -26694,7 +25755,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!conversation) {
         return res.json([]);
       }
-  });
       // Get messages from DB
       let messages = await db.query.whatsappMessages.findMany({
         where: eq(whatsappMessages.conversationId, conversation.id),
@@ -26739,7 +25799,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               }
   });
             }
-  });
             // Refetch from DB after insert
             messages = await db.query.whatsappMessages.findMany({
               where: eq(whatsappMessages.conversationId, conversation.id),
@@ -26751,7 +25810,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       // Mark conversation as read
       // Mark conversation as read
       await db.update(whatsappConversations)
@@ -26772,7 +25830,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated" });
       }
-  });
       // Get the conversation
       const conversation = await db.query.whatsappConversations.findFirst({
         where: eq(whatsappConversations.id, id),
@@ -26780,7 +25837,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
       }
-  });
       // Verify the conversation belongs to users company
       const instance = await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.id, conversation.instanceId),
@@ -26788,7 +25844,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!instance || instance.companyId !== user.companyId) {
         return res.status(403).json({ message: "Access denied" });
       }
-  });
       // Delete messages first
       await db.delete(whatsappMessages).where(eq(whatsappMessages.conversationId, id));
       // Delete conversation
@@ -26821,7 +25876,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (instance.status !== "open") {
         return res.status(400).json({ message: "WhatsApp not connected" });
       }
-  });
       // Send via Evolution API
       const result = await evolutionApi.sendTextMessage(instance.instanceName, number, text);
       // Create/update conversation and message in DB
@@ -26852,7 +25906,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           })
           .where(eq(whatsappConversations.id, conversation.id));
       }
-  });
       // Save message to DB
       const [message] = await db.insert(whatsappMessages).values({
         conversationId: conversation.id,
@@ -26900,7 +25953,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (instance.status !== "open") {
         return res.status(400).json({ message: "WhatsApp not connected" });
       }
-  });
       // Store as Data URI directly (Object Storage has permission issues)
       const mediaUrl = `data:${mimetype};base64,${base64}`;
       // Send via Evolution API
@@ -26942,7 +25994,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           })
           .where(eq(whatsappConversations.id, conversation.id));
       }
-  });
       // Save message to DB
       const [message] = await db.insert(whatsappMessages).values({
         conversationId: conversation.id,
@@ -26986,7 +26037,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (instance.status !== "open") {
         return res.status(400).json({ message: "WhatsApp not connected" });
       }
-  });
       
       const result = await evolutionApi.sendWhatsAppAudio(instance.instanceName, number, base64);
       
@@ -27020,7 +26070,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           })
           .where(eq(whatsappConversations.id, conversation.id));
       }
-  });
       
       const [message] = await db.insert(whatsappMessages).values({
         conversationId: conversation.id,
@@ -27052,13 +26101,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated" });
       }
-  });
       
       let { remoteJid } = req.body;
       if (!remoteJid) {
         return res.status(400).json({ message: "remoteJid is required" });
       }
-  });
       
       const instance = await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
@@ -27067,7 +26114,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!instance || instance.status !== "open") {
         return res.status(400).json({ message: "WhatsApp not connected" });
       }
-  });
       
       // For @lid contacts, resolve to phone-based JID first
       if (remoteJid.endsWith('@lid')) {
@@ -27103,7 +26149,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         }
   });
       }
-  });
       
       await evolutionApi.sendTyping(instance.instanceName, remoteJid);
       res.json({ success: true });
@@ -27119,13 +26164,11 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated" });
       }
-  });
       
       const { presence } = req.body;
       if (!presence || !["available", "unavailable"].includes(presence)) {
         return res.status(400).json({ message: "presence must be 'available' or 'unavailable'" });
       }
-  });
       
       const instance = await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, user.companyId),
@@ -27134,7 +26177,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!instance || instance.status !== "open") {
         return res.status(400).json({ message: "WhatsApp not connected" });
       }
-  });
       
       // Use global presence endpoint - sets online status for the entire instance
       await evolutionApi.setGlobalPresence(instance.instanceName, presence);
@@ -27152,7 +26194,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated" });
       }
-  });
       // Find the message
       const message = await db.query.whatsappMessages.findFirst({
         where: and(
@@ -27163,12 +26204,10 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!message) {
         return res.status(404).json({ message: "Message not found" });
       }
-  });
       // If already has media URL, return it
       if (message.mediaUrl) {
         return res.json({ mediaUrl: message.mediaUrl });
       }
-  });
       // Get instance
       const instance = await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.id, message.instanceId),
@@ -27176,7 +26215,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!instance) {
         return res.status(404).json({ message: "Instance not found" });
       }
-  });
       // Download media from Evolution API
       const mediaData = await evolutionApi.getBase64FromMediaMessage(
         instance.instanceName,
@@ -27186,7 +26224,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!mediaData?.base64 || !mediaData?.mimetype) {
         return res.status(404).json({ message: "Media not available" });
       }
-  });
       // Create Data URI directly (no Object Storage needed)
       const mediaUrl = `data:${mediaData.mimetype};base64,${mediaData.base64}`;
       // Update message with media URL
@@ -27212,7 +26249,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error(`[WhatsApp Webhook] Company not found: ${companySlug}`);
         return res.status(200).send("OK"); // Return 200 to prevent retries
       }
-  });
       // Get instance
       const instance = await db.query.whatsappInstances.findFirst({
         where: eq(whatsappInstances.companyId, company.id),
@@ -27221,7 +26257,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.error(`[WhatsApp Webhook] Instance not found for company: ${company.id}`);
         return res.status(200).send("OK");
       }
-  });
       // Handle different event types
       const rawEvent = payload.event || ""; const event = rawEvent.toUpperCase().replace(/\./g, "_");
       if (event === "QRCODE_UPDATED") {
@@ -27318,7 +26353,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 }
   });
               }
-  });
               console.log(`[WhatsApp Webhook] Auto-synced ${synced} new, ${updated} updated chats for ${companySlug}`);
             } catch (syncError) {
               console.error(`[WhatsApp Webhook] Failed to auto-sync chats:`, syncError);
@@ -27351,7 +26385,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
   });
           }
-  });
           
           // Handle reactions - update the original message instead of creating a new one
           if (messageType === "reaction") {
@@ -27385,10 +26418,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               }
   });
             }
-  });
             continue; // Don't create a message for reactions
           }
-  });
           
           // Skip if already exists
           const existing = await db.query.whatsappMessages.findFirst({
@@ -27418,7 +26449,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 console.log(`[WhatsApp Webhook] Extracted phone from senderPn: ${businessPhone}`);
                 profileFetchedAt = new Date();
               }
-  });
               // Fallback to fetchBusinessProfile API for name (and phone if senderPn is missing)
               if (!businessPhone || !businessName) {
                 const profile = await evolutionApi.getBusinessProfile(instance.instanceName, remoteJid);
@@ -27429,15 +26459,12 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
                 if (!businessName) {
                   businessName = profile.businessName;
                 }
-  });
                 console.log(`[WhatsApp Webhook] Business profile API result: phone=${profile.businessPhone}, name=${profile.businessName}`);
               }
-  });
               // Use pushName as fallback for business name
               if (!businessName && pushName) {
                 businessName = pushName;
               }
-  });
               console.log(`[WhatsApp Webhook] Final business info: phone=${businessPhone}, name=${businessName}`);
             }
             const [newContact] = await db.insert(whatsappContacts).values({
@@ -27459,7 +26486,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
               businessPhone = senderPn.replace("@s.whatsapp.net", "");
               console.log(`[WhatsApp Webhook] Extracted phone from senderPn for existing contact: ${businessPhone}`);
             }
-  });
             // Fallback to API with 5-minute debounce
             if (!businessPhone) {
               const shouldFetch = !contact.profileFetchedAt || 
@@ -27497,7 +26523,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
   });
           }
-  });
           // Get or create conversation
           let conversation = await db.query.whatsappConversations.findFirst({
             where: and(
@@ -27540,7 +26565,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
   });
           }
-  });
           // Handle media messages - download and create Data URI directly
           let mediaUrl: string | null = null;
           const mediaTypes = ["image", "video", "audio", "document"];
@@ -27566,7 +26590,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             }
   });
           }
-  });
           // Insert message
           await db.insert(whatsappMessages).values({
             conversationId: conversation.id,
@@ -27608,7 +26631,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           } else if (ackValue === 2 || ackValue === "SERVER_ACK") {
             newStatus = "sent";
           }
-  });
           
           if (newStatus) {
             // Update message status in database
@@ -27725,7 +26747,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!instance || instance.status !== "open") {
         return res.status(400).json({ message: "WhatsApp not connected" });
       }
-  });
       // Fetch chats from Evolution API
       const chats = await evolutionApi.fetchChats(instance.instanceName);
       let synced = 0;
@@ -27819,7 +26840,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!instance || instance.status !== "open") {
         return res.status(400).json({ message: "WhatsApp not connected" });
       }
-  });
       // Fetch latest messages from Evolution API
       const apiMessages = await evolutionApi.fetchMessages(instance.instanceName, remoteJid, 20);
       let newCount = 0;
@@ -27899,7 +26919,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (!instance || instance.status !== "open") {
         return res.status(400).json({ message: "WhatsApp not connected" });
       }
-  });
       // Get active conversations (limit to most recent 10 for efficiency)
       const conversations = await db.query.whatsappConversations.findMany({
         where: eq(whatsappConversations.instanceId, instance.id),
@@ -28006,7 +27025,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       if (unreadMessages.length === 0) {
         return res.json({ marked: 0 });
       }
-  });
       // For @lid contacts, resolve to phone-based JID for Evolution API
       let evolutionJid = remoteJid;
       if (remoteJid.endsWith('@lid')) {
@@ -28139,7 +27157,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!appId) {
         return res.status(500).json({ error: "Meta App ID not configured. Contact administrator." });
       }
-  });
       
       // Generate cryptographically secure nonce
       const nonce = randomBytes(32).toString("hex");
@@ -28193,7 +27210,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[WhatsApp OAuth] Missing code or state");
         return errorRedirect("missing_params");
       }
-  });
       
       // Validate state/nonce
       const oauthState = await db.query.oauthStates.findFirst({
@@ -28207,21 +27223,18 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[WhatsApp OAuth] Invalid state");
         return errorRedirect("invalid_state");
       }
-  });
       
       // Check if expired
       if (new Date() > new Date(oauthState.expiresAt)) {
         console.error("[WhatsApp OAuth] State expired");
         return errorRedirect("state_expired");
       }
-  });
       
       // Check if already used
       if (oauthState.usedAt) {
         console.error("[WhatsApp OAuth] State already used");
         return errorRedirect("state_reused");
       }
-  });
       
       // Mark state as used
       await db.update(oauthStates)
@@ -28236,7 +27249,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[WhatsApp OAuth] Meta credentials not configured");
         return errorRedirect("server_config_error");
       }
-  });
       
       const tokenResponse = await fetch(
         `https://graph.facebook.com/${META_GRAPH_VERSION}/oauth/access_token?` +
@@ -28252,7 +27264,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[WhatsApp OAuth] Token exchange failed:", tokenData.error);
         return errorRedirect("token_exchange_failed");
       }
-  });
       
       const accessToken = tokenData.access_token;
       
@@ -28300,7 +27311,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       
       // If no WABA found from businesses, try direct shared WABA endpoint
       if (!wabaId) {
@@ -28328,13 +27338,11 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       
       if (!wabaId || !phoneNumberId) {
         console.error("[WhatsApp OAuth] Could not find WABA or phone number");
         return errorRedirect("no_waba_found");
       }
-  });
       
       // Check if this phone number is already connected to another tenant
       const existingConnection = await db.query.channelConnections.findFirst({
@@ -28348,7 +27356,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[WhatsApp OAuth] Phone number already connected to another workspace");
         return errorRedirect("number_already_connected");
       }
-  });
       
       // Encrypt the access token
       const encryptedToken = encryptToken(accessToken);
@@ -28397,7 +27404,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           connectedAt: new Date(),
         });
       }
-  });
       
       console.log(`[WhatsApp OAuth] Successfully connected WABA ${wabaId} for company ${oauthState.companyId}`);
       return res.redirect(`${frontendUrl}/integrations?whatsapp=connected`);
@@ -28425,7 +27431,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     if (!connection) {
       return res.json({ connected: false, connection: null });
     }
-  });
     
     // Return connection info without the encrypted token
     return res.json({ 
@@ -28454,14 +27459,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     if (user.role !== "admin" && user.role !== "super_admin") {
       return res.status(403).json({ error: "Manual connect is only available for administrators" });
     }
-  });
     
     const { wabaId, phoneNumberId, phoneNumber, displayName, accessToken } = req.body;
     
     if (!wabaId || !phoneNumberId || !accessToken) {
       return res.status(400).json({ error: "Missing required fields" });
     }
-  });
     
     // Check if phone number is already connected elsewhere
     const existingOther = await db.query.channelConnections.findFirst({
@@ -28474,7 +27477,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     if (existingOther) {
       return res.status(400).json({ error: "This number is already connected to another workspace" });
     }
-  });
     
     // Encrypt the token
     const encryptedToken = encryptToken(accessToken);
@@ -28535,7 +27537,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     if (!connection) {
       return res.status(404).json({ error: "No WhatsApp connection found" });
     }
-  });
     
     // Mark as revoked instead of deleting (preserves audit trail)
     await db.delete(channelConnections)
@@ -28566,7 +27567,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     if (!connection) {
       return res.status(404).json({ error: "No WhatsApp connection found" });
     }
-  });
     
     await db.delete(channelConnections)
       .set({
@@ -28602,7 +27602,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!META_APP_ID) {
         return res.status(500).json({ error: "Meta App ID not configured. Contact administrator." });
       }
-  });
       
       const nonce = randomBytes(32).toString("hex");
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -28646,7 +27645,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[Instagram OAuth] Missing code or state");
         return errorRedirect("connection_cancelled");
       }
-  });
       
       const oauthState = await db.query.oauthStates.findFirst({
         where: and(
@@ -28659,19 +27657,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[Instagram OAuth] Invalid state");
         return errorRedirect("connection_failed");
       }
-  });
       
       if (new Date() > new Date(oauthState.expiresAt)) {
         console.error("[Instagram OAuth] State expired");
         return errorRedirect("connection_failed");
       }
-  });
       
       if (oauthState.usedAt) {
         console.error("[Instagram OAuth] State already used");
         return errorRedirect("connection_failed");
       }
-  });
       
       await db.update(oauthStates)
         .set({ usedAt: new Date() })
@@ -28693,7 +27688,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[Instagram OAuth] Token exchange failed:", tokenData.error);
         return errorRedirect("connection_failed");
       }
-  });
       
       const accessToken = tokenData.access_token;
       
@@ -28706,7 +27700,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[Instagram OAuth] Failed to fetch pages:", pagesData.error);
         return errorRedirect("permission_denied");
       }
-  });
       
       const pagesWithInstagram = (pagesData.data || []).filter((page: any) => page.instagram_business_account);
       
@@ -28714,7 +27707,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[Instagram OAuth] No Instagram Business accounts found");
         return errorRedirect("not_professional");
       }
-  });
       
       // For now, use the first page with Instagram Business account
       const selectedPage = pagesWithInstagram[0];
@@ -28760,7 +27752,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           ...connectionData,
         });
       }
-  });
       
       console.log(`[Instagram OAuth] Successfully connected @${igAccount.username} for company ${oauthState.companyId}`);
       return res.redirect(`${frontendUrl}/integrations?instagram=connected`);
@@ -28809,7 +27800,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!connection) {
         return res.status(404).json({ error: "No Instagram connection found" });
       }
-  });
       
       await db.delete(channelConnections)
         .set({
@@ -28850,7 +27840,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!META_APP_ID) {
         return res.status(500).json({ error: "Meta App ID not configured. Contact administrator." });
       }
-  });
       
       const nonce = randomBytes(32).toString("hex");
       const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
@@ -28894,7 +27883,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[Facebook OAuth] Missing code or state");
         return errorRedirect("connection_cancelled");
       }
-  });
       
       const oauthState = await db.query.oauthStates.findFirst({
         where: and(
@@ -28907,19 +27895,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[Facebook OAuth] Invalid state");
         return errorRedirect("connection_failed");
       }
-  });
       
       if (new Date() > new Date(oauthState.expiresAt)) {
         console.error("[Facebook OAuth] State expired");
         return errorRedirect("connection_failed");
       }
-  });
       
       if (oauthState.usedAt) {
         console.error("[Facebook OAuth] State already used");
         return errorRedirect("connection_failed");
       }
-  });
       
       await db.update(oauthStates)
         .set({ usedAt: new Date() })
@@ -28941,7 +27926,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[Facebook OAuth] Token exchange failed:", tokenData.error);
         return errorRedirect("connection_failed");
       }
-  });
       
       const userAccessToken = tokenData.access_token;
       
@@ -28954,13 +27938,11 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[Facebook OAuth] Failed to get pages:", pagesData.error);
         return errorRedirect("permission_required");
       }
-  });
       
       if (!pagesData.data || pagesData.data.length === 0) {
         console.error("[Facebook OAuth] No pages found");
         return errorRedirect("page_not_found");
       }
-  });
       
       // Use the first page
       const page = pagesData.data[0];
@@ -29004,7 +27986,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           connectedAt: new Date(),
         });
       }
-  });
       
       console.log(`[Facebook OAuth] Connected page ${pageName} (${pageId}) for company ${oauthState.companyId}`);
       return res.redirect(`${frontendUrl}/integrations?facebook=connected`);
@@ -29052,7 +28033,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!connection) {
         return res.status(404).json({ error: "No Facebook connection found" });
       }
-  });
       
       await db.delete(channelConnections)
         .set({
@@ -29090,7 +28070,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!clientKey) {
         return res.status(500).json({ error: "TikTok Client Key not configured. Contact administrator." });
       }
-  });
       
       // Build redirect_uri from current request origin (SaaS multi-tenant support)
       const origin = req.get("origin") || `${req.protocol}://${req.get("host")}`;
@@ -29140,13 +28119,11 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[TikTok OAuth] Error from TikTok:", tiktokError);
         return errorRedirect("connection_cancelled");
       }
-  });
       
       if (!code || !state) {
         console.error("[TikTok OAuth] Missing code or state");
         return errorRedirect("connection_cancelled");
       }
-  });
       
       const oauthState = await db.query.oauthStates.findFirst({
         where: and(
@@ -29159,19 +28136,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[TikTok OAuth] Invalid state");
         return errorRedirect("connection_failed");
       }
-  });
       
       if (new Date() > new Date(oauthState.expiresAt)) {
         console.error("[TikTok OAuth] State expired");
         return errorRedirect("connection_failed");
       }
-  });
       
       if (oauthState.usedAt) {
         console.error("[TikTok OAuth] State already used");
         return errorRedirect("connection_failed");
       }
-  });
       
       await db.update(oauthStates)
         .set({ usedAt: new Date() })
@@ -29185,7 +28159,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[TikTok OAuth] TikTok credentials not configured");
         return errorRedirect("server_config_error");
       }
-  });
       
       const tokenUrl = "https://open.tiktokapis.com/v2/oauth/token/";
       const tokenParams = new URLSearchParams({
@@ -29211,7 +28184,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[TikTok OAuth] Token exchange failed:", tokenData);
         return errorRedirect("connection_failed");
       }
-  });
       
       const accessToken = tokenData.access_token;
       const refreshToken = tokenData.refresh_token;
@@ -29239,7 +28211,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         username = userInfoData.data.user.username || null;
         avatarUrl = userInfoData.data.user.avatar_url || null;
       }
-  });
       
       const encryptedAccessToken = encryptToken(accessToken);
       const encryptedRefreshToken = refreshToken ? encryptToken(refreshToken) : null;
@@ -29291,7 +28262,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         
         console.log(`[TikTok OAuth] Created new connection for company ${oauthState.companyId}`);
       }
-  });
       
       const successOrigin = (oauthState.metadata as any)?.origin || frontendUrl;
       return res.redirect(`${successOrigin}/integrations?tiktok=connected`);
@@ -29339,7 +28309,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!connection) {
         return res.status(404).json({ error: "No TikTok connection found" });
       }
-  });
       
       // Revoke the access token from TikTok to force re-authorization on next connect
       if (connection.accessTokenEnc) {
@@ -29372,7 +28341,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       
       await db.delete(channelConnections)
         .where(eq(channelConnections.id, connection.id));
@@ -29430,7 +28398,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
       return;
     }
-  });
     
     if (new Date() > new Date(connectCode.expiresAt)) {
       if (botToken) {
@@ -29439,7 +28406,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
       return;
     }
-  });
     
     // Get company name
     const company = await db.query.companies.findFirst({
@@ -29480,7 +28446,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     if (botToken) {
       await sendTelegramMessage(chatId, confirmMsg, botToken);
     }
-  });
     console.log(`[Telegram] Chat ${chatId} connected to company ${connectCode.companyId}`);
   }
 
@@ -29528,7 +28493,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       console.log(`[Telegram] Auto-linked chat ${chatId} to company ${companyId}`);
     }
-  });
     
     const telegramUserId = String(fromUser.id);
     
@@ -29551,7 +28515,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }).returning();
       contact = newContact;
     }
-  });
     
     // Upsert conversation
     let conversation = await db.query.telegramConversations.findFirst({
@@ -29589,7 +28552,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         })
         .where(eq(telegramConversations.id, conversation.id));
     }
-  });
     
     // Determine message type
     let messageType: "text" | "photo" | "video" | "document" | "voice" | "audio" | "sticker" | "animation" = "text";
@@ -29655,7 +28617,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         })
         .where(eq(telnyxConversations.id, inboxConversation.id));
     }
-  });
     
     // Insert into inbox messages
     await db.insert(telnyxMessages).values({
@@ -29689,7 +28650,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         set: { lastSeenAt: new Date() }
       });
     }
-  });
     
     console.log(`[Telegram] Message saved for company ${companyId}, conversation ${conversation.id}`);
   }
@@ -29700,7 +28660,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     if (user.role !== "super_admin") {
       return res.status(403).json({ error: "Super admin access required" });
     }
-  });
 
     const telegramCreds = await credentialProvider.getTelegram();
     const botToken = telegramCreds.botToken;
@@ -29750,7 +28709,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         needsBotSetup: true
       });
     }
-  });
     
     const botUsername = userBot.botUsername;
     const botToken = userBot.botToken;
@@ -29758,7 +28716,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     if (!botUsername || !botToken) {
       return res.status(500).json({ error: "Bot configuration incomplete" });
     }
-  });
     
     const code = randomBytes(16).toString("hex");
     const expiresAt = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
@@ -29839,7 +28796,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!getMeData.ok) {
         return res.status(400).json({ error: "Invalid bot token", details: getMeData.description });
       }
-  });
       
       const botUsername = getMeData.result.username;
       const botFirstName = getMeData.result.first_name;
@@ -29863,7 +28819,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!webhookData.ok) {
         return res.status(500).json({ error: "Failed to set webhook", details: webhookData.description });
       }
-  });
       
       // Store in database (upsert - one bot per user)
       await db.insert(userTelegramBots).values({
@@ -29909,7 +28864,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!userBot) {
         return res.status(404).json({ error: "No bot configured" });
       }
-  });
       
       // Call Telegram deleteWebhook API
       try {
@@ -29919,7 +28873,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       } catch (webhookError: any) {
         console.warn("[Telegram] Failed to delete webhook:", webhookError.message);
       }
-  });
       
       // Delete record from database
       await db.delete(userTelegramBots).where(eq(userTelegramBots.userId, user.id));
@@ -29975,7 +28928,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     if (!userBot) {
       return res.status(404).json({ error: "Bot not found" });
     }
-  });
     
     // Verify the X-Telegram-Bot-Api-Secret-Token header
     const secretToken = req.get("X-Telegram-Bot-Api-Secret-Token");
@@ -29983,7 +28935,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.warn("[Telegram User Webhook] Invalid secret token for bot", userBot.botUsername);
       return res.status(401).json({ error: "Unauthorized" });
     }
-  });
     
     // Respond quickly to Telegram
     res.status(200).json({ ok: true });
@@ -30005,7 +28956,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         await handleUserBotTelegramConnect(chatId, chatType, message.chat.title, code, fromUser, userBot);
         return;
       }
-  });
       
       // Handle regular messages
       await handleUserBotTelegramMessage(update, message, chatId, chatType, fromUser, userBot);
@@ -30040,13 +28990,11 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       await sendUserBotTelegramMessage(userBot.botToken, chatId, "Invalid or expired code. Please generate a new connection link.");
       return;
     }
-  });
     
     if (new Date() > new Date(connectCode.expiresAt)) {
       await sendUserBotTelegramMessage(userBot.botToken, chatId, "This code has expired. Please generate a new connection link.");
       return;
     }
-  });
     
     // Get company name
     const company = await db.query.companies.findFirst({
@@ -30114,7 +29062,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }).returning();
       contact = newContact;
     }
-  });
     
     // Get or create chat link
     let chatLink = await db.query.telegramChatLinks.findFirst({
@@ -30137,7 +29084,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }).returning();
       chatLink = newLink;
     }
-  });
     
     // Get or create conversation
     const subject = chatType === "private"
@@ -30175,7 +29121,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         })
         .where(eq(telegramConversations.id, conversation.id));
     }
-  });
     
     // Determine message type
     let messageType: "text" | "photo" | "video" | "document" | "voice" | "audio" | "sticker" | "animation" = "text";
@@ -30241,7 +29186,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         })
         .where(eq(telnyxConversations.id, inboxConversation.id));
     }
-  });
     
     // Insert into inbox messages
     await db.insert(telnyxMessages).values({
@@ -30276,7 +29220,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.warn("[Telegram Webhook] Invalid secret token");
       return res.status(401).json({ error: "Unauthorized" });
     }
-  });
     
     // Respond quickly to Telegram
     res.status(200).json({ ok: true });
@@ -30298,7 +29241,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         await handleTelegramConnect(chatId, chatType, message.chat.title, code, fromUser);
         return;
       }
-  });
       
       // Handle regular messages
       await handleTelegramMessage(update, message, chatId, chatType, fromUser);
@@ -30328,7 +29270,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!userBot) {
         return res.status(400).json({ error: "Please set up your Telegram bot first" });
       }
-  });
       
       const botToken = decryptToken(userBot.botToken);
       
@@ -30342,7 +29283,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!conversation) {
         return res.status(404).json({ error: "Conversation not found" });
       }
-  });
       
       // Send via Telegram API using user's bot token
       const result = await sendTelegramMessage(conversation.chatId, text, botToken);
@@ -30350,7 +29290,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!result?.ok) {
         return res.status(500).json({ error: "Failed to send message", details: result });
       }
-  });
       
       // Save outbound message
       const providerMessageId = `${conversation.chatId}:${result.result.message_id}`;
@@ -30426,7 +29365,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             contactId = contact.id;
             callerName = `${contact.firstName || ''} ${contact.lastName || ''}`.trim() || null;
           }
-  });
           
           // Store voicemail in database
           await db.insert(voicemails).values({
@@ -30475,7 +29413,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-  });
       
       // Get voicemails for this user (or all for admin)
       const whereConditions = [eq(voicemails.companyId, user.companyId)];
@@ -30484,7 +29421,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (user.role === 'agent') {
         whereConditions.push(eq(voicemails.userId, user.id));
       }
-  });
       
       const userVoicemails = await db
         .select({
@@ -30521,7 +29457,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-  });
       
       await db
         .update(voicemails)
@@ -30552,7 +29487,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-  });
       
       await db
         .update(voicemails)
@@ -30755,7 +29689,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!amount || typeof amount !== 'number' || amount < 5 || amount > 500) {
         return res.status(400).json({ message: "Amount must be between $5 and $500" });
       }
-  });
       // Get company's Stripe customer info
       const company = await db.query.companies.findFirst({
         where: eq(companies.id, user.companyId),
@@ -30763,7 +29696,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!company?.stripeCustomerId) {
         return res.status(400).json({ message: "No billing account found. Please add a payment method first." });
       }
-  });
       // Get Stripe client and customer's default payment method
       const { getStripeClient } = await import("./stripe");
       const stripeClient = await getStripeClient();
@@ -30777,7 +29709,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!paymentMethodId) {
         return res.status(400).json({ message: "No saved payment method found. Please add a card in Billing settings." });
       }
-  });
       // Create and confirm PaymentIntent for the top-up amount
       const amountInCents = Math.round(amount * 100);
       
@@ -30801,7 +29732,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[Wallet Top-Up] Payment failed:", paymentIntent.status);
         return res.status(400).json({ message: "Payment failed. Please try again or update your payment method." });
       }
-  });
       // Add funds to wallet
       const { getOrCreateWallet, deposit } = await import("./services/wallet-service");
       const wallet = await getOrCreateWallet(user.companyId, user.id);
@@ -30815,7 +29745,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[Wallet Top-Up] Deposit failed after payment:", depositResult.error);
         return res.status(500).json({ message: "Payment processed but failed to add funds. Please contact support." });
       }
-  });
       console.log(`[Wallet Top-Up] Successfully added $${amount} to wallet for company ${user.companyId}`);
       
       res.json({ 
@@ -30849,7 +29778,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (typeof enabled !== 'boolean') {
         return res.status(400).json({ message: "enabled must be a boolean" });
       }
-  });
       
       if (enabled) {
         if (typeof threshold !== 'number' || threshold < 5 || threshold > 100) {
@@ -30860,7 +29788,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       // Update wallet auto-recharge settings
       const { getOrCreateWallet } = await import("./services/wallet-service");
       const wallet = await getOrCreateWallet(user.companyId, user.id);
@@ -30897,7 +29824,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated" });
       }
-  });
       // Only admins can setup phone system
       if (user.role !== "admin" && user.role !== "super_admin") {
         return res.status(403).json({ message: "Only admins can setup phone system" });
@@ -30968,7 +29894,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-  });
       // Transform to the expected format with phoneNumber and type
       // Note: Telnyx API uses snake_case (phone_number), we convert to camelCase
       const numbers = (result.numbers || []).map((num: any) => {
@@ -31134,7 +30059,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   <Hangup/>
 </Response>`);
       }
-  });
       
       console.log("[Telnyx Voice] Routing to WebRTC client:", sipUsername);
       
@@ -31176,7 +30100,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       
       let texmlResponse: string;
       
@@ -31210,7 +30133,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   </Dial>
 </Response>`;
       }
-  });
       
       console.log("[Telnyx Voice] TeXML response:", texmlResponse);
       res.set("Content-Type", "application/xml");
@@ -31285,14 +30207,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.log("[Telnyx SMS Webhook] Ignoring event type:", eventType);
         return;
       }
-  });
       
       const payload = event?.data?.payload;
       if (!payload) {
         console.error("[Telnyx SMS Webhook] No payload in event");
         return;
       }
-  });
       
       const from = payload.from?.phone_number;
       const to = payload.to?.[0]?.phone_number || payload.to;
@@ -31304,14 +30224,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[Telnyx SMS Webhook] Missing required fields:", { from, to });
         return;
       }
-  });
       
       // Handle MMS: if no text but has media, that's still valid
       if (!text && incomingMedia.length === 0) {
         console.error("[Telnyx SMS Webhook] No text or media in message");
         return;
       }
-  });
       
       console.log(`[Telnyx SMS Webhook] Received: from=${from}, to=${to}, text=${(text || "").substring(0, 50)}, media=${incomingMedia.length}`);
       
@@ -31323,7 +30241,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[Telnyx SMS Webhook] Phone number not found:", to);
         return;
       }
-  });
       
       const companyId = phoneNumber.companyId;
       
@@ -31365,7 +30282,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           })
           .where(eq(telnyxConversations.id, conversation.id));
       }
-  });
       
       // Process MMS media attachments
       let uploadedMediaUrls: string[] = [];
@@ -31392,14 +30308,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
                 headers: { 'Authorization': `Bearer ${telnyxApiKey}` }
               });
             }
-  });
             
             if (!mediaResponse.ok) {
               const errorText = await mediaResponse.text().catch(() => 'No response body');
               console.error(`[Telnyx SMS Webhook] Failed to download media: status=${mediaResponse.status}, url=${mediaUrl.substring(0, 100)}, error=${errorText.substring(0, 200)}`);
               continue;
             }
-  });
             console.log("[Telnyx SMS Webhook] Media downloaded successfully");
             
             const buffer = Buffer.from(await mediaResponse.arrayBuffer());
@@ -31429,7 +30343,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       
       const hasMedia = uploadedMediaUrls.length > 0;
       const messageText = text || (hasMedia ? "(MMS attachment)" : "");
@@ -31936,7 +30849,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         const { resetStripeInitialization } = await import("./stripe");
         resetStripeInitialization();
       }
-  });
       // Reinitialize email service if nodemailer credentials are updated
       if (provider === "nodemailer") {
         const { reinitializeEmailService } = await import("./email");
@@ -32202,7 +31114,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (user.role !== "superadmin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-  });
       
       const { systemConfigService } = await import("./services/system-config");
       await systemConfigService.initialize();
@@ -32221,7 +31132,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (user.role !== "superadmin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-  });
       
       const { key } = req.params;
       const { value, description, isPublic } = req.body;
@@ -32229,7 +31139,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!value || typeof value !== "string") {
         return res.status(400).json({ message: "Value is required and must be a string" });
       }
-  });
       
       const { systemConfigService } = await import("./services/system-config");
       await systemConfigService.set(key, value, {
@@ -32252,7 +31161,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (user.role !== "superadmin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-  });
       
       const { key, value, description, isPublic } = req.body;
       
@@ -32262,7 +31170,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!value || typeof value !== "string") {
         return res.status(400).json({ message: "Value is required and must be a string" });
       }
-  });
       
       const { systemConfigService } = await import("./services/system-config");
       await systemConfigService.set(key, value, {
@@ -32285,7 +31192,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (user.role !== "superadmin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-  });
       
       const { key } = req.params;
       const { systemConfigService } = await import("./services/system-config");
@@ -32312,7 +31218,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!companyId) {
         return res.json({ numbers: [] });
       }
-  });
       
       // Get company name for fallback
       const company = await db.query.companies.findFirst({
@@ -32395,14 +31300,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-  });
       
       const { phoneNumber } = req.params;
       
       if (!phoneNumber) {
         return res.status(400).json({ message: "Phone number is required" });
       }
-  });
       
       // Normalize phone number for comparison
       const normalizePhone = (phone: string) => {
@@ -32426,7 +31329,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
         headers["x-managed-account-id"] = managedAccountId;
       }
-  });
       
       // Get all verification requests
       const response = await fetch(`https://api.telnyx.com/v2/messaging_tollfree/verification/requests?page=1&page_size=100`, {
@@ -32439,7 +31341,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[Telnyx TFV] Error listing verification requests:", errorText);
         return res.status(404).json({ message: "No verification request found for this phone number" });
       }
-  });
       
       const data = await response.json();
       const records = data.records || [];
@@ -32459,12 +31360,10 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
         if (foundRecord) break;
       }
-  });
       
       if (!foundRecord) {
         return res.status(404).json({ message: "No verification request found for this phone number" });
       }
-  });
       
       // Extract all available fields from Telnyx response (camelCase format)
       const raw = foundRecord;
@@ -32519,14 +31418,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-  });
       
       const { id } = req.params;
       
       if (!id) {
         return res.status(400).json({ message: "Verification request ID is required" });
       }
-  });
       
       const apiKey = await getTelnyxMasterApiKey();
       
@@ -32546,7 +31443,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           error: errorText 
         });
       }
-  });
       
       const data = await response.json();
       const raw = data.data || {};
@@ -32595,7 +31491,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (currentUser.role === 'superadmin') {
         return res.json({ hasAccess: true, isOwner: true, reason: 'superadmin' });
       }
-  });
       
       // Get the telephony settings for user's company
       const settings = await db.query.telephonySettings.findFirst({
@@ -32610,7 +31505,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           reason: currentUser.role === 'admin' ? 'admin_can_activate' : 'not_activated' 
         });
       }
-  });
       
       // Check if user is the owner
       const isOwner = settings.ownerUserId === currentUser.id;
@@ -32661,7 +31555,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           .orderBy(desc(telnyxBrands.createdAt));
         return res.json(brands);
       }
-  });
       
       // Fetch brands from Telnyx API
       const response = await fetch("https://api.telnyx.com/v2/10dlc/brand", {
@@ -32679,7 +31572,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           .orderBy(desc(telnyxBrands.createdAt));
         return res.json(brands);
       }
-  });
       
       const result = await response.json();
       console.log("[10DLC] Telnyx brands response:", JSON.stringify(result, null, 2));
@@ -32723,7 +31615,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx API key not configured" });
       }
-  });
       // Get managed account ID for this company
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       console.log("[10DLC Brand] Looking up managed account for company:", companyId);
@@ -32733,7 +31624,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!managedAccountId) {
         return res.status(400).json({ message: "Phone system not activated. Please set up Phone System first." });
       }
-  });
       // Charge $4 brand registration fee
       const BRAND_REGISTRATION_FEE = 4.00;
       const { getOrCreateWallet, charge } = await import("./services/wallet-service");
@@ -32748,7 +31638,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           currentBalance: currentBalance
         });
       }
-  });
       // Build Telnyx payload
       const telnyxPayload: Record<string, any> = {
         entityType: brandData.entityType,
@@ -32784,7 +31673,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         const errorMsg = result.errors?.[0]?.detail || result.message || "Error creating brand with Telnyx";
         return res.status(response.status).json({ message: errorMsg, details: result });
       }
-  });
       // Save to database
       const [newBrand] = await db
         .insert(telnyxBrands)
@@ -32916,17 +31804,14 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         
         return res.json({ exists: false, profile: null });
       }
-  });
       
       if (!wallet?.telnyxMessagingProfileId) {
         return res.json({ exists: false, profile: null });
       }
-  });
       
       if (!telnyxApiKey || !managedAccountId) {
         return res.json({ exists: true, profile: { id: wallet.telnyxMessagingProfileId } });
       }
-  });
       
       const response = await fetch(`https://api.telnyx.com/v2/messaging_profiles/${wallet.telnyxMessagingProfileId}`, {
         method: "GET",
@@ -32936,7 +31821,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!response.ok) {
         return res.json({ exists: true, profile: { id: wallet.telnyxMessagingProfileId } });
       }
-  });
       
       const result = await response.json();
       res.json({ exists: true, profile: result.data });
@@ -32962,7 +31846,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!company) {
         return res.status(404).json({ message: "Company not found" });
       }
-  });
       
       // Get Telnyx credentials
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
@@ -32972,12 +31855,10 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx API key not configured" });
       }
-  });
       
       if (!managedAccountId) {
         return res.status(400).json({ message: "Phone system not activated. Please set up Phone System first." });
       }
-  });
       
       // Check if profile already exists
       const [wallet] = await db
@@ -32988,7 +31869,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (wallet?.telnyxMessagingProfileId) {
         return res.status(400).json({ message: "Messaging profile already exists" });
       }
-  });
       
       console.log(`[Messaging Profile] Creating for company ${companyId} using managed account ${managedAccountId}`);
       
@@ -33018,7 +31898,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         const errorMsg = result.errors?.[0]?.detail || result.message || "Error creating messaging profile";
         return res.status(response.status).json({ message: errorMsg, details: result });
       }
-  });
       
       const profileId = result.data?.id;
       console.log(`[Messaging Profile] Created profileId: ${profileId}, wallet: ${wallet?.id}`);
@@ -33030,7 +31909,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           .set({ telnyxMessagingProfileId: profileId, updatedAt: new Date() })
           .where(eq(wallets.id, wallet.id));
       }
-  });
         console.log(`[Messaging Profile] Saved to wallet ${wallet.id}: ${profileId}`);
       
       res.json({ success: true, profile: result.data });
@@ -33054,7 +31932,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!wallet?.telnyxMessagingProfileId) {
         return res.status(404).json({ message: "No messaging profile found" });
       }
-  });
       
       // Get Telnyx credentials
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
@@ -33064,7 +31941,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!telnyxApiKey || !managedAccountId) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
-  });
       
       // Delete from Telnyx
       const response = await fetch(`https://api.telnyx.com/v2/messaging_profiles/${wallet.telnyxMessagingProfileId}`, {
@@ -33076,7 +31952,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         const result = await response.json();
         return res.status(response.status).json({ message: result.errors?.[0]?.detail || "Error deleting profile" });
       }
-  });
       
       // Clear from wallet
       await db
@@ -33099,7 +31974,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!companyId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-  });
       
       const { assignMessagingProfileToAllNumbers } = await import("./services/telnyx-numbers-service");
       const result = await assignMessagingProfileToAllNumbers(companyId);
@@ -33126,7 +32000,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!telnyxApiKey || !managedAccountId) {
         return res.json({ campaigns: [] });
       }
-  });
       
       // If no brandId provided, first fetch all brands for this account
       let targetBrandId = brandId as string;
@@ -33164,14 +32037,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             }
   });
           }
-  });
           
           console.log("[10DLC Campaigns] Total campaigns found:", allCampaigns.length);
           return res.json({ campaigns: allCampaigns });
         }
   });
       }
-  });
       
       // If brandId was provided, fetch campaigns for that specific brand
       const campaignsUrl = `https://api.telnyx.com/v2/10dlc/campaign?brandId=${targetBrandId}`;
@@ -33185,7 +32056,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[10DLC Campaigns] Error fetching campaigns:", error);
         return res.json({ campaigns: [] });
       }
-  });
       
       const result = await response.json();
       console.log("[10DLC Campaigns] Response:", JSON.stringify(result, null, 2));
@@ -33214,7 +32084,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!brandId || !usecase) {
         return res.status(400).json({ message: "Brand ID and use case are required" });
       }
-  });
       
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
@@ -33223,7 +32092,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!telnyxApiKey || !managedAccountId) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
-  });
       
       // Charge $15 campaign review fee
       const CAMPAIGN_REVIEW_FEE = 15.00;
@@ -33240,7 +32108,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           currentBalance: currentBalance
         });
       }
-  });
       // Validate required fields BEFORE sending to Telnyx (to avoid $15 charge on validation errors)
       const validatedOptinKeywords = optinKeywords || "START,YES";
       const validatedOptoutKeywords = optoutKeywords || "STOP,UNSUBSCRIBE,CANCEL,END,QUIT";
@@ -33308,7 +32175,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[10DLC Campaign] Error creating campaign:", result);
         return res.status(response.status).json({ message: result.errors?.[0]?.detail || result.message || "Failed to create campaign" });
       }
-  });
       
       console.log("[10DLC Campaign] Created:", result);
       // Charge the $15 campaign review fee from wallet
@@ -33346,7 +32212,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!telnyxApiKey || !managedAccountId) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
-  });
       
       const response = await fetch(`https://api.telnyx.com/v2/10dlc/campaign/${id}`, {
         method: "GET",
@@ -33357,7 +32222,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         const error = await response.json();
         return res.status(response.status).json({ message: error.errors?.[0]?.detail || "Campaign not found" });
       }
-  });
       
       const result = await response.json();
       res.json({ campaign: result.data || result });
@@ -33389,7 +32253,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!telnyxApiKey || !managedAccountId) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
-  });
 
       const updateData: Record<string, any> = {};
       if (description) updateData.description = description;
@@ -33431,7 +32294,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[10DLC Campaign] Error updating campaign:", result);
         return res.status(response.status).json({ message: result.errors?.[0]?.detail || result.message || "Failed to update campaign" });
       }
-  });
       
       console.log("[10DLC Campaign] Updated:", result);
       res.json({ success: true, campaign: result.data || result });
@@ -33452,7 +32314,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!appealReason || appealReason.trim().length < 20) {
         return res.status(400).json({ message: "Please provide a detailed appeal reason (minimum 20 characters)" });
       }
-  });
       
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
@@ -33461,7 +32322,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!telnyxApiKey || !managedAccountId) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
-  });
 
       console.log("[10DLC Campaign] Appealing campaign:", id, "Reason:", appealReason);
       
@@ -33477,7 +32337,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[10DLC Campaign] Error appealing campaign:", result);
         return res.status(response.status).json({ message: result.errors?.[0]?.detail || result.message || "Failed to submit appeal" });
       }
-  });
       
       console.log("[10DLC Campaign] Appeal submitted:", result);
       res.json({ success: true, campaign: result.data || result });
@@ -33502,7 +32361,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
-  });
       
       console.log("[10DLC Campaign Numbers] Fetching for campaign:", id, "tcrCampaignId:", tcrCampaignId, "managedAccount:", managedAccountId);
       
@@ -33534,7 +32392,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.log("[10DLC Campaign Numbers] TCR filter response:", response.status, JSON.stringify(result).substring(0, 500));
         numbers = result.records || [];
       }
-  });
       
       // Strategy 3: If still no results, get ALL and filter locally
       if (numbers.length === 0) {
@@ -33564,7 +32421,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       
       console.log("[10DLC Campaign Numbers] Final result:", numbers.length, "numbers");
       res.json({ phoneNumbers: numbers });
@@ -33585,7 +32441,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!phoneNumbers || !Array.isArray(phoneNumbers) || phoneNumbers.length === 0) {
         return res.status(400).json({ message: "Phone numbers array is required" });
       }
-  });
       
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
@@ -33594,7 +32449,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
-  });
       
       // Detect if this is a Telnyx UUID or TCR ID
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
@@ -33634,7 +32488,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       
       if (results.length === 0 && errors.length > 0) {
         return res.status(400).json({ message: errors[0]?.error || "Failed to assign phone numbers", errors });
@@ -33662,7 +32515,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
-  });
       
       console.log("[10DLC Campaign] Removing phone number", phoneNumber, "from campaign");
       
@@ -33676,7 +32528,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[10DLC Campaign] Error removing number:", error);
         return res.status(response.status).json({ message: error.errors?.[0]?.detail || "Failed to remove phone number" });
       }
-  });
       
       console.log("[10DLC Campaign] Successfully removed", phoneNumber);
       res.json({ success: true });
@@ -33698,7 +32549,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!telnyxApiKey || !managedAccountId) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
-  });
       
       const page = parseInt(req.query.page as string) || 1;
       const pageSize = parseInt(req.query.page_size as string) || 25;
@@ -33719,7 +32569,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           message: result.errors?.[0]?.detail || "Error fetching verifications" 
         });
       }
-  });
       
       const result = await response.json();
       res.json({
@@ -33744,7 +32593,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!telnyxApiKey || !managedAccountId) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
-  });
       
       const {
         businessName,
@@ -33779,7 +32627,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           !productionMessageContent || !optInWorkflow) {
         return res.status(400).json({ message: "Missing required fields" });
       }
-  });
       
       const requestBody: any = {
         businessName,
@@ -33834,7 +32681,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           message: result.errors?.[0]?.detail || "Error submitting verification request" 
         });
       }
-  });
       
       console.log("[Toll-Free Verification] Request submitted:", result.data?.id);
       res.json({
@@ -33860,7 +32706,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!telnyxApiKey || !managedAccountId) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
-  });
       
       const response = await fetch(
         `https://api.telnyx.com/v2/messaging_tollfree/verification/requests/${id}`,
@@ -33878,7 +32723,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           message: result.errors?.[0]?.detail || "Error fetching verification" 
         });
       }
-  });
       
       const result = await response.json();
       res.json({ verification: result.data });
@@ -33903,7 +32747,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!telnyxApiKey || !managedAccountId) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
-  });
       
       const response = await fetch("https://api.telnyx.com/v2/rcs_agents", {
         method: "GET",
@@ -33917,7 +32760,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           message: result.errors?.[0]?.detail || "Error fetching RCS agents" 
         });
       }
-  });
       
       const result = await response.json();
       res.json({
@@ -33944,7 +32786,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!telnyxApiKey || !managedAccountId) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
-  });
       
       const response = await fetch(`https://api.telnyx.com/v2/rcs_agents/${agentId}`, {
         method: "GET",
@@ -33958,7 +32799,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           message: result.errors?.[0]?.detail || "Error fetching RCS agent" 
         });
       }
-  });
       
       const result = await response.json();
       res.json({ agent: result.data });
@@ -33982,7 +32822,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!telnyxApiKey || !managedAccountId) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
-  });
       
       const response = await fetch(`https://api.telnyx.com/v2/rcs_agents/${agentId}`, {
         method: "PATCH",
@@ -33997,7 +32836,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           message: result.errors?.[0]?.detail || "Error updating RCS agent" 
         });
       }
-  });
       
       const result = await response.json();
       console.log("[RCS] Agent updated:", agentId);
@@ -34018,7 +32856,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!phoneNumber) {
         return res.status(400).json({ message: "phoneNumber is required" });
       }
-  });
       
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
@@ -34027,13 +32864,11 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!telnyxApiKey || !managedAccountId) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
-  });
       
       const requestBody: any = { phone_number: phoneNumber };
       if (agentId) {
         requestBody.agent_id = agentId;
       }
-  });
       
       const response = await fetch("https://api.telnyx.com/v2/rcs/capabilities/check", {
         method: "PUT",
@@ -34048,7 +32883,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           message: result.errors?.[0]?.detail || "Error checking RCS capabilities" 
         });
       }
-  });
       
       const result = await response.json();
       console.log("[RCS] Capabilities checked for:", phoneNumber);
@@ -34069,14 +32903,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!phoneNumber) {
         return res.status(400).json({ message: "phoneNumber is required" });
       }
-  });
       
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
-  });
       
       // RCS agents are on the master account, use master API key directly
       // URL format: /v2/messaging_rcs/test_number_invite/{id}/{phone_number}
@@ -34102,7 +32934,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           message: result.errors?.[0]?.detail || "Error adding RCS test number" 
         });
       }
-  });
       
       const result = await response.json();
       console.log("[RCS] Test number added successfully:", result.data);
@@ -34162,12 +32993,10 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!agentId || !to) {
         return res.status(400).json({ message: "agentId and to are required" });
       }
-  });
       
       if (!text && !mediaUrl) {
         return res.status(400).json({ message: "Either text or mediaUrl is required" });
       }
-  });
       
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
@@ -34176,7 +33005,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!telnyxApiKey || !managedAccountId) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
-  });
       
       const requestBody: any = {
         agent_id: agentId,
@@ -34186,12 +33014,10 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (text) {
         requestBody.text = text;
       }
-  });
       
       if (mediaUrl) {
         requestBody.media_url = mediaUrl;
       }
-  });
       
       const response = await fetch("https://api.telnyx.com/v2/messages", {
         method: "PUT",
@@ -34206,7 +33032,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           message: result.errors?.[0]?.detail || "Error sending RCS message" 
         });
       }
-  });
       
       const result = await response.json();
       console.log("[RCS] Message sent to:", to, "via agent:", agentId);
@@ -34230,7 +33055,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           reason: 'no_company' 
         });
       }
-  });
       
       // Check if user has a PBX extension assigned
       const userExtension = await db.query.pbxExtensions.findFirst({
@@ -34281,7 +33105,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       
       if (assignedNumber) {
         return res.json({ 
@@ -34293,7 +33116,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           reason: 'assigned' 
         });
       }
-  });
       
       // Check if user has only a PBX extension (no Telnyx number)
       if (userExtension) {
@@ -34305,7 +33127,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           reason: 'pbx_extension_only'
         });
       }
-  });
       
       // User has no assigned number or extension
       res.json({ 
@@ -34397,7 +33218,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       
       const params = {
         country_code: (req.query.country_code as string) || "US",
@@ -34439,7 +33259,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-  });
       // Check wallet balance BEFORE purchasing from Telnyx
       const { getOrCreateWallet } = await import("./services/wallet-service");
       const { loadGlobalPricing } = await import("./services/pricing-config");
@@ -34471,7 +33290,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!result.success) {
         return res.status(500).json({ message: result.error });
       }
-  });
       // Bill the wallet immediately for the first month and save to local DB
       const { purchaseAndBillPhoneNumber } = await import("./services/telephony-billing-service");
       const billingResult = await purchaseAndBillPhoneNumber(phoneNumber, user.companyId, {
@@ -34485,7 +33303,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       } else {
         console.log(`[Billing] Successfully charged $${billingResult.amountCharged?.toFixed(2)} for ${encodedPhone}`);
       }
-  });
       // Auto-enable CNAM listing with company name (truncated to 15 chars)
       if (result.phoneNumberId) {
         try {
@@ -34511,7 +33328,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       // Auto-trigger WebRTC provisioning if not already completed
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
       const existingStatus = await telephonyProvisioningService.getProvisioningStatus(user.companyId, user.id);
@@ -34571,7 +33387,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-  });
       
       // Superadmin can query any company's numbers (all numbers in that company)
       if (user.role === "superadmin" && req.query.companyId) {
@@ -34586,7 +33401,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
         return res.json({ numbers: result.numbers, totalCount: result.totalCount, currentPage: result.currentPage, totalPages: result.totalPages, pageSize: result.pageSize });
       }
-  });
       
       // Sync phone numbers from Telnyx to local DB before returning
       const { syncPhoneNumbersFromTelnyx, getUserPhoneNumbers } = await import("./services/telnyx-numbers-service");
@@ -34615,7 +33429,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!phoneNumberId) {
         return res.status(400).json({ message: "Phone number ID is required" });
       }
-  });
       let targetCompanyId = user.companyId;
       if (user.role === "superadmin" && req.body.companyId) {
         targetCompanyId = req.body.companyId;
@@ -34683,7 +33496,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (typeof enabled !== "boolean") {
         return res.status(400).json({ message: "enabled (boolean) is required" });
       }
-  });
       // Validate CNAM name before sending to API
       if (enabled && cnamName) {
         const { validateCnamName } = await import("./services/telnyx-numbers-service");
@@ -34726,7 +33538,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-  });
       // Find the phone number
       const [phoneNumber] = await db
         .select()
@@ -34738,7 +33549,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!phoneNumber) {
         return res.status(404).json({ message: "Phone number not found" });
       }
-  });
       // If userId is provided, verify the user exists and belongs to the same company
       let targetConnectionId: string | null = null;
       if (userId) {
@@ -34752,7 +33562,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         if (!targetUser) {
           return res.status(404).json({ message: "Target user not found or not in the same company" });
         }
-  });
         // Get the user's extension to find their SIP connection
         const [userExtension] = await db
           .select({ connectionId: pbxExtensions.telnyxCredentialConnectionId })
@@ -34776,7 +33585,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       // Update the connection in Telnyx if we have a target connection
       if (targetConnectionId) {
         try {
@@ -34816,7 +33624,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       // Capture previous owner before update for unassignment notification
       const previousOwnerId = phoneNumber.ownerUserId;
       // Update the phone number's ownerUserId
@@ -34833,7 +33640,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         const { broadcastTelnyxNumberUnassigned } = await import("./websocket");
         broadcastTelnyxNumberUnassigned(previousOwnerId, phoneNumber.phoneNumber);
       }
-  });
       // Broadcast real-time notification to the assigned user so their WebRTC auto-connects
       if (userId) {
         const { broadcastTelnyxNumberAssigned } = await import('./websocket');
@@ -35007,7 +33813,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (typeof enabled !== "boolean") {
         return res.status(400).json({ message: "enabled (boolean) is required" });
       }
-  });
       // Try to update caller_id_name_enabled via voice settings
       const apiKey = await (await import("./services/secrets-service")).SecretsService.prototype.getCredential.call(
         new (await import("./services/secrets-service")).SecretsService(), "telnyx", "api_key"
@@ -35192,7 +33997,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-  });
       
       const [settings] = await db
         .select({
@@ -35220,32 +34024,27 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (user.role !== 'admin' && user.role !== 'superadmin') {
         return res.status(403).json({ message: "Forbidden - Only administrators can modify phone system settings" });
       }
-  });
       
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-  });
       
       const { enabled, direction } = req.body;
       
       if (typeof enabled !== 'boolean') {
         return res.status(400).json({ message: "enabled must be a boolean" });
       }
-  });
       
       const validDirections = ['inbound', 'outbound', 'both'];
       if (direction && !validDirections.includes(direction)) {
         return res.status(400).json({ message: "direction must be 'inbound', 'outbound', or 'both'" });
       }
-  });
       
       // Get managed account config
       const config = await getManagedAccountConfig(user.companyId);
       if (!config) {
         return res.status(400).json({ message: "Phone system not configured. Please set up your phone system first." });
       }
-  });
       
       // Get credential connection ID from telephony settings
       const [settings] = await db
@@ -35258,7 +34057,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!settings?.credentialConnectionId) {
         return res.status(400).json({ message: "No credential connection configured. Please complete phone system setup first." });
       }
-  });
       
       // Determine the noise_suppression value for Telnyx Voice API
       // CORRECT Options for Credential Connections: "disabled", "inbound", "outbound", "both"
@@ -35273,7 +34071,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       
       const TELNYX_API_BASE = "https://api.telnyx.com/v2";
       
@@ -35298,7 +34095,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           details: errorText 
         });
       }
-  });
       
       const responseData = await response.json();
       console.log(`[Noise Suppression] Updated credential connection ${settings.credentialConnectionId} - config: ${noiseSuppressionLevel}`);
@@ -35332,7 +34128,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-  });
       
       const [settings] = await db
         .select({
@@ -35361,13 +34156,11 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-  });
       
       // Only admins can change billing features
       if (user.role !== 'admin' && user.role !== 'superadmin') {
         return res.status(403).json({ message: "Only administrators can change billing features" });
       }
-  });
       
       // Build update object for only provided fields
       const updateData: { recordingEnabled?: boolean; cnamEnabled?: boolean; updatedAt: Date } = {
@@ -35380,7 +34173,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (typeof cnamEnabled === 'boolean') {
         updateData.cnamEnabled = cnamEnabled;
       }
-  });
       
       // Check if settings exist, if not create them (upsert)
       const [existingSettings] = await db
@@ -35406,7 +34198,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           .returning();
         console.log(`[Billing Features] Created new settings for company ${user.companyId}`);
       }
-  });
       
       console.log(`[Billing Features] Updated for company ${user.companyId}: recording=${updatedSettings?.recordingEnabled}, cnam=${updatedSettings?.cnamEnabled}`);
       
@@ -35450,7 +34241,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-  });
       
       const { setupCompanyManagedAccount } = await import("./services/telnyx-managed-accounts");
       const result = await setupCompanyManagedAccount(user.companyId);
@@ -35479,12 +34269,10 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (user.role === "superadmin" && req.query.companyId) {
         targetCompanyId = req.query.companyId as string;
       }
-  });
       
       if (!targetCompanyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-  });
       
       const { getCompanyManagedAccountId, getManagedAccount, clearCompanyTelnyxConfig } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(targetCompanyId);
@@ -35494,7 +34282,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           message: "No managed account configured for this company" 
         });
       }
-  });
       
       // Special case: MASTER_ACCOUNT means this company uses the main Telnyx account directly
       if (managedAccountId === "MASTER_ACCOUNT") {
@@ -35504,7 +34291,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           message: "Using main Telnyx account"
         });
       }
-  });
       // Get account details from Telnyx
       const accountDetails = await getManagedAccount(managedAccountId);
       // If account doesn't exist in Telnyx (disabled/deleted), clear local config and reset
@@ -35516,7 +34302,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           message: "Phone system account was disabled. Please set up again." 
         });
       }
-  });
       // Check if account is disabled in Telnyx (only check explicit status)
       const account = accountDetails.managedAccount as any;
       if (account.status === "disabled" || account.status === "deleted" || account.status === "suspended") {
@@ -35547,7 +34332,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (user.role !== "superadmin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-  });
       
       const { listManagedAccounts } = await import("./services/telnyx-managed-accounts");
       const result = await listManagedAccounts();
@@ -35570,7 +34354,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (user.role !== "superadmin") {
         return res.status(403).json({ message: "Forbidden" });
       }
-  });
       
       const { id } = req.params;
       const { disableManagedAccount } = await import("./services/telnyx-managed-accounts");
@@ -35674,7 +34457,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
         });
       }
-  });
       // Return flat field names directly from database
       res.json({
         pricing: {
@@ -35804,7 +34586,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       } else {
         await db.insert(telnyxGlobalPricing).values(pricingData);
       }
-  });
       // Invalidate pricing cache
       const { invalidatePricingCache } = await import('./services/pricing-config');
       invalidatePricingCache();
@@ -35824,7 +34605,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-  });
       // Get managed account ID from wallet
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(user.companyId);
@@ -35844,7 +34624,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           status: existingStatus 
         });
       }
-  });
       // Trigger provisioning (async - don't wait)
       telephonyProvisioningService.provisionClientInfrastructure(user.companyId, managedAccountId, user.id)
         .then(result => {
@@ -35925,7 +34704,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           message: "Provisioning is already in progress. Please wait." 
         });
       }
-  });
       // Trigger provisioning
       const result = await telephonyProvisioningService.provisionClientInfrastructure(user.companyId, managedAccountId, user.id);
       if (result.success) {
@@ -36017,7 +34795,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-  });
       // Also repair SIP connection settings (ANI override + simultaneous ringing)
       const { repairSipConnectionSettings } = await import("./services/telnyx-e911-service");
       const sipRepairResult = await repairSipConnectionSettings(user.companyId);
@@ -36158,7 +34935,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         // Regular user - only their own credentials
         targetUserId = user.id;
       }
-  });
       
       const credentials = await telephonyProvisioningService.getSipCredentials(user.companyId, targetUserId);
       if (!credentials) {
@@ -36189,7 +34965,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[TURN Credentials] No companyId for user:", user.id);
         return res.status(400).json({ message: "No company associated with user" });
       }
-  });
       // Use the SAME method as /api/webrtc/token - query telephonyCredentials table directly (user-scoped)
       const [credential] = await db
         .select({ 
@@ -36212,7 +34987,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           message: "No SIP credentials found. Please provision WebRTC infrastructure first." 
         });
       }
-  });
       console.log("[TURN Credentials] Returning TURN servers for:", credential.sipUsername);
       // Per Telnyx documentation: SIP credentials work for TURN authentication
       // TURN servers provide relay candidates that bypass NAT/firewall issues
@@ -36247,7 +35021,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-  });
       // Only admins can update WebRTC configuration
       if (user.role !== 'admin' && user.role !== 'superadmin') {
         return res.status(403).json({ message: "Only admins can update WebRTC configuration" });
@@ -36279,7 +35052,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (user.role !== 'admin') {
         return res.status(403).json({ error: "Admin access required" });
       }
-  });
       // Get Telnyx API key from secrets service (same as other Telnyx endpoints)
       const { SecretsService } = await import("./services/secrets-service");
       const secretsService = new SecretsService();
@@ -36302,7 +35074,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (managedAccountId) {
         headers['x-managed-account-id'] = managedAccountId;
       }
-  });
       // Fetch recent recordings from Telnyx
       const response = await fetch('https://api.telnyx.com/v2/recordings?page[size]=50', { headers });
       const data = await response.json();
@@ -36321,7 +35092,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           skipped++;
           continue;
         }
-  });
         console.log(`[Telnyx Sync] Recording ${rec.id}: checking for match...`);
         // Normalize phone numbers
         const fromNumber = (rec.from || '').replace(/[^\d+]/g, '');
@@ -36407,7 +35177,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (managedAccountId) {
         headers['x-managed-account-id'] = managedAccountId;
       }
-  });
       // Build query params for Telnyx API
       const params = new URLSearchParams();
       params.set('filter[record_type]', 'call');
@@ -36424,7 +35193,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error('[Telnyx CDR] Error:', data);
         return res.status(response.status).json({ error: data.errors?.[0]?.detail || 'Failed to fetch CDR' });
       }
-  });
       // Filter by phone numbers if specified
       let records = data.data || [];
       if (fromNumber || toNumber) {
@@ -36475,7 +35243,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!companyId) {
         return res.status(400).json({ error: "companyId is required" });
       }
-  });
       // 1. Get call logs from our database (client billing)
       const dbCalls = await db.select()
         .from(callLogs)
@@ -36561,7 +35328,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       // 3. Combine data
       const billingRecords = dbCalls.map((call) => {
         const clientCost = parseFloat(call.cost || '0');
@@ -36742,7 +35508,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           error: result.error,
         });
       }
-  });
       // Get the company's SIP domain for proper WebRTC registration
       const { TelephonyProvisioningService } = await import("./services/telephony-provisioning-service");
       const provisioningService = new TelephonyProvisioningService();
@@ -36839,13 +35604,11 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       
       if (!callControlIdToHangup) {
         console.log("[Call Control Hangup] No callControlId available");
         return res.status(400).json({ success: false, message: "No call to hang up" });
       }
-  });
       console.log("[Call Control Hangup] Hanging up call via Call Control API:", { 
         callControlIdToHangup,
         dialedLegToHangup,
@@ -36940,7 +35703,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user.companyId) {
         return res.status(400).json({ success: false, message: "No company associated" });
       }
-  });
       // Get the sipUsername for this company
       const [credential] = await db
         .select({ sipUsername: telephonyCredentials.sipUsername })
@@ -36957,7 +35719,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.log("[WebRTC Server Hangup] No credential found for company:", user.companyId);
         return res.status(404).json({ success: false, message: "No WebRTC credential found" });
       }
-  });
       // Get the active call for this sipUsername
       const activeCall = activeCallsMap.get(credential.sipUsername);
       if (!activeCall) {
@@ -36965,7 +35726,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         // Even if no active call is tracked, respond success so client can clean up
         return res.json({ success: true, message: "No active call to hang up" });
       }
-  });
       console.log("[WebRTC Server Hangup] Hanging up PSTN call:", {
         sipUsername: credential.sipUsername,
         callSid: activeCall.callSid,
@@ -36984,7 +35744,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           activeCallsMap.delete(credential.sipUsername);
           return res.json({ success: false, message: "Telnyx API key not configured" });
         }
-  });
         
         // Clean the API key
         telnyxApiKey = telnyxApiKey.trim().replace(/[\r\n\t]/g, "");
@@ -37045,7 +35804,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!fromNumber || !toNumber || !direction || !status) {
         return res.status(400).json({ message: "Missing required fields" });
       }
-  });
       // Check if call already exists (update) or create new
       const existingLog = callId ? await db.query.callLogs.findFirst({
         where: and(
@@ -37066,7 +35824,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.log("[WebRTC] Updated call log:", existingLog.id, "status:", status);
         return res.json({ success: true, id: existingLog.id, updated: true });
       }
-  });
       // Try to match contact by phone number - handle null phones safely
       const normalizedFrom = fromNumber.replace(/\D/g, '').slice(-10);
       const normalizedTo = toNumber.replace(/\D/g, '').slice(-10);
@@ -37086,7 +35843,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       } catch (contactError) {
         console.log("[WebRTC] Contact lookup failed, proceeding without contact:", contactError);
       }
-  });
       console.log("[WebRTC] Creating call log:", { 
         fromNumber, toNumber, direction, status, 
         matchedContactId: matchedContact?.id,
@@ -37157,12 +35913,10 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!phoneNumber) {
         return res.json({ found: false });
       }
-  });
       
       if (!user.companyId) {
         return res.json({ found: false });
       }
-  });
       
       // Normalize phone number (keep only last 10 digits)
       const normalizedPhone = phoneNumber.replace(/\D/g, '').slice(-10);
@@ -37170,7 +35924,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (normalizedPhone.length < 10) {
         return res.json({ found: false });
       }
-  });
       
       // Wrap each lookup in try/catch to prevent any single failure from crashing
       try {
@@ -37267,7 +36020,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       } catch (contactError) {
         console.warn("[Caller Lookup] Contact search failed, continuing:", contactError);
       }
-  });
       
       // Not found - always return 200 OK
       res.json({ found: false });
@@ -37309,7 +36061,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           .orderBy(desc(callLogs.startedAt))
           .limit(parsedLimit);
       }
-  });
       // Enrich logs with customer/policy holder names if phone matches
       const enrichedLogs = await Promise.all(logs.map(async (log) => {
         // Get the phone number to match (inbound = fromNumber, outbound = toNumber)
@@ -37350,7 +36101,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
               isCustomer: true,
             };
           }
-  });
           
           // Fallback: look up policy by client phone number
           const [matchingPolicy] = await db
@@ -37477,7 +36227,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (Object.keys(updateData).length === 0) {
         return res.status(400).json({ message: "No fields to update" });
       }
-  });
       // Check if this is a call ending and needs billing
       // Conditions: status is "ended" or "completed", duration > 0, cost not already set
       const isCallEnding = (status === "ended" || status === "completed");
@@ -37577,7 +36326,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
-  });
       // Superadmin can clear all company call logs
       if (user.role === "superadmin") {
         await db
@@ -37735,7 +36483,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           .where(eq(deploymentJobs.id, jobId));
         return;
       }
-  });
       
       // Production deployment - execute real commands
       const { spawn } = await import("child_process");
@@ -37789,7 +36536,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       
       // Step 2: Install dependencies
       await appendLog("Step 2/4: Installing dependencies...");
@@ -37846,7 +36592,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           jobId: existingJob.id 
         });
       }
-  });
       
       const [job] = await db
         .insert(deploymentJobs)
@@ -37880,7 +36625,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (user.role !== "superadmin") {
         return res.status(403).json({ message: "Only super admin can trigger deployments" });
       }
-  });
       
       console.log("[DEPLOY] Manual deployment triggered by:", user.email);
       
@@ -37897,7 +36641,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           inProgress: true
         });
       }
-  });
       
       const [job] = await db
         .insert(deploymentJobs)
@@ -37932,7 +36675,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (user.role !== "superadmin") {
         return res.status(403).json({ message: "Only super admin can view deployment status" });
       }
-  });
       
       const jobs = await db
         .select()
@@ -38007,7 +36749,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
           return res.status(400).json({ error: multerError.message || "Upload failed", code: multerError.code || "UPLOAD_ERROR" });
         }
-  });
         
         const user = req.user as User;
         const file = req.file;
@@ -38015,7 +36756,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         if (!file) {
           return res.status(400).json({ error: "No audio file provided", code: "NO_FILE" });
         }
-  });
         
         // Generate unique filename
         const extension = file.mimetype.includes('wav') ? 'wav' : 'mp3';
@@ -38046,7 +36786,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         } catch (telnyxError: any) {
           console.warn(`[PBX] Telnyx Media upload failed, falling back to URL: ${telnyxError.message}`);
         }
-  });
         
         // Update PBX settings with the new audio URL and media name
         const settings = await pbxService.createOrUpdatePbxSettings(user.companyId, {
@@ -38091,7 +36830,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       
       // Update PBX settings to clear the audio URL and media name
       const settings = await pbxService.createOrUpdatePbxSettings(user.companyId, {
@@ -38406,7 +37144,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         // Auto-assign next available extension
         req.body.extension = await pbxService.getNextExtensionNumber(user.companyId);
       }
-  });
       
       const extension = await pbxService.createExtension(user.companyId, req.body);
       
@@ -38454,17 +37191,14 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!extension) {
         return res.status(404).json({ error: "Extension not found" });
       }
-  });
       
       if (extension.companyId !== user.companyId) {
         return res.status(403).json({ error: "Access denied" });
       }
-  });
       
       if (!extension.userId) {
         return res.status(400).json({ error: "Extension must have a user assigned to provision SIP credentials" });
       }
-  });
       
       // Use new per-extension SIP provisioning
       const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
@@ -38476,7 +37210,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!sipResult.success) {
         return res.status(500).json({ error: sipResult.error || "Failed to provision SIP credentials" });
       }
-  });
       
       console.log(`[PBX] Provisioned independent SIP connection for extension ${extension.extension}: ${sipResult.sipUsername}`);
       return res.json({ 
@@ -38549,7 +37282,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!extension) {
         return res.status(404).json({ error: "No extension found for this user" });
       }
-  });
       
       if (!extension.sipUsername || !extension.sipPassword) {
         // Auto-provision SIP credentials if missing
@@ -38568,7 +37300,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             needsProvisioning: true 
           });
         }
-  });
         
         console.log(`[WebRTC] Auto-provisioned SIP credentials for extension ${extension.id}`);
         
@@ -38590,7 +37321,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           credentialConnectionId: provisionResult.credentialConnectionId,
         });
       }
-  });
       
       // Get company SIP domain from telephonySettings (must match what Call Control uses for dialing)
       const [settings] = await db
@@ -39014,14 +37744,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!extension) {
         return res.status(400).json({ error: "Extension required" });
       }
-  });
       
       // Check if it's the IVR extension
       const settings = await pbxService.getPbxSettings(user.companyId);
       if (settings?.ivrEnabled && settings.ivrExtension === extension) {
         return res.json({ type: "ivr", extension });
       }
-  });
       
       // Check if it's a queue extension
       const [queue] = await db
@@ -39036,7 +37764,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (queue) {
         return res.json({ type: "queue", extension, queueId: queue.id, name: queue.name });
       }
-  });
       
       // Check if it's a user extension
       const [userExt] = await db
@@ -39051,7 +37778,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (userExt) {
         return res.json({ type: "user", extension, userId: userExt.userId, online: false });
       }
-  });
       
       // Extension not found
       return res.json({ type: "unknown", extension });
@@ -39110,7 +37836,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!credential) {
         return res.status(400).json({ error: "No SIP credentials configured" });
       }
-  });
       
       // Get company's main phone number for outbound caller ID
       const [phoneNumber] = await db
@@ -39121,7 +37846,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!phoneNumber) {
         return res.status(400).json({ error: "No phone number configured" });
       }
-  });
       
       // Get Call Control App ID from telephony settings
       const [settings] = await db
@@ -39132,12 +37856,10 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!settings?.callControlAppId) {
         return res.status(400).json({ error: "Call Control App not configured. Please set up phone system first." });
       }
-  });
       
       if (!phoneNumber) {
         return res.status(400).json({ error: "No phone number configured" });
       }
-  });
       
       const TELNYX_API_KEY = await getTelnyxMasterApiKey();
       const userSipUri = `sip:${credential.sipUsername}@sip.telnyx.com`;
@@ -39174,7 +37896,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         console.error("[PBX Internal Call] Telnyx API error:", errorData);
         return res.status(500).json({ error: "Failed to initiate call" });
       }
-  });
       
       const data = await response.json();
       console.log(`[PBX Internal Call] Initiated ${targetType} call for user ${user.id}:`, data.data?.call_control_id);
@@ -39298,7 +38019,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         if (!audioType || !['greeting', 'hold_music', 'announcement', 'voicemail_greeting'].includes(audioType)) {
           return res.status(400).json({ message: "Valid audio type is required (greeting, hold_music, announcement, voicemail_greeting)" });
         }
-  });
         // Upload to Telnyx Media Storage for fast playback during calls
         // CRITICAL: Pass companyId to upload to the managed account (not master account)
         const { uploadMediaToTelnyx } = await import("./services/telnyx-media-service");
@@ -39312,7 +38032,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           console.error("[PBX Audio] Telnyx upload failed:", uploadResult.error);
           return res.status(500).json({ message: uploadResult.error || "Failed to upload audio file to Telnyx" });
         }
-  });
         // Save to database
         const [audioFile] = await db
           .insert(pbxAudioFiles)
@@ -39395,7 +38114,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!existing) {
         return res.status(404).json({ message: "Audio file not found" });
       }
-  });
       // Check if audio is in use
       const ivrsUsingAsGreeting = await db
         .select({ id: pbxIvrs.id })
@@ -39424,7 +38142,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
           });
         }
-  });
         // Force delete: clear references in IVRs
         if (ivrsUsingAsGreeting.length > 0) {
           console.log(`[PBX Audio] Force delete: clearing ${ivrsUsingAsGreeting.length} IVR references`);
@@ -39436,7 +38153,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
               eq(pbxIvrs.greetingAudioUrl, existing.fileUrl)
             ));
         }
-  });
         // Force delete: clear references in Queues
         if (queuesUsingAsHoldMusic.length > 0) {
           console.log(`[PBX Audio] Force delete: clearing ${queuesUsingAsHoldMusic.length} Queue references`);
@@ -39450,7 +38166,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       // Delete from storage (Telnyx or legacy Object Storage)
       if (existing.telnyxMediaId) {
         // Delete from Telnyx Media Storage
@@ -39470,7 +38185,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       // Delete from database
       await db
         .delete(pbxAudioFiles)
@@ -39509,13 +38223,11 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!userId) {
         return res.status(401).json({ message: "Not authenticated" });
       }
-  });
       
       const user = await storage.getUser(userId);
       if (!user) {
         return res.status(404).json({ message: "User not found" });
       }
-  });
       
       const {
         firstName,
@@ -39535,7 +38247,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!firstName || !lastName) {
         return res.status(400).json({ message: "First name and last name are required" });
       }
-  });
       
       await storage.updateUser(userId, {
         firstName: firstName.trim(),
@@ -39630,7 +38341,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
         headers["x-managed-account-id"] = managedAccountId;
       }
-  });
       
       console.log(`[Inbox Repair] Updating webhook for profile ${messagingProfileId} to ${smsWebhookUrl}`);
       
@@ -39651,7 +38361,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         results.webhookUpdate = { success: false, error: errorText };
         console.error(`[Inbox Repair] Webhook update failed: ${webhookResponse.status} - ${errorText}`);
       }
-  });
       
       // Step 3: Assign messaging profile to all phone numbers
       console.log(`[Inbox Repair] Assigning messaging profile to all numbers...`);
@@ -39713,7 +38422,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
       }
-  });
       // Mark as read (reset unread count)
       await db
         .update(telnyxConversations)
@@ -39779,7 +38487,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           .set({ lastMessage: text.substring(0, 100), lastMessageAt: new Date(), updatedAt: new Date() })
           .where(eq(telnyxConversations.id, conversation.id));
       }
-  });
       // Send message via Telnyx API using managed account
       const { sendTelnyxMessage } = await import("./services/telnyx-messaging-service");
       const sendResult = await sendTelnyxMessage({
@@ -39804,7 +38511,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       } else {
         telnyxMessageId = telnyxData?.data?.id || null;
       }
-  });
       // Create message record
       const [message] = await db
         .insert(telnyxMessages)
@@ -39868,7 +38574,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         if (!conversation) {
           return res.status(404).json({ message: "Conversation not found" });
         }
-  });
         // Upload files to permanent object storage for MMS
         let mediaUrls: string[] = [];
         if (files && files.length > 0) {
@@ -39909,7 +38614,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           }
   });
         }
-  });
         // If internal note, just save to database (no Telnyx send)
         if (isInternalNote === 'true' || isInternalNote === true) {
           const [message] = await db
@@ -39930,7 +38634,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             .returning();
           return res.status(201).json(message);
         }
-  });
         // === TELEGRAM CHANNEL ROUTING ===
         if (conversation.channel === "telegram") {
           // Extract chatId from the phone number field (format: telegram:chatId)
@@ -39944,7 +38647,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           if (!userBot) {
             return res.status(400).json({ message: "Please set up your Telegram bot first in the Integrations page" });
           }
-  });
           
           const botToken = decryptToken(userBot.botToken);
           
@@ -39996,7 +38698,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
                   formData.append("caption", text);
                   formData.append("parse_mode", "HTML");
                 }
-  });
                 
                 const telegramResponse = await fetch(`https://api.telegram.org/bot${botToken}/${method}`, {
                   method: "POST",
@@ -40008,7 +38709,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
                 if (!telegramData.ok) {
                   console.error(`[Telegram] Failed to send ${method}:`, telegramData.description);
                 }
-  });
                 
                 // Track sent media for message record
                 if (telegramData.ok) {
@@ -40031,7 +38731,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
               });
               telegramData = await telegramResponse.json();
             }
-  });
             
             let status: "sent" | "failed" = telegramData?.ok ? "sent" : "failed";
             let errorMessage: string | null = telegramData?.ok ? null : (telegramData?.description || "Telegram send failed");
@@ -40077,7 +38776,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           }
   });
         }
-  });
         // === END TELEGRAM CHANNEL ROUTING ===
         // Send message via Telnyx API using managed account
         const { sendTelnyxMessage } = await import("./services/telnyx-messaging-service");
@@ -40104,7 +38802,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         } else {
           telnyxMessageId = telnyxData?.data?.id || null;
         }
-  });
         // Create message record
         const [message] = await db
           .insert(telnyxMessages)
@@ -40185,7 +38882,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!conversation) {
         return res.status(404).json({ message: "Conversation not found" });
       }
-  });
       
       // Delete all messages for this conversation first
       await db.delete(telnyxMessages).where(eq(telnyxMessages.conversationId, id));
@@ -40221,7 +38917,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-  });
       
       const validation = insertComplianceApplicationSchema.safeParse({
         ...req.body,
@@ -40232,7 +38927,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!validation.success) {
         return res.status(400).json({ message: "Invalid data", errors: validation.error.errors });
       }
-  });
       
       const { selectedPhoneNumber } = validation.data;
       let telnyxManagedAccountId: string | undefined;
@@ -40277,7 +38971,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         phoneNumberStatus = "active";
         console.log(`[Compliance] Phone number purchased: ${selectedPhoneNumber}, ID: ${telnyxPhoneNumberId}, Order: ${telnyxNumberOrderId}`);
       }
-  });
       
       // Create the compliance application with Telnyx integration data
       const [application] = await db.insert(complianceApplications).values({
@@ -40303,7 +38996,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-  });
       
       const [application] = await db
         .select()
@@ -40332,7 +39024,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-  });
       
       const [application] = await db
         .select()
@@ -40361,7 +39052,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-  });
       
       const { id } = req.params;
       
@@ -40395,7 +39085,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!user || !user.companyId) {
         return res.status(401).json({ message: "Unauthorized" });
       }
-  });
       
       const { id } = req.params;
       
@@ -40412,7 +39101,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (!existing) {
         return res.status(404).json({ message: "Application not found" });
       }
-  });
       
       // Check if this is a submission request to Telnyx
       if (req.body.status === "submitted" && existing.status !== "submitted") {
@@ -40424,7 +39112,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           if (!telnyxApiKey || !managedAccountId) {
             return res.status(400).json({ message: "Telnyx not configured for this company" });
           }
-  });
           
           // Verify the phone number exists in the managed account before submitting
           console.log(`[Toll-Free Compliance] Verifying phone number ${existing.selectedPhoneNumber} exists in managed account ${managedAccountId}`);
@@ -40435,7 +39122,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
             verifyHeaders["x-managed-account-id"] = managedAccountId;
           }
-  });
           
           const verifyResponse = await fetch(
             `https://api.telnyx.com/v2/phone_numbers?filter[phone_number][eq]=${encodeURIComponent(existing.selectedPhoneNumber)}`,
@@ -40452,7 +39138,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
               details: "The toll-free verification requires the phone number to be owned by your company's Telnyx account."
             });
           }
-  });
           
           console.log(`[Toll-Free Compliance] Phone number verified: ${foundNumbers[0]?.phone_number}, ID: ${foundNumbers[0]?.id}`);
           
@@ -40562,7 +39247,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           } else if (existing.optInScreenshotUrl && (existing.optInScreenshotUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) || existing.optInScreenshotUrl.includes('/uploads'))) {
             telnyxRequestBody.optInWorkflowImageURLs = [{ url: makeAbsoluteUrl(existing.optInScreenshotUrl) }];
           }
-  });
           // Don't include optInWorkflowImageURLs if we don't have valid image URLs - it's recommended but not strictly required
 
           telnyxRequestBody.additionalInformation = existing.additionalInformation
@@ -40575,7 +39259,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           if (existing.businessAddressLine2) {
             telnyxRequestBody.businessAddr2 = existing.businessAddressLine2;
           }
-  });
           
           // Business registration fields (required Jan 2026)
           if (existing.ein) {
@@ -40583,7 +39266,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             telnyxRequestBody.businessRegistrationType = existing.businessRegistrationType || "EIN";
             telnyxRequestBody.businessRegistrationCountry = existing.businessRegistrationCountry || "US";
           }
-  });
           
           // Entity type mapping
           const entityTypeMap: Record<string, string> = {
@@ -40601,43 +39283,36 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           if (existing.entityType) {
             telnyxRequestBody.entityType = entityTypeMap[existing.entityType] || "PRIVATE_PROFIT";
           }
-  });
           
           // DBA / brand name
           if (existing.doingBusinessAs || existing.brandDisplayName) {
             telnyxRequestBody.doingBusinessAs = existing.doingBusinessAs || existing.brandDisplayName;
           }
-  });
           
           // Opt-in keywords
           if (existing.optInKeywords) {
             telnyxRequestBody.optInKeywords = existing.optInKeywords;
           }
-  });
           
           // Opt-in confirmation response
           if (existing.optInConfirmationResponse) {
             telnyxRequestBody.optInConfirmationResponse = existing.optInConfirmationResponse;
           }
-  });
           
           // Help message response
           if (existing.helpMessageResponse) {
             telnyxRequestBody.helpMessageResponse = existing.helpMessageResponse;
           }
-  });
           
           // Privacy policy URL
           if (existing.privacyPolicyUrl) {
             telnyxRequestBody.privacyPolicyURL = makeAbsoluteUrl(existing.privacyPolicyUrl);
           }
-  });
           
           // Terms and conditions URL
           if (existing.smsTermsUrl) {
             telnyxRequestBody.termsAndConditionURL = makeAbsoluteUrl(existing.smsTermsUrl);
           }
-  });
           
           // Age-gated content
           telnyxRequestBody.ageGatedContent = existing.ageGatedContent || false;
@@ -40688,7 +39363,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
               validationErrors,
             });
           }
-  });
           
           console.log("[Toll-Free Compliance] Verification submitted successfully:", telnyxResult.data?.id);
           
@@ -40713,7 +39387,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
   });
       }
-  });
       
       // Regular update (not submission)
       const [updated] = await db
