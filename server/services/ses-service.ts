@@ -70,7 +70,7 @@ export interface DnsRecord {
   type: "CNAME" | "TXT" | "MX";
   name: string;
   value: string;
-  purpose: "DKIM" | "SPF" | "DMARC" | "MAIL_FROM" | "VERIFICATION";
+  purpose: "DKIM" | "SPF" | "DMARC" | "MAIL_FROM" | "MAIL_FROM_SPF" | "VERIFICATION";
 }
 
 export interface DomainSetupResult {
@@ -174,6 +174,43 @@ class SesService {
       const configSetName = `curbe-${companyId.substring(0, 8)}`;
       await this.createConfigurationSet(companyId, configSetName);
       
+      // Set up MAIL_FROM subdomain for better deliverability
+      const mailFromDomain = `mail.${sanitizedDomain}`;
+      const awsCredentials = await credentialProvider.getAwsSes();
+      const mailFromMxRecord = `feedback-smtp.${awsCredentials.region}.amazonses.com`;
+      
+      let mailFromSuccess = false;
+      try {
+        const mailFromCommand = new PutEmailIdentityMailFromAttributesCommand({
+          EmailIdentity: sanitizedDomain,
+          MailFromDomain: mailFromDomain,
+          BehaviorOnMxFailure: "USE_DEFAULT_VALUE",
+        });
+        await client.send(mailFromCommand);
+        console.log(`[SES] MAIL_FROM configured: ${mailFromDomain}`);
+        mailFromSuccess = true;
+      } catch (mailFromError: any) {
+        console.error("[SES] Error setting up MAIL_FROM:", mailFromError.message);
+        // Continue anyway - MAIL_FROM is optional but recommended
+      }
+      
+      // Only add MAIL_FROM DNS records if the AWS call succeeded
+      if (mailFromSuccess) {
+        dnsRecords.push({
+          type: "MX",
+          name: mailFromDomain,
+          value: `10 ${mailFromMxRecord}`,
+          purpose: "MAIL_FROM",
+        });
+        
+        dnsRecords.push({
+          type: "TXT",
+          name: mailFromDomain,
+          value: "v=spf1 include:amazonses.com ~all",
+          purpose: "MAIL_FROM_SPF",
+        });
+      }
+      
       await db.insert(companyEmailSettings).values({
         companyId,
         sendingDomain: sanitizedDomain,
@@ -184,6 +221,10 @@ class SesService {
         dmarcRecord: `v=DMARC1; p=quarantine; rua=mailto:dmarc@${sanitizedDomain}`,
         configurationSetName: configSetName,
         emailStatus: "pending_verification",
+        // Only persist MAIL_FROM config if AWS call succeeded
+        mailFromDomain: mailFromSuccess ? mailFromDomain : null,
+        mailFromMxRecord: mailFromSuccess ? mailFromMxRecord : null,
+        mailFromStatus: mailFromSuccess ? "pending" : "not_configured",
       }).onConflictDoUpdate({
         target: companyEmailSettings.companyId,
         set: {
@@ -195,6 +236,10 @@ class SesService {
           dmarcRecord: `v=DMARC1; p=quarantine; rua=mailto:dmarc@${sanitizedDomain}`,
           configurationSetName: configSetName,
           emailStatus: "pending_verification",
+          // Only persist MAIL_FROM config if AWS call succeeded
+          mailFromDomain: mailFromSuccess ? mailFromDomain : null,
+          mailFromMxRecord: mailFromSuccess ? mailFromMxRecord : null,
+          mailFromStatus: mailFromSuccess ? "pending" : "not_configured",
           updatedAt: new Date(),
         },
       });

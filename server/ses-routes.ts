@@ -137,6 +137,41 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
     }
   });
   
+  // Repair endpoint for fixing domains missing MAIL_FROM configuration
+  app.post("/api/ses/domain/repair", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = getCompanyId(req);
+      const settings = await sesService.getCompanyEmailSettings(companyId);
+      
+      if (!settings || !settings.sendingDomain) {
+        return res.status(404).json({ message: "No domain configured" });
+      }
+      
+      // If MAIL_FROM is already configured, just return success
+      if (settings.mailFromDomain && settings.mailFromMxRecord) {
+        return res.json({ success: true, message: "Domain already properly configured", mailFromDomain: settings.mailFromDomain });
+      }
+      
+      // Set up MAIL_FROM for the existing domain
+      const mailFromDomain = `mail.${settings.sendingDomain}`;
+      const result = await sesService.setupMailFrom(companyId, mailFromDomain);
+      
+      if (!result.success) {
+        return res.status(400).json({ message: result.error || "Failed to setup MAIL_FROM" });
+      }
+      
+      res.json({
+        success: true,
+        message: "Domain repaired successfully",
+        mailFromDomain: mailFromDomain,
+        mxRecord: result.mxRecord,
+      });
+    } catch (error: any) {
+      console.error("[SES Routes] Error repairing domain:", error);
+      res.status(500).json({ message: error.message });
+    }
+  });
+  
   app.get("/api/ses/domain/dns-records", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = getCompanyId(req);

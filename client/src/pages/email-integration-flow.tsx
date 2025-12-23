@@ -20,6 +20,8 @@ import {
   ArrowLeft,
   Plus,
   Trash2,
+  AlertCircle,
+  Wrench,
 } from "lucide-react";
 import {
   Collapsible,
@@ -262,6 +264,40 @@ export default function EmailIntegrationFlowPage() {
       });
     },
   });
+
+  // Repair mutation for fixing domains missing MAIL_FROM configuration
+  const repairDomainMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/ses/domain/repair");
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ses/settings"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/ses/domain/dns-records"] });
+      toast({
+        title: "Domain repaired",
+        description: "MAIL_FROM configuration has been added. Please add the new DNS records.",
+      });
+    },
+    onError: (error: Error) => {
+      toast({
+        title: "Repair failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Auto-refresh verification status every 30 seconds when on step 2
+  useEffect(() => {
+    if (currentStep === 2 && settings?.sendingDomain) {
+      const interval = setInterval(() => {
+        queryClient.invalidateQueries({ queryKey: ["/api/ses/settings"] });
+        queryClient.invalidateQueries({ queryKey: ["/api/ses/domain/dns-records"] });
+      }, 30000); // Check every 30 seconds
+      
+      return () => clearInterval(interval);
+    }
+  }, [currentStep, settings?.sendingDomain]);
 
   const saveSendersMutation = useMutation({
     mutationFn: async (sendersData: EmailSender[]) => {
@@ -511,6 +547,34 @@ export default function EmailIntegrationFlowPage() {
                       </div>
                     )}
 
+                    {/* Warning if MAIL_FROM records are missing */}
+                    {!getReturnPathRecord() && settings?.sendingDomain && (
+                      <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-4">
+                        <div className="flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-2">
+                            <AlertCircle className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                            <p className="text-sm text-amber-800 dark:text-amber-200">
+                              Missing Return-Path (MAIL_FROM) configuration. Click "Repair" to add the missing DNS records.
+                            </p>
+                          </div>
+                          <Button
+                            size="sm"
+                            onClick={() => repairDomainMutation.mutate()}
+                            disabled={repairDomainMutation.isPending}
+                            className="bg-amber-600 hover:bg-amber-700"
+                            data-testid="button-repair-domain"
+                          >
+                            {repairDomainMutation.isPending ? (
+                              <LoadingSpinner fullScreen={false} />
+                            ) : (
+                              <Wrench className="w-4 h-4 mr-1" />
+                            )}
+                            Repair
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+
                     {allRecordsVerified() && (
                       <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-4">
                         <div className="flex items-center gap-2">
@@ -521,6 +585,16 @@ export default function EmailIntegrationFlowPage() {
                         </div>
                       </div>
                     )}
+
+                    {/* Auto-verification notice */}
+                    <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                      <div className="flex items-center gap-2">
+                        <RefreshCw className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                        <p className="text-xs text-blue-800 dark:text-blue-200">
+                          Verification status updates automatically every 30 seconds. You can also click "Verify records" to check immediately.
+                        </p>
+                      </div>
+                    </div>
 
                     <div className="flex gap-3">
                       <Button
