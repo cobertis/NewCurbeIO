@@ -94,6 +94,9 @@ export function registerSesRoutes(app: Express, requireActiveCompany: any) {
   app.post("/api/ses/domain/setup", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = (req as any).companyId;
+      if (!companyId) {
+        return res.status(400).json({ message: "Company context required for domain setup" });
+      }
       const { domain } = domainSetupSchema.parse(req.body);
       
       const result = await sesService.createDomainIdentity(companyId, domain);

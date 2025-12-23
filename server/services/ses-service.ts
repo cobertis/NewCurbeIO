@@ -115,7 +115,10 @@ export interface BulkEmailSendRequest {
 }
 
 // Sanitize tag values for AWS SES - only allows letters, numbers, spaces, and _ . : / = + - @
-function sanitizeTagValue(value: string): string {
+function sanitizeTagValue(value: string | undefined | null): string {
+  if (!value) {
+    return "unknown";
+  }
   // Replace any invalid characters with underscores
   return value.replace(/[^a-zA-Z0-9 _.:/=+\-@]/g, '_');
 }
