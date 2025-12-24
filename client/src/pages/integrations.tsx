@@ -15,7 +15,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { cn } from "@/lib/utils";
 import { SiWhatsapp, SiInstagram, SiFacebook, SiTiktok, SiTelegram } from "react-icons/si";
-import { CheckCircle, XCircle, Clock, AlertTriangle, Plus, Trash2, RefreshCw, ExternalLink, Settings, HelpCircle, ChevronDown, Info, User as UserIcon, Users, Phone, Mail, Building, CreditCard, Plug, MessageSquare, Zap, Shield, Bell, UsersRound, Palette } from "lucide-react";
+import { CheckCircle, XCircle, Clock, AlertTriangle, Plus, Trash2, RefreshCw, ExternalLink, Settings, HelpCircle, ChevronDown, ChevronLeft, ChevronRight, Info, User as UserIcon, Users, Phone, Mail, Building, CreditCard, Plug, MessageSquare, Zap, Shield, Bell, UsersRound, Palette } from "lucide-react";
 import type { ChannelConnection, User } from "@shared/schema";
 import Billing from "@/pages/billing";
 import SettingsPage from "@/pages/settings";
@@ -28,6 +28,27 @@ type ChannelType = "whatsapp" | "instagram" | "facebook";
 interface ConnectionStatus {
   connected: boolean;
   connection?: ChannelConnection;
+}
+
+function SettingsBreadcrumb({ pageName, onBack }: { pageName: string; onBack: () => void }) {
+  return (
+    <div className="flex items-center gap-3 mb-6">
+      <Button
+        variant="outline"
+        size="icon"
+        className="h-9 w-9 shrink-0"
+        onClick={onBack}
+        data-testid="button-back-settings"
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      <div className="flex items-center gap-2 text-lg">
+        <span className="text-muted-foreground">Settings</span>
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        <span className="font-medium">{pageName}</span>
+      </div>
+    </div>
+  );
 }
 
 function getStatusBadge(status: string | undefined) {
@@ -1816,99 +1837,86 @@ export default function IntegrationsPage() {
       </div>
 
       <div className="flex-1 min-w-0">
-        {activeView === "profile" && <SettingsPage />}
+        {activeView === "profile" && (
+          <div>
+            <SettingsBreadcrumb pageName="Profile" onBack={() => setLocation("/settings/profile")} />
+            <SettingsPage />
+          </div>
+        )}
         {activeView === "security" && (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-semibold">Security</h1>
-              <p className="text-muted-foreground">Manage your account security settings.</p>
-            </div>
+          <div>
+            <SettingsBreadcrumb pageName="Security" onBack={() => setLocation("/settings/profile")} />
             <SettingsPage />
           </div>
         )}
         {activeView === "notifications" && (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-semibold">Notifications</h1>
-              <p className="text-muted-foreground">Configure your notification preferences.</p>
-            </div>
+          <div>
+            <SettingsBreadcrumb pageName="Notifications" onBack={() => setLocation("/settings/profile")} />
             <SettingsPage />
           </div>
         )}
         {activeView === "company" && (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-semibold">Company Settings</h1>
-              <p className="text-muted-foreground">Manage your workspace and company information.</p>
-            </div>
+          <div>
+            <SettingsBreadcrumb pageName="Company Settings" onBack={() => setLocation("/settings/profile")} />
             <SettingsPage />
           </div>
         )}
         {activeView === "team" && (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-semibold">Team Management</h1>
-              <p className="text-muted-foreground">Manage team members and permissions.</p>
-            </div>
+          <div>
+            <SettingsBreadcrumb pageName="Team Management" onBack={() => setLocation("/settings/profile")} />
             <SettingsPage />
           </div>
         )}
-        {activeView === "billing" && <Billing />}
-        {activeView === "sms-voice" && <SmsVoice />}
-        {activeView === "email" && <EmailIntegration />}
+        {activeView === "billing" && (
+          <div>
+            <SettingsBreadcrumb pageName="Billing" onBack={() => setLocation("/settings/profile")} />
+            <Billing />
+          </div>
+        )}
+        {activeView === "sms-voice" && (
+          <div>
+            <SettingsBreadcrumb pageName="SMS & Voice" onBack={() => setLocation("/settings/profile")} />
+            <SmsVoice />
+          </div>
+        )}
+        {activeView === "email" && (
+          <div>
+            <SettingsBreadcrumb pageName="Email" onBack={() => setLocation("/settings/profile")} />
+            <EmailIntegration />
+          </div>
+        )}
         {activeView === "automations" && (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-semibold">Automations</h1>
-              <p className="text-muted-foreground">Configure automated workflows and responses.</p>
-            </div>
+          <div>
+            <SettingsBreadcrumb pageName="Automations" onBack={() => setLocation("/settings/profile")} />
           </div>
         )}
         {activeView === "whatsapp" && (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-semibold">WhatsApp</h1>
-              <p className="text-muted-foreground">Configure your WhatsApp Business integration.</p>
-            </div>
+          <div>
+            <SettingsBreadcrumb pageName="WhatsApp" onBack={() => setLocation("/settings/profile")} />
             <WhatsAppCard />
           </div>
         )}
         {activeView === "facebook" && (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-semibold">Facebook Messenger</h1>
-              <p className="text-muted-foreground">Configure your Facebook Messenger integration.</p>
-            </div>
+          <div>
+            <SettingsBreadcrumb pageName="Facebook Messenger" onBack={() => setLocation("/settings/profile")} />
             <FacebookCard />
           </div>
         )}
         {activeView === "instagram" && (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-semibold">Instagram</h1>
-              <p className="text-muted-foreground">Configure your Instagram Direct integration.</p>
-            </div>
+          <div>
+            <SettingsBreadcrumb pageName="Instagram" onBack={() => setLocation("/settings/profile")} />
             <InstagramCard />
           </div>
         )}
         {activeView === "telegram" && (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-semibold">Telegram</h1>
-              <p className="text-muted-foreground">Configure your Telegram bot integration.</p>
-            </div>
+          <div>
+            <SettingsBreadcrumb pageName="Telegram" onBack={() => setLocation("/settings/profile")} />
             <TelegramCard />
           </div>
         )}
         {activeView === "integrations" && (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-semibold">Integrations</h1>
-              <p className="text-muted-foreground">
-                Connect your social media accounts to manage all conversations in one place.
-              </p>
-            </div>
-
+          <div>
+            <SettingsBreadcrumb pageName="Integrations" onBack={() => setLocation("/settings/profile")} />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div data-card-id="whatsapp">
                 <WhatsAppCard />
@@ -1932,7 +1940,12 @@ export default function IntegrationsPage() {
             </div>
           </div>
         )}
-        {activeView === "white-label" && <WhiteLabelSettings />}
+        {activeView === "white-label" && (
+          <div>
+            <SettingsBreadcrumb pageName="White Label" onBack={() => setLocation("/settings/profile")} />
+            <WhiteLabelSettings />
+          </div>
+        )}
       </div>
     </div>
   );

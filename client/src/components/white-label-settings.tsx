@@ -149,29 +149,18 @@ export function WhiteLabelSettings() {
 
   if (!isAdmin) {
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold">White Label</h1>
-          <p className="text-muted-foreground">Customize your platform branding and domain.</p>
-        </div>
-        <Card>
-          <CardContent className="py-8">
-            <p className="text-center text-muted-foreground">
-              Only administrators can access White Label settings.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+      <Card>
+        <CardContent className="py-8">
+          <p className="text-center text-muted-foreground">
+            Only administrators can access White Label settings.
+          </p>
+        </CardContent>
+      </Card>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-semibold">White Label</h1>
-        <p className="text-muted-foreground">Customize your platform branding and domain.</p>
-      </div>
-
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <Card>
           <CardHeader className="pb-3 flex flex-row items-center justify-between space-y-0">
