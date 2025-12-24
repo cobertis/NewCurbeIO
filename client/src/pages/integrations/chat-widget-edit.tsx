@@ -968,65 +968,60 @@ function SortableChannelItem({
               
               {activeCallSubSection === "numbersAndCountries" && (
                 <div className="space-y-4">
-                  <div>
-                    <Label className="text-sm font-medium">Phone number to display</Label>
-                    <p className="text-xs text-slate-500 mt-1">
-                      Choose one of your connected numbers or enter a custom number. This number will be shown to visitors in the Call widget.
-                    </p>
-                    <p className="text-xs text-slate-500 mt-1">
-                      <strong>Please note:</strong> If you use a custom number, inbound calls will not be tracked in the system.
-                    </p>
-                  </div>
-                  
                   <div className="space-y-2">
-                    <Label className="text-xs text-slate-500">Phone number</Label>
+                    <Label className="text-xs text-slate-500">Phone number *</Label>
                     <Select 
-                      value={callSettings.numbersAndCountries?.entries?.[0]?.phoneNumber || ""}
-                      onValueChange={(v) => {
-                        onCallSettingsChange({
-                          numbersAndCountries: { 
-                            entries: [{ country: "Default (global)", phoneNumber: v }] 
-                          }
-                        });
-                      }}
+                      value={callSettings.numberSettings?.numberType || "connected"}
+                      onValueChange={(v: "connected" | "custom") => onCallSettingsChange({
+                        numberSettings: { ...callSettings.numberSettings, numberType: v }
+                      })}
                     >
-                      <SelectTrigger data-testid="select-call-phone-number">
-                        <SelectValue placeholder="Select a phone number">
-                          {(() => {
-                            const selectedNumber = callSettings.numbersAndCountries?.entries?.[0]?.phoneNumber;
-                            if (!selectedNumber) return "Select a phone number";
-                            const found = companyNumbers?.find(n => n.phoneNumber === selectedNumber);
-                            if (found) {
-                              const name = found.displayName || found.friendlyName || "";
-                              return name ? `${name} - ${formatPhoneNumber(found.phoneNumber)}` : formatPhoneNumber(found.phoneNumber);
-                            }
-                            return formatPhoneNumber(selectedNumber);
-                          })()}
-                        </SelectValue>
+                      <SelectTrigger data-testid="select-call-number-type">
+                        <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
-                        {companyNumbers && companyNumbers.length > 0 ? (
-                          <>
-                            <div className="text-xs text-slate-500 px-2 py-1 font-medium">Connected numbers</div>
-                            {companyNumbers.map((num) => (
-                              <SelectItem key={num.phoneNumber} value={num.phoneNumber}>
-                                {num.displayName || num.friendlyName || ""} - {formatPhoneNumber(num.phoneNumber)}
-                              </SelectItem>
-                            ))}
-                            <div className="text-xs text-slate-500 px-2 py-1 font-medium mt-2">Other</div>
-                            <SelectItem value="custom">+ Enter custom number...</SelectItem>
-                          </>
-                        ) : (
-                          <>
-                            <div className="text-xs text-slate-500 px-2 py-1">No connected numbers available</div>
-                            <SelectItem value="custom">+ Enter custom number...</SelectItem>
-                          </>
-                        )}
+                        <SelectItem value="connected">Use connected number</SelectItem>
+                        <SelectItem value="custom">Use custom number</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
                   
-                  {callSettings.numbersAndCountries?.entries?.[0]?.phoneNumber === "custom" && (
+                  {callSettings.numberSettings?.numberType !== "custom" && companyNumbers && companyNumbers.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-500">Select connected number</Label>
+                      <Select 
+                        value={callSettings.numbersAndCountries?.entries?.[0]?.phoneNumber || companyNumbers[0]?.phoneNumber || ""}
+                        onValueChange={(v: string) => onCallSettingsChange({
+                          numbersAndCountries: { 
+                            entries: [{ country: "Default (global)", phoneNumber: v }] 
+                          }
+                        })}
+                      >
+                        <SelectTrigger data-testid="select-call-connected-number">
+                          <SelectValue>
+                            {(() => {
+                              const selectedNumber = callSettings.numbersAndCountries?.entries?.[0]?.phoneNumber || companyNumbers[0]?.phoneNumber;
+                              const found = companyNumbers?.find(n => n.phoneNumber === selectedNumber);
+                              if (found) {
+                                const name = found.displayName || found.friendlyName || "";
+                                return name ? `${name} - ${formatPhoneNumber(found.phoneNumber)}` : formatPhoneNumber(found.phoneNumber);
+                              }
+                              return selectedNumber ? formatPhoneNumber(selectedNumber) : "Select a number";
+                            })()}
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent>
+                          {companyNumbers.map((num) => (
+                            <SelectItem key={num.phoneNumber} value={num.phoneNumber}>
+                              {num.displayName || num.friendlyName || ""} - {formatPhoneNumber(num.phoneNumber)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  
+                  {callSettings.numberSettings?.numberType === "custom" && (
                     <div className="space-y-2">
                       <Label className="text-xs text-slate-500">Custom phone number</Label>
                       <div className="flex items-center gap-2 px-3 py-2 border rounded-lg">
@@ -1038,9 +1033,12 @@ function SortableChannelItem({
                           })}
                           className="border-0 p-0 focus-visible:ring-0"
                           placeholder="+1 234 567 8900"
-                          data-testid="input-call-custom-number-countries"
+                          data-testid="input-call-custom-number"
                         />
                       </div>
+                      <p className="text-xs text-slate-500">
+                        <strong>Please note:</strong> If you use a custom number, inbound calls will not be tracked in the system.
+                      </p>
                     </div>
                   )}
                 </div>
@@ -4025,7 +4023,7 @@ export default function ChatWidgetEditPage() {
                         <div className="text-center">
                           <p className="text-xl font-bold text-slate-900 dark:text-slate-100">
                             {formatPhoneNumber(
-                              widget.callSettings?.numbersAndCountries?.entries?.[0]?.phoneNumber === "custom"
+                              widget.callSettings?.numberSettings?.numberType === "custom"
                                 ? widget.callSettings?.numberSettings?.customNumber
                                 : widget.callSettings?.numbersAndCountries?.entries?.[0]?.phoneNumber || "+1 833 221 4494"
                             )}
@@ -4048,7 +4046,7 @@ export default function ChatWidgetEditPage() {
                                 <div className="absolute -bottom-1 -right-1 w-5 h-5 border-r-2 border-b-2 border-slate-300 rounded-br-lg"></div>
                                 <div className="p-2">
                                   <QRCodeDisplay 
-                                    value={`tel:${(widget.callSettings?.numbersAndCountries?.entries?.[0]?.phoneNumber === "custom"
+                                    value={`tel:${(widget.callSettings?.numberSettings?.numberType === "custom"
                                       ? widget.callSettings?.numberSettings?.customNumber
                                       : widget.callSettings?.numbersAndCountries?.entries?.[0]?.phoneNumber || "+18332214494"
                                     ).replace(/[\s()-]/g, '')}`}
