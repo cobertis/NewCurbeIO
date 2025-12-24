@@ -2129,8 +2129,8 @@ export default function Settings({ view = 'all' }: SettingsProps) {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader>
+                <Card className="flex flex-col">
+                  <CardHeader className="flex-shrink-0">
                     <div className="flex items-center justify-between gap-2">
                       <div className="space-y-1">
                         <CardTitle>Active Sessions</CardTitle>
@@ -2151,8 +2151,8 @@ export default function Settings({ view = 'all' }: SettingsProps) {
                       )}
                     </div>
                   </CardHeader>
-                  <CardContent>
-                    <div className="space-y-3">
+                  <CardContent className="flex-1 overflow-hidden">
+                    <div className="space-y-3 h-full overflow-y-auto">
                       {isLoadingSessions ? (
                         <LoadingSpinner message="Loading sessions..." fullScreen={false} />
                       ) : sessionsData?.sessions && sessionsData.sessions.length > 0 ? (
