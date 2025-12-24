@@ -1754,7 +1754,7 @@ export async function getPhoneNumbersWithE911Status(companyId: string) {
       id: telnyxPhoneNumbers.id,
       telnyxPhoneNumberId: telnyxPhoneNumbers.telnyxPhoneNumberId,
       phoneNumber: telnyxPhoneNumbers.phoneNumber,
-      friendlyName: telnyxPhoneNumbers.friendlyName,
+      displayName: telnyxPhoneNumbers.displayName,
       e911Enabled: telnyxPhoneNumbers.e911Enabled,
       e911AddressId: telnyxPhoneNumbers.e911AddressId,
     })

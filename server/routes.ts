@@ -32748,6 +32748,149 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       res.status(500).json({ message: "Failed to update spam protection settings" });
     }
   });
+  
+  // =====================================================
+  // E911 EMERGENCY ADDRESS MANAGEMENT
+  // =====================================================
+  
+  // GET /api/telnyx/e911/addresses - List E911 addresses for company
+  app.get("/api/telnyx/e911/addresses", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      const { listE911Addresses } = await import("./services/telnyx-e911-service");
+      const addresses = await listE911Addresses(user.companyId);
+      res.json({ addresses });
+    } catch (error: any) {
+      console.error("[E911 API] List addresses error:", error);
+      res.status(500).json({ message: "Failed to list E911 addresses" });
+    }
+  });
+
+  // POST /api/telnyx/e911/addresses - Create E911 address
+  app.post("/api/telnyx/e911/addresses", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can create E911 addresses" });
+      }
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      const { streetAddress, extendedAddress, locality, administrativeArea, postalCode, countryCode, callerName } = req.body;
+      if (!streetAddress || !locality || !administrativeArea || !postalCode || !callerName) {
+        return res.status(400).json({ message: "Missing required fields: streetAddress, locality, administrativeArea, postalCode, callerName" });
+      }
+      const { createE911Address } = await import("./services/telnyx-e911-service");
+      const result = await createE911Address(user.companyId, {
+        streetAddress,
+        extendedAddress,
+        locality,
+        administrativeArea,
+        postalCode,
+        countryCode,
+        callerName,
+      });
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+      res.json({ success: true, addressId: result.addressId, telnyxAddressId: result.telnyxAddressId });
+    } catch (error: any) {
+      console.error("[E911 API] Create address error:", error);
+      res.status(500).json({ message: "Failed to create E911 address" });
+    }
+  });
+
+  // DELETE /api/telnyx/e911/addresses/:addressId - Delete E911 address
+  app.delete("/api/telnyx/e911/addresses/:addressId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can delete E911 addresses" });
+      }
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      const { addressId } = req.params;
+      const { deleteE911Address } = await import("./services/telnyx-e911-service");
+      const result = await deleteE911Address(user.companyId, addressId);
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[E911 API] Delete address error:", error);
+      res.status(500).json({ message: "Failed to delete E911 address" });
+    }
+  });
+
+  // GET /api/telnyx/e911/phone-numbers - Get phone numbers with E911 status
+  app.get("/api/telnyx/e911/phone-numbers", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      const { getPhoneNumbersWithE911Status } = await import("./services/telnyx-e911-service");
+      const numbers = await getPhoneNumbersWithE911Status(user.companyId);
+      res.json({ numbers });
+    } catch (error: any) {
+      console.error("[E911 API] Get phone numbers error:", error);
+      res.status(500).json({ message: "Failed to get phone numbers with E911 status" });
+    }
+  });
+
+  // POST /api/telnyx/e911/phone-numbers/:phoneNumberId/assign - Assign E911 address to phone number
+  app.post("/api/telnyx/e911/phone-numbers/:phoneNumberId/assign", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can assign E911 addresses" });
+      }
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      const { phoneNumberId } = req.params;
+      const { addressId } = req.body;
+      if (!addressId) {
+        return res.status(400).json({ message: "addressId is required" });
+      }
+      const { assignE911AddressToNumber } = await import("./services/telnyx-e911-service");
+      const result = await assignE911AddressToNumber(user.companyId, phoneNumberId, addressId);
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[E911 API] Assign address error:", error);
+      res.status(500).json({ message: "Failed to assign E911 address to phone number" });
+    }
+  });
+
+  // DELETE /api/telnyx/e911/phone-numbers/:phoneNumberId - Remove E911 from phone number
+  app.delete("/api/telnyx/e911/phone-numbers/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can remove E911" });
+      }
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      const { phoneNumberId } = req.params;
+      const { removeE911FromNumber } = await import("./services/telnyx-e911-service");
+      const result = await removeE911FromNumber(user.companyId, phoneNumberId);
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[E911 API] Remove E911 error:", error);
+      res.status(500).json({ message: "Failed to remove E911 from phone number" });
+    }
+  });
   // POST /api/telnyx/caller-id-lookup/:phoneNumberId - Update inbound caller ID lookup (note: may be readOnly in API)
   app.post("/api/telnyx/caller-id-lookup/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
