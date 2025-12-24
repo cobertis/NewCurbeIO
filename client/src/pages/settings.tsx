@@ -337,7 +337,11 @@ const niches = [
   { value: "Other Service", label: "Other Service", category: "Other" },
 ];
 
-export default function Settings() {
+interface SettingsProps {
+  view?: 'profile' | 'company' | 'all';
+}
+
+export default function Settings({ view = 'all' }: SettingsProps) {
   const { toast } = useToast();
   const [location, setLocation] = useLocation();
   
@@ -1356,8 +1360,9 @@ export default function Settings() {
               </div>
 
               {/* Profile + Company Cards */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+              <div className={view === 'all' ? "grid grid-cols-1 lg:grid-cols-2 gap-4" : ""}>
                 {/* Profile Information Card */}
+                {(view === 'profile' || view === 'all') && (
                 <Card>
                   <CardHeader className="pb-4">
                     <CardTitle>Profile Information</CardTitle>
@@ -1534,10 +1539,11 @@ export default function Settings() {
                   </form>
                 </CardContent>
               </Card>
+              )}
 
               {/* Company Information - Admin Only */}
-              {isAdmin && (
-                <Card className="lg:col-span-1">
+              {isAdmin && (view === 'company' || view === 'all') && (
+              <Card>
                   <CardHeader className="pb-2">
                     <CardTitle>Company Information</CardTitle>
                     <CardDescription>

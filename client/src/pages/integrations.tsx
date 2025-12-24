@@ -1840,7 +1840,7 @@ export default function IntegrationsPage() {
         {activeView === "profile" && (
           <div>
             <SettingsBreadcrumb pageName="Profile" onBack={() => setLocation("/settings/profile")} />
-            <SettingsPage />
+            <SettingsPage view="profile" />
           </div>
         )}
         {activeView === "security" && (
@@ -1858,7 +1858,7 @@ export default function IntegrationsPage() {
         {activeView === "company" && (
           <div>
             <SettingsBreadcrumb pageName="Company Settings" onBack={() => setLocation("/settings/profile")} />
-            <SettingsPage />
+            <SettingsPage view="company" />
           </div>
         )}
         {activeView === "team" && (
