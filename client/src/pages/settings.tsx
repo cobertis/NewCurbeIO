@@ -3454,7 +3454,7 @@ function SessionActivityTab() {
                           )}
                         </td>
                         <td className="px-4 py-3 text-sm" data-testid="text-result">
-                          {log.action === "auth_login" || log.action === "auth_login_with_otp" || log.action === "auth_login_trusted_device" ? (
+                          {log.action === "auth_login" || log.action === "auth_login_no_2fa" || log.action === "auth_login_with_otp" || log.action === "auth_login_trusted_device" ? (
                             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 dark:bg-green-900/20 dark:text-green-400 dark:border-green-800">
                               Successfully signed in.
                             </Badge>

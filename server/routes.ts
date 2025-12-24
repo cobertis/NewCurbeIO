@@ -3327,7 +3327,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         ipAddress: log.ipAddress,
         userAgent: log.userAgent,
         metadata: log.metadata,
-        success: log.action === "auth_login" || log.action === "auth_login_with_otp" || log.action === "auth_login_trusted_device",
+        success: log.action === "auth_login" || log.action === "auth_login_no_2fa" || log.action === "auth_login_with_otp" || log.action === "auth_login_trusted_device",
       }));
       res.json({
         logs: formattedLogs,
