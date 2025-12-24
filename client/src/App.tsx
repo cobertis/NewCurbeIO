@@ -119,6 +119,7 @@ import SmsVoiceCpaas from "@/pages/integrations/sms-voice-cpaas";
 import FacebookIntegration from "@/pages/integrations/facebook";
 import FacebookFlow from "@/pages/integrations/facebook-flow";
 import WhatsAppFlow from "@/pages/integrations/whatsapp-flow";
+import WhatsAppPage from "@/pages/integrations/whatsapp";
 import NotFound from "@/pages/not-found";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -1666,6 +1667,13 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <WhatsAppFlow />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/whatsapp">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <WhatsAppPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
