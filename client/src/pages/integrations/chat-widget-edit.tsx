@@ -3266,6 +3266,275 @@ export default function ChatWidgetEditPage() {
                       </div>
                     </div>
                   </div>
+                ) : expandedChannel === "liveChat" ? (
+                  <div className="relative">
+                    <div className="rounded-xl overflow-hidden shadow-lg">
+                      <div className="p-4 text-white" style={{ background: currentBackground }}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <ChevronLeft className="h-5 w-5" />
+                          <MessageCircle className="h-5 w-5" />
+                          <span className="font-medium">Live Chat</span>
+                        </div>
+                      </div>
+                      <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
+                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                          {widget.liveChatSettings?.preChatForm?.title || "Start a conversation"}
+                        </h4>
+                        <div className="space-y-3">
+                          {widget.liveChatSettings?.preChatForm?.nameFieldEnabled && (
+                            <div>
+                              <Label className="text-xs text-slate-500">
+                                Name {widget.liveChatSettings?.preChatForm?.nameFieldEnabled && widget.liveChatSettings?.preChatForm?.nameFieldRequired && <span className="text-red-500">*</span>}
+                              </Label>
+                              <Input placeholder="Your name" disabled className="mt-1" />
+                            </div>
+                          )}
+                          {widget.liveChatSettings?.preChatForm?.emailFieldEnabled && (
+                            <div>
+                              <Label className="text-xs text-slate-500">
+                                Email {widget.liveChatSettings?.preChatForm?.emailFieldEnabled && widget.liveChatSettings?.preChatForm?.emailFieldRequired && <span className="text-red-500">*</span>}
+                              </Label>
+                              <Input placeholder="your@email.com" disabled className="mt-1" />
+                            </div>
+                          )}
+                          <div>
+                            <Label className="text-xs text-slate-500">{widget.liveChatSettings?.welcomeScreen?.fieldLabel || "Message"}</Label>
+                            <Textarea placeholder="Type your message..." disabled className="mt-1" rows={3} />
+                          </div>
+                        </div>
+                        <Button className="w-full" style={{ background: currentBackground }}>
+                          {widget.liveChatSettings?.preChatForm?.buttonLabel || widget.liveChatSettings?.welcomeScreen?.buttonLabel || "Start chat"}
+                        </Button>
+                        <div className="text-center pt-2">
+                          <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : expandedChannel === "phone" ? (
+                  <div className="relative">
+                    <div className="rounded-xl overflow-hidden shadow-lg">
+                      <div className="p-4 text-white" style={{ background: currentBackground }}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <ChevronLeft className="h-5 w-5" />
+                          <Phone className="h-5 w-5" />
+                          <span className="font-medium">Call Us</span>
+                        </div>
+                      </div>
+                      <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
+                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                          {widget.callSettings?.callUsScreen?.title || "Give us a call"}
+                        </h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          {widget.callSettings?.callUsScreen?.description || "We're available to take your call during business hours."}
+                        </p>
+                        {widget.callSettings?.callUsScreen?.showQRCode && (
+                          <div className="flex justify-center py-4">
+                            <div className="w-32 h-32 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                              <span className="text-xs text-slate-400">QR Code</span>
+                            </div>
+                          </div>
+                        )}
+                        <Button className="w-full" style={{ background: currentBackground }}>
+                          <Phone className="h-4 w-4 mr-2" />
+                          {widget.callSettings?.callUsScreen?.buttonLabel || "Call now"}
+                        </Button>
+                        <div className="text-center pt-2">
+                          <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : expandedChannel === "whatsapp" ? (
+                  <div className="relative">
+                    <div className="rounded-xl overflow-hidden shadow-lg">
+                      <div className="p-4 text-white" style={{ background: currentBackground }}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <ChevronLeft className="h-5 w-5" />
+                          <SiWhatsapp className="h-5 w-5" />
+                          <span className="font-medium">{widget.whatsappSettings?.welcomeScreen?.channelName || "WhatsApp"}</span>
+                        </div>
+                      </div>
+                      <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
+                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                          {widget.whatsappSettings?.messageScreen?.title || "Message us on WhatsApp"}
+                        </h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          {widget.whatsappSettings?.messageScreen?.description || "Click the button below to start a WhatsApp conversation."}
+                        </p>
+                        {widget.whatsappSettings?.messageScreen?.showQRCode && (
+                          <div className="flex justify-center py-4">
+                            <div className="w-32 h-32 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
+                              <span className="text-xs text-slate-400">QR Code</span>
+                            </div>
+                          </div>
+                        )}
+                        <Button className="w-full bg-[#25D366] hover:bg-[#128C7E]">
+                          <SiWhatsapp className="h-4 w-4 mr-2" />
+                          {widget.whatsappSettings?.messageScreen?.buttonLabel || "Open WhatsApp"}
+                        </Button>
+                        <div className="text-center pt-2">
+                          <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : expandedChannel === "email" ? (
+                  <div className="relative">
+                    <div className="rounded-xl overflow-hidden shadow-lg">
+                      <div className="p-4 text-white" style={{ background: currentBackground }}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <ChevronLeft className="h-5 w-5" />
+                          <Mail className="h-5 w-5" />
+                          <span className="font-medium">{widget.emailSettings?.welcomeScreen?.channelName || "Email"}</span>
+                        </div>
+                      </div>
+                      <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
+                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                          {widget.emailSettings?.formFields?.title || "Send us an email"}
+                        </h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          {widget.emailSettings?.formFields?.description || "Fill out the form below and we'll get back to you."}
+                        </p>
+                        <div className="space-y-3">
+                          {widget.emailSettings?.formFields?.nameFieldEnabled && (
+                            <div>
+                              <Label className="text-xs text-slate-500">
+                                Name {widget.emailSettings?.formFields?.nameFieldEnabled && widget.emailSettings?.formFields?.nameFieldRequired && <span className="text-red-500">*</span>}
+                              </Label>
+                              <Input placeholder="Your name" disabled className="mt-1" />
+                            </div>
+                          )}
+                          {widget.emailSettings?.formFields?.emailFieldEnabled && (
+                            <div>
+                              <Label className="text-xs text-slate-500">
+                                Email {widget.emailSettings?.formFields?.emailFieldEnabled && widget.emailSettings?.formFields?.emailFieldRequired && <span className="text-red-500">*</span>}
+                              </Label>
+                              <Input placeholder="your@email.com" disabled className="mt-1" />
+                            </div>
+                          )}
+                          {widget.emailSettings?.formFields?.messageFieldEnabled && (
+                            <div>
+                              <Label className="text-xs text-slate-500">
+                                Message {widget.emailSettings?.formFields?.messageFieldEnabled && widget.emailSettings?.formFields?.messageFieldRequired && <span className="text-red-500">*</span>}
+                              </Label>
+                              <Textarea placeholder="Your message..." disabled className="mt-1" rows={3} />
+                            </div>
+                          )}
+                        </div>
+                        <Button className="w-full" style={{ background: currentBackground }}>
+                          {widget.emailSettings?.formFields?.buttonLabel || "Send message"}
+                        </Button>
+                        <div className="text-center pt-2">
+                          <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : expandedChannel === "sms" ? (
+                  <div className="relative">
+                    <div className="rounded-xl overflow-hidden shadow-lg">
+                      <div className="p-4 text-white" style={{ background: currentBackground }}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <ChevronLeft className="h-5 w-5" />
+                          <MessageSquare className="h-5 w-5" />
+                          <span className="font-medium">{widget.smsSettings?.welcomeScreen?.channelName || "SMS"}</span>
+                        </div>
+                      </div>
+                      <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
+                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                          {widget.smsSettings?.messageScreen?.title || "Text us"}
+                        </h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          {widget.smsSettings?.messageScreen?.description || "Send us a text message and we'll respond as soon as possible."}
+                        </p>
+                        <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                          <Phone className="h-4 w-4 text-slate-500" />
+                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
+                            {widget.smsSettings?.numberSettings?.numberType === "custom" 
+                              ? (widget.smsSettings?.numberSettings?.customNumber || "Enter custom number")
+                              : "Using connected number"
+                            }
+                          </span>
+                        </div>
+                        <Button className="w-full" style={{ background: currentBackground }}>
+                          <MessageSquare className="h-4 w-4 mr-2" />
+                          {widget.smsSettings?.messageScreen?.buttonLabel || "Send SMS"}
+                        </Button>
+                        <div className="text-center pt-2">
+                          <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : expandedChannel === "facebook" ? (
+                  <div className="relative">
+                    <div className="rounded-xl overflow-hidden shadow-lg">
+                      <div className="p-4 text-white" style={{ background: currentBackground }}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <ChevronLeft className="h-5 w-5" />
+                          <SiFacebook className="h-5 w-5" />
+                          <span className="font-medium">{widget.messengerSettings?.welcomeScreen?.channelName || "Messenger"}</span>
+                        </div>
+                      </div>
+                      <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
+                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                          {widget.messengerSettings?.pageSettings?.title || "Message us on Facebook"}
+                        </h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          {widget.messengerSettings?.pageSettings?.description || "Click the button below to start a Messenger conversation."}
+                        </p>
+                        <Button className="w-full bg-[#0866FF] hover:bg-[#0756d4]">
+                          <SiFacebook className="h-4 w-4 mr-2" />
+                          {widget.messengerSettings?.pageSettings?.buttonLabel || "Open Messenger"}
+                        </Button>
+                        <div className="text-center pt-2">
+                          <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : expandedChannel === "instagram" ? (
+                  <div className="relative">
+                    <div className="rounded-xl overflow-hidden shadow-lg">
+                      <div className="p-4 text-white" style={{ background: currentBackground }}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <ChevronLeft className="h-5 w-5" />
+                          <SiInstagram className="h-5 w-5" />
+                          <span className="font-medium">{widget.instagramSettings?.welcomeScreen?.channelName || "Instagram"}</span>
+                        </div>
+                      </div>
+                      <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
+                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                          {widget.instagramSettings?.profileSettings?.title || "Message us on Instagram"}
+                        </h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          {widget.instagramSettings?.profileSettings?.description || "Click the button below to send us a direct message."}
+                        </p>
+                        <Button className="w-full bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] hover:opacity-90">
+                          <SiInstagram className="h-4 w-4 mr-2" />
+                          {widget.instagramSettings?.profileSettings?.buttonLabel || "Open Instagram"}
+                        </Button>
+                        <div className="text-center pt-2">
+                          <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <div className="relative">
                     <div 
@@ -3286,42 +3555,61 @@ export default function ChatWidgetEditPage() {
                         <p className="text-base opacity-90 mt-3">{widget.welcomeMessage}</p>
                       </div>
                       
-                      <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
-                        <div>
-                          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">How can we help you today?</p>
-                          <div className="border rounded-lg p-3">
-                            <p className="text-sm text-slate-400">Type your message here</p>
-                          </div>
-                        </div>
-                        
-                        <Button 
-                          className="w-full"
-                          style={{ background: currentBackground }}
-                        >
-                          Start chat
-                        </Button>
-                        
-                        {widget.channels.sms && (
-                          <div className="flex items-center justify-between py-2 border-t">
-                            <div className="flex items-center gap-2">
-                              <Send className="h-4 w-4 text-slate-500" />
-                              <span className="text-sm text-slate-700 dark:text-slate-300">Send a text</span>
+                      <div className="bg-white dark:bg-slate-900 p-5 space-y-2">
+                        {(widget.channelOrder || channelConfigs.map(c => c.id)).filter(channelId => {
+                          const channelKey = channelId === "liveChat" ? "liveChat" : 
+                                            channelId === "phone" ? "phone" : 
+                                            channelId === "email" ? "email" :
+                                            channelId === "sms" ? "sms" :
+                                            channelId === "whatsapp" ? "whatsapp" :
+                                            channelId === "facebook" ? "facebook" :
+                                            channelId === "instagram" ? "instagram" : null;
+                          return channelKey && widget.channels[channelKey as keyof typeof widget.channels];
+                        }).map((channelId) => {
+                          const config = channelConfigs.find(c => c.id === channelId);
+                          if (!config) return null;
+                          
+                          const getChannelLabel = () => {
+                            switch (channelId) {
+                              case "liveChat": return "Live Chat";
+                              case "phone": return "Call Us";
+                              case "whatsapp": return widget.whatsappSettings?.welcomeScreen?.channelName || "WhatsApp";
+                              case "email": return widget.emailSettings?.welcomeScreen?.channelName || "Email";
+                              case "sms": return widget.smsSettings?.welcomeScreen?.channelName || "SMS";
+                              case "facebook": return widget.messengerSettings?.welcomeScreen?.channelName || "Messenger";
+                              case "instagram": return widget.instagramSettings?.welcomeScreen?.channelName || "Instagram";
+                              default: return config.label;
+                            }
+                          };
+                          
+                          const getButtonLabel = () => {
+                            switch (channelId) {
+                              case "liveChat": return widget.liveChatSettings?.preChatForm?.buttonLabel || widget.liveChatSettings?.welcomeScreen?.buttonLabel || "Start chat";
+                              case "phone": return widget.callSettings?.callUsScreen?.buttonLabel || "Call now";
+                              case "whatsapp": return widget.whatsappSettings?.messageScreen?.buttonLabel || "Open WhatsApp";
+                              case "email": return widget.emailSettings?.formFields?.buttonLabel || "Send message";
+                              case "sms": return widget.smsSettings?.messageScreen?.buttonLabel || "Send SMS";
+                              case "facebook": return widget.messengerSettings?.messageScreen?.buttonLabel || "Open Messenger";
+                              case "instagram": return widget.instagramSettings?.messageScreen?.buttonLabel || "Open Instagram";
+                              default: return "";
+                            }
+                          };
+                          
+                          return (
+                            <div key={channelId} className="flex items-center justify-between py-3 px-3 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg cursor-pointer transition-colors">
+                              <div className="flex items-center gap-3">
+                                <span className={config.iconColor}>{config.icon}</span>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{getChannelLabel()}</span>
+                                  <span className="text-xs text-slate-400">{getButtonLabel()}</span>
+                                </div>
+                              </div>
+                              <ChevronRight className="h-4 w-4 text-slate-400" />
                             </div>
-                            <ChevronLeft className="h-4 w-4 text-slate-400 rotate-180" />
-                          </div>
-                        )}
+                          );
+                        })}
                         
-                        {widget.channels.phone && (
-                          <div className="flex items-center justify-between py-2 border-t">
-                            <div className="flex items-center gap-2">
-                              <Phone className="h-4 w-4 text-slate-500" />
-                              <span className="text-sm text-slate-700 dark:text-slate-300">Call us</span>
-                            </div>
-                            <ChevronLeft className="h-4 w-4 text-slate-400 rotate-180" />
-                          </div>
-                        )}
-                        
-                        <div className="text-center pt-2">
+                        <div className="text-center pt-4">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
                             Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                           </p>
