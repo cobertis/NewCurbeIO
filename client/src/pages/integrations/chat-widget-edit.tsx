@@ -4517,10 +4517,10 @@ export default function ChatWidgetEditPage() {
                         </div>
                       </div>
                       <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
-                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100 text-center">
                           {widget.whatsappSettings?.messageScreen?.title || "Message us on WhatsApp"}
                         </h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                        <p className="text-sm text-slate-600 dark:text-slate-400 text-center">
                           {widget.whatsappSettings?.messageScreen?.description || "Click the button below or scan the QR code to send a message to this WhatsApp number."}
                         </p>
                         <div className="text-center">
