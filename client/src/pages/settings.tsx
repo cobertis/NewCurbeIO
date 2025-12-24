@@ -1550,29 +1550,25 @@ export default function Settings() {
           )}
         </div>
 
-        {/* Right Column - Settings Tabs */}
+        {/* Right Column - Profile Content */}
         <div className="lg:col-span-8 xl:col-span-9">
-          <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setLocation(`/settings/${value}`); }} className="space-y-6">
+          <div className="space-y-6">
             <div className="flex items-center justify-between gap-4 flex-wrap">
-              <TabsList className="inline-flex h-auto flex-wrap">
-                <TabsTrigger value="overview" className="gap-2" data-testid="tab-overview">
-                  <UserIcon className="h-4 w-4" />
-                  Profile
-                </TabsTrigger>
-              </TabsList>
-              {activeTab === "overview" && (
-                <Button
-                  onClick={handleSaveOverview}
-                  disabled={updateProfileInfoMutation.isPending || updateCompanyMutation.isPending}
-                  data-testid="button-save-overview"
-                >
-                  {(updateProfileInfoMutation.isPending || updateCompanyMutation.isPending) ? "Saving..." : "Save Changes"}
-                </Button>
-              )}
+              <div>
+                <h1 className="text-2xl font-semibold">Profile</h1>
+                <p className="text-muted-foreground">Update your personal information and company details.</p>
+              </div>
+              <Button
+                onClick={handleSaveOverview}
+                disabled={updateProfileInfoMutation.isPending || updateCompanyMutation.isPending}
+                data-testid="button-save-overview"
+              >
+                {(updateProfileInfoMutation.isPending || updateCompanyMutation.isPending) ? "Saving..." : "Save Changes"}
+              </Button>
             </div>
 
-            {/* Overview Tab - Profile + Company */}
-            <TabsContent value="overview" className="space-y-4">
+            {/* Profile + Company Content */}
+            <div className="space-y-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Profile Information Card */}
                 <Card>
@@ -2269,10 +2265,18 @@ export default function Settings() {
                 </Card>
               )}
               </div>
-          </TabsContent>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
 
-            {/* Security Tab */}
-            <TabsContent value="security" className="space-y-4">
+// Security Section Component
+function SecuritySection() {
+  return (
+            <div className="space-y-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 <Card>
                   <CardHeader>
@@ -2513,21 +2517,7 @@ export default function Settings() {
 
               {/* Session Activity - moved from separate tab */}
               <SessionActivityTab />
-            </TabsContent>
-
-            {/* Automations Tab */}
-            <TabsContent value="automations" className="space-y-4">
-              <AutomationsTab />
-            </TabsContent>
-
-            {/* Team Tab */}
-            <TabsContent value="team" className="space-y-4">
-              <TeamMembersSection />
-            </TabsContent>
-          </Tabs>
-        </div>
-      </div>
-    </div>
+            </div>
   );
 }
 
