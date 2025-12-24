@@ -4800,6 +4800,71 @@ export const chatWidgets = pgTable("chat_widgets", {
   showOnMobile: boolean("show_on_mobile").default(true),
   showBranding: boolean("show_branding").default(true),
   
+  // Extended appearance settings
+  welcomeTitle: text("welcome_title").default("Hi there 👋"),
+  colorTheme: text("color_theme").default("blue"),
+  themeType: text("theme_type").default("gradient"), // gradient, solid, custom
+  customColor: text("custom_color"),
+  
+  // Branding configuration (logo, etc)
+  branding: jsonb("branding").$type<{
+    customLogo?: string | null;
+    logoFileName?: string | null;
+    logoFileSize?: string | null;
+  }>(),
+  
+  // Minimized state configuration
+  minimizedState: jsonb("minimized_state").$type<{
+    includeButtonText?: boolean;
+    icon?: string;
+    buttonText?: string;
+    borderRadius?: number;
+    alignTo?: string;
+    sideSpacing?: number;
+    bottomSpacing?: number;
+    eyeCatcherEnabled?: boolean;
+    eyeCatcherMessage?: string;
+    messageDelay?: number;
+  }>(),
+  
+  // Targeting configuration
+  targeting: jsonb("targeting_config").$type<{
+    countries?: string;
+    selectedCountries?: string[];
+    pages?: string;
+    selectedPages?: { type: string; value: string }[];
+    devices?: { desktop?: boolean; mobile?: boolean; tablet?: boolean };
+    schedule?: { enabled?: boolean; timezone?: string; businessHours?: any };
+  }>(),
+  
+  // Live chat settings
+  liveChatSettings: jsonb("live_chat_settings").$type<{
+    enabled?: boolean;
+    teamMembers?: any[];
+    autoAssign?: boolean;
+  }>(),
+  
+  // Call settings
+  callSettings: jsonb("call_settings").$type<{
+    phoneNumber?: string;
+    showCallButton?: boolean;
+  }>(),
+  
+  // WhatsApp settings
+  whatsappSettings: jsonb("whatsapp_settings").$type<{
+    phoneNumber?: string;
+    defaultMessage?: string;
+  }>(),
+  
+  // Email settings
+  emailSettings: jsonb("email_settings").$type<{
+    emailAddress?: string;
+    subject?: string;
+  }>(),
+  
+  // Channel order
+  channelOrder: text("channel_order").array(),
+  
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
