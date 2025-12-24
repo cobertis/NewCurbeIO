@@ -3964,15 +3964,21 @@ export default function ChatWidgetEditPage() {
                         </Button>
                         {widget.whatsappSettings?.messageScreen?.showQRCode && (
                           <>
-                            <div className="flex justify-center py-3">
-                              <div className="relative bg-white p-2 rounded-lg border border-slate-200">
-                                <QRCodeDisplay 
-                                  value={`https://wa.me/${widget.whatsappSettings?.numberSettings?.customNumber?.replace(/[\s()+\-]/g, '') || '17866302522'}`}
-                                  size={120}
-                                />
+                            <div className="flex justify-center py-4">
+                              <div className="relative">
+                                <div className="absolute -top-1 -left-1 w-5 h-5 border-l-2 border-t-2 border-slate-300 rounded-tl-lg"></div>
+                                <div className="absolute -top-1 -right-1 w-5 h-5 border-r-2 border-t-2 border-slate-300 rounded-tr-lg"></div>
+                                <div className="absolute -bottom-1 -left-1 w-5 h-5 border-l-2 border-b-2 border-slate-300 rounded-bl-lg"></div>
+                                <div className="absolute -bottom-1 -right-1 w-5 h-5 border-r-2 border-b-2 border-slate-300 rounded-br-lg"></div>
+                                <div className="p-2">
+                                  <QRCodeDisplay 
+                                    value={`https://wa.me/${widget.whatsappSettings?.numberSettings?.customNumber?.replace(/[\s()+\-]/g, '') || '17866302522'}`}
+                                    size={140}
+                                  />
+                                </div>
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                  <div className="bg-white p-1 rounded-full">
-                                    <SiWhatsapp className="h-6 w-6 text-[#25D366]" />
+                                  <div className="bg-white p-1.5 rounded-full border-2 border-[#25D366]">
+                                    <SiWhatsapp className="h-5 w-5 text-[#25D366]" />
                                   </div>
                                 </div>
                               </div>
@@ -4108,17 +4114,23 @@ export default function ChatWidgetEditPage() {
                         </Button>
                         {(widget.smsSettings?.messageScreen?.showQRCode ?? true) && (
                           <>
-                            <div className="flex justify-center py-3">
-                              <div className="relative bg-white p-2 rounded-lg border border-slate-200">
-                                <QRCodeDisplay 
-                                  value={`sms:${widget.smsSettings?.numberSettings?.numberType === "custom" 
-                                    ? widget.smsSettings?.numberSettings?.customNumber?.replace(/[\s()\-]/g, '') || '+18332214494'
-                                    : (widget.smsSettings?.numberSettings?.connectedNumber || companyNumbers[0]?.phoneNumber || '+18332214494').replace(/[\s()\-]/g, '')}`}
-                                  size={120}
-                                />
+                            <div className="flex justify-center py-4">
+                              <div className="relative">
+                                <div className="absolute -top-1 -left-1 w-5 h-5 border-l-2 border-t-2 border-slate-300 rounded-tl-lg"></div>
+                                <div className="absolute -top-1 -right-1 w-5 h-5 border-r-2 border-t-2 border-slate-300 rounded-tr-lg"></div>
+                                <div className="absolute -bottom-1 -left-1 w-5 h-5 border-l-2 border-b-2 border-slate-300 rounded-bl-lg"></div>
+                                <div className="absolute -bottom-1 -right-1 w-5 h-5 border-r-2 border-b-2 border-slate-300 rounded-br-lg"></div>
+                                <div className="p-2">
+                                  <QRCodeDisplay 
+                                    value={`sms:${widget.smsSettings?.numberSettings?.numberType === "custom" 
+                                      ? widget.smsSettings?.numberSettings?.customNumber?.replace(/[\s()\-]/g, '') || '+18332214494'
+                                      : (widget.smsSettings?.numberSettings?.connectedNumber || companyNumbers[0]?.phoneNumber || '+18332214494').replace(/[\s()\-]/g, '')}`}
+                                    size={140}
+                                  />
+                                </div>
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                  <div className="bg-white p-1 rounded-full" style={{ color: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3B82F6' }}>
-                                    <MessageSquare className="h-6 w-6" style={{ color: 'inherit' }} />
+                                  <div className="bg-white p-1.5 rounded-full border-2" style={{ borderColor: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3B82F6' }}>
+                                    <MessageSquare className="h-5 w-5" style={{ color: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3B82F6' }} />
                                   </div>
                                 </div>
                               </div>
@@ -4164,17 +4176,23 @@ export default function ChatWidgetEditPage() {
                         </Button>
                         {(widget.smsSettings?.messageScreen?.showQRCode ?? true) && (
                           <>
-                            <div className="flex justify-center py-3">
-                              <div className="relative bg-white p-2 rounded-lg border border-slate-200">
-                                <QRCodeDisplay 
-                                  value={`sms:${widget.smsSettings?.numberSettings?.numberType === "custom" 
-                                    ? widget.smsSettings?.numberSettings?.customNumber?.replace(/[\s()\-]/g, '') || '+18332214494'
-                                    : (widget.smsSettings?.numberSettings?.connectedNumber || companyNumbers[0]?.phoneNumber || '+18332214494').replace(/[\s()\-]/g, '')}`}
-                                  size={120}
-                                />
+                            <div className="flex justify-center py-4">
+                              <div className="relative">
+                                <div className="absolute -top-1 -left-1 w-5 h-5 border-l-2 border-t-2 border-slate-300 rounded-tl-lg"></div>
+                                <div className="absolute -top-1 -right-1 w-5 h-5 border-r-2 border-t-2 border-slate-300 rounded-tr-lg"></div>
+                                <div className="absolute -bottom-1 -left-1 w-5 h-5 border-l-2 border-b-2 border-slate-300 rounded-bl-lg"></div>
+                                <div className="absolute -bottom-1 -right-1 w-5 h-5 border-r-2 border-b-2 border-slate-300 rounded-br-lg"></div>
+                                <div className="p-2">
+                                  <QRCodeDisplay 
+                                    value={`sms:${widget.smsSettings?.numberSettings?.numberType === "custom" 
+                                      ? widget.smsSettings?.numberSettings?.customNumber?.replace(/[\s()\-]/g, '') || '+18332214494'
+                                      : (widget.smsSettings?.numberSettings?.connectedNumber || companyNumbers[0]?.phoneNumber || '+18332214494').replace(/[\s()\-]/g, '')}`}
+                                    size={140}
+                                  />
+                                </div>
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                  <div className="bg-white p-1 rounded-full" style={{ color: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3B82F6' }}>
-                                    <MessageSquare className="h-6 w-6" style={{ color: 'inherit' }} />
+                                  <div className="bg-white p-1.5 rounded-full border-2" style={{ borderColor: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3B82F6' }}>
+                                    <MessageSquare className="h-5 w-5" style={{ color: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3B82F6' }} />
                                   </div>
                                 </div>
                               </div>
