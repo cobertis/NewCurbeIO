@@ -123,6 +123,8 @@ import WhatsAppFlow from "@/pages/integrations/whatsapp-flow";
 import WhatsAppPage from "@/pages/integrations/whatsapp";
 import InstagramPage from "@/pages/integrations/instagram-page";
 import InstagramFlow from "@/pages/integrations/instagram-flow";
+import TelegramPage from "@/pages/integrations/telegram-page";
+import TelegramFlow from "@/pages/integrations/telegram-flow";
 import NotFound from "@/pages/not-found";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -1698,6 +1700,20 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <InstagramPage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/telegram/flow">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <TelegramFlow />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/telegram">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <TelegramPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
