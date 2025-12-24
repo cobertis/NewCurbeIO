@@ -1735,6 +1735,20 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/settings/chat-widget/:id/settings">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <ChatWidgetEdit />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/chat-widget/:id/embed">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <ChatWidgetEdit />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
       <Route path="/settings/chat-widget/:id/preview">
         <ProtectedRoute>
           <ChatWidgetPreview />
