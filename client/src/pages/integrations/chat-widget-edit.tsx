@@ -284,8 +284,10 @@ interface WidgetConfig {
       buttonLabel: string;
     };
     pageConnection: {
+      connectionType: "connected" | "custom";
       pageId: string;
       pageName: string;
+      customUrl: string;
     };
   };
   instagramSettings: {
@@ -1725,8 +1727,53 @@ function SortableChannelItem({
 
               {activeMessengerSubSection === "pageConnection" && (
                 <div className="space-y-4">
+                  <p className="text-xs text-slate-500">
+                    Choose one of your connected Facebook pages or add a custom one. <span className="font-medium">Please note:</span> If you use a custom page, inbound messages will not be displayed in Curbe.
+                  </p>
                   <div className="space-y-2">
-                    <Label className="text-xs text-slate-500">Connected Facebook Page</Label>
+                    <Label className="text-xs text-slate-500">Facebook page *</Label>
+                    <Select
+                      value={messengerSettings.pageConnection?.connectionType || "custom"}
+                      onValueChange={(value: "connected" | "custom") => onMessengerSettingsChange({
+                        pageConnection: { ...messengerSettings.pageConnection, connectionType: value }
+                      })}
+                    >
+                      <SelectTrigger data-testid="select-facebook-connection-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="connected">
+                          <span className="text-blue-600">- Connect Facebook page to Curbe -</span>
+                        </SelectItem>
+                        <SelectItem value="custom">Use custom page</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {messengerSettings.pageConnection?.connectionType === "custom" && (
+                    <div className="space-y-2">
+                      <Input
+                        placeholder="https://www.facebook.com/yourpage"
+                        value={messengerSettings.pageConnection?.customUrl || ""}
+                        onChange={(e) => {
+                          const url = e.target.value;
+                          let pageId = "";
+                          const match = url.match(/facebook\.com\/([^/?]+)/);
+                          if (match) pageId = match[1];
+                          onMessengerSettingsChange({
+                            pageConnection: { 
+                              ...messengerSettings.pageConnection, 
+                              customUrl: url,
+                              pageId: pageId
+                            }
+                          });
+                        }}
+                        data-testid="input-facebook-custom-url"
+                      />
+                    </div>
+                  )}
+
+                  {messengerSettings.pageConnection?.connectionType === "connected" && (
                     <div className="p-4 border rounded-lg bg-slate-50 dark:bg-slate-800 text-center">
                       {messengerSettings.pageConnection.pageName ? (
                         <div className="flex items-center justify-between">
@@ -1744,7 +1791,7 @@ function SortableChannelItem({
                         </div>
                       )}
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
@@ -2063,8 +2110,10 @@ export default function ChatWidgetEditPage() {
         buttonLabel: "Open Messenger",
       },
       pageConnection: {
+        connectionType: "custom",
         pageId: "",
         pageName: "",
+        customUrl: "",
       },
     },
     instagramSettings: {
