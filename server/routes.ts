@@ -28328,9 +28328,11 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       let visitorCountry = forceCountry || "";
       let countryCode = "";
+      let geoSuccess = !!forceCountry;
       
       if (!forceCountry) {
         const geo = await getCountryFromIP(clientIP);
+        geoSuccess = geo.success;
         if (geo.success) {
           visitorCountry = geo.countryName;
           countryCode = geo.countryCode;
@@ -28340,7 +28342,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const widgetSettings = widget.widget as any || {};
       const targeting = widgetSettings.targeting || {};
       
-      const shouldDisplay = shouldShowWidget(targeting, visitorCountry);
+      const shouldDisplay = shouldShowWidget(targeting, visitorCountry, geoSuccess);
       
       res.set({
         "Access-Control-Allow-Origin": "*",

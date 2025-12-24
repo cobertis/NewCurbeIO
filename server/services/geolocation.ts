@@ -57,7 +57,8 @@ export function shouldShowWidget(
     countries?: "all" | "selected" | "excluded";
     selectedCountries?: string[];
   } | undefined,
-  visitorCountry: string
+  visitorCountry: string,
+  geoSuccess: boolean
 ): boolean {
   if (!targeting || targeting.countries === "all" || !targeting.countries) {
     return true;
@@ -66,6 +67,10 @@ export function shouldShowWidget(
   const selectedCountries = targeting.selectedCountries || [];
   
   if (selectedCountries.length === 0) {
+    return true;
+  }
+
+  if (!geoSuccess || !visitorCountry) {
     return true;
   }
 

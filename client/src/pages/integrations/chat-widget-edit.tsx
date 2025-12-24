@@ -2472,7 +2472,7 @@ export default function ChatWidgetEditPage() {
   const embedCode = `<script>
 (function() {
   var widgetId = "${widgetId}";
-  var apiBase = window.location.origin;
+  var apiBase = "https://api.curbe.io";
   
   fetch(apiBase + "/api/public/chat-widget/" + widgetId)
     .then(function(res) { return res.json(); })
