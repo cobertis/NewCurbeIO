@@ -2530,7 +2530,7 @@ export default function ChatWidgetEditPage() {
                     
                     <div className="text-center pt-2">
                       <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                        Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                        Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                       </p>
                     </div>
                   </div>
