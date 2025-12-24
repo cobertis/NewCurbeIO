@@ -1971,7 +1971,15 @@ export default function ChatWidgetEditPage() {
   };
 
   const handleSaveChanges = () => {
-    updateMutation.mutate(localWidget);
+    // Send the complete merged widget state, not just the partial localWidget
+    // This ensures deep nested objects like smsSettings.numberSettings are fully preserved
+    const fullWidget = {
+      ...widget,
+      id: undefined, // Remove id from payload as backend strips it anyway
+      companyId: undefined,
+      createdAt: undefined,
+    };
+    updateMutation.mutate(fullWidget);
     setHasUnsavedChanges(false);
     setLocalWidget({});
   };
