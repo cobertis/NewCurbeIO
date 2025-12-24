@@ -166,7 +166,7 @@ interface EmailSender {
   replyToEmail?: string;
 }
 
-export default function EmailIntegrationPage() {
+export default function EmailIntegrationPage({ embedded = false }: { embedded?: boolean }) {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
   
@@ -250,8 +250,8 @@ export default function EmailIntegrationPage() {
   // If domain is fully configured and verified, show management view
   if (hasDomainConfigured && isDomainVerified) {
     return (
-      <div className="flex gap-6" data-testid="page-email-integration">
-        <SettingsSidebar onNavigate={handleNavigation} />
+      <div className={embedded ? "" : "flex gap-6"} data-testid="page-email-integration">
+        {!embedded && <SettingsSidebar onNavigate={handleNavigation} />}
         <div className="flex-1 min-w-0 space-y-6">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -500,8 +500,8 @@ export default function EmailIntegrationPage() {
   // If domain is being set up but not verified, show pending view with sidebar
   if (hasDomainConfigured && !isDomainVerified) {
     return (
-      <div className="flex gap-6" data-testid="page-email-integration">
-        <SettingsSidebar onNavigate={handleNavigation} />
+      <div className={embedded ? "" : "flex gap-6"} data-testid="page-email-integration">
+        {!embedded && <SettingsSidebar onNavigate={handleNavigation} />}
         <div className="flex-1 min-w-0 space-y-6">
           <div>
             <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100" data-testid="text-page-title">Email</h1>
@@ -537,8 +537,8 @@ export default function EmailIntegrationPage() {
 
   // No domain configured - show landing page with sidebar
   return (
-    <div className="flex gap-6" data-testid="page-email-integration">
-      <SettingsSidebar onNavigate={handleNavigation} />
+    <div className={embedded ? "" : "flex gap-6"} data-testid="page-email-integration">
+      {!embedded && <SettingsSidebar onNavigate={handleNavigation} />}
       <div className="flex-1 min-w-0 space-y-6">
         <div>
           <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100" data-testid="text-page-title">Email</h1>

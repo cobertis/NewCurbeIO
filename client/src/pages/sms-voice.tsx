@@ -156,6 +156,77 @@ function SectionRow({ item }: { item: SectionItem }) {
   );
 }
 
+// Content-only version for embedding in integrations.tsx
+export function SmsVoiceContent() {
+  const sendersItems: SectionItem[] = [
+    {
+      title: "Numbers",
+      description: "Manage your virtual numbers for SMS, MMS, and voice services.",
+      href: "/integrations/sms-voice/numbers",
+    },
+    {
+      title: "Bring your own CPaaS",
+      description: "Manage your connected CPaaS providers (Twilio, Vonage, etc.) and linked numbers.",
+      href: "/integrations/sms-voice/cpaas",
+    },
+    {
+      title: "Sender settings",
+      description: "Manage default sender numbers for various countries.",
+      href: "/integrations/sms-voice/sender-settings",
+    },
+  ];
+
+  const complianceItems: SectionItem[] = [
+    {
+      title: "Toll-free verification",
+      description: "Verify and manage your toll-free numbers to ensure compliance and enhance your business's credibility.",
+      href: "/integrations/sms-voice/toll-free-verification",
+      hasWarning: true,
+    },
+    {
+      title: "10DLC verification",
+      description: "Register your brand and campaigns for 10DLC compliance.",
+      href: "/integrations/sms-voice/10dlc-verification",
+    },
+  ];
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100" data-testid="text-page-title">
+          SMS & voice
+        </h1>
+      </div>
+
+      <Card className="border-slate-200 dark:border-slate-800">
+        <CardContent className="p-0">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+            <h2 className="text-sm font-medium text-slate-900 dark:text-slate-100">Senders</h2>
+          </div>
+          <div className="px-6 divide-y divide-slate-100 dark:divide-slate-800">
+            {sendersItems.map((item) => (
+              <SectionRow key={item.title} item={item} />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="border-slate-200 dark:border-slate-800">
+        <CardContent className="p-0">
+          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">
+            <h2 className="text-sm font-medium text-slate-900 dark:text-slate-100">Compliance</h2>
+          </div>
+          <div className="px-6 divide-y divide-slate-100 dark:divide-slate-800">
+            {complianceItems.map((item) => (
+              <SectionRow key={item.title} item={item} />
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
 export default function SmsVoice() {
   const [, setLocation] = useLocation();
 

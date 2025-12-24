@@ -19,7 +19,7 @@ import { CheckCircle, XCircle, Clock, AlertTriangle, Plus, Trash2, RefreshCw, Ex
 import type { ChannelConnection, User } from "@shared/schema";
 import Billing from "@/pages/billing";
 import SettingsPage from "@/pages/settings";
-import SmsVoice from "@/pages/sms-voice";
+import SmsVoice, { SmsVoiceContent } from "@/pages/sms-voice";
 import { WhiteLabelSettings } from "@/components/white-label-settings";
 import EmailIntegration from "@/pages/email-integration";
 
@@ -1841,13 +1841,13 @@ export default function IntegrationsPage() {
         {activeView === "sms-voice" && (
           <div>
             <SettingsBreadcrumb pageName="SMS & Voice" />
-            <SmsVoice />
+            <SmsVoiceContent />
           </div>
         )}
         {activeView === "email" && (
           <div>
             <SettingsBreadcrumb pageName="Email" />
-            <EmailIntegration />
+            <EmailIntegration embedded />
           </div>
         )}
         {activeView === "automations" && (
