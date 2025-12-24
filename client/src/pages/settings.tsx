@@ -1348,8 +1348,8 @@ export default function Settings({ view = 'all' }: SettingsProps) {
 
             {/* Overview Tab - Profile + Company */}
             <TabsContent value="overview" className="space-y-4 mt-0">
-              {/* Header with Save Button */}
-              <div className="flex items-center justify-end">
+              {/* Save Button - positioned absolutely to align with breadcrumb */}
+              <div className="absolute top-0 right-0">
                 <Button
                   onClick={handleSaveOverview}
                   disabled={updateProfileInfoMutation.isPending || updateCompanyMutation.isPending}

@@ -30,23 +30,26 @@ interface ConnectionStatus {
   connection?: ChannelConnection;
 }
 
-function SettingsBreadcrumb({ pageName, onBack }: { pageName: string; onBack: () => void }) {
+function SettingsBreadcrumb({ pageName, onBack, action }: { pageName: string; onBack: () => void; action?: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 mb-6">
-      <Button
-        variant="outline"
-        size="icon"
-        className="h-9 w-9 shrink-0"
-        onClick={onBack}
-        data-testid="button-back-settings"
-      >
-        <ChevronLeft className="h-4 w-4" />
-      </Button>
-      <div className="flex items-center gap-2 text-lg">
-        <span className="text-muted-foreground">Settings</span>
-        <ChevronRight className="h-4 w-4 text-muted-foreground" />
-        <span className="font-medium">{pageName}</span>
+    <div className="flex items-center justify-between gap-3 mb-6">
+      <div className="flex items-center gap-3">
+        <Button
+          variant="outline"
+          size="icon"
+          className="h-9 w-9 shrink-0"
+          onClick={onBack}
+          data-testid="button-back-settings"
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <div className="flex items-center gap-2 text-lg">
+          <span className="text-muted-foreground">Settings</span>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium">{pageName}</span>
+        </div>
       </div>
+      {action && <div className="shrink-0">{action}</div>}
     </div>
   );
 }
@@ -1817,7 +1820,7 @@ export default function IntegrationsPage() {
 
       <div className="flex-1 min-w-0">
         {activeView === "profile" && (
-          <div>
+          <div className="relative">
             <SettingsBreadcrumb pageName="Profile" onBack={() => setLocation("/settings/profile")} />
             <SettingsPage view="profile" />
           </div>
@@ -1829,7 +1832,7 @@ export default function IntegrationsPage() {
           </div>
         )}
         {activeView === "company" && (
-          <div>
+          <div className="relative">
             <SettingsBreadcrumb pageName="Company Settings" onBack={() => setLocation("/settings/profile")} />
             <SettingsPage view="company" />
           </div>
