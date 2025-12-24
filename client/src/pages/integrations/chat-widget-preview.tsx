@@ -885,7 +885,104 @@ export default function ChatWidgetPreviewPage() {
               )
             }}
           >
-          {activeChannel ? (
+          {chatSessionId ? (
+            /* Active Live Chat View - Full Screen */
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: '480px' }}>
+              {/* Header */}
+              <div className="p-4 text-white flex items-center gap-3" style={{ background: currentBackground }}>
+                <button 
+                  onClick={() => { setChatSessionId(null); setChatMessages([]); setChatVisitorId(null); localStorage.removeItem(`chat_visitor_${widgetId}`); }}
+                  className="p-1 hover:bg-white/20 rounded"
+                  data-testid="back-from-chat"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                  <MessageCircle className="h-5 w-5" />
+                </div>
+                <span className="font-semibold">Live chat</span>
+              </div>
+              
+              {/* Messages Area */}
+              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 dark:bg-slate-800">
+                {/* Initial visitor info message */}
+                <div className="flex justify-end">
+                  <div className="bg-blue-100 dark:bg-blue-900/30 rounded-lg p-3 max-w-[85%]">
+                    <p className="text-sm text-slate-800 dark:text-slate-200">
+                      <strong>Name:</strong> {visitorName || 'Website Visitor'}<br />
+                      <strong>Email:</strong> {visitorEmail}
+                    </p>
+                  </div>
+                </div>
+                
+                {/* System confirmation message */}
+                <div className="flex justify-start">
+                  <div className="bg-white dark:bg-slate-700 rounded-lg p-3 max-w-[85%] shadow-sm">
+                    <p className="text-sm text-slate-700 dark:text-slate-300">
+                      Thank you, we have received your request.
+                    </p>
+                  </div>
+                </div>
+                
+                {/* Searching for agents status */}
+                {chatMessages.length === 0 && (
+                  <div className="text-center py-2">
+                    <p className="text-sm text-slate-500">Searching for available agents...</p>
+                    <Loader2 className="h-4 w-4 animate-spin mx-auto mt-2 text-slate-400" />
+                  </div>
+                )}
+                
+                {/* Chat messages */}
+                {chatMessages.map((msg) => (
+                  <div 
+                    key={msg.id}
+                    className={`flex ${msg.direction === 'inbound' ? 'justify-end' : 'justify-start'}`}
+                  >
+                    <div 
+                      className={`rounded-lg p-3 max-w-[85%] ${
+                        msg.direction === 'inbound' 
+                          ? 'bg-blue-100 dark:bg-blue-900/30' 
+                          : 'bg-white dark:bg-slate-700 shadow-sm'
+                      }`}
+                    >
+                      <p className="text-sm text-slate-800 dark:text-slate-200">{msg.text}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+              
+              {/* Input Area */}
+              <div className="p-4 border-t bg-white dark:bg-slate-900">
+                <div className="flex items-center gap-2 border rounded-lg p-2 bg-slate-50 dark:bg-slate-800">
+                  <input
+                    type="text"
+                    value={chatInput}
+                    onChange={(e) => setChatInput(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
+                    placeholder="Type your message here..."
+                    className="flex-1 bg-transparent text-sm outline-none"
+                    data-testid="chat-input"
+                  />
+                  <button
+                    onClick={sendChatMessage}
+                    disabled={!chatInput.trim()}
+                    className="p-2 rounded-lg disabled:opacity-50"
+                    style={{ color: currentBackground as string }}
+                    data-testid="send-message"
+                  >
+                    <Send className="h-5 w-5" />
+                  </button>
+                </div>
+              </div>
+              
+              {/* Footer */}
+              <div className="p-2 border-t text-center">
+                <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                  Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                </p>
+              </div>
+            </div>
+          ) : activeChannel ? (
             renderChannelContent()
           ) : (
             <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
@@ -915,61 +1012,10 @@ export default function ChatWidgetPreviewPage() {
               )}
               
               <div className="p-4 space-y-3">
-                {widget.channels?.liveChat && (
+                {widget.channels?.liveChat && !chatSessionId && (
                   <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 space-y-3">
-                    {chatSessionId ? (
-                      <>
-                        <div className="flex items-center justify-between">
-                          <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                            {widget.liveChatSettings?.preChatForm?.title || "Chat with our agent"}
-                          </h5>
-                          <button 
-                            onClick={() => { setChatSessionId(null); setChatMessages([]); }}
-                            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
-                            data-testid="close-chat"
-                          >
-                            <X className="h-4 w-4" />
-                          </button>
-                        </div>
-                        <div className="h-48 overflow-y-auto space-y-2 border rounded-lg p-2 bg-slate-50 dark:bg-slate-700">
-                          {chatMessages.map((msg) => (
-                            <div 
-                              key={msg.id}
-                              className={`p-2 rounded-lg text-sm max-w-[85%] ${
-                                msg.direction === 'inbound' 
-                                  ? 'bg-slate-200 dark:bg-slate-600 ml-auto' 
-                                  : 'text-white'
-                              }`}
-                              style={msg.direction !== 'inbound' ? { background: currentBackground } : {}}
-                            >
-                              {msg.text}
-                            </div>
-                          ))}
-                          {chatMessages.length === 0 && (
-                            <p className="text-xs text-slate-400 text-center py-4">No messages yet</p>
-                          )}
-                        </div>
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={chatInput}
-                            onChange={(e) => setChatInput(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
-                            placeholder="Type a message..."
-                            className="flex-1 p-2 border rounded-lg text-sm bg-white dark:bg-slate-600"
-                            data-testid="chat-input"
-                          />
-                          <button
-                            onClick={sendChatMessage}
-                            disabled={!chatInput.trim()}
-                            className="p-2 rounded-lg text-white disabled:opacity-50"
-                            style={{ background: currentBackground }}
-                            data-testid="send-message"
-                          >
-                            <Send className="h-4 w-4" />
-                          </button>
-                        </div>
-                      </>
+                    {false ? (
+                      <></>
                     ) : (
                       <>
                         <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
