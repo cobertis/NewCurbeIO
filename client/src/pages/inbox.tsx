@@ -226,9 +226,10 @@ export default function InboxPage() {
     const msg = message as any;
     if (msg.type === 'telnyx_message' || msg.type === 'new_message' || msg.type === 'conversation_update') {
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
-      if (selectedConversationId === msg.conversationId) {
+      // Always refresh messages for the selected conversation on any update
+      if (selectedConversationId) {
         queryClient.invalidateQueries({ 
-          queryKey: ["/api/inbox/conversations", msg.conversationId, "messages"] 
+          queryKey: [`/api/inbox/conversations/${selectedConversationId}/messages`] 
         });
       }
     }
