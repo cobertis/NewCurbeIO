@@ -99,6 +99,8 @@ interface TelnyxConversation {
   unreadCount: number;
   companyPhoneNumber: string;
   channel?: string;
+  status?: "open" | "pending" | "solved" | "snoozed" | "archived";
+  assignedTo?: string | null;
 }
 
 const getChannelIcon = (channel?: string) => {
@@ -365,10 +367,22 @@ export default function InboxPage() {
     
     switch (activeView) {
       case "open":
-        filtered = conversations.filter(c => c.unreadCount > 0 || !c.lastMessage);
+        filtered = conversations.filter(c => c.status === "open" || c.status === "pending" || !c.status);
         break;
       case "unread":
         filtered = conversations.filter(c => c.unreadCount > 0);
+        break;
+      case "assigned":
+        filtered = conversations.filter(c => c.assignedTo === user?.id);
+        break;
+      case "unassigned":
+        filtered = conversations.filter(c => !c.assignedTo);
+        break;
+      case "waiting":
+        filtered = conversations.filter(c => c.status === "pending" || c.status === "snoozed");
+        break;
+      case "solved":
+        filtered = conversations.filter(c => c.status === "solved" || c.status === "archived");
         break;
       case "all":
         filtered = conversations;
@@ -583,8 +597,12 @@ export default function InboxPage() {
       activeView={activeView} 
       onViewChange={setActiveView}
       counts={{
-        open: conversations.filter(c => c.unreadCount > 0 || !c.lastMessage).length,
+        open: conversations.filter(c => c.status === "open" || c.status === "pending" || !c.status).length,
         unread: conversations.filter(c => c.unreadCount > 0).length,
+        assigned: conversations.filter(c => c.assignedTo === user?.id).length,
+        unassigned: conversations.filter(c => !c.assignedTo).length,
+        waiting: conversations.filter(c => c.status === "pending" || c.status === "snoozed").length,
+        solved: conversations.filter(c => c.status === "solved" || c.status === "archived").length,
         all: conversations.length,
       }}
     >
