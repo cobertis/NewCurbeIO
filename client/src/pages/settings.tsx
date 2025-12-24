@@ -1557,21 +1557,7 @@ export default function Settings() {
               <TabsList className="inline-flex h-auto flex-wrap">
                 <TabsTrigger value="overview" className="gap-2" data-testid="tab-overview">
                   <UserIcon className="h-4 w-4" />
-                  Overview
-                </TabsTrigger>
-                <TabsTrigger value="automations" className="gap-2" data-testid="tab-automations">
-                  <Zap className="h-4 w-4" />
-                  Automations
-                </TabsTrigger>
-                {isAdmin && (
-                  <TabsTrigger value="team" className="gap-2" data-testid="tab-team">
-                    <Users className="h-4 w-4" />
-                    Team
-                  </TabsTrigger>
-                )}
-                <TabsTrigger value="security" className="gap-2" data-testid="tab-security">
-                  <Shield className="h-4 w-4" />
-                  Security
+                  Profile
                 </TabsTrigger>
               </TabsList>
               {activeTab === "overview" && (
