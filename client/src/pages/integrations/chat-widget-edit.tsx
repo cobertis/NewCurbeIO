@@ -1372,14 +1372,16 @@ function SortableChannelItem({
                   </div>
                   {smsSettings.numberSettings.numberType === "custom" && (
                     <div className="space-y-2">
+                      <Label className="text-xs text-slate-500">Custom phone number (international format)</Label>
                       <Input 
-                        value={smsSettings.numberSettings.customNumber}
+                        value={smsSettings.numberSettings?.customNumber || ""}
                         onChange={(e) => onSmsSettingsChange({
-                          numberSettings: { ...smsSettings.numberSettings, customNumber: e.target.value }
+                          numberSettings: { customNumber: e.target.value }
                         })}
-                        placeholder="+1 (555) 123-4567"
+                        placeholder="+1 (305) 360-4444"
                         data-testid="input-sms-custom-number"
                       />
+                      <p className="text-xs text-slate-400">Enter the full international number with country code (e.g., +1 for USA)</p>
                     </div>
                   )}
                 </div>
@@ -1924,6 +1926,30 @@ export default function ChatWidgetEditPage() {
       liveChatSettings: {
         ...widget.liveChatSettings,
         ...settings,
+        welcomeScreen: {
+          ...widget.liveChatSettings?.welcomeScreen,
+          ...settings.welcomeScreen,
+        },
+        preChatForm: {
+          ...widget.liveChatSettings?.preChatForm,
+          ...settings.preChatForm,
+        },
+        queueSettings: {
+          ...widget.liveChatSettings?.queueSettings,
+          ...settings.queueSettings,
+        },
+        satisfactionSurvey: {
+          ...widget.liveChatSettings?.satisfactionSurvey,
+          ...settings.satisfactionSurvey,
+        },
+        offlineMode: {
+          ...widget.liveChatSettings?.offlineMode,
+          ...settings.offlineMode,
+        },
+        additionalSettings: {
+          ...widget.liveChatSettings?.additionalSettings,
+          ...settings.additionalSettings,
+        },
       }
     });
   };
@@ -1933,6 +1959,14 @@ export default function ChatWidgetEditPage() {
       callSettings: {
         ...widget.callSettings,
         ...settings,
+        callUsScreen: {
+          ...widget.callSettings?.callUsScreen,
+          ...settings.callUsScreen,
+        },
+        numbersAndCountries: {
+          ...widget.callSettings?.numbersAndCountries,
+          ...settings.numbersAndCountries,
+        },
       }
     });
   };
@@ -1942,6 +1976,18 @@ export default function ChatWidgetEditPage() {
       whatsappSettings: {
         ...widget.whatsappSettings,
         ...settings,
+        welcomeScreen: {
+          ...widget.whatsappSettings?.welcomeScreen,
+          ...settings.welcomeScreen,
+        },
+        messageScreen: {
+          ...widget.whatsappSettings?.messageScreen,
+          ...settings.messageScreen,
+        },
+        numberSettings: {
+          ...widget.whatsappSettings?.numberSettings,
+          ...settings.numberSettings,
+        },
       }
     });
   };
@@ -1951,6 +1997,22 @@ export default function ChatWidgetEditPage() {
       emailSettings: {
         ...widget.emailSettings,
         ...settings,
+        welcomeScreen: {
+          ...widget.emailSettings?.welcomeScreen,
+          ...settings.welcomeScreen,
+        },
+        formFields: {
+          ...widget.emailSettings?.formFields,
+          ...settings.formFields,
+        },
+        successScreen: {
+          ...widget.emailSettings?.successScreen,
+          ...settings.successScreen,
+        },
+        associatedEmail: {
+          ...widget.emailSettings?.associatedEmail,
+          ...settings.associatedEmail,
+        },
       }
     });
   };
@@ -1960,6 +2022,18 @@ export default function ChatWidgetEditPage() {
       smsSettings: {
         ...widget.smsSettings,
         ...settings,
+        welcomeScreen: {
+          ...widget.smsSettings?.welcomeScreen,
+          ...settings.welcomeScreen,
+        },
+        messageScreen: {
+          ...widget.smsSettings?.messageScreen,
+          ...settings.messageScreen,
+        },
+        numberSettings: {
+          ...widget.smsSettings?.numberSettings,
+          ...settings.numberSettings,
+        },
       }
     });
   };
@@ -1969,6 +2043,18 @@ export default function ChatWidgetEditPage() {
       messengerSettings: {
         ...widget.messengerSettings,
         ...settings,
+        welcomeScreen: {
+          ...widget.messengerSettings?.welcomeScreen,
+          ...settings.welcomeScreen,
+        },
+        pageSettings: {
+          ...widget.messengerSettings?.pageSettings,
+          ...settings.pageSettings,
+        },
+        pageConnection: {
+          ...widget.messengerSettings?.pageConnection,
+          ...settings.pageConnection,
+        },
       }
     });
   };
@@ -1978,6 +2064,18 @@ export default function ChatWidgetEditPage() {
       instagramSettings: {
         ...widget.instagramSettings,
         ...settings,
+        welcomeScreen: {
+          ...widget.instagramSettings?.welcomeScreen,
+          ...settings.welcomeScreen,
+        },
+        profileSettings: {
+          ...widget.instagramSettings?.profileSettings,
+          ...settings.profileSettings,
+        },
+        accountConnection: {
+          ...widget.instagramSettings?.accountConnection,
+          ...settings.accountConnection,
+        },
       }
     });
   };
