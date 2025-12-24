@@ -2581,32 +2581,32 @@ export default function ChatWidgetEditPage() {
             </Card>
           </div>
 
-          <div className="w-full lg:w-[520px] shrink-0">
+          <div className="w-full lg:w-[420px] shrink-0">
             <Card className="border-slate-200 dark:border-slate-800 sticky top-6">
-              <CardContent className="p-8">
-                <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100 mb-6">Widget preview</h3>
+              <CardContent className="p-6">
+                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-5">Widget preview</h3>
                 
                 <div 
-                  className="rounded-2xl overflow-hidden shadow-2xl"
+                  className="rounded-xl overflow-hidden shadow-xl"
                   style={{ 
                     background: widget.themeType === "gradient" 
                       ? `linear-gradient(135deg, ${currentColor.hex}, ${currentColor.hex}dd)` 
                       : currentColor.hex 
                   }}
                 >
-                  <div className="p-8 text-white">
+                  <div className="p-6 text-white">
                     {widget.branding?.customLogo && (
                       <img 
                         src={widget.branding.customLogo} 
                         alt="Logo" 
-                        className="h-12 w-auto mb-5 rounded"
+                        className="h-10 w-auto mb-4 rounded"
                       />
                     )}
-                    <h4 className="text-3xl font-bold">{widget.welcomeTitle}</h4>
-                    <p className="text-lg opacity-90 mt-4">{widget.welcomeMessage}</p>
+                    <h4 className="text-2xl font-bold">{widget.welcomeTitle}</h4>
+                    <p className="text-base opacity-90 mt-3">{widget.welcomeMessage}</p>
                   </div>
                   
-                  <div className="bg-white dark:bg-slate-900 p-6 space-y-5">
+                  <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
                     <div>
                       <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">How can we help you today?</p>
                       <div className="border rounded-lg p-3">
