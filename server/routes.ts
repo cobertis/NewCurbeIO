@@ -95,7 +95,7 @@ import {
 import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, oauthStates, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, oauthStates, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, chatWidgets } from "@shared/schema";
 import { encryptToken, decryptToken } from "./crypto";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -28165,6 +28165,144 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
   // ==================== VOICEMAIL API ====================
+
+  // ==================== CHAT WIDGET API ====================
+
+  // GET /api/integrations/chat-widget/list - List all chat widgets for company
+  app.get("/api/integrations/chat-widget/list", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    
+    try {
+      const widgets = await db.query.chatWidgets.findMany({
+        where: eq(chatWidgets.companyId, user.companyId),
+        orderBy: desc(chatWidgets.createdAt)
+      });
+      
+      return res.json({ widgets });
+    } catch (error: any) {
+      console.error("[Chat Widget] List error:", error);
+      return res.status(500).json({ error: "Failed to list widgets" });
+    }
+  });
+
+  // POST /api/integrations/chat-widget/create - Create a new chat widget
+  app.post("/api/integrations/chat-widget/create", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    const { name } = req.body;
+    
+    if (!name || typeof name !== "string" || name.trim().length === 0) {
+      return res.status(400).json({ error: "Widget name is required" });
+    }
+    
+    try {
+      const [widget] = await db.insert(chatWidgets).values({
+        companyId: user.companyId,
+        name: name.trim(),
+        status: "draft",
+        channels: [
+          { type: "live_chat", enabled: true, label: "Live Chat", order: 0 },
+          { type: "whatsapp", enabled: false, label: "WhatsApp", order: 1 },
+          { type: "email", enabled: false, label: "Email", order: 2 },
+          { type: "phone", enabled: false, label: "Phone", order: 3 },
+          { type: "sms", enabled: false, label: "SMS", order: 4 },
+          { type: "messenger", enabled: false, label: "Messenger", order: 5 },
+          { type: "instagram", enabled: false, label: "Instagram", order: 6 },
+        ],
+      }).returning();
+      
+      console.log("[Chat Widget] Created widget " + widget.id + " for company " + user.companyId);
+      return res.json({ widgetId: widget.id, widget });
+    } catch (error: any) {
+      console.error("[Chat Widget] Create error:", error);
+      return res.status(500).json({ error: "Failed to create widget" });
+    }
+  });
+
+  // GET /api/integrations/chat-widget/:id - Get a specific chat widget
+  app.get("/api/integrations/chat-widget/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    const { id } = req.params;
+    
+    try {
+      const widget = await db.query.chatWidgets.findFirst({
+        where: and(
+          eq(chatWidgets.id, id),
+          eq(chatWidgets.companyId, user.companyId)
+        )
+      });
+      
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      return res.json({ widget });
+    } catch (error: any) {
+      console.error("[Chat Widget] Get error:", error);
+      return res.status(500).json({ error: "Failed to get widget" });
+    }
+  });
+
+  // PATCH /api/integrations/chat-widget/:id - Update a chat widget
+  app.patch("/api/integrations/chat-widget/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    const { id } = req.params;
+    const updates = req.body;
+    
+    try {
+      const existing = await db.query.chatWidgets.findFirst({
+        where: and(
+          eq(chatWidgets.id, id),
+          eq(chatWidgets.companyId, user.companyId)
+        )
+      });
+      
+      if (!existing) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      delete updates.id;
+      delete updates.companyId;
+      delete updates.createdAt;
+      
+      const [widget] = await db.update(chatWidgets)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(chatWidgets.id, id))
+        .returning();
+      
+      console.log("[Chat Widget] Updated widget " + id);
+      return res.json({ widget });
+    } catch (error: any) {
+      console.error("[Chat Widget] Update error:", error);
+      return res.status(500).json({ error: "Failed to update widget" });
+    }
+  });
+
+  // DELETE /api/integrations/chat-widget/:id - Delete a chat widget
+  app.delete("/api/integrations/chat-widget/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    const { id } = req.params;
+    
+    try {
+      const existing = await db.query.chatWidgets.findFirst({
+        where: and(
+          eq(chatWidgets.id, id),
+          eq(chatWidgets.companyId, user.companyId)
+        )
+      });
+      
+      if (!existing) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      await db.delete(chatWidgets).where(eq(chatWidgets.id, id));
+      
+      console.log("[Chat Widget] Deleted widget " + id);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Chat Widget] Delete error:", error);
+      return res.status(500).json({ error: "Failed to delete widget" });
+    }
+  });
   
   // GET /api/voicemails - List voicemails for current user
   app.get("/api/voicemails", requireAuth, async (req: Request, res: Response) => {

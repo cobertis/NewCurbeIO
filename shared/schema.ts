@@ -4753,6 +4753,69 @@ export type OauthState = typeof oauthStates.$inferSelect;
 export type InsertOauthState = z.infer<typeof insertOauthStateSchema>;
 
 // =====================================================
+// CHAT WIDGETS (Embeddable chat widgets for websites)
+// =====================================================
+
+export const chatWidgetStatusEnum = pgEnum("chat_widget_status", ["active", "inactive", "draft"]);
+
+export const chatWidgets = pgTable("chat_widgets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  domain: text("domain"),
+  status: chatWidgetStatusEnum("status").notNull().default("draft"),
+  
+  // Appearance settings
+  primaryColor: text("primary_color").default("#2563eb"),
+  position: text("position").default("bottom-right"), // bottom-right, bottom-left
+  buttonSize: text("button_size").default("medium"), // small, medium, large
+  borderRadius: text("border_radius").default("rounded"), // rounded, square
+  welcomeMessage: text("welcome_message").default("Hi! How can we help you today?"),
+  offlineMessage: text("offline_message").default("We're currently offline. Leave a message and we'll get back to you."),
+  companyName: text("company_name"),
+  avatarUrl: text("avatar_url"),
+  
+  // Channels configuration (which channels to show)
+  channels: jsonb("channels").$type<{
+    type: string;
+    enabled: boolean;
+    label?: string;
+    value?: string;
+    order?: number;
+  }[]>().default([]),
+  
+  // Targeting settings
+  targetCountries: text("target_countries").array(),
+  targetDevices: text("target_devices").array(), // desktop, mobile, tablet
+  targetPages: jsonb("target_pages").$type<{ type: string; value: string }[]>(),
+  schedule: jsonb("schedule").$type<{
+    enabled: boolean;
+    timezone?: string;
+    days?: { day: string; enabled: boolean; startTime?: string; endTime?: string }[];
+  }>(),
+  
+  // Behavior settings
+  autoOpen: boolean("auto_open").default(false),
+  autoOpenDelay: integer("auto_open_delay").default(5), // seconds
+  showOnMobile: boolean("show_on_mobile").default(true),
+  showBranding: boolean("show_branding").default(true),
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("chat_widgets_company_id_idx").on(table.companyId),
+  statusIdx: index("chat_widgets_status_idx").on(table.status),
+}));
+
+export const insertChatWidgetSchema = createInsertSchema(chatWidgets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type ChatWidget = typeof chatWidgets.$inferSelect;
+export type InsertChatWidget = z.infer<typeof insertChatWidgetSchema>;
+
+// =====================================================
 // TELEGRAM INTEGRATION TABLES
 // =====================================================
 
