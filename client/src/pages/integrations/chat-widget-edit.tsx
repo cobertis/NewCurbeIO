@@ -1891,8 +1891,53 @@ function SortableChannelItem({
 
               {activeInstagramSubSection === "accountConnection" && (
                 <div className="space-y-4">
+                  <p className="text-xs text-slate-500">
+                    Choose one of your connected Instagram accounts or add a custom one. <span className="font-medium">Please note:</span> If you use a custom account, inbound messages will not be displayed in Curbe.
+                  </p>
                   <div className="space-y-2">
-                    <Label className="text-xs text-slate-500">Connected Instagram Account</Label>
+                    <Label className="text-xs text-slate-500">Instagram account *</Label>
+                    <Select
+                      value={instagramSettings.accountConnection?.connectionType || "custom"}
+                      onValueChange={(value: "connected" | "custom") => onInstagramSettingsChange({
+                        accountConnection: { ...instagramSettings.accountConnection, connectionType: value }
+                      })}
+                    >
+                      <SelectTrigger data-testid="select-instagram-connection-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="connected">
+                          <span className="text-blue-600">- Connect Instagram to Curbe -</span>
+                        </SelectItem>
+                        <SelectItem value="custom">Use custom account</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {instagramSettings.accountConnection?.connectionType === "custom" && (
+                    <div className="space-y-2">
+                      <Input
+                        placeholder="https://www.instagram.com/youraccount"
+                        value={instagramSettings.accountConnection?.customUrl || ""}
+                        onChange={(e) => {
+                          const url = e.target.value;
+                          let username = "";
+                          const match = url.match(/instagram\.com\/([^/?]+)/);
+                          if (match) username = match[1];
+                          onInstagramSettingsChange({
+                            accountConnection: { 
+                              ...instagramSettings.accountConnection, 
+                              customUrl: url,
+                              username: username
+                            }
+                          });
+                        }}
+                        data-testid="input-instagram-custom-url"
+                      />
+                    </div>
+                  )}
+
+                  {instagramSettings.accountConnection?.connectionType === "connected" && (
                     <div className="p-4 border rounded-lg bg-slate-50 dark:bg-slate-800 text-center">
                       {instagramSettings.accountConnection.username ? (
                         <div className="flex items-center justify-between">
@@ -1910,7 +1955,7 @@ function SortableChannelItem({
                         </div>
                       )}
                     </div>
-                  </div>
+                  )}
                 </div>
               )}
             </div>
