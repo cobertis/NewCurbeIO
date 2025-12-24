@@ -62,7 +62,7 @@ import {
 import { Pencil, Palette, MessageSquare, MessageCircle, Target, Code, Copy, ExternalLink, Mail, MoreHorizontal, MoreVertical, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Phone, Send, Upload, Image, Smile, Monitor, RefreshCw, GripVertical, Clock, ThumbsUp, ThumbsDown, Power, Settings, FileText, Users, Globe, Link2, X, CheckCircle, Plus } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
-import { SiFacebook, SiInstagram } from "react-icons/si";
+import { SiFacebook, SiInstagram, SiTelegram } from "react-icons/si";
 import { SiWhatsapp } from "react-icons/si";
 import { SettingsLayout } from "@/components/settings-layout";
 import { useToast } from "@/hooks/use-toast";
@@ -165,6 +165,7 @@ interface WidgetConfig {
     whatsapp: boolean;
     facebook: boolean;
     instagram: boolean;
+    telegram: boolean;
   };
   channelOrder: string[];
   liveChatSettings: {
@@ -312,6 +313,23 @@ interface WidgetConfig {
       customUrl: string;
     };
   };
+  telegramSettings: {
+    welcomeScreen: {
+      channelName: string;
+    };
+    messageUsScreen: {
+      showQRCode: boolean;
+      title: string;
+      description: string;
+      buttonLabel: string;
+    };
+    botConnection: {
+      connectionType: "connected" | "custom";
+      botUsername: string;
+      botName: string;
+      customUrl: string;
+    };
+  };
   targeting: {
     countries: "all" | "selected" | "excluded";
     selectedCountries: string[];
@@ -366,6 +384,7 @@ const channelConfigs: ChannelConfig[] = [
   { id: "whatsapp", key: "whatsapp", label: "WhatsApp", icon: <SiWhatsapp className="h-5 w-5" />, iconColor: "text-[#25D366]" },
   { id: "facebook", key: "facebook", label: "Facebook", icon: <SiFacebook className="h-5 w-5" />, iconColor: "text-[#1877F2]" },
   { id: "instagram", key: "instagram", label: "Instagram", icon: <SiInstagram className="h-5 w-5" />, iconColor: "text-[#E4405F]" },
+  { id: "telegram", key: "telegram", label: "Telegram", icon: <SiTelegram className="h-5 w-5" />, iconColor: "text-[#0088CC]" },
 ];
 
 interface SortableChannelItemProps {
@@ -389,6 +408,8 @@ interface SortableChannelItemProps {
   onMessengerSettingsChange?: (settings: Partial<WidgetConfig["messengerSettings"]>) => void;
   instagramSettings?: WidgetConfig["instagramSettings"];
   onInstagramSettingsChange?: (settings: Partial<WidgetConfig["instagramSettings"]>) => void;
+  telegramSettings?: WidgetConfig["telegramSettings"];
+  onTelegramSettingsChange?: (settings: Partial<WidgetConfig["telegramSettings"]>) => void;
   activeLiveChatSubSection?: LiveChatSubSection;
   onActiveLiveChatSubSectionChange?: (subSection: LiveChatSubSection) => void;
   activeEmailSubSection?: EmailSubSection;
@@ -2037,8 +2058,9 @@ export default function ChatWidgetEditPage() {
       whatsapp: false,
       facebook: false,
       instagram: false,
+      telegram: false,
     },
-    channelOrder: ["liveChat", "email", "sms", "phone", "whatsapp", "facebook", "instagram"],
+    channelOrder: ["liveChat", "email", "sms", "phone", "whatsapp", "facebook", "instagram", "telegram"],
     liveChatSettings: {
       welcomeScreen: {
         fieldLabel: "How can we help you today?",
@@ -2183,6 +2205,23 @@ export default function ChatWidgetEditPage() {
         customUrl: "",
       },
     },
+    telegramSettings: {
+      welcomeScreen: {
+        channelName: "Chat on Telegram",
+      },
+      messageUsScreen: {
+        showQRCode: true,
+        title: "Message us on Telegram",
+        description: "Click the button below or scan the QR code to send us a message on Telegram.",
+        buttonLabel: "Open Telegram",
+      },
+      botConnection: {
+        connectionType: "custom",
+        botUsername: "",
+        botName: "",
+        customUrl: "",
+      },
+    },
     targeting: {
       countries: "all",
       selectedCountries: [],
@@ -2243,6 +2282,21 @@ export default function ChatWidgetEditPage() {
         ...defaultWidget.instagramSettings.messageUsScreen,
         ...widgetData?.widget?.instagramSettings?.messageUsScreen,
         ...localWidget?.instagramSettings?.messageUsScreen,
+      },
+    },
+    telegramSettings: { 
+      ...defaultWidget.telegramSettings, 
+      ...widgetData?.widget?.telegramSettings, 
+      ...localWidget?.telegramSettings,
+      botConnection: {
+        ...defaultWidget.telegramSettings.botConnection,
+        ...widgetData?.widget?.telegramSettings?.botConnection,
+        ...localWidget?.telegramSettings?.botConnection,
+      },
+      messageUsScreen: {
+        ...defaultWidget.telegramSettings.messageUsScreen,
+        ...widgetData?.widget?.telegramSettings?.messageUsScreen,
+        ...localWidget?.telegramSettings?.messageUsScreen,
       },
     },
   };
