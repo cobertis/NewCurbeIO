@@ -203,6 +203,11 @@ interface WidgetConfig {
       description: string;
       buttonLabel: string;
     };
+    numberSettings: {
+      numberType: "connected" | "custom";
+      selectedConnectedNumber: string;
+      customNumber: string;
+    };
     numbersAndCountries: {
       entries: Array<{
         country: string;
@@ -377,7 +382,7 @@ interface SortableChannelItemProps {
 }
 
 type LiveChatSubSection = "welcomeScreen" | "preChatForm" | "queueSettings" | "satisfactionSurvey" | "offlineMode" | "additionalSettings" | null;
-type CallSubSection = "callUsScreen" | "numbersAndCountries" | null;
+type CallSubSection = "callUsScreen" | "numberSettings" | "numbersAndCountries" | null;
 type WhatsappSubSection = "welcomeScreen" | "messageScreen" | "numberSettings" | null;
 type EmailSubSection = "welcomeScreen" | "formFields" | "successScreen" | "associatedEmail" | null;
 type SmsSubSection = "welcomeScreen" | "messageScreen" | "numberSettings" | null;
@@ -467,6 +472,7 @@ function SortableChannelItem({
 
   const callSubOptions = [
     { id: "callUsScreen", label: "Call us screen", icon: <Phone className="h-4 w-4" /> },
+    { id: "numberSettings", label: "Phone number", icon: <Phone className="h-4 w-4" /> },
     { id: "numbersAndCountries", label: "Numbers and countries", icon: <Users className="h-4 w-4" /> },
   ];
 
@@ -880,6 +886,83 @@ function SortableChannelItem({
                       data-testid="input-call-button-label"
                     />
                   </div>
+                </div>
+              )}
+              
+              {activeCallSubSection === "numberSettings" && (
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs text-slate-500">
+                      Choose one of your connected phone numbers or enter a custom one. <strong>Please note:</strong> If you use a custom number, inbound calls will not be tracked in the system.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Phone number to display</Label>
+                    <Select 
+                      value={callSettings.numberSettings?.numberType || "connected"}
+                      onValueChange={(v: "connected" | "custom") => onCallSettingsChange({
+                        numberSettings: { ...callSettings.numberSettings, numberType: v }
+                      })}
+                    >
+                      <SelectTrigger data-testid="select-call-number-type">
+                        <SelectValue placeholder="Select number type" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="connected">Use connected number</SelectItem>
+                        <SelectItem value="custom">Enter custom number</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {callSettings.numberSettings?.numberType === "connected" && companyNumbers && companyNumbers.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-500">Select connected number</Label>
+                      <Select 
+                        value={callSettings.numberSettings.selectedConnectedNumber || ""}
+                        onValueChange={(v) => onCallSettingsChange({
+                          numberSettings: { ...callSettings.numberSettings, selectedConnectedNumber: v }
+                        })}
+                      >
+                        <SelectTrigger data-testid="select-call-connected-number">
+                          <SelectValue placeholder="Select a phone number" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {companyNumbers.map((num) => (
+                            <SelectItem key={num.phoneNumber} value={num.phoneNumber}>
+                              {num.displayName || num.friendlyName || num.phoneNumber}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  
+                  {callSettings.numberSettings?.numberType === "connected" && (!companyNumbers || companyNumbers.length === 0) && (
+                    <div className="p-3 bg-amber-50 dark:bg-amber-900/20 rounded-lg border border-amber-200 dark:border-amber-800">
+                      <p className="text-xs text-amber-700 dark:text-amber-400">
+                        No connected phone numbers found. Please connect a phone number in Telnyx settings or use a custom number.
+                      </p>
+                    </div>
+                  )}
+                  
+                  {callSettings.numberSettings?.numberType === "custom" && (
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-500">Custom phone number</Label>
+                      <div className="flex items-center gap-2 px-3 py-2 border rounded-lg">
+                        <span className="text-lg">🇺🇸</span>
+                        <Input 
+                          value={callSettings.numberSettings.customNumber || ""}
+                          onChange={(e) => onCallSettingsChange({
+                            numberSettings: { ...callSettings.numberSettings, customNumber: e.target.value }
+                          })}
+                          className="border-0 p-0 focus-visible:ring-0"
+                          placeholder="+1 234 567 8900"
+                          data-testid="input-call-custom-number"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -1843,6 +1926,11 @@ export default function ChatWidgetEditPage() {
         description: "Have an urgent matter? Please call us, and a dedicated agent will be available to help you.",
         buttonLabel: "Call now",
       },
+      numberSettings: {
+        numberType: "connected",
+        selectedConnectedNumber: "",
+        customNumber: "",
+      },
       numbersAndCountries: {
         entries: [
           { country: "Default (global)", phoneNumber: "(833) 221-4494" },
@@ -2096,6 +2184,10 @@ export default function ChatWidgetEditPage() {
         callUsScreen: {
           ...widget.callSettings?.callUsScreen,
           ...settings.callUsScreen,
+        },
+        numberSettings: {
+          ...widget.callSettings?.numberSettings,
+          ...settings.numberSettings,
         },
         numbersAndCountries: {
           ...widget.callSettings?.numbersAndCountries,
@@ -3905,30 +3997,56 @@ export default function ChatWidgetEditPage() {
                         <div className="flex items-center gap-2 mb-3">
                           <ChevronLeft className="h-5 w-5" />
                           <Phone className="h-5 w-5" />
-                          <span className="font-medium">Call Us</span>
+                          <span className="font-medium">Call us</span>
                         </div>
                       </div>
                       <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
-                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                          {widget.callSettings?.callUsScreen?.title || "Give us a call"}
+                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100 text-center">
+                          {widget.callSettings?.callUsScreen?.title || "Speak with an agent"}
                         </h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          {widget.callSettings?.callUsScreen?.description || "We're available to take your call during business hours."}
+                        <p className="text-sm text-slate-600 dark:text-slate-400 text-center">
+                          {widget.callSettings?.callUsScreen?.description || "Have an urgent matter? Please call us, and a dedicated agent will be available to help you."}
                         </p>
-                        {widget.callSettings?.callUsScreen?.showQRCode && (
-                          <div className="flex justify-center py-2">
-                            <div className="bg-white p-1.5 rounded-lg border border-slate-200">
-                              <QRCodeDisplay 
-                                value={`tel:${widget.callSettings?.numbersAndCountries?.entries?.[0]?.phoneNumber?.replace(/[\s()-]/g, '') || '+18332214494'}`}
-                                size={67}
-                              />
-                            </div>
-                          </div>
-                        )}
+                        <div className="text-center">
+                          <p className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                            {formatPhoneNumber(
+                              widget.callSettings?.numberSettings?.numberType === "custom"
+                                ? widget.callSettings?.numberSettings?.customNumber
+                                : widget.callSettings?.numberSettings?.selectedConnectedNumber || "+1 833 221 4494"
+                            )}
+                          </p>
+                        </div>
                         <Button className="w-full" style={{ background: currentBackground }}>
                           <Phone className="h-4 w-4 mr-2" />
                           {widget.callSettings?.callUsScreen?.buttonLabel || "Call now"}
                         </Button>
+                        {widget.callSettings?.callUsScreen?.showQRCode && (
+                          <>
+                            <p className="text-xs text-slate-500 text-center mt-2">
+                              Call charges and data fees may apply according to your carrier's rates.
+                            </p>
+                            <div className="flex justify-center py-4">
+                              <div className="relative">
+                                <div className="absolute -top-1 -left-1 w-5 h-5 border-l-2 border-t-2 border-slate-300 rounded-tl-lg"></div>
+                                <div className="absolute -top-1 -right-1 w-5 h-5 border-r-2 border-t-2 border-slate-300 rounded-tr-lg"></div>
+                                <div className="absolute -bottom-1 -left-1 w-5 h-5 border-l-2 border-b-2 border-slate-300 rounded-bl-lg"></div>
+                                <div className="absolute -bottom-1 -right-1 w-5 h-5 border-r-2 border-b-2 border-slate-300 rounded-br-lg"></div>
+                                <div className="p-2">
+                                  <QRCodeDisplay 
+                                    value={`tel:${(widget.callSettings?.numberSettings?.numberType === "custom"
+                                      ? widget.callSettings?.numberSettings?.customNumber
+                                      : widget.callSettings?.numberSettings?.selectedConnectedNumber || "+18332214494"
+                                    ).replace(/[\s()-]/g, '')}`}
+                                    size={160}
+                                    logoUrl={curbeLogo}
+                                    logoBackgroundColor={colorOptions.find(c => c.value === widget.colorTheme)?.hex || "#3B82F6"}
+                                  />
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-500 text-center">Scan QR code for quick dial</p>
+                          </>
+                        )}
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
                             Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />

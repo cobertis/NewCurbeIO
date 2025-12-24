@@ -146,7 +146,9 @@ export default function ChatWidgetPreviewPage() {
         return widget.whatsappSettings?.numberSettings?.customNumber || "+1 786 630 2522";
       }
       if (activeChannel === "phone") {
-        return widget.callSettings?.numbersAndCountries?.entries?.[0]?.phoneNumber || "+1 833 221 4494";
+        return widget.callSettings?.numberSettings?.numberType === "custom"
+          ? widget.callSettings?.numberSettings?.customNumber || "+1 833 221 4494"
+          : widget.callSettings?.numberSettings?.selectedConnectedNumber || "+1 833 221 4494";
       }
       return "";
     };
