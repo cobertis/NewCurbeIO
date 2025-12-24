@@ -420,7 +420,7 @@ export default function ChatWidgetPage() {
                     <TableCell className="text-slate-500">{widget.domain}</TableCell>
                     <TableCell>{getStatusBadge(widget.status)}</TableCell>
                     <TableCell className="text-slate-500">
-                      {format(new Date(widget.dateCreated), "MMM d, h:mm a")}
+                      {widget.createdAt ? format(new Date(widget.createdAt), "MMM d, h:mm a") : "-"}
                     </TableCell>
                     <TableCell>
                       <DropdownMenu>
