@@ -15,12 +15,14 @@ export function WhiteLabelSettings() {
   const { toast } = useToast();
   const logoFileInputRef = useRef<HTMLInputElement>(null);
 
-  const { data: user, isLoading: isLoadingUser } = useQuery<User>({
-    queryKey: ["/api/user"],
+  const { data: sessionData, isLoading: isLoadingUser } = useQuery<{ user: User }>({
+    queryKey: ["/api/session"],
   });
 
+  const user = sessionData?.user;
+
   const { data: companyData, isLoading: isLoadingCompany } = useQuery<{ company: any }>({
-    queryKey: ["/api/company"],
+    queryKey: ["/api/settings/company"],
     enabled: !!user?.companyId,
   });
 
