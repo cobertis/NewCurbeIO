@@ -1736,85 +1736,80 @@ export default function IntegrationsPage() {
 
   return (
     <div className="flex gap-6" data-testid="page-integrations">
-      <div className="w-60 shrink-0 hidden lg:block">
-        <div className="sticky top-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
-            <Settings className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Settings</span>
-          </div>
+      <div className="w-52 shrink-0 hidden lg:block">
+        <nav className="sticky top-4 space-y-1">
+          <p className="px-3 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Account</p>
+          {menuItems.account.map((item) => (
+            <button
+              key={item.label}
+              onClick={() => handleNavigation(item.href)}
+              data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+              className={cn(
+                "w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors",
+                item.active 
+                  ? "bg-primary/10 text-primary font-medium" 
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              )}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </button>
+          ))}
 
-          <div className="py-2">
-            <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Account</p>
-            {menuItems.account.map((item) => (
-              <button
-                key={item.label}
-                onClick={() => handleNavigation(item.href)}
-                data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
-                className={cn(
-                  "w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
-                  item.active && "border-l-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </button>
-            ))}
-          </div>
+          <p className="px-3 py-2 pt-4 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Workspace</p>
+          {menuItems.workspace.map((item) => (
+            <button
+              key={item.label}
+              onClick={() => handleNavigation(item.href)}
+              data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+              className={cn(
+                "w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors",
+                item.active 
+                  ? "bg-primary/10 text-primary font-medium" 
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              )}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </button>
+          ))}
 
-          <div className="py-2">
-            <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Workspace</p>
-            {menuItems.workspace.map((item) => (
-              <button
-                key={item.label}
-                onClick={() => handleNavigation(item.href)}
-                data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
-                className={cn(
-                  "w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
-                  item.active && "border-l-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </button>
-            ))}
-          </div>
+          <p className="px-3 py-2 pt-4 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Channels</p>
+          {menuItems.channels.map((item) => (
+            <button
+              key={item.label}
+              onClick={() => handleNavigation(item.href)}
+              data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+              className={cn(
+                "w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors",
+                item.active 
+                  ? "bg-primary/10 text-primary font-medium" 
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              )}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </button>
+          ))}
 
-          <div className="py-2">
-            <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Channels</p>
-            {menuItems.channels.map((item) => (
-              <button
-                key={item.label}
-                onClick={() => handleNavigation(item.href)}
-                data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
-                className={cn(
-                  "w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
-                  item.active && "border-l-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="py-2 pb-3">
-            <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Features</p>
-            {menuItems.features.map((item) => (
-              <button
-                key={item.label}
-                onClick={() => handleNavigation(item.href)}
-                data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
-                className={cn(
-                  "w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
-                  item.active && "border-l-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </button>
-            ))}
-          </div>
-        </div>
+          <p className="px-3 py-2 pt-4 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Features</p>
+          {menuItems.features.map((item) => (
+            <button
+              key={item.label}
+              onClick={() => handleNavigation(item.href)}
+              data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+              className={cn(
+                "w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors",
+                item.active 
+                  ? "bg-primary/10 text-primary font-medium" 
+                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+              )}
+            >
+              <item.icon className="h-4 w-4" />
+              {item.label}
+            </button>
+          ))}
+        </nav>
       </div>
 
       <div className="flex-1 min-w-0">
