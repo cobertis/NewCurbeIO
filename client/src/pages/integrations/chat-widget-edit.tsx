@@ -4127,7 +4127,7 @@ export default function ChatWidgetEditPage() {
                         
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                            Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                           </p>
                         </div>
                       </div>
@@ -4183,7 +4183,7 @@ export default function ChatWidgetEditPage() {
                       
                       <div className="bg-white dark:bg-slate-900 py-2 text-center border-t">
                         <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                          Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                          Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                         </p>
                       </div>
                     </div>
@@ -4257,7 +4257,7 @@ export default function ChatWidgetEditPage() {
                       
                       <div className="bg-white dark:bg-slate-900 py-2 text-center border-t">
                         <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                          Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                          Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                         </p>
                       </div>
                     </div>
@@ -4303,7 +4303,7 @@ export default function ChatWidgetEditPage() {
                       
                       <div className="bg-white dark:bg-slate-900 py-2 text-center border-t">
                         <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                          Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                          Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                         </p>
                       </div>
                     </div>
@@ -4354,7 +4354,7 @@ export default function ChatWidgetEditPage() {
                         
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                            Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                           </p>
                         </div>
                       </div>
@@ -4435,7 +4435,7 @@ export default function ChatWidgetEditPage() {
                         
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                            Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                           </p>
                         </div>
                       </div>
@@ -4500,7 +4500,7 @@ export default function ChatWidgetEditPage() {
                         )}
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                            Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                           </p>
                         </div>
                       </div>
@@ -4557,7 +4557,7 @@ export default function ChatWidgetEditPage() {
                         )}
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                            Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                           </p>
                         </div>
                       </div>
@@ -4593,7 +4593,7 @@ export default function ChatWidgetEditPage() {
                         </button>
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                            Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                           </p>
                         </div>
                       </div>
@@ -4647,7 +4647,7 @@ export default function ChatWidgetEditPage() {
                         </Button>
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                            Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                           </p>
                         </div>
                       </div>
@@ -4709,7 +4709,7 @@ export default function ChatWidgetEditPage() {
                         )}
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                            Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                           </p>
                         </div>
                       </div>
@@ -4771,7 +4771,7 @@ export default function ChatWidgetEditPage() {
                         )}
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                            Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                           </p>
                         </div>
                       </div>
@@ -4830,7 +4830,7 @@ export default function ChatWidgetEditPage() {
                         )}
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                            Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                           </p>
                         </div>
                       </div>
@@ -4889,7 +4889,7 @@ export default function ChatWidgetEditPage() {
                         )}
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                            Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                           </p>
                         </div>
                       </div>
@@ -4948,7 +4948,7 @@ export default function ChatWidgetEditPage() {
                         )}
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                            Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                           </p>
                         </div>
                       </div>
