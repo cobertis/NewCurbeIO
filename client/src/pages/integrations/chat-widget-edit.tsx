@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, Link, useParams } from "wouter";
 import curbeLogo from "@assets/logo no fondo_1760457183587.png";
@@ -1153,6 +1153,47 @@ export default function ChatWidgetEditPage() {
   const [appearanceSubAccordion, setAppearanceSubAccordion] = useState<string>("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [localWidget, setLocalWidget] = useState<Partial<WidgetConfig>>({});
+  
+  const logoInputRef = useRef<HTMLInputElement>(null);
+
+  const handleLogoUpload = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast({
+        variant: "destructive",
+        title: "Invalid file type",
+        description: "Please upload an image file.",
+      });
+      return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        variant: "destructive",
+        title: "File too large",
+        description: "Please upload an image smaller than 5MB.",
+      });
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string;
+      const fileSize = file.size < 1024 
+        ? `${file.size} B` 
+        : file.size < 1024 * 1024 
+          ? `${(file.size / 1024).toFixed(1)} KB` 
+          : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+      
+      updateLocalWidget({ 
+        branding: { 
+          customLogo: base64, 
+          logoFileName: file.name, 
+          logoFileSize: fileSize 
+        } 
+      });
+    };
+    reader.readAsDataURL(file);
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -1629,7 +1670,11 @@ export default function ChatWidgetEditPage() {
                                     </div>
                                   </div>
                                   <div className="flex gap-2">
-                                    <Button variant="outline" size="sm">
+                                    <Button 
+                                      variant="outline" 
+                                      size="sm"
+                                      onClick={() => logoInputRef.current?.click()}
+                                    >
                                       <RefreshCw className="h-4 w-4 mr-1" />
                                       Replace
                                     </Button>
@@ -1642,13 +1687,43 @@ export default function ChatWidgetEditPage() {
                                       <Trash2 className="h-4 w-4 mr-1" />
                                       Delete
                                     </Button>
+                                    <input
+                                      ref={logoInputRef}
+                                      type="file"
+                                      accept="image/*"
+                                      className="hidden"
+                                      onChange={(e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) handleLogoUpload(file);
+                                      }}
+                                    />
                                   </div>
                                 </div>
                               ) : (
-                                <div className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg p-6 text-center">
+                                <div 
+                                  className="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 transition-colors"
+                                  onClick={() => logoInputRef.current?.click()}
+                                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                                  onDrop={(e) => {
+                                    e.preventDefault();
+                                    e.stopPropagation();
+                                    const file = e.dataTransfer.files[0];
+                                    if (file) handleLogoUpload(file);
+                                  }}
+                                >
+                                  <input
+                                    ref={logoInputRef}
+                                    type="file"
+                                    accept="image/*"
+                                    className="hidden"
+                                    onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) handleLogoUpload(file);
+                                    }}
+                                  />
                                   <Upload className="h-8 w-8 mx-auto text-slate-400 mb-2" />
                                   <p className="text-sm text-slate-500">
-                                    Drag image here or <span className="text-blue-600 cursor-pointer">browse...</span>
+                                    Drag image here or <span className="text-blue-600">browse...</span>
                                   </p>
                                 </div>
                               )}
