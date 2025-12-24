@@ -50,7 +50,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Pencil, Palette, MessageSquare, Target, Code, Copy, ExternalLink, Mail, MoreHorizontal, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, Phone, Send, Upload, Image, Smile, Monitor, RefreshCw, GripVertical } from "lucide-react";
+import { Pencil, Palette, MessageSquare, Target, Code, Copy, ExternalLink, Mail, MoreHorizontal, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Phone, Send, Upload, Image, Smile, Monitor, RefreshCw, GripVertical, Clock, ThumbsUp, Power, Settings, FileText, Users } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { SiFacebook, SiInstagram } from "react-icons/si";
 import { SiWhatsapp } from "react-icons/si";
 import { SettingsLayout } from "@/components/settings-layout";
@@ -93,6 +95,35 @@ interface WidgetConfig {
     instagram: boolean;
   };
   channelOrder: string[];
+  liveChatSettings: {
+    welcomeScreen: {
+      fieldLabel: string;
+      buttonLabel: string;
+    };
+    preChatForm: {
+      title: string;
+      nameFieldEnabled: boolean;
+      nameFieldRequired: boolean;
+      emailFieldEnabled: boolean;
+      emailFieldRequired: boolean;
+      buttonLabel: string;
+    };
+    queueSettings: {
+      autoReplyMessage: string;
+      closeAfterMinutes: number;
+      timeoutMessage: string;
+    };
+    satisfactionSurvey: {
+      enabled: boolean;
+    };
+    offlineMode: {
+      hideChannel: boolean;
+      offlineMessage: string;
+    };
+    additionalSettings: {
+      addContactsToList: string;
+    };
+  };
   targeting: {
     countries: "all" | "selected" | "excluded";
     selectedCountries: string[];
@@ -141,9 +172,25 @@ interface SortableChannelItemProps {
   channel: ChannelConfig;
   enabled: boolean;
   onToggle: (enabled: boolean) => void;
+  isExpanded: boolean;
+  onExpandToggle: () => void;
+  liveChatSettings?: WidgetConfig["liveChatSettings"];
+  onLiveChatSettingsChange?: (settings: Partial<WidgetConfig["liveChatSettings"]>) => void;
 }
 
-function SortableChannelItem({ channel, enabled, onToggle }: SortableChannelItemProps) {
+type LiveChatSubSection = "welcomeScreen" | "preChatForm" | "queueSettings" | "satisfactionSurvey" | "offlineMode" | "additionalSettings" | null;
+
+function SortableChannelItem({ 
+  channel, 
+  enabled, 
+  onToggle, 
+  isExpanded, 
+  onExpandToggle,
+  liveChatSettings,
+  onLiveChatSettingsChange 
+}: SortableChannelItemProps) {
+  const [activeSubSection, setActiveSubSection] = useState<LiveChatSubSection>(null);
+  
   const {
     attributes,
     listeners,
@@ -159,32 +206,304 @@ function SortableChannelItem({ channel, enabled, onToggle }: SortableChannelItem
     opacity: isDragging ? 0.5 : 1,
   };
 
+  const liveChatSubOptions = [
+    { id: "welcomeScreen", label: "Welcome screen", icon: <Monitor className="h-4 w-4" /> },
+    { id: "preChatForm", label: "Pre-chat form", icon: <FileText className="h-4 w-4" /> },
+    { id: "queueSettings", label: "Queue settings", icon: <Clock className="h-4 w-4" /> },
+    { id: "satisfactionSurvey", label: "Satisfaction survey", icon: <ThumbsUp className="h-4 w-4" /> },
+    { id: "offlineMode", label: "Offline mode", icon: <Power className="h-4 w-4" /> },
+    { id: "additionalSettings", label: "Additional settings", icon: <Settings className="h-4 w-4" /> },
+  ];
+
   return (
     <div
       ref={setNodeRef}
       style={style}
-      className="flex items-center justify-between py-3 px-4 border rounded-lg bg-white dark:bg-slate-900"
+      className="border rounded-lg bg-white dark:bg-slate-900"
     >
-      <div className="flex items-center gap-3">
-        <button
-          {...attributes}
-          {...listeners}
-          className="cursor-grab active:cursor-grabbing p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
-          data-testid={`drag-handle-${channel.id}`}
-        >
-          <GripVertical className="h-4 w-4 text-slate-400" />
-        </button>
-        <div className={channel.iconColor}>{channel.icon}</div>
-        <span className="text-sm font-medium">{channel.label}</span>
+      <div className="flex items-center justify-between py-3 px-4">
+        <div className="flex items-center gap-3">
+          <button
+            {...attributes}
+            {...listeners}
+            className="cursor-grab active:cursor-grabbing p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
+            data-testid={`drag-handle-${channel.id}`}
+          >
+            <GripVertical className="h-4 w-4 text-slate-400" />
+          </button>
+          <div className={channel.iconColor}>{channel.icon}</div>
+          <span className="text-sm font-medium">{channel.label}</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <Switch 
+            checked={enabled}
+            onCheckedChange={onToggle}
+            data-testid={`switch-channel-${channel.id}`}
+          />
+          <button 
+            onClick={onExpandToggle}
+            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
+            data-testid={`expand-${channel.id}`}
+          >
+            {isExpanded ? (
+              <ChevronUp className="h-4 w-4 text-slate-400" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-slate-400" />
+            )}
+          </button>
+        </div>
       </div>
-      <div className="flex items-center gap-2">
-        <Switch 
-          checked={enabled}
-          onCheckedChange={onToggle}
-          data-testid={`switch-channel-${channel.id}`}
-        />
-        <ChevronDown className="h-4 w-4 text-slate-400" />
-      </div>
+      
+      {isExpanded && channel.id === "liveChat" && liveChatSettings && onLiveChatSettingsChange && (
+        <div className="border-t px-4 py-3">
+          {activeSubSection === null ? (
+            <div className="space-y-1">
+              {liveChatSubOptions.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => setActiveSubSection(option.id as LiveChatSubSection)}
+                  className="w-full flex items-center justify-between py-2 px-3 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  data-testid={`button-${option.id}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-slate-500">{option.icon}</span>
+                    <span className="text-sm">{option.label}</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-slate-400" />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <button
+                onClick={() => setActiveSubSection(null)}
+                className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+                data-testid="button-back-to-options"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                {liveChatSubOptions.find(o => o.id === activeSubSection)?.label}
+              </button>
+              
+              {activeSubSection === "welcomeScreen" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Field label *</Label>
+                    <Input 
+                      value={liveChatSettings.welcomeScreen.fieldLabel}
+                      onChange={(e) => onLiveChatSettingsChange({
+                        welcomeScreen: { ...liveChatSettings.welcomeScreen, fieldLabel: e.target.value }
+                      })}
+                      data-testid="input-welcome-field-label"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Button label *</Label>
+                    <Input 
+                      value={liveChatSettings.welcomeScreen.buttonLabel}
+                      onChange={(e) => onLiveChatSettingsChange({
+                        welcomeScreen: { ...liveChatSettings.welcomeScreen, buttonLabel: e.target.value }
+                      })}
+                      data-testid="input-welcome-button-label"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {activeSubSection === "preChatForm" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Title *</Label>
+                    <div className="relative">
+                      <Input 
+                        value={liveChatSettings.preChatForm.title}
+                        onChange={(e) => onLiveChatSettingsChange({
+                          preChatForm: { ...liveChatSettings.preChatForm, title: e.target.value }
+                        })}
+                        data-testid="input-prechat-title"
+                      />
+                      <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7">
+                        <Smile className="h-4 w-4 text-slate-400" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Form fields</Label>
+                    <p className="text-xs text-slate-400">Your contacts will need to populate the enabled fields before a live chat request is sent to your agents.</p>
+                    
+                    <div className="space-y-2 mt-3">
+                      <div className="flex items-center justify-between py-2 px-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="h-4 w-4 text-slate-300" />
+                          <span className="text-sm">Name</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <Checkbox 
+                              checked={liveChatSettings.preChatForm.nameFieldRequired}
+                              onCheckedChange={(checked) => onLiveChatSettingsChange({
+                                preChatForm: { ...liveChatSettings.preChatForm, nameFieldRequired: checked as boolean }
+                              })}
+                              data-testid="checkbox-name-required"
+                            />
+                            <span className="text-xs text-slate-500">Required</span>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between py-2 px-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="h-4 w-4 text-slate-300" />
+                          <span className="text-sm">Email</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center gap-2">
+                            <Checkbox 
+                              checked={liveChatSettings.preChatForm.emailFieldRequired}
+                              onCheckedChange={(checked) => onLiveChatSettingsChange({
+                                preChatForm: { ...liveChatSettings.preChatForm, emailFieldRequired: checked as boolean }
+                              })}
+                              data-testid="checkbox-email-required"
+                            />
+                            <span className="text-xs text-slate-500">Required</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Button label *</Label>
+                    <Input 
+                      value={liveChatSettings.preChatForm.buttonLabel}
+                      onChange={(e) => onLiveChatSettingsChange({
+                        preChatForm: { ...liveChatSettings.preChatForm, buttonLabel: e.target.value }
+                      })}
+                      data-testid="input-prechat-button-label"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {activeSubSection === "queueSettings" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Auto-reply message *</Label>
+                    <Textarea 
+                      value={liveChatSettings.queueSettings.autoReplyMessage}
+                      onChange={(e) => onLiveChatSettingsChange({
+                        queueSettings: { ...liveChatSettings.queueSettings, autoReplyMessage: e.target.value }
+                      })}
+                      rows={2}
+                      data-testid="textarea-auto-reply"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Close chat automatically after *</Label>
+                    <div className="flex items-center gap-2">
+                      <Input 
+                        type="number"
+                        className="w-20"
+                        value={liveChatSettings.queueSettings.closeAfterMinutes}
+                        onChange={(e) => onLiveChatSettingsChange({
+                          queueSettings: { ...liveChatSettings.queueSettings, closeAfterMinutes: parseInt(e.target.value) || 5 }
+                        })}
+                        data-testid="input-close-after-minutes"
+                      />
+                      <span className="text-sm text-slate-500">minutes of waiting in the queue</span>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Timeout message *</Label>
+                    <Textarea 
+                      value={liveChatSettings.queueSettings.timeoutMessage}
+                      onChange={(e) => onLiveChatSettingsChange({
+                        queueSettings: { ...liveChatSettings.queueSettings, timeoutMessage: e.target.value }
+                      })}
+                      rows={3}
+                      data-testid="textarea-timeout-message"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {activeSubSection === "satisfactionSurvey" && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Switch 
+                      checked={liveChatSettings.satisfactionSurvey.enabled}
+                      onCheckedChange={(checked) => onLiveChatSettingsChange({
+                        satisfactionSurvey: { enabled: checked }
+                      })}
+                      data-testid="switch-satisfaction-survey"
+                    />
+                    <div>
+                      <Label className="text-sm font-medium">Show satisfaction survey</Label>
+                      <p className="text-xs text-slate-500">After chat is ended, a short survey will be shown to your contact asking feedback about the support help they received.</p>
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {activeSubSection === "offlineMode" && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Switch 
+                      checked={liveChatSettings.offlineMode.hideChannel}
+                      onCheckedChange={(checked) => onLiveChatSettingsChange({
+                        offlineMode: { ...liveChatSettings.offlineMode, hideChannel: checked }
+                      })}
+                      data-testid="switch-hide-channel"
+                    />
+                    <div>
+                      <Label className="text-sm font-medium">Hide live chat channel</Label>
+                      <p className="text-xs text-slate-500">If enabled, the live chat channel in the widget will be hidden when all agents are offline. If this is the only channel in the widget, the widget will also be hidden. If disabled, the channel is shown, and visitors can leave a message even when agents are offline.</p>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Offline message</Label>
+                    <Textarea 
+                      value={liveChatSettings.offlineMode.offlineMessage}
+                      onChange={(e) => onLiveChatSettingsChange({
+                        offlineMode: { ...liveChatSettings.offlineMode, offlineMessage: e.target.value }
+                      })}
+                      rows={3}
+                      data-testid="textarea-offline-message"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {activeSubSection === "additionalSettings" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Add contacts to list</Label>
+                    <Select 
+                      value={liveChatSettings.additionalSettings.addContactsToList || "none"}
+                      onValueChange={(v) => onLiveChatSettingsChange({
+                        additionalSettings: { addContactsToList: v === "none" ? "" : v }
+                      })}
+                    >
+                      <SelectTrigger data-testid="select-contacts-list">
+                        <SelectValue placeholder="Select a list" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">No list selected</SelectItem>
+                        <SelectItem value="website-visitors">Website Visitors</SelectItem>
+                        <SelectItem value="chat-leads">Chat Leads</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-slate-500">Anyone who fills out the form will be automatically added to the selected list.</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -250,6 +569,35 @@ export default function ChatWidgetEditPage() {
       instagram: false,
     },
     channelOrder: ["liveChat", "email", "sms", "phone", "whatsapp", "facebook", "instagram"],
+    liveChatSettings: {
+      welcomeScreen: {
+        fieldLabel: "How can we help you today?",
+        buttonLabel: "Start chat",
+      },
+      preChatForm: {
+        title: "Chat with our agent",
+        nameFieldEnabled: true,
+        nameFieldRequired: false,
+        emailFieldEnabled: true,
+        emailFieldRequired: true,
+        buttonLabel: "Start chat",
+      },
+      queueSettings: {
+        autoReplyMessage: "Thank you, we have received your request.",
+        closeAfterMinutes: 5,
+        timeoutMessage: "Sorry, all agents are busy at the moment. We will reply to your email as soon as possible.",
+      },
+      satisfactionSurvey: {
+        enabled: true,
+      },
+      offlineMode: {
+        hideChannel: false,
+        offlineMessage: "We have received your request. Unfortunately, all our agents are currently offline. We will reply to your email as soon as possible. Thank you for your patience!",
+      },
+      additionalSettings: {
+        addContactsToList: "",
+      },
+    },
     targeting: {
       countries: "all",
       selectedCountries: [],
@@ -294,6 +642,17 @@ export default function ChatWidgetEditPage() {
   const handleChannelToggle = (channelKey: keyof WidgetConfig["channels"], enabled: boolean) => {
     updateLocalWidget({ 
       channels: { ...widget.channels, [channelKey]: enabled } 
+    });
+  };
+
+  const [expandedChannel, setExpandedChannel] = useState<string | null>(null);
+
+  const handleLiveChatSettingsChange = (settings: Partial<WidgetConfig["liveChatSettings"]>) => {
+    updateLocalWidget({
+      liveChatSettings: {
+        ...widget.liveChatSettings,
+        ...settings,
+      }
     });
   };
 
@@ -804,6 +1163,10 @@ export default function ChatWidgetEditPage() {
                                 channel={channel}
                                 enabled={widget.channels[channel.key]}
                                 onToggle={(enabled) => handleChannelToggle(channel.key, enabled)}
+                                isExpanded={expandedChannel === channel.id}
+                                onExpandToggle={() => setExpandedChannel(expandedChannel === channel.id ? null : channel.id)}
+                                liveChatSettings={widget.liveChatSettings}
+                                onLiveChatSettingsChange={handleLiveChatSettingsChange}
                               />
                             ))}
                           </div>
