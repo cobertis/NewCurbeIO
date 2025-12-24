@@ -2215,8 +2215,36 @@ export default function ChatWidgetEditPage() {
     whatsappSettings: { ...defaultWidget.whatsappSettings, ...widgetData?.widget?.whatsappSettings, ...localWidget?.whatsappSettings },
     emailSettings: { ...defaultWidget.emailSettings, ...widgetData?.widget?.emailSettings, ...localWidget?.emailSettings },
     smsSettings: { ...defaultWidget.smsSettings, ...widgetData?.widget?.smsSettings, ...localWidget?.smsSettings },
-    messengerSettings: { ...defaultWidget.messengerSettings, ...widgetData?.widget?.messengerSettings, ...localWidget?.messengerSettings },
-    instagramSettings: { ...defaultWidget.instagramSettings, ...widgetData?.widget?.instagramSettings, ...localWidget?.instagramSettings },
+    messengerSettings: { 
+      ...defaultWidget.messengerSettings, 
+      ...widgetData?.widget?.messengerSettings, 
+      ...localWidget?.messengerSettings,
+      pageConnection: {
+        ...defaultWidget.messengerSettings.pageConnection,
+        ...widgetData?.widget?.messengerSettings?.pageConnection,
+        ...localWidget?.messengerSettings?.pageConnection,
+      },
+      messageUsScreen: {
+        ...defaultWidget.messengerSettings.messageUsScreen,
+        ...widgetData?.widget?.messengerSettings?.messageUsScreen,
+        ...localWidget?.messengerSettings?.messageUsScreen,
+      },
+    },
+    instagramSettings: { 
+      ...defaultWidget.instagramSettings, 
+      ...widgetData?.widget?.instagramSettings, 
+      ...localWidget?.instagramSettings,
+      accountConnection: {
+        ...defaultWidget.instagramSettings.accountConnection,
+        ...widgetData?.widget?.instagramSettings?.accountConnection,
+        ...localWidget?.instagramSettings?.accountConnection,
+      },
+      messageUsScreen: {
+        ...defaultWidget.instagramSettings.messageUsScreen,
+        ...widgetData?.widget?.instagramSettings?.messageUsScreen,
+        ...localWidget?.instagramSettings?.messageUsScreen,
+      },
+    },
   };
 
   const embedCode = `<script src="https://widgets.curbe.io/messenger-widget-script.js" data-code="${widgetId}" defer=""></script>`;
