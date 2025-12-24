@@ -30107,6 +30107,21 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(400).json({ message: "Caller ID name must contain at least one alphanumeric character" });
       }
       
+      // Check if this is a toll-free number (800, 833, 844, 855, 866, 877, 888)
+      // Toll-free numbers cannot set CNAM via API - requires Telnyx support ticket
+      const tollFreeAreaCodes = ["800", "833", "844", "855", "866", "877", "888"];
+      const phoneDigits = phoneNumber.replace(/[^0-9]/g, "");
+      const areaCode = phoneDigits.startsWith("1") ? phoneDigits.substring(1, 4) : phoneDigits.substring(0, 3);
+      
+      if (tollFreeAreaCodes.includes(areaCode)) {
+        console.log(`[CNAM] Toll-free number detected (${areaCode}). CNAM requires Telnyx support ticket.`);
+        return res.status(400).json({ 
+          success: false,
+          message: "Toll-free numbers (800, 833, 844, 855, 866, 877, 888) cannot configure CNAM via API. Please contact Telnyx support to request CNAM enablement for this number.",
+          isTollFree: true
+        });
+      }
+      
       // Verify the phone number belongs to this company
       const phoneNumberRecord = await db
         .select()
