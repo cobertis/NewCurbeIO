@@ -10,6 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -438,6 +439,13 @@ export default function Settings({ view = 'all' }: SettingsProps) {
   
   // iMessage webhook settings state
   const [showWebhookSecret, setShowWebhookSecret] = useState(false);
+  
+  // Close account dialog state
+  const [closeAccountDialogOpen, setCloseAccountDialogOpen] = useState(false);
+  const [closeAccountReason, setCloseAccountReason] = useState("");
+  const [closeAccountConfirmContacts, setCloseAccountConfirmContacts] = useState(false);
+  const [closeAccountConfirmMessages, setCloseAccountConfirmMessages] = useState(false);
+  const [isClosingAccount, setIsClosingAccount] = useState(false);
   
   // Address autocomplete state
   const [addressValue, setAddressValue] = useState("");
@@ -1591,6 +1599,142 @@ export default function Settings({ view = 'all' }: SettingsProps) {
                 </Card>
               )}
               </div>
+
+              {/* Closing Your Account - Profile View Only */}
+              {(view === 'profile' || view === 'all') && (
+                <Card className="border-destructive/20">
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-destructive">Closing your account</CardTitle>
+                    <CardDescription>
+                      If you're having issues or have questions about Curbe, please contact{" "}
+                      <a href="mailto:support@curbe.io" className="text-primary hover:underline">Curbe support</a>,
+                      and if you want to close your account, please use{" "}
+                      <button
+                        type="button"
+                        onClick={() => setCloseAccountDialogOpen(true)}
+                        className="text-primary hover:underline cursor-pointer"
+                        data-testid="link-close-account"
+                      >
+                        this link to close your account
+                      </button>.
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              )}
+
+              {/* Close Account Dialog */}
+              <Dialog open={closeAccountDialogOpen} onOpenChange={setCloseAccountDialogOpen}>
+                <DialogContent className="sm:max-w-[500px]">
+                  <DialogHeader>
+                    <DialogTitle>Closing your Curbe account?</DialogTitle>
+                    <DialogDescription>
+                      We're very sorry to see you leave. Please let us know why you're closing your account. Your feedback helps us improve.
+                    </DialogDescription>
+                  </DialogHeader>
+                  
+                  <div className="space-y-4 py-4">
+                    <div className="flex items-center gap-2 text-sm">
+                      <PhoneIcon className="h-4 w-4" />
+                      <span className="font-medium">Customer support</span>
+                    </div>
+                    <a href="tel:+18005551234" className="text-primary text-lg font-medium hover:underline block">
+                      +1 (800) 555-1234
+                    </a>
+                    
+                    <div className="space-y-2">
+                      <Label className="flex items-center gap-1">
+                        Please tell us why you're leaving
+                        <span className="text-destructive">*</span>
+                      </Label>
+                      <Select value={closeAccountReason} onValueChange={setCloseAccountReason}>
+                        <SelectTrigger data-testid="select-close-reason">
+                          <SelectValue placeholder="Select a reason" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="no_need">I don't need the service anymore</SelectItem>
+                          <SelectItem value="issues">I had issues with the platform</SelectItem>
+                          <SelectItem value="pricing">The pricing is too high</SelectItem>
+                          <SelectItem value="alternative">I found a better alternative</SelectItem>
+                          <SelectItem value="other">Other</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    
+                    <div className="space-y-3 pt-2">
+                      <div className="flex items-start space-x-3">
+                        <Checkbox
+                          id="confirm-contacts"
+                          checked={closeAccountConfirmContacts}
+                          onCheckedChange={(checked) => setCloseAccountConfirmContacts(checked === true)}
+                          className="mt-0.5"
+                          data-testid="checkbox-confirm-contacts"
+                        />
+                        <label htmlFor="confirm-contacts" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
+                          I understand that <strong>contacts</strong> owned by this account will be permanently deleted and cannot be restored.
+                        </label>
+                      </div>
+                      
+                      <div className="flex items-start space-x-3">
+                        <Checkbox
+                          id="confirm-messages"
+                          checked={closeAccountConfirmMessages}
+                          onCheckedChange={(checked) => setCloseAccountConfirmMessages(checked === true)}
+                          className="mt-0.5"
+                          data-testid="checkbox-confirm-messages"
+                        />
+                        <label htmlFor="confirm-messages" className="text-sm text-muted-foreground leading-relaxed cursor-pointer">
+                          I understand that <strong>outbound and inbound messages</strong> owned by this account will be permanently deleted and cannot be restored.
+                        </label>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <DialogFooter className="gap-2 sm:gap-0">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        setCloseAccountDialogOpen(false);
+                        setCloseAccountReason("");
+                        setCloseAccountConfirmContacts(false);
+                        setCloseAccountConfirmMessages(false);
+                      }}
+                      data-testid="button-cancel-close-account"
+                    >
+                      Cancel
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      disabled={!closeAccountReason || !closeAccountConfirmContacts || !closeAccountConfirmMessages || isClosingAccount}
+                      onClick={async () => {
+                        setIsClosingAccount(true);
+                        try {
+                          await apiRequest("POST", "/api/account/close", {
+                            reason: closeAccountReason,
+                          });
+                          toast({
+                            title: "Account closure requested",
+                            description: "Your account closure request has been submitted. You will receive a confirmation email.",
+                          });
+                          setCloseAccountDialogOpen(false);
+                        } catch (error) {
+                          toast({
+                            title: "Error",
+                            description: "Failed to submit account closure request. Please contact support.",
+                            variant: "destructive",
+                          });
+                        } finally {
+                          setIsClosingAccount(false);
+                        }
+                      }}
+                      data-testid="button-confirm-close-account"
+                    >
+                      {isClosingAccount ? <LoadingSpinner fullScreen={false} className="h-4 w-4" /> : "Close account"}
+                    </Button>
+                  </DialogFooter>
+                </DialogContent>
+              </Dialog>
 
               {/* Company Information - Admin Only */}
               {isAdmin && (view === 'company' || view === 'all') && (
