@@ -2,6 +2,7 @@ import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, Link, useParams } from "wouter";
 import curbeLogo from "@assets/logo no fondo_1760457183587.png";
+import textmagicIcon from "@assets/favicon_1766597438261.png";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,7 +52,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Pencil, Palette, MessageSquare, Target, Code, Copy, ExternalLink, Mail, MoreHorizontal, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Phone, Send, Upload, Image, Smile, Monitor, RefreshCw, GripVertical, Clock, ThumbsUp, Power, Settings, FileText, Users, Globe, Link2, X, CheckCircle, Plus } from "lucide-react";
+import { Pencil, Palette, MessageSquare, MessageCircle, Target, Code, Copy, ExternalLink, Mail, MoreHorizontal, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Phone, Send, Upload, Image, Smile, Monitor, RefreshCw, GripVertical, Clock, ThumbsUp, Power, Settings, FileText, Users, Globe, Link2, X, CheckCircle, Plus } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SiFacebook, SiInstagram } from "react-icons/si";
@@ -76,7 +77,7 @@ interface WidgetConfig {
   };
   minimizedState: {
     includeButtonText: boolean;
-    icon: "textmagic" | "chat" | "message";
+    icon: "textmagic" | "chat" | "message" | "phone" | "email";
     buttonText: string;
     borderRadius: number;
     alignTo: "left" | "right";
@@ -210,9 +211,11 @@ const colorOptions = [
 ];
 
 const iconOptions = [
-  { value: "textmagic", label: "Textmagic" },
-  { value: "chat", label: "Chat" },
-  { value: "message", label: "Message" },
+  { value: "textmagic", label: "Textmagic", icon: "textmagic" },
+  { value: "chat", label: "Chat", icon: "chat" },
+  { value: "message", label: "Message", icon: "message" },
+  { value: "phone", label: "Phone", icon: "phone" },
+  { value: "email", label: "Email", icon: "email" },
 ];
 
 interface ChannelConfig {
@@ -1788,7 +1791,7 @@ export default function ChatWidgetEditPage() {
                                   <Select 
                                     value={widget.minimizedState?.icon || "textmagic"}
                                     onValueChange={(v) => updateLocalWidget({ 
-                                      minimizedState: { ...widget.minimizedState, icon: v as "textmagic" | "chat" | "message" } 
+                                      minimizedState: { ...widget.minimizedState, icon: v as "textmagic" | "chat" | "message" | "phone" | "email" } 
                                     })}
                                   >
                                     <SelectTrigger data-testid="select-minimized-icon">
@@ -1796,7 +1799,18 @@ export default function ChatWidgetEditPage() {
                                     </SelectTrigger>
                                     <SelectContent>
                                       {iconOptions.map(opt => (
-                                        <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                                        <SelectItem key={opt.value} value={opt.value}>
+                                          <div className="flex items-center gap-2">
+                                            {opt.icon === "textmagic" && (
+                                              <img src={textmagicIcon} alt="Textmagic" className="h-4 w-4 object-contain" />
+                                            )}
+                                            {opt.icon === "chat" && <MessageSquare className="h-4 w-4" />}
+                                            {opt.icon === "message" && <MessageCircle className="h-4 w-4" />}
+                                            {opt.icon === "phone" && <Phone className="h-4 w-4" />}
+                                            {opt.icon === "email" && <Mail className="h-4 w-4" />}
+                                            <span>{opt.label}</span>
+                                          </div>
+                                        </SelectItem>
                                       ))}
                                     </SelectContent>
                                   </Select>
@@ -2664,14 +2678,13 @@ export default function ChatWidgetEditPage() {
                           {widget.minimizedState?.icon === "chat" ? (
                             <MessageSquare className="h-7 w-7 text-white" />
                           ) : widget.minimizedState?.icon === "message" ? (
-                            <Send className="h-7 w-7 text-white" />
+                            <MessageCircle className="h-7 w-7 text-white" />
+                          ) : widget.minimizedState?.icon === "phone" ? (
+                            <Phone className="h-7 w-7 text-white" />
+                          ) : widget.minimizedState?.icon === "email" ? (
+                            <Mail className="h-7 w-7 text-white" />
                           ) : (
-                            <svg className="h-7 w-7 text-white" viewBox="0 0 24 24" fill="currentColor">
-                              <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
-                              <circle cx="8" cy="10" r="1.5"/>
-                              <circle cx="12" cy="10" r="1.5"/>
-                              <circle cx="16" cy="10" r="1.5"/>
-                            </svg>
+                            <img src={textmagicIcon} alt="Textmagic" className="h-7 w-7 object-contain" />
                           )}
                           {widget.minimizedState?.includeButtonText && widget.minimizedState?.buttonText && (
                             <span className="text-white font-medium text-base">{widget.minimizedState.buttonText}</span>
