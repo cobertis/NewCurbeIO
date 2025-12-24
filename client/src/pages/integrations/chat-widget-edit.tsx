@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import QRCode from "qrcode";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, Link, useParams } from "wouter";
 import curbeLogo from "@assets/logo no fondo_1760457183587.png";
@@ -67,6 +68,46 @@ import { SettingsLayout } from "@/components/settings-layout";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
+
+function QRCodeDisplay({ value, size = 128 }: { value: string; size?: number }) {
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (value) {
+      QRCode.toDataURL(value, {
+        width: size,
+        margin: 1,
+        color: {
+          dark: '#000000',
+          light: '#ffffff',
+        },
+      })
+        .then((url: string) => setQrDataUrl(url))
+        .catch((err: Error) => console.error('QR Code generation error:', err));
+    }
+  }, [value, size]);
+
+  if (!qrDataUrl) {
+    return (
+      <div 
+        className="bg-slate-100 rounded flex items-center justify-center"
+        style={{ width: size, height: size }}
+      >
+        <span className="text-xs text-slate-400">Loading...</span>
+      </div>
+    );
+  }
+
+  return (
+    <img 
+      src={qrDataUrl} 
+      alt="QR Code" 
+      width={size} 
+      height={size}
+      className="rounded"
+    />
+  );
+}
 
 interface WidgetConfig {
   id: string;
@@ -3782,8 +3823,11 @@ export default function ChatWidgetEditPage() {
                         </p>
                         {widget.callSettings?.callUsScreen?.showQRCode && (
                           <div className="flex justify-center py-4">
-                            <div className="w-32 h-32 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
-                              <span className="text-xs text-slate-400">QR Code</span>
+                            <div className="bg-white p-2 rounded-lg border-2 border-slate-200">
+                              <QRCodeDisplay 
+                                value={`tel:${widget.callSettings?.numbersAndCountries?.entries?.[0]?.phoneNumber?.replace(/[\s()-]/g, '') || '+18332214494'}`}
+                                size={112}
+                              />
                             </div>
                           </div>
                         )}
@@ -3818,8 +3862,11 @@ export default function ChatWidgetEditPage() {
                         </p>
                         {widget.whatsappSettings?.messageScreen?.showQRCode && (
                           <div className="flex justify-center py-4">
-                            <div className="w-32 h-32 bg-slate-100 dark:bg-slate-800 rounded-lg flex items-center justify-center">
-                              <span className="text-xs text-slate-400">QR Code</span>
+                            <div className="bg-white p-2 rounded-lg border-2 border-slate-200">
+                              <QRCodeDisplay 
+                                value={`https://wa.me/${widget.whatsappSettings?.numberSettings?.customNumber?.replace(/[\s()+\-]/g, '') || '17866302522'}`}
+                                size={112}
+                              />
                             </div>
                           </div>
                         )}
@@ -3957,10 +4004,13 @@ export default function ChatWidgetEditPage() {
                           Text messaging charges and data fees may apply according to your carrier's rates.
                         </p>
                         <div className="flex justify-center py-4">
-                          <div className="w-32 h-32 bg-white border-2 border-slate-200 rounded-lg flex items-center justify-center p-2">
-                            <div className="w-full h-full bg-slate-100 rounded flex items-center justify-center">
-                              <span className="text-xs text-slate-400">QR Code</span>
-                            </div>
+                          <div className="bg-white p-2 rounded-lg border-2 border-slate-200">
+                            <QRCodeDisplay 
+                              value={`sms:${widget.smsSettings?.numberSettings?.numberType === "custom" 
+                                ? widget.smsSettings?.numberSettings?.customNumber?.replace(/[\s()\-]/g, '') || '+18332214494'
+                                : '+18332214494'}`}
+                              size={112}
+                            />
                           </div>
                         </div>
                         <p className="text-xs text-slate-400 text-center">Scan QR code to send message</p>
