@@ -2581,73 +2581,149 @@ export default function ChatWidgetEditPage() {
             </Card>
           </div>
 
-          <div className="w-full lg:w-96 shrink-0">
+          <div className="w-full lg:w-[520px] shrink-0">
             <Card className="border-slate-200 dark:border-slate-800 sticky top-6">
-              <CardContent className="p-5">
-                <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Widget preview</h3>
+              <CardContent className="p-6">
+                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-5">Widget preview</h3>
                 
-                <div 
-                  className="rounded-xl overflow-hidden shadow-lg"
-                  style={{ 
-                    background: widget.themeType === "gradient" 
-                      ? `linear-gradient(135deg, ${currentColor.hex}, ${currentColor.hex}dd)` 
-                      : currentColor.hex 
-                  }}
-                >
-                  <div className="p-5 text-white">
-                    {widget.branding?.customLogo && (
-                      <img 
-                        src={widget.branding.customLogo} 
-                        alt="Logo" 
-                        className="h-8 w-auto mb-3 rounded"
-                      />
-                    )}
-                    <h4 className="text-xl font-bold">{widget.welcomeTitle}</h4>
-                    <p className="text-sm opacity-90 mt-2">{widget.welcomeMessage}</p>
-                  </div>
-                  
-                  <div className="bg-white dark:bg-slate-900 p-4 space-y-3">
-                    <div>
-                      <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">How can we help you today?</p>
-                      <div className="border rounded-lg p-3">
-                        <p className="text-sm text-slate-400">Type your message here</p>
+                {appearanceSubAccordion === "minimized-state" ? (
+                  <div className="relative bg-slate-100 dark:bg-slate-800 rounded-xl overflow-hidden min-h-[450px]">
+                    <div className="absolute inset-0 bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiM5NDk0OTQiIGZpbGwtb3BhY2l0eT0iMC4wOCI+PHBhdGggZD0iTTAgMGgyMHYyMEgwek0yMCAyMGgyMHYyMEgyMHoiLz48L2c+PC9nPjwvc3ZnPg==')] opacity-50" />
+                    
+                    <div className="relative h-full p-5 flex flex-col">
+                      <div className="flex-1 space-y-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full bg-red-400" />
+                          <div className="w-3 h-3 rounded-full bg-yellow-400" />
+                          <div className="w-3 h-3 rounded-full bg-green-400" />
+                          <div className="flex-1 h-6 bg-slate-200 dark:bg-slate-700 rounded ml-4" />
+                        </div>
+                        <div className="h-8 bg-slate-200 dark:bg-slate-700 rounded w-full" />
+                        <div className="h-4 w-20 bg-slate-200 dark:bg-slate-700 rounded" />
+                        <div className="space-y-4 mt-6">
+                          <div className="flex gap-3">
+                            <div className="w-14 h-14 bg-slate-200 dark:bg-slate-700 rounded" />
+                            <div className="flex-1 h-24 bg-slate-200 dark:bg-slate-700 rounded" />
+                          </div>
+                          <div className="space-y-2">
+                            <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-full" />
+                            <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded w-3/4" />
+                          </div>
+                          <div className="flex gap-3">
+                            <div className="w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded" />
+                            <div className="flex-1 space-y-2">
+                              <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded" />
+                              <div className="h-3 w-1/2 bg-slate-200 dark:bg-slate-700 rounded" />
+                            </div>
+                          </div>
+                          <div className="flex gap-3">
+                            <div className="w-12 h-12 bg-slate-200 dark:bg-slate-700 rounded" />
+                            <div className="flex-1 space-y-2">
+                              <div className="h-3 bg-slate-200 dark:bg-slate-700 rounded" />
+                              <div className="h-3 w-2/3 bg-slate-200 dark:bg-slate-700 rounded" />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div 
+                        className="absolute flex items-end gap-3"
+                        style={{ 
+                          [widget.minimizedState?.alignTo === "left" ? "left" : "right"]: `${widget.minimizedState?.sideSpacing || 32}px`,
+                          bottom: `${widget.minimizedState?.bottomSpacing || 26}px`
+                        }}
+                      >
+                        {widget.minimizedState?.eyeCatcherEnabled && (
+                          <div className="bg-white dark:bg-slate-900 shadow-lg rounded-lg px-4 py-3 max-w-[200px] relative">
+                            <button className="absolute -top-2 -right-2 w-5 h-5 bg-white dark:bg-slate-800 rounded-full shadow flex items-center justify-center">
+                              <X className="h-3 w-3 text-slate-400" />
+                            </button>
+                            <p className="text-sm text-slate-700 dark:text-slate-300">
+                              {widget.minimizedState?.eyeCatcherMessage || "Hello, how can we help?"}
+                            </p>
+                          </div>
+                        )}
+                        
+                        <div 
+                          className="flex items-center gap-2 shadow-xl cursor-pointer transition-transform hover:scale-105"
+                          style={{ 
+                            backgroundColor: currentColor.hex,
+                            borderRadius: `${widget.minimizedState?.borderRadius || 40}px`,
+                            padding: widget.minimizedState?.includeButtonText ? "14px 22px" : "18px"
+                          }}
+                        >
+                          <MessageSquare className="h-7 w-7 text-white" />
+                          {widget.minimizedState?.includeButtonText && widget.minimizedState?.buttonText && (
+                            <span className="text-white font-medium text-base">{widget.minimizedState.buttonText}</span>
+                          )}
+                        </div>
                       </div>
                     </div>
+                  </div>
+                ) : (
+                  <div 
+                    className="rounded-xl overflow-hidden shadow-lg"
+                    style={{ 
+                      background: widget.themeType === "gradient" 
+                        ? `linear-gradient(135deg, ${currentColor.hex}, ${currentColor.hex}dd)` 
+                        : currentColor.hex 
+                    }}
+                  >
+                    <div className="p-6 text-white">
+                      {widget.branding?.customLogo && (
+                        <img 
+                          src={widget.branding.customLogo} 
+                          alt="Logo" 
+                          className="h-10 w-auto mb-4 rounded"
+                        />
+                      )}
+                      <h4 className="text-2xl font-bold">{widget.welcomeTitle}</h4>
+                      <p className="text-base opacity-90 mt-3">{widget.welcomeMessage}</p>
+                    </div>
                     
-                    <Button 
-                      className="w-full"
-                      style={{ backgroundColor: currentColor.hex }}
-                    >
-                      Start chat
-                    </Button>
-                    
-                    {widget.channels.sms && (
-                      <div className="flex items-center justify-between py-2 border-t">
-                        <div className="flex items-center gap-2">
-                          <Send className="h-4 w-4 text-slate-500" />
-                          <span className="text-sm text-slate-700 dark:text-slate-300">Send a text</span>
+                    <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
+                      <div>
+                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">How can we help you today?</p>
+                        <div className="border rounded-lg p-3">
+                          <p className="text-sm text-slate-400">Type your message here</p>
                         </div>
-                        <ChevronLeft className="h-4 w-4 text-slate-400 rotate-180" />
                       </div>
-                    )}
-                    
-                    {widget.channels.phone && (
-                      <div className="flex items-center justify-between py-2 border-t">
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-4 w-4 text-slate-500" />
-                          <span className="text-sm text-slate-700 dark:text-slate-300">Call us</span>
+                      
+                      <Button 
+                        className="w-full"
+                        style={{ backgroundColor: currentColor.hex }}
+                      >
+                        Start chat
+                      </Button>
+                      
+                      {widget.channels.sms && (
+                        <div className="flex items-center justify-between py-2 border-t">
+                          <div className="flex items-center gap-2">
+                            <Send className="h-4 w-4 text-slate-500" />
+                            <span className="text-sm text-slate-700 dark:text-slate-300">Send a text</span>
+                          </div>
+                          <ChevronLeft className="h-4 w-4 text-slate-400 rotate-180" />
                         </div>
-                        <ChevronLeft className="h-4 w-4 text-slate-400 rotate-180" />
+                      )}
+                      
+                      {widget.channels.phone && (
+                        <div className="flex items-center justify-between py-2 border-t">
+                          <div className="flex items-center gap-2">
+                            <Phone className="h-4 w-4 text-slate-500" />
+                            <span className="text-sm text-slate-700 dark:text-slate-300">Call us</span>
+                          </div>
+                          <ChevronLeft className="h-4 w-4 text-slate-400 rotate-180" />
+                        </div>
+                      )}
+                      
+                      <div className="text-center pt-2">
+                        <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                          Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
+                        </p>
                       </div>
-                    )}
-                    
-                    <div className="text-center pt-2">
-                      <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                        Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
-                      </p>
                     </div>
                   </div>
-                </div>
+                )}
               </CardContent>
             </Card>
           </div>
