@@ -1,4 +1,4 @@
-import { useLocation, Link } from "wouter";
+import { useLocation } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { 
@@ -130,34 +130,35 @@ function NavigationLink({ item, onClick }: { item: NavigationItem; onClick: (hre
   );
 }
 
-function SectionRow({ item }: { item: SectionItem }) {
+function SectionRow({ item, onClick }: { item: SectionItem; onClick: (href: string) => void }) {
   return (
-    <Link href={item.href}>
-      <div
-        data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
-        className="flex items-center justify-between py-4 px-1 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
-      >
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100">
-              {item.title}
-            </h3>
-            {item.hasWarning && (
-              <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
-            )}
-          </div>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
-            {item.description}
-          </p>
+    <div
+      data-testid={`link-${item.title.toLowerCase().replace(/\s+/g, "-")}`}
+      className="flex items-center justify-between py-4 px-1 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group"
+      onClick={() => onClick(item.href)}
+    >
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center gap-2">
+          <h3 className="text-sm font-medium text-slate-900 dark:text-slate-100">
+            {item.title}
+          </h3>
+          {item.hasWarning && (
+            <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+          )}
         </div>
-        <ChevronRight className="h-5 w-5 text-slate-400 dark:text-slate-500 shrink-0 ml-4 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+        <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">
+          {item.description}
+        </p>
       </div>
-    </Link>
+      <ChevronRight className="h-5 w-5 text-slate-400 dark:text-slate-500 shrink-0 ml-4 group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors" />
+    </div>
   );
 }
 
 // Content-only version for embedding in integrations.tsx
 export function SmsVoiceContent() {
+  const [, setLocation] = useLocation();
+  
   const sendersItems: SectionItem[] = [
     {
       title: "Numbers",
@@ -190,6 +191,10 @@ export function SmsVoiceContent() {
     },
   ];
 
+  const handleNavigation = (href: string) => {
+    setLocation(href);
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -205,7 +210,7 @@ export function SmsVoiceContent() {
           </div>
           <div className="px-6 divide-y divide-slate-100 dark:divide-slate-800">
             {sendersItems.map((item) => (
-              <SectionRow key={item.title} item={item} />
+              <SectionRow key={item.title} item={item} onClick={handleNavigation} />
             ))}
           </div>
         </CardContent>
@@ -218,7 +223,7 @@ export function SmsVoiceContent() {
           </div>
           <div className="px-6 divide-y divide-slate-100 dark:divide-slate-800">
             {complianceItems.map((item) => (
-              <SectionRow key={item.title} item={item} />
+              <SectionRow key={item.title} item={item} onClick={handleNavigation} />
             ))}
           </div>
         </CardContent>
@@ -339,7 +344,7 @@ export default function SmsVoice() {
             </div>
             <div className="px-6 divide-y divide-slate-100 dark:divide-slate-800">
               {sendersItems.map((item) => (
-                <SectionRow key={item.title} item={item} />
+                <SectionRow key={item.title} item={item} onClick={handleNavigation} />
               ))}
             </div>
           </CardContent>
@@ -352,7 +357,7 @@ export default function SmsVoice() {
             </div>
             <div className="px-6 divide-y divide-slate-100 dark:divide-slate-800">
               {complianceItems.map((item) => (
-                <SectionRow key={item.title} item={item} />
+                <SectionRow key={item.title} item={item} onClick={handleNavigation} />
               ))}
             </div>
           </CardContent>
