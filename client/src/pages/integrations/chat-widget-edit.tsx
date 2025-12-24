@@ -5055,6 +5055,99 @@ export default function ChatWidgetEditPage() {
                 )}
               </CardContent>
             </Card>
+            
+            {/* Targeting Summary */}
+            <Card className="border-slate-200 dark:border-slate-800 mt-4">
+              <CardContent className="p-6">
+                <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-4">Targeting summary</h3>
+                
+                <div className="space-y-4 text-sm">
+                  {/* Countries */}
+                  <div className="flex items-start gap-3">
+                    <Globe className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-medium text-slate-700 dark:text-slate-300">Countries</p>
+                      <p className="text-slate-500 dark:text-slate-400">
+                        {widget.targeting?.countries === "selected" ? "Show only in these countries" :
+                         widget.targeting?.countries === "excluded" ? "Hide only in these countries" :
+                         "Show in all countries"}
+                      </p>
+                      {(widget.targeting?.countries === "selected" || widget.targeting?.countries === "excluded") && 
+                       (widget.targeting?.selectedCountries || []).length > 0 && (
+                        <div className="flex flex-wrap gap-1.5 mt-2">
+                          {(widget.targeting?.selectedCountries || []).slice(0, 6).map((country) => {
+                            const countryData = getCountryByName(country);
+                            return (
+                              <span key={country} className="inline-flex items-center gap-1 px-2 py-0.5 bg-slate-100 dark:bg-slate-800 rounded text-xs">
+                                <span>{countryData?.flag || "🏳️"}</span>
+                                <span>{country}</span>
+                              </span>
+                            );
+                          })}
+                          {(widget.targeting?.selectedCountries || []).length > 6 && (
+                            <span className="text-xs text-slate-400">+{(widget.targeting?.selectedCountries || []).length - 6} more</span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Schedule */}
+                  <div className="flex items-start gap-3">
+                    <Clock className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-medium text-slate-700 dark:text-slate-300">Schedule</p>
+                      {(widget.targeting?.schedule || "always") === "always" ? (
+                        <p className="text-slate-500 dark:text-slate-400">Always visible</p>
+                      ) : (
+                        <div className="text-slate-500 dark:text-slate-400">
+                          <p className="text-xs mb-1">{widget.targeting?.timezone || "(UTC -05:00): America/New_York"}</p>
+                          <div className="space-y-0.5">
+                            {(widget.targeting?.scheduleEntries || []).map((entry) => (
+                              <div key={entry.day} className="flex items-center gap-2 text-xs">
+                                <span className="w-16 font-medium">{entry.day}:</span>
+                                {entry.enabled ? (
+                                  <span>{entry.startTime} - {entry.endTime}</span>
+                                ) : (
+                                  <span className="text-orange-500">Widget hidden</span>
+                                )}
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Page URLs */}
+                  <div className="flex items-start gap-3">
+                    <Link2 className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-medium text-slate-700 dark:text-slate-300">Page URLs</p>
+                      <p className="text-slate-500 dark:text-slate-400">
+                        {(widget.targeting?.pageUrls || "all") === "all" ? "Show on all pages of any domain" :
+                         (widget.targeting?.pageUrls || "all") === "show-specific" ? 
+                           `Show only on ${(widget.targeting?.urlRules || []).filter(r => r.value).length} specific page(s)` :
+                           `Hide on ${(widget.targeting?.urlRules || []).filter(r => r.value).length} specific page(s)`}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {/* Device Type */}
+                  <div className="flex items-start gap-3">
+                    <Monitor className="h-4 w-4 mt-0.5 text-blue-500 shrink-0" />
+                    <div className="flex-1">
+                      <p className="font-medium text-slate-700 dark:text-slate-300">Device type</p>
+                      <p className="text-slate-500 dark:text-slate-400">
+                        {(widget.targeting?.deviceType || "all") === "all" ? "All devices" :
+                         (widget.targeting?.deviceType || "all") === "desktop" ? "Desktop devices only" :
+                         "Mobile devices only"}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
           </div>
         </div>
       </div>
