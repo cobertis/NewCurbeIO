@@ -351,7 +351,11 @@ function SortableChannelItem({
           />
           <button 
             type="button"
-            onClick={onExpandToggle}
+            onClick={(e) => {
+              e.stopPropagation();
+              e.preventDefault();
+              onExpandToggle();
+            }}
             className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
             data-testid={`expand-${channel.id}`}
           >
