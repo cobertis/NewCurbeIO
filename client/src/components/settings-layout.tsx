@@ -10,7 +10,8 @@ import {
   User as UserIcon,
   UsersRound,
   Plug,
-  Zap
+  Zap,
+  MessageCircle
 } from "lucide-react";
 import { SiWhatsapp, SiFacebook, SiInstagram, SiTelegram } from "react-icons/si";
 
@@ -38,6 +39,7 @@ export function SettingsLayout({ children, activeSection }: SettingsLayoutProps)
     if (location.startsWith("/settings/facebook")) return "facebook";
     if (location.startsWith("/settings/instagram")) return "instagram";
     if (location.startsWith("/settings/telegram")) return "telegram";
+    if (location.startsWith("/settings/chat-widget")) return "chat-widget";
     if (location.startsWith("/settings/white-label")) return "white-label";
     return "profile";
   };
@@ -60,6 +62,7 @@ export function SettingsLayout({ children, activeSection }: SettingsLayoutProps)
       { label: "Facebook", href: "/settings/facebook", icon: SiFacebook, active: activeView === "facebook" },
       { label: "Instagram", href: "/settings/instagram", icon: SiInstagram, active: activeView === "instagram" },
       { label: "Telegram", href: "/settings/telegram", icon: SiTelegram, active: activeView === "telegram" },
+      { label: "Chat Widget", href: "/settings/chat-widget", icon: MessageCircle, active: activeView === "chat-widget" },
     ],
     features: [
       { label: "Integrations", href: "/settings/integrations", icon: Plug, active: activeView === "integrations" },
