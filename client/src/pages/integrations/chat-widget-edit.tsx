@@ -4894,6 +4894,65 @@ export default function ChatWidgetEditPage() {
                       </div>
                     </div>
                   </div>
+                ) : expandedChannel === "telegram" ? (
+                  <div className="relative">
+                    <div className="rounded-xl overflow-hidden shadow-lg">
+                      <div className="p-4 text-white" style={{ background: currentBackground }}>
+                        <div className="flex items-center gap-2 mb-3">
+                          <ChevronLeft className="h-5 w-5" />
+                          <SiTelegram className="h-5 w-5" />
+                          <span className="font-medium">{widget.telegramSettings?.welcomeScreen?.channelName || "Telegram"}</span>
+                        </div>
+                      </div>
+                      <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
+                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100 text-center">
+                          {widget.telegramSettings?.messageUsScreen?.title || "Message us on Telegram"}
+                        </h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 text-center">
+                          {widget.telegramSettings?.messageUsScreen?.description || "Click the button below or scan the QR code to send us a message on Telegram."}
+                        </p>
+                        <Button 
+                          className="w-full" 
+                          style={{ background: currentBackground }}
+                          onClick={() => {
+                            const botUsername = widget.telegramSettings?.botConnection?.botUsername || 'curbeio';
+                            window.open(`https://t.me/${botUsername}`, '_blank');
+                          }}
+                        >
+                          {widget.telegramSettings?.messageUsScreen?.buttonLabel || "Open Telegram"}
+                        </Button>
+                        {(widget.telegramSettings?.messageUsScreen?.showQRCode ?? true) && (
+                          <>
+                            <div className="flex justify-center py-4">
+                              <div className="relative">
+                                <div className="absolute -top-1 -left-1 w-5 h-5 border-l-2 border-t-2 border-slate-300 rounded-tl-lg"></div>
+                                <div className="absolute -top-1 -right-1 w-5 h-5 border-r-2 border-t-2 border-slate-300 rounded-tr-lg"></div>
+                                <div className="absolute -bottom-1 -left-1 w-5 h-5 border-l-2 border-b-2 border-slate-300 rounded-bl-lg"></div>
+                                <div className="absolute -bottom-1 -right-1 w-5 h-5 border-r-2 border-b-2 border-slate-300 rounded-br-lg"></div>
+                                <div className="p-2">
+                                  <QRCodeDisplay 
+                                    value={`https://t.me/${widget.telegramSettings?.botConnection?.botUsername || 'curbeio'}`}
+                                    size={160}
+                                  />
+                                </div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="bg-white p-1.5 rounded-full border-2" style={{ borderColor: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3B82F6' }}>
+                                    <SiTelegram className="h-5 w-5" style={{ color: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3B82F6' }} />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-400 text-center">Scan QR code to open a chat</p>
+                          </>
+                        )}
+                        <div className="text-center pt-2">
+                          <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <div className="relative">
                     <div 
@@ -4939,7 +4998,8 @@ export default function ChatWidgetEditPage() {
                                             channelId === "sms" ? "sms" :
                                             channelId === "whatsapp" ? "whatsapp" :
                                             channelId === "facebook" ? "facebook" :
-                                            channelId === "instagram" ? "instagram" : null;
+                                            channelId === "instagram" ? "instagram" :
+                                            channelId === "telegram" ? "telegram" : null;
                           return channelKey && widget.channels[channelKey as keyof typeof widget.channels];
                         }).map((channelId) => {
                           const config = channelConfigs.find(c => c.id === channelId);
