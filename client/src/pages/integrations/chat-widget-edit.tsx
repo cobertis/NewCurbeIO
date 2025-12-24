@@ -305,6 +305,10 @@ interface SortableChannelItemProps {
   onInstagramSettingsChange?: (settings: Partial<WidgetConfig["instagramSettings"]>) => void;
   activeLiveChatSubSection?: LiveChatSubSection;
   onActiveLiveChatSubSectionChange?: (subSection: LiveChatSubSection) => void;
+  activeEmailSubSection?: EmailSubSection;
+  onActiveEmailSubSectionChange?: (subSection: EmailSubSection) => void;
+  activeSmsSubSection?: SmsSubSection;
+  onActiveSmsSubSectionChange?: (subSection: SmsSubSection) => void;
 }
 
 type LiveChatSubSection = "welcomeScreen" | "preChatForm" | "queueSettings" | "satisfactionSurvey" | "offlineMode" | "additionalSettings" | null;
@@ -336,30 +340,40 @@ function SortableChannelItem({
   instagramSettings,
   onInstagramSettingsChange,
   activeLiveChatSubSection,
-  onActiveLiveChatSubSectionChange
+  onActiveLiveChatSubSectionChange,
+  activeEmailSubSection: activeEmailSubSectionProp,
+  onActiveEmailSubSectionChange,
+  activeSmsSubSection: activeSmsSubSectionProp,
+  onActiveSmsSubSectionChange
 }: SortableChannelItemProps) {
   const activeSubSection = activeLiveChatSubSection ?? null;
   const setActiveSubSection = (subSection: LiveChatSubSection) => {
     onActiveLiveChatSubSectionChange?.(subSection);
   };
+  const activeEmailSubSection = activeEmailSubSectionProp ?? null;
+  const setActiveEmailSubSection = (subSection: EmailSubSection) => {
+    onActiveEmailSubSectionChange?.(subSection);
+  };
+  const activeSmsSubSection = activeSmsSubSectionProp ?? null;
+  const setActiveSmsSubSection = (subSection: SmsSubSection) => {
+    onActiveSmsSubSectionChange?.(subSection);
+  };
   const [activeCallSubSection, setActiveCallSubSection] = useState<CallSubSection>(null);
   const [activeWhatsappSubSection, setActiveWhatsappSubSection] = useState<WhatsappSubSection>(null);
-  const [activeEmailSubSection, setActiveEmailSubSection] = useState<EmailSubSection>(null);
-  const [activeSmsSubSection, setActiveSmsSubSection] = useState<SmsSubSection>(null);
   const [activeMessengerSubSection, setActiveMessengerSubSection] = useState<MessengerSubSection>(null);
   const [activeInstagramSubSection, setActiveInstagramSubSection] = useState<InstagramSubSection>(null);
 
   useEffect(() => {
     if (!isExpanded) {
       onActiveLiveChatSubSectionChange?.(null);
+      onActiveEmailSubSectionChange?.(null);
+      onActiveSmsSubSectionChange?.(null);
       setActiveCallSubSection(null);
       setActiveWhatsappSubSection(null);
-      setActiveEmailSubSection(null);
-      setActiveSmsSubSection(null);
       setActiveMessengerSubSection(null);
       setActiveInstagramSubSection(null);
     }
-  }, [isExpanded, onActiveLiveChatSubSectionChange]);
+  }, [isExpanded, onActiveLiveChatSubSectionChange, onActiveEmailSubSectionChange, onActiveSmsSubSectionChange]);
   
   const {
     attributes,
@@ -1902,6 +1916,8 @@ export default function ChatWidgetEditPage() {
 
   const [expandedChannel, setExpandedChannel] = useState<string | null>(null);
   const [activeLiveChatSubSection, setActiveLiveChatSubSection] = useState<"welcomeScreen" | "preChatForm" | "queueSettings" | "satisfactionSurvey" | "offlineMode" | "additionalSettings" | null>(null);
+  const [activeEmailSubSection, setActiveEmailSubSection] = useState<"welcomeScreen" | "formFields" | "successScreen" | "associatedEmail" | null>(null);
+  const [activeSmsSubSection, setActiveSmsSubSection] = useState<"welcomeScreen" | "messageScreen" | "numberSettings" | null>(null);
 
   const handleLiveChatSettingsChange = (settings: Partial<WidgetConfig["liveChatSettings"]>) => {
     updateLocalWidget({
@@ -2608,6 +2624,10 @@ export default function ChatWidgetEditPage() {
                                 onInstagramSettingsChange={handleInstagramSettingsChange}
                                 activeLiveChatSubSection={activeLiveChatSubSection}
                                 onActiveLiveChatSubSectionChange={setActiveLiveChatSubSection}
+                                activeEmailSubSection={activeEmailSubSection}
+                                onActiveEmailSubSectionChange={setActiveEmailSubSection}
+                                activeSmsSubSection={activeSmsSubSection}
+                                onActiveSmsSubSectionChange={setActiveSmsSubSection}
                               />
                             ))}
                           </div>
@@ -3717,6 +3737,42 @@ export default function ChatWidgetEditPage() {
                       </div>
                     </div>
                   </div>
+                ) : expandedChannel === "email" && activeEmailSubSection === "successScreen" ? (
+                  <div className="relative">
+                    <div className="rounded-xl overflow-hidden shadow-lg">
+                      <div className="p-4 text-white" style={{ background: currentBackground }}>
+                        <div className="flex items-center gap-2">
+                          <ChevronLeft className="h-5 w-5" />
+                          <Mail className="h-5 w-5" />
+                          <span className="font-medium">{widget.emailSettings?.welcomeScreen?.channelName || "Send an email"}</span>
+                        </div>
+                      </div>
+                      <div className="bg-white dark:bg-slate-900 p-6 space-y-4">
+                        <div className="flex justify-center py-4">
+                          <div className="w-16 h-16 rounded-full bg-green-100 flex items-center justify-center">
+                            <Check className="h-8 w-8 text-green-500" />
+                          </div>
+                        </div>
+                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100 text-center">
+                          {widget.emailSettings?.successScreen?.title || "We have received your email"}
+                        </h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 text-center">
+                          {widget.emailSettings?.successScreen?.description || "We will respond to your email shortly."}
+                        </p>
+                        <Button className="w-full" style={{ background: currentBackground }}>
+                          Close this window
+                        </Button>
+                        <button className="w-full text-center text-sm text-blue-500 hover:text-blue-600">
+                          Start over
+                        </button>
+                        <div className="text-center pt-2">
+                          <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 ) : expandedChannel === "email" ? (
                   <div className="relative">
                     <div className="rounded-xl overflow-hidden shadow-lg">
@@ -3763,6 +3819,53 @@ export default function ChatWidgetEditPage() {
                         <Button className="w-full" style={{ background: currentBackground }}>
                           {widget.emailSettings?.formFields?.buttonLabel || "Send message"}
                         </Button>
+                        <div className="text-center pt-2">
+                          <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                            Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : expandedChannel === "sms" && activeSmsSubSection === "messageScreen" ? (
+                  <div className="relative">
+                    <div className="rounded-xl overflow-hidden shadow-lg">
+                      <div className="p-4 text-white" style={{ background: currentBackground }}>
+                        <div className="flex items-center gap-2">
+                          <ChevronLeft className="h-5 w-5" />
+                          <MessageSquare className="h-5 w-5" />
+                          <span className="font-medium">{widget.smsSettings?.welcomeScreen?.channelName || "Send a text"}</span>
+                        </div>
+                      </div>
+                      <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
+                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100 text-center">
+                          {widget.smsSettings?.messageScreen?.title || "Contact us by SMS"}
+                        </h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-400 text-center">
+                          {widget.smsSettings?.messageScreen?.description || "Text this number and we will reply to you as soon as possible."}
+                        </p>
+                        <div className="text-center">
+                          <p className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                            {widget.smsSettings?.numberSettings?.numberType === "custom" 
+                              ? (widget.smsSettings?.numberSettings?.customNumber || "+1 833 221 4494")
+                              : "+1 833 221 4494"
+                            }
+                          </p>
+                        </div>
+                        <Button className="w-full" style={{ background: currentBackground }}>
+                          {widget.smsSettings?.messageScreen?.buttonLabel || "Send a text"}
+                        </Button>
+                        <p className="text-xs text-slate-400 text-center">
+                          Text messaging charges and data fees may apply according to your carrier's rates.
+                        </p>
+                        <div className="flex justify-center py-4">
+                          <div className="w-32 h-32 bg-white border-2 border-slate-200 rounded-lg flex items-center justify-center p-2">
+                            <div className="w-full h-full bg-slate-100 rounded flex items-center justify-center">
+                              <span className="text-xs text-slate-400">QR Code</span>
+                            </div>
+                          </div>
+                        </div>
+                        <p className="text-xs text-slate-400 text-center">Scan QR code to send message</p>
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
                             Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
