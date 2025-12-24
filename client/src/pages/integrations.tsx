@@ -18,6 +18,7 @@ import { SiWhatsapp, SiInstagram, SiFacebook, SiTiktok, SiTelegram } from "react
 import { CheckCircle, XCircle, Clock, AlertTriangle, Plus, Trash2, RefreshCw, ExternalLink, Settings, HelpCircle, ChevronDown, Info, User as UserIcon, Users, Phone, Mail, Building, CreditCard, Plug, MessageSquare, Zap } from "lucide-react";
 import type { ChannelConnection, User } from "@shared/schema";
 import Billing from "@/pages/billing";
+import SettingsPage from "@/pages/settings";
 
 type ChannelType = "whatsapp" | "instagram" | "facebook";
 
@@ -1675,7 +1676,7 @@ function ComingSoonCard({
 
 export default function IntegrationsPage() {
   const [, setLocation] = useLocation();
-  const [activeView, setActiveView] = useState<"integrations" | "billing">("integrations");
+  const [activeView, setActiveView] = useState<"integrations" | "billing" | "my-account">("integrations");
 
   const menuItems = {
     channels: [
@@ -1693,13 +1694,15 @@ export default function IntegrationsPage() {
     administration: [
       { label: "Workspace", href: "/settings/company", icon: Building, active: false },
       { label: "Billing", href: "#view-billing", icon: CreditCard, active: activeView === "billing" },
-      { label: "My account", href: "/settings/overview", icon: UserIcon, active: false },
+      { label: "My account", href: "#view-my-account", icon: UserIcon, active: activeView === "my-account" },
     ],
   };
 
   const handleNavigation = (href: string) => {
     if (href === "#view-billing") {
       setActiveView("billing");
+    } else if (href === "#view-my-account") {
+      setActiveView("my-account");
     } else if (href === "#view-integrations") {
       setActiveView("integrations");
     } else if (href.startsWith("#")) {
@@ -1788,6 +1791,8 @@ export default function IntegrationsPage() {
       <div className="flex-1 min-w-0">
         {activeView === "billing" ? (
           <Billing />
+        ) : activeView === "my-account" ? (
+          <SettingsPage />
         ) : (
           <div className="space-y-6">
             <div>
