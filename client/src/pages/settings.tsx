@@ -1360,7 +1360,7 @@ export default function Settings({ view = 'all' }: SettingsProps) {
               </div>
 
               {/* Profile + Company Cards */}
-              <div className={view === 'all' ? "grid grid-cols-1 lg:grid-cols-2 gap-4" : ""}>
+              <div className={view === 'all' || view === 'profile' ? "grid grid-cols-1 lg:grid-cols-2 gap-4" : ""}>
                 {/* Profile Information Card */}
                 {(view === 'profile' || view === 'all') && (
                 <Card>
@@ -1590,6 +1590,7 @@ export default function Settings({ view = 'all' }: SettingsProps) {
                   </CardContent>
                 </Card>
               )}
+              </div>
 
               {/* Company Information - Admin Only */}
               {isAdmin && (view === 'company' || view === 'all') && (
