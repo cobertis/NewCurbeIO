@@ -62,11 +62,32 @@ export default function ChatWidgetPreviewPage() {
   const [copied, setCopied] = useState(false);
   const [widgetOpen, setWidgetOpen] = useState(false);
   const [activeChannel, setActiveChannel] = useState<string | null>(null);
+  const [shouldDisplay, setShouldDisplay] = useState<boolean | null>(null);
+  const [visitorCountry, setVisitorCountry] = useState<string | null>(null);
+  const [targetingChecked, setTargetingChecked] = useState(false);
 
   const { data: widgetData, isLoading } = useQuery<{ widget: any }>({
     queryKey: [`/api/integrations/chat-widget/${widgetId}`],
     enabled: !!widgetId,
   });
+
+  // Check targeting rules via public API
+  useEffect(() => {
+    if (!widgetId) return;
+    
+    fetch(`/api/public/chat-widget/${widgetId}`)
+      .then(res => res.json())
+      .then(data => {
+        setShouldDisplay(data.shouldDisplay ?? true);
+        setVisitorCountry(data.visitorCountry || null);
+        setTargetingChecked(true);
+      })
+      .catch(() => {
+        // On error, default to showing widget
+        setShouldDisplay(true);
+        setTargetingChecked(true);
+      });
+  }, [widgetId]);
 
   const defaultWidget = {
     name: "Website Widget",
@@ -140,13 +161,39 @@ export default function ChatWidgetPreviewPage() {
     (ch: string) => widget.channels?.[ch as keyof typeof widget.channels]
   );
 
-  if (isLoading) {
+  if (isLoading || !targetingChecked) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
       </div>
     );
   }
+
+  // Show targeting info banner
+  const getTargetingBanner = () => {
+    const targeting = widget.targeting;
+    if (!targeting) return null;
+    
+    const countryRule = targeting.countries;
+    const selectedCountries = targeting.selectedCountries || [];
+    
+    if (countryRule === "all") return null;
+    
+    const ruleText = countryRule === "selected" 
+      ? `Only visible in: ${selectedCountries.join(", ")}`
+      : `Hidden in: ${selectedCountries.join(", ")}`;
+    
+    return (
+      <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4">
+        <p className="text-sm text-amber-800 dark:text-amber-200">
+          <strong>Targeting Active:</strong> {ruleText}
+        </p>
+        <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
+          Your detected location: <strong>{visitorCountry || "Unknown"}</strong>
+        </p>
+      </div>
+    );
+  };
 
   const renderChannelContent = () => {
     if (!activeChannel) return null;
@@ -352,6 +399,27 @@ export default function ChatWidgetPreviewPage() {
           </CardContent>
         </Card>
 
+        {/* Targeting status banner */}
+        {getTargetingBanner()}
+        
+        {/* Widget hidden message */}
+        {shouldDisplay === false && (
+          <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 mb-8">
+            <CardContent className="p-6 text-center">
+              <X className="h-12 w-12 text-red-500 mx-auto mb-4" />
+              <h3 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-2">
+                Widget Hidden by Targeting Rules
+              </h3>
+              <p className="text-sm text-red-600 dark:text-red-400">
+                Based on your current location ({visitorCountry || "Unknown"}), this widget is configured to not display.
+              </p>
+              <p className="text-xs text-red-500 dark:text-red-500 mt-2">
+                The targeting rules are set to {widget.targeting?.countries === "selected" ? "only show in" : "hide in"}: {(widget.targeting?.selectedCountries || []).join(", ") || "No countries specified"}
+              </p>
+            </CardContent>
+          </Card>
+        )}
+
         <div className="flex items-center justify-center gap-4 text-sm">
           <Link 
             href={`/settings/chat-widget/${widgetId}/settings`}
@@ -371,16 +439,18 @@ export default function ChatWidgetPreviewPage() {
         </div>
       </div>
 
-      <div 
-        className="fixed flex flex-col gap-2"
-        style={{
-          bottom: `${widget.minimizedState?.bottomSpacing || 26}px`,
-          ...(widget.minimizedState?.alignTo === "left" 
-            ? { left: `${widget.minimizedState?.sideSpacing || 32}px`, alignItems: "flex-start" }
-            : { right: `${widget.minimizedState?.sideSpacing || 32}px`, alignItems: "flex-end" }
-          )
-        }}
-      >
+      {/* Only show widget if targeting rules allow */}
+      {shouldDisplay !== false && (
+        <div 
+          className="fixed flex flex-col gap-2"
+          style={{
+            bottom: `${widget.minimizedState?.bottomSpacing || 26}px`,
+            ...(widget.minimizedState?.alignTo === "left" 
+              ? { left: `${widget.minimizedState?.sideSpacing || 32}px`, alignItems: "flex-start" }
+              : { right: `${widget.minimizedState?.sideSpacing || 32}px`, alignItems: "flex-end" }
+            )
+          }}
+        >
         {!widgetOpen && widget.minimizedState?.eyeCatcherEnabled && widget.minimizedState?.eyeCatcherMessage && (
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg px-4 py-2 flex items-center gap-2 text-sm">
             <span className="text-slate-600 dark:text-slate-300">{widget.minimizedState.eyeCatcherMessage}</span>
@@ -418,19 +488,18 @@ export default function ChatWidgetPreviewPage() {
             )}
           </button>
         </div>
-      </div>
 
-      {widgetOpen && (
-        <div 
-          className="fixed w-80"
-          style={{
-            bottom: `${(widget.minimizedState?.bottomSpacing || 26) + 70}px`,
-            ...(widget.minimizedState?.alignTo === "left" 
-              ? { left: `${widget.minimizedState?.sideSpacing || 32}px` }
-              : { right: `${widget.minimizedState?.sideSpacing || 32}px` }
-            )
-          }}
-        >
+        {widgetOpen && (
+          <div 
+            className="fixed w-80"
+            style={{
+              bottom: `${(widget.minimizedState?.bottomSpacing || 26) + 70}px`,
+              ...(widget.minimizedState?.alignTo === "left" 
+                ? { left: `${widget.minimizedState?.sideSpacing || 32}px` }
+                : { right: `${widget.minimizedState?.sideSpacing || 32}px` }
+              )
+            }}
+          >
           {activeChannel ? (
             renderChannelContent()
           ) : (
@@ -511,7 +580,9 @@ export default function ChatWidgetPreviewPage() {
               </div>
             </div>
           )}
-        </div>
+          </div>
+        )}
+      </div>
       )}
     </div>
   );
