@@ -28248,6 +28248,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     const { id } = req.params;
     const updates = req.body;
     
+    console.log("[Chat Widget] PATCH received updates:", JSON.stringify(updates, null, 2));
     try {
       const existing = await db.query.chatWidgets.findFirst({
         where: and(
