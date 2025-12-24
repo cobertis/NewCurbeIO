@@ -28612,6 +28612,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       // Create the message
       const [message] = await db.insert(telnyxMessages).values({
+        conversationId: conversation.id,
         direction: "inbound",
         messageType: "incoming",
         channel: "live_chat",
