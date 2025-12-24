@@ -7,7 +7,8 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { SiWhatsapp, SiFacebook } from "react-icons/si";
-import { CheckCircle2, Clock, AlertCircle, ChevronLeft, Info } from "lucide-react";
+import { CheckCircle2, Clock, AlertCircle, ChevronLeft, Info, RefreshCw } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { SettingsLayout } from "@/components/settings-layout";
 import type { ChannelConnection } from "@shared/schema";
 
@@ -15,6 +16,7 @@ export default function WhatsAppFlow() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
   const [currentStep, setCurrentStep] = useState(1);
+  const [pin, setPin] = useState(["", "", "", "", "", ""]);
 
   const { data: connectionData, isLoading } = useQuery<{ connection: ChannelConnection | null }>({
     queryKey: ["/api/integrations/whatsapp/status"],
@@ -158,65 +160,81 @@ export default function WhatsAppFlow() {
                   <div className={`w-0.5 flex-1 mt-2 ${currentStep > 1 ? "bg-green-500" : "bg-slate-200 dark:bg-slate-700"}`} />
                 </div>
                 <div className="flex-1 pb-8">
-                  <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-1">
-                    Connect WhatsApp Business Account
-                  </h3>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
-                    Follow these steps to connect your WhatsApp Business account and start receiving{" "}
-                    <span className="text-blue-600 dark:text-blue-400">customer-initiated conversations</span> in Curbe.
-                  </p>
-                  
-                  <div className="space-y-3 mb-4">
-                    <div className="flex items-start gap-3">
-                      <SiFacebook className="h-5 w-5 text-[#1877F2] shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-medium text-slate-900 dark:text-slate-100">Log in with your Facebook account</span>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">You need to have a Facebook account to connect WhatsApp to Curbe.</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start gap-3">
-                      <SiWhatsapp className="h-5 w-5 text-[#25D366] shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-medium text-slate-900 dark:text-slate-100">Connect WhatsApp Business</span>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">Follow the Meta setup to connect your WhatsApp Business number or register a new one. You need access to this number to receive a verification code.</p>
-                      </div>
-                    </div>
-                    
-                    <div className="flex items-start gap-3">
-                      <Clock className="h-5 w-5 text-slate-400 shrink-0 mt-0.5" />
-                      <div>
-                        <span className="font-medium text-slate-900 dark:text-slate-100">Reply window</span>
-                        <p className="text-sm text-slate-500 dark:text-slate-400">You will have 24 hours to respond to messages received from customers.</p>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
-                    <div className="flex items-start gap-2">
-                      <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
-                      <p className="text-sm text-blue-700 dark:text-blue-300">
-                        <span className="font-medium">Note:</span> If you're not redirected to the second step of the flow after completing Meta setup, restart the process by clicking the <span className="font-medium">Login with Facebook</span> button.
+                  {currentStep === 1 ? (
+                    <>
+                      <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                        Connect WhatsApp Business Account
+                      </h3>
+                      <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                        Follow these steps to connect your WhatsApp Business account and start receiving{" "}
+                        <span className="text-blue-600 dark:text-blue-400">customer-initiated conversations</span> in Curbe.
                       </p>
-                    </div>
-                  </div>
-                  
-                  {currentStep === 1 && (
-                    <Button 
-                      className="bg-[#1877F2] hover:bg-[#166FE5] text-white gap-2"
-                      onClick={handleLoginWithFacebook}
-                      disabled={oauthStartMutation.isPending}
-                      data-testid="button-login-facebook"
-                    >
-                      <SiFacebook className="h-4 w-4" />
-                      {oauthStartMutation.isPending ? "Connecting..." : "Login with Facebook"}
-                    </Button>
-                  )}
-                  
-                  {currentStep > 1 && (
-                    <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
-                      <CheckCircle2 className="h-5 w-5" />
-                      <span className="text-sm font-medium">Facebook connected</span>
+                      
+                      <div className="space-y-3 mb-4">
+                        <div className="flex items-start gap-3">
+                          <SiFacebook className="h-5 w-5 text-[#1877F2] shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-medium text-slate-900 dark:text-slate-100">Log in with your Facebook account</span>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">You need to have a Facebook account to connect WhatsApp to Curbe.</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-start gap-3">
+                          <SiWhatsapp className="h-5 w-5 text-[#25D366] shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-medium text-slate-900 dark:text-slate-100">Connect WhatsApp Business</span>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">Follow the Meta setup to connect your WhatsApp Business number or register a new one. You need access to this number to receive a verification code.</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex items-start gap-3">
+                          <Clock className="h-5 w-5 text-slate-400 shrink-0 mt-0.5" />
+                          <div>
+                            <span className="font-medium text-slate-900 dark:text-slate-100">Reply window</span>
+                            <p className="text-sm text-slate-500 dark:text-slate-400">You will have 24 hours to respond to messages received from customers.</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+                        <div className="flex items-start gap-2">
+                          <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                          <p className="text-sm text-blue-700 dark:text-blue-300">
+                            <span className="font-medium">Note:</span> If you're not redirected to the second step of the flow after completing Meta setup, restart the process by clicking the <span className="font-medium">Login with Facebook</span> button.
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <Button 
+                        className="bg-[#1877F2] hover:bg-[#166FE5] text-white gap-2"
+                        onClick={handleLoginWithFacebook}
+                        disabled={oauthStartMutation.isPending}
+                        data-testid="button-login-facebook"
+                      >
+                        <SiFacebook className="h-4 w-4" />
+                        {oauthStartMutation.isPending ? "Connecting..." : "Login with Facebook"}
+                      </Button>
+                    </>
+                  ) : (
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                          Connect WhatsApp Business Account
+                        </h3>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">
+                          WhatsApp Business Account: (WABA ID: {connection?.wabaId || "Connected"})
+                        </p>
+                      </div>
+                      <Button 
+                        variant="outline"
+                        size="sm"
+                        className="gap-2"
+                        onClick={handleLoginWithFacebook}
+                        data-testid="button-start-over"
+                      >
+                        <RefreshCw className="h-4 w-4" />
+                        Start over
+                      </Button>
                     </div>
                   )}
                 </div>
@@ -235,7 +253,7 @@ export default function WhatsAppFlow() {
                     Set up a 6-digit PIN to keep your number secure, or enter your existing PIN if it's already enabled.
                   </p>
                   <p className={`text-sm mt-1 ${currentStep >= 2 ? "text-slate-600 dark:text-slate-400" : "text-slate-400 dark:text-slate-500"}`}>
-                    You can check the two-factor authentication status in Number settings under your{" "}
+                    You can check the two-factor authentication status in <span className="font-medium">Number settings</span> under your{" "}
                     <a 
                       href="https://business.facebook.com/settings/whatsapp-business-accounts" 
                       target="_blank" 
@@ -245,6 +263,92 @@ export default function WhatsAppFlow() {
                       WhatsApp Business Account
                     </a>.
                   </p>
+                  
+                  {currentStep === 2 && (
+                    <div className="mt-4 space-y-4">
+                      <div className="flex items-center gap-2">
+                        {pin.slice(0, 3).map((digit, index) => (
+                          <Input
+                            key={index}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={1}
+                            value={digit}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, "");
+                              const newPin = [...pin];
+                              newPin[index] = val;
+                              setPin(newPin);
+                              if (val && index < 5) {
+                                const nextInput = document.getElementById(`pin-${index + 1}`);
+                                nextInput?.focus();
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Backspace" && !digit && index > 0) {
+                                const prevInput = document.getElementById(`pin-${index - 1}`);
+                                prevInput?.focus();
+                              }
+                            }}
+                            id={`pin-${index}`}
+                            className="w-12 h-12 text-center text-lg font-medium"
+                            data-testid={`input-pin-${index}`}
+                          />
+                        ))}
+                        <span className="text-slate-400 text-lg">-</span>
+                        {pin.slice(3).map((digit, index) => (
+                          <Input
+                            key={index + 3}
+                            type="text"
+                            inputMode="numeric"
+                            maxLength={1}
+                            value={digit}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, "");
+                              const newPin = [...pin];
+                              newPin[index + 3] = val;
+                              setPin(newPin);
+                              if (val && index + 3 < 5) {
+                                const nextInput = document.getElementById(`pin-${index + 4}`);
+                                nextInput?.focus();
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Backspace" && !digit && index + 3 > 0) {
+                                const prevInput = document.getElementById(`pin-${index + 2}`);
+                                prevInput?.focus();
+                              }
+                            }}
+                            id={`pin-${index + 3}`}
+                            className="w-12 h-12 text-center text-lg font-medium"
+                            data-testid={`input-pin-${index + 3}`}
+                          />
+                        ))}
+                      </div>
+                      
+                      <Button 
+                        onClick={() => {
+                          const pinCode = pin.join("");
+                          if (pinCode.length === 6) {
+                            setCurrentStep(3);
+                            toast({
+                              title: "PIN verified",
+                              description: "Your two-factor authentication has been set up.",
+                            });
+                          } else {
+                            toast({
+                              variant: "destructive",
+                              title: "Invalid PIN",
+                              description: "Please enter a 6-digit PIN.",
+                            });
+                          }
+                        }}
+                        data-testid="button-continue"
+                      >
+                        Continue
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
 
