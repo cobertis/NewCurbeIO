@@ -2181,73 +2181,76 @@ export default function Settings({ view = 'all' }: SettingsProps) {
                     </div>
                   </CardContent>
                 </Card>
-              </div>
 
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between gap-1 space-y-0 pb-2">
-                  <div className="space-y-1">
-                    <CardTitle>Active Sessions</CardTitle>
-                    <CardDescription>
-                      Manage your active sessions and devices. Sign out from all sessions to clear all security data.
-                    </CardDescription>
-                  </div>
-                  {!isLoadingSessions && sessionsData?.sessions && sessionsData.sessions.length >= 1 && (
-                    <Button 
-                      variant="destructive"
-                      onClick={() => logoutAllSessionsMutation.mutate()}
-                      disabled={logoutAllSessionsMutation.isPending}
-                      data-testid="button-sign-out-all-sessions"
-                    >
-                      {logoutAllSessionsMutation.isPending ? "Clearing..." : "Sign Out All Sessions"}
-                    </Button>
-                  )}
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    {isLoadingSessions ? (
-                      <LoadingSpinner message="Loading sessions..." fullScreen={false} />
-                    ) : sessionsData?.sessions && sessionsData.sessions.length > 0 ? (
-                      <>
-                        {sessionsData.sessions.map((session) => (
-                          <div 
-                            key={session.id} 
-                            className="flex items-center gap-3 p-3 rounded-md border bg-card"
-                            data-testid={`session-${session.isCurrent ? 'current' : 'other'}`}
-                          >
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="font-medium text-sm">
-                                  {session.isCurrent ? "Current Session" : "Other Device"}
-                                </p>
-                                {session.isCurrent && (
-                                  <Badge variant="default" className="text-xs px-1.5 py-0">
-                                    Active
-                                  </Badge>
-                                )}
-                              </div>
-                              {session.lastActive && (
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                  Last active: {formatDistanceToNow(new Date(session.lastActive), { addSuffix: true })}
-                                </p>
-                              )}
-                              <p className="text-xs text-muted-foreground truncate" data-testid="text-device-info">
-                                {session.deviceInfo}
-                              </p>
-                              <p className="text-xs text-muted-foreground" data-testid="text-ip-address">
-                                IP: {session.ipAddress}
-                              </p>
-                            </div>
-                          </div>
-                        ))}
-                      </>
-                    ) : (
-                      <div className="text-center py-4 text-sm text-muted-foreground">
-                        No active sessions found
+                <Card className="h-fit">
+                  <CardHeader>
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="space-y-1">
+                        <CardTitle>Active Sessions</CardTitle>
+                        <CardDescription>
+                          Manage your active sessions and devices.
+                        </CardDescription>
                       </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+                      {!isLoadingSessions && sessionsData?.sessions && sessionsData.sessions.length >= 1 && (
+                        <Button 
+                          variant="destructive"
+                          size="sm"
+                          onClick={() => logoutAllSessionsMutation.mutate()}
+                          disabled={logoutAllSessionsMutation.isPending}
+                          data-testid="button-sign-out-all-sessions"
+                        >
+                          {logoutAllSessionsMutation.isPending ? "Clearing..." : "Sign Out All"}
+                        </Button>
+                      )}
+                    </div>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-3">
+                      {isLoadingSessions ? (
+                        <LoadingSpinner message="Loading sessions..." fullScreen={false} />
+                      ) : sessionsData?.sessions && sessionsData.sessions.length > 0 ? (
+                        <>
+                          {sessionsData.sessions.map((session) => (
+                            <div 
+                              key={session.id} 
+                              className="flex items-center gap-3 p-3 rounded-md border bg-card"
+                              data-testid={`session-${session.isCurrent ? 'current' : 'other'}`}
+                            >
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2">
+                                  <p className="font-medium text-sm">
+                                    {session.isCurrent ? "Current Session" : "Other Device"}
+                                  </p>
+                                  {session.isCurrent && (
+                                    <Badge variant="default" className="text-xs px-1.5 py-0">
+                                      Active
+                                    </Badge>
+                                  )}
+                                </div>
+                                {session.lastActive && (
+                                  <p className="text-xs text-muted-foreground mt-0.5">
+                                    Last active: {formatDistanceToNow(new Date(session.lastActive), { addSuffix: true })}
+                                  </p>
+                                )}
+                                <p className="text-xs text-muted-foreground truncate" data-testid="text-device-info">
+                                  {session.deviceInfo}
+                                </p>
+                                <p className="text-xs text-muted-foreground" data-testid="text-ip-address">
+                                  IP: {session.ipAddress}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </>
+                      ) : (
+                        <div className="text-center py-4 text-sm text-muted-foreground">
+                          No active sessions found
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
 
               {/* Session Activity - moved from separate tab */}
               <SessionActivityTab />
