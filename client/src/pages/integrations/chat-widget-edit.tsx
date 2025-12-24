@@ -3405,6 +3405,52 @@ export default function ChatWidgetEditPage() {
                       </div>
                     </div>
                   </div>
+                ) : expandedChannel === "liveChat" && activeLiveChatSubSection === "offlineMode" ? (
+                  <div className="relative">
+                    <div className="rounded-xl overflow-hidden shadow-lg">
+                      <div className="p-4 text-white flex items-center justify-between" style={{ background: currentBackground }}>
+                        <div className="flex items-center gap-2">
+                          <ChevronLeft className="h-5 w-5" />
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: currentBackground }}>
+                            <MessageCircle className="h-4 w-4 text-white" />
+                          </div>
+                          <span className="font-medium">Live chat</span>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-slate-100 dark:bg-slate-800 p-4 space-y-3" style={{ minHeight: "200px" }}>
+                        <div className="flex justify-end">
+                          <div className="bg-blue-500 text-white rounded-2xl rounded-tr-sm px-4 py-2 max-w-[80%]">
+                            <p className="text-xs mb-1"><strong>Name:</strong> Patrick Wellner</p>
+                            <p className="text-xs mb-1"><strong>Email:</strong> pwellner@gmail.com</p>
+                            <p className="text-xs"><strong>Message:</strong> How can I get more info about the pricing?</p>
+                            <p className="text-[10px] text-blue-100 text-right mt-1">1:36 pm</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-start">
+                          <div className="bg-white dark:bg-slate-700 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[85%] shadow-sm">
+                            <p className="text-sm text-slate-700 dark:text-slate-200">
+                              {widget.liveChatSettings?.offlineMode?.offlineMessage || "We have received your request. Unfortunately, all our agents are currently offline. We will reply to your email as soon as possible. Thank you for your patience!"}
+                            </p>
+                            <p className="text-[10px] text-slate-400 text-right mt-1">1:36 pm</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-white dark:bg-slate-900 p-4 border-t">
+                        <Button className="w-full" style={{ background: currentBackground }}>
+                          Close this window
+                        </Button>
+                      </div>
+                      
+                      <div className="bg-white dark:bg-slate-900 py-2 text-center border-t">
+                        <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                          Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                        </p>
+                      </div>
+                    </div>
+                  </div>
                 ) : expandedChannel === "liveChat" ? (
                   <div className="relative">
                     <div className="rounded-xl overflow-hidden shadow-lg" style={{ background: currentBackground }}>
