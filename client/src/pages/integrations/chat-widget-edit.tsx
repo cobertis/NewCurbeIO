@@ -4078,10 +4078,10 @@ export default function ChatWidgetEditPage() {
                         </p>
                         <div className="text-center">
                           <p className="text-xl font-bold text-slate-900 dark:text-slate-100">
-                            {widget.smsSettings?.numberSettings?.numberType === "custom" 
+                            {formatPhoneNumber(widget.smsSettings?.numberSettings?.numberType === "custom" 
                               ? (widget.smsSettings?.numberSettings?.customNumber || "+1 833 221 4494")
                               : (widget.smsSettings?.numberSettings?.connectedNumber || companyNumbers[0]?.phoneNumber || "+1 833 221 4494")
-                            }
+                            )}
                           </p>
                         </div>
                         <Button className="w-full" style={{ background: currentBackground }}>
@@ -4138,8 +4138,8 @@ export default function ChatWidgetEditPage() {
                           <Phone className="h-4 w-4 text-slate-500" />
                           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                             {widget.smsSettings?.numberSettings?.numberType === "custom" 
-                              ? (widget.smsSettings?.numberSettings?.customNumber || "Enter custom number")
-                              : (widget.smsSettings?.numberSettings?.connectedNumber || companyNumbers[0]?.phoneNumber || "No number connected")
+                              ? formatPhoneNumber(widget.smsSettings?.numberSettings?.customNumber || "") || "Enter custom number"
+                              : formatPhoneNumber(widget.smsSettings?.numberSettings?.connectedNumber || companyNumbers[0]?.phoneNumber || "") || "No number connected"
                             }
                           </span>
                         </div>
