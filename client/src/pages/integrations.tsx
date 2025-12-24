@@ -278,42 +278,13 @@ function WhatsAppInfoPage({ onConnect, isConnecting }: { onConnect: () => void; 
               </div>
             </div>
             
-            <div className="w-full md:w-80 shrink-0">
-              <div className="relative bg-gradient-to-br from-slate-100 to-slate-50 dark:from-slate-800 dark:to-slate-900 rounded-xl p-4 shadow-lg">
-                <div className="absolute -top-2 -right-2 bg-[#25D366] rounded-full p-2 shadow-md">
-                  <SiWhatsapp className="h-5 w-5 text-white" />
-                </div>
-                <div className="space-y-3">
-                  <div className="flex items-start gap-2">
-                    <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-medium shrink-0">
-                      AW
-                    </div>
-                    <div className="flex-1">
-                      <div className="text-xs font-medium text-slate-900 dark:text-slate-100">Adam Wells</div>
-                      <div className="bg-white dark:bg-slate-700 rounded-lg p-2 mt-1 text-xs text-slate-600 dark:text-slate-300">
-                        Hello, I have an issue...
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2 justify-end">
-                    <div className="flex-1 text-right">
-                      <div className="bg-[#DCF8C6] dark:bg-[#25D366]/30 rounded-lg p-2 inline-block text-xs text-slate-700 dark:text-slate-200">
-                        Hi Adam! How can I assist you today?
-                      </div>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center text-white text-xs font-medium shrink-0">
-                      AW
-                    </div>
-                    <div className="flex-1">
-                      <div className="bg-white dark:bg-slate-700 rounded-lg p-2 text-xs text-slate-600 dark:text-slate-300">
-                        I have an issue with logging in to my account. Can you please assist me?
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
+            <div className="w-full md:w-96 shrink-0">
+              <img 
+                src="/attached_assets/image_1766559979785.png" 
+                alt="WhatsApp Business chat interface preview"
+                className="w-full h-auto rounded-lg"
+                data-testid="img-whatsapp-preview"
+              />
             </div>
           </div>
         </CardContent>
