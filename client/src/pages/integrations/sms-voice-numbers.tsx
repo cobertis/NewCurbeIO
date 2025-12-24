@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation, Link } from "wouter";
+import { Link } from "wouter";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -18,23 +18,9 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { LoadingSpinner } from "@/components/loading-spinner";
+import { SettingsLayout } from "@/components/settings-layout";
 import { 
   Phone, 
-  Mail, 
-  Settings, 
-  Building, 
-  CreditCard, 
-  Users, 
-  Zap, 
-  Plug, 
-  User as UserIcon,
-  MessageSquare,
-  AlertTriangle,
-  Ticket,
-  ListTodo,
-  DollarSign,
-  Sparkles,
-  ArrowLeft,
   Plus,
   Search,
   MoreHorizontal,
@@ -42,38 +28,10 @@ import {
   Trash2,
   Edit,
   ChevronLeft,
-  ChevronRight,
-  UserCircle
+  ChevronRight
 } from "lucide-react";
-import { SiWhatsapp, SiFacebook, SiInstagram } from "react-icons/si";
-import { cn } from "@/lib/utils";
 import { format, addMonths } from "date-fns";
 import { formatPhoneNumber, type SmsVoiceNumber } from "@/pages/sms-voice";
-
-interface NavigationItem {
-  label: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  active?: boolean;
-  hasWarning?: boolean;
-}
-
-function NavigationLink({ item, onClick }: { item: NavigationItem; onClick: (href: string) => void }) {
-  return (
-    <button
-      onClick={() => onClick(item.href)}
-      data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
-      className={cn(
-        "w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
-        item.active && "border-l-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-      )}
-    >
-      <item.icon className="h-4 w-4" />
-      <span className="flex-1 text-left">{item.label}</span>
-      {item.hasWarning && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}
-    </button>
-  );
-}
 
 function USFlagIcon({ className }: { className?: string }) {
   return (
@@ -91,7 +49,6 @@ function USFlagIcon({ className }: { className?: string }) {
 }
 
 export default function SmsVoiceNumbers() {
-  const [, setLocation] = useLocation();
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
@@ -177,37 +134,6 @@ export default function SmsVoiceNumbers() {
   const endIndex = Math.min(startIndex + pageSize, totalNumbers);
   const paginatedNumbers = filteredNumbers.slice(startIndex, endIndex);
 
-  const menuItems: { channels: NavigationItem[]; features: NavigationItem[]; administration: NavigationItem[] } = {
-    channels: [
-      { label: "SMS & voice", href: "/settings/sms-voice", icon: Phone, active: true },
-      { label: "Email", href: "/settings/email", icon: Mail },
-      { label: "Chat widget", href: "/settings/chat-widget", icon: MessageSquare },
-      { label: "WhatsApp", href: "/settings/whatsapp", icon: SiWhatsapp },
-      { label: "Facebook", href: "/settings/facebook", icon: SiFacebook },
-      { label: "Instagram", href: "/settings/instagram", icon: SiInstagram },
-    ],
-    features: [
-      { label: "Messenger", href: "/inbox", icon: MessageSquare },
-      { label: "Contacts", href: "/contacts", icon: Users },
-      { label: "API & Integrations", href: "/settings/api", icon: Plug },
-      { label: "Email to SMS", href: "/settings/email-to-sms", icon: Mail },
-      { label: "Auto-responders", href: "/campaigns", icon: Zap },
-      { label: "Tickets", href: "/tickets", icon: Ticket },
-      { label: "Tasks", href: "/tasks", icon: ListTodo },
-      { label: "Deals", href: "/deals", icon: DollarSign },
-      { label: "Point AI", href: "/ai-assistant", icon: Sparkles },
-    ],
-    administration: [
-      { label: "Workspace", href: "/settings/company", icon: Building },
-      { label: "Billing", href: "/billing", icon: CreditCard },
-      { label: "My account", href: "/settings/profile", icon: UserIcon },
-    ],
-  };
-
-  const handleNavigation = (href: string) => {
-    setLocation(href);
-  };
-
   const handlePageSizeChange = (value: string) => {
     setPageSize(Number(value));
     setCurrentPage(1);
@@ -218,38 +144,8 @@ export default function SmsVoiceNumbers() {
   }
 
   return (
-    <div className="flex gap-6" data-testid="page-sms-voice-numbers">
-      <div className="w-60 shrink-0 hidden lg:block">
-        <div className="sticky top-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
-            <Settings className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Settings</span>
-          </div>
-
-          <div className="py-2">
-            <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Channels</p>
-            {menuItems.channels.map((item) => (
-              <NavigationLink key={item.label} item={item} onClick={handleNavigation} />
-            ))}
-          </div>
-
-          <div className="py-2">
-            <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Features</p>
-            {menuItems.features.map((item) => (
-              <NavigationLink key={item.label} item={item} onClick={handleNavigation} />
-            ))}
-          </div>
-
-          <div className="py-2 pb-3">
-            <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Administration</p>
-            {menuItems.administration.map((item) => (
-              <NavigationLink key={item.label} item={item} onClick={handleNavigation} />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex-1 min-w-0 space-y-6">
+    <SettingsLayout activeSection="sms-voice">
+      <div className="space-y-6" data-testid="page-sms-voice-numbers">
         <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
           <Link href="/settings/sms-voice" className="hover:text-slate-700 dark:hover:text-slate-300">
             Settings
@@ -475,103 +371,103 @@ export default function SmsVoiceNumbers() {
             )}
           </div>
         )}
+
+        <Dialog open={!!editLabelNumber} onOpenChange={(open) => !open && setEditLabelNumber(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Edit label</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="phone-number">Phone number</Label>
+                <Input 
+                  id="phone-number"
+                  value={editLabelNumber ? formatPhoneNumber(editLabelNumber.phoneNumber) : ""}
+                  disabled
+                  className="bg-slate-50 dark:bg-slate-800"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="label">Label</Label>
+                <Input 
+                  id="label"
+                  placeholder="Enter a label for this number..."
+                  value={labelValue}
+                  onChange={(e) => setLabelValue(e.target.value)}
+                  data-testid="input-edit-label"
+                />
+                <p className="text-xs text-slate-500">A friendly name to identify this number (e.g., "Main Office", "Support Line")</p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setEditLabelNumber(null)}
+                data-testid="button-cancel-label"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSaveLabel}
+                disabled={updateLabelMutation.isPending}
+                data-testid="button-save-label"
+              >
+                {updateLabelMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={!!editCallerIdNumber} onOpenChange={(open) => !open && setEditCallerIdNumber(null)}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Set Caller ID Name</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="caller-phone">Phone number</Label>
+                <Input 
+                  id="caller-phone"
+                  value={editCallerIdNumber ? formatPhoneNumber(editCallerIdNumber.phoneNumber) : ""}
+                  disabled
+                  className="bg-slate-50 dark:bg-slate-800"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="caller-id-name">Caller ID Name (CNAM)</Label>
+                <Input 
+                  id="caller-id-name"
+                  placeholder="e.g., MY COMPANY"
+                  value={callerIdValue}
+                  onChange={(e) => setCallerIdValue(e.target.value.toUpperCase().slice(0, 15))}
+                  maxLength={15}
+                  data-testid="input-caller-id"
+                />
+                <p className="text-xs text-slate-500">
+                  Max 15 characters. This name will appear on recipient's caller ID display. 
+                  Changes take 3-5 business days to propagate.
+                </p>
+              </div>
+            </div>
+            <DialogFooter>
+              <Button 
+                variant="outline" 
+                onClick={() => setEditCallerIdNumber(null)}
+                data-testid="button-cancel-caller-id"
+              >
+                Cancel
+              </Button>
+              <Button 
+                onClick={handleSaveCallerId}
+                disabled={updateCallerIdMutation.isPending || callerIdValue.trim().length === 0}
+                data-testid="button-save-caller-id"
+              >
+                {updateCallerIdMutation.isPending ? "Saving..." : "Save"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
-
-      <Dialog open={!!editLabelNumber} onOpenChange={(open) => !open && setEditLabelNumber(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Edit label</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="phone-number">Phone number</Label>
-              <Input 
-                id="phone-number"
-                value={editLabelNumber ? formatPhoneNumber(editLabelNumber.phoneNumber) : ""}
-                disabled
-                className="bg-slate-50 dark:bg-slate-800"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="label">Label</Label>
-              <Input 
-                id="label"
-                placeholder="Enter a label for this number..."
-                value={labelValue}
-                onChange={(e) => setLabelValue(e.target.value)}
-                data-testid="input-edit-label"
-              />
-              <p className="text-xs text-slate-500">A friendly name to identify this number (e.g., "Main Office", "Support Line")</p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setEditLabelNumber(null)}
-              data-testid="button-cancel-label"
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSaveLabel}
-              disabled={updateLabelMutation.isPending}
-              data-testid="button-save-label"
-            >
-              {updateLabelMutation.isPending ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={!!editCallerIdNumber} onOpenChange={(open) => !open && setEditCallerIdNumber(null)}>
-        <DialogContent className="sm:max-w-md">
-          <DialogHeader>
-            <DialogTitle>Set Caller ID Name</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="space-y-2">
-              <Label htmlFor="caller-phone">Phone number</Label>
-              <Input 
-                id="caller-phone"
-                value={editCallerIdNumber ? formatPhoneNumber(editCallerIdNumber.phoneNumber) : ""}
-                disabled
-                className="bg-slate-50 dark:bg-slate-800"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="caller-id-name">Caller ID Name (CNAM)</Label>
-              <Input 
-                id="caller-id-name"
-                placeholder="e.g., MY COMPANY"
-                value={callerIdValue}
-                onChange={(e) => setCallerIdValue(e.target.value.toUpperCase().slice(0, 15))}
-                maxLength={15}
-                data-testid="input-caller-id"
-              />
-              <p className="text-xs text-slate-500">
-                Max 15 characters. This name will appear on recipient's caller ID display. 
-                Changes take 3-5 business days to propagate.
-              </p>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button 
-              variant="outline" 
-              onClick={() => setEditCallerIdNumber(null)}
-              data-testid="button-cancel-caller-id"
-            >
-              Cancel
-            </Button>
-            <Button 
-              onClick={handleSaveCallerId}
-              disabled={updateCallerIdMutation.isPending || callerIdValue.trim().length === 0}
-              data-testid="button-save-caller-id"
-            >
-              {updateCallerIdMutation.isPending ? "Saving..." : "Save"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </div>
+    </SettingsLayout>
   );
 }
