@@ -180,10 +180,8 @@ export default function ChatWidgetPreviewPage() {
       if (!sessionRes.ok) throw new Error('Failed to create session');
       
       const { sessionId, visitorId } = await sessionRes.json();
-      setChatSessionId(sessionId);
-      setChatVisitorId(visitorId);
       
-      // Send initial message
+      // Send initial message FIRST before activating chat view
       const msgRes = await fetch('/api/public/live-chat/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -194,11 +192,14 @@ export default function ChatWidgetPreviewPage() {
         }),
       });
       
-      if (msgRes.ok) {
-        const { message } = await msgRes.json();
-        setChatMessages([message]);
-        setInitialMessage('');
-      }
+      if (!msgRes.ok) throw new Error('Failed to send message');
+      
+      const { message } = await msgRes.json();
+      // Only activate chat AFTER message is successfully sent
+      setChatSessionId(sessionId);
+      setChatVisitorId(visitorId);
+      setChatMessages([message]);
+      setInitialMessage('');
     } catch (error) {
       console.error('Failed to start chat:', error);
       toast({ title: "Error", description: "Failed to start chat session", variant: "destructive" });
