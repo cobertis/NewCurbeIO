@@ -2,7 +2,7 @@ import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, Phone, Loader2, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { SiWhatsapp, SiFacebook, SiInstagram } from "react-icons/si";
@@ -334,10 +334,19 @@ export default function ChatWidgetPreviewPage() {
         </div>
       </div>
 
-      <div className="fixed bottom-6 right-6 flex flex-col items-end gap-2">
-        {!widgetOpen && (
+      <div 
+        className="fixed flex flex-col gap-2"
+        style={{
+          bottom: `${widget.minimizedState?.bottomSpacing || 26}px`,
+          ...(widget.minimizedState?.alignTo === "left" 
+            ? { left: `${widget.minimizedState?.sideSpacing || 32}px`, alignItems: "flex-start" }
+            : { right: `${widget.minimizedState?.sideSpacing || 32}px`, alignItems: "flex-end" }
+          )
+        }}
+      >
+        {!widgetOpen && widget.minimizedState?.eyeCatcherEnabled && widget.minimizedState?.eyeCatcherMessage && (
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg px-4 py-2 flex items-center gap-2 text-sm">
-            <span className="text-slate-600 dark:text-slate-300">Hello, how can we help?</span>
+            <span className="text-slate-600 dark:text-slate-300">{widget.minimizedState.eyeCatcherMessage}</span>
             <button className="text-slate-400 hover:text-slate-600">×</button>
           </div>
         )}
@@ -345,21 +354,46 @@ export default function ChatWidgetPreviewPage() {
         <div className="relative">
           <button
             onClick={() => { setWidgetOpen(!widgetOpen); setActiveChannel(null); }}
-            className="w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105"
-            style={{ background: currentBackground }}
+            className="shadow-lg flex items-center justify-center gap-2 transition-transform hover:scale-105 text-white font-medium"
+            style={{ 
+              background: currentBackground,
+              borderRadius: `${widget.minimizedState?.borderRadius || 40}px`,
+              padding: widget.minimizedState?.includeButtonText && widget.minimizedState?.buttonText 
+                ? "12px 20px" 
+                : "14px",
+              minWidth: widget.minimizedState?.includeButtonText && widget.minimizedState?.buttonText ? "auto" : "56px",
+              height: widget.minimizedState?.includeButtonText && widget.minimizedState?.buttonText ? "auto" : "56px",
+            }}
             data-testid="button-widget-toggle"
           >
             {widgetOpen ? (
-              <X className="w-6 h-6 text-white" />
+              <X className="w-6 h-6" />
             ) : (
-              <MessageSquare className="w-6 h-6 text-white" />
+              <>
+                {widget.minimizedState?.icon === "message" && <MessageCircle className="w-6 h-6" />}
+                {widget.minimizedState?.icon === "phone" && <Phone className="w-6 h-6" />}
+                {widget.minimizedState?.icon === "email" && <Mail className="w-6 h-6" />}
+                {(!widget.minimizedState?.icon || widget.minimizedState?.icon === "chat") && <MessageSquare className="w-6 h-6" />}
+                {widget.minimizedState?.includeButtonText && widget.minimizedState?.buttonText && (
+                  <span>{widget.minimizedState.buttonText}</span>
+                )}
+              </>
             )}
           </button>
         </div>
       </div>
 
       {widgetOpen && (
-        <div className="fixed bottom-24 right-6 w-80">
+        <div 
+          className="fixed w-80"
+          style={{
+            bottom: `${(widget.minimizedState?.bottomSpacing || 26) + 70}px`,
+            ...(widget.minimizedState?.alignTo === "left" 
+              ? { left: `${widget.minimizedState?.sideSpacing || 32}px` }
+              : { right: `${widget.minimizedState?.sideSpacing || 32}px` }
+            )
+          }}
+        >
           {activeChannel ? (
             renderChannelContent()
           ) : (
