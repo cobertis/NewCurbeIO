@@ -2,12 +2,19 @@ import { useState, useRef } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, Link, useParams } from "wouter";
 import curbeLogo from "@assets/logo no fondo_1760457183587.png";
+import data from "@emoji-mart/data";
+import Picker from "@emoji-mart/react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   Accordion,
   AccordionContent,
@@ -1923,9 +1930,29 @@ export default function ChatWidgetEditPage() {
                                           className="pr-9"
                                           data-testid="input-eye-catcher-message"
                                         />
-                                        <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" data-testid="button-emoji-picker">
-                                          <Smile className="h-4 w-4" />
-                                        </button>
+                                        <Popover>
+                                          <PopoverTrigger asChild>
+                                            <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" data-testid="button-emoji-picker">
+                                              <Smile className="h-4 w-4" />
+                                            </button>
+                                          </PopoverTrigger>
+                                          <PopoverContent className="w-auto p-0" align="end">
+                                            <Picker 
+                                              data={data} 
+                                              onEmojiSelect={(emoji: { native: string }) => {
+                                                updateLocalWidget({ 
+                                                  minimizedState: { 
+                                                    ...widget.minimizedState, 
+                                                    eyeCatcherMessage: (widget.minimizedState?.eyeCatcherMessage || "") + emoji.native 
+                                                  } 
+                                                });
+                                              }}
+                                              theme="light"
+                                              previewPosition="none"
+                                              skinTonePosition="none"
+                                            />
+                                          </PopoverContent>
+                                        </Popover>
                                       </div>
                                     </div>
                                     <div className="space-y-2">
@@ -1967,9 +1994,24 @@ export default function ChatWidgetEditPage() {
                                     onChange={(e) => updateLocalWidget({ welcomeTitle: e.target.value })}
                                     className="pr-9"
                                   />
-                                  <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
-                                    <Smile className="h-4 w-4" />
-                                  </button>
+                                  <Popover>
+                                    <PopoverTrigger asChild>
+                                      <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                        <Smile className="h-4 w-4" />
+                                      </button>
+                                    </PopoverTrigger>
+                                    <PopoverContent className="w-auto p-0" align="end">
+                                      <Picker 
+                                        data={data} 
+                                        onEmojiSelect={(emoji: { native: string }) => {
+                                          updateLocalWidget({ welcomeTitle: widget.welcomeTitle + emoji.native });
+                                        }}
+                                        theme="light"
+                                        previewPosition="none"
+                                        skinTonePosition="none"
+                                      />
+                                    </PopoverContent>
+                                  </Popover>
                                 </div>
                               </div>
                               
