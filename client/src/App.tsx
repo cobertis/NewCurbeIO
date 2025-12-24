@@ -775,60 +775,6 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         
         {/* Sidebar - Row 2, Column 1 - Simple icon column below header */}
         <div className="pl-4 flex flex-col items-center py-4 space-y-3">
-          {/* Back Button - Smart navigation */}
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <button
-                onClick={() => {
-                  if (location === "/dashboard") return;
-                  
-                  // Smart back navigation - go to parent route or use history
-                  const pathParts = location.split('/').filter(Boolean);
-                  
-                  // If we're on a detail page (e.g., /customers/123), go to list
-                  if (pathParts.length >= 2) {
-                    // Check for specific patterns
-                    if (pathParts[0] === 'customers' && pathParts.length >= 2) {
-                      // /customers/123 or /customers/new -> /customers
-                      setLocation('/customers');
-                      return;
-                    }
-                    if (pathParts[0] === 'settings' && pathParts.length >= 2) {
-                      // /settings/notifications -> /settings
-                      setLocation('/settings');
-                      return;
-                    }
-                    // Generic: go to parent path
-                    const parentPath = '/' + pathParts.slice(0, -1).join('/');
-                    setLocation(parentPath);
-                    return;
-                  }
-                  
-                  // For top-level pages, try history or go to dashboard
-                  if (window.history.length > 1) {
-                    window.history.back();
-                  } else {
-                    setLocation('/dashboard');
-                  }
-                }}
-                data-testid="sidebar-button-back"
-                className={cn(
-                  circularButtonClass,
-                  location === "/dashboard" && "opacity-40 cursor-not-allowed"
-                )}
-                disabled={location === "/dashboard"}
-              >
-                <ChevronLeft className="h-5 w-5" />
-              </button>
-            </TooltipTrigger>
-            <TooltipContent side="right" className="font-medium">
-              {location === "/dashboard" ? "You are at Dashboard" : "Go Back"}
-            </TooltipContent>
-          </Tooltip>
-
-          {/* Separator */}
-          <div className="w-8 h-px bg-gray-300/50 dark:bg-gray-600/50 my-1" />
-
           {/* Communications Icons */}
           <Tooltip>
             <TooltipTrigger asChild>
