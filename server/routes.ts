@@ -30208,7 +30208,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       // Update local database with CNAM
       await db
         .update(telnyxPhoneNumbers)
-        .set({ cnam: sanitizedCnam })
+        .set({ callerIdName: sanitizedCnam })
         .where(eq(telnyxPhoneNumbers.phoneNumber, phoneNumber));
       
       res.json({ 
