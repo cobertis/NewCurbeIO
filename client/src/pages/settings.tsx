@@ -1602,26 +1602,22 @@ export default function Settings({ view = 'all' }: SettingsProps) {
 
               {/* Closing Your Account - Profile View Only */}
               {(view === 'profile' || view === 'all') && (
-                <Card className="border-destructive/30 bg-destructive/5">
-                  <CardHeader>
-                    <CardTitle className="text-destructive text-base">Closing your account</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <p className="text-sm text-muted-foreground">
-                      If you're having issues or have questions about Curbe, please contact{" "}
-                      <a href="https://support.curbe.io/contact" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">Curbe support</a>,
-                      and if you want to close your account, please use{" "}
-                      <button
-                        type="button"
-                        onClick={() => setCloseAccountDialogOpen(true)}
-                        className="text-primary hover:underline cursor-pointer font-medium"
-                        data-testid="link-close-account"
-                      >
-                        this link to close your account
-                      </button>.
-                    </p>
-                  </CardContent>
-                </Card>
+                <div className="pt-4 border-t">
+                  <h3 className="font-semibold text-sm mb-2">Closing your account</h3>
+                  <p className="text-sm text-muted-foreground">
+                    If you're having issues or have questions about Curbe, please{" "}
+                    <a href="https://support.curbe.io/contact" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">contact Curbe support</a>,
+                    and if you want to close your account, please use this link to{" "}
+                    <button
+                      type="button"
+                      onClick={() => setCloseAccountDialogOpen(true)}
+                      className="text-primary hover:underline cursor-pointer"
+                      data-testid="link-close-account"
+                    >
+                      close your account
+                    </button>.
+                  </p>
+                </div>
               )}
 
               {/* Close Account Dialog */}
