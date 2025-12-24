@@ -30023,6 +30023,49 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
 
+  // PATCH /api/telnyx/my-numbers/:id - Update phone number display name
+  app.patch("/api/telnyx/my-numbers/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user as User;
+      const companyId = currentUser.companyId;
+      const { id } = req.params;
+      const { displayName } = req.body;
+      
+      if (!companyId) {
+        return res.status(403).json({ message: "Company not found" });
+      }
+      
+      if (typeof displayName !== "string") {
+        return res.status(400).json({ message: "Display name must be a string" });
+      }
+      
+      // Verify the phone number belongs to this company
+      const phoneNumber = await db
+        .select()
+        .from(telnyxPhoneNumbers)
+        .where(and(
+          eq(telnyxPhoneNumbers.id, id),
+          eq(telnyxPhoneNumbers.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (phoneNumber.length === 0) {
+        return res.status(404).json({ message: "Phone number not found" });
+      }
+      
+      // Update the display name
+      await db
+        .update(telnyxPhoneNumbers)
+        .set({ displayName: displayName.trim() || null })
+        .where(eq(telnyxPhoneNumbers.id, id));
+      
+      res.json({ success: true, message: "Display name updated" });
+    } catch (error) {
+      console.error("[Telnyx] Error updating phone number display name:", error);
+      res.status(500).json({ message: "Failed to update display name" });
+    }
+  });
+
 
   // GET /api/telnyx/verification-request/by-phone/:phoneNumber - Get verification request by phone number
   // Queries Telnyx API directly for real-time verification status

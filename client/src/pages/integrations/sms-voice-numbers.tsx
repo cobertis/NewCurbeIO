@@ -1,6 +1,10 @@
 import { useState, useMemo } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, Link } from "wouter";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -90,10 +94,40 @@ export default function SmsVoiceNumbers() {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [editLabelNumber, setEditLabelNumber] = useState<SmsVoiceNumber | null>(null);
+  const [labelValue, setLabelValue] = useState("");
+  const { toast } = useToast();
 
   const { data: numbersData, isLoading } = useQuery<{ numbers: SmsVoiceNumber[] }>({
     queryKey: ["/api/sms-voice/numbers"],
   });
+
+  const updateLabelMutation = useMutation({
+    mutationFn: async ({ numberId, displayName }: { numberId: string; displayName: string }) => {
+      return await apiRequest("PATCH", `/api/telnyx/my-numbers/${numberId}`, { displayName });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sms-voice/numbers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/my-numbers"] });
+      toast({ title: "Label updated", description: "The phone number label has been updated." });
+      setEditLabelNumber(null);
+      setLabelValue("");
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to update label", variant: "destructive" });
+    },
+  });
+
+  const handleEditLabel = (number: SmsVoiceNumber) => {
+    setEditLabelNumber(number);
+    setLabelValue(number.displayName || "");
+  };
+
+  const handleSaveLabel = () => {
+    if (editLabelNumber) {
+      updateLabelMutation.mutate({ numberId: editLabelNumber.id, displayName: labelValue.trim() });
+    }
+  };
 
   const numbers = numbersData?.numbers || [];
 
@@ -265,9 +299,16 @@ export default function SmsVoiceNumbers() {
                       </TableCell>
                       <TableCell className="text-slate-600 dark:text-slate-400">
                         {number.displayName ? (
-                          <span data-testid={`text-label-${number.id}`}>{number.displayName}</span>
+                          <button 
+                            onClick={() => handleEditLabel(number)}
+                            className="hover:text-slate-900 dark:hover:text-slate-100"
+                            data-testid={`text-label-${number.id}`}
+                          >
+                            {number.displayName}
+                          </button>
                         ) : (
                           <button 
+                            onClick={() => handleEditLabel(number)}
                             className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm hover:underline"
                             data-testid={`button-add-label-${number.id}`}
                           >
@@ -306,7 +347,10 @@ export default function SmsVoiceNumbers() {
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end" className="w-48">
-                            <DropdownMenuItem data-testid={`menu-edit-label-${number.id}`}>
+                            <DropdownMenuItem 
+                              onClick={() => handleEditLabel(number)}
+                              data-testid={`menu-edit-label-${number.id}`}
+                            >
                               <Edit className="h-4 w-4 mr-2" />
                               Edit label
                             </DropdownMenuItem>
@@ -382,6 +426,52 @@ export default function SmsVoiceNumbers() {
           </div>
         )}
       </div>
+
+      <Dialog open={!!editLabelNumber} onOpenChange={(open) => !open && setEditLabelNumber(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit label</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="phone-number">Phone number</Label>
+              <Input 
+                id="phone-number"
+                value={editLabelNumber ? formatPhoneNumber(editLabelNumber.phoneNumber) : ""}
+                disabled
+                className="bg-slate-50 dark:bg-slate-800"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="label">Label</Label>
+              <Input 
+                id="label"
+                placeholder="Enter a label for this number..."
+                value={labelValue}
+                onChange={(e) => setLabelValue(e.target.value)}
+                data-testid="input-edit-label"
+              />
+              <p className="text-xs text-slate-500">A friendly name to identify this number (e.g., "Main Office", "Support Line")</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setEditLabelNumber(null)}
+              data-testid="button-cancel-label"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveLabel}
+              disabled={updateLabelMutation.isPending}
+              data-testid="button-save-label"
+            >
+              {updateLabelMutation.isPending ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
