@@ -14,6 +14,23 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  DragEndEvent,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -33,7 +50,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Pencil, Palette, MessageSquare, Target, Code, Copy, ExternalLink, Mail, MoreHorizontal, Trash2, Check, ChevronLeft, ChevronRight, Phone, Send, Upload, Image, Smile, Monitor, RefreshCw } from "lucide-react";
+import { Pencil, Palette, MessageSquare, Target, Code, Copy, ExternalLink, Mail, MoreHorizontal, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, Phone, Send, Upload, Image, Smile, Monitor, RefreshCw, GripVertical } from "lucide-react";
+import { SiFacebook, SiInstagram } from "react-icons/si";
 import { SiWhatsapp } from "react-icons/si";
 import { SettingsLayout } from "@/components/settings-layout";
 import { useToast } from "@/hooks/use-toast";
@@ -71,7 +89,10 @@ interface WidgetConfig {
     sms: boolean;
     phone: boolean;
     whatsapp: boolean;
+    facebook: boolean;
+    instagram: boolean;
   };
+  channelOrder: string[];
   targeting: {
     countries: "all" | "selected" | "excluded";
     selectedCountries: string[];
@@ -98,6 +119,76 @@ const iconOptions = [
   { value: "message", label: "Message" },
 ];
 
+interface ChannelConfig {
+  id: string;
+  key: keyof WidgetConfig["channels"];
+  label: string;
+  icon: React.ReactNode;
+  iconColor: string;
+}
+
+const channelConfigs: ChannelConfig[] = [
+  { id: "liveChat", key: "liveChat", label: "Live chat", icon: <MessageSquare className="h-5 w-5" />, iconColor: "text-blue-500" },
+  { id: "email", key: "email", label: "Email", icon: <Mail className="h-5 w-5" />, iconColor: "text-orange-500" },
+  { id: "sms", key: "sms", label: "Text message", icon: <Send className="h-5 w-5" />, iconColor: "text-green-500" },
+  { id: "phone", key: "phone", label: "Call", icon: <Phone className="h-5 w-5" />, iconColor: "text-blue-600" },
+  { id: "whatsapp", key: "whatsapp", label: "WhatsApp", icon: <SiWhatsapp className="h-5 w-5" />, iconColor: "text-[#25D366]" },
+  { id: "facebook", key: "facebook", label: "Facebook", icon: <SiFacebook className="h-5 w-5" />, iconColor: "text-[#1877F2]" },
+  { id: "instagram", key: "instagram", label: "Instagram", icon: <SiInstagram className="h-5 w-5" />, iconColor: "text-[#E4405F]" },
+];
+
+interface SortableChannelItemProps {
+  channel: ChannelConfig;
+  enabled: boolean;
+  onToggle: (enabled: boolean) => void;
+}
+
+function SortableChannelItem({ channel, enabled, onToggle }: SortableChannelItemProps) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: channel.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+  };
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      className="flex items-center justify-between py-3 px-4 border rounded-lg bg-white dark:bg-slate-900"
+    >
+      <div className="flex items-center gap-3">
+        <button
+          {...attributes}
+          {...listeners}
+          className="cursor-grab active:cursor-grabbing p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
+          data-testid={`drag-handle-${channel.id}`}
+        >
+          <GripVertical className="h-4 w-4 text-slate-400" />
+        </button>
+        <div className={channel.iconColor}>{channel.icon}</div>
+        <span className="text-sm font-medium">{channel.label}</span>
+      </div>
+      <div className="flex items-center gap-2">
+        <Switch 
+          checked={enabled}
+          onCheckedChange={onToggle}
+          data-testid={`switch-channel-${channel.id}`}
+        />
+        <ChevronDown className="h-4 w-4 text-slate-400" />
+      </div>
+    </div>
+  );
+}
+
 export default function ChatWidgetEditPage() {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
@@ -111,6 +202,13 @@ export default function ChatWidgetEditPage() {
   const [appearanceSubAccordion, setAppearanceSubAccordion] = useState<string>("");
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [localWidget, setLocalWidget] = useState<Partial<WidgetConfig>>({});
+
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
 
   const { data: widgetData, isLoading } = useQuery<{ widget: WidgetConfig }>({
     queryKey: ["/api/integrations/chat-widget", widgetId],
@@ -148,7 +246,10 @@ export default function ChatWidgetEditPage() {
       sms: true,
       phone: true,
       whatsapp: false,
+      facebook: false,
+      instagram: false,
     },
+    channelOrder: ["liveChat", "email", "sms", "phone", "whatsapp", "facebook", "instagram"],
     targeting: {
       countries: "all",
       selectedCountries: [],
@@ -177,6 +278,28 @@ export default function ChatWidgetEditPage() {
     setLocalWidget({});
     setHasUnsavedChanges(false);
   };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    
+    if (over && active.id !== over.id) {
+      const currentOrder = widget.channelOrder || channelConfigs.map(c => c.id);
+      const oldIndex = currentOrder.indexOf(active.id as string);
+      const newIndex = currentOrder.indexOf(over.id as string);
+      const newOrder = arrayMove(currentOrder, oldIndex, newIndex);
+      updateLocalWidget({ channelOrder: newOrder });
+    }
+  };
+
+  const handleChannelToggle = (channelKey: keyof WidgetConfig["channels"], enabled: boolean) => {
+    updateLocalWidget({ 
+      channels: { ...widget.channels, [channelKey]: enabled } 
+    });
+  };
+
+  const orderedChannels = (widget.channelOrder || channelConfigs.map(c => c.id))
+    .map(id => channelConfigs.find(c => c.id === id))
+    .filter((c): c is ChannelConfig => c !== undefined);
 
   const updateMutation = useMutation({
     mutationFn: async (updates: Partial<WidgetConfig>) => {
@@ -665,77 +788,27 @@ export default function ChatWidgetEditPage() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="pt-2 pb-6">
-                      <div className="space-y-4 pl-12">
-                        <div className="flex items-center justify-between py-2">
-                          <div className="flex items-center gap-3">
-                            <MessageSquare className="h-5 w-5 text-blue-500" />
-                            <div>
-                              <p className="text-sm font-medium">Start a live chat</p>
-                              <p className="text-xs text-slate-500">Real-time conversation with visitors</p>
-                            </div>
+                      <DndContext
+                        sensors={sensors}
+                        collisionDetection={closestCenter}
+                        onDragEnd={handleDragEnd}
+                      >
+                        <SortableContext
+                          items={orderedChannels.map(c => c.id)}
+                          strategy={verticalListSortingStrategy}
+                        >
+                          <div className="space-y-2">
+                            {orderedChannels.map((channel) => (
+                              <SortableChannelItem
+                                key={channel.id}
+                                channel={channel}
+                                enabled={widget.channels[channel.key]}
+                                onToggle={(enabled) => handleChannelToggle(channel.key, enabled)}
+                              />
+                            ))}
                           </div>
-                          <Switch 
-                            checked={widget.channels.liveChat}
-                            onCheckedChange={(checked) => updateMutation.mutate({ channels: { ...widget.channels, liveChat: checked } })}
-                          />
-                        </div>
-                        
-                        <div className="flex items-center justify-between py-2">
-                          <div className="flex items-center gap-3">
-                            <Mail className="h-5 w-5 text-orange-500" />
-                            <div>
-                              <p className="text-sm font-medium">Send an email</p>
-                              <p className="text-xs text-slate-500">Let visitors contact you via email</p>
-                            </div>
-                          </div>
-                          <Switch 
-                            checked={widget.channels.email}
-                            onCheckedChange={(checked) => updateMutation.mutate({ channels: { ...widget.channels, email: checked } })}
-                          />
-                        </div>
-                        
-                        <div className="flex items-center justify-between py-2">
-                          <div className="flex items-center gap-3">
-                            <Send className="h-5 w-5 text-green-500" />
-                            <div>
-                              <p className="text-sm font-medium">Send a text</p>
-                              <p className="text-xs text-slate-500">Allow SMS messaging</p>
-                            </div>
-                          </div>
-                          <Switch 
-                            checked={widget.channels.sms}
-                            onCheckedChange={(checked) => updateMutation.mutate({ channels: { ...widget.channels, sms: checked } })}
-                          />
-                        </div>
-                        
-                        <div className="flex items-center justify-between py-2">
-                          <div className="flex items-center gap-3">
-                            <Phone className="h-5 w-5 text-blue-600" />
-                            <div>
-                              <p className="text-sm font-medium">Call us</p>
-                              <p className="text-xs text-slate-500">Voice call option</p>
-                            </div>
-                          </div>
-                          <Switch 
-                            checked={widget.channels.phone}
-                            onCheckedChange={(checked) => updateMutation.mutate({ channels: { ...widget.channels, phone: checked } })}
-                          />
-                        </div>
-                        
-                        <div className="flex items-center justify-between py-2">
-                          <div className="flex items-center gap-3">
-                            <SiWhatsapp className="h-5 w-5 text-green-500" />
-                            <div>
-                              <p className="text-sm font-medium">Chat on WhatsApp</p>
-                              <p className="text-xs text-slate-500">WhatsApp messaging</p>
-                            </div>
-                          </div>
-                          <Switch 
-                            checked={widget.channels.whatsapp}
-                            onCheckedChange={(checked) => updateMutation.mutate({ channels: { ...widget.channels, whatsapp: checked } })}
-                          />
-                        </div>
-                      </div>
+                        </SortableContext>
+                      </DndContext>
                     </AccordionContent>
                   </AccordionItem>
 
