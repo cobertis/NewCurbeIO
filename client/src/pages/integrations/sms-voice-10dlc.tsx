@@ -132,24 +132,6 @@ export default function SmsVoice10dlc() {
           <span className="text-slate-700 dark:text-slate-300">10DLC registration</span>
         </div>
 
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100" data-testid="text-page-title">
-            10DLC registration
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            To send messages, you need to buy a virtual number, verify your use case, and get approved by the mobile network operators. Once your traffic has been approved, you can send and receive SMS, and make voice calls.{" "}
-            <a 
-              href="https://support.telnyx.com/en/articles/4131500-10dlc-registration-guide" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
-              data-testid="link-learn-more"
-            >
-              Learn more about 10DLC
-            </a>
-          </p>
-        </div>
-
         {!isSuperAdmin && (
           <Card className="border-slate-200 dark:border-slate-800">
             <CardContent className="py-6">

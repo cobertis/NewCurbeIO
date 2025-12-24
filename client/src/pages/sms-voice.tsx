@@ -197,12 +197,6 @@ export function SmsVoiceContent() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100" data-testid="text-page-title">
-          SMS & voice
-        </h1>
-      </div>
-
       <Card className="border-slate-200 dark:border-slate-800">
         <CardContent className="p-0">
           <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800">

@@ -158,30 +158,26 @@ export default function SmsVoiceNumbers() {
           <span className="text-slate-700 dark:text-slate-300">Numbers</span>
         </div>
 
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100" data-testid="text-page-title">
-            Numbers
-          </h1>
+        <div className="flex items-center justify-between gap-4">
+          <div className="relative flex-1 max-w-sm">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              placeholder="Search numbers..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                setCurrentPage(1);
+              }}
+              className="pl-10"
+              data-testid="input-search-numbers"
+            />
+          </div>
           <Link href="/phone/buy">
             <Button size="sm" className="gap-2" data-testid="button-buy-number">
               <Plus className="h-4 w-4" />
               Buy a new number
             </Button>
           </Link>
-        </div>
-
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            placeholder="Search numbers..."
-            value={searchQuery}
-            onChange={(e) => {
-              setSearchQuery(e.target.value);
-              setCurrentPage(1);
-            }}
-            className="pl-10 max-w-sm"
-            data-testid="input-search-numbers"
-          />
         </div>
 
         <Card className="border-slate-200 dark:border-slate-800">

@@ -118,24 +118,6 @@ export default function SmsVoiceTollFree() {
           <span className="text-slate-700 dark:text-slate-300">Toll-free verification</span>
         </div>
 
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100" data-testid="text-page-title">
-            Toll-free verification
-          </h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-            To send messages, you need to buy a virtual number, verify your use case, and get approved by the mobile network operators. Once your traffic has been approved, you can send and receive SMS, and make voice calls.{" "}
-            <a 
-              href="https://support.telnyx.com/en/articles/4248200-toll-free-messaging-best-practices" 
-              target="_blank" 
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 hover:underline"
-              data-testid="link-learn-more"
-            >
-              Learn more about toll-free messaging
-            </a>
-          </p>
-        </div>
-
         <div className="flex items-center justify-between gap-4">
           <Link href="/phone/buy">
             <Button variant="outline" size="sm" className="gap-2" data-testid="button-buy-number">

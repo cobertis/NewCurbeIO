@@ -19,12 +19,6 @@ export default function SmsVoiceCpaas() {
           <span className="text-slate-700 dark:text-slate-300">Bring Your Own CPaaS</span>
         </div>
 
-        <div>
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100" data-testid="text-page-title">
-            Bring Your Own CPaaS
-          </h1>
-        </div>
-
         <Card className="border-slate-200 dark:border-slate-800">
           <CardContent className="p-12">
             <div className="flex flex-col items-center justify-center text-center space-y-4">

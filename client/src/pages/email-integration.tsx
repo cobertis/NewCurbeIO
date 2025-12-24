@@ -367,26 +367,6 @@ export default function EmailIntegrationPage({ embedded = false }: { embedded?: 
   if (hasDomainConfigured && isDomainVerified) {
     const content = (
       <div className="space-y-6" data-testid="page-email-integration">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>Settings</span>
-          <ChevronRight className="w-4 h-4" />
-          <span className="text-slate-900 dark:text-slate-100">Email</span>
-        </div>
-
-        <div className="flex items-center justify-between">
-          <h1 className="text-xl font-semibold tracking-tight text-slate-900 dark:text-slate-100" data-testid="text-page-title">
-            Domains & senders
-          </h1>
-          <div className="relative w-64">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input
-              placeholder="Search domains"
-              className="pl-9"
-              data-testid="input-search-domains"
-            />
-          </div>
-        </div>
-
         <div className="flex items-center gap-3">
           <Button 
             variant="outline" 
