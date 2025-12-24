@@ -1337,6 +1337,10 @@ export default function ChatWidgetEditPage() {
     targeting: { ...defaultWidget.targeting, ...widgetData?.widget?.targeting, ...localWidget?.targeting },
     branding: { ...defaultWidget.branding, ...widgetData?.widget?.branding, ...localWidget?.branding },
     minimizedState: { ...defaultWidget.minimizedState, ...widgetData?.widget?.minimizedState, ...localWidget?.minimizedState },
+    liveChatSettings: { ...defaultWidget.liveChatSettings, ...widgetData?.widget?.liveChatSettings, ...localWidget?.liveChatSettings },
+    callSettings: { ...defaultWidget.callSettings, ...widgetData?.widget?.callSettings, ...localWidget?.callSettings },
+    whatsappSettings: { ...defaultWidget.whatsappSettings, ...widgetData?.widget?.whatsappSettings, ...localWidget?.whatsappSettings },
+    emailSettings: { ...defaultWidget.emailSettings, ...widgetData?.widget?.emailSettings, ...localWidget?.emailSettings },
   };
 
   const embedCode = `<script src="https://widgets.curbe.io/messenger-widget-script.js" data-code="${widgetId}" defer=""></script>`;
