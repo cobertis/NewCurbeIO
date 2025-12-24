@@ -1734,10 +1734,10 @@ export default function IntegrationsPage() {
   const menuItems = {
     account: [
       { label: "Profile", href: "/settings/profile", icon: UserIcon, active: activeView === "profile" },
-      { label: "Security", href: "/settings/security", icon: Shield, active: activeView === "security" },
       { label: "Company", href: "/settings/company", icon: Building, active: activeView === "company" },
       { label: "Team", href: "/settings/team", icon: UsersRound, active: activeView === "team" },
       { label: "Billing", href: "/settings/billing", icon: CreditCard, active: activeView === "billing" },
+      { label: "Security", href: "/settings/security", icon: Shield, active: activeView === "security" },
       { label: "White Label", href: "/settings/white-label", icon: Palette, active: activeView === "white-label" },
     ],
     channels: [
