@@ -1732,9 +1732,6 @@ export default function IntegrationsPage() {
     account: [
       { label: "Profile", href: "/settings/profile", icon: UserIcon, active: activeView === "profile" },
       { label: "Security", href: "/settings/security", icon: Shield, active: activeView === "security" },
-      { label: "Notifications", href: "/settings/notifications", icon: Bell, active: activeView === "notifications" },
-    ],
-    workspace: [
       { label: "Company", href: "/settings/company", icon: Building, active: activeView === "company" },
       { label: "Team", href: "/settings/team", icon: UsersRound, active: activeView === "team" },
       { label: "Billing", href: "/settings/billing", icon: CreditCard, active: activeView === "billing" },
@@ -1762,26 +1759,8 @@ export default function IntegrationsPage() {
     <div className="flex gap-6" data-testid="page-integrations">
       <div className="w-52 shrink-0 hidden lg:block">
         <nav className="sticky top-4 space-y-1">
-          <p className="px-3 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Account</p>
+          <p className="px-3 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Administration</p>
           {menuItems.account.map((item) => (
-            <button
-              key={item.label}
-              onClick={() => handleNavigation(item.href)}
-              data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
-              className={cn(
-                "w-full flex items-center gap-2.5 px-3 py-2 text-sm rounded-md transition-colors",
-                item.active 
-                  ? "bg-primary/10 text-primary font-medium" 
-                  : "text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
-              )}
-            >
-              <item.icon className="h-4 w-4" />
-              {item.label}
-            </button>
-          ))}
-
-          <p className="px-3 py-2 pt-4 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Workspace</p>
-          {menuItems.workspace.map((item) => (
             <button
               key={item.label}
               onClick={() => handleNavigation(item.href)}
@@ -1846,12 +1825,6 @@ export default function IntegrationsPage() {
         {activeView === "security" && (
           <div>
             <SettingsBreadcrumb pageName="Security" onBack={() => setLocation("/settings/profile")} />
-            <SettingsPage />
-          </div>
-        )}
-        {activeView === "notifications" && (
-          <div>
-            <SettingsBreadcrumb pageName="Notifications" onBack={() => setLocation("/settings/profile")} />
             <SettingsPage />
           </div>
         )}
