@@ -30138,32 +30138,15 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       console.log(`[CNAM] Looking up phone number ${phoneNumber} for company ${companyId} with managedAccountId: ${managedAccountId}`);
       
-      // First, get the Telnyx phone number ID
-      const normalizedPhone = phoneNumber.startsWith("+") ? phoneNumber : `+${phoneNumber.replace(/[^0-9]/g, "")}`;
-      const searchResponse = await fetch(
-        `https://api.telnyx.com/v2/phone_numbers?filter[phone_number]=${encodeURIComponent(normalizedPhone)}`,
-        {
-          method: "GET",
-          headers: telnyxHeaders
-        }
-      );
-      
-      if (!searchResponse.ok) {
-        const errorText = await searchResponse.text();
-        console.error("[Telnyx CNAM] Error searching for phone number:", errorText);
-        return res.status(500).json({ message: "Failed to find phone number in Telnyx" });
+      // Use the Telnyx phone number ID from our database (more reliable than API search with managed accounts)
+      const telnyxPhoneId = phoneNumberRecord[0].telnyxPhoneNumberId;
+      if (!telnyxPhoneId) {
+        console.error(`[CNAM] No Telnyx phone number ID stored for ${phoneNumber}`);
+        return res.status(404).json({ message: "Phone number not linked to Telnyx" });
       }
-      
-      const searchText = await searchResponse.text();
-      console.log("[CNAM] Search response:", searchText.substring(0, 500));
-      const searchResult = JSON.parse(searchText);
-      if (!searchResult.data || searchResult.data.length === 0) {
-        return res.status(404).json({ message: "Phone number not found in Telnyx" });
-      }
+      console.log(`[CNAM] Using stored Telnyx phone ID: ${telnyxPhoneId}`);
       
       
-      const telnyxPhoneId = searchResult.data[0].id;
-      console.log(`[CNAM] Found Telnyx phone ID: ${telnyxPhoneId}`);
       
       // Use POST /v2/cnam_listings to create CNAM listing (this is what the portal uses)
       let cnamUpdateSuccess = false;
