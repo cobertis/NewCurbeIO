@@ -598,7 +598,6 @@ function SortableChannelItem({
           </button>
         </div>
       </div>
-      
       {isExpanded && channel.id === "liveChat" && liveChatSettings && onLiveChatSettingsChange && (
         <div className="border-t px-4 py-3">
           {activeSubSection === null ? (
@@ -851,7 +850,6 @@ function SortableChannelItem({
           )}
         </div>
       )}
-      
       {isExpanded && channel.id === "phone" && callSettings && onCallSettingsChange && (
         <div className="border-t px-4 py-3">
           {activeCallSubSection === null ? (
@@ -1095,7 +1093,6 @@ function SortableChannelItem({
           )}
         </div>
       )}
-      
       {isExpanded && channel.id === "whatsapp" && whatsappSettings && onWhatsappSettingsChange && (
         <div className="border-t px-4 py-3">
           {activeWhatsappSubSection === null ? (
@@ -1257,7 +1254,6 @@ function SortableChannelItem({
           )}
         </div>
       )}
-      
       {isExpanded && channel.id === "email" && emailSettings && onEmailSettingsChange && (
         <div className="border-t px-4 py-3">
           {activeEmailSubSection === null ? (
@@ -1483,7 +1479,6 @@ function SortableChannelItem({
           )}
         </div>
       )}
-
       {isExpanded && channel.id === "sms" && smsSettings && onSmsSettingsChange && (
         <div className="border-t px-4 py-3">
           {activeSmsSubSection === null ? (
@@ -1654,7 +1649,6 @@ function SortableChannelItem({
           )}
         </div>
       )}
-
       {isExpanded && channel.id === "facebook" && messengerSettings && onMessengerSettingsChange && (
         <div className="border-t px-4 py-3">
           {activeMessengerSubSection === null ? (
@@ -1830,7 +1824,6 @@ function SortableChannelItem({
           )}
         </div>
       )}
-
       {isExpanded && channel.id === "instagram" && instagramSettings && onInstagramSettingsChange && (
         <div className="border-t px-4 py-3">
           {activeInstagramSubSection === null ? (
@@ -1994,7 +1987,6 @@ function SortableChannelItem({
           )}
         </div>
       )}
-
       {isExpanded && channel.id === "telegram" && telegramSettings && onTelegramSettingsChange && (
         <div className="border-t px-4 py-3">
           {activeTelegramSubSection === null ? (
@@ -4734,7 +4726,7 @@ export default function ChatWidgetEditPage() {
                         </div>
                       </div>
                       <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
-                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100 text-center">
                           {widget.smsSettings?.messageScreen?.title || "Send us a text message"}
                         </h4>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
@@ -5063,7 +5055,6 @@ export default function ChatWidgetEditPage() {
           </div>
         </div>
       </div>
-
       <Dialog open={editNameDialogOpen} onOpenChange={setEditNameDialogOpen}>
         <DialogContent className="sm:max-w-md" data-testid="dialog-edit-name">
           <DialogHeader>
@@ -5100,7 +5091,6 @@ export default function ChatWidgetEditPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-
       {hasUnsavedChanges && (
         <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-200 dark:border-slate-700 shadow-lg z-50">
           <div className="container mx-auto px-4 py-3 flex items-center justify-between">
