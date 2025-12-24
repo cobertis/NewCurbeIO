@@ -1675,65 +1675,55 @@ function ComingSoonCard({
 }
 
 export default function IntegrationsPage() {
-  const [, setLocation] = useLocation();
-  const [activeView, setActiveView] = useState<"integrations" | "billing" | "profile" | "security" | "notifications" | "company" | "team" | "sms-voice" | "email" | "automations">("profile");
+  const [location, setLocation] = useLocation();
+  
+  const getActiveView = () => {
+    if (location.startsWith("/settings/profile")) return "profile";
+    if (location.startsWith("/settings/security")) return "security";
+    if (location.startsWith("/settings/notifications")) return "notifications";
+    if (location.startsWith("/settings/company")) return "company";
+    if (location.startsWith("/settings/team")) return "team";
+    if (location.startsWith("/settings/billing")) return "billing";
+    if (location.startsWith("/settings/sms-voice")) return "sms-voice";
+    if (location.startsWith("/settings/email")) return "email";
+    if (location.startsWith("/settings/integrations")) return "integrations";
+    if (location.startsWith("/settings/automations")) return "automations";
+    if (location.startsWith("/settings/whatsapp")) return "whatsapp";
+    if (location.startsWith("/settings/facebook")) return "facebook";
+    if (location.startsWith("/settings/instagram")) return "instagram";
+    if (location.startsWith("/settings/telegram")) return "telegram";
+    return "profile";
+  };
+  
+  const activeView = getActiveView();
 
   const menuItems = {
     account: [
-      { label: "Profile", href: "#view-profile", icon: UserIcon, active: activeView === "profile" },
-      { label: "Security", href: "#view-security", icon: Shield, active: activeView === "security" },
-      { label: "Notifications", href: "#view-notifications", icon: Bell, active: activeView === "notifications" },
+      { label: "Profile", href: "/settings/profile", icon: UserIcon, active: activeView === "profile" },
+      { label: "Security", href: "/settings/security", icon: Shield, active: activeView === "security" },
+      { label: "Notifications", href: "/settings/notifications", icon: Bell, active: activeView === "notifications" },
     ],
     workspace: [
-      { label: "Company", href: "#view-company", icon: Building, active: activeView === "company" },
-      { label: "Team", href: "#view-team", icon: UsersRound, active: activeView === "team" },
-      { label: "Billing", href: "#view-billing", icon: CreditCard, active: activeView === "billing" },
+      { label: "Company", href: "/settings/company", icon: Building, active: activeView === "company" },
+      { label: "Team", href: "/settings/team", icon: UsersRound, active: activeView === "team" },
+      { label: "Billing", href: "/settings/billing", icon: CreditCard, active: activeView === "billing" },
     ],
     channels: [
-      { label: "SMS \& Voice", href: "#view-sms-voice", icon: Phone, active: activeView === "sms-voice" },
-      { label: "Email", href: "#view-email", icon: Mail, active: activeView === "email" },
-      { label: "WhatsApp", href: "#whatsapp", icon: SiWhatsapp, active: false },
-      { label: "Facebook", href: "#facebook", icon: SiFacebook, active: false },
-      { label: "Instagram", href: "#instagram", icon: SiInstagram, active: false },
-      { label: "Telegram", href: "#telegram", icon: SiTelegram, active: false },
+      { label: "SMS & Voice", href: "/settings/sms-voice", icon: Phone, active: activeView === "sms-voice" },
+      { label: "Email", href: "/settings/email", icon: Mail, active: activeView === "email" },
+      { label: "WhatsApp", href: "/settings/whatsapp", icon: SiWhatsapp, active: activeView === "whatsapp" },
+      { label: "Facebook", href: "/settings/facebook", icon: SiFacebook, active: activeView === "facebook" },
+      { label: "Instagram", href: "/settings/instagram", icon: SiInstagram, active: activeView === "instagram" },
+      { label: "Telegram", href: "/settings/telegram", icon: SiTelegram, active: activeView === "telegram" },
     ],
     features: [
-      { label: "Integrations", href: "#view-integrations", icon: Plug, active: activeView === "integrations" },
-      { label: "Automations", href: "#view-automations", icon: Zap, active: activeView === "automations" },
+      { label: "Integrations", href: "/settings/integrations", icon: Plug, active: activeView === "integrations" },
+      { label: "Automations", href: "/settings/automations", icon: Zap, active: activeView === "automations" },
     ],
   };
+
   const handleNavigation = (href: string) => {
-    const viewMap: Record<string, typeof activeView> = {
-      "#view-profile": "profile",
-      "#view-security": "security",
-      "#view-notifications": "notifications",
-      "#view-company": "company",
-      "#view-team": "team",
-      "#view-billing": "billing",
-      "#view-sms-voice": "sms-voice",
-      "#view-email": "email",
-      "#view-integrations": "integrations",
-      "#view-automations": "automations",
-    };
-    
-    if (viewMap[href]) {
-      setActiveView(viewMap[href]);
-    } else if (href.startsWith("#")) {
-      setActiveView("integrations");
-      const cardId = href.substring(1);
-      setTimeout(() => {
-        const element = document.querySelector(`[data-card-id="${cardId}"]`);
-        if (element) {
-          element.scrollIntoView({ behavior: "smooth", block: "center" });
-          element.classList.add("ring-2", "ring-blue-500", "ring-offset-2");
-          setTimeout(() => {
-            element.classList.remove("ring-2", "ring-blue-500", "ring-offset-2");
-          }, 2000);
-        }
-      }, 100);
-    } else {
-      setLocation(href);
-    }
+    setLocation(href);
   };
 
   return (
@@ -1880,6 +1870,42 @@ export default function IntegrationsPage() {
               <h1 className="text-2xl font-semibold">Automations</h1>
               <p className="text-muted-foreground">Configure automated workflows and responses.</p>
             </div>
+          </div>
+        )}
+        {activeView === "whatsapp" && (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-semibold">WhatsApp</h1>
+              <p className="text-muted-foreground">Configure your WhatsApp Business integration.</p>
+            </div>
+            <WhatsAppCard />
+          </div>
+        )}
+        {activeView === "facebook" && (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-semibold">Facebook Messenger</h1>
+              <p className="text-muted-foreground">Configure your Facebook Messenger integration.</p>
+            </div>
+            <FacebookCard />
+          </div>
+        )}
+        {activeView === "instagram" && (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-semibold">Instagram</h1>
+              <p className="text-muted-foreground">Configure your Instagram Direct integration.</p>
+            </div>
+            <InstagramCard />
+          </div>
+        )}
+        {activeView === "telegram" && (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-semibold">Telegram</h1>
+              <p className="text-muted-foreground">Configure your Telegram bot integration.</p>
+            </div>
+            <TelegramCard />
           </div>
         )}
         {activeView === "integrations" && (

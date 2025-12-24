@@ -1659,10 +1659,10 @@ function Router() {
           <PlanSelection />
         </ProtectedRoute>
       </Route>
-      <Route path="/settings/notifications">
+      <Route path="/settings/:tab*">
         <ProtectedRoute>
           <DashboardLayout>
-            <NotificationsPage />
+            <IntegrationsPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
@@ -1680,87 +1680,6 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/settings/profile">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <Settings />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/settings/preferences">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <Settings />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/settings/company">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <Settings />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/settings/system">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <Settings />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/settings/security">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <Settings />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/settings/sessions">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <Settings />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/settings/team">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <Settings />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/settings/billing">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <Settings />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/settings/automations">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <Settings />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/settings/imessage">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <Settings />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/settings/webphone">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <Settings />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/settings/email">
-        <Redirect to="/integrations/email" />
-      </Route>
       <Route path="/integrations/email/flow">
         <ProtectedRoute>
           <DashboardLayout>
@@ -1774,9 +1693,6 @@ function Router() {
             <EmailIntegration />
           </DashboardLayout>
         </ProtectedRoute>
-      </Route>
-      <Route path="/settings/sms-voice">
-        <Redirect to="/integrations/sms-voice" />
       </Route>
       <Route path="/integrations/sms-voice">
         <ProtectedRoute>
