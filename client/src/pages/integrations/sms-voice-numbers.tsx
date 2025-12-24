@@ -408,13 +408,6 @@ export default function SmsVoiceNumbers() {
                               <PhoneForwarded className="h-4 w-4 mr-2" />
                               Forward calls
                             </DropdownMenuItem>
-                            <DropdownMenuItem 
-                              onClick={() => handleEditCallerId(number)}
-                              data-testid={`menu-caller-id-${number.id}`}
-                            >
-                              <UserCircle className="h-4 w-4 mr-2" />
-                              Set caller ID
-                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               className="text-red-600 dark:text-red-400"
