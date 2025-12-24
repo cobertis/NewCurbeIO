@@ -31070,15 +31070,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       console.log("[10DLC Campaign Numbers] Fetching for campaign:", id, "tcrCampaignId:", tcrCampaignId, "managedAccount:", managedAccountId);
       
-      // Telnyx API has a fixed 20 records per page limit - must paginate
+      // Telnyx API uses page[number] for pagination with meta.total_results
       const seenPhones = new Set<string>();
       const allNumbers: any[] = [];
       let pageNumber = 1;
-      let hasNewRecords = true;
+      let totalResults = 0;
+      let hasMore = true;
       
-      while (hasNewRecords && pageNumber <= 10) { // Max 10 pages = 200 numbers
-        const url = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[telnyx_campaign_id]=${encodeURIComponent(id)}&page[number]=${pageNumber}&page[size]=100`;
-        console.log("[10DLC Campaign Numbers] Fetching page", pageNumber);
+      while (hasMore && pageNumber <= 10) {
+        const url = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[telnyx_campaign_id]=${encodeURIComponent(id)}&page[number]=${pageNumber}&page[size]=50`;
+        console.log("[10DLC Campaign Numbers] Fetching page", pageNumber, "URL:", url);
         
         const response = await fetch(url, {
           method: "GET",
@@ -31086,30 +31087,41 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         });
         
         const result = await response.json();
+        console.log("[10DLC Campaign Numbers] Full response keys:", Object.keys(result));
+        
+        // Check for meta with pagination info
+        if (result.meta) {
+          console.log("[10DLC Campaign Numbers] Meta:", JSON.stringify(result.meta));
+          totalResults = result.meta.total_results || result.meta.totalResults || 0;
+        }
+        
         const records = result.records || result.data || [];
-        console.log("[10DLC Campaign Numbers] Page", pageNumber, "returned", records.length, "records");
+        console.log("[10DLC Campaign Numbers] Page", pageNumber, "returned", records.length, "records, totalResults:", totalResults);
         
         if (records.length === 0) {
-          hasNewRecords = false;
+          hasMore = false;
         } else {
-          let newCount = 0;
           for (const num of records) {
             if (!seenPhones.has(num.phoneNumber)) {
               seenPhones.add(num.phoneNumber);
               allNumbers.push(num);
-              newCount++;
             }
           }
-          // If no new unique records, stop
-          if (newCount === 0) {
-            hasNewRecords = false;
+          
+          // Stop if we've got all results based on meta
+          if (totalResults > 0 && allNumbers.length >= totalResults) {
+            hasMore = false;
+          } else if (records.length < 50) {
+            // Last page if less than page size
+            hasMore = false;
+          } else {
+            pageNumber++;
           }
-          pageNumber++;
         }
       }
       
       const numbers = allNumbers;
-      console.log("[10DLC Campaign Numbers] Total unique numbers:", numbers.length);
+      console.log("[10DLC Campaign Numbers] Total unique numbers:", numbers.length, "totalResults from API:", totalResults);
       res.json({ phoneNumbers: numbers });
     } catch (error: any) {
       console.error("Error fetching campaign phone numbers:", error);
