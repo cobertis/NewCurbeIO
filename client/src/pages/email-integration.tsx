@@ -81,6 +81,9 @@ export default function EmailIntegrationPage({ embedded = false }: { embedded?: 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletingSenderIndex, setDeletingSenderIndex] = useState<number>(-1);
 
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
+  const [addForm, setAddForm] = useState({ fromEmail: "", fromName: "", replyToEmail: "" });
+
   const { data: settingsResponse, isLoading } = useQuery<{ configured: boolean; settings: EmailSettings | null }>({
     queryKey: ["/api/ses/settings"],
   });
@@ -137,6 +140,28 @@ export default function EmailIntegrationPage({ embedded = false }: { embedded?: 
     
     const updatedSenders = settings.senders.filter((_, i) => i !== deletingSenderIndex);
     updateSendersMutation.mutate(updatedSenders);
+  };
+
+  const handleOpenAddDialog = () => {
+    setAddForm({ fromEmail: "", fromName: "", replyToEmail: "" });
+    setAddDialogOpen(true);
+  };
+
+  const handleAddSender = () => {
+    if (!addForm.fromEmail || !addForm.fromName) return;
+    
+    const newSender: EmailSender = {
+      fromEmail: `${addForm.fromEmail}@${settings?.sendingDomain}`,
+      fromName: addForm.fromName,
+      replyToEmail: addForm.replyToEmail || undefined,
+    };
+    const updatedSenders = [...(settings?.senders || []), newSender];
+    updateSendersMutation.mutate(updatedSenders, {
+      onSuccess: () => {
+        setAddDialogOpen(false);
+        setAddForm({ fromEmail: "", fromName: "", replyToEmail: "" });
+      }
+    });
   };
 
   if (isLoading) {
@@ -224,6 +249,92 @@ export default function EmailIntegrationPage({ embedded = false }: { embedded?: 
         </DialogContent>
       </Dialog>
 
+      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle>Add new sender</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>"From" email address *</Label>
+              <div className="flex">
+                <Input
+                  value={addForm.fromEmail}
+                  onChange={(e) => setAddForm({ ...addForm, fromEmail: e.target.value })}
+                  placeholder="example"
+                  className="rounded-r-none"
+                  data-testid="input-add-from-email"
+                />
+                <div className="flex items-center px-3 bg-slate-100 dark:bg-slate-800 border border-l-0 border-input rounded-r-md text-sm text-muted-foreground">
+                  @{settings?.sendingDomain}
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                The recipients will see this email <span className="text-blue-600">@{settings?.sendingDomain}</span> as the "From" address.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>"From" name *</Label>
+              <Input
+                value={addForm.fromName}
+                onChange={(e) => setAddForm({ ...addForm, fromName: e.target.value })}
+                placeholder="Organization or person name"
+                data-testid="input-add-from-name"
+              />
+              <p className="text-xs text-muted-foreground">
+                This name will be displayed as the sender in email clients.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>"Reply-to" email</Label>
+              <Input
+                value={addForm.replyToEmail}
+                onChange={(e) => setAddForm({ ...addForm, replyToEmail: e.target.value })}
+                placeholder="example@company.com"
+                data-testid="input-add-reply-to"
+              />
+              <p className="text-xs text-muted-foreground">
+                Email where replies will be sent. If left blank, replies will go to the sender's email address.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Sender preview</Label>
+              <div className="flex items-center gap-3 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
+                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900 flex items-center justify-center text-blue-600 dark:text-blue-400 font-semibold">
+                  <Mail className="w-5 h-5" />
+                </div>
+                <div>
+                  <p className="font-medium text-sm">
+                    @{settings?.sendingDomain}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    Reply to:
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="flex justify-end gap-3">
+            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAddSender}
+              disabled={updateSendersMutation.isPending || !addForm.fromEmail || !addForm.fromName}
+              className="bg-blue-600 hover:bg-blue-700"
+              data-testid="button-add-sender-confirm"
+            >
+              {updateSendersMutation.isPending && <LoadingSpinner fullScreen={false} />}
+              Add sender
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -302,7 +413,7 @@ export default function EmailIntegrationPage({ embedded = false }: { embedded?: 
                 <Button 
                   variant="outline" 
                   size="sm"
-                  onClick={() => setLocation("/settings/email/flow")}
+                  onClick={handleOpenAddDialog}
                   data-testid="button-add-sender"
                 >
                   <Plus className="w-4 h-4 mr-1" />
@@ -367,7 +478,7 @@ export default function EmailIntegrationPage({ embedded = false }: { embedded?: 
                 <Button 
                   variant="link" 
                   className="mt-2"
-                  onClick={() => setLocation("/settings/email/flow")}
+                  onClick={handleOpenAddDialog}
                 >
                   Add your first sender
                 </Button>
