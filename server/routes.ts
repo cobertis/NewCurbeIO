@@ -31070,52 +31070,63 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       console.log("[10DLC Campaign Numbers] Fetching for campaign:", id, "tcrCampaignId:", tcrCampaignId, "managedAccount:", managedAccountId);
       
+      // Helper function to fetch all pages
+      async function fetchAllPages(baseUrl: string): Promise<any[]> {
+        const allRecords: any[] = [];
+        let pageNumber = 1;
+        let hasMore = true;
+        
+        while (hasMore) {
+          const url = `${baseUrl}&page[number]=${pageNumber}&page[size]=100`;
+          console.log("[10DLC Campaign Numbers] Fetching page", pageNumber);
+          
+          const response = await fetch(url, {
+            method: "GET",
+            headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
+          });
+          
+          const result = await response.json();
+          const records = result.records || result.data || [];
+          console.log("[10DLC Campaign Numbers] Page", pageNumber, "returned", records.length, "records");
+          
+          if (records.length === 0) {
+            hasMore = false;
+          } else {
+            allRecords.push(...records);
+            pageNumber++;
+            // Safety limit to prevent infinite loops
+            if (pageNumber > 50) hasMore = false;
+          }
+        }
+        
+        return allRecords;
+      }
+      
       // Strategy 1: Try with campaignId filter first
-      let url = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[telnyx_campaign_id]=${encodeURIComponent(id)}&page[size]=250`;
-      console.log("[10DLC Campaign Numbers] Trying URL:", url);
+      let baseUrl = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[telnyx_campaign_id]=${encodeURIComponent(id)}`;
+      console.log("[10DLC Campaign Numbers] Trying strategy 1 with telnyx_campaign_id filter");
       
-      let response = await fetch(url, {
-        method: "GET",
-        headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
-      });
-      
-      let result = await response.json();
-      console.log("[10DLC Campaign Numbers] Response status:", response.status, "Raw:", JSON.stringify(result).substring(0, 500));
-      
-      let numbers = result.records || [];
+      let numbers = await fetchAllPages(baseUrl);
+      console.log("[10DLC Campaign Numbers] Strategy 1 result:", numbers.length, "numbers");
       
       // Strategy 2: If no results and we have tcrCampaignId, try filtering by tcrCampaignId
       if (numbers.length === 0 && tcrCampaignId) {
-        url = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[tcr_campaign_id]=${encodeURIComponent(String(tcrCampaignId))}&page[size]=250`;
-        console.log("[10DLC Campaign Numbers] No results, trying tcrCampaignId filter:", url);
+        baseUrl = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[tcr_campaign_id]=${encodeURIComponent(String(tcrCampaignId))}`;
+        console.log("[10DLC Campaign Numbers] Trying strategy 2 with tcr_campaign_id filter");
         
-        response = await fetch(url, {
-          method: "GET",
-          headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
-        });
-        
-        result = await response.json();
-        console.log("[10DLC Campaign Numbers] TCR filter response:", response.status, JSON.stringify(result).substring(0, 500));
-        numbers = result.records || [];
+        numbers = await fetchAllPages(baseUrl);
+        console.log("[10DLC Campaign Numbers] Strategy 2 result:", numbers.length, "numbers");
       }
       
       // Strategy 3: If still no results, get ALL and filter locally
       if (numbers.length === 0) {
-        url = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?page[size]=250`;
-        console.log("[10DLC Campaign Numbers] Trying get ALL numbers (no filter)");
+        baseUrl = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?`;
+        console.log("[10DLC Campaign Numbers] Trying strategy 3 - get ALL and filter locally");
         
-        response = await fetch(url, {
-          method: "GET",
-          headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
-        });
-        
-        result = await response.json();
-        const allNumbers = result.records || [];
+        const allNumbers = await fetchAllPages(baseUrl);
         console.log("[10DLC Campaign Numbers] Got", allNumbers.length, "total numbers");
         
         if (allNumbers.length > 0) {
-          console.log("[10DLC Campaign Numbers] Sample:", JSON.stringify(allNumbers[0], null, 2));
-          
           // Filter locally by any matching ID
           numbers = allNumbers.filter((num: any) => {
             return num.campaignId === id || 
