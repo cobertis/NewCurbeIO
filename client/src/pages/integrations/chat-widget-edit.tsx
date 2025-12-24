@@ -3268,43 +3268,52 @@ export default function ChatWidgetEditPage() {
                   </div>
                 ) : expandedChannel === "liveChat" ? (
                   <div className="relative">
-                    <div className="rounded-xl overflow-hidden shadow-lg">
-                      <div className="p-4 text-white" style={{ background: currentBackground }}>
-                        <div className="flex items-center gap-2 mb-3">
-                          <ChevronLeft className="h-5 w-5" />
-                          <MessageCircle className="h-5 w-5" />
-                          <span className="font-medium">Live Chat</span>
-                        </div>
+                    <div className="rounded-xl overflow-hidden shadow-lg" style={{ background: currentBackground }}>
+                      <div className="p-6 text-white">
+                        {widget.branding?.customLogo && (
+                          <img 
+                            src={widget.branding.customLogo} 
+                            alt="Logo" 
+                            className="h-10 w-auto mb-4 rounded"
+                          />
+                        )}
+                        <h4 className="text-2xl font-bold">{widget.welcomeTitle}</h4>
+                        <p className="text-base opacity-90 mt-3">{widget.welcomeMessage}</p>
                       </div>
+                      
                       <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
-                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                          {widget.liveChatSettings?.preChatForm?.title || "Start a conversation"}
-                        </h4>
-                        <div className="space-y-3">
-                          {widget.liveChatSettings?.preChatForm?.nameFieldEnabled && (
-                            <div>
-                              <Label className="text-xs text-slate-500">
-                                Name {widget.liveChatSettings?.preChatForm?.nameFieldEnabled && widget.liveChatSettings?.preChatForm?.nameFieldRequired && <span className="text-red-500">*</span>}
-                              </Label>
-                              <Input placeholder="Your name" disabled className="mt-1" />
-                            </div>
-                          )}
-                          {widget.liveChatSettings?.preChatForm?.emailFieldEnabled && (
-                            <div>
-                              <Label className="text-xs text-slate-500">
-                                Email {widget.liveChatSettings?.preChatForm?.emailFieldEnabled && widget.liveChatSettings?.preChatForm?.emailFieldRequired && <span className="text-red-500">*</span>}
-                              </Label>
-                              <Input placeholder="your@email.com" disabled className="mt-1" />
-                            </div>
-                          )}
-                          <div>
-                            <Label className="text-xs text-slate-500">{widget.liveChatSettings?.welcomeScreen?.fieldLabel || "Message"}</Label>
-                            <Textarea placeholder="Type your message..." disabled className="mt-1" rows={3} />
+                        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-700">
+                          <h5 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-3">
+                            {widget.liveChatSettings?.preChatForm?.title || "Chat with our agent"}
+                          </h5>
+                          <div className="space-y-3">
+                            {widget.liveChatSettings?.preChatForm?.nameFieldEnabled && (
+                              <div>
+                                <Label className="text-xs text-slate-500">
+                                  Name {widget.liveChatSettings?.preChatForm?.nameFieldRequired && <span className="text-red-500">*</span>}
+                                </Label>
+                                <Input placeholder="Enter your full name" disabled className="mt-1" />
+                              </div>
+                            )}
+                            {widget.liveChatSettings?.preChatForm?.emailFieldEnabled && (
+                              <div>
+                                <Label className="text-xs text-slate-500">
+                                  Email {widget.liveChatSettings?.preChatForm?.emailFieldRequired && <span className="text-red-500">*</span>}
+                                </Label>
+                                <Input placeholder="Enter your email address" disabled className="mt-1" />
+                              </div>
+                            )}
                           </div>
+                          <Button className="w-full mt-3" style={{ background: currentBackground }}>
+                            {widget.liveChatSettings?.preChatForm?.buttonLabel || "Start chat"}
+                          </Button>
                         </div>
-                        <Button className="w-full" style={{ background: currentBackground }}>
-                          {widget.liveChatSettings?.preChatForm?.buttonLabel || widget.liveChatSettings?.welcomeScreen?.buttonLabel || "Start chat"}
-                        </Button>
+                        
+                        <button className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700">
+                          <ChevronLeft className="h-4 w-4" />
+                          Select another channel
+                        </button>
+                        
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
                             Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
