@@ -15,7 +15,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { cn } from "@/lib/utils";
 import { SiWhatsapp, SiInstagram, SiFacebook, SiTiktok, SiTelegram } from "react-icons/si";
-import { CheckCircle, XCircle, Clock, AlertTriangle, Plus, Trash2, RefreshCw, ExternalLink, Settings, HelpCircle, ChevronDown, Info, User as UserIcon, Users, Phone, Mail, Building, CreditCard, Plug, MessageSquare, Zap } from "lucide-react";
+import { CheckCircle, XCircle, Clock, AlertTriangle, Plus, Trash2, RefreshCw, ExternalLink, Settings, HelpCircle, ChevronDown, Info, User as UserIcon, Users, Phone, Mail, Building, CreditCard, Plug, MessageSquare, Zap, Shield, Bell, UsersRound } from "lucide-react";
 import type { ChannelConnection, User } from "@shared/schema";
 import Billing from "@/pages/billing";
 import SettingsPage from "@/pages/settings";
@@ -1676,35 +1676,48 @@ function ComingSoonCard({
 
 export default function IntegrationsPage() {
   const [, setLocation] = useLocation();
-  const [activeView, setActiveView] = useState<"integrations" | "billing" | "my-account">("integrations");
+  const [activeView, setActiveView] = useState<"integrations" | "billing" | "profile" | "security" | "notifications" | "company" | "team" | "sms-voice" | "email" | "automations">("profile");
 
   const menuItems = {
+    account: [
+      { label: "Profile", href: "#view-profile", icon: UserIcon, active: activeView === "profile" },
+      { label: "Security", href: "#view-security", icon: Shield, active: activeView === "security" },
+      { label: "Notifications", href: "#view-notifications", icon: Bell, active: activeView === "notifications" },
+    ],
+    workspace: [
+      { label: "Company", href: "#view-company", icon: Building, active: activeView === "company" },
+      { label: "Team", href: "#view-team", icon: UsersRound, active: activeView === "team" },
+      { label: "Billing", href: "#view-billing", icon: CreditCard, active: activeView === "billing" },
+    ],
     channels: [
-      { label: "SMS & Voice", href: "/settings/sms-voice", icon: Phone, active: false },
-      { label: "Email", href: "/settings/email", icon: Mail, active: false },
+      { label: "SMS \& Voice", href: "#view-sms-voice", icon: Phone, active: activeView === "sms-voice" },
+      { label: "Email", href: "#view-email", icon: Mail, active: activeView === "email" },
       { label: "WhatsApp", href: "#whatsapp", icon: SiWhatsapp, active: false },
       { label: "Facebook", href: "#facebook", icon: SiFacebook, active: false },
       { label: "Instagram", href: "#instagram", icon: SiInstagram, active: false },
+      { label: "Telegram", href: "#telegram", icon: SiTelegram, active: false },
     ],
     features: [
-      { label: "API & Integrations", href: "#view-integrations", icon: Plug, active: activeView === "integrations" },
-      { label: "Contacts", href: "/contacts", icon: Users, active: false },
-      { label: "Auto-responders", href: "/campaigns", icon: Zap, active: false },
-    ],
-    administration: [
-      { label: "Workspace", href: "/settings/company", icon: Building, active: false },
-      { label: "Billing", href: "#view-billing", icon: CreditCard, active: activeView === "billing" },
-      { label: "My account", href: "#view-my-account", icon: UserIcon, active: activeView === "my-account" },
+      { label: "Integrations", href: "#view-integrations", icon: Plug, active: activeView === "integrations" },
+      { label: "Automations", href: "#view-automations", icon: Zap, active: activeView === "automations" },
     ],
   };
-
   const handleNavigation = (href: string) => {
-    if (href === "#view-billing") {
-      setActiveView("billing");
-    } else if (href === "#view-my-account") {
-      setActiveView("my-account");
-    } else if (href === "#view-integrations") {
-      setActiveView("integrations");
+    const viewMap: Record<string, typeof activeView> = {
+      "#view-profile": "profile",
+      "#view-security": "security",
+      "#view-notifications": "notifications",
+      "#view-company": "company",
+      "#view-team": "team",
+      "#view-billing": "billing",
+      "#view-sms-voice": "sms-voice",
+      "#view-email": "email",
+      "#view-integrations": "integrations",
+      "#view-automations": "automations",
+    };
+    
+    if (viewMap[href]) {
+      setActiveView(viewMap[href]);
     } else if (href.startsWith("#")) {
       setActiveView("integrations");
       const cardId = href.substring(1);
@@ -1733,6 +1746,42 @@ export default function IntegrationsPage() {
           </div>
 
           <div className="py-2">
+            <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Account</p>
+            {menuItems.account.map((item) => (
+              <button
+                key={item.label}
+                onClick={() => handleNavigation(item.href)}
+                data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
+                  item.active && "border-l-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="py-2">
+            <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Workspace</p>
+            {menuItems.workspace.map((item) => (
+              <button
+                key={item.label}
+                onClick={() => handleNavigation(item.href)}
+                data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
+                className={cn(
+                  "w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
+                  item.active && "border-l-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
+                )}
+              >
+                <item.icon className="h-4 w-4" />
+                {item.label}
+              </button>
+            ))}
+          </div>
+
+          <div className="py-2">
             <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Channels</p>
             {menuItems.channels.map((item) => (
               <button
@@ -1750,27 +1799,9 @@ export default function IntegrationsPage() {
             ))}
           </div>
 
-          <div className="py-2">
+          <div className="py-2 pb-3">
             <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Features</p>
             {menuItems.features.map((item) => (
-              <button
-                key={item.label}
-                onClick={() => handleNavigation(item.href)}
-                data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
-                className={cn(
-                  "w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
-                  item.active && "border-l-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-                )}
-              >
-                <item.icon className="h-4 w-4" />
-                {item.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="py-2 pb-3">
-            <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Administration</p>
-            {menuItems.administration.map((item) => (
               <button
                 key={item.label}
                 onClick={() => handleNavigation(item.href)}
@@ -1789,11 +1820,69 @@ export default function IntegrationsPage() {
       </div>
 
       <div className="flex-1 min-w-0">
-        {activeView === "billing" ? (
-          <Billing />
-        ) : activeView === "my-account" ? (
-          <SettingsPage />
-        ) : (
+        {activeView === "profile" && <SettingsPage />}
+        {activeView === "security" && (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-semibold">Security</h1>
+              <p className="text-muted-foreground">Manage your account security settings.</p>
+            </div>
+            <SettingsPage />
+          </div>
+        )}
+        {activeView === "notifications" && (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-semibold">Notifications</h1>
+              <p className="text-muted-foreground">Configure your notification preferences.</p>
+            </div>
+            <SettingsPage />
+          </div>
+        )}
+        {activeView === "company" && (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-semibold">Company Settings</h1>
+              <p className="text-muted-foreground">Manage your workspace and company information.</p>
+            </div>
+            <SettingsPage />
+          </div>
+        )}
+        {activeView === "team" && (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-semibold">Team Management</h1>
+              <p className="text-muted-foreground">Manage team members and permissions.</p>
+            </div>
+            <SettingsPage />
+          </div>
+        )}
+        {activeView === "billing" && <Billing />}
+        {activeView === "sms-voice" && (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-semibold">SMS & Voice</h1>
+              <p className="text-muted-foreground">Configure your phone numbers and voice settings.</p>
+            </div>
+          </div>
+        )}
+        {activeView === "email" && (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-semibold">Email Settings</h1>
+              <p className="text-muted-foreground">Configure your email sending domains and settings.</p>
+            </div>
+          </div>
+        )}
+        {activeView === "automations" && (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-semibold">Automations</h1>
+              <p className="text-muted-foreground">Configure automated workflows and responses.</p>
+            </div>
+          </div>
+        )}
+        {activeView === "integrations" && (
           <div className="space-y-6">
             <div>
               <h1 className="text-2xl font-semibold">Integrations</h1>
