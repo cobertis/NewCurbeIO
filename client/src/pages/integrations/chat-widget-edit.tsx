@@ -2755,7 +2755,13 @@ export default function ChatWidgetEditPage() {
     });
   };
 
-  const orderedChannels = (widget.channelOrder || channelConfigs.map(c => c.id))
+  // Build ordered channels: start with saved order, then append any new channels not in the saved order
+  const savedOrder = widget.channelOrder || [];
+  const allChannelIds = channelConfigs.map(c => c.id);
+  const missingChannels = allChannelIds.filter(id => !savedOrder.includes(id));
+  const fullChannelOrder = [...savedOrder, ...missingChannels];
+  
+  const orderedChannels = fullChannelOrder
     .map(id => channelConfigs.find(c => c.id === id))
     .filter((c): c is ChannelConfig => c !== undefined);
 
