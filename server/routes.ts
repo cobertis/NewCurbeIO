@@ -28461,7 +28461,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           selectedCountries: targeting.selectedCountries || [],
           schedule: targeting.schedule || "always",
           timezone: targeting.timezone || "(UTC -05:00): America/New_York",
-          deviceType: widgetDeviceType
+          deviceType: widgetDeviceType,
+          pageUrls: targeting.pageUrls || "all",
+          urlRules: targeting.urlRules || []
         },
         scheduleStatus: {
           isOnline: scheduleStatus.isOnline,

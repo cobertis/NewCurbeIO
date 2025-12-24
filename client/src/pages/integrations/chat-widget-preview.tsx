@@ -2,7 +2,8 @@ import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, X, Monitor, Smartphone } from "lucide-react";
+import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, X, Monitor, Smartphone, Globe } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { SiWhatsapp, SiFacebook, SiInstagram, SiTelegram } from "react-icons/si";
@@ -67,6 +68,8 @@ export default function ChatWidgetPreviewPage() {
   const [targetingChecked, setTargetingChecked] = useState(false);
   const [scheduleStatus, setScheduleStatus] = useState<{ isOnline: boolean; nextAvailable: string | null }>({ isOnline: true, nextAvailable: null });
   const [deviceInfo, setDeviceInfo] = useState<{ visitorDeviceType: string; widgetDeviceType: string; matches: boolean } | null>(null);
+  const [pageUrlInfo, setPageUrlInfo] = useState<{ pageUrls: string; urlRules: Array<{ condition: string; value: string }> }>({ pageUrls: 'all', urlRules: [] });
+  const [testUrl, setTestUrl] = useState<string>('https://example.com/contact');
 
   const { data: widgetData, isLoading } = useQuery<{ widget: any }>({
     queryKey: [`/api/integrations/chat-widget/${widgetId}`],
@@ -84,6 +87,10 @@ export default function ChatWidgetPreviewPage() {
         setVisitorCountry(data.visitorCountry || null);
         setScheduleStatus(data.scheduleStatus || { isOnline: true, nextAvailable: null });
         setDeviceInfo(data.deviceInfo || null);
+        setPageUrlInfo({
+          pageUrls: data.targeting?.pageUrls || 'all',
+          urlRules: data.targeting?.urlRules || []
+        });
         setTargetingChecked(true);
       })
       .catch(() => {
@@ -305,6 +312,99 @@ export default function ChatWidgetPreviewPage() {
             You are viewing from a {deviceLabel.toLowerCase()} device
           </p>
         )}
+      </div>
+    );
+  };
+
+  // Evaluate if a URL matches the configured rules
+  const evaluateUrlMatch = (url: string): boolean => {
+    if (pageUrlInfo.pageUrls === 'all') return true;
+    if (!pageUrlInfo.urlRules || pageUrlInfo.urlRules.length === 0) return true;
+    
+    const matchesAnyRule = pageUrlInfo.urlRules.some(rule => {
+      if (!rule.value) return false;
+      switch (rule.condition) {
+        case 'contains':
+          return url.toLowerCase().includes(rule.value.toLowerCase());
+        case 'equals':
+          return url.toLowerCase() === rule.value.toLowerCase();
+        case 'starts_with':
+          return url.toLowerCase().startsWith(rule.value.toLowerCase());
+        case 'ends_with':
+          return url.toLowerCase().endsWith(rule.value.toLowerCase());
+        default:
+          return url.toLowerCase().includes(rule.value.toLowerCase());
+      }
+    });
+    
+    // For 'show-specific': URL must match a rule to show widget
+    // For 'hide-specific': URL must NOT match any rule to show widget
+    return pageUrlInfo.pageUrls === 'show-specific' ? matchesAnyRule : !matchesAnyRule;
+  };
+
+  // Show page URL status banner
+  const getPageUrlBanner = () => {
+    const urlMatches = evaluateUrlMatch(testUrl);
+    const isAllPages = pageUrlInfo.pageUrls === 'all';
+    
+    const getModeLabel = () => {
+      switch (pageUrlInfo.pageUrls) {
+        case 'show-specific':
+          return 'Show on specific pages only';
+        case 'hide-specific':
+          return 'Hide on specific pages';
+        default:
+          return 'Show on all pages';
+      }
+    };
+
+    if (isAllPages) {
+      return (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+          <div className="flex items-center gap-2">
+            <Globe className="h-4 w-4 text-blue-500" />
+            <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+              Visible on all pages
+            </p>
+          </div>
+          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+            Widget will display on any page of your domain
+          </p>
+        </div>
+      );
+    }
+
+    const statusColor = urlMatches 
+      ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+      : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800";
+    const textColor = urlMatches 
+      ? "text-green-800 dark:text-green-200"
+      : "text-red-800 dark:text-red-200";
+    const subTextColor = urlMatches 
+      ? "text-green-600 dark:text-green-400"
+      : "text-red-600 dark:text-red-400";
+    const iconColor = urlMatches ? "text-green-500" : "text-red-500";
+
+    return (
+      <div className={`${statusColor} border rounded-lg p-3 mb-4`}>
+        <div className="flex items-center gap-2">
+          <Globe className={`h-4 w-4 ${iconColor}`} />
+          <p className={`text-sm font-medium ${textColor}`}>
+            {urlMatches ? 'Visible on this page' : 'Hidden on this page'}
+          </p>
+        </div>
+        <p className={`text-xs ${subTextColor} mt-1`}>
+          {getModeLabel()} - {pageUrlInfo.urlRules.filter(r => r.value).length} rule(s) configured
+        </p>
+        <div className="mt-2">
+          <Input
+            value={testUrl}
+            onChange={(e) => setTestUrl(e.target.value)}
+            placeholder="Test with a URL..."
+            className="text-xs h-8"
+            data-testid="input-test-url"
+          />
+        </div>
       </div>
     );
   };
