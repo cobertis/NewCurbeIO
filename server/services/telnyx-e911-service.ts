@@ -1428,3 +1428,338 @@ export async function updateCredentialConnectionForWebRTC(
     return { success: false, error: error instanceof Error ? error.message : "Failed to update connection" };
   }
 }
+
+// =====================================================
+// E911 EMERGENCY ADDRESS MANAGEMENT
+// =====================================================
+
+import { telnyxE911Addresses } from "@shared/schema";
+
+export interface CreateE911AddressInput {
+  streetAddress: string;
+  extendedAddress?: string;
+  locality: string;
+  administrativeArea: string;
+  postalCode: string;
+  countryCode?: string;
+  callerName: string;
+}
+
+export interface E911AddressResult {
+  success: boolean;
+  addressId?: string;
+  telnyxAddressId?: string;
+  isVerified?: boolean;
+  error?: string;
+}
+
+/**
+ * Create an E911 emergency address in Telnyx
+ */
+export async function createE911Address(
+  companyId: string,
+  input: CreateE911AddressInput
+): Promise<E911AddressResult> {
+  console.log(`[E911 Address] Creating emergency address for company ${companyId}...`);
+  
+  try {
+    const config = await getManagedAccountConfig(companyId);
+    if (!config) {
+      return { success: false, error: "Company has no managed account configured" };
+    }
+    
+    const response = await fetch(`${TELNYX_API_BASE}/addresses`, {
+      method: "POST",
+      headers: buildHeaders(config),
+      body: JSON.stringify({
+        first_name: input.callerName.split(' ')[0] || input.callerName,
+        last_name: input.callerName.split(' ').slice(1).join(' ') || ".",
+        business_name: input.callerName,
+        street_address: input.streetAddress,
+        extended_address: input.extendedAddress || "",
+        locality: input.locality,
+        administrative_area: input.administrativeArea,
+        postal_code: input.postalCode,
+        country_code: input.countryCode || "US",
+        address_book: true,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMsg = errorData.errors?.[0]?.detail || `Failed to create address: ${response.status}`;
+      console.error(`[E911 Address] Create failed: ${response.status} - ${JSON.stringify(errorData)}`);
+      return { success: false, error: errorMsg };
+    }
+
+    const data = await response.json();
+    const telnyxAddressId = data.data?.id;
+    const isVerified = data.data?.address_book || false;
+
+    console.log(`[E911 Address] Created Telnyx address: ${telnyxAddressId}`);
+
+    // Save to our database
+    const [saved] = await db.insert(telnyxE911Addresses).values({
+      companyId,
+      telnyxAddressId,
+      streetAddress: input.streetAddress,
+      extendedAddress: input.extendedAddress || null,
+      locality: input.locality,
+      administrativeArea: input.administrativeArea,
+      postalCode: input.postalCode,
+      countryCode: input.countryCode || "US",
+      callerName: input.callerName,
+      isVerified,
+    }).returning();
+
+    console.log(`[E911 Address] Saved to database: ${saved.id}`);
+
+    return { 
+      success: true, 
+      addressId: saved.id, 
+      telnyxAddressId,
+      isVerified,
+    };
+  } catch (error) {
+    console.error("[E911 Address] Create error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to create address" };
+  }
+}
+
+/**
+ * List all E911 addresses for a company
+ */
+export async function listE911Addresses(companyId: string) {
+  const addresses = await db
+    .select()
+    .from(telnyxE911Addresses)
+    .where(eq(telnyxE911Addresses.companyId, companyId));
+  
+  return addresses;
+}
+
+/**
+ * Get a single E911 address
+ */
+export async function getE911Address(addressId: string) {
+  const [address] = await db
+    .select()
+    .from(telnyxE911Addresses)
+    .where(eq(telnyxE911Addresses.id, addressId));
+  
+  return address;
+}
+
+/**
+ * Associate an E911 address with a phone number
+ */
+export async function assignE911AddressToNumber(
+  companyId: string,
+  phoneNumberId: string,
+  addressId: string
+): Promise<{ success: boolean; error?: string }> {
+  console.log(`[E911] Assigning address ${addressId} to phone ${phoneNumberId}...`);
+  
+  try {
+    const config = await getManagedAccountConfig(companyId);
+    if (!config) {
+      return { success: false, error: "Company has no managed account configured" };
+    }
+    
+    // Get the E911 address from our database
+    const [e911Address] = await db
+      .select()
+      .from(telnyxE911Addresses)
+      .where(and(
+        eq(telnyxE911Addresses.id, addressId),
+        eq(telnyxE911Addresses.companyId, companyId)
+      ));
+    
+    if (!e911Address) {
+      return { success: false, error: "E911 address not found" };
+    }
+
+    // Get the phone number from our database to find the Telnyx ID
+    const [phoneRecord] = await db
+      .select()
+      .from(telnyxPhoneNumbers)
+      .where(and(
+        eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId),
+        eq(telnyxPhoneNumbers.companyId, companyId)
+      ));
+    
+    if (!phoneRecord) {
+      return { success: false, error: "Phone number not found" };
+    }
+
+    // Step 1: Enable E911 on the phone number
+    const enableResponse = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+      method: "PATCH",
+      headers: buildHeaders(config),
+      body: JSON.stringify({
+        emergency_enabled: true,
+        emergency_address_id: e911Address.telnyxAddressId,
+      }),
+    });
+
+    if (!enableResponse.ok) {
+      const errorData = await enableResponse.json().catch(() => ({}));
+      const errorMsg = errorData.errors?.[0]?.detail || `Failed to enable E911: ${enableResponse.status}`;
+      console.error(`[E911] Enable failed: ${enableResponse.status} - ${JSON.stringify(errorData)}`);
+      return { success: false, error: errorMsg };
+    }
+
+    console.log(`[E911] E911 enabled on phone number ${phoneNumberId}`);
+
+    // Update our database
+    await db.update(telnyxPhoneNumbers)
+      .set({
+        e911Enabled: true,
+        e911AddressId: e911Address.telnyxAddressId,
+        updatedAt: new Date(),
+      })
+      .where(eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId));
+
+    console.log(`[E911] Database updated for phone ${phoneNumberId}`);
+    
+    return { success: true };
+  } catch (error) {
+    console.error("[E911] Assign address error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to assign address" };
+  }
+}
+
+/**
+ * Remove E911 from a phone number
+ */
+export async function removeE911FromNumber(
+  companyId: string,
+  phoneNumberId: string
+): Promise<{ success: boolean; error?: string }> {
+  console.log(`[E911] Removing E911 from phone ${phoneNumberId}...`);
+  
+  try {
+    const config = await getManagedAccountConfig(companyId);
+    if (!config) {
+      return { success: false, error: "Company has no managed account configured" };
+    }
+
+    const response = await fetch(`${TELNYX_API_BASE}/phone_numbers/${phoneNumberId}`, {
+      method: "PATCH",
+      headers: buildHeaders(config),
+      body: JSON.stringify({
+        emergency_enabled: false,
+        emergency_address_id: null,
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMsg = errorData.errors?.[0]?.detail || `Failed to disable E911: ${response.status}`;
+      console.error(`[E911] Disable failed: ${response.status} - ${JSON.stringify(errorData)}`);
+      return { success: false, error: errorMsg };
+    }
+
+    // Update our database
+    await db.update(telnyxPhoneNumbers)
+      .set({
+        e911Enabled: false,
+        e911AddressId: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(telnyxPhoneNumbers.telnyxPhoneNumberId, phoneNumberId));
+
+    console.log(`[E911] E911 removed from phone ${phoneNumberId}`);
+    
+    return { success: true };
+  } catch (error) {
+    console.error("[E911] Remove E911 error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to remove E911" };
+  }
+}
+
+/**
+ * Delete an E911 address
+ */
+export async function deleteE911Address(
+  companyId: string,
+  addressId: string
+): Promise<{ success: boolean; error?: string }> {
+  console.log(`[E911] Deleting address ${addressId}...`);
+  
+  try {
+    const config = await getManagedAccountConfig(companyId);
+    if (!config) {
+      return { success: false, error: "Company has no managed account configured" };
+    }
+    
+    // Get the address
+    const [e911Address] = await db
+      .select()
+      .from(telnyxE911Addresses)
+      .where(and(
+        eq(telnyxE911Addresses.id, addressId),
+        eq(telnyxE911Addresses.companyId, companyId)
+      ));
+    
+    if (!e911Address) {
+      return { success: false, error: "E911 address not found" };
+    }
+
+    // Check if any phone numbers are using this address
+    const [phoneUsingAddress] = await db
+      .select()
+      .from(telnyxPhoneNumbers)
+      .where(and(
+        eq(telnyxPhoneNumbers.companyId, companyId),
+        eq(telnyxPhoneNumbers.e911AddressId, e911Address.telnyxAddressId)
+      ));
+    
+    if (phoneUsingAddress) {
+      return { success: false, error: "Cannot delete address: it is assigned to a phone number" };
+    }
+
+    // Delete from Telnyx
+    const response = await fetch(`${TELNYX_API_BASE}/addresses/${e911Address.telnyxAddressId}`, {
+      method: "DELETE",
+      headers: buildHeaders(config),
+    });
+
+    if (!response.ok && response.status !== 404) {
+      const errorData = await response.json().catch(() => ({}));
+      const errorMsg = errorData.errors?.[0]?.detail || `Failed to delete address: ${response.status}`;
+      console.error(`[E911] Delete failed: ${response.status} - ${JSON.stringify(errorData)}`);
+      return { success: false, error: errorMsg };
+    }
+
+    // Delete from our database
+    await db.delete(telnyxE911Addresses)
+      .where(eq(telnyxE911Addresses.id, addressId));
+
+    console.log(`[E911] Address ${addressId} deleted`);
+    
+    return { success: true };
+  } catch (error) {
+    console.error("[E911] Delete address error:", error);
+    return { success: false, error: error instanceof Error ? error.message : "Failed to delete address" };
+  }
+}
+
+/**
+ * Get phone numbers with their E911 status
+ */
+export async function getPhoneNumbersWithE911Status(companyId: string) {
+  const numbers = await db
+    .select({
+      id: telnyxPhoneNumbers.id,
+      telnyxPhoneNumberId: telnyxPhoneNumbers.telnyxPhoneNumberId,
+      phoneNumber: telnyxPhoneNumbers.phoneNumber,
+      friendlyName: telnyxPhoneNumbers.friendlyName,
+      e911Enabled: telnyxPhoneNumbers.e911Enabled,
+      e911AddressId: telnyxPhoneNumbers.e911AddressId,
+    })
+    .from(telnyxPhoneNumbers)
+    .where(eq(telnyxPhoneNumbers.companyId, companyId));
+  
+  return numbers;
+}
