@@ -83,8 +83,9 @@ export default function ChatWidgetPreviewPage() {
       whatsapp: false,
       facebook: false,
       instagram: false,
+      telegram: false,
     },
-    channelOrder: ["liveChat", "email", "sms", "phone", "whatsapp", "facebook", "instagram"],
+    channelOrder: ["liveChat", "email", "sms", "phone", "whatsapp", "facebook", "instagram", "telegram"],
     smsSettings: {
       welcomeScreen: { channelName: "Text us" },
       messageScreen: { title: "Send us a text message", description: "Click the button below to send us an SMS.", buttonLabel: "Send SMS", showQRCode: true },
@@ -273,7 +274,7 @@ export default function ChatWidgetPreviewPage() {
                 </div>
               </div>
               <p className="text-xs text-slate-400 text-center">
-                {activeChannel === "whatsapp" || activeChannel === "facebook" || activeChannel === "instagram" ? "Scan QR code to open a chat" : activeChannel === "phone" ? "Scan QR code to call" : "Scan QR code to send a text"}
+                {activeChannel === "whatsapp" || activeChannel === "facebook" || activeChannel === "instagram" || activeChannel === "telegram" ? "Scan QR code to open a chat" : activeChannel === "phone" ? "Scan QR code to call" : "Scan QR code to send a text"}
               </p>
             </>
           )}
@@ -459,7 +460,7 @@ export default function ChatWidgetPreviewPage() {
                   </div>
                 )}
                 
-                {enabledChannels.filter(id => id !== "liveChat").map((channelId: string) => {
+                {enabledChannels.filter((id: string) => id !== "liveChat").map((channelId: string) => {
                   const channel = channelIcons[channelId];
                   if (!channel) return null;
                   

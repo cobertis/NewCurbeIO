@@ -2538,11 +2538,19 @@ export default function ChatWidgetEditPage() {
     const { active, over } = event;
     
     if (over && active.id !== over.id) {
-      const currentOrder = widget.channelOrder || channelConfigs.map(c => c.id);
+      // Use all channel IDs to ensure new channels (like Telegram) are always included
+      const allChannelIds = channelConfigs.map(c => c.id);
+      const savedOrder = widget.channelOrder || [];
+      const missingChannels = allChannelIds.filter(id => !savedOrder.includes(id));
+      const currentOrder = [...savedOrder, ...missingChannels];
+      
       const oldIndex = currentOrder.indexOf(active.id as string);
       const newIndex = currentOrder.indexOf(over.id as string);
-      const newOrder = arrayMove(currentOrder, oldIndex, newIndex);
-      updateLocalWidget({ channelOrder: newOrder });
+      
+      if (oldIndex !== -1 && newIndex !== -1) {
+        const newOrder = arrayMove(currentOrder, oldIndex, newIndex);
+        updateLocalWidget({ channelOrder: newOrder });
+      }
     }
   };
 
