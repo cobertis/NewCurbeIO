@@ -138,6 +138,21 @@ interface WidgetConfig {
       }>;
     };
   };
+  whatsappSettings: {
+    welcomeScreen: {
+      channelName: string;
+    };
+    messageScreen: {
+      showQRCode: boolean;
+      title: string;
+      description: string;
+      buttonLabel: string;
+    };
+    numberSettings: {
+      numberType: "connected" | "custom";
+      customNumber: string;
+    };
+  };
   targeting: {
     countries: "all" | "selected" | "excluded";
     selectedCountries: string[];
@@ -192,10 +207,13 @@ interface SortableChannelItemProps {
   onLiveChatSettingsChange?: (settings: Partial<WidgetConfig["liveChatSettings"]>) => void;
   callSettings?: WidgetConfig["callSettings"];
   onCallSettingsChange?: (settings: Partial<WidgetConfig["callSettings"]>) => void;
+  whatsappSettings?: WidgetConfig["whatsappSettings"];
+  onWhatsappSettingsChange?: (settings: Partial<WidgetConfig["whatsappSettings"]>) => void;
 }
 
 type LiveChatSubSection = "welcomeScreen" | "preChatForm" | "queueSettings" | "satisfactionSurvey" | "offlineMode" | "additionalSettings" | null;
 type CallSubSection = "callUsScreen" | "numbersAndCountries" | null;
+type WhatsappSubSection = "welcomeScreen" | "messageScreen" | "numberSettings" | null;
 
 function SortableChannelItem({ 
   channel, 
@@ -206,10 +224,13 @@ function SortableChannelItem({
   liveChatSettings,
   onLiveChatSettingsChange,
   callSettings,
-  onCallSettingsChange
+  onCallSettingsChange,
+  whatsappSettings,
+  onWhatsappSettingsChange
 }: SortableChannelItemProps) {
   const [activeSubSection, setActiveSubSection] = useState<LiveChatSubSection>(null);
   const [activeCallSubSection, setActiveCallSubSection] = useState<CallSubSection>(null);
+  const [activeWhatsappSubSection, setActiveWhatsappSubSection] = useState<WhatsappSubSection>(null);
   
   const {
     attributes,
@@ -238,6 +259,12 @@ function SortableChannelItem({
   const callSubOptions = [
     { id: "callUsScreen", label: "Call us screen", icon: <Phone className="h-4 w-4" /> },
     { id: "numbersAndCountries", label: "Numbers and countries", icon: <Users className="h-4 w-4" /> },
+  ];
+
+  const whatsappSubOptions = [
+    { id: "welcomeScreen", label: "Welcome screen", icon: <Monitor className="h-4 w-4" /> },
+    { id: "messageScreen", label: "Message us on WhatsApp", icon: <MessageSquare className="h-4 w-4" /> },
+    { id: "numberSettings", label: "WhatsApp number", icon: <Phone className="h-4 w-4" /> },
   ];
 
   return (
@@ -680,6 +707,162 @@ function SortableChannelItem({
           )}
         </div>
       )}
+      
+      {isExpanded && channel.id === "whatsapp" && whatsappSettings && onWhatsappSettingsChange && (
+        <div className="border-t px-4 py-3">
+          {activeWhatsappSubSection === null ? (
+            <div className="space-y-1">
+              {whatsappSubOptions.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => setActiveWhatsappSubSection(option.id as WhatsappSubSection)}
+                  className="w-full flex items-center justify-between py-2 px-3 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  data-testid={`button-whatsapp-${option.id}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-slate-500">{option.icon}</span>
+                    <span className="text-sm">{option.label}</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-slate-400" />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <button
+                onClick={() => setActiveWhatsappSubSection(null)}
+                className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+                data-testid="button-back-to-whatsapp-options"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                {whatsappSubOptions.find(o => o.id === activeWhatsappSubSection)?.label}
+              </button>
+              
+              {activeWhatsappSubSection === "welcomeScreen" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Channel name *</Label>
+                    <div className="flex items-center gap-2 px-3 py-2 border rounded-lg">
+                      <SiWhatsapp className="h-5 w-5 text-[#25D366]" />
+                      <Input 
+                        value={whatsappSettings.welcomeScreen.channelName}
+                        onChange={(e) => onWhatsappSettingsChange({
+                          welcomeScreen: { channelName: e.target.value }
+                        })}
+                        className="border-0 p-0 focus-visible:ring-0"
+                        data-testid="input-whatsapp-channel-name"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {activeWhatsappSubSection === "messageScreen" && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Switch 
+                      checked={whatsappSettings.messageScreen.showQRCode}
+                      onCheckedChange={(checked) => onWhatsappSettingsChange({
+                        messageScreen: { ...whatsappSettings.messageScreen, showQRCode: checked }
+                      })}
+                      data-testid="switch-whatsapp-qr-code"
+                    />
+                    <Label className="text-sm font-medium">Show QR code</Label>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Title & description *</Label>
+                    <div className="relative">
+                      <Input 
+                        value={whatsappSettings.messageScreen.title}
+                        onChange={(e) => onWhatsappSettingsChange({
+                          messageScreen: { ...whatsappSettings.messageScreen, title: e.target.value }
+                        })}
+                        data-testid="input-whatsapp-title"
+                      />
+                      <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7">
+                        <Smile className="h-4 w-4 text-slate-400" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Textarea 
+                      value={whatsappSettings.messageScreen.description}
+                      onChange={(e) => onWhatsappSettingsChange({
+                        messageScreen: { ...whatsappSettings.messageScreen, description: e.target.value }
+                      })}
+                      rows={3}
+                      data-testid="textarea-whatsapp-description"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Button label *</Label>
+                    <Input 
+                      value={whatsappSettings.messageScreen.buttonLabel}
+                      onChange={(e) => onWhatsappSettingsChange({
+                        messageScreen: { ...whatsappSettings.messageScreen, buttonLabel: e.target.value }
+                      })}
+                      data-testid="input-whatsapp-button-label"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {activeWhatsappSubSection === "numberSettings" && (
+                <div className="space-y-4">
+                  <div>
+                    <p className="text-xs text-slate-500">
+                      Choose one of your connected WhatsApp numbers or add a custom one. <strong>Please note:</strong> If you use a custom number, inbound messages will not be displayed in Textmagic.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">WhatsApp number to display</Label>
+                    <Select 
+                      value={whatsappSettings.numberSettings.numberType}
+                      onValueChange={(v: "connected" | "custom") => onWhatsappSettingsChange({
+                        numberSettings: { ...whatsappSettings.numberSettings, numberType: v }
+                      })}
+                    >
+                      <SelectTrigger data-testid="select-whatsapp-number-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <div className="p-2">
+                          <Input placeholder="Search" className="mb-2" />
+                        </div>
+                        <div className="text-xs text-slate-500 px-2 py-1 font-medium">WhatsApp</div>
+                        <SelectItem value="connected">- Connect WhatsApp number to Textmagic -</SelectItem>
+                        <SelectItem value="custom">+ Display custom number</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {whatsappSettings.numberSettings.numberType === "custom" && (
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 px-3 py-2 border rounded-lg">
+                        <span className="text-lg">🇺🇸</span>
+                        <span className="text-slate-400">▼</span>
+                        <Input 
+                          value={whatsappSettings.numberSettings.customNumber}
+                          onChange={(e) => onWhatsappSettingsChange({
+                            numberSettings: { ...whatsappSettings.numberSettings, customNumber: e.target.value }
+                          })}
+                          className="border-0 p-0 focus-visible:ring-0"
+                          placeholder="+1 234 567 8900"
+                          data-testid="input-whatsapp-custom-number"
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -787,6 +970,21 @@ export default function ChatWidgetEditPage() {
         ],
       },
     },
+    whatsappSettings: {
+      welcomeScreen: {
+        channelName: "Chat on WhatsApp",
+      },
+      messageScreen: {
+        showQRCode: true,
+        title: "Message us on WhatsApp",
+        description: "Click the button below or scan the QR code to send a message to this WhatsApp number.",
+        buttonLabel: "Open chat",
+      },
+      numberSettings: {
+        numberType: "custom",
+        customNumber: "+17866302522",
+      },
+    },
     targeting: {
       countries: "all",
       selectedCountries: [],
@@ -849,6 +1047,15 @@ export default function ChatWidgetEditPage() {
     updateLocalWidget({
       callSettings: {
         ...widget.callSettings,
+        ...settings,
+      }
+    });
+  };
+
+  const handleWhatsappSettingsChange = (settings: Partial<WidgetConfig["whatsappSettings"]>) => {
+    updateLocalWidget({
+      whatsappSettings: {
+        ...widget.whatsappSettings,
         ...settings,
       }
     });
@@ -1367,6 +1574,8 @@ export default function ChatWidgetEditPage() {
                                 onLiveChatSettingsChange={handleLiveChatSettingsChange}
                                 callSettings={widget.callSettings}
                                 onCallSettingsChange={handleCallSettingsChange}
+                                whatsappSettings={widget.whatsappSettings}
+                                onWhatsappSettingsChange={handleWhatsappSettingsChange}
                               />
                             ))}
                           </div>
