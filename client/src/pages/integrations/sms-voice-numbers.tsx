@@ -305,6 +305,7 @@ export default function SmsVoiceNumbers() {
                 <TableHeader>
                   <TableRow className="border-slate-200 dark:border-slate-800">
                     <TableHead className="text-xs font-medium text-slate-500">Number</TableHead>
+                    <TableHead className="text-xs font-medium text-slate-500">CNAM</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Label</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Price / month</TableHead>
                     <TableHead className="text-xs font-medium text-slate-500">Next renewal</TableHead>
@@ -326,6 +327,25 @@ export default function SmsVoiceNumbers() {
                             {formatPhoneNumber(number.phoneNumber)}
                           </span>
                         </div>
+                      </TableCell>
+                      <TableCell className="text-slate-600 dark:text-slate-400">
+                        {number.cnam ? (
+                          <button 
+                            onClick={() => handleEditCallerId(number)}
+                            className="hover:text-slate-900 dark:hover:text-slate-100"
+                            data-testid={`text-cnam-${number.id}`}
+                          >
+                            {number.cnam}
+                          </button>
+                        ) : (
+                          <button 
+                            onClick={() => handleEditCallerId(number)}
+                            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 text-sm hover:underline"
+                            data-testid={`button-add-cnam-${number.id}`}
+                          >
+                            Add
+                          </button>
+                        )}
                       </TableCell>
                       <TableCell className="text-slate-600 dark:text-slate-400">
                         {number.displayName ? (

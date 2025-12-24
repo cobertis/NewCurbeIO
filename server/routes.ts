@@ -29965,6 +29965,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           id: telnyxPhoneNumbers.id,
           phoneNumber: telnyxPhoneNumbers.phoneNumber,
           displayName: telnyxPhoneNumbers.displayName,
+          cnam: telnyxPhoneNumbers.cnam,
           status: telnyxPhoneNumbers.status,
           monthlyFee: telnyxPhoneNumbers.monthlyFee,
           purchasedAt: telnyxPhoneNumbers.purchasedAt,
@@ -30004,6 +30005,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         id: num.id,
         phoneNumber: num.phoneNumber,
         displayName: num.displayName,
+        cnam: num.cnam,
         status: num.status,
         monthlyFee: num.monthlyFee,
         purchasedAt: num.purchasedAt,
@@ -30178,6 +30180,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       } catch (v1Error) {
         console.warn("[Telnyx] V1 CNAM API error:", v1Error);
       }
+      
+      // Update local database with CNAM
+      await db
+        .update(telnyxPhoneNumbers)
+        .set({ cnam: sanitizedCnam })
+        .where(eq(telnyxPhoneNumbers.phoneNumber, phoneNumber));
       
       res.json({ 
         success: true, 

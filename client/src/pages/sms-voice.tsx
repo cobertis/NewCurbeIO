@@ -34,6 +34,7 @@ export interface SmsVoiceNumber {
   id: string;
   phoneNumber: string;
   displayName: string | null;
+  cnam: string | null;
   status: string;
   monthlyFee: string;
   purchasedAt: string;
