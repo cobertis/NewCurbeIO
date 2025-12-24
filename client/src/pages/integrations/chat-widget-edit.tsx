@@ -2382,26 +2382,30 @@ export default function ChatWidgetEditPage() {
                             </div>
                           </AccordionTrigger>
                           <AccordionContent className="px-4 pb-4">
-                            <RadioGroup 
-                              value={widget.targeting.deviceType}
-                              onValueChange={(v) => updateLocalWidget({ 
-                                targeting: { ...widget.targeting, deviceType: v as "all" | "desktop" | "mobile" } 
-                              })}
-                              className="space-y-2"
-                            >
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="all" id="device-all" />
-                                <Label htmlFor="device-all" className="text-sm cursor-pointer">Show on all devices</Label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="desktop" id="device-desktop" />
-                                <Label htmlFor="device-desktop" className="text-sm cursor-pointer">Desktop only</Label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="mobile" id="device-mobile" />
-                                <Label htmlFor="device-mobile" className="text-sm cursor-pointer">Mobile only</Label>
-                              </div>
-                            </RadioGroup>
+                            <div className="space-y-4">
+                              <p className="text-sm text-slate-500">Choose which type of visitors should see your widget</p>
+                              
+                              <RadioGroup 
+                                value={widget.targeting.deviceType}
+                                onValueChange={(v) => updateLocalWidget({ 
+                                  targeting: { ...widget.targeting, deviceType: v as "all" | "desktop" | "mobile" } 
+                                })}
+                                className="space-y-2"
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="all" id="device-all" />
+                                  <Label htmlFor="device-all" className="text-sm cursor-pointer">Show on all devices</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="desktop" id="device-desktop" />
+                                  <Label htmlFor="device-desktop" className="text-sm cursor-pointer">Desktop devices only</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="mobile" id="device-mobile" />
+                                  <Label htmlFor="device-mobile" className="text-sm cursor-pointer">Mobile devices only</Label>
+                                </div>
+                              </RadioGroup>
+                            </div>
                           </AccordionContent>
                         </AccordionItem>
                       </Accordion>
