@@ -1156,45 +1156,6 @@ export default function ChatWidgetEditPage() {
   
   const logoInputRef = useRef<HTMLInputElement>(null);
 
-  const handleLogoUpload = (file: File) => {
-    if (!file.type.startsWith('image/')) {
-      toast({
-        variant: "destructive",
-        title: "Invalid file type",
-        description: "Please upload an image file.",
-      });
-      return;
-    }
-    
-    if (file.size > 5 * 1024 * 1024) {
-      toast({
-        variant: "destructive",
-        title: "File too large",
-        description: "Please upload an image smaller than 5MB.",
-      });
-      return;
-    }
-    
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const base64 = e.target?.result as string;
-      const fileSize = file.size < 1024 
-        ? `${file.size} B` 
-        : file.size < 1024 * 1024 
-          ? `${(file.size / 1024).toFixed(1)} KB` 
-          : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
-      
-      updateLocalWidget({ 
-        branding: { 
-          customLogo: base64, 
-          logoFileName: file.name, 
-          logoFileSize: fileSize 
-        } 
-      });
-    };
-    reader.readAsDataURL(file);
-  };
-
   const sensors = useSensors(
     useSensor(PointerSensor),
     useSensor(KeyboardSensor, {
@@ -1350,6 +1311,46 @@ export default function ChatWidgetEditPage() {
   const updateLocalWidget = (updates: Partial<WidgetConfig>) => {
     setLocalWidget(prev => ({ ...prev, ...updates }));
     setHasUnsavedChanges(true);
+  };
+
+  const handleLogoUpload = (file: File) => {
+    if (!file.type.startsWith('image/')) {
+      toast({
+        variant: "destructive",
+        title: "Invalid file type",
+        description: "Please upload an image file.",
+      });
+      return;
+    }
+    
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        variant: "destructive",
+        title: "File too large",
+        description: "Please upload an image smaller than 5MB.",
+      });
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const base64 = e.target?.result as string;
+      const fileSize = file.size < 1024 
+        ? `${file.size} B` 
+        : file.size < 1024 * 1024 
+          ? `${(file.size / 1024).toFixed(1)} KB` 
+          : `${(file.size / (1024 * 1024)).toFixed(1)} MB`;
+      
+      updateLocalWidget({ 
+        branding: { 
+          ...widget.branding,
+          customLogo: base64, 
+          logoFileName: file.name, 
+          logoFileSize: fileSize 
+        } 
+      });
+    };
+    reader.readAsDataURL(file);
   };
 
   const handleSaveChanges = () => {
