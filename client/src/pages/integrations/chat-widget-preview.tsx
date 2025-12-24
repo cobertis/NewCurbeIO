@@ -5,7 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, X } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
-import { SiWhatsapp, SiFacebook, SiInstagram } from "react-icons/si";
+import { SiWhatsapp, SiFacebook, SiInstagram, SiTelegram } from "react-icons/si";
 import QRCode from "qrcode";
 import curbeLogo from "@assets/logo no fondo_1760457183587.png";
 
@@ -28,6 +28,7 @@ const channelIcons: Record<string, { icon: JSX.Element; label: string }> = {
   whatsapp: { icon: <SiWhatsapp className="h-5 w-5" />, label: "WhatsApp" },
   facebook: { icon: <SiFacebook className="h-5 w-5" />, label: "Messenger" },
   instagram: { icon: <SiInstagram className="h-5 w-5" />, label: "Instagram" },
+  telegram: { icon: <SiTelegram className="h-5 w-5" />, label: "Telegram" },
 };
 
 function formatPhoneNumber(phone: string): string {
@@ -202,6 +203,14 @@ export default function ChatWidgetPreviewPage() {
         showQR: widget.instagramSettings?.messageUsScreen?.showQRCode ?? true,
         qrValue: `https://ig.me/m/${widget.instagramSettings?.accountConnection?.username || 'curbeio'}`,
         icon: <SiInstagram className="h-5 w-5" />,
+      },
+      telegram: {
+        title: widget.telegramSettings?.messageUsScreen?.title || "Message us on Telegram",
+        description: widget.telegramSettings?.messageUsScreen?.description || "Click the button below or scan the QR code to send us a message on Telegram.",
+        buttonLabel: widget.telegramSettings?.messageUsScreen?.buttonLabel || "Open Telegram",
+        showQR: widget.telegramSettings?.messageUsScreen?.showQRCode ?? true,
+        qrValue: `https://t.me/${widget.telegramSettings?.botConnection?.botUsername || 'curbeio'}`,
+        icon: <SiTelegram className="h-5 w-5" />,
       },
     };
 

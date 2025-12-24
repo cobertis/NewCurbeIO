@@ -482,6 +482,7 @@ function SortableChannelItem({
       setActiveWhatsappSubSection(null);
       setActiveMessengerSubSection(null);
       setActiveInstagramSubSection(null);
+      setActiveTelegramSubSection(null);
     }
   }, [isExpanded, onActiveLiveChatSubSectionChange, onActiveEmailSubSectionChange, onActiveSmsSubSectionChange]);
   
@@ -5013,6 +5014,7 @@ export default function ChatWidgetEditPage() {
                               case "sms": return widget.smsSettings?.welcomeScreen?.channelName || "Send a text";
                               case "facebook": return widget.messengerSettings?.welcomeScreen?.channelName || "Messenger";
                               case "instagram": return widget.instagramSettings?.welcomeScreen?.channelName || "Instagram";
+                              case "telegram": return widget.telegramSettings?.welcomeScreen?.channelName || "Telegram";
                               default: return config.label;
                             }
                           };
