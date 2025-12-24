@@ -3531,6 +3531,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         status: user.status,
         companyId: user.companyId,
         companyName: companyName,
+        cnam: num.cnam || null,
         companyLogo: companyLogo,
         timezone: user.timezone,
         dateOfBirth: user.dateOfBirth,
@@ -29965,13 +29966,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           id: telnyxPhoneNumbers.id,
           phoneNumber: telnyxPhoneNumbers.phoneNumber,
           displayName: telnyxPhoneNumbers.displayName,
-          cnam: telnyxPhoneNumbers.cnam,
           status: telnyxPhoneNumbers.status,
           monthlyFee: telnyxPhoneNumbers.monthlyFee,
           purchasedAt: telnyxPhoneNumbers.purchasedAt,
           ownerUserId: telnyxPhoneNumbers.ownerUserId,
           ownerFirstName: users.firstName,
           ownerLastName: users.lastName,
+          cnam: telnyxPhoneNumbers.cnam,
         })
         .from(telnyxPhoneNumbers)
         .leftJoin(users, eq(telnyxPhoneNumbers.ownerUserId, users.id))
@@ -30005,7 +30006,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         id: num.id,
         phoneNumber: num.phoneNumber,
         displayName: num.displayName,
-        cnam: num.cnam,
         status: num.status,
         monthlyFee: num.monthlyFee,
         purchasedAt: num.purchasedAt,
@@ -30013,6 +30013,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         ownerName: num.ownerFirstName && num.ownerLastName 
           ? `${num.ownerFirstName} ${num.ownerLastName}` 
           : num.ownerFirstName || num.ownerLastName || companyName,
+        cnam: num.cnam || null,
         complianceStatus: complianceMap.get(num.phoneNumber)?.status || null,
         complianceApplicationId: complianceMap.get(num.phoneNumber)?.id || null,
         telnyxVerificationRequestId: complianceMap.get(num.phoneNumber)?.telnyxVerificationRequestId || null,
@@ -30448,7 +30449,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         // Fall back to local database if Telnyx not configured
         const brands = await db
           .select()
@@ -30487,6 +30488,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         tcrBrandId: brand.tcrBrandId,
         displayName: brand.displayName,
         companyName: brand.companyName,
+        cnam: num.cnam || null,
         email: brand.email,
         entityType: brand.entityType,
         vertical: brand.vertical,
@@ -30704,7 +30706,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.json({ exists: false, profile: null });
       }
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.json({ exists: true, profile: { id: wallet.telnyxMessagingProfileId } });
       }
       
@@ -30831,7 +30833,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -30888,7 +30890,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.json({ campaigns: [] });
       }
       
@@ -30976,7 +30978,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -31094,7 +31096,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -31134,7 +31136,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
 
@@ -31202,7 +31204,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
 
@@ -31461,7 +31463,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -31503,7 +31505,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -31614,7 +31616,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -31653,7 +31655,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -31691,7 +31693,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -31726,7 +31728,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -31767,7 +31769,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -31906,7 +31908,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -37737,7 +37739,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
           const managedAccountId = await getCompanyManagedAccountId(user.companyId);
           
-          if (!telnyxApiKey || !managedAccountId) {
+          if (!telnyxApiKey) {
             return res.status(400).json({ message: "Telnyx not configured for this company" });
           }
           
