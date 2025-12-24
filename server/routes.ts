@@ -28480,6 +28480,191 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       return res.status(500).json({ error: "Failed to fetch widget", shouldDisplay: true });
     }
   });
+
+  // ==================== LIVE CHAT PUBLIC API ====================
+  
+  // POST /api/public/live-chat/session - Create or resume a live chat session
+  app.post("/api/public/live-chat/session", async (req: Request, res: Response) => {
+    const { widgetId, visitorId, visitorName, visitorEmail } = req.body;
+    
+    if (!widgetId) {
+      return res.status(400).json({ error: "widgetId is required" });
+    }
+    
+    try {
+      // Verify widget exists and get company
+      const widget = await db.query.chatWidgets.findFirst({
+        where: eq(chatWidgets.id, widgetId)
+      });
+      
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      const companyId = widget.companyId;
+      
+      // Generate visitor ID if not provided
+      const finalVisitorId = visitorId || `visitor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Check if conversation already exists for this visitor
+      let [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(
+          eq(telnyxConversations.companyId, companyId),
+          eq(telnyxConversations.phoneNumber, finalVisitorId),
+          eq(telnyxConversations.channel, "live-chat")
+        ));
+      
+      if (!conversation) {
+        // Create new conversation
+        const displayName = visitorName || "Website Visitor";
+        const [newConversation] = await db.insert(telnyxConversations).values({
+          companyId,
+          phoneNumber: finalVisitorId,
+          displayName,
+          email: visitorEmail || null,
+          companyPhoneNumber: widgetId,
+          channel: "live-chat",
+          status: "open",
+          lastMessage: null,
+          lastMessageAt: new Date(),
+          unreadCount: 0,
+        }).returning();
+        conversation = newConversation;
+        console.log("[LiveChat] Created new session:", conversation.id, "for visitor:", finalVisitorId);
+      } else {
+        console.log("[LiveChat] Resumed existing session:", conversation.id, "for visitor:", finalVisitorId);
+      }
+      
+      res.set({ "Access-Control-Allow-Origin": "*" });
+      res.json({
+        sessionId: conversation.id,
+        visitorId: finalVisitorId,
+      });
+    } catch (error: any) {
+      console.error("[LiveChat] Session error:", error);
+      res.status(500).json({ error: "Failed to create session" });
+    }
+  });
+  
+  // GET /api/public/live-chat/messages/:sessionId - Get messages for a session
+  app.get("/api/public/live-chat/messages/:sessionId", async (req: Request, res: Response) => {
+    const { sessionId } = req.params;
+    const { since } = req.query;
+    
+    try {
+      // Verify session exists
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(
+          eq(telnyxConversations.id, sessionId),
+          eq(telnyxConversations.channel, "live-chat")
+        ));
+      
+      if (!conversation) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      
+      // Build query for messages
+      let whereConditions: any[] = [eq(telnyxMessages.conversationId, sessionId)];
+      
+      if (since) {
+        whereConditions.push(sql`${telnyxMessages.createdAt} > ${new Date(since as string)}`);
+      }
+      
+      const messages = await db
+        .select()
+        .from(telnyxMessages)
+        .where(and(...whereConditions))
+        .orderBy(asc(telnyxMessages.createdAt));
+      
+      res.set({ "Access-Control-Allow-Origin": "*" });
+      res.json({ messages });
+    } catch (error: any) {
+      console.error("[LiveChat] Messages error:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+  
+  // POST /api/public/live-chat/message - Send a message from visitor
+  app.post("/api/public/live-chat/message", async (req: Request, res: Response) => {
+    const { sessionId, text, visitorName } = req.body;
+    
+    if (!sessionId || !text) {
+      return res.status(400).json({ error: "sessionId and text are required" });
+    }
+    
+    try {
+      // Verify session exists
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(
+          eq(telnyxConversations.id, sessionId),
+          eq(telnyxConversations.channel, "live-chat")
+        ));
+      
+      if (!conversation) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      
+      // Create the message
+      const [message] = await db.insert(telnyxMessages).values({
+        conversationId: sessionId,
+        direction: "inbound",
+        messageType: "incoming",
+        channel: "live-chat",
+        text: text.trim(),
+        contentType: "text",
+        status: "delivered",
+        createdAt: new Date(),
+      }).returning();
+      
+      // Update conversation
+      await db
+        .update(telnyxConversations)
+        .set({
+          lastMessage: text.trim().substring(0, 200),
+          lastMessageAt: new Date(),
+          unreadCount: sql`${telnyxConversations.unreadCount} + 1`,
+          displayName: visitorName || conversation.displayName,
+          status: "open",
+          updatedAt: new Date(),
+        })
+        .where(eq(telnyxConversations.id, sessionId));
+      
+      // Broadcast to WebSocket clients
+      if ((global as any).wss) {
+        const { broadcastToCompany } = await import("./websocket");
+        broadcastToCompany(conversation.companyId, {
+          type: "new_message",
+          conversationId: sessionId,
+          message,
+          channel: "live-chat",
+        });
+      }
+      
+      console.log("[LiveChat] New message in session:", sessionId, "text:", text.substring(0, 50));
+      
+      res.set({ "Access-Control-Allow-Origin": "*" });
+      res.json({ message });
+    } catch (error: any) {
+      console.error("[LiveChat] Send message error:", error);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+  
+  // OPTIONS handler for CORS preflight
+  app.options("/api/public/live-chat/*", (req: Request, res: Response) => {
+    res.set({
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    });
+    res.sendStatus(200);
+  });
   
   // GET /api/voicemails - List voicemails for current user
   app.get("/api/voicemails", requireAuth, async (req: Request, res: Response) => {

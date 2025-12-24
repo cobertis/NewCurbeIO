@@ -2,7 +2,7 @@ import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, X, Monitor, Smartphone, Globe } from "lucide-react";
+import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, X, Monitor, Send, Smartphone, Globe } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
@@ -71,6 +71,15 @@ export default function ChatWidgetPreviewPage() {
   const [pageUrlInfo, setPageUrlInfo] = useState<{ pageUrls: string; urlRules: Array<{ condition: string; value: string }> }>({ pageUrls: 'all', urlRules: [] });
   const [testUrl, setTestUrl] = useState<string>('https://example.com/contact');
 
+  // Live chat state
+  const [chatSessionId, setChatSessionId] = useState<string | null>(null);
+  const [chatVisitorId, setChatVisitorId] = useState<string | null>(null);
+  const [chatMessages, setChatMessages] = useState<Array<{ id: string; text: string; direction: string; createdAt: string }>>([]);
+  const [chatInput, setChatInput] = useState('');
+  const [chatLoading, setChatLoading] = useState(false);
+  const [visitorName, setVisitorName] = useState('');
+  const [initialMessage, setInitialMessage] = useState('');
+
   const { data: widgetData, isLoading } = useQuery<{ widget: any }>({
     queryKey: [`/api/integrations/chat-widget/${widgetId}`],
     enabled: !!widgetId,
@@ -101,6 +110,157 @@ export default function ChatWidgetPreviewPage() {
         setTargetingChecked(true);
       });
   }, [widgetId]);
+
+
+  // Resume existing chat session for returning visitors
+  useEffect(() => {
+    if (!widgetId || !widgetOpen) return;
+    
+    const storedVisitorId = localStorage.getItem(`chat_visitor_${widgetId}`);
+    if (!storedVisitorId || chatSessionId) return;
+    
+    const resumeSession = async () => {
+      try {
+        // Try to resume existing session
+        const sessionRes = await fetch('/api/public/live-chat/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            widgetId,
+            visitorId: storedVisitorId,
+          }),
+        });
+        
+        if (!sessionRes.ok) return;
+        
+        const { sessionId, visitorId } = await sessionRes.json();
+        
+        // Fetch existing messages
+        const msgRes = await fetch(`/api/public/live-chat/messages/${sessionId}`);
+        if (msgRes.ok) {
+          const { messages } = await msgRes.json();
+          if (messages.length > 0) {
+            // Has existing messages - resume the session
+            setChatSessionId(sessionId);
+            setChatVisitorId(visitorId);
+            setChatMessages(messages);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to resume session:', error);
+      }
+    };
+    
+    resumeSession();
+  }, [widgetId, widgetOpen, chatSessionId]);
+  // Live chat functions
+  const startChatSession = async () => {
+    if (!widgetId || !initialMessage.trim()) return;
+    
+    setChatLoading(true);
+    try {
+      // Get or create visitor ID from localStorage
+      let storedVisitorId = localStorage.getItem(`chat_visitor_${widgetId}`);
+      if (!storedVisitorId) {
+        storedVisitorId = `visitor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        localStorage.setItem(`chat_visitor_${widgetId}`, storedVisitorId);
+      }
+      
+      // Create or resume session
+      const sessionRes = await fetch('/api/public/live-chat/session', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          widgetId,
+          visitorId: storedVisitorId,
+          visitorName: visitorName || 'Website Visitor',
+        }),
+      });
+      
+      if (!sessionRes.ok) throw new Error('Failed to create session');
+      
+      const { sessionId, visitorId } = await sessionRes.json();
+      setChatSessionId(sessionId);
+      setChatVisitorId(visitorId);
+      
+      // Send initial message
+      const msgRes = await fetch('/api/public/live-chat/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId,
+          text: initialMessage.trim(),
+          visitorName: visitorName || 'Website Visitor',
+        }),
+      });
+      
+      if (msgRes.ok) {
+        const { message } = await msgRes.json();
+        setChatMessages([message]);
+        setInitialMessage('');
+      }
+    } catch (error) {
+      console.error('Failed to start chat:', error);
+      toast({ title: "Error", description: "Failed to start chat session", variant: "destructive" });
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  const sendChatMessage = async () => {
+    if (!chatSessionId || !chatInput.trim()) return;
+    
+    const text = chatInput.trim();
+    setChatInput('');
+    
+    try {
+      const res = await fetch('/api/public/live-chat/message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: chatSessionId,
+          text,
+          visitorName: visitorName || 'Website Visitor',
+        }),
+      });
+      
+      if (res.ok) {
+        const { message } = await res.json();
+        setChatMessages(prev => [...prev, message]);
+      }
+    } catch (error) {
+      console.error('Failed to send message:', error);
+    }
+  };
+
+  // Poll for new messages when in active chat
+  useEffect(() => {
+    if (!chatSessionId) return;
+    
+    const pollMessages = async () => {
+      try {
+        const lastMessage = chatMessages[chatMessages.length - 1];
+        const since = lastMessage?.createdAt || '';
+        const res = await fetch(`/api/public/live-chat/messages/${chatSessionId}${since ? `?since=${encodeURIComponent(since)}` : ''}`);
+        if (res.ok) {
+          const { messages } = await res.json();
+          if (messages.length > 0) {
+            setChatMessages(prev => {
+              const newIds = new Set(messages.map((m: any) => m.id));
+              const filtered = prev.filter(m => !newIds.has(m.id));
+              return [...filtered, ...messages].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+            });
+          }
+        }
+      } catch (error) {
+        console.error('Poll error:', error);
+      }
+    };
+    
+    pollMessages();
+    const interval = setInterval(pollMessages, 3000);
+    return () => clearInterval(interval);
+  }, [chatSessionId, chatMessages.length]);
 
   const defaultWidget = {
     name: "Website Widget",
@@ -765,26 +925,102 @@ export default function ChatWidgetPreviewPage() {
               <div className="p-4 space-y-3">
                 {widget.channels?.liveChat && (
                   <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 space-y-3">
-                    <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      {widget.liveChatSettings?.preChatForm?.title || "Chat with our agent"}
-                    </h5>
-                    <div className="space-y-1">
-                      <span className="text-xs text-slate-500 font-medium">
-                        {widget.liveChatSettings?.welcomeScreen?.fieldLabel || "Message"}
-                      </span>
-                      <textarea 
-                        placeholder="Type your message here" 
-                        disabled 
-                        className="w-full p-2 border rounded-lg text-sm bg-slate-50 dark:bg-slate-700 resize-none" 
-                        rows={3} 
-                      />
-                    </div>
-                    <button 
-                      className="w-full py-2 px-4 rounded-lg text-white text-sm font-medium"
-                      style={{ background: currentBackground }}
-                    >
-                      {widget.liveChatSettings?.welcomeScreen?.buttonLabel || "Start chat"}
-                    </button>
+                    {chatSessionId ? (
+                      <>
+                        <div className="flex items-center justify-between">
+                          <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                            {widget.liveChatSettings?.preChatForm?.title || "Chat with our agent"}
+                          </h5>
+                          <button 
+                            onClick={() => { setChatSessionId(null); setChatMessages([]); }}
+                            className="p-1 hover:bg-slate-100 dark:hover:bg-slate-700 rounded"
+                            data-testid="close-chat"
+                          >
+                            <X className="h-4 w-4" />
+                          </button>
+                        </div>
+                        <div className="h-48 overflow-y-auto space-y-2 border rounded-lg p-2 bg-slate-50 dark:bg-slate-700">
+                          {chatMessages.map((msg) => (
+                            <div 
+                              key={msg.id}
+                              className={`p-2 rounded-lg text-sm max-w-[85%] ${
+                                msg.direction === 'inbound' 
+                                  ? 'bg-slate-200 dark:bg-slate-600 ml-auto' 
+                                  : 'text-white'
+                              }`}
+                              style={msg.direction !== 'inbound' ? { background: currentBackground } : {}}
+                            >
+                              {msg.text}
+                            </div>
+                          ))}
+                          {chatMessages.length === 0 && (
+                            <p className="text-xs text-slate-400 text-center py-4">No messages yet</p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={chatInput}
+                            onChange={(e) => setChatInput(e.target.value)}
+                            onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
+                            placeholder="Type a message..."
+                            className="flex-1 p-2 border rounded-lg text-sm bg-white dark:bg-slate-600"
+                            data-testid="chat-input"
+                          />
+                          <button
+                            onClick={sendChatMessage}
+                            disabled={!chatInput.trim()}
+                            className="p-2 rounded-lg text-white disabled:opacity-50"
+                            style={{ background: currentBackground }}
+                            data-testid="send-message"
+                          >
+                            <Send className="h-4 w-4" />
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {widget.liveChatSettings?.preChatForm?.title || "Chat with our agent"}
+                        </h5>
+                        {widget.liveChatSettings?.preChatForm?.collectName && (
+                          <div className="space-y-1">
+                            <span className="text-xs text-slate-500 font-medium">Your name</span>
+                            <input 
+                              type="text"
+                              value={visitorName}
+                              onChange={(e) => setVisitorName(e.target.value)}
+                              placeholder="Enter your name"
+                              className="w-full p-2 border rounded-lg text-sm bg-white dark:bg-slate-700"
+                              data-testid="visitor-name-input"
+                            />
+                          </div>
+                        )}
+                        <div className="space-y-1">
+                          <span className="text-xs text-slate-500 font-medium">
+                            {widget.liveChatSettings?.welcomeScreen?.fieldLabel || "Message"}
+                          </span>
+                          <textarea 
+                            value={initialMessage}
+                            onChange={(e) => setInitialMessage(e.target.value)}
+                            placeholder="Type your message here" 
+                            className="w-full p-2 border rounded-lg text-sm bg-white dark:bg-slate-700 resize-none" 
+                            rows={3}
+                            data-testid="initial-message-input"
+                          />
+                        </div>
+                        <button 
+                          onClick={startChatSession}
+                          disabled={chatLoading || !initialMessage.trim()}
+                          className="w-full py-2 px-4 rounded-lg text-white text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                          style={{ background: currentBackground }}
+                          data-testid="start-chat-button"
+                        >
+                          {chatLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                          {widget.liveChatSettings?.welcomeScreen?.buttonLabel || "Start chat"}
+                        </button>
+                      </>
+                    )}
                   </div>
                 )}
                 
