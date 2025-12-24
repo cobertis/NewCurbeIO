@@ -78,6 +78,7 @@ export default function ChatWidgetPreviewPage() {
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [visitorName, setVisitorName] = useState('');
+  const [visitorEmail, setVisitorEmail] = useState('');
   const [initialMessage, setInitialMessage] = useState('');
 
   const { data: widgetData, isLoading } = useQuery<{ widget: any }>({
@@ -159,7 +160,7 @@ export default function ChatWidgetPreviewPage() {
   }, [widgetId, widgetOpen, chatSessionId]);
   // Live chat functions
   const startChatSession = async () => {
-    if (!widgetId || !initialMessage.trim()) return;
+    if (!widgetId || !visitorEmail.trim()) return;
     
     setChatLoading(true);
     try {
@@ -170,7 +171,7 @@ export default function ChatWidgetPreviewPage() {
         localStorage.setItem(`chat_visitor_${widgetId}`, storedVisitorId);
       }
       
-      // Create or resume session
+      // Create session with visitor info
       const sessionRes = await fetch('/api/public/live-chat/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -178,6 +179,7 @@ export default function ChatWidgetPreviewPage() {
           widgetId,
           visitorId: storedVisitorId,
           visitorName: visitorName || 'Website Visitor',
+          visitorEmail: visitorEmail.trim(),
         }),
       });
       
@@ -185,25 +187,10 @@ export default function ChatWidgetPreviewPage() {
       
       const { sessionId, visitorId } = await sessionRes.json();
       
-      // Send initial message FIRST before activating chat view
-      const msgRes = await fetch('/api/public/live-chat/message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          sessionId,
-          text: initialMessage.trim(),
-          visitorName: visitorName || 'Website Visitor',
-        }),
-      });
-      
-      if (!msgRes.ok) throw new Error('Failed to send message');
-      
-      const { message } = await msgRes.json();
-      // Only activate chat AFTER message is successfully sent
+      // Activate chat immediately - user will type their message in the chat
       setChatSessionId(sessionId);
       setChatVisitorId(visitorId);
-      setChatMessages([message]);
-      setInitialMessage('');
+      setChatMessages([]);
     } catch (error) {
       console.error('Failed to start chat:', error);
       toast({ title: "Error", description: "Failed to start chat session", variant: "destructive" });
@@ -988,35 +975,35 @@ export default function ChatWidgetPreviewPage() {
                         <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                           {widget.liveChatSettings?.preChatForm?.title || "Chat with our agent"}
                         </h5>
-                        {widget.liveChatSettings?.preChatForm?.collectName && (
+                        <div className="space-y-1">
+                          <span className="text-xs text-slate-500 font-medium">Name</span>
+                          <input 
+                            type="text"
+                            value={visitorName}
+                            onChange={(e) => setVisitorName(e.target.value)}
+                            placeholder="Enter your name"
+                            className="w-full p-2 border rounded-lg text-sm bg-white dark:bg-slate-700"
+                            data-testid="visitor-name-input"
+                          />
+                        </div>
+                        {widget.liveChatSettings?.preChatForm?.collectEmail !== false && (
                           <div className="space-y-1">
-                            <span className="text-xs text-slate-500 font-medium">Your name</span>
+                            <span className="text-xs text-slate-500 font-medium">
+                              Email <span className="text-red-500">*</span>
+                            </span>
                             <input 
-                              type="text"
-                              value={visitorName}
-                              onChange={(e) => setVisitorName(e.target.value)}
-                              placeholder="Enter your name"
+                              type="email"
+                              value={visitorEmail}
+                              onChange={(e) => setVisitorEmail(e.target.value)}
+                              placeholder="your@email.com"
                               className="w-full p-2 border rounded-lg text-sm bg-white dark:bg-slate-700"
-                              data-testid="visitor-name-input"
+                              data-testid="visitor-email-input"
                             />
                           </div>
                         )}
-                        <div className="space-y-1">
-                          <span className="text-xs text-slate-500 font-medium">
-                            {widget.liveChatSettings?.welcomeScreen?.fieldLabel || "Message"}
-                          </span>
-                          <textarea 
-                            value={initialMessage}
-                            onChange={(e) => setInitialMessage(e.target.value)}
-                            placeholder="Type your message here" 
-                            className="w-full p-2 border rounded-lg text-sm bg-white dark:bg-slate-700 resize-none" 
-                            rows={3}
-                            data-testid="initial-message-input"
-                          />
-                        </div>
                         <button 
                           onClick={startChatSession}
-                          disabled={chatLoading || !initialMessage.trim()}
+                          disabled={chatLoading || !visitorEmail.trim()}
                           className="w-full py-2 px-4 rounded-lg text-white text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                           style={{ background: currentBackground }}
                           data-testid="start-chat-button"
