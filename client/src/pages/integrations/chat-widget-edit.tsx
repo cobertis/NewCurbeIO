@@ -58,7 +58,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Pencil, Palette, MessageSquare, MessageCircle, Target, Code, Copy, ExternalLink, Mail, MoreHorizontal, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Phone, Send, Upload, Image, Smile, Monitor, RefreshCw, GripVertical, Clock, ThumbsUp, Power, Settings, FileText, Users, Globe, Link2, X, CheckCircle, Plus } from "lucide-react";
+import { Pencil, Palette, MessageSquare, MessageCircle, Target, Code, Copy, ExternalLink, Mail, MoreHorizontal, MoreVertical, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Phone, Send, Upload, Image, Smile, Monitor, RefreshCw, GripVertical, Clock, ThumbsUp, ThumbsDown, Power, Settings, FileText, Users, Globe, Link2, X, CheckCircle, Plus } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SiFacebook, SiInstagram } from "react-icons/si";
@@ -303,6 +303,8 @@ interface SortableChannelItemProps {
   onMessengerSettingsChange?: (settings: Partial<WidgetConfig["messengerSettings"]>) => void;
   instagramSettings?: WidgetConfig["instagramSettings"];
   onInstagramSettingsChange?: (settings: Partial<WidgetConfig["instagramSettings"]>) => void;
+  activeLiveChatSubSection?: LiveChatSubSection;
+  onActiveLiveChatSubSectionChange?: (subSection: LiveChatSubSection) => void;
 }
 
 type LiveChatSubSection = "welcomeScreen" | "preChatForm" | "queueSettings" | "satisfactionSurvey" | "offlineMode" | "additionalSettings" | null;
@@ -332,9 +334,14 @@ function SortableChannelItem({
   messengerSettings,
   onMessengerSettingsChange,
   instagramSettings,
-  onInstagramSettingsChange
+  onInstagramSettingsChange,
+  activeLiveChatSubSection,
+  onActiveLiveChatSubSectionChange
 }: SortableChannelItemProps) {
-  const [activeSubSection, setActiveSubSection] = useState<LiveChatSubSection>(null);
+  const activeSubSection = activeLiveChatSubSection ?? null;
+  const setActiveSubSection = (subSection: LiveChatSubSection) => {
+    onActiveLiveChatSubSectionChange?.(subSection);
+  };
   const [activeCallSubSection, setActiveCallSubSection] = useState<CallSubSection>(null);
   const [activeWhatsappSubSection, setActiveWhatsappSubSection] = useState<WhatsappSubSection>(null);
   const [activeEmailSubSection, setActiveEmailSubSection] = useState<EmailSubSection>(null);
@@ -344,7 +351,7 @@ function SortableChannelItem({
 
   useEffect(() => {
     if (!isExpanded) {
-      setActiveSubSection(null);
+      onActiveLiveChatSubSectionChange?.(null);
       setActiveCallSubSection(null);
       setActiveWhatsappSubSection(null);
       setActiveEmailSubSection(null);
@@ -352,7 +359,7 @@ function SortableChannelItem({
       setActiveMessengerSubSection(null);
       setActiveInstagramSubSection(null);
     }
-  }, [isExpanded]);
+  }, [isExpanded, onActiveLiveChatSubSectionChange]);
   
   const {
     attributes,
@@ -1894,6 +1901,7 @@ export default function ChatWidgetEditPage() {
   };
 
   const [expandedChannel, setExpandedChannel] = useState<string | null>(null);
+  const [activeLiveChatSubSection, setActiveLiveChatSubSection] = useState<"welcomeScreen" | "preChatForm" | "queueSettings" | "satisfactionSurvey" | "offlineMode" | "additionalSettings" | null>(null);
 
   const handleLiveChatSettingsChange = (settings: Partial<WidgetConfig["liveChatSettings"]>) => {
     updateLocalWidget({
@@ -2598,6 +2606,8 @@ export default function ChatWidgetEditPage() {
                                 onMessengerSettingsChange={handleMessengerSettingsChange}
                                 instagramSettings={widget.instagramSettings}
                                 onInstagramSettingsChange={handleInstagramSettingsChange}
+                                activeLiveChatSubSection={activeLiveChatSubSection}
+                                onActiveLiveChatSubSectionChange={setActiveLiveChatSubSection}
                               />
                             ))}
                           </div>
@@ -3263,6 +3273,135 @@ export default function ChatWidgetEditPage() {
                             <span className="text-white font-medium text-base">{widget.minimizedState.buttonText}</span>
                           )}
                         </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : expandedChannel === "liveChat" && activeLiveChatSubSection === "queueSettings" ? (
+                  <div className="relative">
+                    <div className="rounded-xl overflow-hidden shadow-lg">
+                      <div className="p-4 text-white flex items-center justify-between" style={{ background: currentBackground }}>
+                        <div className="flex items-center gap-2">
+                          <ChevronLeft className="h-5 w-5" />
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: currentBackground }}>
+                            <MessageCircle className="h-4 w-4 text-white" />
+                          </div>
+                          <div>
+                            <span className="font-medium">Live chat</span>
+                          </div>
+                        </div>
+                        <MoreVertical className="h-5 w-5" />
+                      </div>
+                      
+                      <div className="bg-slate-100 dark:bg-slate-800 p-4 space-y-3" style={{ minHeight: "280px" }}>
+                        <div className="flex justify-end">
+                          <div className="bg-blue-500 text-white rounded-2xl rounded-tr-sm px-4 py-2 max-w-[80%]">
+                            <p className="text-xs mb-1"><strong>Name:</strong> Patrick Wellner</p>
+                            <p className="text-xs mb-1"><strong>Email:</strong> pwellner@gmail.com</p>
+                            <p className="text-xs"><strong>Message:</strong> How can I get more info about the pricing?</p>
+                            <p className="text-[10px] text-blue-100 text-right mt-1">1:34 pm</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-start">
+                          <div className="bg-white dark:bg-slate-700 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[80%] shadow-sm">
+                            <p className="text-sm text-slate-700 dark:text-slate-200">
+                              {widget.liveChatSettings?.queueSettings?.autoReplyMessage || "Thank you, we have received your request."}
+                            </p>
+                            <p className="text-[10px] text-slate-400 text-right mt-1">1:34 pm</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex flex-col items-center justify-center py-4">
+                          <p className="text-xs text-slate-500">Searching for available agents...</p>
+                          <div className="mt-2 animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div>
+                        </div>
+                      </div>
+                      
+                      <div className="bg-white dark:bg-slate-900 p-3 border-t flex items-center gap-2">
+                        <Input placeholder="Type your message here..." disabled className="flex-1" />
+                        <Button size="icon" style={{ background: currentBackground }}>
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </div>
+                      
+                      <div className="bg-white dark:bg-slate-900 py-2 text-center border-t">
+                        <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                          Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                ) : expandedChannel === "liveChat" && activeLiveChatSubSection === "satisfactionSurvey" ? (
+                  <div className="relative">
+                    <div className="rounded-xl overflow-hidden shadow-lg">
+                      <div className="p-4 text-white flex items-center justify-between" style={{ background: currentBackground }}>
+                        <div className="flex items-center gap-2">
+                          <ChevronLeft className="h-5 w-5" />
+                          <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: currentBackground }}>
+                            <MessageCircle className="h-4 w-4 text-white" />
+                          </div>
+                          <div>
+                            <span className="font-medium">Live chat</span>
+                            <p className="text-xs opacity-75">Chat has ended</p>
+                          </div>
+                        </div>
+                        <MoreVertical className="h-5 w-5" />
+                      </div>
+                      
+                      <div className="bg-slate-100 dark:bg-slate-800 p-4 space-y-3" style={{ minHeight: "200px" }}>
+                        <div className="flex justify-end">
+                          <div className="bg-blue-500 text-white rounded-2xl rounded-tr-sm px-4 py-2 max-w-[80%]">
+                            <p className="text-xs mb-1"><strong>Name:</strong> Patrick Wellner</p>
+                            <p className="text-xs mb-1"><strong>Email:</strong> pwellner@gmail.com</p>
+                            <p className="text-xs"><strong>Message:</strong> How can I get more info about the pricing?</p>
+                            <p className="text-[10px] text-blue-100 text-right mt-1">1:36 pm</p>
+                          </div>
+                        </div>
+                        
+                        <div className="flex justify-start">
+                          <div className="bg-white dark:bg-slate-700 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[80%] shadow-sm">
+                            <p className="text-sm text-slate-700 dark:text-slate-200">
+                              {widget.liveChatSettings?.queueSettings?.autoReplyMessage || "Thank you, we have received your request."}
+                            </p>
+                            <p className="text-[10px] text-slate-400 text-right mt-1">1:36 pm</p>
+                          </div>
+                        </div>
+                        
+                        <div className="text-center py-1">
+                          <span className="text-xs text-slate-500 bg-white dark:bg-slate-700 px-3 py-1 rounded-full">Markus Harris joined chat <span className="text-slate-400">1:36 pm</span></span>
+                        </div>
+                        
+                        <div className="flex justify-start">
+                          <div className="bg-white dark:bg-slate-700 rounded-2xl rounded-tl-sm px-4 py-2 max-w-[80%] shadow-sm">
+                            <p className="text-xs font-medium text-slate-600 mb-1">Markus Harris</p>
+                            <p className="text-sm text-slate-700 dark:text-slate-200">Hello Patrick, I can definitely help you with this.</p>
+                            <p className="text-[10px] text-slate-400 text-right mt-1">1:36 pm</p>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {widget.liveChatSettings?.satisfactionSurvey?.enabled && (
+                        <div className="bg-white dark:bg-slate-900 p-4 border-t">
+                          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-lg border">
+                            <h5 className="font-semibold text-slate-900 dark:text-slate-100 text-center mb-2">How was the help you received?</h5>
+                            <p className="text-xs text-slate-500 text-center mb-4">We're always striving to improve and would love your feedback on the experience.</p>
+                            <div className="flex justify-center gap-6 mb-3">
+                              <button className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center hover:scale-110 transition-transform">
+                                <ThumbsUp className="h-7 w-7 text-green-500" />
+                              </button>
+                              <button className="w-14 h-14 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center hover:scale-110 transition-transform">
+                                <ThumbsDown className="h-7 w-7 text-red-500" />
+                              </button>
+                            </div>
+                            <p className="text-xs text-blue-500 text-center cursor-pointer hover:underline">Skip for now</p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      <div className="bg-white dark:bg-slate-900 py-2 text-center border-t">
+                        <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                          Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                        </p>
                       </div>
                     </div>
                   </div>
