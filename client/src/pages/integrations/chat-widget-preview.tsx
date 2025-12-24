@@ -106,7 +106,12 @@ export default function ChatWidgetPreviewPage() {
     },
   };
 
-  const widget = { ...defaultWidget, ...widgetData?.widget };
+  const widget = { 
+    ...defaultWidget, 
+    ...widgetData?.widget,
+    channels: { ...defaultWidget.channels, ...widgetData?.widget?.channels },
+    channelOrder: widgetData?.widget?.channelOrder || defaultWidget.channelOrder,
+  };
   
   const currentColor = colorOptions.find(c => c.value === widget.colorTheme) || colorOptions[0];
   const currentBackground = widget.themeType === "solid" 
@@ -125,7 +130,13 @@ export default function ChatWidgetPreviewPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const enabledChannels = (widget.channelOrder || []).filter(
+  // Build full channel order including any missing channels
+  const allChannelIds = ["liveChat", "email", "sms", "phone", "whatsapp", "facebook", "instagram", "telegram"];
+  const savedOrder = widget.channelOrder || [];
+  const missingChannels = allChannelIds.filter(id => !savedOrder.includes(id));
+  const fullChannelOrder = [...savedOrder, ...missingChannels];
+  
+  const enabledChannels = fullChannelOrder.filter(
     (ch: string) => widget.channels?.[ch as keyof typeof widget.channels]
   );
 
