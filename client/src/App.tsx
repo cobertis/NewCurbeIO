@@ -128,6 +128,7 @@ import TelegramFlow from "@/pages/integrations/telegram-flow";
 import ChatWidgetPage from "@/pages/integrations/chat-widget-page";
 import ChatWidgetFlow from "@/pages/integrations/chat-widget-flow";
 import ChatWidgetEdit from "@/pages/integrations/chat-widget-edit";
+import ChatWidgetPreview from "@/pages/integrations/chat-widget-preview";
 import NotFound from "@/pages/not-found";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -1732,6 +1733,11 @@ function Router() {
           <DashboardLayout>
             <ChatWidgetEdit />
           </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/chat-widget/:id/preview">
+        <ProtectedRoute>
+          <ChatWidgetPreview />
         </ProtectedRoute>
       </Route>
       <Route path="/settings/chat-widget">

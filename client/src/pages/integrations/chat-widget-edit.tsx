@@ -2451,7 +2451,7 @@ export default function ChatWidgetEditPage() {
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => window.open(`/widget-preview/${widgetId}`, "_blank")}
+                            onClick={() => setLocation(`/settings/chat-widget/${widgetId}/preview`)}
                             data-testid="button-view-test"
                           >
                             <ExternalLink className="h-4 w-4 mr-2" />
