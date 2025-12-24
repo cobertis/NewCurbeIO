@@ -147,11 +147,15 @@ export default function SmsVoiceNumbers() {
     <SettingsLayout activeSection="sms-voice">
       <div className="space-y-6" data-testid="page-sms-voice-numbers">
         <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-          <Link href="/settings/sms-voice" className="hover:text-slate-700 dark:hover:text-slate-300">
+          <Link href="/settings" className="hover:text-slate-700 dark:hover:text-slate-300">
             Settings
           </Link>
           <span>&gt;</span>
-          <span className="text-slate-700 dark:text-slate-300">SMS & voice</span>
+          <Link href="/settings/sms-voice" className="hover:text-slate-700 dark:hover:text-slate-300">
+            SMS & voice
+          </Link>
+          <span>&gt;</span>
+          <span className="text-slate-700 dark:text-slate-300">Numbers</span>
         </div>
 
         <div className="flex items-center justify-between">

@@ -1,20 +1,22 @@
 import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Construction, ArrowLeft } from "lucide-react";
+import { Construction } from "lucide-react";
 import { SettingsLayout } from "@/components/settings-layout";
 
 export default function SmsVoiceCpaas() {
   return (
     <SettingsLayout activeSection="sms-voice">
       <div className="space-y-6" data-testid="page-sms-voice-cpaas">
-        <div className="flex items-center gap-4">
-          <Link href="/settings/sms-voice">
-            <Button variant="ghost" size="sm" className="gap-2" data-testid="link-back-sms-voice">
-              <ArrowLeft className="h-4 w-4" />
-              Back to SMS & Voice
-            </Button>
+        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+          <Link href="/settings" className="hover:text-slate-700 dark:hover:text-slate-300">
+            Settings
           </Link>
+          <span>&gt;</span>
+          <Link href="/settings/sms-voice" className="hover:text-slate-700 dark:hover:text-slate-300">
+            SMS & voice
+          </Link>
+          <span>&gt;</span>
+          <span className="text-slate-700 dark:text-slate-300">Bring Your Own CPaaS</span>
         </div>
 
         <div>

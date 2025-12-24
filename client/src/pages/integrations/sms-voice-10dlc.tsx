@@ -121,12 +121,15 @@ export default function SmsVoice10dlc() {
     <SettingsLayout activeSection="sms-voice">
       <div className="space-y-6" data-testid="page-sms-voice-10dlc">
         <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-          <Link href="/settings/sms-voice" className="hover:text-slate-700 dark:hover:text-slate-300 flex items-center gap-1">
-            <ChevronLeft className="h-4 w-4" />
+          <Link href="/settings" className="hover:text-slate-700 dark:hover:text-slate-300">
             Settings
           </Link>
           <span>&gt;</span>
-          <span className="text-slate-700 dark:text-slate-300">SMS & voice</span>
+          <Link href="/settings/sms-voice" className="hover:text-slate-700 dark:hover:text-slate-300">
+            SMS & voice
+          </Link>
+          <span>&gt;</span>
+          <span className="text-slate-700 dark:text-slate-300">10DLC registration</span>
         </div>
 
         <div>
