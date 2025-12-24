@@ -3555,10 +3555,27 @@ export default function ChatWidgetEditPage() {
                         <p className="text-base opacity-90 mt-3">{widget.welcomeMessage}</p>
                       </div>
                       
-                      <div className="bg-white dark:bg-slate-900 p-5 space-y-2">
+                      <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
+                        {widget.channels.liveChat && (
+                          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-700">
+                            <h5 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-3">
+                              {widget.liveChatSettings?.preChatForm?.title || "How can we help you today?"}
+                            </h5>
+                            <Textarea 
+                              placeholder="Type your message here" 
+                              disabled 
+                              className="mb-3 resize-none" 
+                              rows={3} 
+                            />
+                            <Button className="w-full" style={{ background: currentBackground }}>
+                              {widget.liveChatSettings?.preChatForm?.buttonLabel || widget.liveChatSettings?.welcomeScreen?.buttonLabel || "Start chat"}
+                            </Button>
+                          </div>
+                        )}
+                        
                         {(widget.channelOrder || channelConfigs.map(c => c.id)).filter(channelId => {
-                          const channelKey = channelId === "liveChat" ? "liveChat" : 
-                                            channelId === "phone" ? "phone" : 
+                          if (channelId === "liveChat") return false;
+                          const channelKey = channelId === "phone" ? "phone" : 
                                             channelId === "email" ? "email" :
                                             channelId === "sms" ? "sms" :
                                             channelId === "whatsapp" ? "whatsapp" :
@@ -3571,45 +3588,28 @@ export default function ChatWidgetEditPage() {
                           
                           const getChannelLabel = () => {
                             switch (channelId) {
-                              case "liveChat": return "Live Chat";
-                              case "phone": return "Call Us";
+                              case "phone": return "Call us";
                               case "whatsapp": return widget.whatsappSettings?.welcomeScreen?.channelName || "WhatsApp";
                               case "email": return widget.emailSettings?.welcomeScreen?.channelName || "Email";
-                              case "sms": return widget.smsSettings?.welcomeScreen?.channelName || "SMS";
+                              case "sms": return widget.smsSettings?.welcomeScreen?.channelName || "Send a text";
                               case "facebook": return widget.messengerSettings?.welcomeScreen?.channelName || "Messenger";
                               case "instagram": return widget.instagramSettings?.welcomeScreen?.channelName || "Instagram";
                               default: return config.label;
                             }
                           };
                           
-                          const getButtonLabel = () => {
-                            switch (channelId) {
-                              case "liveChat": return widget.liveChatSettings?.preChatForm?.buttonLabel || widget.liveChatSettings?.welcomeScreen?.buttonLabel || "Start chat";
-                              case "phone": return widget.callSettings?.callUsScreen?.buttonLabel || "Call now";
-                              case "whatsapp": return widget.whatsappSettings?.messageScreen?.buttonLabel || "Open WhatsApp";
-                              case "email": return widget.emailSettings?.formFields?.buttonLabel || "Send message";
-                              case "sms": return widget.smsSettings?.messageScreen?.buttonLabel || "Send SMS";
-                              case "facebook": return widget.messengerSettings?.messageScreen?.buttonLabel || "Open Messenger";
-                              case "instagram": return widget.instagramSettings?.messageScreen?.buttonLabel || "Open Instagram";
-                              default: return "";
-                            }
-                          };
-                          
                           return (
-                            <div key={channelId} className="flex items-center justify-between py-3 px-3 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg cursor-pointer transition-colors">
+                            <div key={channelId} className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                               <div className="flex items-center gap-3">
                                 <span className={config.iconColor}>{config.icon}</span>
-                                <div className="flex flex-col">
-                                  <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{getChannelLabel()}</span>
-                                  <span className="text-xs text-slate-400">{getButtonLabel()}</span>
-                                </div>
+                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{getChannelLabel()}</span>
                               </div>
                               <ChevronRight className="h-4 w-4 text-slate-400" />
                             </div>
                           );
                         })}
                         
-                        <div className="text-center pt-4">
+                        <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
                             Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                           </p>
