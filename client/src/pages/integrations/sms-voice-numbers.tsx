@@ -537,7 +537,7 @@ export default function SmsVoiceNumbers() {
               />
               <p className="text-xs text-slate-500">
                 Max 15 characters. This name will appear on recipient's caller ID display. 
-                Changes take 3-5 business days to propagate. Additional fees may apply ($0.40/month).
+                Changes take 3-5 business days to propagate.
               </p>
             </div>
           </div>
