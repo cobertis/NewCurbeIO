@@ -4729,7 +4729,7 @@ export default function ChatWidgetEditPage() {
                         <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100 text-center">
                           {widget.smsSettings?.messageScreen?.title || "Send us a text message"}
                         </h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                        <p className="text-sm text-slate-600 dark:text-slate-400 text-center">
                           {widget.smsSettings?.messageScreen?.description || "Click the button below to send us an SMS and we'll respond as soon as possible."}
                         </p>
                         <div className="text-center">
