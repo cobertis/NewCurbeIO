@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useLocation } from "wouter";
+import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -156,7 +156,13 @@ export default function FacebookPage() {
     return (
       <SettingsLayout activeSection="facebook">
         <div className="space-y-8" data-testid="page-facebook-landing">
-          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Facebook</h1>
+          <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-facebook">
+            <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <span className="text-muted-foreground">Channels</span>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">Facebook</span>
+          </div>
           
           <Card className="border-slate-200 dark:border-slate-800">
             <CardContent className="p-6 md:py-8 md:px-[10%]">
@@ -288,8 +294,12 @@ export default function FacebookPage() {
   return (
     <SettingsLayout activeSection="facebook">
       <div className="space-y-6" data-testid="page-facebook">
-        <div className="flex items-center justify-between">
-          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">Facebook</h1>
+        <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-facebook">
+          <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <span className="text-muted-foreground">Channels</span>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium">Facebook</span>
         </div>
 
         <div className="flex items-center justify-between gap-4">
