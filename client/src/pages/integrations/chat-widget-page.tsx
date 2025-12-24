@@ -306,6 +306,57 @@ export default function ChatWidgetPage() {
             </Accordion>
           </div>
         </div>
+
+        <Dialog open={newWidgetDialogOpen} onOpenChange={setNewWidgetDialogOpen}>
+          <DialogContent className="sm:max-w-md" data-testid="dialog-new-widget">
+            <DialogHeader>
+              <DialogTitle>New widget</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-4">
+              <div className="space-y-2">
+                <Label htmlFor="widget-name" className="text-sm font-medium">
+                  Widget name <span className="text-red-500">*</span>
+                </Label>
+                <Input
+                  id="widget-name"
+                  placeholder="Enter widget name"
+                  value={newWidgetName}
+                  onChange={(e) => setNewWidgetName(e.target.value)}
+                  data-testid="input-new-widget-name"
+                />
+              </div>
+            </div>
+            <DialogFooter className="gap-2 sm:gap-0">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setNewWidgetDialogOpen(false);
+                  setNewWidgetName("");
+                }}
+                data-testid="button-cancel-new-widget"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={() => {
+                  if (!newWidgetName.trim()) {
+                    toast({
+                      variant: "destructive",
+                      title: "Name required",
+                      description: "Please enter a name for your widget.",
+                    });
+                    return;
+                  }
+                  createMutation.mutate(newWidgetName);
+                }}
+                disabled={createMutation.isPending || !newWidgetName.trim()}
+                data-testid="button-create-new-widget"
+              >
+                {createMutation.isPending ? "Creating..." : "Create"}
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </SettingsLayout>
     );
   }
