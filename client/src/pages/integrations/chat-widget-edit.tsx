@@ -153,6 +153,30 @@ interface WidgetConfig {
       customNumber: string;
     };
   };
+  emailSettings: {
+    welcomeScreen: {
+      channelName: string;
+    };
+    formFields: {
+      title: string;
+      description: string;
+      nameFieldEnabled: boolean;
+      nameFieldRequired: boolean;
+      emailFieldEnabled: boolean;
+      emailFieldRequired: boolean;
+      messageFieldEnabled: boolean;
+      messageFieldRequired: boolean;
+      buttonLabel: string;
+    };
+    successScreen: {
+      title: string;
+      description: string;
+    };
+    associatedEmail: {
+      emailType: "connected" | "custom";
+      customEmail: string;
+    };
+  };
   targeting: {
     countries: "all" | "selected" | "excluded";
     selectedCountries: string[];
@@ -209,11 +233,14 @@ interface SortableChannelItemProps {
   onCallSettingsChange?: (settings: Partial<WidgetConfig["callSettings"]>) => void;
   whatsappSettings?: WidgetConfig["whatsappSettings"];
   onWhatsappSettingsChange?: (settings: Partial<WidgetConfig["whatsappSettings"]>) => void;
+  emailSettings?: WidgetConfig["emailSettings"];
+  onEmailSettingsChange?: (settings: Partial<WidgetConfig["emailSettings"]>) => void;
 }
 
 type LiveChatSubSection = "welcomeScreen" | "preChatForm" | "queueSettings" | "satisfactionSurvey" | "offlineMode" | "additionalSettings" | null;
 type CallSubSection = "callUsScreen" | "numbersAndCountries" | null;
 type WhatsappSubSection = "welcomeScreen" | "messageScreen" | "numberSettings" | null;
+type EmailSubSection = "welcomeScreen" | "formFields" | "successScreen" | "associatedEmail" | null;
 
 function SortableChannelItem({ 
   channel, 
@@ -226,11 +253,14 @@ function SortableChannelItem({
   callSettings,
   onCallSettingsChange,
   whatsappSettings,
-  onWhatsappSettingsChange
+  onWhatsappSettingsChange,
+  emailSettings,
+  onEmailSettingsChange
 }: SortableChannelItemProps) {
   const [activeSubSection, setActiveSubSection] = useState<LiveChatSubSection>(null);
   const [activeCallSubSection, setActiveCallSubSection] = useState<CallSubSection>(null);
   const [activeWhatsappSubSection, setActiveWhatsappSubSection] = useState<WhatsappSubSection>(null);
+  const [activeEmailSubSection, setActiveEmailSubSection] = useState<EmailSubSection>(null);
   
   const {
     attributes,
@@ -265,6 +295,13 @@ function SortableChannelItem({
     { id: "welcomeScreen", label: "Welcome screen", icon: <Monitor className="h-4 w-4" /> },
     { id: "messageScreen", label: "Message us on WhatsApp", icon: <MessageSquare className="h-4 w-4" /> },
     { id: "numberSettings", label: "WhatsApp number", icon: <Phone className="h-4 w-4" /> },
+  ];
+
+  const emailSubOptions = [
+    { id: "welcomeScreen", label: "Welcome screen", icon: <Monitor className="h-4 w-4" /> },
+    { id: "formFields", label: "Form fields", icon: <FileText className="h-4 w-4" /> },
+    { id: "successScreen", label: "Success screen", icon: <CheckCircle className="h-4 w-4" /> },
+    { id: "associatedEmail", label: "Associated email", icon: <Mail className="h-4 w-4" /> },
   ];
 
   return (
@@ -863,6 +900,230 @@ function SortableChannelItem({
           )}
         </div>
       )}
+      
+      {isExpanded && channel.id === "email" && emailSettings && onEmailSettingsChange && (
+        <div className="border-t px-4 py-3">
+          {activeEmailSubSection === null ? (
+            <div className="space-y-1">
+              {emailSubOptions.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => setActiveEmailSubSection(option.id as EmailSubSection)}
+                  className="w-full flex items-center justify-between py-2 px-3 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  data-testid={`button-email-${option.id}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-slate-500">{option.icon}</span>
+                    <span className="text-sm">{option.label}</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-slate-400" />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <button
+                onClick={() => setActiveEmailSubSection(null)}
+                className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+                data-testid="button-back-to-email-options"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                {emailSubOptions.find(o => o.id === activeEmailSubSection)?.label}
+              </button>
+              
+              {activeEmailSubSection === "welcomeScreen" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Channel name *</Label>
+                    <div className="flex items-center gap-2 px-3 py-2 border rounded-lg">
+                      <Mail className="h-5 w-5 text-slate-500" />
+                      <Input 
+                        value={emailSettings.welcomeScreen.channelName}
+                        onChange={(e) => onEmailSettingsChange({
+                          welcomeScreen: { channelName: e.target.value }
+                        })}
+                        className="border-0 p-0 focus-visible:ring-0"
+                        data-testid="input-email-channel-name"
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {activeEmailSubSection === "formFields" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Title & description *</Label>
+                    <div className="relative">
+                      <Input 
+                        value={emailSettings.formFields.title}
+                        onChange={(e) => onEmailSettingsChange({
+                          formFields: { ...emailSettings.formFields, title: e.target.value }
+                        })}
+                        data-testid="input-email-form-title"
+                      />
+                      <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7">
+                        <Smile className="h-4 w-4 text-slate-400" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Textarea 
+                      value={emailSettings.formFields.description}
+                      onChange={(e) => onEmailSettingsChange({
+                        formFields: { ...emailSettings.formFields, description: e.target.value }
+                      })}
+                      rows={3}
+                      data-testid="textarea-email-form-description"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-sm font-medium">Form fields</Label>
+                    <p className="text-xs text-slate-500">Your contacts will need to populate the enabled fields before a live chat request is sent to your agents.</p>
+                    
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between py-2 px-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="h-4 w-4 text-slate-400" />
+                          <span className="text-sm">Name</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox 
+                            checked={emailSettings.formFields.nameFieldRequired}
+                            onCheckedChange={(checked) => onEmailSettingsChange({
+                              formFields: { ...emailSettings.formFields, nameFieldRequired: !!checked }
+                            })}
+                            data-testid="checkbox-email-name-required"
+                          />
+                          <span className="text-xs text-slate-500">Required</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between py-2 px-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="h-4 w-4 text-slate-400" />
+                          <span className="text-sm">Email</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox 
+                            checked={emailSettings.formFields.emailFieldRequired}
+                            onCheckedChange={(checked) => onEmailSettingsChange({
+                              formFields: { ...emailSettings.formFields, emailFieldRequired: !!checked }
+                            })}
+                            data-testid="checkbox-email-email-required"
+                          />
+                          <span className="text-xs text-slate-500">Required</span>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center justify-between py-2 px-3 border rounded-lg">
+                        <div className="flex items-center gap-2">
+                          <GripVertical className="h-4 w-4 text-slate-400" />
+                          <span className="text-sm">Message</span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Checkbox 
+                            checked={emailSettings.formFields.messageFieldRequired}
+                            onCheckedChange={(checked) => onEmailSettingsChange({
+                              formFields: { ...emailSettings.formFields, messageFieldRequired: !!checked }
+                            })}
+                            data-testid="checkbox-email-message-required"
+                          />
+                          <span className="text-xs text-slate-500">Required</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Button label *</Label>
+                    <Input 
+                      value={emailSettings.formFields.buttonLabel}
+                      onChange={(e) => onEmailSettingsChange({
+                        formFields: { ...emailSettings.formFields, buttonLabel: e.target.value }
+                      })}
+                      data-testid="input-email-button-label"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {activeEmailSubSection === "successScreen" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Title & description *</Label>
+                    <div className="relative">
+                      <Input 
+                        value={emailSettings.successScreen.title}
+                        onChange={(e) => onEmailSettingsChange({
+                          successScreen: { ...emailSettings.successScreen, title: e.target.value }
+                        })}
+                        data-testid="input-email-success-title"
+                      />
+                      <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7">
+                        <Smile className="h-4 w-4 text-slate-400" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Textarea 
+                      value={emailSettings.successScreen.description}
+                      onChange={(e) => onEmailSettingsChange({
+                        successScreen: { ...emailSettings.successScreen, description: e.target.value }
+                      })}
+                      rows={3}
+                      data-testid="textarea-email-success-description"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {activeEmailSubSection === "associatedEmail" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Associated email for incoming requests *</Label>
+                    <Select 
+                      value={emailSettings.associatedEmail.emailType}
+                      onValueChange={(v: "connected" | "custom") => onEmailSettingsChange({
+                        associatedEmail: { ...emailSettings.associatedEmail, emailType: v }
+                      })}
+                    >
+                      <SelectTrigger data-testid="select-email-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <div className="p-2">
+                          <Input placeholder="Search" className="mb-2" />
+                        </div>
+                        <div className="text-xs text-slate-500 px-2 py-1 font-medium">Connected inboxes</div>
+                        <SelectItem value="connected">- Connect new inbox -</SelectItem>
+                        <SelectItem value="custom">+ Use custom email address</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {emailSettings.associatedEmail.emailType === "custom" && (
+                    <div className="space-y-2">
+                      <Input 
+                        value={emailSettings.associatedEmail.customEmail}
+                        onChange={(e) => onEmailSettingsChange({
+                          associatedEmail: { ...emailSettings.associatedEmail, customEmail: e.target.value }
+                        })}
+                        placeholder="email@example.com"
+                        data-testid="input-email-custom-address"
+                      />
+                      <p className="text-xs text-slate-500">Once the form gets submitted by a visitor, an email will be sent to the address specified above.</p>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -985,6 +1246,30 @@ export default function ChatWidgetEditPage() {
         customNumber: "+17866302522",
       },
     },
+    emailSettings: {
+      welcomeScreen: {
+        channelName: "Send an email",
+      },
+      formFields: {
+        title: "Get response via email",
+        description: "Please fill the details below and we will reply to you via email within 72 hours.",
+        nameFieldEnabled: true,
+        nameFieldRequired: false,
+        emailFieldEnabled: true,
+        emailFieldRequired: true,
+        messageFieldEnabled: true,
+        messageFieldRequired: true,
+        buttonLabel: "Send email",
+      },
+      successScreen: {
+        title: "We have received your email",
+        description: "We will respond to your email shortly.",
+      },
+      associatedEmail: {
+        emailType: "custom",
+        customEmail: "hello@cobertisinsurance.com",
+      },
+    },
     targeting: {
       countries: "all",
       selectedCountries: [],
@@ -1056,6 +1341,15 @@ export default function ChatWidgetEditPage() {
     updateLocalWidget({
       whatsappSettings: {
         ...widget.whatsappSettings,
+        ...settings,
+      }
+    });
+  };
+
+  const handleEmailSettingsChange = (settings: Partial<WidgetConfig["emailSettings"]>) => {
+    updateLocalWidget({
+      emailSettings: {
+        ...widget.emailSettings,
         ...settings,
       }
     });
@@ -1576,6 +1870,8 @@ export default function ChatWidgetEditPage() {
                                 onCallSettingsChange={handleCallSettingsChange}
                                 whatsappSettings={widget.whatsappSettings}
                                 onWhatsappSettingsChange={handleWhatsappSettingsChange}
+                                emailSettings={widget.emailSettings}
+                                onEmailSettingsChange={handleEmailSettingsChange}
                               />
                             ))}
                           </div>
