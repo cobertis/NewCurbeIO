@@ -272,6 +272,12 @@ interface WidgetConfig {
     welcomeScreen: {
       channelName: string;
     };
+    messageUsScreen: {
+      showQRCode: boolean;
+      title: string;
+      description: string;
+      buttonLabel: string;
+    };
     pageSettings: {
       title: string;
       description: string;
@@ -386,7 +392,7 @@ type CallSubSection = "callUsScreen" | "numberSettings" | "numbersAndCountries" 
 type WhatsappSubSection = "welcomeScreen" | "messageScreen" | "numberSettings" | null;
 type EmailSubSection = "welcomeScreen" | "formFields" | "successScreen" | "associatedEmail" | null;
 type SmsSubSection = "welcomeScreen" | "messageScreen" | "numberSettings" | null;
-type MessengerSubSection = "welcomeScreen" | "pageSettings" | "pageConnection" | null;
+type MessengerSubSection = "welcomeScreen" | "messageUsScreen" | "pageConnection" | null;
 type InstagramSubSection = "welcomeScreen" | "profileSettings" | "accountConnection" | null;
 
 function SortableChannelItem({ 
@@ -497,7 +503,7 @@ function SortableChannelItem({
 
   const messengerSubOptions = [
     { id: "welcomeScreen", label: "Welcome screen", icon: <Monitor className="h-4 w-4" /> },
-    { id: "pageSettings", label: "Page settings", icon: <FileText className="h-4 w-4" /> },
+    { id: "messageUsScreen", label: "Message us screen", icon: <FileText className="h-4 w-4" /> },
     { id: "pageConnection", label: "Connect Facebook page", icon: <SiFacebook className="h-4 w-4" /> },
   ];
 
@@ -1652,35 +1658,56 @@ function SortableChannelItem({
                 </div>
               )}
 
-              {activeMessengerSubSection === "pageSettings" && (
+              {activeMessengerSubSection === "messageUsScreen" && (
                 <div className="space-y-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs text-slate-500">Title *</Label>
-                    <Input 
-                      value={messengerSettings.pageSettings.title}
-                      onChange={(e) => onMessengerSettingsChange({
-                        pageSettings: { ...messengerSettings.pageSettings, title: e.target.value }
+                  <div className="flex items-center gap-3">
+                    <Switch 
+                      checked={messengerSettings.messageUsScreen?.showQRCode ?? true}
+                      onCheckedChange={(checked) => onMessengerSettingsChange({
+                        messageUsScreen: { ...messengerSettings.messageUsScreen, showQRCode: checked }
                       })}
-                      data-testid="input-messenger-title"
+                      data-testid="switch-messenger-qr-code"
                     />
+                    <Label className="text-sm font-medium">Show QR code</Label>
                   </div>
+                  
                   <div className="space-y-2">
-                    <Label className="text-xs text-slate-500">Description</Label>
+                    <Label className="text-xs text-slate-500">Title & description *</Label>
+                    <div className="relative">
+                      <Input 
+                        value={messengerSettings.messageUsScreen?.title || "Message us on Facebook"}
+                        onChange={(e) => onMessengerSettingsChange({
+                          messageUsScreen: { ...messengerSettings.messageUsScreen, title: e.target.value }
+                        })}
+                        className="pr-8"
+                        data-testid="input-messenger-title"
+                      />
+                      <button 
+                        type="button"
+                        className="absolute right-2 top-1/2 -translate-y-1/2"
+                      >
+                        <Smile className="h-3.5 w-3.5 text-slate-400 hover:text-slate-600" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
                     <Textarea 
-                      value={messengerSettings.pageSettings.description}
+                      value={messengerSettings.messageUsScreen?.description || "Click the button below or scan the QR code to send us a message on Facebook."}
                       onChange={(e) => onMessengerSettingsChange({
-                        pageSettings: { ...messengerSettings.pageSettings, description: e.target.value }
+                        messageUsScreen: { ...messengerSettings.messageUsScreen, description: e.target.value }
                       })}
                       rows={3}
                       data-testid="textarea-messenger-description"
                     />
                   </div>
+                  
                   <div className="space-y-2">
                     <Label className="text-xs text-slate-500">Button label *</Label>
                     <Input 
-                      value={messengerSettings.pageSettings.buttonLabel}
+                      value={messengerSettings.messageUsScreen?.buttonLabel || "Open Facebook"}
                       onChange={(e) => onMessengerSettingsChange({
-                        pageSettings: { ...messengerSettings.pageSettings, buttonLabel: e.target.value }
+                        messageUsScreen: { ...messengerSettings.messageUsScreen, buttonLabel: e.target.value }
                       })}
                       data-testid="input-messenger-button-label"
                     />
@@ -2005,7 +2032,13 @@ export default function ChatWidgetEditPage() {
     },
     messengerSettings: {
       welcomeScreen: {
-        channelName: "Message on Facebook",
+        channelName: "Chat on Facebook",
+      },
+      messageUsScreen: {
+        showQRCode: true,
+        title: "Message us on Facebook",
+        description: "Click the button below or scan the QR code to send us a message on Facebook.",
+        buttonLabel: "Open Facebook",
       },
       pageSettings: {
         title: "Message us on Facebook",
@@ -2285,6 +2318,10 @@ export default function ChatWidgetEditPage() {
         welcomeScreen: {
           ...widget.messengerSettings?.welcomeScreen,
           ...settings.welcomeScreen,
+        },
+        messageUsScreen: {
+          ...widget.messengerSettings?.messageUsScreen,
+          ...settings.messageUsScreen,
         },
         pageSettings: {
           ...widget.messengerSettings?.pageSettings,
@@ -4343,23 +4380,46 @@ export default function ChatWidgetEditPage() {
                   <div className="relative">
                     <div className="rounded-xl overflow-hidden shadow-lg">
                       <div className="p-4 text-white" style={{ background: currentBackground }}>
-                        <div className="flex items-center gap-2 mb-3">
+                        <div className="flex items-center gap-2">
                           <ChevronLeft className="h-5 w-5" />
                           <SiFacebook className="h-5 w-5" />
-                          <span className="font-medium">{widget.messengerSettings?.welcomeScreen?.channelName || "Messenger"}</span>
+                          <span className="font-medium">{widget.messengerSettings?.welcomeScreen?.channelName || "Chat on Facebook"}</span>
                         </div>
                       </div>
                       <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
-                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                          {widget.messengerSettings?.pageSettings?.title || "Message us on Facebook"}
+                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100 text-center">
+                          {widget.messengerSettings?.messageUsScreen?.title || "Message us on Facebook"}
                         </h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          {widget.messengerSettings?.pageSettings?.description || "Click the button below to start a Messenger conversation."}
+                        <p className="text-sm text-slate-600 dark:text-slate-400 text-center">
+                          {widget.messengerSettings?.messageUsScreen?.description || "Click the button below or scan the QR code to send us a message on Facebook."}
                         </p>
-                        <Button className="w-full bg-[#0866FF] hover:bg-[#0756d4]">
-                          <SiFacebook className="h-4 w-4 mr-2" />
-                          {widget.messengerSettings?.pageSettings?.buttonLabel || "Open Messenger"}
+                        <Button className="w-full" style={{ background: currentBackground }}>
+                          {widget.messengerSettings?.messageUsScreen?.buttonLabel || "Open Facebook"}
                         </Button>
+                        {(widget.messengerSettings?.messageUsScreen?.showQRCode ?? true) && (
+                          <>
+                            <div className="flex justify-center py-4">
+                              <div className="relative">
+                                <div className="absolute -top-1 -left-1 w-5 h-5 border-l-2 border-t-2 border-slate-300 rounded-tl-lg"></div>
+                                <div className="absolute -top-1 -right-1 w-5 h-5 border-r-2 border-t-2 border-slate-300 rounded-tr-lg"></div>
+                                <div className="absolute -bottom-1 -left-1 w-5 h-5 border-l-2 border-b-2 border-slate-300 rounded-bl-lg"></div>
+                                <div className="absolute -bottom-1 -right-1 w-5 h-5 border-r-2 border-b-2 border-slate-300 rounded-br-lg"></div>
+                                <div className="p-2">
+                                  <QRCodeDisplay 
+                                    value={`https://m.me/${widget.messengerSettings?.pageConnection?.pageId || 'curbeio'}`}
+                                    size={160}
+                                  />
+                                </div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="bg-white p-1.5 rounded-full border-2" style={{ borderColor: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3B82F6' }}>
+                                    <SiFacebook className="h-5 w-5" style={{ color: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3B82F6' }} />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-400 text-center">Scan QR code to open a chat</p>
+                          </>
+                        )}
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
                             Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />

@@ -187,6 +187,14 @@ export default function ChatWidgetPreviewPage() {
         showQR: false,
         icon: <Mail className="h-5 w-5" />,
       },
+      facebook: {
+        title: widget.messengerSettings?.messageUsScreen?.title || "Message us on Facebook",
+        description: widget.messengerSettings?.messageUsScreen?.description || "Click the button below or scan the QR code to send us a message on Facebook.",
+        buttonLabel: widget.messengerSettings?.messageUsScreen?.buttonLabel || "Open Facebook",
+        showQR: widget.messengerSettings?.messageUsScreen?.showQRCode ?? true,
+        qrValue: `https://m.me/${widget.messengerSettings?.pageConnection?.pageId || 'curbeio'}`,
+        icon: <SiFacebook className="h-5 w-5" />,
+      },
     };
 
     const config = channelConfig[activeChannel];
@@ -248,7 +256,7 @@ export default function ChatWidgetPreviewPage() {
                 </div>
               </div>
               <p className="text-xs text-slate-400 text-center">
-                {activeChannel === "whatsapp" ? "Scan QR code to open a chat" : activeChannel === "phone" ? "Scan QR code to call" : "Scan QR code to send a text"}
+                {activeChannel === "whatsapp" || activeChannel === "facebook" ? "Scan QR code to open a chat" : activeChannel === "phone" ? "Scan QR code to call" : "Scan QR code to send a text"}
               </p>
             </>
           )}
