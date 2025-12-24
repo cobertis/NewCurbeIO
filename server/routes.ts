@@ -31070,30 +31070,46 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       console.log("[10DLC Campaign Numbers] Fetching for campaign:", id, "tcrCampaignId:", tcrCampaignId, "managedAccount:", managedAccountId);
       
-      // Simple fetch with large page size - Telnyx returns max ~250 per page
-      const url = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[telnyx_campaign_id]=${encodeURIComponent(id)}&page[size]=250`;
-      console.log("[10DLC Campaign Numbers] Fetching URL:", url);
-      
-      const response = await fetch(url, {
-        method: "GET",
-        headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
-      });
-      
-      const result = await response.json();
-      let numbers = result.records || result.data || [];
-      console.log("[10DLC Campaign Numbers] API returned", numbers.length, "records");
-      
-      // Deduplicate by phone number to avoid duplicates from API inconsistency
+      // Telnyx API has a fixed 20 records per page limit - must paginate
       const seenPhones = new Set<string>();
-      numbers = numbers.filter((num: any) => {
-        if (seenPhones.has(num.phoneNumber)) {
-          return false;
-        }
-        seenPhones.add(num.phoneNumber);
-        return true;
-      });
+      const allNumbers: any[] = [];
+      let pageNumber = 1;
+      let hasNewRecords = true;
       
-      console.log("[10DLC Campaign Numbers] After dedup:", numbers.length, "unique numbers");
+      while (hasNewRecords && pageNumber <= 10) { // Max 10 pages = 200 numbers
+        const url = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[telnyx_campaign_id]=${encodeURIComponent(id)}&page[number]=${pageNumber}&page[size]=100`;
+        console.log("[10DLC Campaign Numbers] Fetching page", pageNumber);
+        
+        const response = await fetch(url, {
+          method: "GET",
+          headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
+        });
+        
+        const result = await response.json();
+        const records = result.records || result.data || [];
+        console.log("[10DLC Campaign Numbers] Page", pageNumber, "returned", records.length, "records");
+        
+        if (records.length === 0) {
+          hasNewRecords = false;
+        } else {
+          let newCount = 0;
+          for (const num of records) {
+            if (!seenPhones.has(num.phoneNumber)) {
+              seenPhones.add(num.phoneNumber);
+              allNumbers.push(num);
+              newCount++;
+            }
+          }
+          // If no new unique records, stop
+          if (newCount === 0) {
+            hasNewRecords = false;
+          }
+          pageNumber++;
+        }
+      }
+      
+      const numbers = allNumbers;
+      console.log("[10DLC Campaign Numbers] Total unique numbers:", numbers.length);
       res.json({ phoneNumbers: numbers });
     } catch (error: any) {
       console.error("Error fetching campaign phone numbers:", error);
