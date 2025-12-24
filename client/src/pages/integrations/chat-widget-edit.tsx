@@ -4047,13 +4047,17 @@ export default function ChatWidgetEditPage() {
                         </p>
                         {(widget.smsSettings?.messageScreen?.showQRCode ?? true) && (
                           <>
-                            <div className="flex justify-center py-2">
-                              <div className="bg-white p-1.5 rounded-lg border border-slate-200">
+                            <div className="flex justify-center py-3">
+                              <div className="relative">
+                                <div className="absolute -top-1 -left-1 w-4 h-4 border-l-2 border-t-2 border-slate-300 rounded-tl"></div>
+                                <div className="absolute -top-1 -right-1 w-4 h-4 border-r-2 border-t-2 border-slate-300 rounded-tr"></div>
+                                <div className="absolute -bottom-1 -left-1 w-4 h-4 border-l-2 border-b-2 border-slate-300 rounded-bl"></div>
+                                <div className="absolute -bottom-1 -right-1 w-4 h-4 border-r-2 border-b-2 border-slate-300 rounded-br"></div>
                                 <QRCodeDisplay 
                                   value={`sms:${widget.smsSettings?.numberSettings?.numberType === "custom" 
                                     ? widget.smsSettings?.numberSettings?.customNumber?.replace(/[\s()\-]/g, '') || '+18332214494'
                                     : '+18332214494'}`}
-                                  size={67}
+                                  size={140}
                                 />
                               </div>
                             </div>
