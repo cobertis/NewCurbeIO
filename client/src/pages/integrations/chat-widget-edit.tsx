@@ -4610,7 +4610,7 @@ export default function ChatWidgetEditPage() {
                         </div>
                       </div>
                       <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
-                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100 text-center">
                           {widget.emailSettings?.formFields?.title || "Send us an email"}
                         </h4>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
