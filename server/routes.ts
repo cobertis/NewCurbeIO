@@ -30105,8 +30105,21 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(404).json({ message: "Phone number not found" });
       }
       
-      // Get Telnyx API key
+      // Get Telnyx API key and managed account ID for multi-tenant isolation
       const apiKey = await getTelnyxMasterApiKey();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId);
+      
+      // Build headers with managed account isolation
+      const telnyxHeaders: Record<string, string> = {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      };
+      if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+        telnyxHeaders["x-managed-account-id"] = managedAccountId;
+      }
+      
+      console.log(`[CNAM] Looking up phone number ${phoneNumber} for company ${companyId} with managedAccountId: ${managedAccountId}`);
       
       // First, get the Telnyx phone number ID
       const normalizedPhone = phoneNumber.startsWith("+") ? phoneNumber : `+${phoneNumber.replace(/[^0-9]/g, "")}`;
@@ -30114,10 +30127,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         `https://api.telnyx.com/v2/phone_numbers?filter[phone_number]=${encodeURIComponent(normalizedPhone)}`,
         {
           method: "GET",
-          headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json"
-          }
+          headers: telnyxHeaders
         }
       );
       
@@ -30134,15 +30144,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       const telnyxPhoneId = searchResult.data[0].id;
       
-      // Update CNAM settings using V2 API
+      // Update CNAM settings using V2 API (with managed account isolation)
       const updateResponse = await fetch(
         `https://api.telnyx.com/v2/phone_numbers/${telnyxPhoneId}`,
         {
           method: "PATCH",
-          headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json"
-          },
+          headers: telnyxHeaders,
           body: JSON.stringify({
             cnam_listing_enabled: true,
             caller_id_name_enabled: true
