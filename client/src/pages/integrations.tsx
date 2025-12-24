@@ -15,11 +15,12 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { cn } from "@/lib/utils";
 import { SiWhatsapp, SiInstagram, SiFacebook, SiTiktok, SiTelegram } from "react-icons/si";
-import { CheckCircle, XCircle, Clock, AlertTriangle, Plus, Trash2, RefreshCw, ExternalLink, Settings, HelpCircle, ChevronDown, Info, User as UserIcon, Users, Phone, Mail, Building, CreditCard, Plug, MessageSquare, Zap, Shield, Bell, UsersRound } from "lucide-react";
+import { CheckCircle, XCircle, Clock, AlertTriangle, Plus, Trash2, RefreshCw, ExternalLink, Settings, HelpCircle, ChevronDown, Info, User as UserIcon, Users, Phone, Mail, Building, CreditCard, Plug, MessageSquare, Zap, Shield, Bell, UsersRound, Palette } from "lucide-react";
 import type { ChannelConnection, User } from "@shared/schema";
 import Billing from "@/pages/billing";
 import SettingsPage from "@/pages/settings";
 import SmsVoice from "@/pages/sms-voice";
+import { WhiteLabelSettings } from "@/components/white-label-settings";
 import EmailIntegration from "@/pages/email-integration";
 
 type ChannelType = "whatsapp" | "instagram" | "facebook";
@@ -1700,6 +1701,7 @@ export default function IntegrationsPage() {
     if (location.startsWith("/settings/facebook")) return "facebook";
     if (location.startsWith("/settings/instagram")) return "instagram";
     if (location.startsWith("/settings/telegram")) return "telegram";
+    if (location.startsWith("/settings/white-label")) return "white-label";
     return "profile";
   };
   
@@ -1715,6 +1717,7 @@ export default function IntegrationsPage() {
       { label: "Company", href: "/settings/company", icon: Building, active: activeView === "company" },
       { label: "Team", href: "/settings/team", icon: UsersRound, active: activeView === "team" },
       { label: "Billing", href: "/settings/billing", icon: CreditCard, active: activeView === "billing" },
+      { label: "White Label", href: "/settings/white-label", icon: Palette, active: activeView === "white-label" },
     ],
     channels: [
       { label: "SMS & Voice", href: "/settings/sms-voice", icon: Phone, active: activeView === "sms-voice" },
@@ -1929,6 +1932,7 @@ export default function IntegrationsPage() {
             </div>
           </div>
         )}
+        {activeView === "white-label" && <WhiteLabelSettings />}
       </div>
     </div>
   );
