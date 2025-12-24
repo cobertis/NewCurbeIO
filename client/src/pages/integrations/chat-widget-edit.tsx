@@ -4544,7 +4544,14 @@ export default function ChatWidgetEditPage() {
                         <p className="text-sm text-slate-600 dark:text-slate-400 text-center">
                           {widget.messengerSettings?.messageUsScreen?.description || "Click the button below or scan the QR code to send us a message on Facebook."}
                         </p>
-                        <Button className="w-full" style={{ background: currentBackground }}>
+                        <Button 
+                          className="w-full" 
+                          style={{ background: currentBackground }}
+                          onClick={() => {
+                            const pageId = widget.messengerSettings?.pageConnection?.pageId || 'curbeio';
+                            window.open(`https://m.me/${pageId}`, '_blank');
+                          }}
+                        >
                           {widget.messengerSettings?.messageUsScreen?.buttonLabel || "Open Facebook"}
                         </Button>
                         {(widget.messengerSettings?.messageUsScreen?.showQRCode ?? true) && (
@@ -4590,16 +4597,46 @@ export default function ChatWidgetEditPage() {
                         </div>
                       </div>
                       <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
-                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                          {widget.instagramSettings?.profileSettings?.title || "Message us on Instagram"}
+                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100 text-center">
+                          {widget.instagramSettings?.messageUsScreen?.title || "Message us on Instagram"}
                         </h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400">
-                          {widget.instagramSettings?.profileSettings?.description || "Click the button below to send us a direct message."}
+                        <p className="text-sm text-slate-600 dark:text-slate-400 text-center">
+                          {widget.instagramSettings?.messageUsScreen?.description || "Click the button below or scan the QR code to send us a message on Instagram."}
                         </p>
-                        <Button className="w-full bg-gradient-to-r from-[#833AB4] via-[#FD1D1D] to-[#F77737] hover:opacity-90">
-                          <SiInstagram className="h-4 w-4 mr-2" />
-                          {widget.instagramSettings?.profileSettings?.buttonLabel || "Open Instagram"}
+                        <Button 
+                          className="w-full" 
+                          style={{ background: currentBackground }}
+                          onClick={() => {
+                            const username = widget.instagramSettings?.accountConnection?.username || 'curbeio';
+                            window.open(`https://instagram.com/${username}`, '_blank');
+                          }}
+                        >
+                          {widget.instagramSettings?.messageUsScreen?.buttonLabel || "Open Instagram"}
                         </Button>
+                        {(widget.instagramSettings?.messageUsScreen?.showQRCode ?? true) && (
+                          <>
+                            <div className="flex justify-center py-4">
+                              <div className="relative">
+                                <div className="absolute -top-1 -left-1 w-5 h-5 border-l-2 border-t-2 border-slate-300 rounded-tl-lg"></div>
+                                <div className="absolute -top-1 -right-1 w-5 h-5 border-r-2 border-t-2 border-slate-300 rounded-tr-lg"></div>
+                                <div className="absolute -bottom-1 -left-1 w-5 h-5 border-l-2 border-b-2 border-slate-300 rounded-bl-lg"></div>
+                                <div className="absolute -bottom-1 -right-1 w-5 h-5 border-r-2 border-b-2 border-slate-300 rounded-br-lg"></div>
+                                <div className="p-2">
+                                  <QRCodeDisplay 
+                                    value={`https://instagram.com/${widget.instagramSettings?.accountConnection?.username || 'curbeio'}`}
+                                    size={160}
+                                  />
+                                </div>
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="bg-white p-1.5 rounded-full border-2" style={{ borderColor: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3B82F6' }}>
+                                    <SiInstagram className="h-5 w-5" style={{ color: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3B82F6' }} />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-400 text-center">Scan QR code to open a chat</p>
+                          </>
+                        )}
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
                             Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
