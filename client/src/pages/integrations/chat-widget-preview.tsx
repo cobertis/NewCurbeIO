@@ -2,13 +2,18 @@ import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, X, Monitor, Send, Smartphone, Globe } from "lucide-react";
+import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, X, Monitor, Send, Smartphone, Globe, Check, CheckCheck, Paperclip, Smile } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { SiWhatsapp, SiFacebook, SiInstagram, SiTelegram } from "react-icons/si";
 import QRCode from "qrcode";
 import curbeLogo from "@assets/logo no fondo_1760457183587.png";
+
+function formatMessageTime(date: Date | string): string {
+  const d = typeof date === 'string' ? new Date(date) : date;
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+}
 
 const colorOptions = [
   { value: "blue", bg: "bg-blue-500", hex: "#3B82F6", gradient: "linear-gradient(135deg, #3B82F6, #1D4ED8)" },
@@ -80,6 +85,9 @@ export default function ChatWidgetPreviewPage() {
   const [visitorName, setVisitorName] = useState('');
   const [visitorEmail, setVisitorEmail] = useState('');
   const [initialMessage, setInitialMessage] = useState('');
+  const [agentTyping, setAgentTyping] = useState(false);
+  const [chatStartTime] = useState(new Date());
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: widgetData, isLoading } = useQuery<{ widget: any }>({
     queryKey: [`/api/integrations/chat-widget/${widgetId}`],
@@ -253,6 +261,11 @@ export default function ChatWidgetPreviewPage() {
     const interval = setInterval(pollMessages, 3000);
     return () => clearInterval(interval);
   }, [chatSessionId, chatMessages.length]);
+
+  // Auto-scroll to bottom when new messages arrive
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
 
   const defaultWidget = {
     name: "Website Widget",
@@ -886,99 +899,134 @@ export default function ChatWidgetPreviewPage() {
             }}
           >
           {chatSessionId ? (
-            /* Active Live Chat View - Full Screen */
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: '480px' }}>
-              {/* Header */}
-              <div className="p-4 text-white flex items-center gap-3" style={{ background: currentBackground }}>
+            /* Active Live Chat View - Professional Design */
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: '520px' }}>
+              {/* Header with agent info */}
+              <div className="px-4 py-3 text-white flex items-center gap-3" style={{ background: currentBackground }}>
                 <button 
                   onClick={() => { setChatSessionId(null); setChatMessages([]); setChatVisitorId(null); localStorage.removeItem(`chat_visitor_${widgetId}`); }}
-                  className="p-1 hover:bg-white/20 rounded"
+                  className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
                   data-testid="back-from-chat"
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                  <MessageCircle className="h-5 w-5" />
+                <div className="relative">
+                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
+                    <MessageCircle className="h-5 w-5" />
+                  </div>
+                  {/* Online indicator */}
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white" />
                 </div>
-                <span className="font-semibold">Live chat</span>
+                <div className="flex-1">
+                  <span className="font-semibold text-sm">Live Chat</span>
+                  <p className="text-xs opacity-80">Usually replies in a few minutes</p>
+                </div>
               </div>
               
               {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-slate-50 dark:bg-slate-800">
-                {/* Initial visitor info message */}
-                <div className="flex justify-end">
-                  <div className="bg-blue-100 dark:bg-blue-900/30 rounded-lg p-3 max-w-[85%]">
-                    <p className="text-sm text-slate-800 dark:text-slate-200">
-                      <strong>Name:</strong> {visitorName || 'Website Visitor'}<br />
-                      <strong>Email:</strong> {visitorEmail}
-                    </p>
-                  </div>
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4 bg-slate-50 dark:bg-slate-800/50">
+                {/* Date separator */}
+                <div className="flex items-center justify-center">
+                  <span className="text-[10px] text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">
+                    {chatStartTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                  </span>
                 </div>
                 
-                {/* System confirmation message */}
-                <div className="flex justify-start">
-                  <div className="bg-white dark:bg-slate-700 rounded-lg p-3 max-w-[85%] shadow-sm">
-                    <p className="text-sm text-slate-700 dark:text-slate-300">
-                      Thank you, we have received your request.
-                    </p>
+                {/* Welcome system message */}
+                <div className="flex items-end gap-2">
+                  <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-medium" style={{ background: currentBackground }}>
+                    <MessageCircle className="h-3.5 w-3.5" />
+                  </div>
+                  <div className="flex flex-col">
+                    <div className="bg-white dark:bg-slate-700 rounded-2xl rounded-bl-md px-3 py-2 shadow-sm max-w-[85%]">
+                      <p className="text-sm text-slate-700 dark:text-slate-200">
+                        Hi {visitorName || 'there'}! Thanks for reaching out. How can we help you today?
+                      </p>
+                    </div>
+                    <span className="text-[10px] text-slate-400 mt-1 ml-1">{formatMessageTime(chatStartTime)}</span>
                   </div>
                 </div>
-                
-                {/* Searching for agents status */}
-                {chatMessages.length === 0 && (
-                  <div className="text-center py-2">
-                    <p className="text-sm text-slate-500">Searching for available agents...</p>
-                    <Loader2 className="h-4 w-4 animate-spin mx-auto mt-2 text-slate-400" />
-                  </div>
-                )}
                 
                 {/* Chat messages */}
-                {chatMessages.map((msg) => (
+                {chatMessages.map((msg, index) => (
                   <div 
                     key={msg.id}
-                    className={`flex ${msg.direction === 'inbound' ? 'justify-end' : 'justify-start'}`}
+                    className={`flex ${msg.direction === 'inbound' ? 'justify-end' : 'items-end gap-2'}`}
                   >
-                    <div 
-                      className={`rounded-lg p-3 max-w-[85%] ${
-                        msg.direction === 'inbound' 
-                          ? 'bg-blue-100 dark:bg-blue-900/30' 
-                          : 'bg-white dark:bg-slate-700 shadow-sm'
-                      }`}
-                    >
-                      <p className="text-sm text-slate-800 dark:text-slate-200">{msg.text}</p>
+                    {/* Agent avatar for outbound messages */}
+                    {msg.direction !== 'inbound' && (
+                      <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-medium" style={{ background: currentBackground }}>
+                        <MessageCircle className="h-3.5 w-3.5" />
+                      </div>
+                    )}
+                    <div className={`flex flex-col ${msg.direction === 'inbound' ? 'items-end' : 'items-start'}`}>
+                      <div 
+                        className={`rounded-2xl px-3 py-2 max-w-[85%] ${
+                          msg.direction === 'inbound' 
+                            ? 'rounded-br-md text-white' 
+                            : 'rounded-bl-md bg-white dark:bg-slate-700 shadow-sm'
+                        }`}
+                        style={msg.direction === 'inbound' ? { background: currentBackground } : {}}
+                      >
+                        <p className={`text-sm ${msg.direction === 'inbound' ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>{msg.text}</p>
+                      </div>
+                      <div className={`flex items-center gap-1 mt-0.5 ${msg.direction === 'inbound' ? 'mr-1' : 'ml-1'}`}>
+                        <span className="text-[10px] text-slate-400">{formatMessageTime(msg.createdAt)}</span>
+                        {msg.direction === 'inbound' && (
+                          <CheckCheck className="h-3 w-3 text-blue-500" />
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
+                
+                {/* Typing indicator when waiting for agent */}
+                {chatMessages.filter(m => m.direction !== 'inbound').length === 0 && (
+                  <div className="flex items-end gap-2">
+                    <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-medium" style={{ background: currentBackground }}>
+                      <MessageCircle className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="bg-white dark:bg-slate-700 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
+                      <div className="flex items-center gap-1">
+                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
+                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
+                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                      </div>
+                    </div>
+                  </div>
+                )}
+                
+                <div ref={messagesEndRef} />
               </div>
               
               {/* Input Area */}
-              <div className="p-4 border-t bg-white dark:bg-slate-900">
-                <div className="flex items-center gap-2 border rounded-lg p-2 bg-slate-50 dark:bg-slate-800">
+              <div className="p-3 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900">
+                <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-full px-4 py-2">
                   <input
                     type="text"
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
-                    placeholder="Type your message here..."
-                    className="flex-1 bg-transparent text-sm outline-none"
+                    placeholder="Type a message..."
+                    className="flex-1 bg-transparent text-sm outline-none placeholder-slate-400"
                     data-testid="chat-input"
                   />
                   <button
                     onClick={sendChatMessage}
                     disabled={!chatInput.trim()}
-                    className="p-2 rounded-lg disabled:opacity-50"
-                    style={{ color: currentBackground as string }}
+                    className="p-2 rounded-full transition-all disabled:opacity-30 hover:scale-110"
+                    style={{ background: chatInput.trim() ? currentBackground as string : 'transparent' }}
                     data-testid="send-message"
                   >
-                    <Send className="h-5 w-5" />
+                    <Send className={`h-4 w-4 ${chatInput.trim() ? 'text-white' : 'text-slate-400'}`} />
                   </button>
                 </div>
               </div>
               
               {/* Footer */}
-              <div className="p-2 border-t text-center">
-                <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                  Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+              <div className="py-2 border-t border-slate-100 dark:border-slate-700 text-center bg-slate-50 dark:bg-slate-800/50">
+                <p className="text-[10px] text-slate-400 flex items-center justify-center gap-1">
+                  Powered by <img src={curbeLogo} alt="Curbe" className="h-2.5 w-auto inline-block opacity-60" />
                 </p>
               </div>
             </div>
