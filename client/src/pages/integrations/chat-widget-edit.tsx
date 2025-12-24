@@ -425,6 +425,7 @@ type EmailSubSection = "welcomeScreen" | "formFields" | "successScreen" | "assoc
 type SmsSubSection = "welcomeScreen" | "messageScreen" | "numberSettings" | null;
 type MessengerSubSection = "welcomeScreen" | "messageUsScreen" | "pageConnection" | null;
 type InstagramSubSection = "welcomeScreen" | "messageUsScreen" | "accountConnection" | null;
+type TelegramSubSection = "welcomeScreen" | "messageUsScreen" | "botConnection" | null;
 
 function SortableChannelItem({ 
   channel, 
@@ -470,6 +471,7 @@ function SortableChannelItem({
   const [activeWhatsappSubSection, setActiveWhatsappSubSection] = useState<WhatsappSubSection>(null);
   const [activeMessengerSubSection, setActiveMessengerSubSection] = useState<MessengerSubSection>(null);
   const [activeInstagramSubSection, setActiveInstagramSubSection] = useState<InstagramSubSection>(null);
+  const [activeTelegramSubSection, setActiveTelegramSubSection] = useState<TelegramSubSection>(null);
 
   useEffect(() => {
     if (!isExpanded) {
@@ -542,6 +544,12 @@ function SortableChannelItem({
     { id: "welcomeScreen", label: "Welcome screen", icon: <Monitor className="h-4 w-4" /> },
     { id: "messageUsScreen", label: "Message us screen", icon: <FileText className="h-4 w-4" /> },
     { id: "accountConnection", label: "Connect Instagram", icon: <SiInstagram className="h-4 w-4" /> },
+  ];
+
+  const telegramSubOptions = [
+    { id: "welcomeScreen", label: "Welcome screen", icon: <Monitor className="h-4 w-4" /> },
+    { id: "messageUsScreen", label: "Message us screen", icon: <FileText className="h-4 w-4" /> },
+    { id: "botConnection", label: "Connect Telegram", icon: <SiTelegram className="h-4 w-4" /> },
   ];
 
   return (
@@ -1983,6 +1991,170 @@ function SortableChannelItem({
           )}
         </div>
       )}
+
+      {isExpanded && channel.id === "telegram" && telegramSettings && onTelegramSettingsChange && (
+        <div className="border-t px-4 py-3">
+          {activeTelegramSubSection === null ? (
+            <div className="space-y-1">
+              {telegramSubOptions.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => setActiveTelegramSubSection(option.id as TelegramSubSection)}
+                  className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  data-testid={`telegram-option-${option.id}`}
+                >
+                  <div className="flex items-center gap-3">
+                    {option.icon}
+                    <span className="text-sm font-medium">{option.label}</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-slate-400" />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <button
+                onClick={() => setActiveTelegramSubSection(null)}
+                className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                data-testid="telegram-back-button"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Back
+              </button>
+
+              {activeTelegramSubSection === "welcomeScreen" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Channel name in Welcome screen *</Label>
+                    <Input 
+                      value={telegramSettings.welcomeScreen.channelName}
+                      onChange={(e) => onTelegramSettingsChange({
+                        welcomeScreen: { ...telegramSettings.welcomeScreen, channelName: e.target.value }
+                      })}
+                      data-testid="input-telegram-channel-name"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {activeTelegramSubSection === "messageUsScreen" && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Show QR code</Label>
+                    <Switch
+                      checked={telegramSettings.messageUsScreen?.showQRCode ?? true}
+                      onCheckedChange={(checked) => onTelegramSettingsChange({
+                        messageUsScreen: { ...telegramSettings.messageUsScreen, showQRCode: checked }
+                      })}
+                      data-testid="switch-telegram-qr"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Title & description *</Label>
+                    <Input 
+                      value={telegramSettings.messageUsScreen?.title || "Message us on Telegram"}
+                      onChange={(e) => onTelegramSettingsChange({
+                        messageUsScreen: { ...telegramSettings.messageUsScreen, title: e.target.value }
+                      })}
+                      data-testid="input-telegram-title"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Textarea 
+                      value={telegramSettings.messageUsScreen?.description || "Click the button below or scan the QR code to send us a message on Telegram."}
+                      onChange={(e) => onTelegramSettingsChange({
+                        messageUsScreen: { ...telegramSettings.messageUsScreen, description: e.target.value }
+                      })}
+                      rows={3}
+                      data-testid="textarea-telegram-description"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Button label *</Label>
+                    <Input 
+                      value={telegramSettings.messageUsScreen?.buttonLabel || "Open Telegram"}
+                      onChange={(e) => onTelegramSettingsChange({
+                        messageUsScreen: { ...telegramSettings.messageUsScreen, buttonLabel: e.target.value }
+                      })}
+                      data-testid="input-telegram-button-label"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {activeTelegramSubSection === "botConnection" && (
+                <div className="space-y-4">
+                  <p className="text-xs text-slate-500">
+                    Choose one of your connected Telegram bots or add a custom one. <span className="font-medium">Please note:</span> If you use a custom bot, inbound messages will not be displayed in Curbe.
+                  </p>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Telegram bot *</Label>
+                    <Select
+                      value={telegramSettings.botConnection?.connectionType || "custom"}
+                      onValueChange={(value: "connected" | "custom") => onTelegramSettingsChange({
+                        botConnection: { ...telegramSettings.botConnection, connectionType: value }
+                      })}
+                    >
+                      <SelectTrigger data-testid="select-telegram-connection-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="connected">
+                          <span className="text-blue-600">- Connect Telegram to Curbe -</span>
+                        </SelectItem>
+                        <SelectItem value="custom">Use custom bot</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  {telegramSettings.botConnection?.connectionType === "custom" && (
+                    <div className="space-y-2">
+                      <Input
+                        placeholder="https://t.me/yourbot"
+                        value={telegramSettings.botConnection?.customUrl || ""}
+                        onChange={(e) => {
+                          const url = e.target.value;
+                          let botUsername = "";
+                          const match = url.match(/t\.me\/([^/?]+)/);
+                          if (match) botUsername = match[1];
+                          onTelegramSettingsChange({
+                            botConnection: { 
+                              ...telegramSettings.botConnection, 
+                              customUrl: url,
+                              botUsername: botUsername
+                            }
+                          });
+                        }}
+                        data-testid="input-telegram-custom-url"
+                      />
+                    </div>
+                  )}
+
+                  {telegramSettings.botConnection?.connectionType === "connected" && (
+                    <div className="p-4 border rounded-lg bg-slate-50 dark:bg-slate-800 text-center">
+                      {telegramSettings.botConnection.botUsername ? (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <SiTelegram className="h-5 w-5 text-[#0088CC]" />
+                            <span className="text-sm font-medium">@{telegramSettings.botConnection.botUsername}</span>
+                          </div>
+                          <Button variant="outline" size="sm">Disconnect</Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <SiTelegram className="h-8 w-8 text-[#0088CC] mx-auto" />
+                          <p className="text-sm text-slate-500">No Telegram bot connected</p>
+                          <Button variant="outline" size="sm">Connect Telegram</Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -2556,6 +2728,27 @@ export default function ChatWidgetEditPage() {
         accountConnection: {
           ...widget.instagramSettings?.accountConnection,
           ...settings.accountConnection,
+        },
+      }
+    });
+  };
+
+  const handleTelegramSettingsChange = (settings: Partial<WidgetConfig["telegramSettings"]>) => {
+    updateLocalWidget({
+      telegramSettings: {
+        ...widget.telegramSettings,
+        ...settings,
+        welcomeScreen: {
+          ...widget.telegramSettings?.welcomeScreen,
+          ...settings.welcomeScreen,
+        },
+        messageUsScreen: {
+          ...widget.telegramSettings?.messageUsScreen,
+          ...settings.messageUsScreen,
+        },
+        botConnection: {
+          ...widget.telegramSettings?.botConnection,
+          ...settings.botConnection,
         },
       }
     });
@@ -3202,6 +3395,8 @@ export default function ChatWidgetEditPage() {
                                 onMessengerSettingsChange={handleMessengerSettingsChange}
                                 instagramSettings={widget.instagramSettings}
                                 onInstagramSettingsChange={handleInstagramSettingsChange}
+                                telegramSettings={widget.telegramSettings}
+                                onTelegramSettingsChange={handleTelegramSettingsChange}
                                 activeLiveChatSubSection={activeLiveChatSubSection}
                                 onActiveLiveChatSubSectionChange={setActiveLiveChatSubSection}
                                 activeEmailSubSection={activeEmailSubSection}
