@@ -4085,15 +4085,15 @@ export default function ChatWidgetEditPage() {
                         <div className="flex items-center gap-2">
                           <ChevronLeft className="h-5 w-5" />
                           <MessageSquare className="h-5 w-5" />
-                          <span className="font-medium">{widget.smsSettings?.welcomeScreen?.channelName || "Send a text"}</span>
+                          <span className="font-medium">{widget.smsSettings?.welcomeScreen?.channelName || "Text us"}</span>
                         </div>
                       </div>
                       <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
-                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100 text-center">
-                          {widget.smsSettings?.messageScreen?.title || "Contact us by SMS"}
+                        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
+                          {widget.smsSettings?.messageScreen?.title || "Send us a text message"}
                         </h4>
-                        <p className="text-sm text-slate-600 dark:text-slate-400 text-center">
-                          {widget.smsSettings?.messageScreen?.description || "Text this number and we will reply to you as soon as possible."}
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          {widget.smsSettings?.messageScreen?.description || "Click the button below to send us an SMS and we'll respond as soon as possible."}
                         </p>
                         <div className="text-center">
                           <p className="text-xl font-bold text-slate-900 dark:text-slate-100">
@@ -4104,28 +4104,26 @@ export default function ChatWidgetEditPage() {
                           </p>
                         </div>
                         <Button className="w-full" style={{ background: currentBackground }}>
-                          {widget.smsSettings?.messageScreen?.buttonLabel || "Send a text"}
+                          {widget.smsSettings?.messageScreen?.buttonLabel || "Send SMS"}
                         </Button>
-                        <p className="text-xs text-slate-400 text-center">
-                          Text messaging charges and data fees may apply according to your carrier's rates.
-                        </p>
                         {(widget.smsSettings?.messageScreen?.showQRCode ?? true) && (
                           <>
                             <div className="flex justify-center py-3">
-                              <div className="relative">
-                                <div className="absolute -top-1 -left-1 w-4 h-4 border-l-2 border-t-2 border-slate-300 rounded-tl"></div>
-                                <div className="absolute -top-1 -right-1 w-4 h-4 border-r-2 border-t-2 border-slate-300 rounded-tr"></div>
-                                <div className="absolute -bottom-1 -left-1 w-4 h-4 border-l-2 border-b-2 border-slate-300 rounded-bl"></div>
-                                <div className="absolute -bottom-1 -right-1 w-4 h-4 border-r-2 border-b-2 border-slate-300 rounded-br"></div>
+                              <div className="relative bg-white p-2 rounded-lg border border-slate-200">
                                 <QRCodeDisplay 
                                   value={`sms:${widget.smsSettings?.numberSettings?.numberType === "custom" 
                                     ? widget.smsSettings?.numberSettings?.customNumber?.replace(/[\s()\-]/g, '') || '+18332214494'
                                     : (widget.smsSettings?.numberSettings?.connectedNumber || companyNumbers[0]?.phoneNumber || '+18332214494').replace(/[\s()\-]/g, '')}`}
-                                  size={140}
+                                  size={120}
                                 />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="bg-white p-1 rounded-full" style={{ color: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3B82F6' }}>
+                                    <MessageSquare className="h-6 w-6" style={{ color: 'inherit' }} />
+                                  </div>
+                                </div>
                               </div>
                             </div>
-                            <p className="text-xs text-slate-400 text-center">Scan QR code to send message</p>
+                            <p className="text-xs text-slate-400 text-center">Scan QR code to send a text</p>
                           </>
                         )}
                         <div className="text-center pt-2">
@@ -4140,32 +4138,50 @@ export default function ChatWidgetEditPage() {
                   <div className="relative">
                     <div className="rounded-xl overflow-hidden shadow-lg">
                       <div className="p-4 text-white" style={{ background: currentBackground }}>
-                        <div className="flex items-center gap-2 mb-3">
+                        <div className="flex items-center gap-2">
                           <ChevronLeft className="h-5 w-5" />
                           <MessageSquare className="h-5 w-5" />
-                          <span className="font-medium">{widget.smsSettings?.welcomeScreen?.channelName || "SMS"}</span>
+                          <span className="font-medium">{widget.smsSettings?.welcomeScreen?.channelName || "Text us"}</span>
                         </div>
                       </div>
                       <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
                         <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">
-                          {widget.smsSettings?.messageScreen?.title || "Text us"}
+                          {widget.smsSettings?.messageScreen?.title || "Send us a text message"}
                         </h4>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
-                          {widget.smsSettings?.messageScreen?.description || "Send us a text message and we'll respond as soon as possible."}
+                          {widget.smsSettings?.messageScreen?.description || "Click the button below to send us an SMS and we'll respond as soon as possible."}
                         </p>
-                        <div className="flex items-center gap-2 p-3 bg-slate-50 dark:bg-slate-800 rounded-lg">
-                          <Phone className="h-4 w-4 text-slate-500" />
-                          <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
-                            {widget.smsSettings?.numberSettings?.numberType === "custom" 
-                              ? formatPhoneNumber(widget.smsSettings?.numberSettings?.customNumber || "") || "Enter custom number"
-                              : formatPhoneNumber(widget.smsSettings?.numberSettings?.connectedNumber || companyNumbers[0]?.phoneNumber || "") || "No number connected"
-                            }
-                          </span>
+                        <div className="text-center">
+                          <p className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                            {formatPhoneNumber(widget.smsSettings?.numberSettings?.numberType === "custom" 
+                              ? (widget.smsSettings?.numberSettings?.customNumber || "+1 833 221 4494")
+                              : (widget.smsSettings?.numberSettings?.connectedNumber || companyNumbers[0]?.phoneNumber || "+1 833 221 4494")
+                            )}
+                          </p>
                         </div>
                         <Button className="w-full" style={{ background: currentBackground }}>
-                          <MessageSquare className="h-4 w-4 mr-2" />
                           {widget.smsSettings?.messageScreen?.buttonLabel || "Send SMS"}
                         </Button>
+                        {(widget.smsSettings?.messageScreen?.showQRCode ?? true) && (
+                          <>
+                            <div className="flex justify-center py-3">
+                              <div className="relative bg-white p-2 rounded-lg border border-slate-200">
+                                <QRCodeDisplay 
+                                  value={`sms:${widget.smsSettings?.numberSettings?.numberType === "custom" 
+                                    ? widget.smsSettings?.numberSettings?.customNumber?.replace(/[\s()\-]/g, '') || '+18332214494'
+                                    : (widget.smsSettings?.numberSettings?.connectedNumber || companyNumbers[0]?.phoneNumber || '+18332214494').replace(/[\s()\-]/g, '')}`}
+                                  size={120}
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="bg-white p-1 rounded-full" style={{ color: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3B82F6' }}>
+                                    <MessageSquare className="h-6 w-6" style={{ color: 'inherit' }} />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-400 text-center">Scan QR code to send a text</p>
+                          </>
+                        )}
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
                             Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
