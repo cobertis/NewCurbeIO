@@ -1906,15 +1906,16 @@ export default function ChatWidgetEditPage() {
                                   <>
                                     <div className="space-y-2">
                                       <Label className="text-xs text-slate-500">Message text *</Label>
-                                      <div className="relative">
+                                      <div className="relative w-[40%]">
                                         <Input 
                                           value={widget.minimizedState?.eyeCatcherMessage || ""}
                                           onChange={(e) => updateLocalWidget({ 
                                             minimizedState: { ...widget.minimizedState, eyeCatcherMessage: e.target.value } 
                                           })}
+                                          className="pr-8"
                                           data-testid="input-eye-catcher-message"
                                         />
-                                        <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" data-testid="button-emoji-picker">
+                                        <Button variant="ghost" size="icon" className="absolute right-0 top-1/2 -translate-y-1/2 h-full w-8" data-testid="button-emoji-picker">
                                           <Smile className="h-4 w-4 text-slate-400" />
                                         </Button>
                                       </div>
@@ -1952,12 +1953,13 @@ export default function ChatWidgetEditPage() {
                             <div className="space-y-4">
                               <div className="space-y-2">
                                 <Label className="text-xs text-slate-500">Greeting *</Label>
-                                <div className="relative">
+                                <div className="relative w-[40%]">
                                   <Input 
                                     value={widget.welcomeTitle}
                                     onChange={(e) => updateLocalWidget({ welcomeTitle: e.target.value })}
+                                    className="pr-8"
                                   />
-                                  <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7">
+                                  <Button variant="ghost" size="icon" className="absolute right-0 top-1/2 -translate-y-1/2 h-full w-8">
                                     <Smile className="h-4 w-4 text-slate-400" />
                                   </Button>
                                 </div>
