@@ -1677,6 +1677,12 @@ function ComingSoonCard({
 export default function IntegrationsPage() {
   const [location, setLocation] = useLocation();
   
+  useEffect(() => {
+    if (location === "/settings" || location === "/settings/") {
+      setLocation("/settings/profile");
+    }
+  }, [location, setLocation]);
+  
   const getActiveView = () => {
     if (location.startsWith("/settings/profile")) return "profile";
     if (location.startsWith("/settings/security")) return "security";
