@@ -1759,9 +1759,9 @@ export default function IntegrationsPage() {
   };
 
   return (
-    <div className="flex gap-6" data-testid="page-integrations">
+    <div className="flex gap-6 items-start" data-testid="page-integrations">
       <div className="w-52 shrink-0 hidden lg:block">
-        <nav className="sticky top-4 space-y-1">
+        <nav className="sticky top-20 space-y-1">
           <p className="px-3 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Administration</p>
           {menuItems.account.map((item) => (
             <button
