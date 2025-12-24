@@ -41,6 +41,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
@@ -63,6 +72,8 @@ export default function ChatWidgetPage() {
   const [rowsPerPage, setRowsPerPage] = useState("10");
   const [currentPage, setCurrentPage] = useState(1);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [newWidgetDialogOpen, setNewWidgetDialogOpen] = useState(false);
+  const [newWidgetName, setNewWidgetName] = useState("");
   const [selectedWidgetId, setSelectedWidgetId] = useState<string | number | null>(null);
   const [sortField, setSortField] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
@@ -87,6 +98,29 @@ export default function ChatWidgetPage() {
     (currentPage - 1) * parseInt(rowsPerPage),
     currentPage * parseInt(rowsPerPage)
   );
+
+  const createMutation = useMutation({
+    mutationFn: async (name: string) => {
+      return apiRequest("POST", "/api/integrations/chat-widget/create", { name });
+    },
+    onSuccess: (data: { widgetId: string }) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations/chat-widget/list"] });
+      setNewWidgetDialogOpen(false);
+      setNewWidgetName("");
+      toast({
+        title: "Widget Created",
+        description: "Your chat widget has been created.",
+      });
+      setLocation(`/settings/chat-widget/${data.widgetId}/edit`);
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Creation Failed",
+        description: error.message || "Failed to create chat widget.",
+      });
+    },
+  });
 
   const deleteMutation = useMutation({
     mutationFn: async (widgetId: string | number) => {
@@ -176,7 +210,7 @@ export default function ChatWidgetPage() {
                   <div className="flex items-center gap-3">
                     <Button 
                       className="bg-blue-600 hover:bg-blue-700 text-white"
-                      onClick={() => setLocation("/settings/chat-widget/flow")}
+                      onClick={() => setNewWidgetDialogOpen(true)}
                       data-testid="button-get-started-chat-widget"
                     >
                       Get started
@@ -283,11 +317,11 @@ export default function ChatWidgetPage() {
           <Button 
             variant="outline" 
             size="sm"
-            onClick={() => setLocation("/settings/chat-widget/flow")}
+            onClick={() => setNewWidgetDialogOpen(true)}
             data-testid="button-create-widget"
           >
             <Plus className="h-4 w-4 mr-2" />
-            Create new widget
+            New widget
           </Button>
         </div>
 
@@ -444,6 +478,57 @@ export default function ChatWidgetPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={newWidgetDialogOpen} onOpenChange={setNewWidgetDialogOpen}>
+        <DialogContent className="sm:max-w-md" data-testid="dialog-new-widget">
+          <DialogHeader>
+            <DialogTitle>New widget</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="widget-name" className="text-sm font-medium">
+                Widget name <span className="text-red-500">*</span>
+              </Label>
+              <Input
+                id="widget-name"
+                placeholder="Enter widget name"
+                value={newWidgetName}
+                onChange={(e) => setNewWidgetName(e.target.value)}
+                data-testid="input-new-widget-name"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              onClick={() => {
+                setNewWidgetDialogOpen(false);
+                setNewWidgetName("");
+              }}
+              data-testid="button-cancel-new-widget"
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={() => {
+                if (!newWidgetName.trim()) {
+                  toast({
+                    variant: "destructive",
+                    title: "Name required",
+                    description: "Please enter a name for your widget.",
+                  });
+                  return;
+                }
+                createMutation.mutate(newWidgetName);
+              }}
+              disabled={createMutation.isPending || !newWidgetName.trim()}
+              data-testid="button-create-new-widget"
+            >
+              {createMutation.isPending ? "Creating..." : "Create"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </SettingsLayout>
   );
 }
