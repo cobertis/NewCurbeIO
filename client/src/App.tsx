@@ -121,6 +121,8 @@ import FacebookFlow from "@/pages/integrations/facebook-flow";
 import FacebookPageComponent from "@/pages/integrations/facebook-page";
 import WhatsAppFlow from "@/pages/integrations/whatsapp-flow";
 import WhatsAppPage from "@/pages/integrations/whatsapp";
+import InstagramPage from "@/pages/integrations/instagram-page";
+import InstagramFlow from "@/pages/integrations/instagram-flow";
 import NotFound from "@/pages/not-found";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -1682,6 +1684,20 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <WhatsAppPage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/instagram/flow">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <InstagramFlow />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/instagram">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <InstagramPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
