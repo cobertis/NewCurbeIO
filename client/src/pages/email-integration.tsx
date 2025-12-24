@@ -285,10 +285,6 @@ export default function EmailIntegrationPage({ embedded = false }: { embedded?: 
               <Plus className="w-4 h-4 mr-2" />
               Connect new domain
             </Button>
-            <Button variant="outline" data-testid="button-get-domain">
-              <Globe className="w-4 h-4 mr-2" />
-              Get a new domain
-            </Button>
           </div>
 
           {/* Domain Card */}
