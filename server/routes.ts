@@ -28340,7 +28340,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       const widgetSettings = widget.widget as any || {};
-      const targeting = widgetSettings.targeting || {};
+      const targeting = (widget.targeting as any) || {};
       const shouldDisplay = shouldShowWidget(targeting, visitorCountry, geoSuccess);
       
       // Check schedule-based availability
@@ -28354,7 +28354,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         const scheduleEntries = targeting.scheduleEntries || [];
         
         // Extract IANA timezone from format like "(UTC -05:00): America/New_York"
-        const tzMatch = timezone.match(/:s*(.+)$/);
+        const tzMatch = timezone.match(/\):\s*(.+)$/);
         const ianaTimezone = tzMatch ? tzMatch[1].trim() : "America/New_York";
         
         // Get current time in the widget timezone
