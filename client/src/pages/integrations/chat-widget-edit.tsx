@@ -363,6 +363,7 @@ interface SortableChannelItemProps {
   onEmailSettingsChange?: (settings: Partial<WidgetConfig["emailSettings"]>) => void;
   smsSettings?: WidgetConfig["smsSettings"];
   onSmsSettingsChange?: (settings: Partial<WidgetConfig["smsSettings"]>) => void;
+  companyNumbers?: Array<{ phoneNumber: string; friendlyName?: string; displayName?: string }>;
   messengerSettings?: WidgetConfig["messengerSettings"];
   onMessengerSettingsChange?: (settings: Partial<WidgetConfig["messengerSettings"]>) => void;
   instagramSettings?: WidgetConfig["instagramSettings"];
@@ -399,6 +400,7 @@ function SortableChannelItem({
   onEmailSettingsChange,
   smsSettings,
   onSmsSettingsChange,
+  companyNumbers = [],
   messengerSettings,
   onMessengerSettingsChange,
   instagramSettings,
@@ -1450,6 +1452,34 @@ function SortableChannelItem({
                       </SelectContent>
                     </Select>
                   </div>
+                  {smsSettings.numberSettings.numberType === "connected" && companyNumbers.length > 0 && (
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-500">Select connected number</Label>
+                      <Select 
+                        value={smsSettings.numberSettings?.connectedNumber || companyNumbers[0]?.phoneNumber || ""}
+                        onValueChange={(v: string) => onSmsSettingsChange({
+                          numberSettings: { ...smsSettings.numberSettings, connectedNumber: v }
+                        })}
+                      >
+                        <SelectTrigger data-testid="select-sms-connected-number">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {companyNumbers.map((num) => (
+                            <SelectItem key={num.phoneNumber} value={num.phoneNumber}>
+                              {num.displayName || num.friendlyName || num.phoneNumber}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+                  {smsSettings.numberSettings.numberType === "connected" && companyNumbers.length === 0 && (
+                    <div className="p-3 rounded-lg bg-slate-50 dark:bg-slate-800 text-center">
+                      <p className="text-sm text-slate-500">No connected phone numbers available</p>
+                      <p className="text-xs text-slate-400 mt-1">Go to Settings to add a phone number</p>
+                    </div>
+                  )}
                   {smsSettings.numberSettings.numberType === "custom" && (
                     <div className="space-y-2">
                       <Label className="text-xs text-slate-500">Custom phone number (international format)</Label>
@@ -1728,6 +1758,12 @@ export default function ChatWidgetEditPage() {
     queryKey: [`/api/integrations/chat-widget/${widgetId}`],
     enabled: !!widgetId,
   });
+
+  // Fetch company's connected phone numbers
+  const { data: phoneNumbersData } = useQuery<{ numbers: Array<{ phoneNumber: string; friendlyName?: string; displayName?: string }> }>({
+    queryKey: ["/api/telnyx/my-numbers"],
+  });
+  const companyNumbers = phoneNumbersData?.numbers || [];
 
   const defaultWidget: WidgetConfig = {
     id: widgetId || "",
@@ -2807,6 +2843,7 @@ export default function ChatWidgetEditPage() {
                                 onEmailSettingsChange={handleEmailSettingsChange}
                                 smsSettings={widget.smsSettings}
                                 onSmsSettingsChange={handleSmsSettingsChange}
+                                companyNumbers={companyNumbers}
                                 messengerSettings={widget.messengerSettings}
                                 onMessengerSettingsChange={handleMessengerSettingsChange}
                                 instagramSettings={widget.instagramSettings}
@@ -4043,7 +4080,7 @@ export default function ChatWidgetEditPage() {
                           <p className="text-xl font-bold text-slate-900 dark:text-slate-100">
                             {widget.smsSettings?.numberSettings?.numberType === "custom" 
                               ? (widget.smsSettings?.numberSettings?.customNumber || "+1 833 221 4494")
-                              : "+1 833 221 4494"
+                              : (widget.smsSettings?.numberSettings?.connectedNumber || companyNumbers[0]?.phoneNumber || "+1 833 221 4494")
                             }
                           </p>
                         </div>
@@ -4064,7 +4101,7 @@ export default function ChatWidgetEditPage() {
                                 <QRCodeDisplay 
                                   value={`sms:${widget.smsSettings?.numberSettings?.numberType === "custom" 
                                     ? widget.smsSettings?.numberSettings?.customNumber?.replace(/[\s()\-]/g, '') || '+18332214494'
-                                    : '+18332214494'}`}
+                                    : (widget.smsSettings?.numberSettings?.connectedNumber || companyNumbers[0]?.phoneNumber || '+18332214494').replace(/[\s()\-]/g, '')}`}
                                   size={140}
                                 />
                               </div>
@@ -4102,7 +4139,7 @@ export default function ChatWidgetEditPage() {
                           <span className="text-sm font-medium text-slate-700 dark:text-slate-300">
                             {widget.smsSettings?.numberSettings?.numberType === "custom" 
                               ? (widget.smsSettings?.numberSettings?.customNumber || "Enter custom number")
-                              : "Using connected number"
+                              : (widget.smsSettings?.numberSettings?.connectedNumber || companyNumbers[0]?.phoneNumber || "No number connected")
                             }
                           </span>
                         </div>
