@@ -50,7 +50,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Pencil, Palette, MessageSquare, Target, Code, Copy, ExternalLink, Mail, MoreHorizontal, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Phone, Send, Upload, Image, Smile, Monitor, RefreshCw, GripVertical, Clock, ThumbsUp, Power, Settings, FileText, Users } from "lucide-react";
+import { Pencil, Palette, MessageSquare, Target, Code, Copy, ExternalLink, Mail, MoreHorizontal, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Phone, Send, Upload, Image, Smile, Monitor, RefreshCw, GripVertical, Clock, ThumbsUp, Power, Settings, FileText, Users, Globe, Link2, X, CheckCircle } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SiFacebook, SiInstagram } from "react-icons/si";
@@ -1893,57 +1893,224 @@ export default function ChatWidgetEditPage() {
                       </div>
                     </AccordionTrigger>
                     <AccordionContent className="pt-2 pb-6">
-                      <div className="space-y-4 pl-12">
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Countries</Label>
-                          <Select 
-                            value={widget.targeting.countries}
-                            onValueChange={(v) => updateMutation.mutate({ targeting: { ...widget.targeting, countries: v as "all" | "selected" | "excluded" } })}
-                          >
-                            <SelectTrigger className="w-full max-w-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All countries</SelectItem>
-                              <SelectItem value="selected">Selected countries only</SelectItem>
-                              <SelectItem value="excluded">Exclude specific countries</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                      <Accordion type="single" collapsible className="space-y-2">
+                        <AccordionItem value="countries" className="border rounded-lg">
+                          <AccordionTrigger className="hover:no-underline px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <Globe className="h-5 w-5 text-blue-500" />
+                              <span className="text-sm font-medium">Countries</span>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-4 pb-4">
+                            <div className="space-y-4">
+                              <p className="text-sm text-slate-500">Choose countries where to show or hide the widget</p>
+                              
+                              <RadioGroup 
+                                value={widget.targeting.countries}
+                                onValueChange={(v) => updateLocalWidget({ 
+                                  targeting: { ...widget.targeting, countries: v as "all" | "selected" | "excluded", selectedCountries: [] } 
+                                })}
+                                className="space-y-2"
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="all" id="countries-all" />
+                                  <Label htmlFor="countries-all" className="text-sm cursor-pointer">Show in all countries</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="selected" id="countries-selected" />
+                                  <Label htmlFor="countries-selected" className="text-sm cursor-pointer">Show only in these countries</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="excluded" id="countries-excluded" />
+                                  <Label htmlFor="countries-excluded" className="text-sm cursor-pointer">Hide only in these countries</Label>
+                                </div>
+                              </RadioGroup>
+                              
+                              {(widget.targeting.countries === "selected" || widget.targeting.countries === "excluded") && (
+                                <div className="space-y-3">
+                                  <Select
+                                    onValueChange={(country) => {
+                                      if (!widget.targeting.selectedCountries.includes(country)) {
+                                        updateLocalWidget({
+                                          targeting: {
+                                            ...widget.targeting,
+                                            selectedCountries: [...widget.targeting.selectedCountries, country]
+                                          }
+                                        });
+                                      }
+                                    }}
+                                  >
+                                    <SelectTrigger className="w-full" data-testid="select-country">
+                                      <SelectValue placeholder="Enter country name" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                      <div className="p-2">
+                                        <Input placeholder="Enter country name" className="mb-2" />
+                                      </div>
+                                      {[
+                                        { code: "US", name: "United States", flag: "🇺🇸" },
+                                        { code: "GB", name: "United Kingdom", flag: "🇬🇧" },
+                                        { code: "AU", name: "Australia", flag: "🇦🇺" },
+                                        { code: "CA", name: "Canada", flag: "🇨🇦" },
+                                        { code: "AF", name: "Afghanistan", flag: "🇦🇫" },
+                                        { code: "AL", name: "Albania", flag: "🇦🇱" },
+                                        { code: "DZ", name: "Algeria", flag: "🇩🇿" },
+                                        { code: "AS", name: "American Samoa", flag: "🇦🇸" },
+                                        { code: "AO", name: "Angola", flag: "🇦🇴" },
+                                        { code: "AR", name: "Argentina", flag: "🇦🇷" },
+                                        { code: "DE", name: "Germany", flag: "🇩🇪" },
+                                        { code: "FR", name: "France", flag: "🇫🇷" },
+                                        { code: "ES", name: "Spain", flag: "🇪🇸" },
+                                        { code: "IT", name: "Italy", flag: "🇮🇹" },
+                                        { code: "MX", name: "Mexico", flag: "🇲🇽" },
+                                        { code: "BR", name: "Brazil", flag: "🇧🇷" },
+                                      ].filter(c => !widget.targeting.selectedCountries.includes(c.name)).map((country) => (
+                                        <SelectItem key={country.code} value={country.name}>
+                                          <div className="flex items-center gap-2">
+                                            <span>{country.flag}</span>
+                                            <span>{country.name}</span>
+                                          </div>
+                                        </SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  
+                                  {widget.targeting.selectedCountries.length > 0 && (
+                                    <div className="flex flex-wrap gap-2">
+                                      {widget.targeting.selectedCountries.map((country) => {
+                                        const countryData = [
+                                          { name: "United States", flag: "🇺🇸" },
+                                          { name: "United Kingdom", flag: "🇬🇧" },
+                                          { name: "Australia", flag: "🇦🇺" },
+                                          { name: "Canada", flag: "🇨🇦" },
+                                          { name: "Afghanistan", flag: "🇦🇫" },
+                                          { name: "Albania", flag: "🇦🇱" },
+                                          { name: "Algeria", flag: "🇩🇿" },
+                                          { name: "American Samoa", flag: "🇦🇸" },
+                                          { name: "Angola", flag: "🇦🇴" },
+                                          { name: "Argentina", flag: "🇦🇷" },
+                                          { name: "Germany", flag: "🇩🇪" },
+                                          { name: "France", flag: "🇫🇷" },
+                                          { name: "Spain", flag: "🇪🇸" },
+                                          { name: "Italy", flag: "🇮🇹" },
+                                          { name: "Mexico", flag: "🇲🇽" },
+                                          { name: "Brazil", flag: "🇧🇷" },
+                                        ].find(c => c.name === country);
+                                        return (
+                                          <div 
+                                            key={country}
+                                            className="flex items-center gap-1 px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-full text-sm"
+                                          >
+                                            <span>{countryData?.flag || "🏳️"}</span>
+                                            <span>{country}</span>
+                                            <button
+                                              onClick={() => updateLocalWidget({
+                                                targeting: {
+                                                  ...widget.targeting,
+                                                  selectedCountries: widget.targeting.selectedCountries.filter(c => c !== country)
+                                                }
+                                              })}
+                                              className="ml-1 text-slate-500 hover:text-slate-700"
+                                              data-testid={`button-remove-country-${country}`}
+                                            >
+                                              <X className="h-3 w-3" />
+                                            </button>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                          </AccordionContent>
+                        </AccordionItem>
                         
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Schedule</Label>
-                          <Select 
-                            value={widget.targeting.schedule}
-                            onValueChange={(v) => updateMutation.mutate({ targeting: { ...widget.targeting, schedule: v as "always" | "custom" } })}
-                          >
-                            <SelectTrigger className="w-full max-w-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="always">Always visible</SelectItem>
-                              <SelectItem value="custom">Custom schedule</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
+                        <AccordionItem value="schedule" className="border rounded-lg">
+                          <AccordionTrigger className="hover:no-underline px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <Clock className="h-5 w-5 text-blue-500" />
+                              <span className="text-sm font-medium">Schedule</span>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-4 pb-4">
+                            <RadioGroup 
+                              value={widget.targeting.schedule}
+                              onValueChange={(v) => updateLocalWidget({ 
+                                targeting: { ...widget.targeting, schedule: v as "always" | "custom" } 
+                              })}
+                              className="space-y-2"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="always" id="schedule-always" />
+                                <Label htmlFor="schedule-always" className="text-sm cursor-pointer">Show always</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="custom" id="schedule-custom" />
+                                <Label htmlFor="schedule-custom" className="text-sm cursor-pointer">Custom schedule</Label>
+                              </div>
+                            </RadioGroup>
+                          </AccordionContent>
+                        </AccordionItem>
                         
-                        <div className="space-y-2">
-                          <Label className="text-sm font-medium">Device type</Label>
-                          <Select 
-                            value={widget.targeting.deviceType}
-                            onValueChange={(v) => updateMutation.mutate({ targeting: { ...widget.targeting, deviceType: v as "all" | "desktop" | "mobile" } })}
-                          >
-                            <SelectTrigger className="w-full max-w-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="all">All devices</SelectItem>
-                              <SelectItem value="desktop">Desktop only</SelectItem>
-                              <SelectItem value="mobile">Mobile only</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
+                        <AccordionItem value="page-urls" className="border rounded-lg">
+                          <AccordionTrigger className="hover:no-underline px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <Link2 className="h-5 w-5 text-blue-500" />
+                              <span className="text-sm font-medium">Page URLs</span>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-4 pb-4">
+                            <RadioGroup 
+                              value={widget.targeting.pageUrls}
+                              onValueChange={(v) => updateLocalWidget({ 
+                                targeting: { ...widget.targeting, pageUrls: v as "all" | "specific" } 
+                              })}
+                              className="space-y-2"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="all" id="urls-all" />
+                                <Label htmlFor="urls-all" className="text-sm cursor-pointer">Show on all pages of any domain</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="specific" id="urls-specific" />
+                                <Label htmlFor="urls-specific" className="text-sm cursor-pointer">Show on specific pages</Label>
+                              </div>
+                            </RadioGroup>
+                          </AccordionContent>
+                        </AccordionItem>
+                        
+                        <AccordionItem value="device-type" className="border rounded-lg">
+                          <AccordionTrigger className="hover:no-underline px-4 py-3">
+                            <div className="flex items-center gap-3">
+                              <Monitor className="h-5 w-5 text-blue-500" />
+                              <span className="text-sm font-medium">Device type</span>
+                            </div>
+                          </AccordionTrigger>
+                          <AccordionContent className="px-4 pb-4">
+                            <RadioGroup 
+                              value={widget.targeting.deviceType}
+                              onValueChange={(v) => updateLocalWidget({ 
+                                targeting: { ...widget.targeting, deviceType: v as "all" | "desktop" | "mobile" } 
+                              })}
+                              className="space-y-2"
+                            >
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="all" id="device-all" />
+                                <Label htmlFor="device-all" className="text-sm cursor-pointer">Show on all devices</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="desktop" id="device-desktop" />
+                                <Label htmlFor="device-desktop" className="text-sm cursor-pointer">Desktop only</Label>
+                              </div>
+                              <div className="flex items-center space-x-2">
+                                <RadioGroupItem value="mobile" id="device-mobile" />
+                                <Label htmlFor="device-mobile" className="text-sm cursor-pointer">Mobile only</Label>
+                              </div>
+                            </RadioGroup>
+                          </AccordionContent>
+                        </AccordionItem>
+                      </Accordion>
                     </AccordionContent>
                   </AccordionItem>
 
