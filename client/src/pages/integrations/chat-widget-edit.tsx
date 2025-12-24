@@ -1358,8 +1358,19 @@ function SortableChannelItem({
 
               {activeSmsSubSection === "messageScreen" && (
                 <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Switch 
+                      checked={smsSettings.messageScreen?.showQRCode ?? true}
+                      onCheckedChange={(checked) => onSmsSettingsChange({
+                        messageScreen: { ...smsSettings.messageScreen, showQRCode: checked }
+                      })}
+                      data-testid="switch-sms-qr-code"
+                    />
+                    <Label className="text-sm font-medium">Show QR code</Label>
+                  </div>
+                  
                   <div className="space-y-2">
-                    <Label className="text-xs text-slate-500">Title *</Label>
+                    <Label className="text-xs text-slate-500">Title & description *</Label>
                     <div className="relative">
                       <Input 
                         value={smsSettings.messageScreen.title}
@@ -1375,7 +1386,6 @@ function SortableChannelItem({
                     </div>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs text-slate-500">Description</Label>
                     <Textarea 
                       value={smsSettings.messageScreen.description}
                       onChange={(e) => onSmsSettingsChange({
@@ -4009,17 +4019,21 @@ export default function ChatWidgetEditPage() {
                         <p className="text-xs text-slate-400 text-center">
                           Text messaging charges and data fees may apply according to your carrier's rates.
                         </p>
-                        <div className="flex justify-center py-2">
-                          <div className="bg-white p-1.5 rounded-lg border border-slate-200">
-                            <QRCodeDisplay 
-                              value={`sms:${widget.smsSettings?.numberSettings?.numberType === "custom" 
-                                ? widget.smsSettings?.numberSettings?.customNumber?.replace(/[\s()\-]/g, '') || '+18332214494'
-                                : '+18332214494'}`}
-                              size={67}
-                            />
-                          </div>
-                        </div>
-                        <p className="text-xs text-slate-400 text-center">Scan QR code to send message</p>
+                        {(widget.smsSettings?.messageScreen?.showQRCode ?? true) && (
+                          <>
+                            <div className="flex justify-center py-2">
+                              <div className="bg-white p-1.5 rounded-lg border border-slate-200">
+                                <QRCodeDisplay 
+                                  value={`sms:${widget.smsSettings?.numberSettings?.numberType === "custom" 
+                                    ? widget.smsSettings?.numberSettings?.customNumber?.replace(/[\s()\-]/g, '') || '+18332214494'
+                                    : '+18332214494'}`}
+                                  size={67}
+                                />
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-400 text-center">Scan QR code to send message</p>
+                          </>
+                        )}
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
                             Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
