@@ -30066,6 +30066,130 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
 
+  // PATCH /api/telnyx/caller-id - Update caller ID name (CNAM) for a phone number
+  app.patch("/api/telnyx/caller-id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user as User;
+      const companyId = currentUser.companyId;
+      const { phoneNumber, callerIdName } = req.body;
+      
+      if (!companyId) {
+        return res.status(403).json({ message: "Company not found" });
+      }
+      
+      if (!phoneNumber || typeof callerIdName !== "string") {
+        return res.status(400).json({ message: "Phone number and caller ID name are required" });
+      }
+      
+      // Sanitize CNAM - max 15 alphanumeric characters or spaces
+      const sanitizedCnam = callerIdName.replace(/[^a-zA-Z0-9 ]/g, "").substring(0, 15).toUpperCase();
+      
+      if (sanitizedCnam.length === 0) {
+        return res.status(400).json({ message: "Caller ID name must contain at least one alphanumeric character" });
+      }
+      
+      // Verify the phone number belongs to this company
+      const phoneNumberRecord = await db
+        .select()
+        .from(telnyxPhoneNumbers)
+        .where(and(
+          eq(telnyxPhoneNumbers.phoneNumber, phoneNumber),
+          eq(telnyxPhoneNumbers.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (phoneNumberRecord.length === 0) {
+        return res.status(404).json({ message: "Phone number not found" });
+      }
+      
+      // Get Telnyx API key
+      const apiKey = await getTelnyxMasterApiKey();
+      
+      // First, get the Telnyx phone number ID
+      const normalizedPhone = phoneNumber.startsWith("+") ? phoneNumber : `+${phoneNumber.replace(/[^0-9]/g, "")}`;
+      const searchResponse = await fetch(
+        `https://api.telnyx.com/v2/phone_numbers?filter[phone_number]=${encodeURIComponent(normalizedPhone)}`,
+        {
+          method: "GET",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+          }
+        }
+      );
+      
+      if (!searchResponse.ok) {
+        const errorText = await searchResponse.text();
+        console.error("[Telnyx] Error searching for phone number:", errorText);
+        return res.status(500).json({ message: "Failed to find phone number in Telnyx" });
+      }
+      
+      const searchResult = await searchResponse.json();
+      if (!searchResult.data || searchResult.data.length === 0) {
+        return res.status(404).json({ message: "Phone number not found in Telnyx" });
+      }
+      
+      const telnyxPhoneId = searchResult.data[0].id;
+      
+      // Update CNAM settings using V2 API
+      const updateResponse = await fetch(
+        `https://api.telnyx.com/v2/phone_numbers/${telnyxPhoneId}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            cnam_listing_enabled: true,
+            caller_id_name_enabled: true
+          })
+        }
+      );
+      
+      if (!updateResponse.ok) {
+        const errorText = await updateResponse.text();
+        console.error("[Telnyx] Error enabling CNAM:", errorText);
+        return res.status(500).json({ message: "Failed to enable CNAM settings" });
+      }
+      
+      // Also try V1 API for setting CNAM details
+      try {
+        const v1Response = await fetch(
+          `https://api.telnyx.com/origination/numbers/${telnyxPhoneId}`,
+          {
+            method: "PUT",
+            headers: {
+              "Authorization": `Bearer ${apiKey}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              cnam_listing_enabled: true,
+              cnam_listing_details: sanitizedCnam
+            })
+          }
+        );
+        
+        if (v1Response.ok) {
+          console.log(`[Telnyx] CNAM set successfully for ${phoneNumber}: "${sanitizedCnam}"`);
+        } else {
+          console.warn("[Telnyx] V1 CNAM API returned error, but V2 settings were enabled");
+        }
+      } catch (v1Error) {
+        console.warn("[Telnyx] V1 CNAM API error:", v1Error);
+      }
+      
+      res.json({ 
+        success: true, 
+        message: `Caller ID name set to "${sanitizedCnam}". It may take 3-5 business days to propagate.`,
+        callerIdName: sanitizedCnam
+      });
+    } catch (error) {
+      console.error("[Telnyx] Error updating caller ID:", error);
+      res.status(500).json({ message: "Failed to update caller ID" });
+    }
+  });
+
 
   // GET /api/telnyx/verification-request/by-phone/:phoneNumber - Get verification request by phone number
   // Queries Telnyx API directly for real-time verification status

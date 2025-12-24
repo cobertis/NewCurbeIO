@@ -42,7 +42,8 @@ import {
   Trash2,
   Edit,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  UserCircle
 } from "lucide-react";
 import { SiWhatsapp, SiFacebook, SiInstagram } from "react-icons/si";
 import { cn } from "@/lib/utils";
@@ -96,6 +97,8 @@ export default function SmsVoiceNumbers() {
   const [pageSize, setPageSize] = useState(10);
   const [editLabelNumber, setEditLabelNumber] = useState<SmsVoiceNumber | null>(null);
   const [labelValue, setLabelValue] = useState("");
+  const [editCallerIdNumber, setEditCallerIdNumber] = useState<SmsVoiceNumber | null>(null);
+  const [callerIdValue, setCallerIdValue] = useState("");
   const { toast } = useToast();
 
   const { data: numbersData, isLoading } = useQuery<{ numbers: SmsVoiceNumber[] }>({
@@ -126,6 +129,33 @@ export default function SmsVoiceNumbers() {
   const handleSaveLabel = () => {
     if (editLabelNumber) {
       updateLabelMutation.mutate({ numberId: editLabelNumber.id, displayName: labelValue.trim() });
+    }
+  };
+
+  const updateCallerIdMutation = useMutation({
+    mutationFn: async ({ phoneNumber, callerIdName }: { phoneNumber: string; callerIdName: string }) => {
+      return await apiRequest("PATCH", `/api/telnyx/caller-id`, { phoneNumber, callerIdName });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/sms-voice/numbers"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/telnyx/my-numbers"] });
+      toast({ title: "Caller ID updated", description: "The caller ID name has been submitted. It may take 3-5 business days to propagate." });
+      setEditCallerIdNumber(null);
+      setCallerIdValue("");
+    },
+    onError: (error: any) => {
+      toast({ title: "Error", description: error.message || "Failed to update caller ID", variant: "destructive" });
+    },
+  });
+
+  const handleEditCallerId = (number: SmsVoiceNumber) => {
+    setEditCallerIdNumber(number);
+    setCallerIdValue("");
+  };
+
+  const handleSaveCallerId = () => {
+    if (editCallerIdNumber) {
+      updateCallerIdMutation.mutate({ phoneNumber: editCallerIdNumber.phoneNumber, callerIdName: callerIdValue.trim() });
     }
   };
 
@@ -358,6 +388,13 @@ export default function SmsVoiceNumbers() {
                               <PhoneForwarded className="h-4 w-4 mr-2" />
                               Forward calls
                             </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleEditCallerId(number)}
+                              data-testid={`menu-caller-id-${number.id}`}
+                            >
+                              <UserCircle className="h-4 w-4 mr-2" />
+                              Set caller ID
+                            </DropdownMenuItem>
                             <DropdownMenuSeparator />
                             <DropdownMenuItem 
                               className="text-red-600 dark:text-red-400"
@@ -468,6 +505,56 @@ export default function SmsVoiceNumbers() {
               data-testid="button-save-label"
             >
               {updateLabelMutation.isPending ? "Saving..." : "Save"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editCallerIdNumber} onOpenChange={(open) => !open && setEditCallerIdNumber(null)}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Set Caller ID Name</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="caller-phone">Phone number</Label>
+              <Input 
+                id="caller-phone"
+                value={editCallerIdNumber ? formatPhoneNumber(editCallerIdNumber.phoneNumber) : ""}
+                disabled
+                className="bg-slate-50 dark:bg-slate-800"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="caller-id-name">Caller ID Name (CNAM)</Label>
+              <Input 
+                id="caller-id-name"
+                placeholder="e.g., MY COMPANY"
+                value={callerIdValue}
+                onChange={(e) => setCallerIdValue(e.target.value.toUpperCase().slice(0, 15))}
+                maxLength={15}
+                data-testid="input-caller-id"
+              />
+              <p className="text-xs text-slate-500">
+                Max 15 characters. This name will appear on recipient's caller ID display. 
+                Changes take 3-5 business days to propagate. Additional fees may apply ($0.40/month).
+              </p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => setEditCallerIdNumber(null)}
+              data-testid="button-cancel-caller-id"
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleSaveCallerId}
+              disabled={updateCallerIdMutation.isPending || callerIdValue.trim().length === 0}
+              data-testid="button-save-caller-id"
+            >
+              {updateCallerIdMutation.isPending ? "Saving..." : "Save"}
             </Button>
           </DialogFooter>
         </DialogContent>
