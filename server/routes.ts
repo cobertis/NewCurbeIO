@@ -31071,7 +31071,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       console.log("[10DLC Campaign Numbers] Fetching for campaign:", id, "tcrCampaignId:", tcrCampaignId, "managedAccount:", managedAccountId);
       
       // Strategy 1: Try with campaignId filter first
-      let url = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[telnyx_campaign_id]=${encodeURIComponent(id)}`;
+      let url = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[telnyx_campaign_id]=${encodeURIComponent(id)}&page[size]=250`;
       console.log("[10DLC Campaign Numbers] Trying URL:", url);
       
       let response = await fetch(url, {
@@ -31086,7 +31086,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       // Strategy 2: If no results and we have tcrCampaignId, try filtering by tcrCampaignId
       if (numbers.length === 0 && tcrCampaignId) {
-        url = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[tcr_campaign_id]=${encodeURIComponent(String(tcrCampaignId))}`;
+        url = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[tcr_campaign_id]=${encodeURIComponent(String(tcrCampaignId))}&page[size]=250`;
         console.log("[10DLC Campaign Numbers] No results, trying tcrCampaignId filter:", url);
         
         response = await fetch(url, {
