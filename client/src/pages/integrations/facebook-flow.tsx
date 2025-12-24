@@ -1,13 +1,12 @@
-import { useState } from "react";
 import { useLocation, Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, MessageCircle, Clock } from "lucide-react";
 import { SiFacebook } from "react-icons/si";
+import { SettingsLayout } from "@/components/settings-layout";
 
 export default function FacebookFlowPage() {
   const [, setLocation] = useLocation();
-  const [currentStep, setCurrentStep] = useState(1);
 
   const handleLoginWithFacebook = () => {
     // TODO: Implement Facebook OAuth flow
@@ -19,6 +18,7 @@ export default function FacebookFlowPage() {
   };
 
   return (
+    <SettingsLayout activeSection="facebook">
     <div className="space-y-6" data-testid="page-facebook-flow">
       <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
         <Link href="/settings">
@@ -128,5 +128,6 @@ export default function FacebookFlowPage() {
         </div>
       </div>
     </div>
+    </SettingsLayout>
   );
 }

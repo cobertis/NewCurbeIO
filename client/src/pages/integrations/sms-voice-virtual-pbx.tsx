@@ -1,120 +1,13 @@
-import { useLocation, Link } from "wouter";
+import { Link } from "wouter";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { 
-  Phone, 
-  Mail, 
-  Settings, 
-  Building, 
-  CreditCard, 
-  Users, 
-  Zap, 
-  Plug, 
-  User as UserIcon,
-  MessageSquare,
-  AlertTriangle,
-  Ticket,
-  ListTodo,
-  DollarSign,
-  Sparkles,
-  Construction,
-  ArrowLeft
-} from "lucide-react";
-import { SiWhatsapp, SiFacebook, SiInstagram } from "react-icons/si";
-import { cn } from "@/lib/utils";
-
-interface NavigationItem {
-  label: string;
-  href: string;
-  icon: React.ComponentType<{ className?: string }>;
-  active?: boolean;
-  hasWarning?: boolean;
-}
-
-function NavigationLink({ item, onClick }: { item: NavigationItem; onClick: (href: string) => void }) {
-  return (
-    <button
-      onClick={() => onClick(item.href)}
-      data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`}
-      className={cn(
-        "w-full flex items-center gap-3 px-4 py-2 text-sm text-slate-600 dark:text-slate-400 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors",
-        item.active && "border-l-2 border-blue-600 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400"
-      )}
-    >
-      <item.icon className="h-4 w-4" />
-      <span className="flex-1 text-left">{item.label}</span>
-      {item.hasWarning && <AlertTriangle className="h-3.5 w-3.5 text-amber-500" />}
-    </button>
-  );
-}
+import { Construction, ArrowLeft } from "lucide-react";
+import { SettingsLayout } from "@/components/settings-layout";
 
 export default function SmsVoiceVirtualPbx() {
-  const [, setLocation] = useLocation();
-
-  const menuItems: { channels: NavigationItem[]; features: NavigationItem[]; administration: NavigationItem[] } = {
-    channels: [
-      { label: "SMS & voice", href: "/settings/sms-voice", icon: Phone, active: true },
-      { label: "Email", href: "/settings/email", icon: Mail },
-      { label: "Chat widget", href: "/settings/chat-widget", icon: MessageSquare },
-      { label: "WhatsApp", href: "/settings/whatsapp", icon: SiWhatsapp },
-      { label: "Facebook", href: "/settings/facebook", icon: SiFacebook },
-      { label: "Instagram", href: "/settings/instagram", icon: SiInstagram },
-    ],
-    features: [
-      { label: "Messenger", href: "/inbox", icon: MessageSquare },
-      { label: "Contacts", href: "/contacts", icon: Users },
-      { label: "API & Integrations", href: "/settings/api", icon: Plug },
-      { label: "Email to SMS", href: "/settings/email-to-sms", icon: Mail },
-      { label: "Auto-responders", href: "/campaigns", icon: Zap },
-      { label: "Tickets", href: "/tickets", icon: Ticket },
-      { label: "Tasks", href: "/tasks", icon: ListTodo },
-      { label: "Deals", href: "/deals", icon: DollarSign },
-      { label: "Point AI", href: "/ai-assistant", icon: Sparkles },
-    ],
-    administration: [
-      { label: "Workspace", href: "/settings/company", icon: Building },
-      { label: "Billing", href: "/billing", icon: CreditCard },
-      { label: "My account", href: "/settings/profile", icon: UserIcon },
-    ],
-  };
-
-  const handleNavigation = (href: string) => {
-    setLocation(href);
-  };
-
   return (
-    <div className="flex gap-6" data-testid="page-sms-voice-virtual-pbx">
-      <div className="w-60 shrink-0 hidden lg:block">
-        <div className="sticky top-4 bg-white dark:bg-slate-900 rounded-lg border border-slate-200 dark:border-slate-800">
-          <div className="flex items-center gap-2 px-4 py-3 border-b border-slate-200 dark:border-slate-800">
-            <Settings className="h-4 w-4 text-slate-600 dark:text-slate-400" />
-            <span className="text-sm font-medium text-slate-700 dark:text-slate-300">Settings</span>
-          </div>
-
-          <div className="py-2">
-            <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Channels</p>
-            {menuItems.channels.map((item) => (
-              <NavigationLink key={item.label} item={item} onClick={handleNavigation} />
-            ))}
-          </div>
-
-          <div className="py-2">
-            <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Features</p>
-            {menuItems.features.map((item) => (
-              <NavigationLink key={item.label} item={item} onClick={handleNavigation} />
-            ))}
-          </div>
-
-          <div className="py-2 pb-3">
-            <p className="px-4 py-2 text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Administration</p>
-            {menuItems.administration.map((item) => (
-              <NavigationLink key={item.label} item={item} onClick={handleNavigation} />
-            ))}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex-1 min-w-0 space-y-6">
+    <SettingsLayout activeSection="sms-voice">
+      <div className="space-y-6" data-testid="page-sms-voice-virtual-pbx">
         <div className="flex items-center gap-4">
           <Link href="/settings/sms-voice">
             <Button variant="ghost" size="sm" className="gap-2" data-testid="link-back-sms-voice">
@@ -150,6 +43,6 @@ export default function SmsVoiceVirtualPbx() {
           </CardContent>
         </Card>
       </div>
-    </div>
+    </SettingsLayout>
   );
 }
