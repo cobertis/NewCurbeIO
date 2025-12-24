@@ -4883,6 +4883,13 @@ export const chatWidgets = pgTable("chat_widgets", {
     accountConnection?: { username?: string; accountName?: string };
   }>(),
   
+  // Telegram settings
+  telegramSettings: jsonb("telegram_settings").$type<{
+    welcomeScreen?: { channelName?: string };
+    messageUsScreen?: { showQRCode?: boolean; title?: string; description?: string; buttonLabel?: string };
+    botConnection?: { connectionType?: string; botUsername?: string; botName?: string; customUrl?: string };
+  }>(),
+  
   // Channel order
   channelOrder: text("channel_order").array(),
   
