@@ -971,10 +971,10 @@ function SortableChannelItem({
                   <div>
                     <Label className="text-sm font-medium">Numbers and countries</Label>
                     <p className="text-xs text-slate-500 mt-1">
-                      You can show local contact numbers based on the visitor's IP country. Choose one of the Textmagic numbers or enter your own phone number. The <strong>Global</strong> number will be shown if the detected IP country doesn't have a virtual number selected below.
+                      You can show local contact numbers based on the visitor's IP country. Choose one of your connected numbers or enter your own phone number. The <strong>Global</strong> number will be shown if the detected IP country doesn't have a virtual number selected below.
                     </p>
                     <p className="text-xs text-slate-500 mt-1">
-                      <strong>Please note:</strong> If you use a custom number, inbound calls will not be displayed in Textmagic.
+                      <strong>Please note:</strong> If you use a custom number, inbound calls will not be tracked in the system.
                     </p>
                   </div>
                   
@@ -1000,12 +1000,26 @@ function SortableChannelItem({
                           }}
                         >
                           <SelectTrigger data-testid={`select-phone-${index}`}>
-                            <SelectValue />
+                            <SelectValue placeholder="Select a phone number" />
                           </SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="(833) 221-4494">(833) 221-4494 (Main Number)</SelectItem>
-                            <SelectItem value="(305) 555-0100">(305) 555-0100</SelectItem>
-                            <SelectItem value="custom">Enter custom number...</SelectItem>
+                            {companyNumbers && companyNumbers.length > 0 ? (
+                              <>
+                                <div className="text-xs text-slate-500 px-2 py-1 font-medium">Connected numbers</div>
+                                {companyNumbers.map((num) => (
+                                  <SelectItem key={num.phoneNumber} value={num.phoneNumber}>
+                                    {num.displayName || num.friendlyName || num.phoneNumber}
+                                  </SelectItem>
+                                ))}
+                                <div className="text-xs text-slate-500 px-2 py-1 font-medium mt-2">Other</div>
+                                <SelectItem value="custom">+ Enter custom number...</SelectItem>
+                              </>
+                            ) : (
+                              <>
+                                <div className="text-xs text-slate-500 px-2 py-1">No connected numbers available</div>
+                                <SelectItem value="custom">+ Enter custom number...</SelectItem>
+                              </>
+                            )}
                           </SelectContent>
                         </Select>
                       </div>
@@ -1015,9 +1029,12 @@ function SortableChannelItem({
                   <button
                     type="button"
                     onClick={() => {
+                      const defaultNumber = companyNumbers && companyNumbers.length > 0 
+                        ? companyNumbers[0].phoneNumber 
+                        : "";
                       const newEntries = [
                         ...callSettings.numbersAndCountries.entries,
-                        { country: "United States", phoneNumber: "(833) 221-4494" }
+                        { country: "United States", phoneNumber: defaultNumber }
                       ];
                       onCallSettingsChange({
                         numbersAndCountries: { entries: newEntries }
