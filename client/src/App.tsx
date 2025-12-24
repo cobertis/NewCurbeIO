@@ -587,7 +587,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
       <div className="grid grid-rows-[auto,1fr] grid-cols-[4rem,1fr] h-screen w-full bg-gradient-to-br from-slate-100 via-gray-100 to-slate-200 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
         {/* Header - Spans both columns (full width) */}
         <div className="col-span-2 p-4 pb-2">
-          <header className="h-14 bg-transparent flex items-center px-6">
+          <header className="h-14 bg-white/60 dark:bg-gray-800/60 backdrop-blur-sm rounded-xl shadow-sm border border-gray-200/50 dark:border-gray-700/50 flex items-center px-6">
             {/* Left: Company Logo - Always links to dashboard (SPA navigation) */}
             <div className="flex items-center shrink-0 mr-8 h-10">
               {displayLogo && (
