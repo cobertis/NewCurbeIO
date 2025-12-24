@@ -704,7 +704,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   {/* Menu Items */}
                   <div className="space-y-1">
                     <DropdownMenuItem 
-                      onClick={() => setLocation("/settings/overview")} 
+                      onClick={() => setLocation("/settings")} 
                       data-testid="menu-item-settings"
                       className="py-2.5 px-3 cursor-pointer rounded-md"
                     >
@@ -974,7 +974,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
           <Tooltip>
             <TooltipTrigger asChild>
               <button
-                onClick={() => setLocation("/settings/overview")}
+                onClick={() => setLocation("/settings")}
                 data-testid="sidebar-button-settings"
                 className={circularButtonClass}
               >
@@ -1666,17 +1666,10 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
-      <Route path="/settings/overview">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <Settings />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
       <Route path="/settings">
         <ProtectedRoute>
           <DashboardLayout>
-            <Settings />
+            <IntegrationsPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
@@ -1930,13 +1923,6 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <EmailMarketingPage />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/integrations">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <IntegrationsPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
