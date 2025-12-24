@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, Link, useParams } from "wouter";
 import curbeLogo from "@assets/logo no fondo_1760457183587.png";
@@ -185,6 +185,48 @@ interface WidgetConfig {
       customEmail: string;
     };
   };
+  smsSettings: {
+    welcomeScreen: {
+      channelName: string;
+    };
+    messageScreen: {
+      title: string;
+      description: string;
+      buttonLabel: string;
+    };
+    numberSettings: {
+      numberType: "connected" | "custom";
+      customNumber: string;
+    };
+  };
+  messengerSettings: {
+    welcomeScreen: {
+      channelName: string;
+    };
+    pageSettings: {
+      title: string;
+      description: string;
+      buttonLabel: string;
+    };
+    pageConnection: {
+      pageId: string;
+      pageName: string;
+    };
+  };
+  instagramSettings: {
+    welcomeScreen: {
+      channelName: string;
+    };
+    profileSettings: {
+      title: string;
+      description: string;
+      buttonLabel: string;
+    };
+    accountConnection: {
+      username: string;
+      accountName: string;
+    };
+  };
   targeting: {
     countries: "all" | "selected" | "excluded";
     selectedCountries: string[];
@@ -255,12 +297,21 @@ interface SortableChannelItemProps {
   onWhatsappSettingsChange?: (settings: Partial<WidgetConfig["whatsappSettings"]>) => void;
   emailSettings?: WidgetConfig["emailSettings"];
   onEmailSettingsChange?: (settings: Partial<WidgetConfig["emailSettings"]>) => void;
+  smsSettings?: WidgetConfig["smsSettings"];
+  onSmsSettingsChange?: (settings: Partial<WidgetConfig["smsSettings"]>) => void;
+  messengerSettings?: WidgetConfig["messengerSettings"];
+  onMessengerSettingsChange?: (settings: Partial<WidgetConfig["messengerSettings"]>) => void;
+  instagramSettings?: WidgetConfig["instagramSettings"];
+  onInstagramSettingsChange?: (settings: Partial<WidgetConfig["instagramSettings"]>) => void;
 }
 
 type LiveChatSubSection = "welcomeScreen" | "preChatForm" | "queueSettings" | "satisfactionSurvey" | "offlineMode" | "additionalSettings" | null;
 type CallSubSection = "callUsScreen" | "numbersAndCountries" | null;
 type WhatsappSubSection = "welcomeScreen" | "messageScreen" | "numberSettings" | null;
 type EmailSubSection = "welcomeScreen" | "formFields" | "successScreen" | "associatedEmail" | null;
+type SmsSubSection = "welcomeScreen" | "messageScreen" | "numberSettings" | null;
+type MessengerSubSection = "welcomeScreen" | "pageSettings" | "pageConnection" | null;
+type InstagramSubSection = "welcomeScreen" | "profileSettings" | "accountConnection" | null;
 
 function SortableChannelItem({ 
   channel, 
@@ -275,12 +326,33 @@ function SortableChannelItem({
   whatsappSettings,
   onWhatsappSettingsChange,
   emailSettings,
-  onEmailSettingsChange
+  onEmailSettingsChange,
+  smsSettings,
+  onSmsSettingsChange,
+  messengerSettings,
+  onMessengerSettingsChange,
+  instagramSettings,
+  onInstagramSettingsChange
 }: SortableChannelItemProps) {
   const [activeSubSection, setActiveSubSection] = useState<LiveChatSubSection>(null);
   const [activeCallSubSection, setActiveCallSubSection] = useState<CallSubSection>(null);
   const [activeWhatsappSubSection, setActiveWhatsappSubSection] = useState<WhatsappSubSection>(null);
   const [activeEmailSubSection, setActiveEmailSubSection] = useState<EmailSubSection>(null);
+  const [activeSmsSubSection, setActiveSmsSubSection] = useState<SmsSubSection>(null);
+  const [activeMessengerSubSection, setActiveMessengerSubSection] = useState<MessengerSubSection>(null);
+  const [activeInstagramSubSection, setActiveInstagramSubSection] = useState<InstagramSubSection>(null);
+
+  useEffect(() => {
+    if (!isExpanded) {
+      setActiveSubSection(null);
+      setActiveCallSubSection(null);
+      setActiveWhatsappSubSection(null);
+      setActiveEmailSubSection(null);
+      setActiveSmsSubSection(null);
+      setActiveMessengerSubSection(null);
+      setActiveInstagramSubSection(null);
+    }
+  }, [isExpanded]);
   
   const {
     attributes,
@@ -322,6 +394,24 @@ function SortableChannelItem({
     { id: "formFields", label: "Form fields", icon: <FileText className="h-4 w-4" /> },
     { id: "successScreen", label: "Success screen", icon: <CheckCircle className="h-4 w-4" /> },
     { id: "associatedEmail", label: "Associated email", icon: <Mail className="h-4 w-4" /> },
+  ];
+
+  const smsSubOptions = [
+    { id: "welcomeScreen", label: "Welcome screen", icon: <Monitor className="h-4 w-4" /> },
+    { id: "messageScreen", label: "Message screen", icon: <MessageSquare className="h-4 w-4" /> },
+    { id: "numberSettings", label: "SMS number", icon: <Phone className="h-4 w-4" /> },
+  ];
+
+  const messengerSubOptions = [
+    { id: "welcomeScreen", label: "Welcome screen", icon: <Monitor className="h-4 w-4" /> },
+    { id: "pageSettings", label: "Page settings", icon: <FileText className="h-4 w-4" /> },
+    { id: "pageConnection", label: "Connect Facebook page", icon: <SiFacebook className="h-4 w-4" /> },
+  ];
+
+  const instagramSubOptions = [
+    { id: "welcomeScreen", label: "Welcome screen", icon: <Monitor className="h-4 w-4" /> },
+    { id: "profileSettings", label: "Profile settings", icon: <FileText className="h-4 w-4" /> },
+    { id: "accountConnection", label: "Connect Instagram", icon: <SiInstagram className="h-4 w-4" /> },
   ];
 
   return (
@@ -1158,6 +1248,345 @@ function SortableChannelItem({
           )}
         </div>
       )}
+
+      {isExpanded && channel.id === "sms" && smsSettings && onSmsSettingsChange && (
+        <div className="border-t px-4 py-3">
+          {activeSmsSubSection === null ? (
+            <div className="space-y-1">
+              {smsSubOptions.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => setActiveSmsSubSection(option.id as SmsSubSection)}
+                  className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  data-testid={`sms-option-${option.id}`}
+                >
+                  <div className="flex items-center gap-3">
+                    {option.icon}
+                    <span className="text-sm font-medium">{option.label}</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-slate-400" />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <button
+                onClick={() => setActiveSmsSubSection(null)}
+                className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                data-testid="sms-back-button"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Back
+              </button>
+
+              {activeSmsSubSection === "welcomeScreen" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Channel name in Welcome screen *</Label>
+                    <Input 
+                      value={smsSettings.welcomeScreen.channelName}
+                      onChange={(e) => onSmsSettingsChange({
+                        welcomeScreen: { ...smsSettings.welcomeScreen, channelName: e.target.value }
+                      })}
+                      data-testid="input-sms-channel-name"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {activeSmsSubSection === "messageScreen" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Title *</Label>
+                    <Input 
+                      value={smsSettings.messageScreen.title}
+                      onChange={(e) => onSmsSettingsChange({
+                        messageScreen: { ...smsSettings.messageScreen, title: e.target.value }
+                      })}
+                      data-testid="input-sms-title"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Description</Label>
+                    <Textarea 
+                      value={smsSettings.messageScreen.description}
+                      onChange={(e) => onSmsSettingsChange({
+                        messageScreen: { ...smsSettings.messageScreen, description: e.target.value }
+                      })}
+                      rows={3}
+                      data-testid="textarea-sms-description"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Button label *</Label>
+                    <Input 
+                      value={smsSettings.messageScreen.buttonLabel}
+                      onChange={(e) => onSmsSettingsChange({
+                        messageScreen: { ...smsSettings.messageScreen, buttonLabel: e.target.value }
+                      })}
+                      data-testid="input-sms-button-label"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {activeSmsSubSection === "numberSettings" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">SMS phone number *</Label>
+                    <Select 
+                      value={smsSettings.numberSettings.numberType}
+                      onValueChange={(v: "connected" | "custom") => onSmsSettingsChange({
+                        numberSettings: { ...smsSettings.numberSettings, numberType: v }
+                      })}
+                    >
+                      <SelectTrigger data-testid="select-sms-number-type">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="connected">Use connected number</SelectItem>
+                        <SelectItem value="custom">Use custom number</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {smsSettings.numberSettings.numberType === "custom" && (
+                    <div className="space-y-2">
+                      <Input 
+                        value={smsSettings.numberSettings.customNumber}
+                        onChange={(e) => onSmsSettingsChange({
+                          numberSettings: { ...smsSettings.numberSettings, customNumber: e.target.value }
+                        })}
+                        placeholder="+1 (555) 123-4567"
+                        data-testid="input-sms-custom-number"
+                      />
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {isExpanded && channel.id === "facebook" && messengerSettings && onMessengerSettingsChange && (
+        <div className="border-t px-4 py-3">
+          {activeMessengerSubSection === null ? (
+            <div className="space-y-1">
+              {messengerSubOptions.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => setActiveMessengerSubSection(option.id as MessengerSubSection)}
+                  className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  data-testid={`messenger-option-${option.id}`}
+                >
+                  <div className="flex items-center gap-3">
+                    {option.icon}
+                    <span className="text-sm font-medium">{option.label}</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-slate-400" />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <button
+                onClick={() => setActiveMessengerSubSection(null)}
+                className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                data-testid="messenger-back-button"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Back
+              </button>
+
+              {activeMessengerSubSection === "welcomeScreen" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Channel name in Welcome screen *</Label>
+                    <Input 
+                      value={messengerSettings.welcomeScreen.channelName}
+                      onChange={(e) => onMessengerSettingsChange({
+                        welcomeScreen: { ...messengerSettings.welcomeScreen, channelName: e.target.value }
+                      })}
+                      data-testid="input-messenger-channel-name"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {activeMessengerSubSection === "pageSettings" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Title *</Label>
+                    <Input 
+                      value={messengerSettings.pageSettings.title}
+                      onChange={(e) => onMessengerSettingsChange({
+                        pageSettings: { ...messengerSettings.pageSettings, title: e.target.value }
+                      })}
+                      data-testid="input-messenger-title"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Description</Label>
+                    <Textarea 
+                      value={messengerSettings.pageSettings.description}
+                      onChange={(e) => onMessengerSettingsChange({
+                        pageSettings: { ...messengerSettings.pageSettings, description: e.target.value }
+                      })}
+                      rows={3}
+                      data-testid="textarea-messenger-description"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Button label *</Label>
+                    <Input 
+                      value={messengerSettings.pageSettings.buttonLabel}
+                      onChange={(e) => onMessengerSettingsChange({
+                        pageSettings: { ...messengerSettings.pageSettings, buttonLabel: e.target.value }
+                      })}
+                      data-testid="input-messenger-button-label"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {activeMessengerSubSection === "pageConnection" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Connected Facebook Page</Label>
+                    <div className="p-4 border rounded-lg bg-slate-50 dark:bg-slate-800 text-center">
+                      {messengerSettings.pageConnection.pageName ? (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <SiFacebook className="h-5 w-5 text-[#1877F2]" />
+                            <span className="text-sm font-medium">{messengerSettings.pageConnection.pageName}</span>
+                          </div>
+                          <Button variant="outline" size="sm">Disconnect</Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <SiFacebook className="h-8 w-8 text-[#1877F2] mx-auto" />
+                          <p className="text-sm text-slate-500">No Facebook page connected</p>
+                          <Button variant="outline" size="sm">Connect Facebook Page</Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
+
+      {isExpanded && channel.id === "instagram" && instagramSettings && onInstagramSettingsChange && (
+        <div className="border-t px-4 py-3">
+          {activeInstagramSubSection === null ? (
+            <div className="space-y-1">
+              {instagramSubOptions.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => setActiveInstagramSubSection(option.id as InstagramSubSection)}
+                  className="w-full flex items-center justify-between p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                  data-testid={`instagram-option-${option.id}`}
+                >
+                  <div className="flex items-center gap-3">
+                    {option.icon}
+                    <span className="text-sm font-medium">{option.label}</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-slate-400" />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <button
+                onClick={() => setActiveInstagramSubSection(null)}
+                className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700 dark:hover:text-slate-300"
+                data-testid="instagram-back-button"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                Back
+              </button>
+
+              {activeInstagramSubSection === "welcomeScreen" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Channel name in Welcome screen *</Label>
+                    <Input 
+                      value={instagramSettings.welcomeScreen.channelName}
+                      onChange={(e) => onInstagramSettingsChange({
+                        welcomeScreen: { ...instagramSettings.welcomeScreen, channelName: e.target.value }
+                      })}
+                      data-testid="input-instagram-channel-name"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {activeInstagramSubSection === "profileSettings" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Title *</Label>
+                    <Input 
+                      value={instagramSettings.profileSettings.title}
+                      onChange={(e) => onInstagramSettingsChange({
+                        profileSettings: { ...instagramSettings.profileSettings, title: e.target.value }
+                      })}
+                      data-testid="input-instagram-title"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Description</Label>
+                    <Textarea 
+                      value={instagramSettings.profileSettings.description}
+                      onChange={(e) => onInstagramSettingsChange({
+                        profileSettings: { ...instagramSettings.profileSettings, description: e.target.value }
+                      })}
+                      rows={3}
+                      data-testid="textarea-instagram-description"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Button label *</Label>
+                    <Input 
+                      value={instagramSettings.profileSettings.buttonLabel}
+                      onChange={(e) => onInstagramSettingsChange({
+                        profileSettings: { ...instagramSettings.profileSettings, buttonLabel: e.target.value }
+                      })}
+                      data-testid="input-instagram-button-label"
+                    />
+                  </div>
+                </div>
+              )}
+
+              {activeInstagramSubSection === "accountConnection" && (
+                <div className="space-y-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Connected Instagram Account</Label>
+                    <div className="p-4 border rounded-lg bg-slate-50 dark:bg-slate-800 text-center">
+                      {instagramSettings.accountConnection.username ? (
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <SiInstagram className="h-5 w-5 text-[#E4405F]" />
+                            <span className="text-sm font-medium">@{instagramSettings.accountConnection.username}</span>
+                          </div>
+                          <Button variant="outline" size="sm">Disconnect</Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <SiInstagram className="h-8 w-8 text-[#E4405F] mx-auto" />
+                          <p className="text-sm text-slate-500">No Instagram account connected</p>
+                          <Button variant="outline" size="sm">Connect Instagram</Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -1310,6 +1739,48 @@ export default function ChatWidgetEditPage() {
         customEmail: "hello@cobertisinsurance.com",
       },
     },
+    smsSettings: {
+      welcomeScreen: {
+        channelName: "Text us",
+      },
+      messageScreen: {
+        title: "Send us a text message",
+        description: "Click the button below to send us an SMS and we'll respond as soon as possible.",
+        buttonLabel: "Send SMS",
+      },
+      numberSettings: {
+        numberType: "connected",
+        customNumber: "",
+      },
+    },
+    messengerSettings: {
+      welcomeScreen: {
+        channelName: "Message on Facebook",
+      },
+      pageSettings: {
+        title: "Message us on Facebook",
+        description: "Click the button below to start a conversation on Facebook Messenger.",
+        buttonLabel: "Open Messenger",
+      },
+      pageConnection: {
+        pageId: "",
+        pageName: "",
+      },
+    },
+    instagramSettings: {
+      welcomeScreen: {
+        channelName: "Message on Instagram",
+      },
+      profileSettings: {
+        title: "Message us on Instagram",
+        description: "Click the button below to send us a direct message on Instagram.",
+        buttonLabel: "Open Instagram",
+      },
+      accountConnection: {
+        username: "",
+        accountName: "",
+      },
+    },
     targeting: {
       countries: "all",
       selectedCountries: [],
@@ -1341,6 +1812,9 @@ export default function ChatWidgetEditPage() {
     callSettings: { ...defaultWidget.callSettings, ...widgetData?.widget?.callSettings, ...localWidget?.callSettings },
     whatsappSettings: { ...defaultWidget.whatsappSettings, ...widgetData?.widget?.whatsappSettings, ...localWidget?.whatsappSettings },
     emailSettings: { ...defaultWidget.emailSettings, ...widgetData?.widget?.emailSettings, ...localWidget?.emailSettings },
+    smsSettings: { ...defaultWidget.smsSettings, ...widgetData?.widget?.smsSettings, ...localWidget?.smsSettings },
+    messengerSettings: { ...defaultWidget.messengerSettings, ...widgetData?.widget?.messengerSettings, ...localWidget?.messengerSettings },
+    instagramSettings: { ...defaultWidget.instagramSettings, ...widgetData?.widget?.instagramSettings, ...localWidget?.instagramSettings },
   };
 
   const embedCode = `<script src="https://widgets.curbe.io/messenger-widget-script.js" data-code="${widgetId}" defer=""></script>`;
@@ -1452,6 +1926,33 @@ export default function ChatWidgetEditPage() {
     updateLocalWidget({
       emailSettings: {
         ...widget.emailSettings,
+        ...settings,
+      }
+    });
+  };
+
+  const handleSmsSettingsChange = (settings: Partial<WidgetConfig["smsSettings"]>) => {
+    updateLocalWidget({
+      smsSettings: {
+        ...widget.smsSettings,
+        ...settings,
+      }
+    });
+  };
+
+  const handleMessengerSettingsChange = (settings: Partial<WidgetConfig["messengerSettings"]>) => {
+    updateLocalWidget({
+      messengerSettings: {
+        ...widget.messengerSettings,
+        ...settings,
+      }
+    });
+  };
+
+  const handleInstagramSettingsChange = (settings: Partial<WidgetConfig["instagramSettings"]>) => {
+    updateLocalWidget({
+      instagramSettings: {
+        ...widget.instagramSettings,
         ...settings,
       }
     });
@@ -2091,6 +2592,12 @@ export default function ChatWidgetEditPage() {
                                 onWhatsappSettingsChange={handleWhatsappSettingsChange}
                                 emailSettings={widget.emailSettings}
                                 onEmailSettingsChange={handleEmailSettingsChange}
+                                smsSettings={widget.smsSettings}
+                                onSmsSettingsChange={handleSmsSettingsChange}
+                                messengerSettings={widget.messengerSettings}
+                                onMessengerSettingsChange={handleMessengerSettingsChange}
+                                instagramSettings={widget.instagramSettings}
+                                onInstagramSettingsChange={handleInstagramSettingsChange}
                               />
                             ))}
                           </div>
