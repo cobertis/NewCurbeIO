@@ -1304,7 +1304,14 @@ export default function ChatWidgetEditPage() {
     },
   };
   
-  const widget = { ...defaultWidget, ...widgetData?.widget, ...localWidget };
+  const widget = { 
+    ...defaultWidget, 
+    ...widgetData?.widget, 
+    ...localWidget,
+    targeting: { ...defaultWidget.targeting, ...widgetData?.widget?.targeting, ...localWidget?.targeting },
+    branding: { ...defaultWidget.branding, ...widgetData?.widget?.branding, ...localWidget?.branding },
+    minimizedState: { ...defaultWidget.minimizedState, ...widgetData?.widget?.minimizedState, ...localWidget?.minimizedState },
+  };
 
   const embedCode = `<script src="https://widgets.curbe.io/messenger-widget-script.js" data-code="${widgetId}" defer=""></script>`;
 
@@ -2028,7 +2035,7 @@ export default function ChatWidgetEditPage() {
                               <p className="text-sm text-slate-500">Choose countries where to show or hide the widget</p>
                               
                               <RadioGroup 
-                                value={widget.targeting.countries}
+                                value={widget.targeting?.countries || "all"}
                                 onValueChange={(v) => updateLocalWidget({ 
                                   targeting: { ...widget.targeting, countries: v as "all" | "selected" | "excluded", selectedCountries: [] } 
                                 })}
@@ -2048,15 +2055,15 @@ export default function ChatWidgetEditPage() {
                                 </div>
                               </RadioGroup>
                               
-                              {(widget.targeting.countries === "selected" || widget.targeting.countries === "excluded") && (
+                              {(widget.targeting?.countries === "selected" || widget.targeting?.countries === "excluded") && (
                                 <div className="space-y-3">
                                   <Select
                                     onValueChange={(country) => {
-                                      if (!widget.targeting.selectedCountries.includes(country)) {
+                                      if (!(widget.targeting?.selectedCountries || []).includes(country)) {
                                         updateLocalWidget({
                                           targeting: {
                                             ...widget.targeting,
-                                            selectedCountries: [...widget.targeting.selectedCountries, country]
+                                            selectedCountries: [...(widget.targeting?.selectedCountries || []), country]
                                           }
                                         });
                                       }
@@ -2086,7 +2093,7 @@ export default function ChatWidgetEditPage() {
                                         { code: "IT", name: "Italy", flag: "🇮🇹" },
                                         { code: "MX", name: "Mexico", flag: "🇲🇽" },
                                         { code: "BR", name: "Brazil", flag: "🇧🇷" },
-                                      ].filter(c => !widget.targeting.selectedCountries.includes(c.name)).map((country) => (
+                                      ].filter(c => !(widget.targeting?.selectedCountries || []).includes(c.name)).map((country) => (
                                         <SelectItem key={country.code} value={country.name}>
                                           <div className="flex items-center gap-2">
                                             <span>{country.flag}</span>
@@ -2097,9 +2104,9 @@ export default function ChatWidgetEditPage() {
                                     </SelectContent>
                                   </Select>
                                   
-                                  {widget.targeting.selectedCountries.length > 0 && (
+                                  {(widget.targeting?.selectedCountries || []).length > 0 && (
                                     <div className="flex flex-wrap gap-2">
-                                      {widget.targeting.selectedCountries.map((country) => {
+                                      {(widget.targeting?.selectedCountries || []).map((country) => {
                                         const countryData = [
                                           { name: "United States", flag: "🇺🇸" },
                                           { name: "United Kingdom", flag: "🇬🇧" },
@@ -2129,7 +2136,7 @@ export default function ChatWidgetEditPage() {
                                               onClick={() => updateLocalWidget({
                                                 targeting: {
                                                   ...widget.targeting,
-                                                  selectedCountries: widget.targeting.selectedCountries.filter(c => c !== country)
+                                                  selectedCountries: (widget.targeting?.selectedCountries || []).filter(c => c !== country)
                                                 }
                                               })}
                                               className="ml-1 text-slate-500 hover:text-slate-700"
@@ -2160,7 +2167,7 @@ export default function ChatWidgetEditPage() {
                               <p className="text-sm text-slate-500">Choose times when the widget should be visible</p>
                               
                               <RadioGroup 
-                                value={widget.targeting.schedule}
+                                value={(widget.targeting?.schedule || "always")}
                                 onValueChange={(v) => updateLocalWidget({ 
                                   targeting: { ...widget.targeting, schedule: v as "always" | "custom" } 
                                 })}
@@ -2176,12 +2183,12 @@ export default function ChatWidgetEditPage() {
                                 </div>
                               </RadioGroup>
                               
-                              {widget.targeting.schedule === "custom" && (
+                              {(widget.targeting?.schedule || "always") === "custom" && (
                                 <div className="space-y-4 mt-4">
                                   <div className="space-y-2">
                                     <Label className="text-sm font-medium">Timezone</Label>
                                     <Select
-                                      value={widget.targeting.timezone}
+                                      value={(widget.targeting?.timezone || "(UTC -05:00): America/New_York")}
                                       onValueChange={(v) => updateLocalWidget({
                                         targeting: { ...widget.targeting, timezone: v }
                                       })}
@@ -2213,12 +2220,12 @@ export default function ChatWidgetEditPage() {
                                   </div>
                                   
                                   <div className="space-y-3">
-                                    {widget.targeting.scheduleEntries.map((entry, index) => (
+                                    {(widget.targeting?.scheduleEntries || []).map((entry, index) => (
                                       <div key={entry.day} className="flex items-center gap-3">
                                         <Checkbox
                                           checked={entry.enabled}
                                           onCheckedChange={(checked) => {
-                                            const newEntries = [...widget.targeting.scheduleEntries];
+                                            const newEntries = [...(widget.targeting?.scheduleEntries || [])];
                                             newEntries[index] = { ...entry, enabled: !!checked };
                                             updateLocalWidget({
                                               targeting: { ...widget.targeting, scheduleEntries: newEntries }
@@ -2233,7 +2240,7 @@ export default function ChatWidgetEditPage() {
                                               <Input
                                                 value={entry.startTime}
                                                 onChange={(e) => {
-                                                  const newEntries = [...widget.targeting.scheduleEntries];
+                                                  const newEntries = [...(widget.targeting?.scheduleEntries || [])];
                                                   newEntries[index] = { ...entry, startTime: e.target.value };
                                                   updateLocalWidget({
                                                     targeting: { ...widget.targeting, scheduleEntries: newEntries }
@@ -2249,7 +2256,7 @@ export default function ChatWidgetEditPage() {
                                               <Input
                                                 value={entry.endTime}
                                                 onChange={(e) => {
-                                                  const newEntries = [...widget.targeting.scheduleEntries];
+                                                  const newEntries = [...(widget.targeting?.scheduleEntries || [])];
                                                   newEntries[index] = { ...entry, endTime: e.target.value };
                                                   updateLocalWidget({
                                                     targeting: { ...widget.targeting, scheduleEntries: newEntries }
@@ -2293,7 +2300,7 @@ export default function ChatWidgetEditPage() {
                               <div className="space-y-3">
                                 <h4 className="text-sm font-medium">Page rules</h4>
                                 <RadioGroup 
-                                  value={widget.targeting.pageUrls}
+                                  value={(widget.targeting?.pageUrls || "all")}
                                   onValueChange={(v) => updateLocalWidget({ 
                                     targeting: { ...widget.targeting, pageUrls: v as "all" | "show-specific" | "hide-specific" } 
                                   })}
@@ -2308,9 +2315,9 @@ export default function ChatWidgetEditPage() {
                                     <Label htmlFor="urls-show-specific" className="text-sm cursor-pointer">Show on specific pages only</Label>
                                   </div>
                                   
-                                  {widget.targeting.pageUrls === "show-specific" && (
+                                  {(widget.targeting?.pageUrls || "all") === "show-specific" && (
                                     <div className="ml-6 space-y-3">
-                                      {widget.targeting.urlRules.map((rule, index) => (
+                                      {(widget.targeting?.urlRules || []).map((rule, index) => (
                                         <div key={index}>
                                           {index > 0 && (
                                             <div className="text-sm text-slate-500 mb-2">OR</div>
@@ -2319,7 +2326,7 @@ export default function ChatWidgetEditPage() {
                                             <Select
                                               value={rule.condition}
                                               onValueChange={(v) => {
-                                                const newRules = [...widget.targeting.urlRules];
+                                                const newRules = [...(widget.targeting?.urlRules || [])];
                                                 newRules[index] = { ...rule, condition: v as "contains" | "equals" | "starts" | "ends" };
                                                 updateLocalWidget({
                                                   targeting: { ...widget.targeting, urlRules: newRules }
@@ -2339,7 +2346,7 @@ export default function ChatWidgetEditPage() {
                                             <Input
                                               value={rule.value}
                                               onChange={(e) => {
-                                                const newRules = [...widget.targeting.urlRules];
+                                                const newRules = [...(widget.targeting?.urlRules || [])];
                                                 newRules[index] = { ...rule, value: e.target.value };
                                                 updateLocalWidget({
                                                   targeting: { ...widget.targeting, urlRules: newRules }
@@ -2353,7 +2360,7 @@ export default function ChatWidgetEditPage() {
                                               variant="ghost"
                                               size="icon"
                                               onClick={() => {
-                                                const newRules = widget.targeting.urlRules.filter((_, i) => i !== index);
+                                                const newRules = (widget.targeting?.urlRules || []).filter((_, i) => i !== index);
                                                 if (newRules.length === 0) {
                                                   newRules.push({ condition: "contains", value: "" });
                                                 }
@@ -2375,7 +2382,7 @@ export default function ChatWidgetEditPage() {
                                           updateLocalWidget({
                                             targeting: {
                                               ...widget.targeting,
-                                              urlRules: [...widget.targeting.urlRules, { condition: "contains", value: "" }]
+                                              urlRules: [...(widget.targeting?.urlRules || []), { condition: "contains", value: "" }]
                                             }
                                           });
                                         }}
@@ -2391,9 +2398,9 @@ export default function ChatWidgetEditPage() {
                                     <Label htmlFor="urls-hide-specific" className="text-sm cursor-pointer">Hide on specific pages only</Label>
                                   </div>
                                   
-                                  {widget.targeting.pageUrls === "hide-specific" && (
+                                  {(widget.targeting?.pageUrls || "all") === "hide-specific" && (
                                     <div className="ml-6 space-y-3">
-                                      {widget.targeting.urlRules.map((rule, index) => (
+                                      {(widget.targeting?.urlRules || []).map((rule, index) => (
                                         <div key={index}>
                                           {index > 0 && (
                                             <div className="text-sm text-slate-500 mb-2">OR</div>
@@ -2402,7 +2409,7 @@ export default function ChatWidgetEditPage() {
                                             <Select
                                               value={rule.condition}
                                               onValueChange={(v) => {
-                                                const newRules = [...widget.targeting.urlRules];
+                                                const newRules = [...(widget.targeting?.urlRules || [])];
                                                 newRules[index] = { ...rule, condition: v as "contains" | "equals" | "starts" | "ends" };
                                                 updateLocalWidget({
                                                   targeting: { ...widget.targeting, urlRules: newRules }
@@ -2422,7 +2429,7 @@ export default function ChatWidgetEditPage() {
                                             <Input
                                               value={rule.value}
                                               onChange={(e) => {
-                                                const newRules = [...widget.targeting.urlRules];
+                                                const newRules = [...(widget.targeting?.urlRules || [])];
                                                 newRules[index] = { ...rule, value: e.target.value };
                                                 updateLocalWidget({
                                                   targeting: { ...widget.targeting, urlRules: newRules }
@@ -2436,7 +2443,7 @@ export default function ChatWidgetEditPage() {
                                               variant="ghost"
                                               size="icon"
                                               onClick={() => {
-                                                const newRules = widget.targeting.urlRules.filter((_, i) => i !== index);
+                                                const newRules = (widget.targeting?.urlRules || []).filter((_, i) => i !== index);
                                                 if (newRules.length === 0) {
                                                   newRules.push({ condition: "contains", value: "" });
                                                 }
@@ -2458,7 +2465,7 @@ export default function ChatWidgetEditPage() {
                                           updateLocalWidget({
                                             targeting: {
                                               ...widget.targeting,
-                                              urlRules: [...widget.targeting.urlRules, { condition: "contains", value: "" }]
+                                              urlRules: [...(widget.targeting?.urlRules || []), { condition: "contains", value: "" }]
                                             }
                                           });
                                         }}
@@ -2486,7 +2493,7 @@ export default function ChatWidgetEditPage() {
                               <p className="text-sm text-slate-500">Choose which type of visitors should see your widget</p>
                               
                               <RadioGroup 
-                                value={widget.targeting.deviceType}
+                                value={(widget.targeting?.deviceType || "all")}
                                 onValueChange={(v) => updateLocalWidget({ 
                                   targeting: { ...widget.targeting, deviceType: v as "all" | "desktop" | "mobile" } 
                                 })}
