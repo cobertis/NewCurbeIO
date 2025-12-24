@@ -82,17 +82,17 @@ function NavigationLink({ item, onClick }: { item: NavigationItem; onClick: (hre
 function SettingsSidebar({ onNavigate }: { onNavigate: (href: string) => void }) {
   const menuItems: { channels: NavigationItem[]; features: NavigationItem[]; administration: NavigationItem[] } = {
     channels: [
-      { label: "SMS & voice", href: "/integrations/sms-voice", icon: Phone },
+      { label: "SMS & voice", href: "/settings/sms-voice", icon: Phone },
       { label: "Email", href: "/settings/email", icon: Mail, active: true },
-      { label: "Chat widget", href: "/integrations", icon: MessageSquare },
-      { label: "WhatsApp", href: "/integrations", icon: SiWhatsapp },
-      { label: "Facebook", href: "/integrations", icon: SiFacebook },
-      { label: "Instagram", href: "/integrations", icon: SiInstagram },
+      { label: "Chat widget", href: "/settings/chat-widget", icon: MessageSquare },
+      { label: "WhatsApp", href: "/settings/whatsapp", icon: SiWhatsapp },
+      { label: "Facebook", href: "/settings/facebook", icon: SiFacebook },
+      { label: "Instagram", href: "/settings/instagram", icon: SiInstagram },
     ],
     features: [
       { label: "Messenger", href: "/inbox", icon: MessageSquare },
       { label: "Contacts", href: "/contacts", icon: Users },
-      { label: "API & Integrations", href: "/integrations", icon: Plug },
+      { label: "API & Integrations", href: "/settings/api", icon: Plug },
       { label: "Email to SMS", href: "/settings/email-to-sms", icon: Mail },
       { label: "Auto-responders", href: "/campaigns", icon: Zap },
       { label: "Tickets", href: "/tickets", icon: Ticket },
@@ -330,7 +330,7 @@ export default function EmailIntegrationFlowPage() {
         title: "Setup complete",
         description: "Your email senders have been configured.",
       });
-      setLocation("/integrations/email");
+      setLocation("/settings/email");
     },
     onError: (error: Error) => {
       toast({
@@ -400,7 +400,7 @@ export default function EmailIntegrationFlowPage() {
       <SettingsSidebar onNavigate={handleNavigation} />
       <div className="flex-1 min-w-0 space-y-6">
         <div className="flex items-center gap-4">
-          <Link href="/integrations/email">
+          <Link href="/settings/email">
             <Button variant="ghost" size="sm" data-testid="button-back-email">
               <ArrowLeft className="w-4 h-4 mr-2" />
               Back
@@ -638,7 +638,7 @@ export default function EmailIntegrationFlowPage() {
                           </Button>
                           <Button
                             variant="outline"
-                            onClick={() => setLocation("/integrations/email")}
+                            onClick={() => setLocation("/settings/email")}
                             data-testid="button-finish-later"
                           >
                             Finish later
@@ -803,7 +803,7 @@ export default function EmailIntegrationFlowPage() {
                       </Button>
                       <Button 
                         variant="outline" 
-                        onClick={() => setLocation("/integrations/email")}
+                        onClick={() => setLocation("/settings/email")}
                         data-testid="button-finish-later"
                       >
                         Finish later

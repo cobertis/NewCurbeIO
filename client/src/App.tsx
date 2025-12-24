@@ -1604,6 +1604,64 @@ function Router() {
           <PlanSelection />
         </ProtectedRoute>
       </Route>
+      {/* Specific settings routes MUST come before the wildcard */}
+      <Route path="/settings/email/flow">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <EmailIntegrationFlow />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/sms-voice/numbers">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SmsVoiceNumbers />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/sms-voice/toll-free-verification">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SmsVoiceTollFree />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/sms-voice/10dlc-verification">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SmsVoice10dlc />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/sms-voice/sender-settings">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SmsVoiceSenderSettings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/sms-voice/virtual-pbx">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SmsVoiceVirtualPbx />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/sms-voice/cpaas">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <SmsVoiceCpaas />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/facebook/flow">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <FacebookFlow />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      {/* Wildcard settings route - catches all other /settings/* paths */}
       <Route path="/settings/:tab*">
         <ProtectedRoute>
           <DashboardLayout>
@@ -1622,84 +1680,6 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <WalletAnalyticsPage />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/integrations/email/flow">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <EmailIntegrationFlow />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/integrations/email">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <EmailIntegration />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/integrations/sms-voice">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <SmsVoice />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/integrations/sms-voice/numbers">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <SmsVoiceNumbers />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/integrations/sms-voice/toll-free-verification">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <SmsVoiceTollFree />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/integrations/sms-voice/10dlc-verification">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <SmsVoice10dlc />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/integrations/sms-voice/sender-settings">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <SmsVoiceSenderSettings />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/integrations/sms-voice/virtual-pbx">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <SmsVoiceVirtualPbx />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/integrations/sms-voice/cpaas">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <SmsVoiceCpaas />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      
-      <Route path="/integrations/facebook">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <FacebookIntegration />
-          </DashboardLayout>
-        </ProtectedRoute>
-      </Route>
-      <Route path="/integrations/facebook/flow">
-        <ProtectedRoute>
-          <DashboardLayout>
-            <FacebookFlow />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>

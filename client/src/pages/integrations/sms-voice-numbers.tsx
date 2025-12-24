@@ -179,17 +179,17 @@ export default function SmsVoiceNumbers() {
 
   const menuItems: { channels: NavigationItem[]; features: NavigationItem[]; administration: NavigationItem[] } = {
     channels: [
-      { label: "SMS & voice", href: "/integrations/sms-voice", icon: Phone, active: true },
+      { label: "SMS & voice", href: "/settings/sms-voice", icon: Phone, active: true },
       { label: "Email", href: "/settings/email", icon: Mail },
-      { label: "Chat widget", href: "/integrations", icon: MessageSquare },
-      { label: "WhatsApp", href: "/integrations", icon: SiWhatsapp },
-      { label: "Facebook", href: "/integrations", icon: SiFacebook },
-      { label: "Instagram", href: "/integrations", icon: SiInstagram },
+      { label: "Chat widget", href: "/settings/chat-widget", icon: MessageSquare },
+      { label: "WhatsApp", href: "/settings/whatsapp", icon: SiWhatsapp },
+      { label: "Facebook", href: "/settings/facebook", icon: SiFacebook },
+      { label: "Instagram", href: "/settings/instagram", icon: SiInstagram },
     ],
     features: [
       { label: "Messenger", href: "/inbox", icon: MessageSquare },
       { label: "Contacts", href: "/contacts", icon: Users },
-      { label: "API & Integrations", href: "/integrations", icon: Plug },
+      { label: "API & Integrations", href: "/settings/api", icon: Plug },
       { label: "Email to SMS", href: "/settings/email-to-sms", icon: Mail },
       { label: "Auto-responders", href: "/campaigns", icon: Zap },
       { label: "Tickets", href: "/tickets", icon: Ticket },
@@ -251,7 +251,7 @@ export default function SmsVoiceNumbers() {
 
       <div className="flex-1 min-w-0 space-y-6">
         <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
-          <Link href="/integrations/sms-voice" className="hover:text-slate-700 dark:hover:text-slate-300">
+          <Link href="/settings/sms-voice" className="hover:text-slate-700 dark:hover:text-slate-300">
             Settings
           </Link>
           <span>&gt;</span>

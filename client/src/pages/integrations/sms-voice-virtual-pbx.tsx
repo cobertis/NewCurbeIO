@@ -53,17 +53,17 @@ export default function SmsVoiceVirtualPbx() {
 
   const menuItems: { channels: NavigationItem[]; features: NavigationItem[]; administration: NavigationItem[] } = {
     channels: [
-      { label: "SMS & voice", href: "/integrations/sms-voice", icon: Phone, active: true },
+      { label: "SMS & voice", href: "/settings/sms-voice", icon: Phone, active: true },
       { label: "Email", href: "/settings/email", icon: Mail },
-      { label: "Chat widget", href: "/integrations", icon: MessageSquare },
-      { label: "WhatsApp", href: "/integrations", icon: SiWhatsapp },
-      { label: "Facebook", href: "/integrations", icon: SiFacebook },
-      { label: "Instagram", href: "/integrations", icon: SiInstagram },
+      { label: "Chat widget", href: "/settings/chat-widget", icon: MessageSquare },
+      { label: "WhatsApp", href: "/settings/whatsapp", icon: SiWhatsapp },
+      { label: "Facebook", href: "/settings/facebook", icon: SiFacebook },
+      { label: "Instagram", href: "/settings/instagram", icon: SiInstagram },
     ],
     features: [
       { label: "Messenger", href: "/inbox", icon: MessageSquare },
       { label: "Contacts", href: "/contacts", icon: Users },
-      { label: "API & Integrations", href: "/integrations", icon: Plug },
+      { label: "API & Integrations", href: "/settings/api", icon: Plug },
       { label: "Email to SMS", href: "/settings/email-to-sms", icon: Mail },
       { label: "Auto-responders", href: "/campaigns", icon: Zap },
       { label: "Tickets", href: "/tickets", icon: Ticket },
@@ -116,7 +116,7 @@ export default function SmsVoiceVirtualPbx() {
 
       <div className="flex-1 min-w-0 space-y-6">
         <div className="flex items-center gap-4">
-          <Link href="/integrations/sms-voice">
+          <Link href="/settings/sms-voice">
             <Button variant="ghost" size="sm" className="gap-2" data-testid="link-back-sms-voice">
               <ArrowLeft className="h-4 w-4" />
               Back to SMS & Voice

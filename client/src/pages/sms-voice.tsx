@@ -162,17 +162,17 @@ export function SmsVoiceContent() {
     {
       title: "Numbers",
       description: "Manage your virtual numbers for SMS, MMS, and voice services.",
-      href: "/integrations/sms-voice/numbers",
+      href: "/settings/sms-voice/numbers",
     },
     {
       title: "Bring your own CPaaS",
       description: "Manage your connected CPaaS providers (Twilio, Vonage, etc.) and linked numbers.",
-      href: "/integrations/sms-voice/cpaas",
+      href: "/settings/sms-voice/cpaas",
     },
     {
       title: "Sender settings",
       description: "Manage default sender numbers for various countries.",
-      href: "/integrations/sms-voice/sender-settings",
+      href: "/settings/sms-voice/sender-settings",
     },
   ];
 
@@ -180,13 +180,13 @@ export function SmsVoiceContent() {
     {
       title: "Toll-free verification",
       description: "Verify and manage your toll-free numbers to ensure compliance and enhance your business's credibility.",
-      href: "/integrations/sms-voice/toll-free-verification",
+      href: "/settings/sms-voice/toll-free-verification",
       hasWarning: true,
     },
     {
       title: "10DLC verification",
       description: "Register your brand and campaigns for 10DLC compliance.",
-      href: "/integrations/sms-voice/10dlc-verification",
+      href: "/settings/sms-voice/10dlc-verification",
     },
   ];
 
@@ -232,17 +232,17 @@ export default function SmsVoice() {
 
   const menuItems: { channels: NavigationItem[]; features: NavigationItem[]; administration: NavigationItem[] } = {
     channels: [
-      { label: "SMS & voice", href: "/integrations/sms-voice", icon: Phone, active: true, hasWarning: true },
+      { label: "SMS & voice", href: "/settings/sms-voice", icon: Phone, active: true, hasWarning: true },
       { label: "Email", href: "/settings/email", icon: Mail },
-      { label: "Chat widget", href: "/integrations", icon: MessageSquare },
-      { label: "WhatsApp", href: "/integrations", icon: SiWhatsapp },
-      { label: "Facebook", href: "/integrations", icon: SiFacebook },
-      { label: "Instagram", href: "/integrations", icon: SiInstagram },
+      { label: "Chat widget", href: "/settings/chat-widget", icon: MessageSquare },
+      { label: "WhatsApp", href: "/settings/whatsapp", icon: SiWhatsapp },
+      { label: "Facebook", href: "/settings/facebook", icon: SiFacebook },
+      { label: "Instagram", href: "/settings/instagram", icon: SiInstagram },
     ],
     features: [
       { label: "Messenger", href: "/inbox", icon: MessageSquare },
       { label: "Contacts", href: "/contacts", icon: Users },
-      { label: "API & Integrations", href: "/integrations", icon: Plug },
+      { label: "API & Integrations", href: "/settings/api", icon: Plug },
       { label: "Email to SMS", href: "/settings/email-to-sms", icon: Mail },
       { label: "Auto-responders", href: "/campaigns", icon: Zap },
       { label: "Tickets", href: "/tickets", icon: Ticket },
@@ -261,17 +261,17 @@ export default function SmsVoice() {
     {
       title: "Numbers",
       description: "Manage your virtual numbers for SMS, MMS, and voice services.",
-      href: "/integrations/sms-voice/numbers",
+      href: "/settings/sms-voice/numbers",
     },
     {
       title: "Bring your own CPaaS",
       description: "Manage your connected CPaaS providers (Twilio, Vonage, etc.) and linked numbers.",
-      href: "/integrations/sms-voice/cpaas",
+      href: "/settings/sms-voice/cpaas",
     },
     {
       title: "Sender settings",
       description: "Manage default sender numbers for various countries.",
-      href: "/integrations/sms-voice/sender-settings",
+      href: "/settings/sms-voice/sender-settings",
     },
   ];
 
@@ -279,13 +279,13 @@ export default function SmsVoice() {
     {
       title: "Toll-free verification",
       description: "Verify and manage your toll-free numbers to ensure compliance and enhance your business's credibility.",
-      href: "/integrations/sms-voice/toll-free-verification",
+      href: "/settings/sms-voice/toll-free-verification",
       hasWarning: true,
     },
     {
       title: "10DLC verification",
       description: "Register your brand and campaigns for 10DLC compliance.",
-      href: "/integrations/sms-voice/10dlc-verification",
+      href: "/settings/sms-voice/10dlc-verification",
     },
   ];
 

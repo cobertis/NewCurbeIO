@@ -72,7 +72,7 @@ export default function FacebookIntegrationPage() {
 
               <div className="flex gap-3">
                 <Button 
-                  onClick={() => setLocation("/integrations/facebook/flow")}
+                  onClick={() => setLocation("/settings/facebook/flow")}
                   className="bg-blue-600 hover:bg-blue-700"
                   data-testid="button-get-started"
                 >

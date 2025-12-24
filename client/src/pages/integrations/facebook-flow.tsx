@@ -15,13 +15,13 @@ export default function FacebookFlowPage() {
   };
 
   const handleDiscard = () => {
-    setLocation("/integrations/facebook");
+    setLocation("/settings/facebook");
   };
 
   return (
     <div className="space-y-6" data-testid="page-facebook-flow">
       <div className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-400">
-        <Link href="/integrations">
+        <Link href="/settings">
           <span className="hover:text-slate-900 dark:hover:text-slate-100 cursor-pointer flex items-center gap-1">
             <ChevronLeft className="h-4 w-4" />
             Settings

@@ -368,8 +368,8 @@ export default function GettingStarted() {
                           size="sm" 
                           onClick={() => setLocation(
                             activeApplication.numberType === '10dlc' 
-                              ? "/integrations/sms-voice/10dlc" 
-                              : "/integrations/sms-voice/toll-free-verification"
+                              ? "/settings/sms-voice/10dlc-verification" 
+                              : "/settings/sms-voice/toll-free-verification"
                           )} 
                           className="gap-2 bg-blue-600 hover:bg-blue-700" 
                           data-testid="button-view-status"
@@ -437,7 +437,7 @@ export default function GettingStarted() {
                   </p>
                   <Button 
                       size="sm" 
-                      onClick={() => setLocation("/integrations")} 
+                      onClick={() => setLocation("/settings")} 
                       className="gap-2 bg-blue-600 hover:bg-blue-700" 
                       data-testid="button-connect-provider"
                     >
@@ -480,7 +480,7 @@ export default function GettingStarted() {
                   </p>
                   <Button 
                       size="sm" 
-                      onClick={() => setLocation("/integrations/email")} 
+                      onClick={() => setLocation("/settings/email")} 
                       className="gap-2 bg-blue-600 hover:bg-blue-700" 
                       data-testid="button-configure-email"
                     >
@@ -533,7 +533,7 @@ export default function GettingStarted() {
                   </p>
                   <Button 
                       size="sm" 
-                      onClick={() => setLocation("/integrations")} 
+                      onClick={() => setLocation("/settings")} 
                       className="gap-2 bg-blue-600 hover:bg-blue-700" 
                       data-testid="button-setup-whatsapp"
                     >

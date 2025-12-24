@@ -102,17 +102,17 @@ function NavigationLink({ item, onClick }: { item: NavigationItem; onClick: (hre
 function SettingsSidebar({ onNavigate }: { onNavigate: (href: string) => void }) {
   const menuItems: { channels: NavigationItem[]; features: NavigationItem[]; administration: NavigationItem[] } = {
     channels: [
-      { label: "SMS & voice", href: "/integrations/sms-voice", icon: Phone },
+      { label: "SMS & voice", href: "/settings/sms-voice", icon: Phone },
       { label: "Email", href: "/settings/email", icon: Mail, active: true },
-      { label: "Chat widget", href: "/integrations", icon: MessageSquare },
-      { label: "WhatsApp", href: "/integrations", icon: SiWhatsapp },
-      { label: "Facebook", href: "/integrations", icon: SiFacebook },
-      { label: "Instagram", href: "/integrations", icon: SiInstagram },
+      { label: "Chat widget", href: "/settings/chat-widget", icon: MessageSquare },
+      { label: "WhatsApp", href: "/settings/whatsapp", icon: SiWhatsapp },
+      { label: "Facebook", href: "/settings/facebook", icon: SiFacebook },
+      { label: "Instagram", href: "/settings/instagram", icon: SiInstagram },
     ],
     features: [
       { label: "Messenger", href: "/inbox", icon: MessageSquare },
       { label: "Contacts", href: "/contacts", icon: Users },
-      { label: "API & Integrations", href: "/integrations", icon: Plug },
+      { label: "API & Integrations", href: "/settings/api", icon: Plug },
       { label: "Email to SMS", href: "/settings/email-to-sms", icon: Mail },
       { label: "Auto-responders", href: "/campaigns", icon: Zap },
       { label: "Tickets", href: "/tickets", icon: Ticket },
@@ -279,7 +279,7 @@ export default function EmailIntegrationPage({ embedded = false }: { embedded?: 
           <div className="flex items-center gap-3">
             <Button 
               variant="outline" 
-              onClick={() => setLocation("/integrations/email/flow")} 
+              onClick={() => setLocation("/settings/email/flow")} 
               data-testid="button-connect-new-domain"
             >
               <Plus className="w-4 h-4 mr-2" />
@@ -308,7 +308,7 @@ export default function EmailIntegrationPage({ embedded = false }: { embedded?: 
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => setLocation("/integrations/email/flow")}
+                    onClick={() => setLocation("/settings/email/flow")}
                     data-testid="button-add-sender"
                   >
                     <Plus className="w-4 h-4 mr-1" />
@@ -376,7 +376,7 @@ export default function EmailIntegrationPage({ embedded = false }: { embedded?: 
                   <Button 
                     variant="link" 
                     className="mt-2"
-                    onClick={() => setLocation("/integrations/email/flow")}
+                    onClick={() => setLocation("/settings/email/flow")}
                   >
                     Add your first sender
                   </Button>
@@ -520,7 +520,7 @@ export default function EmailIntegrationPage({ embedded = false }: { embedded?: 
                     Your domain <strong>{settings?.sendingDomain}</strong> is awaiting DNS verification. Add the required DNS records to complete setup.
                   </p>
                   <Button 
-                    onClick={() => setLocation("/integrations/email/flow")}
+                    onClick={() => setLocation("/settings/email/flow")}
                     className="bg-blue-600 hover:bg-blue-700"
                     data-testid="button-continue-setup"
                   >
@@ -573,7 +573,7 @@ export default function EmailIntegrationPage({ embedded = false }: { embedded?: 
 
                 <div className="flex gap-3">
                   <Button 
-                    onClick={() => setLocation("/integrations/email/flow")}
+                    onClick={() => setLocation("/settings/email/flow")}
                     className="bg-blue-600 hover:bg-blue-700"
                     data-testid="button-connect-domain"
                   >
