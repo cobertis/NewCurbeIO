@@ -1684,7 +1684,7 @@ export default function ChatWidgetEditPage() {
                               <span className="text-sm font-medium">Branding</span>
                             </div>
                           </AccordionTrigger>
-                          <AccordionContent className="pb-4">
+                          <AccordionContent className="pb-4 pl-7">
                             <div className="space-y-4">
                               <Label className="text-sm font-medium">Custom logo</Label>
                               {widget.branding?.customLogo ? (
@@ -1769,7 +1769,7 @@ export default function ChatWidgetEditPage() {
                               <span className="text-sm font-medium">Minimized state</span>
                             </div>
                           </AccordionTrigger>
-                          <AccordionContent className="pb-4">
+                          <AccordionContent className="pb-4 pl-7">
                             <div className="space-y-4">
                               <div className="flex items-center gap-2">
                                 <Switch 
@@ -1934,7 +1934,7 @@ export default function ChatWidgetEditPage() {
                               <span className="text-sm font-medium">Welcome screen</span>
                             </div>
                           </AccordionTrigger>
-                          <AccordionContent className="pb-4">
+                          <AccordionContent className="pb-4 pl-7">
                             <div className="space-y-4">
                               <div className="space-y-2">
                                 <Label className="text-xs text-slate-500">Greeting *</Label>
@@ -2038,7 +2038,7 @@ export default function ChatWidgetEditPage() {
                               <span className="text-sm font-medium">Countries</span>
                             </div>
                           </AccordionTrigger>
-                          <AccordionContent className="px-4 pb-4">
+                          <AccordionContent className="px-4 pb-4 pl-11">
                             <div className="space-y-4">
                               <p className="text-sm text-slate-500">Choose countries where to show or hide the widget</p>
                               
@@ -2170,7 +2170,7 @@ export default function ChatWidgetEditPage() {
                               <span className="text-sm font-medium">Schedule</span>
                             </div>
                           </AccordionTrigger>
-                          <AccordionContent className="px-4 pb-4">
+                          <AccordionContent className="px-4 pb-4 pl-11">
                             <div className="space-y-4">
                               <p className="text-sm text-slate-500">Choose times when the widget should be visible</p>
                               
@@ -2298,7 +2298,7 @@ export default function ChatWidgetEditPage() {
                               <span className="text-sm font-medium">Page URLs</span>
                             </div>
                           </AccordionTrigger>
-                          <AccordionContent className="px-4 pb-4">
+                          <AccordionContent className="px-4 pb-4 pl-11">
                             <div className="space-y-4">
                               <div>
                                 <h4 className="text-sm font-medium mb-1">Domain</h4>
@@ -2635,20 +2635,21 @@ export default function ChatWidgetEditPage() {
                       </div>
                       
                       <div 
-                        className={`absolute flex items-end gap-3 ${widget.minimizedState?.alignTo === "left" ? "flex-row-reverse" : ""}`}
+                        className="absolute flex flex-col items-end gap-2"
                         style={{ 
                           [widget.minimizedState?.alignTo === "left" ? "left" : "right"]: `${widget.minimizedState?.sideSpacing || 32}px`,
-                          bottom: `${widget.minimizedState?.bottomSpacing || 26}px`
+                          bottom: `${widget.minimizedState?.bottomSpacing || 26}px`,
+                          alignItems: widget.minimizedState?.alignTo === "left" ? "flex-start" : "flex-end"
                         }}
                       >
                         {widget.minimizedState?.eyeCatcherEnabled && (
-                          <div className="bg-white dark:bg-slate-900 shadow-lg rounded-lg px-4 py-3 max-w-[200px] relative">
-                            <button className={`absolute -top-2 w-5 h-5 bg-white dark:bg-slate-800 rounded-full shadow flex items-center justify-center ${widget.minimizedState?.alignTo === "left" ? "-left-2" : "-right-2"}`}>
-                              <X className="h-3 w-3 text-slate-400" />
-                            </button>
-                            <p className="text-sm text-slate-700 dark:text-slate-300">
+                          <div className="bg-white dark:bg-slate-900 shadow-lg rounded-full px-3 py-2 relative flex items-center gap-2 whitespace-nowrap">
+                            <span className="text-xs text-slate-700 dark:text-slate-300">
                               {widget.minimizedState?.eyeCatcherMessage || "Hello, how can we help?"}
-                            </p>
+                            </span>
+                            <button className="w-4 h-4 bg-white dark:bg-slate-800 rounded-full shadow flex items-center justify-center flex-shrink-0">
+                              <X className="h-2.5 w-2.5 text-slate-400" />
+                            </button>
                           </div>
                         )}
                         
