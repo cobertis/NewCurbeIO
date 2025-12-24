@@ -1917,12 +1917,12 @@ export default function ChatWidgetEditPage() {
                                           onChange={(e) => updateLocalWidget({ 
                                             minimizedState: { ...widget.minimizedState, eyeCatcherMessage: e.target.value } 
                                           })}
-                                          className="pr-8"
+                                          className="pr-9"
                                           data-testid="input-eye-catcher-message"
                                         />
-                                        <Button variant="ghost" size="icon" className="absolute right-0 top-1/2 -translate-y-1/2 h-full w-8" data-testid="button-emoji-picker">
-                                          <Smile className="h-4 w-4 text-slate-400" />
-                                        </Button>
+                                        <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600" data-testid="button-emoji-picker">
+                                          <Smile className="h-4 w-4" />
+                                        </button>
                                       </div>
                                     </div>
                                     <div className="space-y-2">
@@ -1962,11 +1962,11 @@ export default function ChatWidgetEditPage() {
                                   <Input 
                                     value={widget.welcomeTitle}
                                     onChange={(e) => updateLocalWidget({ welcomeTitle: e.target.value })}
-                                    className="pr-8"
+                                    className="pr-9"
                                   />
-                                  <Button variant="ghost" size="icon" className="absolute right-0 top-1/2 -translate-y-1/2 h-full w-8">
-                                    <Smile className="h-4 w-4 text-slate-400" />
-                                  </Button>
+                                  <button type="button" className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                                    <Smile className="h-4 w-4" />
+                                  </button>
                                 </div>
                               </div>
                               
