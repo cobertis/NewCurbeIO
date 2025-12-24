@@ -4862,6 +4862,27 @@ export const chatWidgets = pgTable("chat_widgets", {
     subject?: string;
   }>(),
   
+  // SMS settings
+  smsSettings: jsonb("sms_settings").$type<{
+    welcomeScreen?: { channelName?: string };
+    messageScreen?: { title?: string; description?: string; buttonLabel?: string; showQRCode?: boolean };
+    numberSettings?: { numberType?: string; customNumber?: string; connectedNumber?: string };
+  }>(),
+  
+  // Messenger settings
+  messengerSettings: jsonb("messenger_settings").$type<{
+    welcomeScreen?: { channelName?: string };
+    pageSettings?: { title?: string; description?: string; buttonLabel?: string };
+    pageConnection?: { pageId?: string; pageName?: string };
+  }>(),
+  
+  // Instagram settings
+  instagramSettings: jsonb("instagram_settings").$type<{
+    welcomeScreen?: { channelName?: string };
+    profileSettings?: { title?: string; description?: string; buttonLabel?: string };
+    accountConnection?: { username?: string; accountName?: string };
+  }>(),
+  
   // Channel order
   channelOrder: text("channel_order").array(),
   
