@@ -3531,7 +3531,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         status: user.status,
         companyId: user.companyId,
         companyName: companyName,
-        cnam: num.cnam || null,
+        // cnam field removed - not applicable to user session
         companyLogo: companyLogo,
         timezone: user.timezone,
         dateOfBirth: user.dateOfBirth,
