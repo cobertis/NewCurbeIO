@@ -1164,7 +1164,7 @@ export default function ChatWidgetEditPage() {
   );
 
   const { data: widgetData, isLoading } = useQuery<{ widget: WidgetConfig }>({
-    queryKey: ["/api/integrations/chat-widget", widgetId],
+    queryKey: [`/api/integrations/chat-widget/${widgetId}`],
     enabled: !!widgetId,
   });
 
@@ -1429,7 +1429,7 @@ export default function ChatWidgetEditPage() {
       return apiRequest("PATCH", `/api/integrations/chat-widget/${widgetId}`, updates);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/integrations/chat-widget", widgetId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/integrations/chat-widget/${widgetId}`] });
       toast({
         title: "Changes saved",
         description: "Your widget settings have been updated.",
@@ -1449,7 +1449,7 @@ export default function ChatWidgetEditPage() {
       return apiRequest("PATCH", `/api/integrations/chat-widget/${widgetId}`, { name });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/integrations/chat-widget", widgetId] });
+      queryClient.invalidateQueries({ queryKey: [`/api/integrations/chat-widget/${widgetId}`] });
       queryClient.invalidateQueries({ queryKey: ["/api/integrations/chat-widget/list"] });
       setEditNameDialogOpen(false);
       toast({

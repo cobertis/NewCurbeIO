@@ -1,0 +1,41 @@
+WebSocket disconnected
+8bb41dbe-f08e-48eb-a…tions/chat-widget:1 
+ Failed to load resource: the server responded with a status of 404 (Not Found)
+8bb41dbe-f08e-48eb-a…tions/chat-widget:1 
+ Failed to load resource: the server responded with a status of 404 (Not Found)
+injected.js:214 
+ GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/integrations/chat-widget 404 (Not Found)
+apply	@	injected.js:214
+(anonymous)	@	8bb41dbe-f08e-48eb-a…b/queryClient.ts:53
+fetchFn	@	8bb41dbe-f08e-48eb-a…y.js?v=d0f1da89:840
+run	@	8bb41dbe-f08e-48eb-a…y.js?v=d0f1da89:494
+start	@	8bb41dbe-f08e-48eb-a…y.js?v=d0f1da89:536
+fetch	@	8bb41dbe-f08e-48eb-a…y.js?v=d0f1da89:926
+(anonymous)	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:1726
+(anonymous)	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:1725
+batch	@	8bb41dbe-f08e-48eb-a…y.js?v=d0f1da89:583
+refetchQueries	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:1724
+(anonymous)	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:1716
+batch	@	8bb41dbe-f08e-48eb-a…y.js?v=d0f1da89:583
+invalidateQueries	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:1705
+onSuccess	@	8bb41dbe-f08e-48eb-a…idget-edit.tsx:2701
+execute	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:1233
+await in execute		
+mutate	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:2630
+(anonymous)	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:3295
+handleSaveChanges	@	8bb41dbe-f08e-48eb-a…idget-edit.tsx:2639
+callCallback2	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:3674
+invokeGuardedCallbackDev	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:3699
+invokeGuardedCallback	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:3733
+invokeGuardedCallbackAndCatchFirstError	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:3736
+executeDispatch	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:7014
+processDispatchQueueItemsInOrder	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:7034
+processDispatchQueue	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:7043
+dispatchEventsForPlugins	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:7051
+(anonymous)	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:7174
+batchedUpdates$1	@	8bb41dbe-f08e-48eb-a…js?v=d0f1da89:18913
+batchedUpdates	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:3579
+dispatchEventForPluginEventSystem	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:7173
+dispatchEventWithEnableCapturePhaseSelectiveHydrationWithoutDiscreteEventReplay	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:5478
+dispatchEvent	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:5472
+dispatchDiscreteEvent	@	8bb41dbe-f08e-48eb-a….js?v=d0f1da89:5449
