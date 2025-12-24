@@ -1691,7 +1691,7 @@ export default function IntegrationsPage() {
     administration: [
       { label: "Workspace", href: "/settings/company", icon: Building, active: false },
       { label: "Billing", href: "/billing", icon: CreditCard, active: false },
-      { label: "My account", href: "/settings/profile", icon: UserIcon, active: false },
+      { label: "My account", href: "/settings/overview", icon: UserIcon, active: false },
     ],
   };
 
