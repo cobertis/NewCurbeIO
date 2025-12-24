@@ -1908,7 +1908,6 @@ export default function Settings({ view = 'all' }: SettingsProps) {
                 </Card>
               )}
 
-              </div>
           </TabsContent>
 
             {/* Security Tab */}
