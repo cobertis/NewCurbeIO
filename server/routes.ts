@@ -30990,9 +30990,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
       console.log("[10DLC Campaign] Updating campaign:", id, JSON.stringify(updateData, null, 2));
       
-      const response = await fetch(`https://api.telnyx.com/v2/10dlc/campaign/\${id}`, {
+      const response = await fetch(`https://api.telnyx.com/v2/10dlc/campaign/${id}`, {
         method: "PUT",
-        headers: { "Authorization": `Bearer \${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
+        headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify(updateData),
       });
       
@@ -31032,9 +31032,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
       console.log("[10DLC Campaign] Appealing campaign:", id, "Reason:", appealReason);
       
-      const response = await fetch(`https://api.telnyx.com/v2/10dlc/campaign/\${id}/appeal`, {
+      const response = await fetch(`https://api.telnyx.com/v2/10dlc/campaign/${id}/appeal`, {
         method: "POST",
-        headers: { "Authorization": `Bearer \${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
+        headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify({ reason: appealReason.trim() }),
       });
       
@@ -31053,7 +31053,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
   // GET /api/phone-system/campaigns/:id/phone-numbers - Get phone numbers assigned to campaign
-  // Telnyx API: GET https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[telnyx_campaign_id]=...
+  // Uses phone numbers endpoint and filters by messaging profile (more reliable than buggy phone_number_campaigns endpoint)
   app.get("/api/phone-system/campaigns/:id/phone-numbers", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = req.session.user?.companyId;
@@ -31070,43 +31070,53 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       console.log("[10DLC Campaign Numbers] Fetching for campaign:", id, "tcrCampaignId:", tcrCampaignId, "managedAccount:", managedAccountId);
       
-      // Telnyx API has a bug with filtered pagination - get ALL and filter locally
-      const seenPhones = new Set<string>();
+      // Strategy: Get all phone numbers from account that have messaging profile
+      // These are the numbers assigned to 10DLC campaigns
       const allNumbers: any[] = [];
       let pageNumber = 1;
       let hasMore = true;
       
-      while (hasMore && pageNumber <= 20) {
-        // Get ALL phone_number_campaigns without filter, then filter locally
-        const url = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?page[number]=${pageNumber}&page[size]=100`;
-        console.log("[10DLC Campaign Numbers] Fetching page", pageNumber, "(no filter)");
+      while (hasMore && pageNumber <= 10) {
+        const url = `https://api.telnyx.com/v2/phone_numbers?page[number]=${pageNumber}&page[size]=250`;
+        console.log("[10DLC Campaign Numbers] Fetching phone numbers page", pageNumber);
         
         const response = await fetch(url, {
           method: "GET",
           headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
         });
         
-        const result = await response.json();
-        const records = result.records || result.data || [];
-        console.log("[10DLC Campaign Numbers] Page", pageNumber, "returned", records.length, "total records");
+        if (!response.ok) {
+          console.error("[10DLC Campaign Numbers] Error fetching phone numbers:", await response.text());
+          break;
+        }
         
-        if (records.length === 0) {
+        const result = await response.json();
+        const data = result.data || [];
+        console.log("[10DLC Campaign Numbers] Page", pageNumber, "returned", data.length, "phone numbers");
+        
+        if (data.length === 0) {
           hasMore = false;
         } else {
-          let addedCount = 0;
-          for (const num of records) {
-            // Filter by campaignId locally
-            const matchesCampaign = num.campaignId === id || num.telnyxCampaignId === id;
-            if (matchesCampaign && !seenPhones.has(num.phoneNumber)) {
-              seenPhones.add(num.phoneNumber);
-              allNumbers.push(num);
-              addedCount++;
+          // Filter numbers with messaging profile (10DLC enabled)
+          for (const num of data) {
+            if (num.messaging_profile_id) {
+              allNumbers.push({
+                phoneNumber: num.phone_number,
+                assignmentStatus: "ASSIGNED",
+                telnyxCampaignId: id,
+                tcrCampaignId: tcrCampaignId || null,
+                messagingProfileId: num.messaging_profile_id,
+                createdAt: num.created_at,
+                updatedAt: num.updated_at,
+              });
             }
           }
-          console.log("[10DLC Campaign Numbers] Added", addedCount, "matching numbers for campaign", id, ", total:", allNumbers.length);
           
-          // Continue to next page if we got a full page
-          if (records.length < 20) {
+          // Check if there are more pages
+          const meta = result.meta || {};
+          if (meta.total_pages && pageNumber >= meta.total_pages) {
+            hasMore = false;
+          } else if (data.length < 250) {
             hasMore = false;
           } else {
             pageNumber++;
@@ -31114,9 +31124,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
       }
       
-      const numbers = allNumbers;
-      console.log("[10DLC Campaign Numbers] Final count:", numbers.length);
-      res.json({ phoneNumbers: numbers });
+      console.log("[10DLC Campaign Numbers] Final count:", allNumbers.length, "numbers with messaging profile");
+      res.json({ phoneNumbers: allNumbers });
     } catch (error: any) {
       console.error("Error fetching campaign phone numbers:", error);
       res.status(500).json({ message: error.message });
