@@ -19,6 +19,8 @@ import { CheckCircle, XCircle, Clock, AlertTriangle, Plus, Trash2, RefreshCw, Ex
 import type { ChannelConnection, User } from "@shared/schema";
 import Billing from "@/pages/billing";
 import SettingsPage from "@/pages/settings";
+import SmsVoice from "@/pages/sms-voice";
+import EmailIntegration from "@/pages/email-integration";
 
 type ChannelType = "whatsapp" | "instagram" | "facebook";
 
@@ -1854,22 +1856,8 @@ export default function IntegrationsPage() {
           </div>
         )}
         {activeView === "billing" && <Billing />}
-        {activeView === "sms-voice" && (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-semibold">SMS & Voice</h1>
-              <p className="text-muted-foreground">Configure your phone numbers and voice settings.</p>
-            </div>
-          </div>
-        )}
-        {activeView === "email" && (
-          <div className="space-y-6">
-            <div>
-              <h1 className="text-2xl font-semibold">Email Settings</h1>
-              <p className="text-muted-foreground">Configure your email sending domains and settings.</p>
-            </div>
-          </div>
-        )}
+        {activeView === "sms-voice" && <SmsVoice />}
+        {activeView === "email" && <EmailIntegration />}
         {activeView === "automations" && (
           <div className="space-y-6">
             <div>
