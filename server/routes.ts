@@ -29960,23 +29960,39 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       });
       const companyName = company?.name || null;
 
-      // Get all phone numbers for the company with owner info
-      const phoneNumbers = await db
-        .select({
-          id: telnyxPhoneNumbers.id,
-          phoneNumber: telnyxPhoneNumbers.phoneNumber,
-          displayName: telnyxPhoneNumbers.displayName,
-          status: telnyxPhoneNumbers.status,
-          monthlyFee: telnyxPhoneNumbers.monthlyFee,
-          purchasedAt: telnyxPhoneNumbers.purchasedAt,
-          ownerUserId: telnyxPhoneNumbers.ownerUserId,
-          ownerFirstName: users.firstName,
-          ownerLastName: users.lastName,
-          cnam: telnyxPhoneNumbers.cnam,
-        })
+      // Get all phone numbers for the company (simple query without join)
+      const phoneNumbersRaw = await db
+        .select()
         .from(telnyxPhoneNumbers)
-        .leftJoin(users, eq(telnyxPhoneNumbers.ownerUserId, users.id))
         .where(eq(telnyxPhoneNumbers.companyId, companyId));
+      
+      // Get owner info separately for each phone number
+      const phoneNumbers = await Promise.all(phoneNumbersRaw.map(async (num) => {
+        let ownerFirstName = null;
+        let ownerLastName = null;
+        if (num.ownerUserId) {
+          const [owner] = await db.select({ firstName: users.firstName, lastName: users.lastName })
+            .from(users)
+            .where(eq(users.id, num.ownerUserId))
+            .limit(1);
+          if (owner) {
+            ownerFirstName = owner.firstName;
+            ownerLastName = owner.lastName;
+          }
+        }
+        return {
+          id: num.id,
+          phoneNumber: num.phoneNumber,
+          displayName: num.displayName,
+          status: num.status,
+          monthlyFee: num.monthlyFee,
+          purchasedAt: num.purchasedAt,
+          ownerUserId: num.ownerUserId,
+          ownerFirstName,
+          ownerLastName,
+          cnam: num.cnam,
+        };
+      }));
       
       // Get compliance applications for these numbers
       const phoneNumberList = phoneNumbers.map(p => p.phoneNumber);
