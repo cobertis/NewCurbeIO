@@ -343,6 +343,7 @@ function SortableChannelItem({
             data-testid={`switch-channel-${channel.id}`}
           />
           <button 
+            type="button"
             onClick={onExpandToggle}
             className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded"
             data-testid={`expand-${channel.id}`}
@@ -362,6 +363,7 @@ function SortableChannelItem({
             <div className="space-y-1">
               {liveChatSubOptions.map((option) => (
                 <button
+                  type="button"
                   key={option.id}
                   onClick={() => setActiveSubSection(option.id as LiveChatSubSection)}
                   className="w-full flex items-center justify-between py-2 px-3 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
@@ -378,6 +380,7 @@ function SortableChannelItem({
           ) : (
             <div className="space-y-4">
               <button
+                type="button"
                 onClick={() => setActiveSubSection(null)}
                 className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
                 data-testid="button-back-to-options"
@@ -613,6 +616,7 @@ function SortableChannelItem({
             <div className="space-y-1">
               {callSubOptions.map((option) => (
                 <button
+                  type="button"
                   key={option.id}
                   onClick={() => setActiveCallSubSection(option.id as CallSubSection)}
                   className="w-full flex items-center justify-between py-2 px-3 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
@@ -629,6 +633,7 @@ function SortableChannelItem({
           ) : (
             <div className="space-y-4">
               <button
+                type="button"
                 onClick={() => setActiveCallSubSection(null)}
                 className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
                 data-testid="button-back-to-call-options"
@@ -737,6 +742,7 @@ function SortableChannelItem({
                   </div>
                   
                   <button
+                    type="button"
                     onClick={() => {
                       const newEntries = [
                         ...callSettings.numbersAndCountries.entries,
@@ -764,6 +770,7 @@ function SortableChannelItem({
             <div className="space-y-1">
               {whatsappSubOptions.map((option) => (
                 <button
+                  type="button"
                   key={option.id}
                   onClick={() => setActiveWhatsappSubSection(option.id as WhatsappSubSection)}
                   className="w-full flex items-center justify-between py-2 px-3 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
@@ -780,6 +787,7 @@ function SortableChannelItem({
           ) : (
             <div className="space-y-4">
               <button
+                type="button"
                 onClick={() => setActiveWhatsappSubSection(null)}
                 className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
                 data-testid="button-back-to-whatsapp-options"
@@ -920,6 +928,7 @@ function SortableChannelItem({
             <div className="space-y-1">
               {emailSubOptions.map((option) => (
                 <button
+                  type="button"
                   key={option.id}
                   onClick={() => setActiveEmailSubSection(option.id as EmailSubSection)}
                   className="w-full flex items-center justify-between py-2 px-3 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
@@ -936,6 +945,7 @@ function SortableChannelItem({
           ) : (
             <div className="space-y-4">
               <button
+                type="button"
                 onClick={() => setActiveEmailSubSection(null)}
                 className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
                 data-testid="button-back-to-email-options"
