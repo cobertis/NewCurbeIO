@@ -28431,6 +28431,19 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       const scheduleStatus = checkScheduleAvailability();
       
+      // Detect device type from User-Agent
+      const userAgent = req.headers["user-agent"] || "";
+      const detectDeviceType = (ua: string): "desktop" | "mobile" => {
+        const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i;
+        return mobileRegex.test(ua) ? "mobile" : "desktop";
+      };
+      const visitorDeviceType = detectDeviceType(userAgent);
+      const widgetDeviceType = targeting.deviceType || "all";
+      
+      // Check if widget should display based on device type
+      const deviceTypeMatches = widgetDeviceType === "all" || widgetDeviceType === visitorDeviceType;
+      const finalShouldDisplay = shouldDisplay && deviceTypeMatches;
+      
       res.set({
         "Access-Control-Allow-Origin": "*",
         "Access-Control-Allow-Methods": "GET, OPTIONS",
@@ -28440,18 +28453,24 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       return res.json({
         widget: widgetSettings,
-        shouldDisplay,
+        shouldDisplay: finalShouldDisplay,
         visitorCountry,
         countryCode,
         targeting: {
           countries: targeting.countries || "all",
           selectedCountries: targeting.selectedCountries || [],
           schedule: targeting.schedule || "always",
-          timezone: targeting.timezone || "(UTC -05:00): America/New_York"
+          timezone: targeting.timezone || "(UTC -05:00): America/New_York",
+          deviceType: widgetDeviceType
         },
         scheduleStatus: {
           isOnline: scheduleStatus.isOnline,
           nextAvailable: scheduleStatus.nextAvailable
+        },
+        deviceInfo: {
+          visitorDeviceType,
+          widgetDeviceType,
+          matches: deviceTypeMatches
         }
       });
     } catch (error: any) {

@@ -2,7 +2,7 @@ import { useParams, Link } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, X } from "lucide-react";
+import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, X, Monitor, Smartphone } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect } from "react";
 import { SiWhatsapp, SiFacebook, SiInstagram, SiTelegram } from "react-icons/si";
@@ -66,6 +66,7 @@ export default function ChatWidgetPreviewPage() {
   const [visitorCountry, setVisitorCountry] = useState<string | null>(null);
   const [targetingChecked, setTargetingChecked] = useState(false);
   const [scheduleStatus, setScheduleStatus] = useState<{ isOnline: boolean; nextAvailable: string | null }>({ isOnline: true, nextAvailable: null });
+  const [deviceInfo, setDeviceInfo] = useState<{ visitorDeviceType: string; widgetDeviceType: string; matches: boolean } | null>(null);
 
   const { data: widgetData, isLoading } = useQuery<{ widget: any }>({
     queryKey: [`/api/integrations/chat-widget/${widgetId}`],
@@ -82,12 +83,14 @@ export default function ChatWidgetPreviewPage() {
         setShouldDisplay(data.shouldDisplay ?? true);
         setVisitorCountry(data.visitorCountry || null);
         setScheduleStatus(data.scheduleStatus || { isOnline: true, nextAvailable: null });
+        setDeviceInfo(data.deviceInfo || null);
         setTargetingChecked(true);
       })
       .catch(() => {
         // On error, default to showing widget
         setShouldDisplay(true);
         setScheduleStatus({ isOnline: true, nextAvailable: null });
+        setDeviceInfo(null);
         setTargetingChecked(true);
       });
   }, [widgetId]);
@@ -229,6 +232,51 @@ export default function ChatWidgetPreviewPage() {
         {!scheduleStatus.isOnline && scheduleStatus.nextAvailable && (
           <p className={`text-xs ${subTextColor} mt-1`}>
             Back {scheduleStatus.nextAvailable}
+          </p>
+        )}
+      </div>
+    );
+  };
+
+  // Show device type status banner
+  const getDeviceTypeBanner = () => {
+    if (!deviceInfo || deviceInfo.widgetDeviceType === "all") return null;
+    
+    const deviceLabel = deviceInfo.visitorDeviceType === "desktop" ? "Desktop" : "Mobile";
+    const targetLabel = deviceInfo.widgetDeviceType === "desktop" ? "desktop devices only" : "mobile devices only";
+    
+    const statusColor = deviceInfo.matches
+      ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+      : "bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800";
+    
+    const textColor = deviceInfo.matches
+      ? "text-green-800 dark:text-green-200"
+      : "text-red-800 dark:text-red-200";
+    
+    const subTextColor = deviceInfo.matches
+      ? "text-green-600 dark:text-green-400"
+      : "text-red-600 dark:text-red-400";
+    
+    const iconColor = deviceInfo.matches ? "text-green-500" : "text-red-500";
+    
+    return (
+      <div className={`${statusColor} border rounded-lg p-3 mb-4`}>
+        <div className="flex items-center gap-2">
+          {deviceInfo.visitorDeviceType === "desktop" ? (
+            <Monitor className={`h-4 w-4 ${iconColor}`} />
+          ) : (
+            <Smartphone className={`h-4 w-4 ${iconColor}`} />
+          )}
+          <p className={`text-sm font-medium ${textColor}`}>
+            {deviceInfo.matches ? `Visible on ${deviceLabel}` : `Hidden on ${deviceLabel}`}
+          </p>
+        </div>
+        <p className={`text-xs ${subTextColor} mt-1`}>
+          Widget is configured to show on {targetLabel}
+        </p>
+        {!deviceInfo.matches && (
+          <p className={`text-xs ${subTextColor} mt-1`}>
+            You are viewing from a {deviceLabel.toLowerCase()} device
           </p>
         )}
       </div>
@@ -444,6 +492,9 @@ export default function ChatWidgetPreviewPage() {
         
         {/* Schedule status banner */}
         {getScheduleBanner()}
+        
+        {/* Device type status banner */}
+        {getDeviceTypeBanner()}
         
         {/* Widget hidden message */}
         {shouldDisplay === false && (
