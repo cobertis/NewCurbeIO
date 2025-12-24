@@ -30,24 +30,13 @@ interface ConnectionStatus {
   connection?: ChannelConnection;
 }
 
-function SettingsBreadcrumb({ pageName, onBack, action }: { pageName: string; onBack: () => void; action?: React.ReactNode }) {
+function SettingsBreadcrumb({ pageName, action }: { pageName: string; action?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3 mb-6">
-      <div className="flex items-center gap-3">
-        <Button
-          variant="outline"
-          size="icon"
-          className="h-9 w-9 shrink-0"
-          onClick={onBack}
-          data-testid="button-back-settings"
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <div className="flex items-center gap-2 text-lg">
-          <span className="text-muted-foreground">Settings</span>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium">{pageName}</span>
-        </div>
+      <div className="flex items-center gap-2 text-lg">
+        <span className="text-muted-foreground">Settings</span>
+        <ChevronRight className="h-4 w-4 text-muted-foreground" />
+        <span className="font-medium">{pageName}</span>
       </div>
       {action && <div className="shrink-0">{action}</div>}
     </div>
@@ -1821,78 +1810,78 @@ export default function IntegrationsPage() {
       <div className="flex-1 min-w-0">
         {activeView === "profile" && (
           <div className="relative">
-            <SettingsBreadcrumb pageName="Profile" onBack={() => setLocation("/settings/profile")} />
+            <SettingsBreadcrumb pageName="Profile" />
             <SettingsPage view="profile" />
           </div>
         )}
         {activeView === "security" && (
           <div>
-            <SettingsBreadcrumb pageName="Security" onBack={() => setLocation("/settings/profile")} />
+            <SettingsBreadcrumb pageName="Security" />
             <SettingsPage />
           </div>
         )}
         {activeView === "company" && (
           <div className="relative">
-            <SettingsBreadcrumb pageName="Company Settings" onBack={() => setLocation("/settings/profile")} />
+            <SettingsBreadcrumb pageName="Company Settings" />
             <SettingsPage view="company" />
           </div>
         )}
         {activeView === "team" && (
           <div>
-            <SettingsBreadcrumb pageName="Team Management" onBack={() => setLocation("/settings/profile")} />
+            <SettingsBreadcrumb pageName="Team Management" />
             <SettingsPage />
           </div>
         )}
         {activeView === "billing" && (
           <div>
-            <SettingsBreadcrumb pageName="Billing" onBack={() => setLocation("/settings/profile")} />
+            <SettingsBreadcrumb pageName="Billing" />
             <Billing />
           </div>
         )}
         {activeView === "sms-voice" && (
           <div>
-            <SettingsBreadcrumb pageName="SMS & Voice" onBack={() => setLocation("/settings/profile")} />
+            <SettingsBreadcrumb pageName="SMS & Voice" />
             <SmsVoice />
           </div>
         )}
         {activeView === "email" && (
           <div>
-            <SettingsBreadcrumb pageName="Email" onBack={() => setLocation("/settings/profile")} />
+            <SettingsBreadcrumb pageName="Email" />
             <EmailIntegration />
           </div>
         )}
         {activeView === "automations" && (
           <div>
-            <SettingsBreadcrumb pageName="Automations" onBack={() => setLocation("/settings/profile")} />
+            <SettingsBreadcrumb pageName="Automations" />
           </div>
         )}
         {activeView === "whatsapp" && (
           <div>
-            <SettingsBreadcrumb pageName="WhatsApp" onBack={() => setLocation("/settings/profile")} />
+            <SettingsBreadcrumb pageName="WhatsApp" />
             <WhatsAppCard />
           </div>
         )}
         {activeView === "facebook" && (
           <div>
-            <SettingsBreadcrumb pageName="Facebook Messenger" onBack={() => setLocation("/settings/profile")} />
+            <SettingsBreadcrumb pageName="Facebook Messenger" />
             <FacebookCard />
           </div>
         )}
         {activeView === "instagram" && (
           <div>
-            <SettingsBreadcrumb pageName="Instagram" onBack={() => setLocation("/settings/profile")} />
+            <SettingsBreadcrumb pageName="Instagram" />
             <InstagramCard />
           </div>
         )}
         {activeView === "telegram" && (
           <div>
-            <SettingsBreadcrumb pageName="Telegram" onBack={() => setLocation("/settings/profile")} />
+            <SettingsBreadcrumb pageName="Telegram" />
             <TelegramCard />
           </div>
         )}
         {activeView === "integrations" && (
           <div>
-            <SettingsBreadcrumb pageName="Integrations" onBack={() => setLocation("/settings/profile")} />
+            <SettingsBreadcrumb pageName="Integrations" />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <div data-card-id="whatsapp">
                 <WhatsAppCard />
@@ -1918,7 +1907,7 @@ export default function IntegrationsPage() {
         )}
         {activeView === "white-label" && (
           <div>
-            <SettingsBreadcrumb pageName="White Label" onBack={() => setLocation("/settings/profile")} />
+            <SettingsBreadcrumb pageName="White Label" />
             <WhiteLabelSettings />
           </div>
         )}
