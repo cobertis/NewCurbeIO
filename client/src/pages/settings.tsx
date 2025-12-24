@@ -2160,31 +2160,31 @@ export default function Settings({ view = 'all' }: SettingsProps) {
                           {sessionsData.sessions.map((session) => (
                             <div 
                               key={session.id} 
-                              className="flex items-center gap-3 p-3 rounded-md border bg-card"
+                              className="flex items-center justify-between gap-4 p-3 rounded-md border bg-card"
                               data-testid={`session-${session.isCurrent ? 'current' : 'other'}`}
                             >
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <p className="font-medium text-sm">
-                                    {session.isCurrent ? "Current Session" : "Other Device"}
-                                  </p>
-                                  {session.isCurrent && (
-                                    <Badge variant="default" className="text-xs px-1.5 py-0">
-                                      Active
-                                    </Badge>
-                                  )}
-                                </div>
-                                {session.lastActive && (
-                                  <p className="text-xs text-muted-foreground mt-0.5">
-                                    Last active: {formatDistanceToNow(new Date(session.lastActive), { addSuffix: true })}
-                                  </p>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <p className="font-medium text-sm whitespace-nowrap">
+                                  {session.isCurrent ? "Current Session" : "Other Device"}
+                                </p>
+                                {session.isCurrent && (
+                                  <Badge variant="default" className="text-xs px-1.5 py-0">
+                                    Active
+                                  </Badge>
                                 )}
-                                <p className="text-xs text-muted-foreground truncate" data-testid="text-device-info">
+                              </div>
+                              <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                                {session.lastActive && (
+                                  <span className="whitespace-nowrap">
+                                    {formatDistanceToNow(new Date(session.lastActive), { addSuffix: true })}
+                                  </span>
+                                )}
+                                <span className="truncate max-w-[150px]" data-testid="text-device-info">
                                   {session.deviceInfo}
-                                </p>
-                                <p className="text-xs text-muted-foreground" data-testid="text-ip-address">
-                                  IP: {session.ipAddress}
-                                </p>
+                                </span>
+                                <span className="whitespace-nowrap" data-testid="text-ip-address">
+                                  {session.ipAddress}
+                                </span>
                               </div>
                             </div>
                           ))}
