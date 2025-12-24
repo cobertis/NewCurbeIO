@@ -1402,12 +1402,15 @@ function SortableChannelItem({
                         onChange={(e) => onSmsSettingsChange({
                           messageScreen: { ...smsSettings.messageScreen, title: e.target.value }
                         })}
-                        className="pr-10"
+                        className="pr-8"
                         data-testid="input-sms-title"
                       />
-                      <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7">
-                        <Smile className="h-4 w-4 text-slate-400" />
-                      </Button>
+                      <button 
+                        type="button"
+                        className="absolute right-2 top-1/2 -translate-y-1/2"
+                      >
+                        <Smile className="h-3.5 w-3.5 text-slate-400 hover:text-slate-600" />
+                      </button>
                     </div>
                   </div>
                   <div className="space-y-2">
