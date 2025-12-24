@@ -159,8 +159,6 @@ export default function TelegramPage() {
           <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-telegram">
             <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            <span className="text-muted-foreground">Channels</span>
-            <ChevronRight className="h-4 w-4 text-muted-foreground" />
             <span className="font-medium">Telegram</span>
           </div>
           
@@ -296,8 +294,6 @@ export default function TelegramPage() {
       <div className="space-y-6" data-testid="page-telegram">
         <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-telegram">
           <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
-          <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <span className="text-muted-foreground">Channels</span>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
           <span className="font-medium">Telegram</span>
         </div>
