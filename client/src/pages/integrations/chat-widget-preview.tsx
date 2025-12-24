@@ -65,6 +65,7 @@ export default function ChatWidgetPreviewPage() {
   const [shouldDisplay, setShouldDisplay] = useState<boolean | null>(null);
   const [visitorCountry, setVisitorCountry] = useState<string | null>(null);
   const [targetingChecked, setTargetingChecked] = useState(false);
+  const [scheduleStatus, setScheduleStatus] = useState<{ isOnline: boolean; nextAvailable: string | null }>({ isOnline: true, nextAvailable: null });
 
   const { data: widgetData, isLoading } = useQuery<{ widget: any }>({
     queryKey: [`/api/integrations/chat-widget/${widgetId}`],
@@ -80,11 +81,13 @@ export default function ChatWidgetPreviewPage() {
       .then(data => {
         setShouldDisplay(data.shouldDisplay ?? true);
         setVisitorCountry(data.visitorCountry || null);
+        setScheduleStatus(data.scheduleStatus || { isOnline: true, nextAvailable: null });
         setTargetingChecked(true);
       })
       .catch(() => {
         // On error, default to showing widget
         setShouldDisplay(true);
+        setScheduleStatus({ isOnline: true, nextAvailable: null });
         setTargetingChecked(true);
       });
   }, [widgetId]);
@@ -191,6 +194,43 @@ export default function ChatWidgetPreviewPage() {
         <p className="text-xs text-amber-600 dark:text-amber-400 mt-1">
           Your detected location: <strong>{visitorCountry || "Unknown"}</strong>
         </p>
+      </div>
+    );
+  };
+  
+  // Show schedule status banner
+  const getScheduleBanner = () => {
+    const targeting = widget.targeting;
+    if (!targeting || targeting.schedule === "always") return null;
+    
+    const statusColor = scheduleStatus.isOnline 
+      ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
+      : "bg-amber-50 dark:bg-amber-900/20 border-amber-200 dark:border-amber-800";
+    
+    const textColor = scheduleStatus.isOnline 
+      ? "text-green-800 dark:text-green-200"
+      : "text-amber-800 dark:text-amber-200";
+    
+    const subTextColor = scheduleStatus.isOnline 
+      ? "text-green-600 dark:text-green-400"
+      : "text-amber-600 dark:text-amber-400";
+    
+    return (
+      <div className={`${statusColor} border rounded-lg p-3 mb-4`}>
+        <div className="flex items-center gap-2">
+          <div className={`w-2 h-2 rounded-full ${scheduleStatus.isOnline ? 'bg-green-500' : 'bg-amber-500'} animate-pulse`} />
+          <p className={`text-sm font-medium ${textColor}`}>
+            {scheduleStatus.isOnline ? "Online" : "Currently offline"}
+          </p>
+        </div>
+        <p className={`text-xs ${subTextColor} mt-1`}>
+          Schedule: {targeting.timezone || "(UTC -05:00): America/New_York"}
+        </p>
+        {!scheduleStatus.isOnline && scheduleStatus.nextAvailable && (
+          <p className={`text-xs ${subTextColor} mt-1`}>
+            Back {scheduleStatus.nextAvailable}
+          </p>
+        )}
       </div>
     );
   };
@@ -402,6 +442,9 @@ export default function ChatWidgetPreviewPage() {
         {/* Targeting status banner */}
         {getTargetingBanner()}
         
+        {/* Schedule status banner */}
+        {getScheduleBanner()}
+        
         {/* Widget hidden message */}
         {shouldDisplay === false && (
           <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 mb-8">
@@ -513,6 +556,21 @@ export default function ChatWidgetPreviewPage() {
                 <h4 className="text-lg font-bold">{widget.welcomeTitle}</h4>
                 <p className="text-sm opacity-90 mt-1">{widget.welcomeMessage}</p>
               </div>
+              
+              {/* Offline status banner */}
+              {!scheduleStatus.isOnline && (
+                <div className="bg-amber-50 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-800 px-4 py-3">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                    <span className="text-sm font-medium text-amber-800 dark:text-amber-200">We're currently offline</span>
+                  </div>
+                  {scheduleStatus.nextAvailable && (
+                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 ml-4">
+                      Back {scheduleStatus.nextAvailable}
+                    </p>
+                  )}
+                </div>
+              )}
               
               <div className="p-4 space-y-3">
                 {widget.channels?.liveChat && (

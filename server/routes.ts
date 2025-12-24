@@ -28341,8 +28341,95 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       const widgetSettings = widget.widget as any || {};
       const targeting = widgetSettings.targeting || {};
-      
       const shouldDisplay = shouldShowWidget(targeting, visitorCountry, geoSuccess);
+      
+      // Check schedule-based availability
+      const checkScheduleAvailability = () => {
+        const schedule = targeting.schedule || "always";
+        if (schedule === "always") {
+          return { isOnline: true, nextAvailable: null };
+        }
+        
+        const timezone = targeting.timezone || "(UTC -05:00): America/New_York";
+        const scheduleEntries = targeting.scheduleEntries || [];
+        
+        // Extract IANA timezone from format like "(UTC -05:00): America/New_York"
+        const tzMatch = timezone.match(/:s*(.+)$/);
+        const ianaTimezone = tzMatch ? tzMatch[1].trim() : "America/New_York";
+        
+        // Get current time in the widget timezone
+        const now = new Date();
+        const options: Intl.DateTimeFormatOptions = { 
+          timeZone: ianaTimezone, 
+          weekday: "long",
+          hour: "numeric",
+          minute: "numeric",
+          hour12: true
+        };
+        
+        const formatter = new Intl.DateTimeFormat("en-US", options);
+        const parts = formatter.formatToParts(now);
+        
+        const dayPart = parts.find(p => p.type === "weekday")?.value || "";
+        const hourPart = parts.find(p => p.type === "hour")?.value || "0";
+        const minutePart = parts.find(p => p.type === "minute")?.value || "0";
+        const dayPeriod = parts.find(p => p.type === "dayPeriod")?.value?.toUpperCase() || "AM";
+        
+        const currentTimeStr = `${hourPart}:${minutePart.padStart(2, "0")} ${dayPeriod}`;
+        
+        // Find today schedule entry
+        const todayEntry = scheduleEntries.find((e: any) => e.day === dayPart);
+        
+        if (!todayEntry || !todayEntry.enabled) {
+          return { isOnline: false, nextAvailable: findNextAvailable(scheduleEntries, dayPart) };
+        }
+        
+        // Parse time strings to compare
+        const parseTime = (timeStr: string) => {
+          const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+          if (!match) return 0;
+          let hours = parseInt(match[1]);
+          const minutes = parseInt(match[2]);
+          const period = match[3].toUpperCase();
+          if (period === "PM" && hours !== 12) hours += 12;
+          if (period === "AM" && hours === 12) hours = 0;
+          return hours * 60 + minutes;
+        };
+        
+        const currentMinutes = parseTime(currentTimeStr);
+        const startMinutes = parseTime(todayEntry.startTime);
+        const endMinutes = parseTime(todayEntry.endTime);
+        
+        const isWithinHours = currentMinutes >= startMinutes && currentMinutes < endMinutes;
+        
+        if (!isWithinHours) {
+          return { 
+            isOnline: false, 
+            nextAvailable: currentMinutes < startMinutes 
+              ? `Today at ${todayEntry.startTime}` 
+              : findNextAvailable(scheduleEntries, dayPart)
+          };
+        }
+        
+        return { isOnline: true, nextAvailable: null };
+      };
+      
+      const findNextAvailable = (entries: any[], currentDay: string) => {
+        const dayOrder = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const currentIdx = dayOrder.indexOf(currentDay);
+        
+        for (let i = 1; i <= 7; i++) {
+          const nextIdx = (currentIdx + i) % 7;
+          const nextDay = dayOrder[nextIdx];
+          const entry = entries.find((e: any) => e.day === nextDay);
+          if (entry && entry.enabled) {
+            return `${nextDay} at ${entry.startTime}`;
+          }
+        }
+        return null;
+      };
+      
+      const scheduleStatus = checkScheduleAvailability();
       
       res.set({
         "Access-Control-Allow-Origin": "*",
@@ -28358,7 +28445,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         countryCode,
         targeting: {
           countries: targeting.countries || "all",
-          selectedCountries: targeting.selectedCountries || []
+          selectedCountries: targeting.selectedCountries || [],
+          schedule: targeting.schedule || "always",
+          timezone: targeting.timezone || "(UTC -05:00): America/New_York"
+        },
+        scheduleStatus: {
+          isOnline: scheduleStatus.isOnline,
+          nextAvailable: scheduleStatus.nextAvailable
         }
       });
     } catch (error: any) {
