@@ -448,6 +448,8 @@ function SortableChannelItem({
   onMessengerSettingsChange,
   instagramSettings,
   onInstagramSettingsChange,
+  telegramSettings,
+  onTelegramSettingsChange,
   activeLiveChatSubSection,
   onActiveLiveChatSubSectionChange,
   activeEmailSubSection: activeEmailSubSectionProp,
