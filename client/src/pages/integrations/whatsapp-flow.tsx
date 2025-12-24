@@ -1,0 +1,281 @@
+import { useState, useEffect } from "react";
+import { useLocation, Link } from "wouter";
+import { useMutation, useQuery } from "@tanstack/react-query";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+import { LoadingSpinner } from "@/components/loading-spinner";
+import { SiWhatsapp, SiFacebook } from "react-icons/si";
+import { CheckCircle2, Clock, AlertCircle, ChevronLeft, Info } from "lucide-react";
+import { SettingsLayout } from "@/components/settings-layout";
+import type { ChannelConnection } from "@shared/schema";
+
+export default function WhatsAppFlow() {
+  const { toast } = useToast();
+  const [, setLocation] = useLocation();
+  const [currentStep, setCurrentStep] = useState(1);
+
+  const { data: connectionData, isLoading } = useQuery<{ connection: ChannelConnection | null }>({
+    queryKey: ["/api/integrations/whatsapp/status"],
+  });
+
+  const connection = connectionData?.connection;
+  const isConnected = connection?.status === "active";
+  const isPending = connection?.status === "pending";
+
+  useEffect(() => {
+    if (isConnected) {
+      setCurrentStep(3);
+    } else if (isPending) {
+      setCurrentStep(2);
+    }
+  }, [isConnected, isPending]);
+
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const whatsappStatus = urlParams.get("whatsapp");
+
+    if (whatsappStatus === "connected") {
+      toast({
+        title: "WhatsApp Connected",
+        description: "Your WhatsApp Business account has been connected successfully.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/integrations/whatsapp/status"] });
+      setCurrentStep(3);
+      urlParams.delete("whatsapp");
+      const newUrl = window.location.pathname + (urlParams.toString() ? `?${urlParams.toString()}` : "");
+      window.history.replaceState({}, "", newUrl);
+    } else if (whatsappStatus === "error") {
+      toast({
+        variant: "destructive",
+        title: "Connection failed",
+        description: "We couldn't connect your WhatsApp account. Please try again.",
+      });
+      urlParams.delete("whatsapp");
+      urlParams.delete("reason");
+      const newUrl = window.location.pathname + (urlParams.toString() ? `?${urlParams.toString()}` : "");
+      window.history.replaceState({}, "", newUrl);
+    }
+  }, [toast]);
+
+  const oauthStartMutation = useMutation({
+    mutationFn: async () => {
+      return apiRequest("POST", "/api/integrations/meta/whatsapp/start");
+    },
+    onSuccess: (data: { authUrl: string; state: string }) => {
+      if (data.authUrl) {
+        window.open(data.authUrl, "_blank");
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Connection failed",
+        description: error.message || "We couldn't start the connection process. Please try again.",
+      });
+    },
+  });
+
+  const handleLoginWithFacebook = () => {
+    oauthStartMutation.mutate();
+  };
+
+  const handleDiscard = () => {
+    setLocation("/settings/whatsapp");
+  };
+
+  if (isLoading) {
+    return (
+      <SettingsLayout activeSection="whatsapp">
+        <LoadingSpinner fullScreen={true} message="Loading..." />
+      </SettingsLayout>
+    );
+  }
+
+  const getStepStatus = (step: number) => {
+    if (step < currentStep) return "completed";
+    if (step === currentStep) return "current";
+    return "pending";
+  };
+
+  const StepIndicator = ({ step, status }: { step: number; status: "completed" | "current" | "pending" }) => {
+    if (status === "completed") {
+      return (
+        <div className="w-8 h-8 rounded-full bg-green-500 flex items-center justify-center text-white shrink-0">
+          <CheckCircle2 className="h-5 w-5" />
+        </div>
+      );
+    }
+    return (
+      <div className={`w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-sm font-medium ${
+        status === "current" 
+          ? "bg-blue-500 text-white" 
+          : "bg-slate-200 dark:bg-slate-700 text-slate-500 dark:text-slate-400"
+      }`}>
+        {step}
+      </div>
+    );
+  };
+
+  return (
+    <SettingsLayout activeSection="whatsapp">
+      <div className="space-y-6" data-testid="page-whatsapp-flow">
+        <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400">
+          <Link href="/settings" className="hover:text-slate-700 dark:hover:text-slate-300">
+            Settings
+          </Link>
+          <span>&gt;</span>
+          <Link href="/settings/whatsapp" className="hover:text-slate-700 dark:hover:text-slate-300">
+            WhatsApp
+          </Link>
+        </div>
+
+        <Card className="border-slate-200 dark:border-slate-800">
+          <CardContent className="p-6">
+            <div className="flex items-center justify-between mb-8">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-full bg-[#25D366]/10">
+                  <SiWhatsapp className="h-8 w-8 text-[#25D366]" />
+                </div>
+                <h1 className="text-xl font-semibold text-slate-900 dark:text-slate-100">
+                  Connect WhatsApp number
+                </h1>
+              </div>
+              <Button 
+                variant="outline" 
+                onClick={handleDiscard}
+                data-testid="button-discard"
+              >
+                Discard
+              </Button>
+            </div>
+
+            <div className="space-y-8">
+              <div className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <StepIndicator step={1} status={getStepStatus(1)} />
+                  <div className={`w-0.5 flex-1 mt-2 ${currentStep > 1 ? "bg-green-500" : "bg-slate-200 dark:bg-slate-700"}`} />
+                </div>
+                <div className="flex-1 pb-8">
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                    Connect WhatsApp Business Account
+                  </h3>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">
+                    Follow these steps to connect your WhatsApp Business account and start receiving{" "}
+                    <span className="text-blue-600 dark:text-blue-400">customer-initiated conversations</span> in Curbe.
+                  </p>
+                  
+                  <div className="space-y-3 mb-4">
+                    <div className="flex items-start gap-3">
+                      <SiFacebook className="h-5 w-5 text-[#1877F2] shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-medium text-slate-900 dark:text-slate-100">Log in with your Facebook account</span>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">You need to have a Facebook account to connect WhatsApp to Curbe.</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3">
+                      <SiWhatsapp className="h-5 w-5 text-[#25D366] shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-medium text-slate-900 dark:text-slate-100">Connect WhatsApp Business</span>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">Follow the Meta setup to connect your WhatsApp Business number or register a new one. You need access to this number to receive a verification code.</p>
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-start gap-3">
+                      <Clock className="h-5 w-5 text-slate-400 shrink-0 mt-0.5" />
+                      <div>
+                        <span className="font-medium text-slate-900 dark:text-slate-100">Reply window</span>
+                        <p className="text-sm text-slate-500 dark:text-slate-400">You will have 24 hours to respond to messages received from customers.</p>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+                    <div className="flex items-start gap-2">
+                      <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                      <p className="text-sm text-blue-700 dark:text-blue-300">
+                        <span className="font-medium">Note:</span> If you're not redirected to the second step of the flow after completing Meta setup, restart the process by clicking the <span className="font-medium">Login with Facebook</span> button.
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {currentStep === 1 && (
+                    <Button 
+                      className="bg-[#1877F2] hover:bg-[#166FE5] text-white gap-2"
+                      onClick={handleLoginWithFacebook}
+                      disabled={oauthStartMutation.isPending}
+                      data-testid="button-login-facebook"
+                    >
+                      <SiFacebook className="h-4 w-4" />
+                      {oauthStartMutation.isPending ? "Connecting..." : "Login with Facebook"}
+                    </Button>
+                  )}
+                  
+                  {currentStep > 1 && (
+                    <div className="flex items-center gap-2 text-green-600 dark:text-green-400">
+                      <CheckCircle2 className="h-5 w-5" />
+                      <span className="text-sm font-medium">Facebook connected</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <StepIndicator step={2} status={getStepStatus(2)} />
+                  <div className={`w-0.5 flex-1 mt-2 ${currentStep > 2 ? "bg-green-500" : "bg-slate-200 dark:bg-slate-700"}`} />
+                </div>
+                <div className="flex-1 pb-8">
+                  <h3 className={`text-base font-semibold mb-1 ${currentStep >= 2 ? "text-slate-900 dark:text-slate-100" : "text-slate-400 dark:text-slate-500"}`}>
+                    Two-factor authentication
+                  </h3>
+                  <p className={`text-sm ${currentStep >= 2 ? "text-slate-600 dark:text-slate-400" : "text-slate-400 dark:text-slate-500"}`}>
+                    Set up a 6-digit PIN to keep your number secure, or enter your existing PIN if it's already enabled.
+                  </p>
+                  <p className={`text-sm mt-1 ${currentStep >= 2 ? "text-slate-600 dark:text-slate-400" : "text-slate-400 dark:text-slate-500"}`}>
+                    You can check the two-factor authentication status in Number settings under your{" "}
+                    <a 
+                      href="https://business.facebook.com/settings/whatsapp-business-accounts" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                    >
+                      WhatsApp Business Account
+                    </a>.
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-4">
+                <div className="flex flex-col items-center">
+                  <StepIndicator step={3} status={getStepStatus(3)} />
+                </div>
+                <div className="flex-1">
+                  <h3 className={`text-base font-semibold mb-1 ${currentStep >= 3 ? "text-slate-900 dark:text-slate-100" : "text-slate-400 dark:text-slate-500"}`}>
+                    WhatsApp Business number connected 🎉
+                  </h3>
+                  <p className={`text-sm ${currentStep >= 3 ? "text-slate-600 dark:text-slate-400" : "text-slate-400 dark:text-slate-500"}`}>
+                    You have successfully connected your WhatsApp number and can now manage your conversations in Curbe.
+                  </p>
+                  
+                  {currentStep === 3 && (
+                    <div className="mt-4">
+                      <Button 
+                        onClick={() => setLocation("/settings/whatsapp")}
+                        data-testid="button-go-to-whatsapp"
+                      >
+                        Go to WhatsApp Settings
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </SettingsLayout>
+  );
+}

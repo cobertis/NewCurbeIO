@@ -227,7 +227,7 @@ function getTiktokStatusBadge(status: string | undefined) {
   }
 }
 
-function WhatsAppInfoPage({ onConnect, isConnecting }: { onConnect: () => void; isConnecting: boolean }) {
+function WhatsAppInfoPage({ onGetStarted }: { onGetStarted: () => void }) {
   return (
     <div className="space-y-8">
       <Card className="border-slate-200 dark:border-slate-800">
@@ -261,11 +261,10 @@ function WhatsAppInfoPage({ onConnect, isConnecting }: { onConnect: () => void; 
               <div className="flex items-center gap-3">
                 <Button 
                   className="bg-[#25D366] hover:bg-[#20BD5A] text-white"
-                  onClick={onConnect}
-                  disabled={isConnecting}
+                  onClick={onGetStarted}
                   data-testid="button-get-started-whatsapp"
                 >
-                  {isConnecting ? "Connecting..." : "Get started"}
+                  Get started
                 </Button>
                 <Button 
                   variant="outline"
@@ -509,7 +508,7 @@ function WhatsAppCard() {
   const isNotConnected = !isConnected && !isPending && !hasError && !isRevoked;
 
   if (isNotConnected) {
-    return <WhatsAppInfoPage onConnect={handleOAuthConnect} isConnecting={oauthStartMutation.isPending} />;
+    return <WhatsAppInfoPage onGetStarted={() => setLocation("/settings/whatsapp/flow")} />;
   }
 
   return (
