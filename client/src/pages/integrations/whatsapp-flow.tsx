@@ -7,8 +7,9 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { SiWhatsapp, SiFacebook } from "react-icons/si";
-import { CheckCircle2, Clock, AlertCircle, ChevronLeft, Info, RefreshCw } from "lucide-react";
+import { CheckCircle2, Clock, AlertCircle, ChevronLeft, Info, RefreshCw, ExternalLink, QrCode } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { SettingsLayout } from "@/components/settings-layout";
 import type { ChannelConnection } from "@shared/schema";
 
@@ -246,108 +247,121 @@ export default function WhatsAppFlow() {
                   <div className={`w-0.5 flex-1 mt-2 ${currentStep > 2 ? "bg-green-500" : "bg-slate-200 dark:bg-slate-700"}`} />
                 </div>
                 <div className="flex-1 pb-8">
-                  <h3 className={`text-base font-semibold mb-1 ${currentStep >= 2 ? "text-slate-900 dark:text-slate-100" : "text-slate-400 dark:text-slate-500"}`}>
-                    Two-factor authentication
-                  </h3>
-                  <p className={`text-sm ${currentStep >= 2 ? "text-slate-600 dark:text-slate-400" : "text-slate-400 dark:text-slate-500"}`}>
-                    Set up a 6-digit PIN to keep your number secure, or enter your existing PIN if it's already enabled.
-                  </p>
-                  <p className={`text-sm mt-1 ${currentStep >= 2 ? "text-slate-600 dark:text-slate-400" : "text-slate-400 dark:text-slate-500"}`}>
-                    You can check the two-factor authentication status in <span className="font-medium">Number settings</span> under your{" "}
-                    <a 
-                      href="https://business.facebook.com/settings/whatsapp-business-accounts" 
-                      target="_blank" 
-                      rel="noopener noreferrer"
-                      className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
-                    >
-                      WhatsApp Business Account
-                    </a>.
-                  </p>
-                  
-                  {currentStep === 2 && (
-                    <div className="mt-4 space-y-4">
-                      <div className="flex items-center gap-2">
-                        {pin.slice(0, 3).map((digit, index) => (
-                          <Input
-                            key={index}
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={1}
-                            value={digit}
-                            onChange={(e) => {
-                              const val = e.target.value.replace(/\D/g, "");
-                              const newPin = [...pin];
-                              newPin[index] = val;
-                              setPin(newPin);
-                              if (val && index < 5) {
-                                const nextInput = document.getElementById(`pin-${index + 1}`);
-                                nextInput?.focus();
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Backspace" && !digit && index > 0) {
-                                const prevInput = document.getElementById(`pin-${index - 1}`);
-                                prevInput?.focus();
-                              }
-                            }}
-                            id={`pin-${index}`}
-                            className="w-12 h-12 text-center text-lg font-medium"
-                            data-testid={`input-pin-${index}`}
-                          />
-                        ))}
-                        <span className="text-slate-400 text-lg">-</span>
-                        {pin.slice(3).map((digit, index) => (
-                          <Input
-                            key={index + 3}
-                            type="text"
-                            inputMode="numeric"
-                            maxLength={1}
-                            value={digit}
-                            onChange={(e) => {
-                              const val = e.target.value.replace(/\D/g, "");
-                              const newPin = [...pin];
-                              newPin[index + 3] = val;
-                              setPin(newPin);
-                              if (val && index + 3 < 5) {
-                                const nextInput = document.getElementById(`pin-${index + 4}`);
-                                nextInput?.focus();
-                              }
-                            }}
-                            onKeyDown={(e) => {
-                              if (e.key === "Backspace" && !digit && index + 3 > 0) {
-                                const prevInput = document.getElementById(`pin-${index + 2}`);
-                                prevInput?.focus();
-                              }
-                            }}
-                            id={`pin-${index + 3}`}
-                            className="w-12 h-12 text-center text-lg font-medium"
-                            data-testid={`input-pin-${index + 3}`}
-                          />
-                        ))}
-                      </div>
+                  {currentStep > 2 ? (
+                    <>
+                      <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-1">
+                        Two-factor authentication
+                      </h3>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">
+                        Completed
+                      </p>
+                    </>
+                  ) : (
+                    <>
+                      <h3 className={`text-base font-semibold mb-1 ${currentStep >= 2 ? "text-slate-900 dark:text-slate-100" : "text-slate-400 dark:text-slate-500"}`}>
+                        Two-factor authentication
+                      </h3>
+                      <p className={`text-sm ${currentStep >= 2 ? "text-slate-600 dark:text-slate-400" : "text-slate-400 dark:text-slate-500"}`}>
+                        Set up a 6-digit PIN to keep your number secure, or enter your existing PIN if it's already enabled.
+                      </p>
+                      <p className={`text-sm mt-1 ${currentStep >= 2 ? "text-slate-600 dark:text-slate-400" : "text-slate-400 dark:text-slate-500"}`}>
+                        You can check the two-factor authentication status in <span className="font-medium">Number settings</span> under your{" "}
+                        <a 
+                          href="https://business.facebook.com/settings/whatsapp-business-accounts" 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                          WhatsApp Business Account
+                        </a>.
+                      </p>
                       
-                      <Button 
-                        onClick={() => {
-                          const pinCode = pin.join("");
-                          if (pinCode.length === 6) {
-                            setCurrentStep(3);
-                            toast({
-                              title: "PIN verified",
-                              description: "Your two-factor authentication has been set up.",
-                            });
-                          } else {
-                            toast({
-                              variant: "destructive",
-                              title: "Invalid PIN",
-                              description: "Please enter a 6-digit PIN.",
-                            });
-                          }
-                        }}
-                        data-testid="button-continue"
-                      >
-                        Continue
-                      </Button>
-                    </div>
+                      {currentStep === 2 && (
+                        <div className="mt-4 space-y-4">
+                          <div className="flex items-center gap-2">
+                            {pin.slice(0, 3).map((digit, index) => (
+                              <Input
+                                key={index}
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={1}
+                                value={digit}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/\D/g, "");
+                                  const newPin = [...pin];
+                                  newPin[index] = val;
+                                  setPin(newPin);
+                                  if (val && index < 5) {
+                                    const nextInput = document.getElementById(`pin-${index + 1}`);
+                                    nextInput?.focus();
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Backspace" && !digit && index > 0) {
+                                    const prevInput = document.getElementById(`pin-${index - 1}`);
+                                    prevInput?.focus();
+                                  }
+                                }}
+                                id={`pin-${index}`}
+                                className="w-12 h-12 text-center text-lg font-medium"
+                                data-testid={`input-pin-${index}`}
+                              />
+                            ))}
+                            <span className="text-slate-400 text-lg">-</span>
+                            {pin.slice(3).map((digit, index) => (
+                              <Input
+                                key={index + 3}
+                                type="text"
+                                inputMode="numeric"
+                                maxLength={1}
+                                value={digit}
+                                onChange={(e) => {
+                                  const val = e.target.value.replace(/\D/g, "");
+                                  const newPin = [...pin];
+                                  newPin[index + 3] = val;
+                                  setPin(newPin);
+                                  if (val && index + 3 < 5) {
+                                    const nextInput = document.getElementById(`pin-${index + 4}`);
+                                    nextInput?.focus();
+                                  }
+                                }}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Backspace" && !digit && index + 3 > 0) {
+                                    const prevInput = document.getElementById(`pin-${index + 2}`);
+                                    prevInput?.focus();
+                                  }
+                                }}
+                                id={`pin-${index + 3}`}
+                                className="w-12 h-12 text-center text-lg font-medium"
+                                data-testid={`input-pin-${index + 3}`}
+                              />
+                            ))}
+                          </div>
+                          
+                          <Button 
+                            onClick={() => {
+                              const pinCode = pin.join("");
+                              if (pinCode.length === 6) {
+                                setCurrentStep(3);
+                                toast({
+                                  title: "PIN verified",
+                                  description: "Your two-factor authentication has been set up.",
+                                });
+                              } else {
+                                toast({
+                                  variant: "destructive",
+                                  title: "Invalid PIN",
+                                  description: "Please enter a 6-digit PIN.",
+                                });
+                              }
+                            }}
+                            data-testid="button-continue"
+                          >
+                            Continue
+                          </Button>
+                        </div>
+                      )}
+                    </>
                   )}
                 </div>
               </div>
@@ -365,13 +379,85 @@ export default function WhatsAppFlow() {
                   </p>
                   
                   {currentStep === 3 && (
-                    <div className="mt-4">
-                      <Button 
-                        onClick={() => setLocation("/settings/whatsapp")}
-                        data-testid="button-go-to-whatsapp"
-                      >
-                        Go to WhatsApp Settings
-                      </Button>
+                    <div className="mt-6 space-y-6">
+                      <div>
+                        <p className="text-xs font-medium text-slate-500 dark:text-slate-400 uppercase tracking-wide mb-2">
+                          Your WhatsApp Number
+                        </p>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-full bg-[#25D366]/10">
+                              <SiWhatsapp className="h-5 w-5 text-[#25D366]" />
+                            </div>
+                            <span className="text-base font-medium text-slate-900 dark:text-slate-100">
+                              {connection?.phoneNumber || "+1 555 813 4421"}
+                            </span>
+                          </div>
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button variant="outline" size="sm" className="gap-2" data-testid="button-qr-code">
+                                <QrCode className="h-4 w-4" />
+                                QR code & chat link
+                              </Button>
+                            </DialogTrigger>
+                            <DialogContent>
+                              <DialogHeader>
+                                <DialogTitle>WhatsApp Chat Link</DialogTitle>
+                              </DialogHeader>
+                              <div className="space-y-4">
+                                <p className="text-sm text-slate-600 dark:text-slate-400">
+                                  Share this link with customers to start a conversation:
+                                </p>
+                                <div className="p-3 bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                  <code className="text-sm break-all">
+                                    https://wa.me/{(connection?.phoneNumber || "+15558134421").replace(/\D/g, "")}
+                                  </code>
+                                </div>
+                              </div>
+                            </DialogContent>
+                          </Dialog>
+                        </div>
+                      </div>
+                      
+                      <p className="text-sm text-slate-600 dark:text-slate-400">
+                        To test connection, <span className="font-medium">scan the QR code</span> or <span className="font-medium">click the chat link</span> to send a message to this number. The message you send will appear in{" "}
+                        <a href="/messenger" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">
+                          Curbe Messenger
+                        </a>. For more information, please read{" "}
+                        <a 
+                          href="#" 
+                          className="text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300"
+                        >
+                          our support article
+                        </a>.
+                      </p>
+                      
+                      <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3">
+                        <div className="flex items-start gap-2">
+                          <Info className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+                          <p className="text-sm text-blue-700 dark:text-blue-300">
+                            Curbe currently supports only customer-initiated conversations. You can reply to chats initiated by your contacts within 24 hours but cannot start new chats or send bulk messages.
+                          </p>
+                        </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-3">
+                        <Button 
+                          onClick={() => setLocation("/settings/whatsapp")}
+                          data-testid="button-finish"
+                        >
+                          Finish
+                        </Button>
+                        <Button 
+                          variant="outline"
+                          className="gap-2"
+                          onClick={() => setLocation("/messenger")}
+                          data-testid="button-go-to-messenger"
+                        >
+                          Go to Messenger
+                          <ExternalLink className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   )}
                 </div>
