@@ -31101,7 +31101,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       // Strategy 3: If still no results, get ALL and filter locally
       if (numbers.length === 0) {
-        url = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns`;
+        url = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?page[size]=250`;
         console.log("[10DLC Campaign Numbers] Trying get ALL numbers (no filter)");
         
         response = await fetch(url, {
