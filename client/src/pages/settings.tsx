@@ -2129,7 +2129,7 @@ export default function Settings({ view = 'all' }: SettingsProps) {
                   </CardContent>
                 </Card>
 
-                <Card className="h-fit">
+                <Card>
                   <CardHeader>
                     <div className="flex items-center justify-between gap-2">
                       <div className="space-y-1">
