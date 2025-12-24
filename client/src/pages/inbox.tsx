@@ -9,6 +9,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { formatForDisplay } from "@shared/phone";
+import { MessengerLayout, type MessengerView } from "@/components/messenger-layout";
+import { Filter } from "lucide-react";
 import { 
   Search, 
   Phone, 
@@ -150,6 +152,7 @@ type MobileView = "threads" | "messages" | "details";
 
 export default function InboxPage() {
   const { toast } = useToast();
+  const [activeView, setActiveView] = useState<MessengerView>("open");
   const [selectedConversationId, setSelectedConversationId] = useState<string | null>(null);
   const [mobileView, setMobileView] = useState<MobileView>("threads");
   const [searchQuery, setSearchQuery] = useState("");
@@ -358,14 +361,63 @@ export default function InboxPage() {
   }, [companyNumbers, selectedFromNumber]);
 
   const filteredConversations = useMemo(() => {
-    if (!searchQuery) return conversations;
+    let filtered = conversations;
+    
+    switch (activeView) {
+      case "open":
+        filtered = conversations.filter(c => c.unreadCount > 0 || !c.lastMessage);
+        break;
+      case "unread":
+        filtered = conversations.filter(c => c.unreadCount > 0);
+        break;
+      case "all":
+        filtered = conversations;
+        break;
+      case "sms":
+        filtered = conversations.filter(c => c.channel === "sms" || !c.channel);
+        break;
+      case "live-chat":
+        filtered = conversations.filter(c => c.channel === "live-chat" || c.channel === "chat-widget");
+        break;
+      case "whatsapp":
+        filtered = conversations.filter(c => c.channel === "whatsapp");
+        break;
+      case "facebook":
+        filtered = conversations.filter(c => c.channel === "facebook");
+        break;
+      case "instagram":
+        filtered = conversations.filter(c => c.channel === "instagram");
+        break;
+      default:
+        filtered = conversations;
+    }
+    
+    if (!searchQuery) return filtered;
     const query = searchQuery.toLowerCase();
-    return conversations.filter(c => 
+    return filtered.filter(c => 
       c.displayName?.toLowerCase().includes(query) ||
       c.phoneNumber.includes(query) ||
       c.lastMessage?.toLowerCase().includes(query)
     );
-  }, [conversations, searchQuery]);
+  }, [conversations, searchQuery, activeView]);
+
+  const viewLabel = useMemo(() => {
+    switch (activeView) {
+      case "open": return "Open";
+      case "unread": return "Unread";
+      case "assigned": return "Assigned to me";
+      case "unassigned": return "Unassigned";
+      case "waiting": return "Waiting live chats";
+      case "solved": return "Solved";
+      case "all": return "All chats";
+      case "sms": return "SMS";
+      case "live-chat": return "Live chat";
+      case "whatsapp": return "WhatsApp";
+      case "facebook": return "Facebook";
+      case "instagram": return "Instagram";
+      default: return "Open";
+    }
+  }, [activeView]);
 
   const formatMessageTime = (dateStr: string) => {
     const date = new Date(dateStr);
@@ -527,38 +579,62 @@ export default function InboxPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-8rem)] bg-white dark:bg-gray-900 rounded-lg border overflow-hidden">
-      {/* Left Panel - Conversation List */}
+    <MessengerLayout 
+      activeView={activeView} 
+      onViewChange={setActiveView}
+      counts={{
+        open: conversations.filter(c => c.unreadCount > 0 || !c.lastMessage).length,
+        unread: conversations.filter(c => c.unreadCount > 0).length,
+        all: conversations.length,
+      }}
+    >
+      {/* Conversation List Panel */}
       <div className={cn(
-        "w-80 border-r flex flex-col",
+        "w-80 border-r flex flex-col bg-white dark:bg-gray-900",
         mobileView !== "threads" && "hidden md:flex"
       )}>
         {/* Header */}
-        <div className="h-[73px] px-4 border-b flex items-center justify-between">
+        <div className="h-[49px] px-4 border-b flex items-center justify-between">
           <div className="flex items-center gap-2">
-            <h2 className="font-semibold">Open</h2>
-            <Badge variant="secondary" className="text-xs">{conversations.length}</Badge>
+            <h2 className="font-semibold">{viewLabel}</h2>
           </div>
-          <Button 
-            size="sm" 
-            onClick={() => setShowNewConversation(true)}
-            data-testid="btn-new-conversation"
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Create
-          </Button>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              data-testid="btn-filter"
+            >
+              <Filter className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7"
+              onClick={() => setShowNewConversation(true)}
+              data-testid="btn-new-conversation"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
         {/* Search */}
-        <div className="px-4 py-2 border-b">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search chats"
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-9"
-              data-testid="input-search-conversations"
-            />
+        <div className="px-3 py-2 border-b">
+          <div className="flex items-center gap-2">
+            <div className="relative flex-1">
+              <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search chats..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="pl-8 h-8 text-sm"
+                data-testid="input-search-conversations"
+              />
+            </div>
+            <Button variant="outline" size="sm" className="h-8 gap-1 shrink-0">
+              <Filter className="h-3.5 w-3.5" />
+              <span className="text-xs">Filter</span>
+            </Button>
           </div>
         </div>
 
@@ -1673,6 +1749,6 @@ export default function InboxPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </div>
+    </MessengerLayout>
   );
 }
