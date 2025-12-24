@@ -1024,11 +1024,15 @@ function SortableChannelItem({
                         onChange={(e) => onWhatsappSettingsChange({
                           messageScreen: { ...whatsappSettings.messageScreen, title: e.target.value }
                         })}
+                        className="pr-8"
                         data-testid="input-whatsapp-title"
                       />
-                      <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7">
-                        <Smile className="h-4 w-4 text-slate-400" />
-                      </Button>
+                      <button 
+                        type="button"
+                        className="absolute right-2 top-1/2 -translate-y-1/2"
+                      >
+                        <Smile className="h-3.5 w-3.5 text-slate-400 hover:text-slate-600" />
+                      </button>
                     </div>
                   </div>
                   
@@ -3936,11 +3940,11 @@ export default function ChatWidgetEditPage() {
                 ) : expandedChannel === "whatsapp" ? (
                   <div className="relative">
                     <div className="rounded-xl overflow-hidden shadow-lg">
-                      <div className="p-4 text-white" style={{ background: currentBackground }}>
-                        <div className="flex items-center gap-2 mb-3">
+                      <div className="p-4 text-white bg-[#25D366]">
+                        <div className="flex items-center gap-2">
                           <ChevronLeft className="h-5 w-5" />
                           <SiWhatsapp className="h-5 w-5" />
-                          <span className="font-medium">{widget.whatsappSettings?.welcomeScreen?.channelName || "WhatsApp"}</span>
+                          <span className="font-medium">{widget.whatsappSettings?.welcomeScreen?.channelName || "Chat on WhatsApp"}</span>
                         </div>
                       </div>
                       <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
@@ -3948,22 +3952,34 @@ export default function ChatWidgetEditPage() {
                           {widget.whatsappSettings?.messageScreen?.title || "Message us on WhatsApp"}
                         </h4>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
-                          {widget.whatsappSettings?.messageScreen?.description || "Click the button below to start a WhatsApp conversation."}
+                          {widget.whatsappSettings?.messageScreen?.description || "Click the button below or scan the QR code to send a message to this WhatsApp number."}
                         </p>
-                        {widget.whatsappSettings?.messageScreen?.showQRCode && (
-                          <div className="flex justify-center py-2">
-                            <div className="bg-white p-1.5 rounded-lg border border-slate-200">
-                              <QRCodeDisplay 
-                                value={`https://wa.me/${widget.whatsappSettings?.numberSettings?.customNumber?.replace(/[\s()+\-]/g, '') || '17866302522'}`}
-                                size={67}
-                              />
-                            </div>
-                          </div>
-                        )}
+                        <div className="text-center">
+                          <p className="text-xl font-bold text-slate-900 dark:text-slate-100">
+                            {formatPhoneNumber(widget.whatsappSettings?.numberSettings?.customNumber || "+1 786 630 2522")}
+                          </p>
+                        </div>
                         <Button className="w-full bg-[#25D366] hover:bg-[#128C7E]">
-                          <SiWhatsapp className="h-4 w-4 mr-2" />
-                          {widget.whatsappSettings?.messageScreen?.buttonLabel || "Open WhatsApp"}
+                          {widget.whatsappSettings?.messageScreen?.buttonLabel || "Open chat"}
                         </Button>
+                        {widget.whatsappSettings?.messageScreen?.showQRCode && (
+                          <>
+                            <div className="flex justify-center py-3">
+                              <div className="relative bg-white p-2 rounded-lg border border-slate-200">
+                                <QRCodeDisplay 
+                                  value={`https://wa.me/${widget.whatsappSettings?.numberSettings?.customNumber?.replace(/[\s()+\-]/g, '') || '17866302522'}`}
+                                  size={120}
+                                />
+                                <div className="absolute inset-0 flex items-center justify-center">
+                                  <div className="bg-white p-1 rounded-full">
+                                    <SiWhatsapp className="h-6 w-6 text-[#25D366]" />
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                            <p className="text-xs text-slate-400 text-center">Scan QR code to open a chat</p>
+                          </>
+                        )}
                         <div className="text-center pt-2">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
                             Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
