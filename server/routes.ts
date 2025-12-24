@@ -30154,7 +30154,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(500).json({ message: "Failed to find phone number in Telnyx" });
       }
       
-      const searchResult = await searchResponse.json();
+      const searchText = await searchResponse.text();
+      console.log("[CNAM] Search response:", searchText.substring(0, 500));
+      const searchResult = JSON.parse(searchText);
       if (!searchResult.data || searchResult.data.length === 0) {
         return res.status(404).json({ message: "Phone number not found in Telnyx" });
       }
@@ -31398,7 +31400,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             method: "GET",
             headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
           });
-          const searchResult = await searchResponse.json();
+          const searchText = await searchResponse.text();
+      console.log("[CNAM] Search response:", searchText.substring(0, 500));
+      const searchResult = JSON.parse(searchText);
           
           if (!searchResponse.ok || !searchResult.data || searchResult.data.length === 0) {
             console.error("[10DLC Campaign] Could not find phone number in Telnyx:", phoneNumber);
