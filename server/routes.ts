@@ -30029,7 +30029,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         ownerName: num.ownerFirstName && num.ownerLastName 
           ? `${num.ownerFirstName} ${num.ownerLastName}` 
           : num.ownerFirstName || num.ownerLastName || companyName,
-        cnam: num.cnam || null,
+        // CNAM is managed per-number, not per-brand
         complianceStatus: complianceMap.get(num.phoneNumber)?.status || null,
         complianceApplicationId: complianceMap.get(num.phoneNumber)?.id || null,
         telnyxVerificationRequestId: complianceMap.get(num.phoneNumber)?.telnyxVerificationRequestId || null,
