@@ -8,6 +8,7 @@ import { z } from "zod";
 import { storage } from "./storage";
 import { walletPassService } from "./services/wallet-pass-service";
 import { apnsService } from "./services/apns-service";
+import { sesService } from "./services/ses-service";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
@@ -103,6 +104,7 @@ import fs from "fs";
 import { promises as fsPromises } from "fs";
 import crypto from "crypto";
 import multer from "multer";
+import { registerSesRoutes } from "./ses-routes";
 // Temporary in-memory storage for MMS attachments (files expire after 10 minutes)
 const mmsFileCache = new Map<string, { buffer: Buffer; contentType: string; expiresAt: number }>();
 // Helper to build absolute URL from request for external services (Telnyx)
@@ -3529,6 +3531,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         status: user.status,
         companyId: user.companyId,
         companyName: companyName,
+        // cnam field removed - not applicable to user session
         companyLogo: companyLogo,
         timezone: user.timezone,
         dateOfBirth: user.dateOfBirth,
@@ -3547,6 +3550,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         sipPassword: user.sipPassword,
         sipServer: user.sipServer,
         sipEnabled: user.sipEnabled,
+        onboardingCompleted: user.onboardingCompleted,
       },
     });
   });
@@ -3567,7 +3571,23 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       if (user.companyId) {
         const company = await storage.getCompany(user.companyId);
-        phoneSetup = !!(company?.phone);
+        
+        // Check phone setup: company phone, user sipEnabled, or active compliance application with phone number
+        const hasCompanyPhone = !!(company?.phone);
+        const hasSipEnabled = !!(user.sipEnabled);
+        
+        // Check for active compliance application with selected phone number
+        const activeApp = await db
+          .select()
+          .from(complianceApplications)
+          .where(and(
+            eq(complianceApplications.companyId, user.companyId),
+            isNotNull(complianceApplications.selectedPhoneNumber)
+          ))
+          .limit(1);
+        const hasCompliancePhone = activeApp.length > 0;
+        
+        phoneSetup = hasCompanyPhone || hasSipEnabled || hasCompliancePhone;
         
         // Check company email settings
         const settings = await storage.getCompanySettings(user.companyId);
@@ -3576,9 +3596,20 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           emailSetup = !!(emailSettings.fromEmail && emailSettings.fromName);
         }
         
+        // Also check SES email settings (new AWS SES system)
+        if (!emailSetup) {
+          const sesSettings = await sesService.getCompanyEmailSettings(user.companyId);
+          if (sesSettings) {
+            const isDomainVerified = sesSettings.domainVerificationStatus?.toLowerCase() === "success" || 
+                                     sesSettings.dkimStatus?.toLowerCase() === "success";
+            const hasSenders = Array.isArray(sesSettings.senders) && sesSettings.senders.length > 0;
+            emailSetup = isDomainVerified && hasSenders;
+          }
+        }
+        
         // Check if company has any BulkVS phone numbers (messaging channels)
         const bulkvsNumbers = await storage.getBulkvsPhoneNumbersByCompany(user.companyId);
-        messagingSetup = bulkvsNumbers.length > 0;
+        messagingSetup = bulkvsNumbers.length > 0 || hasSipEnabled || hasCompliancePhone;
         
         // Check if user has selected a plan (has subscription)
         const subscription = await storage.getSubscriptionByCompany(user.companyId);
@@ -3613,6 +3644,116 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to mark onboarding as complete" });
     }
   });
+
+  // Enable browser calling - auto-provision SIP extension for user
+  app.post("/api/onboarding/enable-browser-calling", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as User;
+      console.log(`[BrowserCalling] Starting auto-provision for user ${user.id}, company ${user.companyId}`);
+
+      // Step 1: Check if user already has an extension
+      const existingExtension = await db
+        .select()
+        .from(pbxExtensions)
+        .where(and(
+          eq(pbxExtensions.companyId, user.companyId),
+          eq(pbxExtensions.userId, user.id),
+          eq(pbxExtensions.isActive, true)
+        ));
+
+      let extension = existingExtension[0];
+
+      // Step 2: If no extension, create one
+      if (!extension) {
+        console.log(`[BrowserCalling] No extension found, creating one for user ${user.id}`);
+        
+        // Get next available extension number
+        const nextExtension = await pbxService.getNextExtensionNumber(user.companyId);
+        const displayName = `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email.split('@')[0];
+        
+        extension = await pbxService.createExtension(user.companyId, {
+          userId: user.id,
+          extension: nextExtension,
+          displayName,
+          isActive: true,
+        });
+        
+        console.log(`[BrowserCalling] Created extension ${extension.extension} for user ${user.id}`);
+      }
+
+      // Step 3: Check if SIP is already provisioned
+      if (extension.telnyxCredentialConnectionId && extension.sipUsername) {
+        console.log(`[BrowserCalling] User already has SIP credentials: ${extension.sipUsername}`);
+        
+        // Just enable SIP on user if not already
+        if (!user.sipEnabled) {
+          await db
+            .update(users)
+            .set({ sipEnabled: true })
+            .where(eq(users.id, user.id));
+        }
+        
+        return res.json({ 
+          success: true, 
+          message: "Browser calling already configured",
+          extension: extension.extension,
+          alreadyConfigured: true
+        });
+      }
+
+      // Step 4: Provision SIP credentials for the extension
+      console.log(`[BrowserCalling] Provisioning SIP for extension ${extension.id}...`);
+      
+      const { telephonyProvisioningService } = await import("./services/telephony-provisioning-service");
+      const sipResult = await telephonyProvisioningService.provisionExtensionSipConnection(
+        user.companyId,
+        extension.id
+      );
+
+      if (!sipResult.success) {
+        console.error(`[BrowserCalling] SIP provisioning failed: ${sipResult.error}`);
+        return res.status(500).json({ 
+          error: sipResult.error || "Failed to provision SIP credentials",
+          details: "Please ensure your phone system is set up first."
+        });
+      }
+
+      // Step 5: Persist SIP credentials to the extension record
+      console.log(`[BrowserCalling] Persisting SIP credentials to extension ${extension.id}...`);
+      await db
+        .update(pbxExtensions)
+        .set({
+          telnyxCredentialConnectionId: sipResult.credentialConnectionId,
+          sipCredentialId: sipResult.sipCredentialId,
+          sipUsername: sipResult.sipUsername,
+          sipPassword: sipResult.sipPassword,
+        })
+        .where(eq(pbxExtensions.id, extension.id));
+
+      // Step 6: Enable SIP on user
+      await db
+        .update(users)
+        .set({ sipEnabled: true })
+        .where(eq(users.id, user.id));
+
+      console.log(`[BrowserCalling] Successfully provisioned browser calling for user ${user.id}, extension ${extension.extension}`);
+      
+      return res.json({ 
+        success: true, 
+        message: "Browser calling enabled successfully",
+        extension: extension.extension,
+        sipUsername: sipResult.sipUsername,
+        sipDomain: sipResult.sipDomain
+      });
+
+    } catch (error) {
+      console.error("[BrowserCalling] Error:", error);
+      return res.status(500).json({ 
+        error: error instanceof Error ? error.message : "Failed to enable browser calling" 
+      });
+    }
+  });
+
   // ==================== LOCATIONIQ AUTOCOMPLETE ====================
   app.get("/api/locationiq/autocomplete", async (req: Request, res: Response) => {
     try {
@@ -28474,36 +28615,84 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
   // GET /api/phone-system/phone-numbers - Get all phone numbers for the company (for 10DLC assignment)
+  // IMPORTANT: Fetches directly from Telnyx API, not from local database
   app.get("/api/phone-system/phone-numbers", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const user = req.user!;
       if (!user.companyId) {
         return res.status(400).json({ message: "No company associated" });
       }
-      const { syncPhoneNumbersFromTelnyx, getCompanyPhoneNumbers } = await import("./services/telnyx-numbers-service");
       
-      // Sync from Telnyx first to ensure we have the latest numbers
-      await syncPhoneNumbersFromTelnyx(user.companyId);
+      const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(user.companyId);
       
-      // Get all company phone numbers
-      const result = await getCompanyPhoneNumbers(user.companyId);
-      
-      if (!result.success) {
-        return res.status(500).json({ message: result.error });
+      if (!telnyxApiKey) {
+        return res.status(400).json({ message: "Telnyx not configured" });
       }
+      
+      // Build headers - add managed account header if not using master account
+      const headers: Record<string, string> = {
+        "Authorization": `Bearer ${telnyxApiKey}`,
+        "Content-Type": "application/json",
+        "Accept": "application/json"
+      };
+      
+      if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+        headers["Telnyx-Account"] = managedAccountId;
+      }
+      
+      console.log("[Phone System] Fetching numbers from Telnyx API, managedAccount:", managedAccountId || "MASTER_ACCOUNT");
+      
+      // Fetch all phone numbers directly from Telnyx API with pagination
+      const allNumbers: any[] = [];
+      let pageNumber = 1;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const response = await fetch(`https://api.telnyx.com/v2/phone_numbers?page[number]=${pageNumber}&page[size]=250`, {
+          method: "GET",
+          headers
+        });
+        
+        if (!response.ok) {
+          const errorData = await response.json();
+          console.error("[Phone System] Telnyx API error:", errorData);
+          return res.status(response.status).json({ message: errorData.errors?.[0]?.detail || "Failed to fetch phone numbers from Telnyx" });
+        }
+        
+        const data = await response.json();
+        const numbers = data.data || [];
+        allNumbers.push(...numbers);
+        
+        // Check if there are more pages
+        hasMore = numbers.length === 250;
+        pageNumber++;
+        
+        // Safety limit
+        if (pageNumber > 20) break;
+      }
+      
+      console.log("[Phone System] Fetched", allNumbers.length, "numbers from Telnyx API");
+      
+      // Log which numbers have messaging profiles (required for 10DLC)
+      const withProfile = allNumbers.filter((n: any) => n.messaging_profile_id).length;
+      console.log("[Phone System] Numbers with messaging profile:", withProfile, "of", allNumbers.length);
+      
       // Transform to the expected format with phoneNumber and type
-      // Note: Telnyx API uses snake_case (phone_number), we convert to camelCase
-      const numbers = (result.numbers || []).map((num: any) => {
-        const phoneNum = num.phone_number || num.phoneNumber;
+      const numbers = allNumbers.map((num: any) => {
+        const phoneNum = num.phone_number;
         return {
           phoneNumber: phoneNum,
-          type: num.type || (phoneNum?.startsWith("+1800") || phoneNum?.startsWith("+1888") || 
+          type: num.phone_number_type || (phoneNum?.startsWith("+1800") || phoneNum?.startsWith("+1888") || 
                 phoneNum?.startsWith("+1877") || phoneNum?.startsWith("+1866") ||
                 phoneNum?.startsWith("+1855") || phoneNum?.startsWith("+1844") ||
                 phoneNum?.startsWith("+1833") ? "toll-free" : "local"),
-          id: num.id
+          id: num.id,
+          messagingProfileId: num.messaging_profile_id
         };
       });
+      
       res.json({ numbers });
     } catch (error: any) {
       console.error("[Phone System] Error getting phone numbers:", error);
@@ -29282,6 +29471,17 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             { keyName: "webhook_secret", label: "Webhook Secret", required: false, hint: "Optional secret for webhook validation" },
           ]
         },
+        { 
+          provider: "aws_ses", 
+          label: "AWS SES (Email Campaigns)",
+          helpText: "Get your IAM credentials from AWS Console > IAM > Users > Security credentials",
+          helpUrl: "https://console.aws.amazon.com/iam/",
+          keys: [
+            { keyName: "access_key_id", label: "Access Key ID", required: true, hint: "Starts with AKIA..." },
+            { keyName: "secret_access_key", label: "Secret Access Key", required: true, hint: "The secret key for the access key" },
+            { keyName: "region", label: "AWS Region", required: false, hint: "Default: us-east-1" },
+          ]
+        },
       ];
       res.json({ providers: providerConfigs, apiProviders });
     } catch (error: any) {
@@ -29743,6 +29943,466 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       res.status(500).json({ message: "Failed to delete config" });
     }
   });
+  // GET /api/sms-voice/numbers - Get toll-free numbers with compliance status for SMS & Voice page
+  app.get("/api/sms-voice/numbers", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user as User;
+      const companyId = currentUser.companyId;
+      
+      if (!companyId) {
+        return res.json({ numbers: [] });
+      }
+      
+      // Get company name for fallback
+      const company = await db.query.companies.findFirst({
+        where: eq(companies.id, companyId),
+        columns: { name: true },
+      });
+      const companyName = company?.name || null;
+
+      // Get all phone numbers for the company (simple query without join)
+      const phoneNumbersRaw = await db
+        .select()
+        .from(telnyxPhoneNumbers)
+        .where(eq(telnyxPhoneNumbers.companyId, companyId));
+      
+      // Get owner info separately for each phone number
+      const phoneNumbers = await Promise.all(phoneNumbersRaw.map(async (num) => {
+        let ownerFirstName = null;
+        let ownerLastName = null;
+        if (num.ownerUserId) {
+          const [owner] = await db.select({ firstName: users.firstName, lastName: users.lastName })
+            .from(users)
+            .where(eq(users.id, num.ownerUserId))
+            .limit(1);
+          if (owner) {
+            ownerFirstName = owner.firstName;
+            ownerLastName = owner.lastName;
+          }
+        }
+        return {
+          id: num.id,
+          phoneNumber: num.phoneNumber,
+          displayName: num.displayName,
+          status: num.status,
+          monthlyFee: num.monthlyFee,
+          purchasedAt: num.purchasedAt,
+          ownerUserId: num.ownerUserId,
+          ownerFirstName,
+          ownerLastName,
+          cnam: num.cnam,
+        };
+      }));
+      
+      // Get compliance applications for these numbers
+      const phoneNumberList = phoneNumbers.map(p => p.phoneNumber);
+      const complianceApps = phoneNumberList.length > 0 
+        ? await db
+            .select({
+              id: complianceApplications.id,
+              selectedPhoneNumber: complianceApplications.selectedPhoneNumber,
+              status: complianceApplications.status,
+              telnyxVerificationRequestId: complianceApplications.telnyxVerificationRequestId,
+            })
+            .from(complianceApplications)
+            .where(
+              and(
+                eq(complianceApplications.companyId, companyId),
+                inArray(complianceApplications.selectedPhoneNumber, phoneNumberList)
+              )
+            )
+        : [];
+      
+      // Map compliance status to phone numbers
+      const complianceMap = new Map(
+        complianceApps.map(app => [app.selectedPhoneNumber, { id: app.id, status: app.status, telnyxVerificationRequestId: app.telnyxVerificationRequestId }])
+      );
+      
+      const numbersWithCompliance = phoneNumbers.map(num => ({
+        id: num.id,
+        phoneNumber: num.phoneNumber,
+        displayName: num.displayName,
+        status: num.status,
+        monthlyFee: num.monthlyFee,
+        purchasedAt: num.purchasedAt,
+        ownerUserId: num.ownerUserId,
+        ownerName: num.ownerFirstName && num.ownerLastName 
+          ? `${num.ownerFirstName} ${num.ownerLastName}` 
+          : num.ownerFirstName || num.ownerLastName || companyName,
+        // CNAM is managed per-number, not per-brand
+        complianceStatus: complianceMap.get(num.phoneNumber)?.status || null,
+        complianceApplicationId: complianceMap.get(num.phoneNumber)?.id || null,
+        telnyxVerificationRequestId: complianceMap.get(num.phoneNumber)?.telnyxVerificationRequestId || null,
+      }));
+      
+      res.json({ numbers: numbersWithCompliance });
+    } catch (error) {
+      console.error("[SMS-Voice] Error fetching numbers:", error);
+      res.status(500).json({ message: "Failed to fetch phone numbers" });
+    }
+  });
+
+  // PATCH /api/telnyx/my-numbers/:id - Update phone number display name
+  app.patch("/api/telnyx/my-numbers/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user as User;
+      const companyId = currentUser.companyId;
+      const { id } = req.params;
+      const { displayName } = req.body;
+      
+      if (!companyId) {
+        return res.status(403).json({ message: "Company not found" });
+      }
+      
+      if (typeof displayName !== "string") {
+        return res.status(400).json({ message: "Display name must be a string" });
+      }
+      
+      // Verify the phone number belongs to this company
+      const phoneNumber = await db
+        .select()
+        .from(telnyxPhoneNumbers)
+        .where(and(
+          eq(telnyxPhoneNumbers.id, id),
+          eq(telnyxPhoneNumbers.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (phoneNumber.length === 0) {
+        return res.status(404).json({ message: "Phone number not found" });
+      }
+      
+      // Update the display name
+      await db
+        .update(telnyxPhoneNumbers)
+        .set({ displayName: displayName.trim() || null })
+        .where(eq(telnyxPhoneNumbers.id, id));
+      
+      res.json({ success: true, message: "Display name updated" });
+    } catch (error) {
+      console.error("[Telnyx] Error updating phone number display name:", error);
+      res.status(500).json({ message: "Failed to update display name" });
+    }
+  });
+
+  // PATCH /api/telnyx/caller-id - Update caller ID name (CNAM) for a phone number
+  app.patch("/api/telnyx/caller-id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const currentUser = req.user as User;
+      const companyId = currentUser.companyId;
+      const { phoneNumber, callerIdName } = req.body;
+      
+      if (!companyId) {
+        return res.status(403).json({ message: "Company not found" });
+      }
+      
+      if (!phoneNumber || typeof callerIdName !== "string") {
+        return res.status(400).json({ message: "Phone number and caller ID name are required" });
+      }
+      
+      // Sanitize CNAM - max 15 alphanumeric characters or spaces
+      const sanitizedCnam = callerIdName.replace(/[^a-zA-Z0-9 ]/g, "").substring(0, 15).toUpperCase();
+      
+      if (sanitizedCnam.length === 0) {
+        return res.status(400).json({ message: "Caller ID name must contain at least one alphanumeric character" });
+      }
+      
+      
+      // Verify the phone number belongs to this company
+      const phoneNumberRecord = await db
+        .select()
+        .from(telnyxPhoneNumbers)
+        .where(and(
+          eq(telnyxPhoneNumbers.phoneNumber, phoneNumber),
+          eq(telnyxPhoneNumbers.companyId, companyId)
+        ))
+        .limit(1);
+      
+      if (phoneNumberRecord.length === 0) {
+        return res.status(404).json({ message: "Phone number not found" });
+      }
+      
+      // Get Telnyx API key and managed account ID for multi-tenant isolation
+      const apiKey = await getTelnyxMasterApiKey();
+      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const managedAccountId = await getCompanyManagedAccountId(companyId);
+      
+      // Build headers with managed account isolation
+      const telnyxHeaders: Record<string, string> = {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json"
+      };
+      if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+        telnyxHeaders["x-telnyx-account-id"] = managedAccountId;
+      }
+      
+      console.log(`[CNAM] Looking up phone number ${phoneNumber} for company ${companyId} with managedAccountId: ${managedAccountId}`);
+      
+      // Use the Telnyx phone number ID from our database (more reliable than API search with managed accounts)
+      const telnyxPhoneId = phoneNumberRecord[0].telnyxPhoneNumberId;
+      if (!telnyxPhoneId) {
+        console.error(`[CNAM] No Telnyx phone number ID stored for ${phoneNumber}`);
+        return res.status(404).json({ message: "Phone number not linked to Telnyx" });
+      }
+      console.log(`[CNAM] Using stored Telnyx phone ID: ${telnyxPhoneId}`);
+      
+      
+      
+      // Use POST /v2/cnam_listings to create CNAM listing (this is what the portal uses)
+      let cnamUpdateSuccess = false;
+      
+      // First try to create a new CNAM listing
+      const setCnamResponse = await fetch(
+        `https://api.telnyx.com/v2/cnam_listings`,
+        {
+          method: "POST",
+          headers: telnyxHeaders,
+          body: JSON.stringify({
+            phone_number_id: telnyxPhoneId,
+            caller_id_name: sanitizedCnam
+          })
+        }
+      );
+      
+      if (setCnamResponse.ok) {
+        const result = await setCnamResponse.json();
+        console.log(`[CNAM] Successfully created CNAM listing "${sanitizedCnam}" for phone ${telnyxPhoneId}`);
+        console.log(`[CNAM] Response:`, JSON.stringify(result.data));
+        cnamUpdateSuccess = true;
+      } else if (setCnamResponse.status === 409 || setCnamResponse.status === 422) {
+        // CNAM listing already exists - try to update via PATCH
+        console.log(`[CNAM] CNAM listing may exist, getting existing listing...`);
+        const listResp = await fetch(`https://api.telnyx.com/v2/cnam_listings?filter[phone_number_id]=${telnyxPhoneId}`, { headers: telnyxHeaders });
+        if (listResp.ok) {
+          const listData = await listResp.json();
+          if (listData.data?.length > 0) {
+            const cnamId = listData.data[0].id;
+            const patchResp = await fetch(`https://api.telnyx.com/v2/cnam_listings/${cnamId}`, {
+              method: "PATCH",
+              headers: telnyxHeaders,
+              body: JSON.stringify({ caller_id_name: sanitizedCnam })
+            });
+            if (patchResp.ok) {
+              console.log(`[CNAM] Updated existing CNAM listing to "${sanitizedCnam}"`);
+              cnamUpdateSuccess = true;
+            }
+          }
+        }
+      } else {
+        const errorText = await setCnamResponse.text();
+        console.error(`[CNAM] Failed to create CNAM listing: ${setCnamResponse.status} - ${errorText}`);
+      }
+      
+      // Update local database with CNAM
+      await db
+        .update(telnyxPhoneNumbers)
+        .set({ callerIdName: sanitizedCnam })
+        .where(eq(telnyxPhoneNumbers.phoneNumber, phoneNumber));
+      
+      if (cnamUpdateSuccess) {
+        res.json({ 
+          success: true, 
+          message: `Caller ID name set to "${sanitizedCnam}". It may take 3-5 business days to propagate across all carriers.`,
+          callerIdName: sanitizedCnam
+        });
+      } else {
+        // CNAM listing failed - return error
+        return res.status(400).json({ 
+          success: false, 
+          message: `Failed to update CNAM in Telnyx. The CNAM Listings API returned an error. Please configure CNAM directly in the Telnyx portal.`,
+          callerIdName: null
+        });
+      }
+    } catch (error) {
+      console.error("[Telnyx CNAM] Error updating caller ID:", error);
+      res.status(500).json({ message: "Failed to update caller ID" });
+    }
+  });
+  app.get("/api/telnyx/verification-request/by-phone/:phoneNumber", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { phoneNumber } = req.params;
+      
+      if (!phoneNumber) {
+        return res.status(400).json({ message: "Phone number is required" });
+      }
+      
+      // Normalize phone number for comparison
+      const normalizePhone = (phone: string) => {
+        const digits = phone.replace(/[^\d]/g, '');
+        return digits.startsWith('1') ? digits : '1' + digits;
+      };
+      const targetDigits = normalizePhone(phoneNumber);
+      
+      const apiKey = await getTelnyxMasterApiKey();
+      
+      // Get managed account ID for this company
+      const { getCompanyTelnyxAccountId } = await import("./services/wallet-service");
+      const managedAccountId = await getCompanyTelnyxAccountId(user.companyId);
+      
+      // Build headers with managed account if available
+      const headers: Record<string, string> = {
+        "Authorization": `Bearer ${apiKey}`,
+        "Content-Type": "application/json",
+      };
+      
+      if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+        headers["x-managed-account-id"] = managedAccountId;
+      }
+      
+      // Get all verification requests
+      const response = await fetch(`https://api.telnyx.com/v2/messaging_tollfree/verification/requests?page=1&page_size=100`, {
+        method: "GET",
+        headers,
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[Telnyx TFV] Error listing verification requests:", errorText);
+        return res.status(404).json({ message: "No verification request found for this phone number" });
+      }
+      
+      const data = await response.json();
+      const records = data.records || [];
+      
+      // Find the verification request that contains this phone number
+      let foundRecord = null;
+      for (const record of records) {
+        const phoneNumbers = record.phone_numbers || record.phoneNumbers || [];
+        for (const pn of phoneNumbers) {
+          const recordPhone = pn.phone_number || pn.phoneNumber || pn;
+          const recordDigits = normalizePhone(String(recordPhone));
+          if (recordDigits === targetDigits) {
+            foundRecord = record;
+            break;
+          }
+        }
+        if (foundRecord) break;
+      }
+      
+      if (!foundRecord) {
+        return res.status(404).json({ message: "No verification request found for this phone number" });
+      }
+      
+      // Extract all available fields from Telnyx response (camelCase format)
+      const raw = foundRecord;
+      // Debug: Log all available fields from Telnyx
+      
+      const flattened = {
+        id: raw.id,
+        verification_status: raw.status || raw.verification_status || raw.verificationStatus,
+        business_name: raw.businessName || raw.business_name,
+        brand_display_name: raw.dba || raw.brand_display_name,
+        business_type: raw.businessType || raw.business_type,
+        business_vertical: raw.vertical || raw.business_vertical,
+        business_registration_number: raw.businessRegistrationNumber || raw.business_registration_number,
+        business_registration_type: raw.businessRegistrationType || raw.business_registration_type,
+        website_url: raw.corporateWebsite || raw.website_url,
+        street_address: raw.businessAddr1 || raw.street_address,
+        street_address_2: raw.businessAddr2 || raw.street_address_2,
+        city: raw.businessCity || raw.city,
+        region: raw.businessState || raw.region,
+        postal_code: raw.businessZip || raw.postal_code,
+        first_name: raw.businessContactFirstName || raw.first_name,
+        last_name: raw.businessContactLastName || raw.last_name,
+        contact_phone: raw.businessContactPhone || raw.contact_phone,
+        contact_email: raw.businessContactEmail || raw.contact_email,
+        use_case: raw.useCase || raw.use_case,
+        campaign_description: raw.useCaseSummary || raw.campaign_description,
+        production_message_content: raw.productionMessageContent || raw.production_message_content,
+        sample_messages: raw.sample_messages || (raw.productionMessageContent ? [raw.productionMessageContent] : []),
+        message_flow: raw.optInWorkflow || raw.message_flow,
+        opt_in_workflow: raw.optInWorkflow || raw.opt_in_workflow,
+        opt_in_workflow_image_urls: raw.optInWorkflowImageURLs || raw.opt_in_workflow_image_urls || [],
+        estimated_volume: raw.messageVolume || raw.estimated_volume,
+        isv_reseller: raw.isvReseller || raw.isv_reseller,
+        additional_information: raw.additionalInformation || raw.additional_information,
+        phone_numbers: raw.phoneNumbers || raw.phone_numbers || [],
+        reason: raw.reason,
+        created_at: raw.createdAt || raw.created_at,
+        updated_at: raw.updatedAt || raw.updated_at,
+        source: "telnyx",
+      };
+      
+      res.json({ verification: flattened });
+    } catch (error: any) {
+      console.error("[Telnyx TFV] Error fetching verification request by phone:", error);
+      res.status(500).json({ message: "Failed to fetch verification request" });
+    }
+  });
+  app.get("/api/telnyx/verification-request/:id", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const { id } = req.params;
+      
+      if (!id) {
+        return res.status(400).json({ message: "Verification request ID is required" });
+      }
+      
+      const apiKey = await getTelnyxMasterApiKey();
+      
+      const response = await fetch(`https://api.telnyx.com/v2/verification_requests/${id}`, {
+        method: "GET",
+        headers: {
+          "Authorization": `Bearer ${apiKey}`,
+          "Content-Type": "application/json",
+        },
+      });
+      
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("[Telnyx] Error fetching verification request:", errorText);
+        return res.status(response.status).json({ 
+          message: "Failed to fetch verification request from Telnyx",
+          error: errorText 
+        });
+      }
+      
+      const data = await response.json();
+      const raw = data.data || {};
+      
+      // Flatten the Telnyx response to match frontend interface
+      // Telnyx API has nested structures under business_profile, traffic_profile, etc.
+      const businessProfile = raw.business_profile || {};
+      const trafficProfile = raw.traffic_profile || {};
+      const businessAddress = businessProfile.business_address || {};
+      
+      const flattened = {
+        id: raw.id,
+        verification_status: raw.status || raw.verification_status,
+        business_name: businessProfile.business_name || raw.business_name,
+        brand_display_name: businessProfile.dba || businessProfile.brand_display_name || raw.brand_display_name,
+        business_type: businessProfile.business_type || raw.business_type,
+        business_vertical: businessProfile.business_vertical || trafficProfile.vertical || raw.business_vertical,
+        website_url: businessProfile.website_url || raw.website_url,
+        street_address: businessAddress.street_address || businessAddress.address_line_1 || raw.street_address,
+        city: businessAddress.city || raw.city,
+        region: businessAddress.region || businessAddress.state || raw.region,
+        postal_code: businessAddress.postal_code || businessAddress.zip || raw.postal_code,
+        first_name: businessProfile.first_name || raw.first_name,
+        last_name: businessProfile.last_name || raw.last_name,
+        contact_phone: businessProfile.phone_number || businessProfile.contact_phone || raw.contact_phone,
+        contact_email: businessProfile.email || businessProfile.contact_email || raw.contact_email,
+        use_case: trafficProfile.use_case || raw.use_case,
+        campaign_description: trafficProfile.description || trafficProfile.campaign_description || raw.campaign_description,
+        sample_messages: trafficProfile.sample_messages || raw.sample_messages || [],
+      };
+      
+      res.json({ verification: flattened });
+    } catch (error: any) {
+      console.error("[Telnyx] Error fetching verification request:", error);
+      res.status(500).json({ message: "Failed to fetch verification request" });
+    }
+  });
+
   // GET /api/telnyx/phone-system-access - Check if current user has access to Phone System tab
   app.get("/api/telnyx/phone-system-access", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -29804,8 +30464,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         // Fall back to local database if Telnyx not configured
         const brands = await db
           .select()
@@ -29844,6 +30505,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         tcrBrandId: brand.tcrBrandId,
         displayName: brand.displayName,
         companyName: brand.companyName,
+        cnam: num.cnam || null,
         email: brand.email,
         entityType: brand.entityType,
         vertical: brand.vertical,
@@ -29877,6 +30539,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       console.log("[10DLC Brand] Looking up managed account for company:", companyId);
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       console.log("[10DLC Brand] Managed account result:", managedAccountId);
       
       if (!managedAccountId) {
@@ -30026,6 +30689,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       // If no profile ID saved, try to fetch from Telnyx and sync
       if (!wallet?.telnyxMessagingProfileId && wallet && telnyxApiKey && managedAccountId) {
@@ -30061,7 +30725,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.json({ exists: false, profile: null });
       }
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.json({ exists: true, profile: { id: wallet.telnyxMessagingProfileId } });
       }
       
@@ -30102,6 +30766,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx API key not configured" });
@@ -30187,8 +30852,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -30244,8 +30910,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.json({ campaigns: [] });
       }
       
@@ -30332,8 +30999,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -30450,8 +31118,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -30490,8 +31159,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
 
@@ -30523,9 +31193,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
       console.log("[10DLC Campaign] Updating campaign:", id, JSON.stringify(updateData, null, 2));
       
-      const response = await fetch(`https://api.telnyx.com/v2/10dlc/campaign/\${id}`, {
+      const response = await fetch(`https://api.telnyx.com/v2/10dlc/campaign/${id}`, {
         method: "PUT",
-        headers: { "Authorization": `Bearer \${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
+        headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify(updateData),
       });
       
@@ -30558,16 +31228,17 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
 
       console.log("[10DLC Campaign] Appealing campaign:", id, "Reason:", appealReason);
       
-      const response = await fetch(`https://api.telnyx.com/v2/10dlc/campaign/\${id}/appeal`, {
+      const response = await fetch(`https://api.telnyx.com/v2/10dlc/campaign/${id}/appeal`, {
         method: "POST",
-        headers: { "Authorization": `Bearer \${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
+        headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
         body: JSON.stringify({ reason: appealReason.trim() }),
       });
       
@@ -30586,7 +31257,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
   // GET /api/phone-system/campaigns/:id/phone-numbers - Get phone numbers assigned to campaign
-  // Telnyx API: GET https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[telnyx_campaign_id]=...
+  // Uses phone numbers endpoint and filters by messaging profile (more reliable than buggy phone_number_campaigns endpoint)
   app.get("/api/phone-system/campaigns/:id/phone-numbers", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = req.session.user?.companyId;
@@ -30596,6 +31267,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
@@ -30603,65 +31275,62 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       console.log("[10DLC Campaign Numbers] Fetching for campaign:", id, "tcrCampaignId:", tcrCampaignId, "managedAccount:", managedAccountId);
       
-      // Strategy 1: Try with campaignId filter first
-      let url = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[telnyx_campaign_id]=${encodeURIComponent(id)}`;
-      console.log("[10DLC Campaign Numbers] Trying URL:", url);
+      // Strategy: Get all phone numbers from account that have messaging profile
+      // These are the numbers assigned to 10DLC campaigns
+      const allNumbers: any[] = [];
+      let pageNumber = 1;
+      let hasMore = true;
       
-      let response = await fetch(url, {
-        method: "GET",
-        headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
-      });
-      
-      let result = await response.json();
-      console.log("[10DLC Campaign Numbers] Response status:", response.status, "Raw:", JSON.stringify(result).substring(0, 500));
-      
-      let numbers = result.records || [];
-      
-      // Strategy 2: If no results and we have tcrCampaignId, try filtering by tcrCampaignId
-      if (numbers.length === 0 && tcrCampaignId) {
-        url = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[tcr_campaign_id]=${encodeURIComponent(String(tcrCampaignId))}`;
-        console.log("[10DLC Campaign Numbers] No results, trying tcrCampaignId filter:", url);
+      while (hasMore && pageNumber <= 10) {
+        const url = `https://api.telnyx.com/v2/phone_numbers?page[number]=${pageNumber}&page[size]=250`;
+        console.log("[10DLC Campaign Numbers] Fetching phone numbers page", pageNumber);
         
-        response = await fetch(url, {
+        const response = await fetch(url, {
           method: "GET",
           headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
         });
         
-        result = await response.json();
-        console.log("[10DLC Campaign Numbers] TCR filter response:", response.status, JSON.stringify(result).substring(0, 500));
-        numbers = result.records || [];
-      }
-      
-      // Strategy 3: If still no results, get ALL and filter locally
-      if (numbers.length === 0) {
-        url = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns`;
-        console.log("[10DLC Campaign Numbers] Trying get ALL numbers (no filter)");
+        if (!response.ok) {
+          console.error("[10DLC Campaign Numbers] Error fetching phone numbers:", await response.text());
+          break;
+        }
         
-        response = await fetch(url, {
-          method: "GET",
-          headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
-        });
+        const result = await response.json();
+        const data = result.data || [];
+        console.log("[10DLC Campaign Numbers] Page", pageNumber, "returned", data.length, "phone numbers");
         
-        result = await response.json();
-        const allNumbers = result.records || [];
-        console.log("[10DLC Campaign Numbers] Got", allNumbers.length, "total numbers");
-        
-        if (allNumbers.length > 0) {
-          console.log("[10DLC Campaign Numbers] Sample:", JSON.stringify(allNumbers[0], null, 2));
+        if (data.length === 0) {
+          hasMore = false;
+        } else {
+          // Filter numbers with messaging profile (10DLC enabled)
+          for (const num of data) {
+            if (num.messaging_profile_id) {
+              allNumbers.push({
+                phoneNumber: num.phone_number,
+                assignmentStatus: "ASSIGNED",
+                telnyxCampaignId: id,
+                tcrCampaignId: tcrCampaignId || null,
+                messagingProfileId: num.messaging_profile_id,
+                createdAt: num.created_at,
+                updatedAt: num.updated_at,
+              });
+            }
+          }
           
-          // Filter locally by any matching ID
-          numbers = allNumbers.filter((num: any) => {
-            return num.campaignId === id || 
-                   num.telnyxCampaignId === id || 
-                   (tcrCampaignId && num.tcrCampaignId === tcrCampaignId) ||
-                   (tcrCampaignId && num.campaignId === tcrCampaignId);
-          });
-          console.log("[10DLC Campaign Numbers] After local filter:", numbers.length);
+          // Check if there are more pages
+          const meta = result.meta || {};
+          if (meta.total_pages && pageNumber >= meta.total_pages) {
+            hasMore = false;
+          } else if (data.length < 250) {
+            hasMore = false;
+          } else {
+            pageNumber++;
+          }
         }
       }
       
-      console.log("[10DLC Campaign Numbers] Final result:", numbers.length, "numbers");
-      res.json({ phoneNumbers: numbers });
+      console.log("[10DLC Campaign Numbers] Final count:", allNumbers.length, "numbers with messaging profile");
+      res.json({ phoneNumbers: allNumbers });
     } catch (error: any) {
       console.error("Error fetching campaign phone numbers:", error);
       res.status(500).json({ message: error.message });
@@ -30669,6 +31338,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
   // POST /api/phone-system/campaigns/:id/phone-numbers - Assign phone numbers to campaign
   // Telnyx API: POST https://api.telnyx.com/v2/10dlc/phone_number_campaigns with { phoneNumber, campaignId }
+  // STEP 1: Assign messaging profile to number, STEP 2: Assign number to campaign
   app.post("/api/phone-system/campaigns/:id/phone-numbers", requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = req.session.user?.companyId;
@@ -30681,11 +31351,20 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+      const { getCompanyMessagingProfileId } = await import("./services/telnyx-manager-service");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
+      
+      // Get company's messaging profile ID - required for 10DLC
+      const messagingProfileId = await getCompanyMessagingProfileId(companyId!);
+      if (!messagingProfileId) {
+        return res.status(400).json({ message: "No messaging profile configured. Please set up Phone System first." });
+      }
+      console.log("[10DLC Campaign] Using messaging profile:", messagingProfileId);
       
       // Detect if this is a Telnyx UUID or TCR ID
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
@@ -30698,14 +31377,49 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       for (const phoneNumber of phoneNumbers) {
         try {
-          // Use correct field based on ID format - Telnyx API accepts either campaignId (UUID) or tcrCampaignId
+          // STEP 1: Get phone number ID from Telnyx
+          const searchUrl = `https://api.telnyx.com/v2/phone_numbers?filter[phone_number]=${encodeURIComponent(phoneNumber)}`;
+          const searchResponse = await fetch(searchUrl, {
+            method: "GET",
+            headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
+          });
+          const searchText = await searchResponse.text();
+      console.log("[CNAM] Search response:", searchText.substring(0, 500));
+      const searchResult = JSON.parse(searchText);
+          
+          if (!searchResponse.ok || !searchResult.data || searchResult.data.length === 0) {
+            console.error("[10DLC Campaign] Could not find phone number in Telnyx:", phoneNumber);
+            errors.push({ phoneNumber, error: "Phone number not found in Telnyx account" });
+            continue;
+          }
+          
+          const phoneNumberId = searchResult.data[0].id;
+          console.log("[10DLC Campaign] Found phone number ID:", phoneNumberId, "for", phoneNumber);
+          
+          // STEP 2: Assign messaging profile to number
+          const msgProfileUrl = `https://api.telnyx.com/v2/phone_numbers/${phoneNumberId}/messaging`;
+          const msgProfileResponse = await fetch(msgProfileUrl, {
+            method: "PATCH",
+            headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
+            body: JSON.stringify({ messaging_profile_id: messagingProfileId }),
+          });
+          const msgProfileResult = await msgProfileResponse.json();
+          
+          if (!msgProfileResponse.ok) {
+            console.error("[10DLC Campaign] Error assigning messaging profile to", phoneNumber, ":", msgProfileResult);
+            errors.push({ phoneNumber, error: msgProfileResult.errors?.[0]?.detail || "Failed to assign messaging profile" });
+            continue;
+          }
+          console.log("[10DLC Campaign] Messaging profile assigned to", phoneNumber);
+          
+          // STEP 3: Assign number to 10DLC campaign
           const assignmentBody = isUUID 
             ? { phoneNumber, campaignId: id }
             : { phoneNumber, tcrCampaignId: id };
           console.log("[10DLC Campaign] Assignment body:", JSON.stringify(assignmentBody));
           
           const response = await fetch(`https://api.telnyx.com/v2/10dlc/phone_number_campaigns`, {
-            method: "PUT",
+            method: "POST",
             headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
             body: JSON.stringify(assignmentBody),
           });
@@ -30735,6 +31449,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
   // DELETE /api/phone-system/campaigns/:id/phone-numbers/:phoneNumber - Remove phone number from campaign
+  // DELETE /api/phone-system/campaigns/:id/phone-numbers/:phoneNumber - Remove phone number from campaign
   // Telnyx API: DELETE https://api.telnyx.com/v2/10dlc/phone_number_campaigns/:phoneNumber
   app.delete("/api/phone-system/campaigns/:id/phone-numbers/:phoneNumber", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -30744,6 +31459,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
@@ -30777,8 +31493,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -30819,8 +31536,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -30896,7 +31614,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const response = await fetch(
         "https://api.telnyx.com/v2/messaging_tollfree/verification/requests",
         {
-          method: "PUT",
+          method: "POST",
           headers: { ...buildTelnyxHeaders(telnyxApiKey, managedAccountId), "Accept": "application/json" },
           body: JSON.stringify(requestBody),
         }
@@ -30930,8 +31648,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -30969,8 +31688,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -31007,8 +31727,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -31042,8 +31763,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -31083,8 +31805,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -31222,8 +31945,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
-      if (!telnyxApiKey || !managedAccountId) {
+      if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
       }
       
@@ -31972,6 +32696,149 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       res.status(500).json({ message: "Failed to update spam protection settings" });
     }
   });
+  
+  // =====================================================
+  // E911 EMERGENCY ADDRESS MANAGEMENT
+  // =====================================================
+  
+  // GET /api/telnyx/e911/addresses - List E911 addresses for company
+  app.get("/api/telnyx/e911/addresses", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      const { listE911Addresses } = await import("./services/telnyx-e911-service");
+      const addresses = await listE911Addresses(user.companyId);
+      res.json({ addresses });
+    } catch (error: any) {
+      console.error("[E911 API] List addresses error:", error);
+      res.status(500).json({ message: "Failed to list E911 addresses" });
+    }
+  });
+
+  // POST /api/telnyx/e911/addresses - Create E911 address
+  app.post("/api/telnyx/e911/addresses", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can create E911 addresses" });
+      }
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      const { streetAddress, extendedAddress, locality, administrativeArea, postalCode, countryCode, callerName } = req.body;
+      if (!streetAddress || !locality || !administrativeArea || !postalCode || !callerName) {
+        return res.status(400).json({ message: "Missing required fields: streetAddress, locality, administrativeArea, postalCode, callerName" });
+      }
+      const { createE911Address } = await import("./services/telnyx-e911-service");
+      const result = await createE911Address(user.companyId, {
+        streetAddress,
+        extendedAddress,
+        locality,
+        administrativeArea,
+        postalCode,
+        countryCode,
+        callerName,
+      });
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+      res.json({ success: true, addressId: result.addressId, telnyxAddressId: result.telnyxAddressId });
+    } catch (error: any) {
+      console.error("[E911 API] Create address error:", error);
+      res.status(500).json({ message: "Failed to create E911 address" });
+    }
+  });
+
+  // DELETE /api/telnyx/e911/addresses/:addressId - Delete E911 address
+  app.delete("/api/telnyx/e911/addresses/:addressId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can delete E911 addresses" });
+      }
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      const { addressId } = req.params;
+      const { deleteE911Address } = await import("./services/telnyx-e911-service");
+      const result = await deleteE911Address(user.companyId, addressId);
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[E911 API] Delete address error:", error);
+      res.status(500).json({ message: "Failed to delete E911 address" });
+    }
+  });
+
+  // GET /api/telnyx/e911/phone-numbers - Get phone numbers with E911 status
+  app.get("/api/telnyx/e911/phone-numbers", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      const { getPhoneNumbersWithE911Status } = await import("./services/telnyx-e911-service");
+      const numbers = await getPhoneNumbersWithE911Status(user.companyId);
+      res.json({ numbers });
+    } catch (error: any) {
+      console.error("[E911 API] Get phone numbers error:", error);
+      res.status(500).json({ message: "Failed to get phone numbers with E911 status" });
+    }
+  });
+
+  // POST /api/telnyx/e911/phone-numbers/:phoneNumberId/assign - Assign E911 address to phone number
+  app.post("/api/telnyx/e911/phone-numbers/:phoneNumberId/assign", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can assign E911 addresses" });
+      }
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      const { phoneNumberId } = req.params;
+      const { addressId } = req.body;
+      if (!addressId) {
+        return res.status(400).json({ message: "addressId is required" });
+      }
+      const { assignE911AddressToNumber } = await import("./services/telnyx-e911-service");
+      const result = await assignE911AddressToNumber(user.companyId, phoneNumberId, addressId);
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[E911 API] Assign address error:", error);
+      res.status(500).json({ message: "Failed to assign E911 address to phone number" });
+    }
+  });
+
+  // DELETE /api/telnyx/e911/phone-numbers/:phoneNumberId - Remove E911 from phone number
+  app.delete("/api/telnyx/e911/phone-numbers/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user!;
+      if (user.role !== 'admin' && user.role !== 'superadmin') {
+        return res.status(403).json({ message: "Forbidden - Only administrators can remove E911" });
+      }
+      if (!user.companyId) {
+        return res.status(400).json({ message: "No company associated with user" });
+      }
+      const { phoneNumberId } = req.params;
+      const { removeE911FromNumber } = await import("./services/telnyx-e911-service");
+      const result = await removeE911FromNumber(user.companyId, phoneNumberId);
+      if (!result.success) {
+        return res.status(500).json({ message: result.error });
+      }
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[E911 API] Remove E911 error:", error);
+      res.status(500).json({ message: "Failed to remove E911 from phone number" });
+    }
+  });
   // POST /api/telnyx/caller-id-lookup/:phoneNumberId - Update inbound caller ID lookup (note: may be readOnly in API)
   app.post("/api/telnyx/caller-id-lookup/:phoneNumberId", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -32155,92 +33022,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     } catch (error: any) {
       console.error("[Number Voice Settings] Update error:", error);
       res.status(500).json({ message: "Failed to update voice settings" });
-    }
-  });
-
-  // PATCH /api/telnyx/caller-id - Update caller ID name (CNAM) for a phone number
-  app.patch("/api/telnyx/caller-id", requireActiveCompany, async (req: Request, res: Response) => {
-    try {
-      const companyId = req.user!.companyId!;
-      const { phoneNumber, callerIdName } = req.body;
-      
-      if (!phoneNumber || !callerIdName) {
-        return res.status(400).json({ message: "Phone number and caller ID name are required" });
-      }
-      
-      const sanitizedCnam = callerIdName.replace(/[^a-zA-Z0-9 ]/g, "").substring(0, 15).toUpperCase();
-      
-      if (sanitizedCnam.length === 0) {
-        return res.status(400).json({ message: "Caller ID name must contain at least one alphanumeric character" });
-      }
-      
-      const phoneNumberRecord = await db
-        .select()
-        .from(telnyxPhoneNumbers)
-        .where(and(
-          eq(telnyxPhoneNumbers.phoneNumber, phoneNumber),
-          eq(telnyxPhoneNumbers.companyId, companyId)
-        ))
-        .limit(1);
-      
-      if (phoneNumberRecord.length === 0) {
-        return res.status(404).json({ message: "Phone number not found" });
-      }
-      
-      const apiKey = await getTelnyxMasterApiKey();
-      const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
-      const managedAccountId = await getCompanyManagedAccountId(companyId);
-      
-      const telnyxPhoneId = phoneNumberRecord[0].telnyxPhoneNumberId;
-      if (!telnyxPhoneId) {
-        return res.status(404).json({ message: "Phone number not linked to Telnyx" });
-      }
-      
-      console.log(`[CNAM] Setting CNAM "${sanitizedCnam}" for phone ${phoneNumber} (telnyxId: ${telnyxPhoneId}) managedAccount: ${managedAccountId}`);
-      
-      const telnyxHeaders: Record<string, string> = {
-        "Authorization": `Bearer ${apiKey}`,
-        "Content-Type": "application/json"
-      };
-      if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
-        telnyxHeaders["x-telnyx-account-id"] = managedAccountId;
-      }
-      
-      // Try POST to cnam_listings endpoint
-      const cnamResponse = await fetch("https://api.telnyx.com/v2/cnam_listings", {
-        method: "POST",
-        headers: telnyxHeaders,
-        body: JSON.stringify({
-          phone_number_id: telnyxPhoneId,
-          caller_id_name: sanitizedCnam
-        })
-      });
-      
-      const responseText = await cnamResponse.text();
-      console.log(`[CNAM] POST cnam_listings response (${cnamResponse.status}): ${responseText.substring(0, 500)}`);
-      
-      // Update local database regardless of API result
-      await db
-        .update(telnyxPhoneNumbers)
-        .set({ callerIdName: sanitizedCnam, cnam: sanitizedCnam, updatedAt: new Date() })
-        .where(eq(telnyxPhoneNumbers.id, phoneNumberRecord[0].id));
-      
-      if (cnamResponse.ok) {
-        console.log(`[CNAM] Successfully created CNAM listing "${sanitizedCnam}" for ${phoneNumber}`);
-        res.json({ success: true, callerIdName: sanitizedCnam });
-      } else {
-        // API failed but we updated local DB
-        console.log(`[CNAM] API failed but updated local DB for ${phoneNumber}`);
-        res.status(400).json({ 
-          success: false, 
-          message: "Failed to update CNAM via API. Local database updated. Please configure CNAM directly in Telnyx portal if needed.",
-          callerIdName: sanitizedCnam
-        });
-      }
-      
-    } catch (error: any) {
-      console.error("[CNAM] Error updating caller ID:", error);
-      res.status(500).json({ message: "Failed to update caller ID name" });
     }
   });
   // GET /api/telnyx/noise-suppression - Get current noise suppression settings
@@ -37051,6 +37832,33 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
   
+  // GET /api/compliance/applications/active - Get active (non-draft) application
+  app.get("/api/compliance/applications/active", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user || !user.companyId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      const [application] = await db
+        .select()
+        .from(complianceApplications)
+        .where(
+          and(
+            eq(complianceApplications.companyId, user.companyId),
+            ne(complianceApplications.status, "draft")
+          )
+        )
+        .orderBy(desc(complianceApplications.createdAt))
+        .limit(1);
+      
+      res.json({ application: application || null });
+    } catch (error: any) {
+      console.error("[Compliance] Error getting active application:", error);
+      res.status(500).json({ message: "Failed to get active application" });
+    }
+  });
+  
   // GET /api/compliance/applications/:id - Get application by ID
   app.get("/api/compliance/applications/:id", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -37106,6 +37914,291 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(404).json({ message: "Application not found" });
       }
       
+      // Check if this is a submission request to Telnyx
+      if (req.body.status === "submitted" && existing.status !== "submitted") {
+        try {
+          const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
+          const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
+          const managedAccountId = await getCompanyManagedAccountId(user.companyId);
+          
+          if (!telnyxApiKey) {
+            return res.status(400).json({ message: "Telnyx not configured for this company" });
+          }
+          
+          // Verify the phone number exists in the managed account before submitting
+          console.log(`[Toll-Free Compliance] Verifying phone number ${existing.selectedPhoneNumber} exists in managed account ${managedAccountId}`);
+          const verifyHeaders: Record<string, string> = {
+            "Authorization": `Bearer ${telnyxApiKey}`,
+            "Accept": "application/json",
+          };
+          if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
+            verifyHeaders["x-managed-account-id"] = managedAccountId;
+          }
+          
+          const verifyResponse = await fetch(
+            `https://api.telnyx.com/v2/phone_numbers?filter[phone_number][eq]=${encodeURIComponent(existing.selectedPhoneNumber)}`,
+            { method: "GET", headers: verifyHeaders }
+          );
+          const verifyResult = await verifyResponse.json();
+          console.log(`[Toll-Free Compliance] Phone number verification result:`, JSON.stringify(verifyResult, null, 2));
+          
+          const foundNumbers = verifyResult.data || [];
+          if (foundNumbers.length === 0) {
+            console.error(`[Toll-Free Compliance] Phone number ${existing.selectedPhoneNumber} NOT FOUND in managed account ${managedAccountId}`);
+            return res.status(400).json({ 
+              message: `Phone number ${existing.selectedPhoneNumber} was not found in your Telnyx account. The number may need to be re-purchased under your company's managed account.`,
+              details: "The toll-free verification requires the phone number to be owned by your company's Telnyx account."
+            });
+          }
+          
+          console.log(`[Toll-Free Compliance] Phone number verified: ${foundNumbers[0]?.phone_number}, ID: ${foundNumbers[0]?.id}`);
+          
+          // Map compliance application fields to Telnyx API format
+          const sampleMessages = (existing.sampleMessages as string[] | null) || [];
+          const optInImageUrls = (existing.optInWorkflowImageUrls as string[] | null) || [];
+          
+          // Helper: Format phone number to E.164 format
+          const formatPhoneE164 = (phone: string | null | undefined): string => {
+            if (!phone) return "+18001234567";
+            // Remove all non-digit characters
+            const digits = phone.replace(/\D/g, '');
+            // If 10 digits, assume US and add +1
+            if (digits.length === 10) return `+1${digits}`;
+            // If 11 digits and starts with 1, add +
+            if (digits.length === 11 && digits.startsWith('1')) return `+${digits}`;
+            // Already has country code
+            if (digits.length > 10) return `+${digits}`;
+            return `+1${digits}`;
+          };
+          
+          // Helper: Format message volume to Telnyx enum values (with commas)
+          // Valid values: "10", "100", "1,000", "10,000", "100,000", "250,000", "500,000", "750,000", "1,000,000", "5,000,000", "10,000,000+"
+          const formatMessageVolume = (volume: string | null | undefined): string => {
+            if (!volume) return "1,000";
+            // Extract first number from ranges like "100001-250000"
+            const match = volume.match(/\d+/);
+            const num = match ? parseInt(match[0].replace(/,/g, ""), 10) : 1000;
+            
+            // Map to nearest valid Telnyx enum value
+            if (num >= 10000000) return "10,000,000+";
+            if (num >= 5000000) return "5,000,000";
+            if (num >= 1000000) return "1,000,000";
+            if (num >= 750000) return "750,000";
+            if (num >= 500000) return "500,000";
+            if (num >= 250000) return "250,000";
+            if (num >= 100000) return "100,000";
+            if (num >= 10000) return "10,000";
+            if (num >= 1000) return "1,000";
+            if (num >= 100) return "100";
+            return "10";
+          };
+          
+          // Helper: Convert state abbreviation to full name (Telnyx may require full names)
+          const stateNames: Record<string, string> = {
+            AL: "Alabama", AK: "Alaska", AZ: "Arizona", AR: "Arkansas", CA: "California",
+            CO: "Colorado", CT: "Connecticut", DE: "Delaware", FL: "Florida", GA: "Georgia",
+            HI: "Hawaii", ID: "Idaho", IL: "Illinois", IN: "Indiana", IA: "Iowa",
+            KS: "Kansas", KY: "Kentucky", LA: "Louisiana", ME: "Maine", MD: "Maryland",
+            MA: "Massachusetts", MI: "Michigan", MN: "Minnesota", MS: "Mississippi", MO: "Missouri",
+            MT: "Montana", NE: "Nebraska", NV: "Nevada", NH: "New Hampshire", NJ: "New Jersey",
+            NM: "New Mexico", NY: "New York", NC: "North Carolina", ND: "North Dakota", OH: "Ohio",
+            OK: "Oklahoma", OR: "Oregon", PA: "Pennsylvania", RI: "Rhode Island", SC: "South Carolina",
+            SD: "South Dakota", TN: "Tennessee", TX: "Texas", UT: "Utah", VT: "Vermont",
+            VA: "Virginia", WA: "Washington", WV: "West Virginia", WI: "Wisconsin", WY: "Wyoming",
+            DC: "District of Columbia", PR: "Puerto Rico"
+          };
+          const getFullStateName = (stateAbbr: string | null | undefined): string => {
+            if (!stateAbbr) return "Florida";
+            const upper = stateAbbr.toUpperCase().trim();
+            return stateNames[upper] || stateAbbr;
+          };
+          
+          // Build Telnyx request body with correct field mapping
+          const telnyxRequestBody: any = {
+            businessName: existing.businessName,
+            corporateWebsite: existing.website,
+            businessAddr1: existing.businessAddress,
+            businessCity: existing.businessCity,
+            businessState: getFullStateName(existing.businessState),
+            businessZip: existing.businessZip,
+            businessContactFirstName: existing.contactFirstName,
+            businessContactLastName: existing.contactLastName,
+            businessContactEmail: existing.contactEmail,
+            businessContactPhone: formatPhoneE164(existing.contactPhone),
+            messageVolume: formatMessageVolume(existing.estimatedVolume),
+            phoneNumbers: [{ phoneNumber: existing.selectedPhoneNumber }],
+            useCase: existing.smsUseCase || existing.useCase || "Mixed",
+            useCaseSummary: existing.campaignDescription || existing.messageContent || "SMS messaging campaign",
+            productionMessageContent: sampleMessages[0] || existing.messageContent || "Sample message content",
+            optInWorkflow: existing.optInDescription || existing.optInMethod || "User opts in via web form",
+          };
+          
+          // Required Telnyx fields - optInWorkflowImageURLs needs ABSOLUTE image URLs
+          // Convert relative URLs to absolute URLs using the domain
+          const baseUrl = process.env.REPLIT_DEV_DOMAIN 
+            ? `https://${process.env.REPLIT_DEV_DOMAIN}`
+            : (process.env.REPLIT_DEPLOYMENT_URL || 'https://example.com');
+          
+          const makeAbsoluteUrl = (url: string): string => {
+            if (!url) return '';
+            // Already absolute URL
+            if (url.startsWith('http://') || url.startsWith('https://')) return url;
+            // Relative URL - make it absolute
+            return `${baseUrl}${url.startsWith('/') ? '' : '/'}${url}`;
+          };
+          
+          // If user provided image URLs, use them; otherwise omit the field (it's recommended but not required)
+          if (optInImageUrls.length > 0) {
+            // Filter to only include URLs that look like actual images
+            const imageUrls = optInImageUrls.filter((url: string) => 
+              url.match(/\.(jpg|jpeg|png|gif|webp)$/i) || url.includes('/image') || url.includes('/screenshot') || url.includes('/uploads')
+            );
+            if (imageUrls.length > 0) {
+              telnyxRequestBody.optInWorkflowImageURLs = imageUrls.map((url: string) => ({ url: makeAbsoluteUrl(url) }));
+            }
+          } else if (existing.optInScreenshotUrl && (existing.optInScreenshotUrl.match(/\.(jpg|jpeg|png|gif|webp)$/i) || existing.optInScreenshotUrl.includes('/uploads'))) {
+            telnyxRequestBody.optInWorkflowImageURLs = [{ url: makeAbsoluteUrl(existing.optInScreenshotUrl) }];
+          }
+          // Don't include optInWorkflowImageURLs if we don't have valid image URLs - it's recommended but not strictly required
+
+          telnyxRequestBody.additionalInformation = existing.additionalInformation
+            || existing.campaignDescription
+            || `SMS messaging for ${existing.smsUseCase || "business communications"}`;
+
+          telnyxRequestBody.isvReseller = existing.isvReseller || "No";
+
+          // Optional fields
+          if (existing.businessAddressLine2) {
+            telnyxRequestBody.businessAddr2 = existing.businessAddressLine2;
+          }
+          
+          // Business registration fields (required Jan 2026)
+          if (existing.ein) {
+            telnyxRequestBody.businessRegistrationNumber = existing.ein;
+            telnyxRequestBody.businessRegistrationType = existing.businessRegistrationType || "EIN";
+            telnyxRequestBody.businessRegistrationCountry = existing.businessRegistrationCountry || "US";
+          }
+          
+          // Entity type mapping
+          const entityTypeMap: Record<string, string> = {
+            "Private Company": "PRIVATE_PROFIT",
+            "Publicly Traded Company": "PUBLIC_PROFIT",
+            "Charity/ Non-Profit Organization": "NON_PROFIT",
+            "Sole Proprietor": "SOLE_PROPRIETOR",
+            "Government": "GOVERNMENT",
+            "PRIVATE_PROFIT": "PRIVATE_PROFIT",
+            "PUBLIC_PROFIT": "PUBLIC_PROFIT",
+            "NON_PROFIT": "NON_PROFIT",
+            "SOLE_PROPRIETOR": "SOLE_PROPRIETOR",
+            "GOVERNMENT": "GOVERNMENT"
+          };
+          if (existing.entityType) {
+            telnyxRequestBody.entityType = entityTypeMap[existing.entityType] || "PRIVATE_PROFIT";
+          }
+          
+          // DBA / brand name
+          if (existing.doingBusinessAs || existing.brandDisplayName) {
+            telnyxRequestBody.doingBusinessAs = existing.doingBusinessAs || existing.brandDisplayName;
+          }
+          
+          // Opt-in keywords
+          if (existing.optInKeywords) {
+            telnyxRequestBody.optInKeywords = existing.optInKeywords;
+          }
+          
+          // Opt-in confirmation response
+          if (existing.optInConfirmationResponse) {
+            telnyxRequestBody.optInConfirmationResponse = existing.optInConfirmationResponse;
+          }
+          
+          // Help message response
+          if (existing.helpMessageResponse) {
+            telnyxRequestBody.helpMessageResponse = existing.helpMessageResponse;
+          }
+          
+          // Privacy policy URL
+          if (existing.privacyPolicyUrl) {
+            telnyxRequestBody.privacyPolicyURL = makeAbsoluteUrl(existing.privacyPolicyUrl);
+          }
+          
+          // Terms and conditions URL
+          if (existing.smsTermsUrl) {
+            telnyxRequestBody.termsAndConditionURL = makeAbsoluteUrl(existing.smsTermsUrl);
+          }
+          
+          // Age-gated content
+          telnyxRequestBody.ageGatedContent = existing.ageGatedContent || false;
+          
+          console.log("[Toll-Free Compliance] Submitting verification request:", {
+            managedAccountId: managedAccountId,
+            businessName: telnyxRequestBody.businessName,
+            phoneNumber: existing.selectedPhoneNumber,
+            useCase: telnyxRequestBody.useCase,
+            optInWorkflowImageURLs: telnyxRequestBody.optInWorkflowImageURLs,
+            additionalInformation: telnyxRequestBody.additionalInformation,
+            isvReseller: telnyxRequestBody.isvReseller,
+          });
+          console.log("[Toll-Free Compliance] Full request body:", JSON.stringify(telnyxRequestBody, null, 2));
+          
+          // Call Telnyx API
+          const telnyxResponse = await fetch(
+            "https://api.telnyx.com/v2/messaging_tollfree/verification/requests",
+            {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                "Authorization": `Bearer ${telnyxApiKey}`,
+                "x-managed-account-id": managedAccountId,
+              },
+              body: JSON.stringify(telnyxRequestBody),
+            }
+          );
+          
+          const telnyxResult = await telnyxResponse.json();
+          
+          if (!telnyxResponse.ok) {
+            console.error("[Toll-Free Compliance] Telnyx API error:", JSON.stringify(telnyxResult, null, 2));
+            // Extract detailed validation errors from meta if present
+            const errors = telnyxResult.errors || [];
+            const validationErrors = errors.map((e: any) => ({
+              code: e.code,
+              title: e.title,
+              detail: e.detail,
+              meta: e.meta
+            }));
+            console.error("[Toll-Free Compliance] Validation details:", JSON.stringify(validationErrors, null, 2));
+            return res.status(telnyxResponse.status).json({
+              message: telnyxResult.errors?.[0]?.detail || "Failed to submit toll-free verification to Telnyx",
+              telnyxError: telnyxResult,
+              validationErrors,
+            });
+          }
+          
+          console.log("[Toll-Free Compliance] Verification submitted successfully:", telnyxResult.data?.id);
+          
+          // Update application with Telnyx verification ID and status
+          const [updated] = await db
+            .update(complianceApplications)
+            .set({
+              ...req.body,
+              telnyxVerificationRequestId: telnyxResult.data?.id,
+              submittedAt: new Date(),
+              updatedAt: new Date(),
+            })
+            .where(eq(complianceApplications.id, id))
+            .returning();
+          
+          return res.json(updated);
+        } catch (telnyxError: any) {
+          console.error("[Toll-Free Compliance] Error calling Telnyx API:", telnyxError);
+          return res.status(500).json({ 
+            message: "Failed to submit verification to Telnyx: " + telnyxError.message 
+          });
+        }
+      }
+      
+      // Regular update (not submission)
       const [updated] = await db
         .update(complianceApplications)
         .set({
@@ -37121,7 +38214,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       res.status(500).json({ message: "Failed to update application" });
     }
   });
-
   // POST /api/compliance/upload - Upload file for compliance applications
   app.post("/api/compliance/upload", requireActiveCompany, async (req: Request, res: Response) => {
     try {
@@ -37179,6 +38271,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       res.status(500).json({ message: error.message || "Upload failed" });
     }
   });
+
+  // Register SES routes
+  registerSesRoutes(app, requireActiveCompany);
 
   return httpServer;
 }
