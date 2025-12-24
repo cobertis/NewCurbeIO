@@ -1550,17 +1550,21 @@ export default function Settings() {
           )}
         </div>
 
-        {/* Right Column - Settings Tabs */}
+        {/* Right Column - Settings Content */}
         <div className="lg:col-span-8 xl:col-span-9">
-          <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setLocation(`/settings/${value}`); }} className="space-y-6">
-            <div className="flex items-center justify-between gap-4 flex-wrap">
-              <TabsList className="inline-flex h-auto flex-wrap">
-                <TabsTrigger value="overview" className="gap-2" data-testid="tab-overview">
-                  <UserIcon className="h-4 w-4" />
-                  Profile
-                </TabsTrigger>
-              </TabsList>
-              {activeTab === "overview" && (
+          <Tabs value={activeTab} onValueChange={(value) => { setActiveTab(value); setLocation(`/settings/${value}`); }} className="space-y-4">
+            {/* Hidden TabsList - tabs are navigated via sidebar */}
+            <TabsList className="hidden">
+              <TabsTrigger value="overview">Profile</TabsTrigger>
+              <TabsTrigger value="security">Security</TabsTrigger>
+              <TabsTrigger value="automations">Automations</TabsTrigger>
+              <TabsTrigger value="team">Team</TabsTrigger>
+            </TabsList>
+
+            {/* Overview Tab - Profile + Company */}
+            <TabsContent value="overview" className="space-y-4 mt-0">
+              {/* Header with Save Button */}
+              <div className="flex items-center justify-end">
                 <Button
                   onClick={handleSaveOverview}
                   disabled={updateProfileInfoMutation.isPending || updateCompanyMutation.isPending}
@@ -1568,11 +1572,9 @@ export default function Settings() {
                 >
                   {(updateProfileInfoMutation.isPending || updateCompanyMutation.isPending) ? "Saving..." : "Save Changes"}
                 </Button>
-              )}
-            </div>
+              </div>
 
-            {/* Overview Tab - Profile + Company */}
-            <TabsContent value="overview" className="space-y-4">
+              {/* Profile + Company Cards */}
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Profile Information Card */}
                 <Card>
