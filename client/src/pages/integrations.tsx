@@ -33,7 +33,7 @@ interface ConnectionStatus {
 function SettingsBreadcrumb({ pageName, action }: { pageName: string; action?: React.ReactNode }) {
   return (
     <div className="flex items-center justify-between gap-3 mb-6">
-      <div className="flex items-center gap-2 text-lg">
+      <div className="flex items-center gap-2 text-sm">
         <span className="text-muted-foreground">Settings</span>
         <ChevronRight className="h-4 w-4 text-muted-foreground" />
         <span className="font-medium">{pageName}</span>
