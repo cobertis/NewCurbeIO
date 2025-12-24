@@ -125,6 +125,8 @@ import InstagramPage from "@/pages/integrations/instagram-page";
 import InstagramFlow from "@/pages/integrations/instagram-flow";
 import TelegramPage from "@/pages/integrations/telegram-page";
 import TelegramFlow from "@/pages/integrations/telegram-flow";
+import ChatWidgetPage from "@/pages/integrations/chat-widget-page";
+import ChatWidgetFlow from "@/pages/integrations/chat-widget-flow";
 import NotFound from "@/pages/not-found";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -1714,6 +1716,20 @@ function Router() {
         <ProtectedRoute>
           <DashboardLayout>
             <TelegramPage />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/chat-widget/flow">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <ChatWidgetFlow />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/settings/chat-widget">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <ChatWidgetPage />
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
