@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useLocation, Link, useParams } from "wouter";
+import curbeLogo from "@assets/logo no fondo_1760457183587.png";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -2528,7 +2529,9 @@ export default function ChatWidgetEditPage() {
                     )}
                     
                     <div className="text-center pt-2">
-                      <p className="text-xs text-slate-400">Powered by <span className="text-blue-500">Curbe</span></p>
+                      <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                        Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                      </p>
                     </div>
                   </div>
                 </div>
