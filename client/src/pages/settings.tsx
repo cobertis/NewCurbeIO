@@ -1602,23 +1602,25 @@ export default function Settings({ view = 'all' }: SettingsProps) {
 
               {/* Closing Your Account - Profile View Only */}
               {(view === 'profile' || view === 'all') && (
-                <Card className="border-destructive/20">
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-destructive">Closing your account</CardTitle>
-                    <CardDescription>
+                <Card className="border-destructive/30 bg-destructive/5">
+                  <CardHeader>
+                    <CardTitle className="text-destructive text-base">Closing your account</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <p className="text-sm text-muted-foreground">
                       If you're having issues or have questions about Curbe, please contact{" "}
-                      <a href="mailto:support@curbe.io" className="text-primary hover:underline">Curbe support</a>,
+                      <a href="https://support.curbe.io/contact" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline font-medium">Curbe support</a>,
                       and if you want to close your account, please use{" "}
                       <button
                         type="button"
                         onClick={() => setCloseAccountDialogOpen(true)}
-                        className="text-primary hover:underline cursor-pointer"
+                        className="text-primary hover:underline cursor-pointer font-medium"
                         data-testid="link-close-account"
                       >
                         this link to close your account
                       </button>.
-                    </CardDescription>
-                  </CardHeader>
+                    </p>
+                  </CardContent>
                 </Card>
               )}
 
@@ -1637,8 +1639,8 @@ export default function Settings({ view = 'all' }: SettingsProps) {
                       <PhoneIcon className="h-4 w-4" />
                       <span className="font-medium">Customer support</span>
                     </div>
-                    <a href="tel:+18005551234" className="text-primary text-lg font-medium hover:underline block">
-                      +1 (800) 555-1234
+                    <a href="tel:+13053936666" className="text-primary text-lg font-medium hover:underline block">
+                      +1 (305) 393-6666
                     </a>
                     
                     <div className="space-y-2">
