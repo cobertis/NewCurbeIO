@@ -1541,6 +1541,56 @@ export default function Settings({ view = 'all' }: SettingsProps) {
               </Card>
               )}
 
+              {/* Change Password Card - Profile view */}
+              {(view === 'profile' || view === 'all') && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Change Password</CardTitle>
+                    <CardDescription>
+                      Update your password to keep your account secure.
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="currentPassword">Current Password</Label>
+                      <Input
+                        id="currentPassword"
+                        name="currentPassword"
+                        type="password"
+                        placeholder="Enter your current password"
+                        data-testid="input-current-password"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="newPassword">New Password</Label>
+                      <Input
+                        id="newPassword"
+                        name="newPassword"
+                        type="password"
+                        placeholder="Enter your new password"
+                        data-testid="input-new-password"
+                      />
+                      <p className="text-xs text-muted-foreground">
+                        Password must be at least 8 characters long
+                      </p>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
+                      <Input
+                        id="confirmPassword"
+                        name="confirmPassword"
+                        type="password"
+                        placeholder="Confirm your new password"
+                        data-testid="input-confirm-password"
+                      />
+                    </div>
+                    <Button data-testid="button-change-password">
+                      Update Password
+                    </Button>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Company Information - Admin Only */}
               {isAdmin && (view === 'company' || view === 'all') && (
               <Card>
@@ -1863,53 +1913,6 @@ export default function Settings({ view = 'all' }: SettingsProps) {
             {/* Security Tab */}
             <TabsContent value="security" className="space-y-4">
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Change Password</CardTitle>
-                    <CardDescription>
-                      Update your password to keep your account secure.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="currentPassword">Current Password</Label>
-                      <Input
-                        id="currentPassword"
-                        name="currentPassword"
-                        type="password"
-                        placeholder="Enter your current password"
-                        data-testid="input-current-password"
-                      />
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="newPassword">New Password</Label>
-                      <Input
-                        id="newPassword"
-                        name="newPassword"
-                        type="password"
-                        placeholder="Enter your new password"
-                        data-testid="input-new-password"
-                      />
-                      <p className="text-xs text-muted-foreground">
-                        Password must be at least 8 characters long
-                      </p>
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="confirmPassword">Confirm New Password</Label>
-                      <Input
-                        id="confirmPassword"
-                        name="confirmPassword"
-                        type="password"
-                        placeholder="Confirm your new password"
-                        data-testid="input-confirm-password"
-                      />
-                    </div>
-                    <Button data-testid="button-change-password">
-                      Update Password
-                    </Button>
-                  </CardContent>
-                </Card>
-
                 <Card>
                   <CardHeader>
                     <CardTitle>Security & Preferences</CardTitle>
