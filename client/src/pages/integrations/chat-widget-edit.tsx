@@ -109,6 +109,29 @@ function QRCodeDisplay({ value, size = 128 }: { value: string; size?: number }) 
   );
 }
 
+function formatPhoneNumber(value: string): string {
+  const digits = value.replace(/\D/g, '');
+  
+  if (digits.length === 0) return '';
+  
+  if (digits.length <= 1) {
+    return '+' + digits;
+  }
+  
+  const countryCode = digits.slice(0, 1);
+  const remaining = digits.slice(1);
+  
+  if (remaining.length === 0) {
+    return '+' + countryCode;
+  } else if (remaining.length <= 3) {
+    return '+' + countryCode + ' (' + remaining;
+  } else if (remaining.length <= 6) {
+    return '+' + countryCode + ' (' + remaining.slice(0, 3) + ') ' + remaining.slice(3);
+  } else {
+    return '+' + countryCode + ' (' + remaining.slice(0, 3) + ') ' + remaining.slice(3, 6) + '-' + remaining.slice(6, 10);
+  }
+}
+
 interface WidgetConfig {
   id: string;
   name: string;
@@ -1432,9 +1455,12 @@ function SortableChannelItem({
                       <Label className="text-xs text-slate-500">Custom phone number (international format)</Label>
                       <Input 
                         value={smsSettings.numberSettings?.customNumber || ""}
-                        onChange={(e) => onSmsSettingsChange({
-                          numberSettings: { customNumber: e.target.value }
-                        })}
+                        onChange={(e) => {
+                          const formatted = formatPhoneNumber(e.target.value);
+                          onSmsSettingsChange({
+                            numberSettings: { ...smsSettings.numberSettings, customNumber: formatted }
+                          });
+                        }}
                         placeholder="+1 (305) 360-4444"
                         data-testid="input-sms-custom-number"
                       />
