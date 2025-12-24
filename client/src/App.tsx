@@ -116,6 +116,8 @@ import EmailIntegration from "@/pages/email-integration";
 import EmailIntegrationFlow from "@/pages/email-integration-flow";
 import SmsVoiceVirtualPbx from "@/pages/integrations/sms-voice-virtual-pbx";
 import SmsVoiceCpaas from "@/pages/integrations/sms-voice-cpaas";
+import FacebookIntegration from "@/pages/integrations/facebook";
+import FacebookFlow from "@/pages/integrations/facebook-flow";
 import NotFound from "@/pages/not-found";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 import { AuthProvider } from "@/hooks/use-auth";
@@ -1833,6 +1835,20 @@ function Router() {
         </ProtectedRoute>
       </Route>
       
+      <Route path="/integrations/facebook">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <FacebookIntegration />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
+      <Route path="/integrations/facebook/flow">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <FacebookFlow />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
       <Route path="/audit-logs">
         <ProtectedRoute>
           <DashboardLayout>
