@@ -1610,12 +1610,12 @@ export default function ChatWidgetEditPage() {
                               <span className="text-sm font-medium">Color theme</span>
                             </div>
                           </AccordionTrigger>
-                          <AccordionContent className="pb-4">
+                          <AccordionContent className="pb-4 pl-7">
                             <div className="space-y-4">
                               <RadioGroup 
                                 value={widget.themeType} 
                                 onValueChange={(v) => updateLocalWidget({ themeType: v as "gradient" | "solid" | "custom" })} 
-                                className="flex gap-4"
+                                className="flex gap-6"
                               >
                                 <div className="flex items-center space-x-2">
                                   <RadioGroupItem value="gradient" id="gradient" />
@@ -2573,22 +2573,29 @@ export default function ChatWidgetEditPage() {
             </Card>
           </div>
 
-          <div className="w-full lg:w-80 shrink-0">
+          <div className="w-full lg:w-96 shrink-0">
             <Card className="border-slate-200 dark:border-slate-800 sticky top-6">
-              <CardContent className="p-4">
+              <CardContent className="p-5">
                 <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-4">Widget preview</h3>
                 
                 <div 
-                  className="rounded-lg overflow-hidden shadow-lg"
+                  className="rounded-xl overflow-hidden shadow-lg"
                   style={{ 
                     background: widget.themeType === "gradient" 
                       ? `linear-gradient(135deg, ${currentColor.hex}, ${currentColor.hex}dd)` 
                       : currentColor.hex 
                   }}
                 >
-                  <div className="p-4 text-white">
-                    <h4 className="text-lg font-bold">{widget.welcomeTitle}</h4>
-                    <p className="text-sm opacity-90 mt-1">{widget.welcomeMessage}</p>
+                  <div className="p-5 text-white">
+                    {widget.branding?.customLogo && (
+                      <img 
+                        src={widget.branding.customLogo} 
+                        alt="Logo" 
+                        className="h-8 w-auto mb-3 rounded"
+                      />
+                    )}
+                    <h4 className="text-xl font-bold">{widget.welcomeTitle}</h4>
+                    <p className="text-sm opacity-90 mt-2">{widget.welcomeMessage}</p>
                   </div>
                   
                   <div className="bg-white dark:bg-slate-900 p-4 space-y-3">
