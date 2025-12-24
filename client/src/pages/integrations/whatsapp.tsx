@@ -4,6 +4,13 @@ import { useLocation, Link } from "wouter";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 import {
   Table,
   TableBody,
@@ -40,8 +47,9 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { SettingsLayout } from "@/components/settings-layout";
 import { SiWhatsapp } from "react-icons/si";
-import { Plus, Search, ChevronLeft, ChevronRight, MoreVertical, Trash2, RefreshCw, ArrowUpDown } from "lucide-react";
+import { Plus, Search, ChevronLeft, ChevronRight, MoreVertical, Trash2, RefreshCw, ArrowUpDown, CheckCircle2, PlayCircle } from "lucide-react";
 import type { ChannelConnection } from "@shared/schema";
+import whatsappPreviewImg from "@assets/image_1766559979785.png";
 
 interface WhatsAppAccount {
   id: string | number;
@@ -171,8 +179,138 @@ export default function WhatsAppPage() {
   }
 
   if (!isConnected) {
-    setLocation("/settings/whatsapp/flow");
-    return null;
+    return (
+      <SettingsLayout activeSection="whatsapp">
+        <div className="space-y-8" data-testid="page-whatsapp-landing">
+          <h1 className="text-2xl font-semibold text-slate-900 dark:text-slate-100">WhatsApp</h1>
+          
+          <Card className="border-slate-200 dark:border-slate-800">
+            <CardContent className="p-6 md:p-8">
+              <div className="flex flex-col md:flex-row gap-8 items-center">
+                <div className="flex-1 space-y-6">
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                      Connect with customers on WhatsApp
+                    </h2>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      Handle customer-initiated conversations on WhatsApp channel. Respond faster, improve customer service, and keep all your chats in one place.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                      <span className="text-sm text-slate-700 dark:text-slate-300">Link your WhatsApp in minutes</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                      <span className="text-sm text-slate-700 dark:text-slate-300">Send and receive messages instantly</span>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                      <span className="text-sm text-slate-700 dark:text-slate-300">Share images, videos, and files easily</span>
+                    </div>
+                  </div>
+                  
+                  <div className="flex items-center gap-3">
+                    <Button 
+                      className="bg-[#25D366] hover:bg-[#20BD5A] text-white"
+                      onClick={() => setLocation("/settings/whatsapp/flow")}
+                      data-testid="button-get-started-whatsapp"
+                    >
+                      Get started
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="gap-2"
+                      onClick={() => window.open("https://www.facebook.com/business/help/447934475640650", "_blank")}
+                      data-testid="button-watch-tutorial"
+                    >
+                      <PlayCircle className="h-4 w-4" />
+                      Watch tutorial
+                    </Button>
+                  </div>
+                </div>
+                
+                <div className="w-full md:w-96 shrink-0">
+                  <img 
+                    src={whatsappPreviewImg} 
+                    alt="WhatsApp Business chat interface preview"
+                    className="w-full h-auto rounded-lg"
+                    data-testid="img-whatsapp-preview"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          
+          <div className="space-y-4">
+            <div className="text-center">
+              <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">WhatsApp FAQ</h3>
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                Haven't found what you were looking for?{" "}
+                <a 
+                  href="https://support.curbe.io/contact" 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                  data-testid="link-contact-us"
+                >
+                  Contact us
+                </a>
+              </p>
+            </div>
+            
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="item-1" className="border border-slate-200 dark:border-slate-800 rounded-lg mb-2 px-4">
+                <AccordionTrigger className="text-sm font-medium text-slate-900 dark:text-slate-100 hover:no-underline" data-testid="faq-features">
+                  What WhatsApp Business Platform features are supported by Curbe?
+                </AccordionTrigger>
+                <AccordionContent className="text-sm text-slate-600 dark:text-slate-400">
+                  Curbe supports receiving and sending WhatsApp messages, including text, images, videos, documents, and voice messages. You can manage all conversations from your Curbe inbox and respond to customers in real-time.
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="item-2" className="border border-slate-200 dark:border-slate-800 rounded-lg mb-2 px-4">
+                <AccordionTrigger className="text-sm font-medium text-slate-900 dark:text-slate-100 hover:no-underline" data-testid="faq-24-hour">
+                  Why am I limited to 24-hour messaging sessions?
+                </AccordionTrigger>
+                <AccordionContent className="text-sm text-slate-600 dark:text-slate-400">
+                  WhatsApp's business messaging policy requires that businesses respond to customer-initiated conversations within a 24-hour window. After this period, you can only send pre-approved template messages. This helps protect users from spam and ensures timely responses.
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="item-3" className="border border-slate-200 dark:border-slate-800 rounded-lg mb-2 px-4">
+                <AccordionTrigger className="text-sm font-medium text-slate-900 dark:text-slate-100 hover:no-underline" data-testid="faq-connect">
+                  How do I connect my WhatsApp Business?
+                </AccordionTrigger>
+                <AccordionContent className="text-sm text-slate-600 dark:text-slate-400">
+                  Click "Get started" and you'll be redirected to Meta's authentication page. Log in with your Facebook account that has access to your WhatsApp Business account, select your WhatsApp Business profile, and approve the required permissions. Your connection will be active immediately after.
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="item-4" className="border border-slate-200 dark:border-slate-800 rounded-lg mb-2 px-4">
+                <AccordionTrigger className="text-sm font-medium text-slate-900 dark:text-slate-100 hover:no-underline" data-testid="faq-data-transfer">
+                  Will my WhatsApp data get transferred to the Curbe app?
+                </AccordionTrigger>
+                <AccordionContent className="text-sm text-slate-600 dark:text-slate-400">
+                  No, existing conversation history is not transferred. Curbe will only receive new messages sent after the connection is established. Your previous WhatsApp conversations remain in your WhatsApp app.
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="item-5" className="border border-slate-200 dark:border-slate-800 rounded-lg mb-2 px-4">
+                <AccordionTrigger className="text-sm font-medium text-slate-900 dark:text-slate-100 hover:no-underline" data-testid="faq-virtual-number">
+                  Can I use the Curbe virtual number with WhatsApp Business?
+                </AccordionTrigger>
+                <AccordionContent className="text-sm text-slate-600 dark:text-slate-400">
+                  No, WhatsApp Business requires its own verified phone number. You need to have a WhatsApp Business account with a verified phone number to connect with Curbe. Curbe virtual numbers are for SMS and voice calls only.
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+        </div>
+      </SettingsLayout>
+    );
   }
 
   return (
