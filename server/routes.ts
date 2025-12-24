@@ -28304,6 +28304,66 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       return res.status(500).json({ error: "Failed to delete widget" });
     }
   });
+
+  // PUBLIC: GET /api/public/chat-widget/:id - Get widget config for embed (with geolocation)
+  app.get("/api/public/chat-widget/:id", async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const forceCountry = req.query.country as string | undefined;
+    
+    try {
+      const widget = await db.query.chatWidgets.findFirst({
+        where: eq(chatWidgets.id, id)
+      });
+      
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+
+      const clientIP = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() 
+        || req.headers["x-real-ip"] as string 
+        || req.socket.remoteAddress 
+        || "";
+      
+      const { getCountryFromIP, shouldShowWidget } = await import("./services/geolocation");
+      
+      let visitorCountry = forceCountry || "";
+      let countryCode = "";
+      
+      if (!forceCountry) {
+        const geo = await getCountryFromIP(clientIP);
+        if (geo.success) {
+          visitorCountry = geo.countryName;
+          countryCode = geo.countryCode;
+        }
+      }
+      
+      const widgetSettings = widget.widget as any || {};
+      const targeting = widgetSettings.targeting || {};
+      
+      const shouldDisplay = shouldShowWidget(targeting, visitorCountry);
+      
+      res.set({
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Cache-Control": "no-cache, no-store, must-revalidate"
+      });
+      
+      return res.json({
+        widget: widgetSettings,
+        shouldDisplay,
+        visitorCountry,
+        countryCode,
+        targeting: {
+          countries: targeting.countries || "all",
+          selectedCountries: targeting.selectedCountries || []
+        }
+      });
+    } catch (error: any) {
+      console.error("[Chat Widget Public] Error:", error);
+      return res.status(500).json({ error: "Failed to fetch widget", shouldDisplay: true });
+    }
+  });
   
   // GET /api/voicemails - List voicemails for current user
   app.get("/api/voicemails", requireAuth, async (req: Request, res: Response) => {
