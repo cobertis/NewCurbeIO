@@ -240,10 +240,36 @@ export default function ChatWidgetPreviewPage() {
 
   // Show device type status banner
   const getDeviceTypeBanner = () => {
-    if (!deviceInfo || deviceInfo.widgetDeviceType === "all") return null;
+    if (!deviceInfo) return null;
     
     const deviceLabel = deviceInfo.visitorDeviceType === "desktop" ? "Desktop" : "Mobile";
-    const targetLabel = deviceInfo.widgetDeviceType === "desktop" ? "desktop devices only" : "mobile devices only";
+    const isAllDevices = deviceInfo.widgetDeviceType === "all";
+    const targetLabel = isAllDevices 
+      ? "all devices" 
+      : deviceInfo.widgetDeviceType === "desktop" 
+        ? "desktop devices only" 
+        : "mobile devices only";
+    
+    // For "all devices" config, always show as visible (blue info style)
+    if (isAllDevices) {
+      return (
+        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-3 mb-4">
+          <div className="flex items-center gap-2">
+            {deviceInfo.visitorDeviceType === "desktop" ? (
+              <Monitor className="h-4 w-4 text-blue-500" />
+            ) : (
+              <Smartphone className="h-4 w-4 text-blue-500" />
+            )}
+            <p className="text-sm font-medium text-blue-800 dark:text-blue-200">
+              Viewing on {deviceLabel}
+            </p>
+          </div>
+          <p className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+            Widget is configured to show on {targetLabel}
+          </p>
+        </div>
+      );
+    }
     
     const statusColor = deviceInfo.matches
       ? "bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800"
