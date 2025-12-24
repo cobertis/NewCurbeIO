@@ -86,6 +86,7 @@ export default function GettingStarted() {
   const activeApplication = complianceData?.application;
   const subscription = subscriptionData?.subscription;
   const selectedPlan = subscription?.plan;
+  const { toast } = useToast();
 
   const formatPhoneNumber = (phone: string) => {
     const cleaned = phone.replace(/\D/g, '');
@@ -99,15 +100,23 @@ export default function GettingStarted() {
 
   const completeOnboardingMutation = useMutation({
     mutationFn: async () => {
-      await apiRequest("POST", "/api/onboarding/complete");
+      const result = await apiRequest("POST", "/api/onboarding/complete");
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/session"] });
-      setLocation("/");
+      queryClient.invalidateQueries({ queryKey: ["/api/onboarding/progress"] });
+      window.location.href = "/";
+    },
+    onError: (error: any) => {
+      console.error("[Onboarding] Complete failed:", error);
+      toast({
+        title: "Error",
+        description: error.message || "Failed to complete onboarding",
+        variant: "destructive",
+      });
     },
   });
-
-  const { toast } = useToast();
 
   const [browserCallingSuccess, setBrowserCallingSuccess] = useState<{ extension: string } | null>(null);
 
