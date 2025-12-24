@@ -17,6 +17,7 @@ import { cn } from "@/lib/utils";
 import { SiWhatsapp, SiInstagram, SiFacebook, SiTiktok, SiTelegram } from "react-icons/si";
 import { CheckCircle, XCircle, Clock, AlertTriangle, Plus, Trash2, RefreshCw, ExternalLink, Settings, HelpCircle, ChevronDown, Info, User as UserIcon, Users, Phone, Mail, Building, CreditCard, Plug, MessageSquare, Zap } from "lucide-react";
 import type { ChannelConnection, User } from "@shared/schema";
+import Billing from "@/pages/billing";
 
 type ChannelType = "whatsapp" | "instagram" | "facebook";
 
@@ -1674,6 +1675,7 @@ function ComingSoonCard({
 
 export default function IntegrationsPage() {
   const [, setLocation] = useLocation();
+  const [activeView, setActiveView] = useState<"integrations" | "billing">("integrations");
 
   const menuItems = {
     channels: [
@@ -1684,28 +1686,35 @@ export default function IntegrationsPage() {
       { label: "Instagram", href: "#instagram", icon: SiInstagram, active: false },
     ],
     features: [
-      { label: "API & Integrations", href: "/integrations", icon: Plug, active: true },
+      { label: "API & Integrations", href: "#view-integrations", icon: Plug, active: activeView === "integrations" },
       { label: "Contacts", href: "/contacts", icon: Users, active: false },
       { label: "Auto-responders", href: "/campaigns", icon: Zap, active: false },
     ],
     administration: [
       { label: "Workspace", href: "/settings/company", icon: Building, active: false },
-      { label: "Billing", href: "/billing", icon: CreditCard, active: false },
+      { label: "Billing", href: "#view-billing", icon: CreditCard, active: activeView === "billing" },
       { label: "My account", href: "/settings/overview", icon: UserIcon, active: false },
     ],
   };
 
   const handleNavigation = (href: string) => {
-    if (href.startsWith("#")) {
+    if (href === "#view-billing") {
+      setActiveView("billing");
+    } else if (href === "#view-integrations") {
+      setActiveView("integrations");
+    } else if (href.startsWith("#")) {
+      setActiveView("integrations");
       const cardId = href.substring(1);
-      const element = document.querySelector(`[data-card-id="${cardId}"]`);
-      if (element) {
-        element.scrollIntoView({ behavior: "smooth", block: "center" });
-        element.classList.add("ring-2", "ring-blue-500", "ring-offset-2");
-        setTimeout(() => {
-          element.classList.remove("ring-2", "ring-blue-500", "ring-offset-2");
-        }, 2000);
-      }
+      setTimeout(() => {
+        const element = document.querySelector(`[data-card-id="${cardId}"]`);
+        if (element) {
+          element.scrollIntoView({ behavior: "smooth", block: "center" });
+          element.classList.add("ring-2", "ring-blue-500", "ring-offset-2");
+          setTimeout(() => {
+            element.classList.remove("ring-2", "ring-blue-500", "ring-offset-2");
+          }, 2000);
+        }
+      }, 100);
     } else {
       setLocation(href);
     }
@@ -1776,35 +1785,41 @@ export default function IntegrationsPage() {
         </div>
       </div>
 
-      <div className="flex-1 min-w-0 space-y-6">
-        <div>
-          <h1 className="text-2xl font-semibold">Integrations</h1>
-          <p className="text-muted-foreground">
-            Connect your social media accounts to manage all conversations in one place.
-          </p>
-        </div>
+      <div className="flex-1 min-w-0">
+        {activeView === "billing" ? (
+          <Billing />
+        ) : (
+          <div className="space-y-6">
+            <div>
+              <h1 className="text-2xl font-semibold">Integrations</h1>
+              <p className="text-muted-foreground">
+                Connect your social media accounts to manage all conversations in one place.
+              </p>
+            </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div data-card-id="whatsapp">
-            <WhatsAppCard />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div data-card-id="whatsapp">
+                <WhatsAppCard />
+              </div>
+              
+              <div data-card-id="instagram">
+                <InstagramCard />
+              </div>
+              
+              <div data-card-id="facebook">
+                <FacebookCard />
+              </div>
+              
+              <div data-card-id="tiktok">
+                <TikTokCard />
+              </div>
+              
+              <div data-card-id="telegram">
+                <TelegramCard />
+              </div>
+            </div>
           </div>
-          
-          <div data-card-id="instagram">
-            <InstagramCard />
-          </div>
-          
-          <div data-card-id="facebook">
-            <FacebookCard />
-          </div>
-          
-          <div data-card-id="tiktok">
-            <TikTokCard />
-          </div>
-          
-          <div data-card-id="telegram">
-            <TelegramCard />
-          </div>
-        </div>
+        )}
       </div>
     </div>
   );
