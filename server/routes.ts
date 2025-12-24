@@ -30448,6 +30448,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         // Fall back to local database if Telnyx not configured
@@ -30522,6 +30523,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       console.log("[10DLC Brand] Looking up managed account for company:", companyId);
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       console.log("[10DLC Brand] Managed account result:", managedAccountId);
       
       if (!managedAccountId) {
@@ -30671,6 +30673,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       // If no profile ID saved, try to fetch from Telnyx and sync
       if (!wallet?.telnyxMessagingProfileId && wallet && telnyxApiKey && managedAccountId) {
@@ -30747,6 +30750,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx API key not configured" });
@@ -30832,6 +30836,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
@@ -30889,6 +30894,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.json({ campaigns: [] });
@@ -30977,6 +30983,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
@@ -31095,6 +31102,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
@@ -31135,6 +31143,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
@@ -31203,6 +31212,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
@@ -31241,6 +31251,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
@@ -31326,6 +31337,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const { getCompanyMessagingProfileId } = await import("./services/telnyx-manager-service");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
@@ -31429,6 +31441,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
@@ -31462,6 +31475,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
@@ -31504,6 +31518,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
@@ -31615,6 +31630,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
@@ -31654,6 +31670,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
@@ -31692,6 +31709,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
@@ -31727,6 +31745,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
@@ -31768,6 +31787,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
@@ -31907,6 +31927,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { apiKey: telnyxApiKey } = await credentialProvider.getTelnyx();
       const { getCompanyManagedAccountId } = await import("./services/telnyx-managed-accounts");
       const managedAccountId = await getCompanyManagedAccountId(companyId!);
+      console.log("[Toll-Free Verification] Fetching for company:", companyId, "managedAccountId:", managedAccountId);
       
       if (!telnyxApiKey) {
         return res.status(400).json({ message: "Telnyx not configured" });
