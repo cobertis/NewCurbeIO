@@ -23,6 +23,7 @@ import SettingsPage from "@/pages/settings";
 import SmsVoice, { SmsVoiceContent } from "@/pages/sms-voice";
 import { WhiteLabelSettings } from "@/components/white-label-settings";
 import EmailIntegration from "@/pages/email-integration";
+import whatsappPreviewImg from "@assets/image_1766559979785.png";
 
 type ChannelType = "whatsapp" | "instagram" | "facebook";
 
@@ -280,7 +281,7 @@ function WhatsAppInfoPage({ onConnect, isConnecting }: { onConnect: () => void; 
             
             <div className="w-full md:w-96 shrink-0">
               <img 
-                src="/attached_assets/image_1766559979785.png" 
+                src={whatsappPreviewImg} 
                 alt="WhatsApp Business chat interface preview"
                 className="w-full h-auto rounded-lg"
                 data-testid="img-whatsapp-preview"
