@@ -2417,10 +2417,16 @@ export function ComplianceTab() {
               {phoneNumbersData?.numbers && phoneNumbersData.numbers.length > 0 ? (
                 <div className="border rounded-md p-3 flex-1 overflow-y-auto space-y-1 min-h-0">
                   {phoneNumbersData.numbers
+                    
                     .filter(num => {
+                      // Exclude numbers already assigned to this campaign
                       const assignedToThis = selectedCampaign ? 
                         (campaignPhoneNumbers[selectedCampaign.campaignId] || []).some(n => n.phoneNumber === num.phoneNumber) : false;
-                      return !assignedToThis;
+                      // Exclude toll-free numbers (not valid for 10DLC)
+                      const cleaned = num.phoneNumber?.replace(/\D/g, '') || '';
+                      const areaCode = cleaned.length === 11 ? cleaned.substring(1, 4) : cleaned.substring(0, 3);
+                      const isTollFree = ["800", "888", "877", "866", "855", "844", "833"].includes(areaCode);
+                      return !assignedToThis && !isTollFree;
                     })
                     .map(num => (
                       <div 
