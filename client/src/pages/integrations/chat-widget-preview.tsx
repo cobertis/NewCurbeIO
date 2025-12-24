@@ -530,12 +530,25 @@ export default function ChatWidgetPreviewPage() {
               <h3 className="text-lg font-semibold text-red-800 dark:text-red-200 mb-2">
                 Widget Hidden by Targeting Rules
               </h3>
-              <p className="text-sm text-red-600 dark:text-red-400">
-                Based on your current location ({visitorCountry || "Unknown"}), this widget is configured to not display.
-              </p>
-              <p className="text-xs text-red-500 dark:text-red-500 mt-2">
-                The targeting rules are set to {widget.targeting?.countries === "selected" ? "only show in" : "hide in"}: {(widget.targeting?.selectedCountries || []).join(", ") || "No countries specified"}
-              </p>
+              {deviceInfo && !deviceInfo.matches ? (
+                <>
+                  <p className="text-sm text-red-600 dark:text-red-400">
+                    This widget is configured to show on {deviceInfo.widgetDeviceType === "desktop" ? "desktop" : "mobile"} devices only.
+                  </p>
+                  <p className="text-xs text-red-500 dark:text-red-500 mt-2">
+                    You are viewing from a {deviceInfo.visitorDeviceType} device.
+                  </p>
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-red-600 dark:text-red-400">
+                    Based on your current location ({visitorCountry || "Unknown"}), this widget is configured to not display.
+                  </p>
+                  <p className="text-xs text-red-500 dark:text-red-500 mt-2">
+                    The targeting rules are set to {widget.targeting?.countries === "selected" ? "only show in" : "hide in"}: {(widget.targeting?.selectedCountries || []).join(", ") || "No countries specified"}
+                  </p>
+                </>
+              )}
             </CardContent>
           </Card>
         )}
