@@ -969,82 +969,80 @@ function SortableChannelItem({
               {activeCallSubSection === "numbersAndCountries" && (
                 <div className="space-y-4">
                   <div>
-                    <Label className="text-sm font-medium">Numbers and countries</Label>
+                    <Label className="text-sm font-medium">Phone number to display</Label>
                     <p className="text-xs text-slate-500 mt-1">
-                      You can show local contact numbers based on the visitor's IP country. Choose one of your connected numbers or enter your own phone number. The <strong>Global</strong> number will be shown if the detected IP country doesn't have a virtual number selected below.
+                      Choose one of your connected numbers or enter a custom number. This number will be shown to visitors in the Call widget.
                     </p>
                     <p className="text-xs text-slate-500 mt-1">
                       <strong>Please note:</strong> If you use a custom number, inbound calls will not be tracked in the system.
                     </p>
                   </div>
                   
-                  <div className="space-y-3">
-                    <div className="grid grid-cols-2 gap-4 text-xs text-slate-500 font-medium">
-                      <span>Country</span>
-                      <span>Phone number to display</span>
-                    </div>
-                    
-                    {callSettings.numbersAndCountries.entries.map((entry, index) => (
-                      <div key={index} className="grid grid-cols-2 gap-4">
-                        <div className="flex items-center gap-2 px-3 py-2 border rounded-lg bg-slate-50 dark:bg-slate-800">
-                          <span className="text-sm">{entry.country}</span>
-                        </div>
-                        <Select 
-                          value={entry.phoneNumber}
-                          onValueChange={(v) => {
-                            const newEntries = [...callSettings.numbersAndCountries.entries];
-                            newEntries[index] = { ...newEntries[index], phoneNumber: v };
-                            onCallSettingsChange({
-                              numbersAndCountries: { entries: newEntries }
-                            });
-                          }}
-                        >
-                          <SelectTrigger data-testid={`select-phone-${index}`}>
-                            <SelectValue placeholder="Select a phone number" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {companyNumbers && companyNumbers.length > 0 ? (
-                              <>
-                                <div className="text-xs text-slate-500 px-2 py-1 font-medium">Connected numbers</div>
-                                {companyNumbers.map((num) => (
-                                  <SelectItem key={num.phoneNumber} value={num.phoneNumber}>
-                                    {num.displayName || num.friendlyName || num.phoneNumber}
-                                  </SelectItem>
-                                ))}
-                                <div className="text-xs text-slate-500 px-2 py-1 font-medium mt-2">Other</div>
-                                <SelectItem value="custom">+ Enter custom number...</SelectItem>
-                              </>
-                            ) : (
-                              <>
-                                <div className="text-xs text-slate-500 px-2 py-1">No connected numbers available</div>
-                                <SelectItem value="custom">+ Enter custom number...</SelectItem>
-                              </>
-                            )}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    ))}
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Phone number</Label>
+                    <Select 
+                      value={callSettings.numbersAndCountries?.entries?.[0]?.phoneNumber || ""}
+                      onValueChange={(v) => {
+                        onCallSettingsChange({
+                          numbersAndCountries: { 
+                            entries: [{ country: "Default (global)", phoneNumber: v }] 
+                          }
+                        });
+                      }}
+                    >
+                      <SelectTrigger data-testid="select-call-phone-number">
+                        <SelectValue placeholder="Select a phone number">
+                          {(() => {
+                            const selectedNumber = callSettings.numbersAndCountries?.entries?.[0]?.phoneNumber;
+                            if (!selectedNumber) return "Select a phone number";
+                            const found = companyNumbers?.find(n => n.phoneNumber === selectedNumber);
+                            if (found) {
+                              const name = found.displayName || found.friendlyName || "";
+                              return name ? `${name} - ${formatPhoneNumber(found.phoneNumber)}` : formatPhoneNumber(found.phoneNumber);
+                            }
+                            return formatPhoneNumber(selectedNumber);
+                          })()}
+                        </SelectValue>
+                      </SelectTrigger>
+                      <SelectContent>
+                        {companyNumbers && companyNumbers.length > 0 ? (
+                          <>
+                            <div className="text-xs text-slate-500 px-2 py-1 font-medium">Connected numbers</div>
+                            {companyNumbers.map((num) => (
+                              <SelectItem key={num.phoneNumber} value={num.phoneNumber}>
+                                {num.displayName || num.friendlyName || ""} - {formatPhoneNumber(num.phoneNumber)}
+                              </SelectItem>
+                            ))}
+                            <div className="text-xs text-slate-500 px-2 py-1 font-medium mt-2">Other</div>
+                            <SelectItem value="custom">+ Enter custom number...</SelectItem>
+                          </>
+                        ) : (
+                          <>
+                            <div className="text-xs text-slate-500 px-2 py-1">No connected numbers available</div>
+                            <SelectItem value="custom">+ Enter custom number...</SelectItem>
+                          </>
+                        )}
+                      </SelectContent>
+                    </Select>
                   </div>
                   
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const defaultNumber = companyNumbers && companyNumbers.length > 0 
-                        ? companyNumbers[0].phoneNumber 
-                        : "";
-                      const newEntries = [
-                        ...callSettings.numbersAndCountries.entries,
-                        { country: "United States", phoneNumber: defaultNumber }
-                      ];
-                      onCallSettingsChange({
-                        numbersAndCountries: { entries: newEntries }
-                      });
-                    }}
-                    className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
-                    data-testid="button-add-country"
-                  >
-                    + Add new country
-                  </button>
+                  {callSettings.numbersAndCountries?.entries?.[0]?.phoneNumber === "custom" && (
+                    <div className="space-y-2">
+                      <Label className="text-xs text-slate-500">Custom phone number</Label>
+                      <div className="flex items-center gap-2 px-3 py-2 border rounded-lg">
+                        <span className="text-lg">🇺🇸</span>
+                        <Input 
+                          value={callSettings.numberSettings?.customNumber || ""}
+                          onChange={(e) => onCallSettingsChange({
+                            numberSettings: { ...callSettings.numberSettings, customNumber: e.target.value }
+                          })}
+                          className="border-0 p-0 focus-visible:ring-0"
+                          placeholder="+1 234 567 8900"
+                          data-testid="input-call-custom-number-countries"
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -4027,9 +4025,9 @@ export default function ChatWidgetEditPage() {
                         <div className="text-center">
                           <p className="text-xl font-bold text-slate-900 dark:text-slate-100">
                             {formatPhoneNumber(
-                              widget.callSettings?.numberSettings?.numberType === "custom"
+                              widget.callSettings?.numbersAndCountries?.entries?.[0]?.phoneNumber === "custom"
                                 ? widget.callSettings?.numberSettings?.customNumber
-                                : widget.callSettings?.numberSettings?.selectedConnectedNumber || "+1 833 221 4494"
+                                : widget.callSettings?.numbersAndCountries?.entries?.[0]?.phoneNumber || "+1 833 221 4494"
                             )}
                           </p>
                         </div>
@@ -4050,9 +4048,9 @@ export default function ChatWidgetEditPage() {
                                 <div className="absolute -bottom-1 -right-1 w-5 h-5 border-r-2 border-b-2 border-slate-300 rounded-br-lg"></div>
                                 <div className="p-2">
                                   <QRCodeDisplay 
-                                    value={`tel:${(widget.callSettings?.numberSettings?.numberType === "custom"
+                                    value={`tel:${(widget.callSettings?.numbersAndCountries?.entries?.[0]?.phoneNumber === "custom"
                                       ? widget.callSettings?.numberSettings?.customNumber
-                                      : widget.callSettings?.numberSettings?.selectedConnectedNumber || "+18332214494"
+                                      : widget.callSettings?.numbersAndCountries?.entries?.[0]?.phoneNumber || "+18332214494"
                                     ).replace(/[\s()-]/g, '')}`}
                                     size={160}
                                     logoUrl={curbeLogo}

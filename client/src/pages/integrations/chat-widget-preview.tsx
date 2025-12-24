@@ -140,15 +140,18 @@ export default function ChatWidgetPreviewPage() {
 
     const getPhoneNumber = () => {
       if (activeChannel === "sms") {
-        return widget.smsSettings?.numberSettings?.customNumber || "+1 833 221 4494";
+        return widget.smsSettings?.numberSettings?.numberType === "custom"
+          ? widget.smsSettings?.numberSettings?.customNumber || "+1 833 221 4494"
+          : widget.smsSettings?.numberSettings?.connectedNumber || "+1 833 221 4494";
       }
       if (activeChannel === "whatsapp") {
         return widget.whatsappSettings?.numberSettings?.customNumber || "+1 786 630 2522";
       }
       if (activeChannel === "phone") {
-        return widget.callSettings?.numberSettings?.numberType === "custom"
+        const phoneEntry = widget.callSettings?.numbersAndCountries?.entries?.[0]?.phoneNumber;
+        return phoneEntry === "custom"
           ? widget.callSettings?.numberSettings?.customNumber || "+1 833 221 4494"
-          : widget.callSettings?.numberSettings?.selectedConnectedNumber || "+1 833 221 4494";
+          : phoneEntry || "+1 833 221 4494";
       }
       return "";
     };
@@ -364,34 +367,68 @@ export default function ChatWidgetPreviewPage() {
             <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
               <div className="p-5 text-white" style={{ background: currentBackground }}>
                 {widget.branding?.customLogo && (
-                  <div className="flex justify-center mb-3">
-                    <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
-                      <img src={widget.branding.customLogo} alt="Logo" className="w-10 h-10 object-contain" />
-                    </div>
+                  <div className="mb-3">
+                    <img src={widget.branding.customLogo} alt="Logo" className="h-10 object-contain" />
                   </div>
                 )}
                 <h4 className="text-lg font-bold">{widget.welcomeTitle}</h4>
                 <p className="text-sm opacity-90 mt-1">{widget.welcomeMessage}</p>
               </div>
               
-              <div className="p-4 space-y-2">
-                {enabledChannels.map((channelId: string) => {
+              <div className="p-4 space-y-3">
+                {widget.channels?.liveChat && (
+                  <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 space-y-3">
+                    <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {widget.liveChatSettings?.preChatForm?.title || "Chat with our agent"}
+                    </h5>
+                    <div className="space-y-1">
+                      <span className="text-xs text-slate-500 font-medium">
+                        {widget.liveChatSettings?.welcomeScreen?.fieldLabel || "Message"}
+                      </span>
+                      <textarea 
+                        placeholder="Type your message here" 
+                        disabled 
+                        className="w-full p-2 border rounded-lg text-sm bg-slate-50 dark:bg-slate-700 resize-none" 
+                        rows={3} 
+                      />
+                    </div>
+                    <button 
+                      className="w-full py-2 px-4 rounded-lg text-white text-sm font-medium"
+                      style={{ background: currentBackground }}
+                    >
+                      {widget.liveChatSettings?.welcomeScreen?.buttonLabel || "Start chat"}
+                    </button>
+                  </div>
+                )}
+                
+                {enabledChannels.filter(id => id !== "liveChat").map((channelId: string) => {
                   const channel = channelIcons[channelId];
                   if (!channel) return null;
+                  
+                  // Get configured channel name from widget settings
+                  let channelLabel = channel.label;
+                  if (channelId === "sms") {
+                    channelLabel = widget.smsSettings?.welcomeScreen?.channelName || "Text us";
+                  } else if (channelId === "whatsapp") {
+                    channelLabel = widget.whatsappSettings?.welcomeScreen?.channelName || "Chat on WhatsApp";
+                  } else if (channelId === "email") {
+                    channelLabel = widget.emailSettings?.welcomeScreen?.channelName || "Send an email";
+                  }
+                  
                   return (
                     <button
                       key={channelId}
                       onClick={() => setActiveChannel(channelId)}
-                      className="w-full flex items-center justify-between p-3 rounded-lg border hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors"
+                      className="w-full flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
                       data-testid={`channel-${channelId}`}
                     >
                       <div className="flex items-center gap-3">
                         <div style={{ color: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : currentColor.hex }}>
                           {channel.icon}
                         </div>
-                        <span className="text-sm font-medium">{channel.label}</span>
+                        <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{channelLabel}</span>
                       </div>
-                      <ChevronRight className="w-4 h-4 text-slate-400" />
+                      <ChevronRight className="h-4 w-4 text-slate-400" />
                     </button>
                   );
                 })}
