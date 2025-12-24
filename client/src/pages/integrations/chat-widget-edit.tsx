@@ -1777,6 +1777,7 @@ export default function ChatWidgetEditPage() {
                                   onCheckedChange={(checked) => updateLocalWidget({ 
                                     minimizedState: { ...widget.minimizedState, includeButtonText: checked } 
                                   })}
+                                  data-testid="switch-include-button-text"
                                 />
                                 <Label className="text-sm">Include button text</Label>
                               </div>
@@ -1790,7 +1791,7 @@ export default function ChatWidgetEditPage() {
                                       minimizedState: { ...widget.minimizedState, icon: v as "textmagic" | "chat" | "message" } 
                                     })}
                                   >
-                                    <SelectTrigger>
+                                    <SelectTrigger data-testid="select-minimized-icon">
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -1808,6 +1809,7 @@ export default function ChatWidgetEditPage() {
                                     onChange={(e) => updateLocalWidget({ 
                                       minimizedState: { ...widget.minimizedState, buttonText: e.target.value } 
                                     })}
+                                    data-testid="input-button-text"
                                   />
                                 </div>
                                 <div className="space-y-2">
@@ -1819,6 +1821,7 @@ export default function ChatWidgetEditPage() {
                                       onChange={(e) => updateLocalWidget({ 
                                         minimizedState: { ...widget.minimizedState, borderRadius: parseInt(e.target.value) || 40 } 
                                       })}
+                                      data-testid="input-border-radius"
                                     />
                                     <span className="text-xs text-slate-500">px</span>
                                   </div>
@@ -1834,7 +1837,7 @@ export default function ChatWidgetEditPage() {
                                       minimizedState: { ...widget.minimizedState, alignTo: v as "left" | "right" } 
                                     })}
                                   >
-                                    <SelectTrigger>
+                                    <SelectTrigger data-testid="select-align-to">
                                       <SelectValue />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -1852,6 +1855,7 @@ export default function ChatWidgetEditPage() {
                                       onChange={(e) => updateLocalWidget({ 
                                         minimizedState: { ...widget.minimizedState, sideSpacing: parseInt(e.target.value) || 32 } 
                                       })}
+                                      data-testid="input-side-spacing"
                                     />
                                     <span className="text-xs text-slate-500">px</span>
                                   </div>
@@ -1865,6 +1869,7 @@ export default function ChatWidgetEditPage() {
                                       onChange={(e) => updateLocalWidget({ 
                                         minimizedState: { ...widget.minimizedState, bottomSpacing: parseInt(e.target.value) || 26 } 
                                       })}
+                                      data-testid="input-bottom-spacing"
                                     />
                                     <span className="text-xs text-slate-500">px</span>
                                   </div>
@@ -1878,6 +1883,7 @@ export default function ChatWidgetEditPage() {
                                     onCheckedChange={(checked) => updateLocalWidget({ 
                                       minimizedState: { ...widget.minimizedState, eyeCatcherEnabled: checked } 
                                     })}
+                                    data-testid="switch-eye-catcher"
                                   />
                                   <Label className="text-sm">Eye-catcher message</Label>
                                 </div>
@@ -1892,8 +1898,9 @@ export default function ChatWidgetEditPage() {
                                           onChange={(e) => updateLocalWidget({ 
                                             minimizedState: { ...widget.minimizedState, eyeCatcherMessage: e.target.value } 
                                           })}
+                                          data-testid="input-eye-catcher-message"
                                         />
-                                        <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7">
+                                        <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7" data-testid="button-emoji-picker">
                                           <Smile className="h-4 w-4 text-slate-400" />
                                         </Button>
                                       </div>
@@ -1908,6 +1915,7 @@ export default function ChatWidgetEditPage() {
                                           onChange={(e) => updateLocalWidget({ 
                                             minimizedState: { ...widget.minimizedState, messageDelay: parseInt(e.target.value) || 7 } 
                                           })}
+                                          data-testid="input-message-delay"
                                         />
                                         <span className="text-sm text-slate-500">seconds</span>
                                       </div>
@@ -2376,8 +2384,8 @@ export default function ChatWidgetEditPage() {
                                         </div>
                                       ))}
                                       <Button
-                                        variant="link"
-                                        className="text-blue-500 h-auto p-0"
+                                        variant="ghost"
+                                        className="text-blue-500 h-auto p-0 hover:bg-transparent"
                                         onClick={() => {
                                           updateLocalWidget({
                                             targeting: {
@@ -2459,8 +2467,8 @@ export default function ChatWidgetEditPage() {
                                         </div>
                                       ))}
                                       <Button
-                                        variant="link"
-                                        className="text-blue-500 h-auto p-0"
+                                        variant="ghost"
+                                        className="text-blue-500 h-auto p-0 hover:bg-transparent"
                                         onClick={() => {
                                           updateLocalWidget({
                                             targeting: {
@@ -2627,7 +2635,7 @@ export default function ChatWidgetEditPage() {
                       </div>
                       
                       <div 
-                        className="absolute flex items-end gap-3"
+                        className={`absolute flex items-end gap-3 ${widget.minimizedState?.alignTo === "left" ? "flex-row-reverse" : ""}`}
                         style={{ 
                           [widget.minimizedState?.alignTo === "left" ? "left" : "right"]: `${widget.minimizedState?.sideSpacing || 32}px`,
                           bottom: `${widget.minimizedState?.bottomSpacing || 26}px`
@@ -2635,7 +2643,7 @@ export default function ChatWidgetEditPage() {
                       >
                         {widget.minimizedState?.eyeCatcherEnabled && (
                           <div className="bg-white dark:bg-slate-900 shadow-lg rounded-lg px-4 py-3 max-w-[200px] relative">
-                            <button className="absolute -top-2 -right-2 w-5 h-5 bg-white dark:bg-slate-800 rounded-full shadow flex items-center justify-center">
+                            <button className={`absolute -top-2 w-5 h-5 bg-white dark:bg-slate-800 rounded-full shadow flex items-center justify-center ${widget.minimizedState?.alignTo === "left" ? "-left-2" : "-right-2"}`}>
                               <X className="h-3 w-3 text-slate-400" />
                             </button>
                             <p className="text-sm text-slate-700 dark:text-slate-300">
@@ -2652,7 +2660,18 @@ export default function ChatWidgetEditPage() {
                             padding: widget.minimizedState?.includeButtonText ? "14px 22px" : "18px"
                           }}
                         >
-                          <MessageSquare className="h-7 w-7 text-white" />
+                          {widget.minimizedState?.icon === "chat" ? (
+                            <MessageSquare className="h-7 w-7 text-white" />
+                          ) : widget.minimizedState?.icon === "message" ? (
+                            <Send className="h-7 w-7 text-white" />
+                          ) : (
+                            <svg className="h-7 w-7 text-white" viewBox="0 0 24 24" fill="currentColor">
+                              <path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zm0 14H6l-2 2V4h16v12z"/>
+                              <circle cx="8" cy="10" r="1.5"/>
+                              <circle cx="12" cy="10" r="1.5"/>
+                              <circle cx="16" cy="10" r="1.5"/>
+                            </svg>
+                          )}
                           {widget.minimizedState?.includeButtonText && widget.minimizedState?.buttonText && (
                             <span className="text-white font-medium text-base">{widget.minimizedState.buttonText}</span>
                           )}
