@@ -28513,7 +28513,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         .where(and(
           eq(telnyxConversations.companyId, companyId),
           eq(telnyxConversations.phoneNumber, finalVisitorId),
-          eq(telnyxConversations.channel, "live-chat")
+          eq(telnyxConversations.channel, "live_chat")
         ));
       
       if (!conversation) {
@@ -28559,7 +28559,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         .from(telnyxConversations)
         .where(and(
           eq(telnyxConversations.id, sessionId),
-          eq(telnyxConversations.channel, "live-chat")
+          eq(telnyxConversations.channel, "live_chat")
         ));
       
       if (!conversation) {
@@ -28602,7 +28602,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         .from(telnyxConversations)
         .where(and(
           eq(telnyxConversations.id, sessionId),
-          eq(telnyxConversations.channel, "live-chat")
+          eq(telnyxConversations.channel, "live_chat")
         ));
       
       if (!conversation) {
@@ -28613,7 +28613,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const [message] = await db.insert(telnyxMessages).values({
         direction: "inbound",
         messageType: "incoming",
-        channel: "live-chat",
+        channel: "live_chat",
         text: text.trim(),
         contentType: "text",
         status: "delivered",
