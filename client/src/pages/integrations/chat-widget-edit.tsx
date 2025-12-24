@@ -1496,7 +1496,9 @@ export default function ChatWidgetEditPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
-  const currentColor = colorOptions.find(c => c.value === widget.colorTheme) || colorOptions[0];
+  const currentColor = widget.themeType === "custom" 
+    ? { value: "custom", hex: widget.customColor || "#3B82F6", bg: "" }
+    : colorOptions.find(c => c.value === widget.colorTheme) || colorOptions[0];
 
   if (isLoading) {
     return (
@@ -1628,20 +1630,41 @@ export default function ChatWidgetEditPage() {
                                   <Label htmlFor="custom" className="text-sm cursor-pointer">Custom</Label>
                                 </div>
                               </RadioGroup>
-                              <div className="flex gap-2 flex-wrap">
-                                {colorOptions.map((color) => (
-                                  <button
-                                    key={color.value}
-                                    onClick={() => updateLocalWidget({ colorTheme: color.value })}
-                                    className={`w-8 h-8 rounded-full ${color.bg} transition-all ${
-                                      widget.colorTheme === color.value 
-                                        ? "ring-2 ring-offset-2 ring-blue-500" 
-                                        : "hover:scale-110"
-                                    }`}
-                                    data-testid={`button-color-${color.value}`}
+                              {widget.themeType !== "custom" ? (
+                                <div className="flex gap-2 flex-wrap">
+                                  {colorOptions.map((color) => (
+                                    <button
+                                      key={color.value}
+                                      onClick={() => updateLocalWidget({ colorTheme: color.value })}
+                                      className={`w-8 h-8 rounded-full ${color.bg} transition-all ${
+                                        widget.colorTheme === color.value 
+                                          ? "ring-2 ring-offset-2 ring-blue-500" 
+                                          : "hover:scale-110"
+                                      }`}
+                                      data-testid={`button-color-${color.value}`}
+                                    />
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="flex items-center gap-3">
+                                  <div className="relative">
+                                    <input
+                                      type="color"
+                                      value={widget.customColor || "#3B82F6"}
+                                      onChange={(e) => updateLocalWidget({ customColor: e.target.value })}
+                                      className="w-10 h-10 rounded-lg cursor-pointer border-0 p-0"
+                                      data-testid="input-custom-color"
+                                    />
+                                  </div>
+                                  <Input
+                                    value={widget.customColor || "#3B82F6"}
+                                    onChange={(e) => updateLocalWidget({ customColor: e.target.value })}
+                                    placeholder="#3B82F6"
+                                    className="w-32 font-mono text-sm"
+                                    data-testid="input-custom-color-hex"
                                   />
-                                ))}
-                              </div>
+                                </div>
+                              )}
                             </div>
                           </AccordionContent>
                         </AccordionItem>
