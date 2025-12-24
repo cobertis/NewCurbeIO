@@ -2472,7 +2472,7 @@ export default function ChatWidgetEditPage() {
   const embedCode = `<script>
 (function() {
   var widgetId = "${widgetId}";
-  var apiBase = "https://api.curbe.io";
+  var apiBase = "https://app.curbe.io";
   
   fetch(apiBase + "/api/public/chat-widget/" + widgetId)
     .then(function(res) { return res.json(); })
@@ -2482,7 +2482,7 @@ export default function ChatWidgetEditPage() {
         return;
       }
       var script = document.createElement("script");
-      script.src = "https://widgets.curbe.io/messenger-widget-script.js";
+      script.src = "https://app.curbe.io/widget-script.js";
       script.setAttribute("data-code", widgetId);
       script.setAttribute("data-config", JSON.stringify(data.widget));
       script.defer = true;
@@ -2491,7 +2491,7 @@ export default function ChatWidgetEditPage() {
     .catch(function(err) {
       console.error("[Curbe Widget] Error:", err);
       var script = document.createElement("script");
-      script.src = "https://widgets.curbe.io/messenger-widget-script.js";
+      script.src = "https://app.curbe.io/widget-script.js";
       script.setAttribute("data-code", widgetId);
       script.defer = true;
       document.body.appendChild(script);
