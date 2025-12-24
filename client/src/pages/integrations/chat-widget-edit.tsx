@@ -50,7 +50,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Pencil, Palette, MessageSquare, Target, Code, Copy, ExternalLink, Mail, MoreHorizontal, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Phone, Send, Upload, Image, Smile, Monitor, RefreshCw, GripVertical, Clock, ThumbsUp, Power, Settings, FileText, Users, Globe, Link2, X, CheckCircle } from "lucide-react";
+import { Pencil, Palette, MessageSquare, Target, Code, Copy, ExternalLink, Mail, MoreHorizontal, Trash2, Check, ChevronLeft, ChevronRight, ChevronDown, ChevronUp, Phone, Send, Upload, Image, Smile, Monitor, RefreshCw, GripVertical, Clock, ThumbsUp, Power, Settings, FileText, Users, Globe, Link2, X, CheckCircle, Plus } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
 import { SiFacebook, SiInstagram } from "react-icons/si";
@@ -181,7 +181,18 @@ interface WidgetConfig {
     countries: "all" | "selected" | "excluded";
     selectedCountries: string[];
     schedule: "always" | "custom";
-    pageUrls: "all" | "specific";
+    timezone: string;
+    scheduleEntries: {
+      day: string;
+      enabled: boolean;
+      startTime: string;
+      endTime: string;
+    }[];
+    pageUrls: "all" | "show-specific" | "hide-specific";
+    urlRules: {
+      condition: "contains" | "equals" | "starts" | "ends";
+      value: string;
+    }[];
     deviceType: "all" | "desktop" | "mobile";
   };
 }
@@ -1274,7 +1285,18 @@ export default function ChatWidgetEditPage() {
       countries: "all",
       selectedCountries: [],
       schedule: "always",
+      timezone: "(UTC -05:00): America/New_York",
+      scheduleEntries: [
+        { day: "Monday", enabled: true, startTime: "9:00 AM", endTime: "5:00 PM" },
+        { day: "Tuesday", enabled: true, startTime: "9:00 AM", endTime: "5:00 PM" },
+        { day: "Wednesday", enabled: true, startTime: "9:00 AM", endTime: "5:00 PM" },
+        { day: "Thursday", enabled: true, startTime: "9:00 AM", endTime: "5:00 PM" },
+        { day: "Friday", enabled: true, startTime: "9:00 AM", endTime: "5:00 PM" },
+        { day: "Saturday", enabled: false, startTime: "9:00 AM", endTime: "5:00 PM" },
+        { day: "Sunday", enabled: false, startTime: "9:00 AM", endTime: "5:00 PM" },
+      ],
       pageUrls: "all",
+      urlRules: [{ condition: "contains", value: "" }],
       deviceType: "all",
     },
   };
@@ -2034,22 +2056,123 @@ export default function ChatWidgetEditPage() {
                             </div>
                           </AccordionTrigger>
                           <AccordionContent className="px-4 pb-4">
-                            <RadioGroup 
-                              value={widget.targeting.schedule}
-                              onValueChange={(v) => updateLocalWidget({ 
-                                targeting: { ...widget.targeting, schedule: v as "always" | "custom" } 
-                              })}
-                              className="space-y-2"
-                            >
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="always" id="schedule-always" />
-                                <Label htmlFor="schedule-always" className="text-sm cursor-pointer">Show always</Label>
-                              </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="custom" id="schedule-custom" />
-                                <Label htmlFor="schedule-custom" className="text-sm cursor-pointer">Custom schedule</Label>
-                              </div>
-                            </RadioGroup>
+                            <div className="space-y-4">
+                              <p className="text-sm text-slate-500">Choose times when the widget should be visible</p>
+                              
+                              <RadioGroup 
+                                value={widget.targeting.schedule}
+                                onValueChange={(v) => updateLocalWidget({ 
+                                  targeting: { ...widget.targeting, schedule: v as "always" | "custom" } 
+                                })}
+                                className="space-y-2"
+                              >
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="always" id="schedule-always" />
+                                  <Label htmlFor="schedule-always" className="text-sm cursor-pointer">Always</Label>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <RadioGroupItem value="custom" id="schedule-custom" />
+                                  <Label htmlFor="schedule-custom" className="text-sm cursor-pointer">Custom schedule</Label>
+                                </div>
+                              </RadioGroup>
+                              
+                              {widget.targeting.schedule === "custom" && (
+                                <div className="space-y-4 mt-4">
+                                  <div className="space-y-2">
+                                    <Label className="text-sm font-medium">Timezone</Label>
+                                    <Select
+                                      value={widget.targeting.timezone}
+                                      onValueChange={(v) => updateLocalWidget({
+                                        targeting: { ...widget.targeting, timezone: v }
+                                      })}
+                                    >
+                                      <SelectTrigger className="w-full" data-testid="select-timezone">
+                                        <SelectValue />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                        <SelectItem value="(UTC -05:00): America/New_York">(UTC -05:00): America/New_York</SelectItem>
+                                        <SelectItem value="(UTC -06:00): America/Chicago">(UTC -06:00): America/Chicago</SelectItem>
+                                        <SelectItem value="(UTC -07:00): America/Denver">(UTC -07:00): America/Denver</SelectItem>
+                                        <SelectItem value="(UTC -08:00): America/Los_Angeles">(UTC -08:00): America/Los_Angeles</SelectItem>
+                                        <SelectItem value="(UTC +00:00): Europe/London">(UTC +00:00): Europe/London</SelectItem>
+                                        <SelectItem value="(UTC +01:00): Europe/Paris">(UTC +01:00): Europe/Paris</SelectItem>
+                                        <SelectItem value="(UTC +09:00): Asia/Tokyo">(UTC +09:00): Asia/Tokyo</SelectItem>
+                                      </SelectContent>
+                                    </Select>
+                                    <p className="text-xs text-slate-500">
+                                      Current date and time in the selected timezone: {new Date().toLocaleString('en-US', { 
+                                        weekday: 'long', 
+                                        day: 'numeric', 
+                                        month: 'short', 
+                                        year: 'numeric',
+                                        hour: 'numeric',
+                                        minute: '2-digit',
+                                        hour12: true
+                                      })}
+                                    </p>
+                                  </div>
+                                  
+                                  <div className="space-y-3">
+                                    {widget.targeting.scheduleEntries.map((entry, index) => (
+                                      <div key={entry.day} className="flex items-center gap-3">
+                                        <Checkbox
+                                          checked={entry.enabled}
+                                          onCheckedChange={(checked) => {
+                                            const newEntries = [...widget.targeting.scheduleEntries];
+                                            newEntries[index] = { ...entry, enabled: !!checked };
+                                            updateLocalWidget({
+                                              targeting: { ...widget.targeting, scheduleEntries: newEntries }
+                                            });
+                                          }}
+                                          data-testid={`checkbox-schedule-${entry.day.toLowerCase()}`}
+                                        />
+                                        <span className="w-24 text-sm font-medium">{entry.day}</span>
+                                        {entry.enabled ? (
+                                          <>
+                                            <div className="flex items-center gap-2">
+                                              <Input
+                                                value={entry.startTime}
+                                                onChange={(e) => {
+                                                  const newEntries = [...widget.targeting.scheduleEntries];
+                                                  newEntries[index] = { ...entry, startTime: e.target.value };
+                                                  updateLocalWidget({
+                                                    targeting: { ...widget.targeting, scheduleEntries: newEntries }
+                                                  });
+                                                }}
+                                                className="w-24 text-sm"
+                                                data-testid={`input-start-${entry.day.toLowerCase()}`}
+                                              />
+                                              <Clock className="h-4 w-4 text-slate-400" />
+                                            </div>
+                                            <span className="text-slate-400">-</span>
+                                            <div className="flex items-center gap-2">
+                                              <Input
+                                                value={entry.endTime}
+                                                onChange={(e) => {
+                                                  const newEntries = [...widget.targeting.scheduleEntries];
+                                                  newEntries[index] = { ...entry, endTime: e.target.value };
+                                                  updateLocalWidget({
+                                                    targeting: { ...widget.targeting, scheduleEntries: newEntries }
+                                                  });
+                                                }}
+                                                className="w-24 text-sm"
+                                                data-testid={`input-end-${entry.day.toLowerCase()}`}
+                                              />
+                                              <Clock className="h-4 w-4 text-slate-400" />
+                                            </div>
+                                            <Button variant="ghost" size="icon" className="h-8 w-8">
+                                              <Plus className="h-4 w-4" />
+                                            </Button>
+                                          </>
+                                        ) : (
+                                          <span className="text-sm text-blue-500">Widget hidden</span>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
                           </AccordionContent>
                         </AccordionItem>
                         
@@ -2061,22 +2184,193 @@ export default function ChatWidgetEditPage() {
                             </div>
                           </AccordionTrigger>
                           <AccordionContent className="px-4 pb-4">
-                            <RadioGroup 
-                              value={widget.targeting.pageUrls}
-                              onValueChange={(v) => updateLocalWidget({ 
-                                targeting: { ...widget.targeting, pageUrls: v as "all" | "specific" } 
-                              })}
-                              className="space-y-2"
-                            >
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="all" id="urls-all" />
-                                <Label htmlFor="urls-all" className="text-sm cursor-pointer">Show on all pages of any domain</Label>
+                            <div className="space-y-4">
+                              <div>
+                                <h4 className="text-sm font-medium mb-1">Domain</h4>
+                                <p className="text-sm text-slate-500">The widget will be shown on <span className="font-semibold">any domain</span> where the code is installed.</p>
                               </div>
-                              <div className="flex items-center space-x-2">
-                                <RadioGroupItem value="specific" id="urls-specific" />
-                                <Label htmlFor="urls-specific" className="text-sm cursor-pointer">Show on specific pages</Label>
+                              
+                              <div className="space-y-3">
+                                <h4 className="text-sm font-medium">Page rules</h4>
+                                <RadioGroup 
+                                  value={widget.targeting.pageUrls}
+                                  onValueChange={(v) => updateLocalWidget({ 
+                                    targeting: { ...widget.targeting, pageUrls: v as "all" | "show-specific" | "hide-specific" } 
+                                  })}
+                                  className="space-y-2"
+                                >
+                                  <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="all" id="urls-all" />
+                                    <Label htmlFor="urls-all" className="text-sm cursor-pointer">Show on all pages</Label>
+                                  </div>
+                                  <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="show-specific" id="urls-show-specific" />
+                                    <Label htmlFor="urls-show-specific" className="text-sm cursor-pointer">Show on specific pages only</Label>
+                                  </div>
+                                  
+                                  {widget.targeting.pageUrls === "show-specific" && (
+                                    <div className="ml-6 space-y-3">
+                                      {widget.targeting.urlRules.map((rule, index) => (
+                                        <div key={index}>
+                                          {index > 0 && (
+                                            <div className="text-sm text-slate-500 mb-2">OR</div>
+                                          )}
+                                          <div className="flex items-center gap-2">
+                                            <Select
+                                              value={rule.condition}
+                                              onValueChange={(v) => {
+                                                const newRules = [...widget.targeting.urlRules];
+                                                newRules[index] = { ...rule, condition: v as "contains" | "equals" | "starts" | "ends" };
+                                                updateLocalWidget({
+                                                  targeting: { ...widget.targeting, urlRules: newRules }
+                                                });
+                                              }}
+                                            >
+                                              <SelectTrigger className="w-36" data-testid={`select-url-condition-${index}`}>
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="contains">URL contains</SelectItem>
+                                                <SelectItem value="equals">URL equals</SelectItem>
+                                                <SelectItem value="starts">URL starts with</SelectItem>
+                                                <SelectItem value="ends">URL ends with</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                            <Input
+                                              value={rule.value}
+                                              onChange={(e) => {
+                                                const newRules = [...widget.targeting.urlRules];
+                                                newRules[index] = { ...rule, value: e.target.value };
+                                                updateLocalWidget({
+                                                  targeting: { ...widget.targeting, urlRules: newRules }
+                                                });
+                                              }}
+                                              placeholder={index === 0 ? "/prices" : "https://www.example.com/example-page/"}
+                                              className="flex-1"
+                                              data-testid={`input-url-value-${index}`}
+                                            />
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              onClick={() => {
+                                                const newRules = widget.targeting.urlRules.filter((_, i) => i !== index);
+                                                if (newRules.length === 0) {
+                                                  newRules.push({ condition: "contains", value: "" });
+                                                }
+                                                updateLocalWidget({
+                                                  targeting: { ...widget.targeting, urlRules: newRules }
+                                                });
+                                              }}
+                                              data-testid={`button-delete-rule-${index}`}
+                                            >
+                                              <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                      <Button
+                                        variant="link"
+                                        className="text-blue-500 h-auto p-0"
+                                        onClick={() => {
+                                          updateLocalWidget({
+                                            targeting: {
+                                              ...widget.targeting,
+                                              urlRules: [...widget.targeting.urlRules, { condition: "contains", value: "" }]
+                                            }
+                                          });
+                                        }}
+                                        data-testid="button-add-rule"
+                                      >
+                                        + Add rule
+                                      </Button>
+                                    </div>
+                                  )}
+                                  
+                                  <div className="flex items-center space-x-2">
+                                    <RadioGroupItem value="hide-specific" id="urls-hide-specific" />
+                                    <Label htmlFor="urls-hide-specific" className="text-sm cursor-pointer">Hide on specific pages only</Label>
+                                  </div>
+                                  
+                                  {widget.targeting.pageUrls === "hide-specific" && (
+                                    <div className="ml-6 space-y-3">
+                                      {widget.targeting.urlRules.map((rule, index) => (
+                                        <div key={index}>
+                                          {index > 0 && (
+                                            <div className="text-sm text-slate-500 mb-2">OR</div>
+                                          )}
+                                          <div className="flex items-center gap-2">
+                                            <Select
+                                              value={rule.condition}
+                                              onValueChange={(v) => {
+                                                const newRules = [...widget.targeting.urlRules];
+                                                newRules[index] = { ...rule, condition: v as "contains" | "equals" | "starts" | "ends" };
+                                                updateLocalWidget({
+                                                  targeting: { ...widget.targeting, urlRules: newRules }
+                                                });
+                                              }}
+                                            >
+                                              <SelectTrigger className="w-36" data-testid={`select-url-hide-condition-${index}`}>
+                                                <SelectValue />
+                                              </SelectTrigger>
+                                              <SelectContent>
+                                                <SelectItem value="contains">URL contains</SelectItem>
+                                                <SelectItem value="equals">URL equals</SelectItem>
+                                                <SelectItem value="starts">URL starts with</SelectItem>
+                                                <SelectItem value="ends">URL ends with</SelectItem>
+                                              </SelectContent>
+                                            </Select>
+                                            <Input
+                                              value={rule.value}
+                                              onChange={(e) => {
+                                                const newRules = [...widget.targeting.urlRules];
+                                                newRules[index] = { ...rule, value: e.target.value };
+                                                updateLocalWidget({
+                                                  targeting: { ...widget.targeting, urlRules: newRules }
+                                                });
+                                              }}
+                                              placeholder="/checkout"
+                                              className="flex-1"
+                                              data-testid={`input-url-hide-value-${index}`}
+                                            />
+                                            <Button
+                                              variant="ghost"
+                                              size="icon"
+                                              onClick={() => {
+                                                const newRules = widget.targeting.urlRules.filter((_, i) => i !== index);
+                                                if (newRules.length === 0) {
+                                                  newRules.push({ condition: "contains", value: "" });
+                                                }
+                                                updateLocalWidget({
+                                                  targeting: { ...widget.targeting, urlRules: newRules }
+                                                });
+                                              }}
+                                              data-testid={`button-delete-hide-rule-${index}`}
+                                            >
+                                              <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                          </div>
+                                        </div>
+                                      ))}
+                                      <Button
+                                        variant="link"
+                                        className="text-blue-500 h-auto p-0"
+                                        onClick={() => {
+                                          updateLocalWidget({
+                                            targeting: {
+                                              ...widget.targeting,
+                                              urlRules: [...widget.targeting.urlRules, { condition: "contains", value: "" }]
+                                            }
+                                          });
+                                        }}
+                                        data-testid="button-add-hide-rule"
+                                      >
+                                        + Add rule
+                                      </Button>
+                                    </div>
+                                  )}
+                                </RadioGroup>
                               </div>
-                            </RadioGroup>
+                            </div>
                           </AccordionContent>
                         </AccordionItem>
                         
