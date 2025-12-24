@@ -68,6 +68,7 @@ import { SettingsLayout } from "@/components/settings-layout";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
+import { allCountries, getCountryByName } from "@/lib/countries";
 
 function QRCodeDisplay({ value, size = 128 }: { value: string; size?: number }) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -3487,24 +3488,7 @@ export default function ChatWidgetEditPage() {
                                       <div className="p-2">
                                         <Input placeholder="Enter country name" className="mb-2" />
                                       </div>
-                                      {[
-                                        { code: "US", name: "United States", flag: "🇺🇸" },
-                                        { code: "GB", name: "United Kingdom", flag: "🇬🇧" },
-                                        { code: "AU", name: "Australia", flag: "🇦🇺" },
-                                        { code: "CA", name: "Canada", flag: "🇨🇦" },
-                                        { code: "AF", name: "Afghanistan", flag: "🇦🇫" },
-                                        { code: "AL", name: "Albania", flag: "🇦🇱" },
-                                        { code: "DZ", name: "Algeria", flag: "🇩🇿" },
-                                        { code: "AS", name: "American Samoa", flag: "🇦🇸" },
-                                        { code: "AO", name: "Angola", flag: "🇦🇴" },
-                                        { code: "AR", name: "Argentina", flag: "🇦🇷" },
-                                        { code: "DE", name: "Germany", flag: "🇩🇪" },
-                                        { code: "FR", name: "France", flag: "🇫🇷" },
-                                        { code: "ES", name: "Spain", flag: "🇪🇸" },
-                                        { code: "IT", name: "Italy", flag: "🇮🇹" },
-                                        { code: "MX", name: "Mexico", flag: "🇲🇽" },
-                                        { code: "BR", name: "Brazil", flag: "🇧🇷" },
-                                      ].filter(c => !(widget.targeting?.selectedCountries || []).includes(c.name)).map((country) => (
+                                      {allCountries.filter(c => !(widget.targeting?.selectedCountries || []).includes(c.name)).map((country) => (
                                         <SelectItem key={country.code} value={country.name}>
                                           <div className="flex items-center gap-2">
                                             <span>{country.flag}</span>
@@ -3518,24 +3502,7 @@ export default function ChatWidgetEditPage() {
                                   {(widget.targeting?.selectedCountries || []).length > 0 && (
                                     <div className="flex flex-wrap gap-2">
                                       {(widget.targeting?.selectedCountries || []).map((country) => {
-                                        const countryData = [
-                                          { name: "United States", flag: "🇺🇸" },
-                                          { name: "United Kingdom", flag: "🇬🇧" },
-                                          { name: "Australia", flag: "🇦🇺" },
-                                          { name: "Canada", flag: "🇨🇦" },
-                                          { name: "Afghanistan", flag: "🇦🇫" },
-                                          { name: "Albania", flag: "🇦🇱" },
-                                          { name: "Algeria", flag: "🇩🇿" },
-                                          { name: "American Samoa", flag: "🇦🇸" },
-                                          { name: "Angola", flag: "🇦🇴" },
-                                          { name: "Argentina", flag: "🇦🇷" },
-                                          { name: "Germany", flag: "🇩🇪" },
-                                          { name: "France", flag: "🇫🇷" },
-                                          { name: "Spain", flag: "🇪🇸" },
-                                          { name: "Italy", flag: "🇮🇹" },
-                                          { name: "Mexico", flag: "🇲🇽" },
-                                          { name: "Brazil", flag: "🇧🇷" },
-                                        ].find(c => c.name === country);
+                                        const countryData = getCountryByName(country);
                                         return (
                                           <div 
                                             key={country}
