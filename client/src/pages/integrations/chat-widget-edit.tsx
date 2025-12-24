@@ -1360,13 +1360,19 @@ function SortableChannelItem({
                 <div className="space-y-4">
                   <div className="space-y-2">
                     <Label className="text-xs text-slate-500">Title *</Label>
-                    <Input 
-                      value={smsSettings.messageScreen.title}
-                      onChange={(e) => onSmsSettingsChange({
-                        messageScreen: { ...smsSettings.messageScreen, title: e.target.value }
-                      })}
-                      data-testid="input-sms-title"
-                    />
+                    <div className="relative">
+                      <Input 
+                        value={smsSettings.messageScreen.title}
+                        onChange={(e) => onSmsSettingsChange({
+                          messageScreen: { ...smsSettings.messageScreen, title: e.target.value }
+                        })}
+                        className="pr-10"
+                        data-testid="input-sms-title"
+                      />
+                      <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7">
+                        <Smile className="h-4 w-4 text-slate-400" />
+                      </Button>
+                    </div>
                   </div>
                   <div className="space-y-2">
                     <Label className="text-xs text-slate-500">Description</Label>
@@ -3822,11 +3828,11 @@ export default function ChatWidgetEditPage() {
                           {widget.callSettings?.callUsScreen?.description || "We're available to take your call during business hours."}
                         </p>
                         {widget.callSettings?.callUsScreen?.showQRCode && (
-                          <div className="flex justify-center py-4">
-                            <div className="bg-white p-2 rounded-lg border-2 border-slate-200">
+                          <div className="flex justify-center py-2">
+                            <div className="bg-white p-1.5 rounded-lg border border-slate-200">
                               <QRCodeDisplay 
                                 value={`tel:${widget.callSettings?.numbersAndCountries?.entries?.[0]?.phoneNumber?.replace(/[\s()-]/g, '') || '+18332214494'}`}
-                                size={112}
+                                size={67}
                               />
                             </div>
                           </div>
@@ -3861,11 +3867,11 @@ export default function ChatWidgetEditPage() {
                           {widget.whatsappSettings?.messageScreen?.description || "Click the button below to start a WhatsApp conversation."}
                         </p>
                         {widget.whatsappSettings?.messageScreen?.showQRCode && (
-                          <div className="flex justify-center py-4">
-                            <div className="bg-white p-2 rounded-lg border-2 border-slate-200">
+                          <div className="flex justify-center py-2">
+                            <div className="bg-white p-1.5 rounded-lg border border-slate-200">
                               <QRCodeDisplay 
                                 value={`https://wa.me/${widget.whatsappSettings?.numberSettings?.customNumber?.replace(/[\s()+\-]/g, '') || '17866302522'}`}
-                                size={112}
+                                size={67}
                               />
                             </div>
                           </div>
@@ -4003,13 +4009,13 @@ export default function ChatWidgetEditPage() {
                         <p className="text-xs text-slate-400 text-center">
                           Text messaging charges and data fees may apply according to your carrier's rates.
                         </p>
-                        <div className="flex justify-center py-4">
-                          <div className="bg-white p-2 rounded-lg border-2 border-slate-200">
+                        <div className="flex justify-center py-2">
+                          <div className="bg-white p-1.5 rounded-lg border border-slate-200">
                             <QRCodeDisplay 
                               value={`sms:${widget.smsSettings?.numberSettings?.numberType === "custom" 
                                 ? widget.smsSettings?.numberSettings?.customNumber?.replace(/[\s()\-]/g, '') || '+18332214494'
                                 : '+18332214494'}`}
-                              size={112}
+                              size={67}
                             />
                           </div>
                         </div>
