@@ -298,7 +298,7 @@ export async function createSubAccount(
     // Get webhook base URL from environment
     const webhookBaseUrl = process.env.REPLIT_DEV_DOMAIN 
       ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-      : "https://api.curbe.io"; // Production fallback
+      : "https://app.curbe.io"; // Production fallback
     
     const smsWebhookUrl = `${webhookBaseUrl}/webhooks/telnyx/messages`;
     const voiceWebhookUrl = `${webhookBaseUrl}/webhooks/telnyx/voice`;
@@ -712,7 +712,7 @@ export async function repairMessagingProfileWebhooks(): Promise<void> {
   try {
     const webhookBaseUrl = process.env.REPLIT_DEV_DOMAIN
       ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-      : "https://api.curbe.io";
+      : "https://app.curbe.io";
     
     const smsWebhookUrl = `${webhookBaseUrl}/webhooks/telnyx/messages`;
     

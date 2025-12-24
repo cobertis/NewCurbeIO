@@ -37368,7 +37368,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       // Step 2: Update webhook URL on messaging profile
       const webhookBaseUrl = process.env.REPLIT_DEV_DOMAIN
         ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-        : "https://api.curbe.io";
+        : "https://app.curbe.io";
       const smsWebhookUrl = `${webhookBaseUrl}/webhooks/telnyx/messages`;
       
       const apiKey = await getTelnyxMasterApiKey();

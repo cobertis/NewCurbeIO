@@ -286,7 +286,7 @@ app.use((req, res, next) => {
               // First update the webhook URL to point to this server (critical for dev environments)
               const webhookBaseUrl = process.env.REPLIT_DEV_DOMAIN 
                 ? `https://${process.env.REPLIT_DEV_DOMAIN}`
-                : 'https://api.curbe.io';
+                : 'https://app.curbe.io';
               
               import("./services/telnyx-managed-accounts").then(({ getCompanyManagedAccountId }) => {
                 getCompanyManagedAccountId(setting.companyId).then((managedAccountId) => {
