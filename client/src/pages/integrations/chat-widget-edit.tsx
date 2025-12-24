@@ -2702,64 +2702,77 @@ export default function ChatWidgetEditPage() {
                     </div>
                   </div>
                 ) : (
-                  <div 
-                    className="rounded-xl overflow-hidden shadow-lg"
-                    style={{ 
-                      background: currentBackground
-                    }}
-                  >
-                    <div className="p-6 text-white">
-                      {widget.branding?.customLogo && (
-                        <img 
-                          src={widget.branding.customLogo} 
-                          alt="Logo" 
-                          className="h-10 w-auto mb-4 rounded"
-                        />
-                      )}
-                      <h4 className="text-2xl font-bold">{widget.welcomeTitle}</h4>
-                      <p className="text-base opacity-90 mt-3">{widget.welcomeMessage}</p>
+                  <div className="relative">
+                    <div 
+                      className="rounded-xl overflow-hidden shadow-lg"
+                      style={{ 
+                        background: currentBackground
+                      }}
+                    >
+                      <div className="p-6 text-white">
+                        {widget.branding?.customLogo && (
+                          <img 
+                            src={widget.branding.customLogo} 
+                            alt="Logo" 
+                            className="h-10 w-auto mb-4 rounded"
+                          />
+                        )}
+                        <h4 className="text-2xl font-bold">{widget.welcomeTitle}</h4>
+                        <p className="text-base opacity-90 mt-3">{widget.welcomeMessage}</p>
+                      </div>
+                      
+                      <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
+                        <div>
+                          <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">How can we help you today?</p>
+                          <div className="border rounded-lg p-3">
+                            <p className="text-sm text-slate-400">Type your message here</p>
+                          </div>
+                        </div>
+                        
+                        <Button 
+                          className="w-full"
+                          style={{ background: currentBackground }}
+                        >
+                          Start chat
+                        </Button>
+                        
+                        {widget.channels.sms && (
+                          <div className="flex items-center justify-between py-2 border-t">
+                            <div className="flex items-center gap-2">
+                              <Send className="h-4 w-4 text-slate-500" />
+                              <span className="text-sm text-slate-700 dark:text-slate-300">Send a text</span>
+                            </div>
+                            <ChevronLeft className="h-4 w-4 text-slate-400 rotate-180" />
+                          </div>
+                        )}
+                        
+                        {widget.channels.phone && (
+                          <div className="flex items-center justify-between py-2 border-t">
+                            <div className="flex items-center gap-2">
+                              <Phone className="h-4 w-4 text-slate-500" />
+                              <span className="text-sm text-slate-700 dark:text-slate-300">Call us</span>
+                            </div>
+                            <ChevronLeft className="h-4 w-4 text-slate-400 rotate-180" />
+                          </div>
+                        )}
+                        
+                        <div className="text-center pt-2">
+                          <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                            Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
+                          </p>
+                        </div>
+                      </div>
                     </div>
                     
-                    <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
-                      <div>
-                        <p className="text-sm font-medium text-slate-700 dark:text-slate-300 mb-2">How can we help you today?</p>
-                        <div className="border rounded-lg p-3">
-                          <p className="text-sm text-slate-400">Type your message here</p>
-                        </div>
-                      </div>
-                      
-                      <Button 
-                        className="w-full"
-                        style={{ background: currentBackground }}
-                      >
-                        Start chat
-                      </Button>
-                      
-                      {widget.channels.sms && (
-                        <div className="flex items-center justify-between py-2 border-t">
-                          <div className="flex items-center gap-2">
-                            <Send className="h-4 w-4 text-slate-500" />
-                            <span className="text-sm text-slate-700 dark:text-slate-300">Send a text</span>
-                          </div>
-                          <ChevronLeft className="h-4 w-4 text-slate-400 rotate-180" />
-                        </div>
-                      )}
-                      
-                      {widget.channels.phone && (
-                        <div className="flex items-center justify-between py-2 border-t">
-                          <div className="flex items-center gap-2">
-                            <Phone className="h-4 w-4 text-slate-500" />
-                            <span className="text-sm text-slate-700 dark:text-slate-300">Call us</span>
-                          </div>
-                          <ChevronLeft className="h-4 w-4 text-slate-400 rotate-180" />
-                        </div>
-                      )}
-                      
-                      <div className="text-center pt-2">
-                        <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                          Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
-                        </p>
-                      </div>
+                    <div 
+                      className="absolute -bottom-16 right-0 flex items-center justify-center rounded-full shadow-xl cursor-pointer"
+                      style={{ 
+                        background: currentBackground,
+                        width: "56px",
+                        height: "56px"
+                      }}
+                    >
+                      <ChevronDown className="h-6 w-6 text-white" />
                     </div>
                   </div>
                 )}
