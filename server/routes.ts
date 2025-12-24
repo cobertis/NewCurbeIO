@@ -31070,75 +31070,30 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       console.log("[10DLC Campaign Numbers] Fetching for campaign:", id, "tcrCampaignId:", tcrCampaignId, "managedAccount:", managedAccountId);
       
-      // Helper function to fetch all pages
-      async function fetchAllPages(baseUrl: string): Promise<any[]> {
-        const allRecords: any[] = [];
-        let pageNumber = 1;
-        let hasMore = true;
-        
-        while (hasMore) {
-          const url = `${baseUrl}&page[number]=${pageNumber}&page[size]=100`;
-          console.log("[10DLC Campaign Numbers] Fetching page", pageNumber);
-          
-          const response = await fetch(url, {
-            method: "GET",
-            headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
-          });
-          
-          const result = await response.json();
-          const records = result.records || result.data || [];
-          console.log("[10DLC Campaign Numbers] Page", pageNumber, "returned", records.length, "records");
-          
-          if (records.length === 0) {
-            hasMore = false;
-          } else {
-            allRecords.push(...records);
-            pageNumber++;
-            // Safety limit to prevent infinite loops
-            if (pageNumber > 50) hasMore = false;
-          }
+      // Simple fetch with large page size - Telnyx returns max ~250 per page
+      const url = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[telnyx_campaign_id]=${encodeURIComponent(id)}&page[size]=250`;
+      console.log("[10DLC Campaign Numbers] Fetching URL:", url);
+      
+      const response = await fetch(url, {
+        method: "GET",
+        headers: { "Authorization": `Bearer ${telnyxApiKey}`, "Content-Type": "application/json", "Accept": "application/json" },
+      });
+      
+      const result = await response.json();
+      let numbers = result.records || result.data || [];
+      console.log("[10DLC Campaign Numbers] API returned", numbers.length, "records");
+      
+      // Deduplicate by phone number to avoid duplicates from API inconsistency
+      const seenPhones = new Set<string>();
+      numbers = numbers.filter((num: any) => {
+        if (seenPhones.has(num.phoneNumber)) {
+          return false;
         }
-        
-        return allRecords;
-      }
+        seenPhones.add(num.phoneNumber);
+        return true;
+      });
       
-      // Strategy 1: Try with campaignId filter first
-      let baseUrl = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[telnyx_campaign_id]=${encodeURIComponent(id)}`;
-      console.log("[10DLC Campaign Numbers] Trying strategy 1 with telnyx_campaign_id filter");
-      
-      let numbers = await fetchAllPages(baseUrl);
-      console.log("[10DLC Campaign Numbers] Strategy 1 result:", numbers.length, "numbers");
-      
-      // Strategy 2: If no results and we have tcrCampaignId, try filtering by tcrCampaignId
-      if (numbers.length === 0 && tcrCampaignId) {
-        baseUrl = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?filter[tcr_campaign_id]=${encodeURIComponent(String(tcrCampaignId))}`;
-        console.log("[10DLC Campaign Numbers] Trying strategy 2 with tcr_campaign_id filter");
-        
-        numbers = await fetchAllPages(baseUrl);
-        console.log("[10DLC Campaign Numbers] Strategy 2 result:", numbers.length, "numbers");
-      }
-      
-      // Strategy 3: If still no results, get ALL and filter locally
-      if (numbers.length === 0) {
-        baseUrl = `https://api.telnyx.com/v2/10dlc/phone_number_campaigns?`;
-        console.log("[10DLC Campaign Numbers] Trying strategy 3 - get ALL and filter locally");
-        
-        const allNumbers = await fetchAllPages(baseUrl);
-        console.log("[10DLC Campaign Numbers] Got", allNumbers.length, "total numbers");
-        
-        if (allNumbers.length > 0) {
-          // Filter locally by any matching ID
-          numbers = allNumbers.filter((num: any) => {
-            return num.campaignId === id || 
-                   num.telnyxCampaignId === id || 
-                   (tcrCampaignId && num.tcrCampaignId === tcrCampaignId) ||
-                   (tcrCampaignId && num.campaignId === tcrCampaignId);
-          });
-          console.log("[10DLC Campaign Numbers] After local filter:", numbers.length);
-        }
-      }
-      
-      console.log("[10DLC Campaign Numbers] Final result:", numbers.length, "numbers");
+      console.log("[10DLC Campaign Numbers] After dedup:", numbers.length, "unique numbers");
       res.json({ phoneNumbers: numbers });
     } catch (error: any) {
       console.error("Error fetching campaign phone numbers:", error);
