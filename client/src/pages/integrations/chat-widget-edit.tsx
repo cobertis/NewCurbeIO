@@ -199,14 +199,14 @@ interface WidgetConfig {
 }
 
 const colorOptions = [
-  { value: "blue", bg: "bg-blue-500", hex: "#3B82F6" },
-  { value: "orange", bg: "bg-orange-500", hex: "#F97316" },
-  { value: "green", bg: "bg-green-500", hex: "#22C55E" },
-  { value: "red", bg: "bg-red-500", hex: "#EF4444" },
-  { value: "teal", bg: "bg-teal-500", hex: "#14B8A6" },
-  { value: "indigo", bg: "bg-indigo-500", hex: "#6366F1" },
-  { value: "pink", bg: "bg-pink-500", hex: "#EC4899" },
-  { value: "rose", bg: "bg-rose-400", hex: "#FB7185" },
+  { value: "blue", bg: "bg-blue-500", gradientBg: "bg-gradient-to-br from-blue-400 via-blue-600 to-indigo-700", hex: "#3B82F6", gradientHex: "linear-gradient(135deg, #60A5FA 0%, #2563EB 50%, #4338CA 100%)" },
+  { value: "orange", bg: "bg-orange-500", gradientBg: "bg-gradient-to-br from-yellow-400 via-orange-500 to-red-600", hex: "#F97316", gradientHex: "linear-gradient(135deg, #FACC15 0%, #F97316 50%, #DC2626 100%)" },
+  { value: "green", bg: "bg-green-500", gradientBg: "bg-gradient-to-br from-emerald-400 via-green-500 to-teal-600", hex: "#22C55E", gradientHex: "linear-gradient(135deg, #34D399 0%, #22C55E 50%, #0D9488 100%)" },
+  { value: "red", bg: "bg-red-500", gradientBg: "bg-gradient-to-br from-rose-400 via-red-500 to-pink-600", hex: "#EF4444", gradientHex: "linear-gradient(135deg, #FB7185 0%, #EF4444 50%, #DB2777 100%)" },
+  { value: "teal", bg: "bg-teal-500", gradientBg: "bg-gradient-to-br from-cyan-400 via-teal-500 to-emerald-600", hex: "#14B8A6", gradientHex: "linear-gradient(135deg, #22D3EE 0%, #14B8A6 50%, #059669 100%)" },
+  { value: "indigo", bg: "bg-indigo-500", gradientBg: "bg-gradient-to-br from-violet-400 via-indigo-500 to-purple-700", hex: "#6366F1", gradientHex: "linear-gradient(135deg, #A78BFA 0%, #6366F1 50%, #7C3AED 100%)" },
+  { value: "pink", bg: "bg-pink-500", gradientBg: "bg-gradient-to-br from-fuchsia-400 via-pink-500 to-rose-600", hex: "#EC4899", gradientHex: "linear-gradient(135deg, #E879F9 0%, #EC4899 50%, #E11D48 100%)" },
+  { value: "rose", bg: "bg-rose-400", gradientBg: "bg-gradient-to-br from-pink-300 via-rose-400 to-red-500", hex: "#FB7185", gradientHex: "linear-gradient(135deg, #F9A8D4 0%, #FB7185 50%, #EF4444 100%)" },
 ];
 
 const iconOptions = [
@@ -1515,9 +1515,12 @@ export default function ChatWidgetEditPage() {
     setTimeout(() => setCopied(false), 2000);
   };
 
+  const currentColorOption = colorOptions.find(c => c.value === widget.colorTheme) || colorOptions[0];
   const currentColor = widget.themeType === "custom" 
-    ? { value: "custom", hex: widget.customColor || "#3B82F6", bg: "" }
-    : colorOptions.find(c => c.value === widget.colorTheme) || colorOptions[0];
+    ? { value: "custom", hex: widget.customColor || "#3B82F6", bg: "", gradientHex: widget.customColor || "#3B82F6" }
+    : currentColorOption;
+  const useGradient = widget.themeType === "gradient";
+  const currentBackground = useGradient ? currentColor.gradientHex : currentColor.hex;
 
   if (isLoading) {
     return (
@@ -1655,7 +1658,7 @@ export default function ChatWidgetEditPage() {
                                     <button
                                       key={color.value}
                                       onClick={() => updateLocalWidget({ colorTheme: color.value })}
-                                      className={`w-8 h-8 rounded-full ${color.bg} transition-all ${
+                                      className={`w-8 h-8 rounded-full ${widget.themeType === "gradient" ? color.gradientBg : color.bg} transition-all ${
                                         widget.colorTheme === color.value 
                                           ? "ring-2 ring-offset-2 ring-blue-500" 
                                           : "hover:scale-110"
@@ -2677,7 +2680,7 @@ export default function ChatWidgetEditPage() {
                         <div 
                           className="flex items-center gap-2 shadow-xl cursor-pointer transition-transform hover:scale-105"
                           style={{ 
-                            backgroundColor: currentColor.hex,
+                            background: currentBackground,
                             borderRadius: `${widget.minimizedState?.borderRadius || 40}px`,
                             padding: widget.minimizedState?.includeButtonText ? "14px 22px" : "18px"
                           }}
@@ -2702,9 +2705,7 @@ export default function ChatWidgetEditPage() {
                   <div 
                     className="rounded-xl overflow-hidden shadow-lg"
                     style={{ 
-                      background: widget.themeType === "gradient" 
-                        ? `linear-gradient(135deg, ${currentColor.hex}, ${currentColor.hex}dd)` 
-                        : currentColor.hex 
+                      background: currentBackground
                     }}
                   >
                     <div className="p-6 text-white">
@@ -2729,7 +2730,7 @@ export default function ChatWidgetEditPage() {
                       
                       <Button 
                         className="w-full"
-                        style={{ backgroundColor: currentColor.hex }}
+                        style={{ background: currentBackground }}
                       >
                         Start chat
                       </Button>
