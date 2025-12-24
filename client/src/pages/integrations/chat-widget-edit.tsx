@@ -3940,7 +3940,7 @@ export default function ChatWidgetEditPage() {
                 ) : expandedChannel === "whatsapp" ? (
                   <div className="relative">
                     <div className="rounded-xl overflow-hidden shadow-lg">
-                      <div className="p-4 text-white bg-[#25D366]">
+                      <div className="p-4 text-white" style={{ background: currentBackground }}>
                         <div className="flex items-center gap-2">
                           <ChevronLeft className="h-5 w-5" />
                           <SiWhatsapp className="h-5 w-5" />
@@ -3959,7 +3959,7 @@ export default function ChatWidgetEditPage() {
                             {formatPhoneNumber(widget.whatsappSettings?.numberSettings?.customNumber || "+1 786 630 2522")}
                           </p>
                         </div>
-                        <Button className="w-full bg-[#25D366] hover:bg-[#128C7E]">
+                        <Button className="w-full" style={{ background: currentBackground }}>
                           {widget.whatsappSettings?.messageScreen?.buttonLabel || "Open chat"}
                         </Button>
                         {widget.whatsappSettings?.messageScreen?.showQRCode && (
@@ -3973,12 +3973,12 @@ export default function ChatWidgetEditPage() {
                                 <div className="p-2">
                                   <QRCodeDisplay 
                                     value={`https://wa.me/${widget.whatsappSettings?.numberSettings?.customNumber?.replace(/[\s()+\-]/g, '') || '17866302522'}`}
-                                    size={140}
+                                    size={160}
                                   />
                                 </div>
                                 <div className="absolute inset-0 flex items-center justify-center">
-                                  <div className="bg-white p-1.5 rounded-full border-2 border-[#25D366]">
-                                    <SiWhatsapp className="h-5 w-5 text-[#25D366]" />
+                                  <div className="bg-white p-1.5 rounded-full border-2" style={{ borderColor: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3B82F6' }}>
+                                    <SiWhatsapp className="h-5 w-5" style={{ color: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3B82F6' }} />
                                   </div>
                                 </div>
                               </div>
@@ -4125,7 +4125,7 @@ export default function ChatWidgetEditPage() {
                                     value={`sms:${widget.smsSettings?.numberSettings?.numberType === "custom" 
                                       ? widget.smsSettings?.numberSettings?.customNumber?.replace(/[\s()\-]/g, '') || '+18332214494'
                                       : (widget.smsSettings?.numberSettings?.connectedNumber || companyNumbers[0]?.phoneNumber || '+18332214494').replace(/[\s()\-]/g, '')}`}
-                                    size={140}
+                                    size={160}
                                   />
                                 </div>
                                 <div className="absolute inset-0 flex items-center justify-center">
@@ -4187,7 +4187,7 @@ export default function ChatWidgetEditPage() {
                                     value={`sms:${widget.smsSettings?.numberSettings?.numberType === "custom" 
                                       ? widget.smsSettings?.numberSettings?.customNumber?.replace(/[\s()\-]/g, '') || '+18332214494'
                                       : (widget.smsSettings?.numberSettings?.connectedNumber || companyNumbers[0]?.phoneNumber || '+18332214494').replace(/[\s()\-]/g, '')}`}
-                                    size={140}
+                                    size={160}
                                   />
                                 </div>
                                 <div className="absolute inset-0 flex items-center justify-center">
