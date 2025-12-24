@@ -114,40 +114,44 @@ export default function ChatWidgetPreviewPage() {
 
   // Resume existing chat session for returning visitors
   useEffect(() => {
-    if (!widgetId || !widgetOpen) return;
+    // Only try to resume if widget is open and we have a stored visitor
+    if (!widgetId || !widgetOpen || chatSessionId) return;
     
     const storedVisitorId = localStorage.getItem(`chat_visitor_${widgetId}`);
-    if (!storedVisitorId || chatSessionId) return;
+    if (!storedVisitorId) return;
     
     const resumeSession = async () => {
       try {
-        // Try to resume existing session
+        // First check if there are messages for this visitor
         const sessionRes = await fetch('/api/public/live-chat/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            widgetId,
-            visitorId: storedVisitorId,
-          }),
+          body: JSON.stringify({ widgetId, visitorId: storedVisitorId }),
         });
         
         if (!sessionRes.ok) return;
         
         const { sessionId, visitorId } = await sessionRes.json();
         
-        // Fetch existing messages
+        // Only resume if there are actual messages
         const msgRes = await fetch(`/api/public/live-chat/messages/${sessionId}`);
         if (msgRes.ok) {
           const { messages } = await msgRes.json();
-          if (messages.length > 0) {
-            // Has existing messages - resume the session
+          if (messages && messages.length > 0) {
             setChatSessionId(sessionId);
             setChatVisitorId(visitorId);
             setChatMessages(messages);
+            console.log('[Chat] Resumed session with', messages.length, 'messages');
+          } else {
+            // No messages means incomplete session - clear localStorage
+            localStorage.removeItem(`chat_visitor_${widgetId}`);
+            console.log('[Chat] Cleared stale visitor session');
           }
         }
       } catch (error) {
-        console.error('Failed to resume session:', error);
+        console.error('[Chat] Failed to resume session:', error);
+        // Clear localStorage on error
+        localStorage.removeItem(`chat_visitor_${widgetId}`);
       }
     };
     
