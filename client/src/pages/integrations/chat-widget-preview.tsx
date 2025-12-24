@@ -195,6 +195,14 @@ export default function ChatWidgetPreviewPage() {
         qrValue: `https://m.me/${widget.messengerSettings?.pageConnection?.pageId || 'curbeio'}`,
         icon: <SiFacebook className="h-5 w-5" />,
       },
+      instagram: {
+        title: widget.instagramSettings?.messageUsScreen?.title || "Message us on Instagram",
+        description: widget.instagramSettings?.messageUsScreen?.description || "Click the button below or scan the QR code to send us a message on Instagram.",
+        buttonLabel: widget.instagramSettings?.messageUsScreen?.buttonLabel || "Open Instagram",
+        showQR: widget.instagramSettings?.messageUsScreen?.showQRCode ?? true,
+        qrValue: `https://instagram.com/${widget.instagramSettings?.accountConnection?.username || 'curbeio'}`,
+        icon: <SiInstagram className="h-5 w-5" />,
+      },
     };
 
     const config = channelConfig[activeChannel];
@@ -256,7 +264,7 @@ export default function ChatWidgetPreviewPage() {
                 </div>
               </div>
               <p className="text-xs text-slate-400 text-center">
-                {activeChannel === "whatsapp" || activeChannel === "facebook" ? "Scan QR code to open a chat" : activeChannel === "phone" ? "Scan QR code to call" : "Scan QR code to send a text"}
+                {activeChannel === "whatsapp" || activeChannel === "facebook" || activeChannel === "instagram" ? "Scan QR code to open a chat" : activeChannel === "phone" ? "Scan QR code to call" : "Scan QR code to send a text"}
               </p>
             </>
           )}

@@ -292,14 +292,22 @@ interface WidgetConfig {
     welcomeScreen: {
       channelName: string;
     };
+    messageUsScreen: {
+      showQRCode: boolean;
+      title: string;
+      description: string;
+      buttonLabel: string;
+    };
     profileSettings: {
       title: string;
       description: string;
       buttonLabel: string;
     };
     accountConnection: {
+      connectionType: "connected" | "custom";
       username: string;
       accountName: string;
+      customUrl: string;
     };
   };
   targeting: {
@@ -393,7 +401,7 @@ type WhatsappSubSection = "welcomeScreen" | "messageScreen" | "numberSettings" |
 type EmailSubSection = "welcomeScreen" | "formFields" | "successScreen" | "associatedEmail" | null;
 type SmsSubSection = "welcomeScreen" | "messageScreen" | "numberSettings" | null;
 type MessengerSubSection = "welcomeScreen" | "messageUsScreen" | "pageConnection" | null;
-type InstagramSubSection = "welcomeScreen" | "profileSettings" | "accountConnection" | null;
+type InstagramSubSection = "welcomeScreen" | "messageUsScreen" | "accountConnection" | null;
 
 function SortableChannelItem({ 
   channel, 
@@ -509,7 +517,7 @@ function SortableChannelItem({
 
   const instagramSubOptions = [
     { id: "welcomeScreen", label: "Welcome screen", icon: <Monitor className="h-4 w-4" /> },
-    { id: "profileSettings", label: "Profile settings", icon: <FileText className="h-4 w-4" /> },
+    { id: "messageUsScreen", label: "Message us screen", icon: <FileText className="h-4 w-4" /> },
     { id: "accountConnection", label: "Connect Instagram", icon: <SiInstagram className="h-4 w-4" /> },
   ];
 
@@ -1789,24 +1797,33 @@ function SortableChannelItem({
                 </div>
               )}
 
-              {activeInstagramSubSection === "profileSettings" && (
+              {activeInstagramSubSection === "messageUsScreen" && (
                 <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-sm font-medium">Show QR code</Label>
+                    <Switch
+                      checked={instagramSettings.messageUsScreen?.showQRCode ?? true}
+                      onCheckedChange={(checked) => onInstagramSettingsChange({
+                        messageUsScreen: { ...instagramSettings.messageUsScreen, showQRCode: checked }
+                      })}
+                      data-testid="switch-instagram-qr"
+                    />
+                  </div>
                   <div className="space-y-2">
-                    <Label className="text-xs text-slate-500">Title *</Label>
+                    <Label className="text-xs text-slate-500">Title & description *</Label>
                     <Input 
-                      value={instagramSettings.profileSettings.title}
+                      value={instagramSettings.messageUsScreen?.title || "Message us on Instagram"}
                       onChange={(e) => onInstagramSettingsChange({
-                        profileSettings: { ...instagramSettings.profileSettings, title: e.target.value }
+                        messageUsScreen: { ...instagramSettings.messageUsScreen, title: e.target.value }
                       })}
                       data-testid="input-instagram-title"
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-xs text-slate-500">Description</Label>
                     <Textarea 
-                      value={instagramSettings.profileSettings.description}
+                      value={instagramSettings.messageUsScreen?.description || "Click the button below or scan the QR code to send us a message on Instagram."}
                       onChange={(e) => onInstagramSettingsChange({
-                        profileSettings: { ...instagramSettings.profileSettings, description: e.target.value }
+                        messageUsScreen: { ...instagramSettings.messageUsScreen, description: e.target.value }
                       })}
                       rows={3}
                       data-testid="textarea-instagram-description"
@@ -1815,9 +1832,9 @@ function SortableChannelItem({
                   <div className="space-y-2">
                     <Label className="text-xs text-slate-500">Button label *</Label>
                     <Input 
-                      value={instagramSettings.profileSettings.buttonLabel}
+                      value={instagramSettings.messageUsScreen?.buttonLabel || "Open Instagram"}
                       onChange={(e) => onInstagramSettingsChange({
-                        profileSettings: { ...instagramSettings.profileSettings, buttonLabel: e.target.value }
+                        messageUsScreen: { ...instagramSettings.messageUsScreen, buttonLabel: e.target.value }
                       })}
                       data-testid="input-instagram-button-label"
                     />
@@ -2052,7 +2069,13 @@ export default function ChatWidgetEditPage() {
     },
     instagramSettings: {
       welcomeScreen: {
-        channelName: "Message on Instagram",
+        channelName: "Chat on Instagram",
+      },
+      messageUsScreen: {
+        showQRCode: true,
+        title: "Message us on Instagram",
+        description: "Click the button below or scan the QR code to send us a message on Instagram.",
+        buttonLabel: "Open Instagram",
       },
       profileSettings: {
         title: "Message us on Instagram",
@@ -2060,8 +2083,10 @@ export default function ChatWidgetEditPage() {
         buttonLabel: "Open Instagram",
       },
       accountConnection: {
+        connectionType: "custom",
         username: "",
         accountName: "",
+        customUrl: "",
       },
     },
     targeting: {
@@ -2343,6 +2368,10 @@ export default function ChatWidgetEditPage() {
         welcomeScreen: {
           ...widget.instagramSettings?.welcomeScreen,
           ...settings.welcomeScreen,
+        },
+        messageUsScreen: {
+          ...widget.instagramSettings?.messageUsScreen,
+          ...settings.messageUsScreen,
         },
         profileSettings: {
           ...widget.instagramSettings?.profileSettings,
