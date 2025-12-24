@@ -224,7 +224,7 @@ export default function InboxPage() {
 
   useWebSocket((message) => {
     const msg = message as any;
-    if (msg.type === 'telnyx_message' || msg.type === 'new_message') {
+    if (msg.type === 'telnyx_message' || msg.type === 'new_message' || msg.type === 'conversation_update') {
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
       if (selectedConversationId === msg.conversationId) {
         queryClient.invalidateQueries({ 
