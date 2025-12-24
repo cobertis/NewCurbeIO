@@ -30147,7 +30147,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         "Content-Type": "application/json"
       };
       if (managedAccountId && managedAccountId !== "MASTER_ACCOUNT") {
-        telnyxHeaders["x-managed-account-id"] = managedAccountId;
+        telnyxHeaders["x-telnyx-account-id"] = managedAccountId;
       }
       
       console.log(`[CNAM] Looking up phone number ${phoneNumber} for company ${companyId} with managedAccountId: ${managedAccountId}`);
@@ -30177,30 +30177,49 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const telnyxPhoneId = searchResult.data[0].id;
       console.log(`[CNAM] Found Telnyx phone ID: ${telnyxPhoneId}`);
       
-      // Set CNAM directly on the phone number using cnam_listing_details
-      // The /v2/cnam_listings endpoint is deprecated - use phone_numbers endpoint instead
+      // Use POST /v2/cnam_listings to create CNAM listing (this is what the portal uses)
       let cnamUpdateSuccess = false;
       
+      // First try to create a new CNAM listing
       const setCnamResponse = await fetch(
-        `https://api.telnyx.com/v2/phone_numbers/${telnyxPhoneId}`,
+        `https://api.telnyx.com/v2/cnam_listings`,
         {
-          method: "PATCH",
+          method: "POST",
           headers: telnyxHeaders,
           body: JSON.stringify({
-            cnam_listing_enabled: true,
-            cnam_listing_details: sanitizedCnam
+            phone_number_id: telnyxPhoneId,
+            caller_id_name: sanitizedCnam
           })
         }
       );
       
       if (setCnamResponse.ok) {
         const result = await setCnamResponse.json();
-        console.log(`[CNAM] Successfully set CNAM to "${sanitizedCnam}" on phone ${telnyxPhoneId}`);
-        console.log(`[CNAM] Response cnam_listing_details: ${result.data?.cnam_listing_details}`);
+        console.log(`[CNAM] Successfully created CNAM listing "${sanitizedCnam}" for phone ${telnyxPhoneId}`);
+        console.log(`[CNAM] Response:`, JSON.stringify(result.data));
         cnamUpdateSuccess = true;
+      } else if (setCnamResponse.status === 409 || setCnamResponse.status === 422) {
+        // CNAM listing already exists - try to update via PATCH
+        console.log(`[CNAM] CNAM listing may exist, getting existing listing...`);
+        const listResp = await fetch(`https://api.telnyx.com/v2/cnam_listings?filter[phone_number_id]=${telnyxPhoneId}`, { headers: telnyxHeaders });
+        if (listResp.ok) {
+          const listData = await listResp.json();
+          if (listData.data?.length > 0) {
+            const cnamId = listData.data[0].id;
+            const patchResp = await fetch(`https://api.telnyx.com/v2/cnam_listings/${cnamId}`, {
+              method: "PATCH",
+              headers: telnyxHeaders,
+              body: JSON.stringify({ caller_id_name: sanitizedCnam })
+            });
+            if (patchResp.ok) {
+              console.log(`[CNAM] Updated existing CNAM listing to "${sanitizedCnam}"`);
+              cnamUpdateSuccess = true;
+            }
+          }
+        }
       } else {
         const errorText = await setCnamResponse.text();
-        console.error(`[CNAM] Failed to set CNAM on phone number: ${setCnamResponse.status} - ${errorText}`);
+        console.error(`[CNAM] Failed to create CNAM listing: ${setCnamResponse.status} - ${errorText}`);
       }
       
       // Update local database with CNAM
