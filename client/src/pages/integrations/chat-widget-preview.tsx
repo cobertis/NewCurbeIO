@@ -315,11 +315,11 @@ export default function ChatWidgetPreviewPage() {
 
         <div className="flex items-center justify-center gap-4 text-sm">
           <Link 
-            href={`/settings/chat-widget/${widgetId}`}
+            href={`/settings/chat-widget/${widgetId}/settings`}
             className="text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1"
           >
             <ArrowLeft className="h-4 w-4" />
-            Go back to web app
+            Go back to widget settings
           </Link>
           <a 
             href="https://support.curbe.io" 
@@ -341,12 +341,6 @@ export default function ChatWidgetPreviewPage() {
         )}
         
         <div className="relative">
-          {!widgetOpen && (
-            <div className="absolute -top-16 -left-24 text-sm text-slate-500 dark:text-slate-400 whitespace-nowrap">
-              <span className="italic">Click here<br/>to preview widget</span>
-            </div>
-          )}
-          
           <button
             onClick={() => { setWidgetOpen(!widgetOpen); setActiveChannel(null); }}
             className="w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-transform hover:scale-105"
@@ -369,6 +363,13 @@ export default function ChatWidgetPreviewPage() {
           ) : (
             <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
               <div className="p-5 text-white" style={{ background: currentBackground }}>
+                {widget.branding?.customLogo && (
+                  <div className="flex justify-center mb-3">
+                    <div className="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
+                      <img src={widget.branding.customLogo} alt="Logo" className="w-10 h-10 object-contain" />
+                    </div>
+                  </div>
+                )}
                 <h4 className="text-lg font-bold">{widget.welcomeTitle}</h4>
                 <p className="text-sm opacity-90 mt-1">{widget.welcomeMessage}</p>
               </div>
