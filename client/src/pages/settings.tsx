@@ -2126,55 +2126,6 @@ export default function Settings({ view = 'all' }: SettingsProps) {
                         </div>
                       )}
                     </div>
-
-                    {/* Notification Preferences Section */}
-                    <div className="space-y-4 pt-2 border-t">
-                      <h4 className="text-sm font-medium text-muted-foreground uppercase tracking-wide pt-4">Notification Preferences</h4>
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="emailNotifications" className="text-base">
-                            Email Notifications
-                          </Label>
-                          <p className="text-sm text-muted-foreground">
-                            Receive email updates about your account activity.
-                          </p>
-                        </div>
-                        <Switch
-                          id="emailNotifications"
-                          checked={preferencesData?.preferences?.emailNotifications ?? true}
-                          onCheckedChange={(checked) => {
-                            updatePreferencesMutation.mutate({
-                              ...preferencesData?.preferences,
-                              emailNotifications: checked,
-                            });
-                          }}
-                          disabled={updatePreferencesMutation.isPending}
-                          data-testid="switch-email-notifications"
-                        />
-                      </div>
-                      <div className="flex items-center justify-between">
-                        <div className="space-y-0.5">
-                          <Label htmlFor="smsNotifications" className="text-base">
-                            SMS Notifications
-                          </Label>
-                          <p className="text-sm text-muted-foreground">
-                            Receive SMS updates about your account activity.
-                          </p>
-                        </div>
-                        <Switch
-                          id="smsNotifications"
-                          checked={preferencesData?.preferences?.smsNotifications ?? true}
-                          onCheckedChange={(checked) => {
-                            updatePreferencesMutation.mutate({
-                              ...preferencesData?.preferences,
-                              smsNotifications: checked,
-                            });
-                          }}
-                          disabled={updatePreferencesMutation.isPending}
-                          data-testid="switch-sms-notifications"
-                        />
-                      </div>
-                    </div>
                   </CardContent>
                 </Card>
 
