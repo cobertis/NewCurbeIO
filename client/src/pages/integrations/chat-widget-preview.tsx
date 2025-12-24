@@ -200,7 +200,7 @@ export default function ChatWidgetPreviewPage() {
         description: widget.instagramSettings?.messageUsScreen?.description || "Click the button below or scan the QR code to send us a message on Instagram.",
         buttonLabel: widget.instagramSettings?.messageUsScreen?.buttonLabel || "Open Instagram",
         showQR: widget.instagramSettings?.messageUsScreen?.showQRCode ?? true,
-        qrValue: `https://instagram.com/${widget.instagramSettings?.accountConnection?.username || 'curbeio'}`,
+        qrValue: `https://ig.me/m/${widget.instagramSettings?.accountConnection?.username || 'curbeio'}`,
         icon: <SiInstagram className="h-5 w-5" />,
       },
     };

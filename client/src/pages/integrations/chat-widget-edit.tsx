@@ -4608,7 +4608,7 @@ export default function ChatWidgetEditPage() {
                           style={{ background: currentBackground }}
                           onClick={() => {
                             const username = widget.instagramSettings?.accountConnection?.username || 'curbeio';
-                            window.open(`https://instagram.com/${username}`, '_blank');
+                            window.open(`https://ig.me/m/${username}`, '_blank');
                           }}
                         >
                           {widget.instagramSettings?.messageUsScreen?.buttonLabel || "Open Instagram"}
@@ -4623,7 +4623,7 @@ export default function ChatWidgetEditPage() {
                                 <div className="absolute -bottom-1 -right-1 w-5 h-5 border-r-2 border-b-2 border-slate-300 rounded-br-lg"></div>
                                 <div className="p-2">
                                   <QRCodeDisplay 
-                                    value={`https://instagram.com/${widget.instagramSettings?.accountConnection?.username || 'curbeio'}`}
+                                    value={`https://ig.me/m/${widget.instagramSettings?.accountConnection?.username || 'curbeio'}`}
                                     size={160}
                                   />
                                 </div>
