@@ -124,6 +124,20 @@ interface WidgetConfig {
       addContactsToList: string;
     };
   };
+  callSettings: {
+    callUsScreen: {
+      showQRCode: boolean;
+      title: string;
+      description: string;
+      buttonLabel: string;
+    };
+    numbersAndCountries: {
+      entries: Array<{
+        country: string;
+        phoneNumber: string;
+      }>;
+    };
+  };
   targeting: {
     countries: "all" | "selected" | "excluded";
     selectedCountries: string[];
@@ -176,9 +190,12 @@ interface SortableChannelItemProps {
   onExpandToggle: () => void;
   liveChatSettings?: WidgetConfig["liveChatSettings"];
   onLiveChatSettingsChange?: (settings: Partial<WidgetConfig["liveChatSettings"]>) => void;
+  callSettings?: WidgetConfig["callSettings"];
+  onCallSettingsChange?: (settings: Partial<WidgetConfig["callSettings"]>) => void;
 }
 
 type LiveChatSubSection = "welcomeScreen" | "preChatForm" | "queueSettings" | "satisfactionSurvey" | "offlineMode" | "additionalSettings" | null;
+type CallSubSection = "callUsScreen" | "numbersAndCountries" | null;
 
 function SortableChannelItem({ 
   channel, 
@@ -187,9 +204,12 @@ function SortableChannelItem({
   isExpanded, 
   onExpandToggle,
   liveChatSettings,
-  onLiveChatSettingsChange 
+  onLiveChatSettingsChange,
+  callSettings,
+  onCallSettingsChange
 }: SortableChannelItemProps) {
   const [activeSubSection, setActiveSubSection] = useState<LiveChatSubSection>(null);
+  const [activeCallSubSection, setActiveCallSubSection] = useState<CallSubSection>(null);
   
   const {
     attributes,
@@ -213,6 +233,11 @@ function SortableChannelItem({
     { id: "satisfactionSurvey", label: "Satisfaction survey", icon: <ThumbsUp className="h-4 w-4" /> },
     { id: "offlineMode", label: "Offline mode", icon: <Power className="h-4 w-4" /> },
     { id: "additionalSettings", label: "Additional settings", icon: <Settings className="h-4 w-4" /> },
+  ];
+
+  const callSubOptions = [
+    { id: "callUsScreen", label: "Call us screen", icon: <Phone className="h-4 w-4" /> },
+    { id: "numbersAndCountries", label: "Numbers and countries", icon: <Users className="h-4 w-4" /> },
   ];
 
   return (
@@ -504,6 +529,157 @@ function SortableChannelItem({
           )}
         </div>
       )}
+      
+      {isExpanded && channel.id === "phone" && callSettings && onCallSettingsChange && (
+        <div className="border-t px-4 py-3">
+          {activeCallSubSection === null ? (
+            <div className="space-y-1">
+              {callSubOptions.map((option) => (
+                <button
+                  key={option.id}
+                  onClick={() => setActiveCallSubSection(option.id as CallSubSection)}
+                  className="w-full flex items-center justify-between py-2 px-3 hover:bg-slate-50 dark:hover:bg-slate-800 rounded-lg transition-colors"
+                  data-testid={`button-call-${option.id}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-slate-500">{option.icon}</span>
+                    <span className="text-sm">{option.label}</span>
+                  </div>
+                  <ChevronRight className="h-4 w-4 text-slate-400" />
+                </button>
+              ))}
+            </div>
+          ) : (
+            <div className="space-y-4">
+              <button
+                onClick={() => setActiveCallSubSection(null)}
+                className="flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 dark:text-slate-400 dark:hover:text-slate-200"
+                data-testid="button-back-to-call-options"
+              >
+                <ChevronLeft className="h-4 w-4" />
+                {callSubOptions.find(o => o.id === activeCallSubSection)?.label}
+              </button>
+              
+              {activeCallSubSection === "callUsScreen" && (
+                <div className="space-y-4">
+                  <div className="flex items-center gap-3">
+                    <Switch 
+                      checked={callSettings.callUsScreen.showQRCode}
+                      onCheckedChange={(checked) => onCallSettingsChange({
+                        callUsScreen: { ...callSettings.callUsScreen, showQRCode: checked }
+                      })}
+                      data-testid="switch-show-qr-code"
+                    />
+                    <Label className="text-sm font-medium">Show QR code</Label>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Title & description *</Label>
+                    <div className="relative">
+                      <Input 
+                        value={callSettings.callUsScreen.title}
+                        onChange={(e) => onCallSettingsChange({
+                          callUsScreen: { ...callSettings.callUsScreen, title: e.target.value }
+                        })}
+                        data-testid="input-call-title"
+                      />
+                      <Button variant="ghost" size="icon" className="absolute right-1 top-1/2 -translate-y-1/2 h-7 w-7">
+                        <Smile className="h-4 w-4 text-slate-400" />
+                      </Button>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Textarea 
+                      value={callSettings.callUsScreen.description}
+                      onChange={(e) => onCallSettingsChange({
+                        callUsScreen: { ...callSettings.callUsScreen, description: e.target.value }
+                      })}
+                      rows={3}
+                      data-testid="textarea-call-description"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label className="text-xs text-slate-500">Button label *</Label>
+                    <Input 
+                      value={callSettings.callUsScreen.buttonLabel}
+                      onChange={(e) => onCallSettingsChange({
+                        callUsScreen: { ...callSettings.callUsScreen, buttonLabel: e.target.value }
+                      })}
+                      data-testid="input-call-button-label"
+                    />
+                  </div>
+                </div>
+              )}
+              
+              {activeCallSubSection === "numbersAndCountries" && (
+                <div className="space-y-4">
+                  <div>
+                    <Label className="text-sm font-medium">Numbers and countries</Label>
+                    <p className="text-xs text-slate-500 mt-1">
+                      You can show local contact numbers based on the visitor's IP country. Choose one of the Textmagic numbers or enter your own phone number. The <strong>Global</strong> number will be shown if the detected IP country doesn't have a virtual number selected below.
+                    </p>
+                    <p className="text-xs text-slate-500 mt-1">
+                      <strong>Please note:</strong> If you use a custom number, inbound calls will not be displayed in Textmagic.
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-4 text-xs text-slate-500 font-medium">
+                      <span>Country</span>
+                      <span>Phone number to display</span>
+                    </div>
+                    
+                    {callSettings.numbersAndCountries.entries.map((entry, index) => (
+                      <div key={index} className="grid grid-cols-2 gap-4">
+                        <div className="flex items-center gap-2 px-3 py-2 border rounded-lg bg-slate-50 dark:bg-slate-800">
+                          <span className="text-sm">{entry.country}</span>
+                        </div>
+                        <Select 
+                          value={entry.phoneNumber}
+                          onValueChange={(v) => {
+                            const newEntries = [...callSettings.numbersAndCountries.entries];
+                            newEntries[index] = { ...newEntries[index], phoneNumber: v };
+                            onCallSettingsChange({
+                              numbersAndCountries: { entries: newEntries }
+                            });
+                          }}
+                        >
+                          <SelectTrigger data-testid={`select-phone-${index}`}>
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="(833) 221-4494">(833) 221-4494 (Main Number)</SelectItem>
+                            <SelectItem value="(305) 555-0100">(305) 555-0100</SelectItem>
+                            <SelectItem value="custom">Enter custom number...</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    ))}
+                  </div>
+                  
+                  <button
+                    onClick={() => {
+                      const newEntries = [
+                        ...callSettings.numbersAndCountries.entries,
+                        { country: "United States", phoneNumber: "(833) 221-4494" }
+                      ];
+                      onCallSettingsChange({
+                        numbersAndCountries: { entries: newEntries }
+                      });
+                    }}
+                    className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1"
+                    data-testid="button-add-country"
+                  >
+                    + Add new country
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -598,6 +774,19 @@ export default function ChatWidgetEditPage() {
         addContactsToList: "",
       },
     },
+    callSettings: {
+      callUsScreen: {
+        showQRCode: true,
+        title: "Speak with an agent",
+        description: "Have an urgent matter? Please call us, and a dedicated agent will be available to help you.",
+        buttonLabel: "Call now",
+      },
+      numbersAndCountries: {
+        entries: [
+          { country: "Default (global)", phoneNumber: "(833) 221-4494" },
+        ],
+      },
+    },
     targeting: {
       countries: "all",
       selectedCountries: [],
@@ -651,6 +840,15 @@ export default function ChatWidgetEditPage() {
     updateLocalWidget({
       liveChatSettings: {
         ...widget.liveChatSettings,
+        ...settings,
+      }
+    });
+  };
+
+  const handleCallSettingsChange = (settings: Partial<WidgetConfig["callSettings"]>) => {
+    updateLocalWidget({
+      callSettings: {
+        ...widget.callSettings,
         ...settings,
       }
     });
@@ -1167,6 +1365,8 @@ export default function ChatWidgetEditPage() {
                                 onExpandToggle={() => setExpandedChannel(expandedChannel === channel.id ? null : channel.id)}
                                 liveChatSettings={widget.liveChatSettings}
                                 onLiveChatSettingsChange={handleLiveChatSettingsChange}
+                                callSettings={widget.callSettings}
+                                onCallSettingsChange={handleCallSettingsChange}
                               />
                             ))}
                           </div>
