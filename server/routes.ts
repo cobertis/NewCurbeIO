@@ -28526,6 +28526,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           email: visitorEmail || null,
           companyPhoneNumber: widgetId,
           status: "open",
+          channel: "live_chat",
           lastMessage: null,
           lastMessageAt: new Date(),
           unreadCount: 0,
