@@ -3549,6 +3549,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         sipPassword: user.sipPassword,
         sipServer: user.sipServer,
         sipEnabled: user.sipEnabled,
+        onboardingCompleted: user.onboardingCompleted,
       },
     });
   });
