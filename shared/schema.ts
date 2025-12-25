@@ -7099,6 +7099,11 @@ export const liveWidgetVisitors = pgTable("live_widget_visitors", {
   // Visitor identification
   visitorId: varchar("visitor_id").notNull(),
   
+  // Contact info (saved when visitor starts a chat)
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  email: text("email"),
+  
   // Location info from IP
   ipAddress: text("ip_address"),
   city: text("city"),
@@ -7108,6 +7113,10 @@ export const liveWidgetVisitors = pgTable("live_widget_visitors", {
   // Current page
   currentUrl: text("current_url"),
   pageTitle: text("page_title"),
+  
+  // Session tracking
+  totalSessions: integer("total_sessions").default(1),
+  totalChats: integer("total_chats").default(0),
   
   // Timing
   firstSeenAt: timestamp("first_seen_at").notNull().defaultNow(),

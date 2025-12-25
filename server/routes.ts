@@ -95,7 +95,7 @@ import {
 import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, oauthStates, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, chatWidgets } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, oauthStates, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, chatWidgets, liveWidgetVisitors } from "@shared/schema";
 import { encryptToken, decryptToken } from "./crypto";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -39135,6 +39135,11 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   
   // In-memory storage for live visitors (more efficient than DB for ephemeral data)
   const liveVisitors = new Map<string, {
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+    totalSessions: number;
+    totalChats: number;
     id: string;
     widgetId: string;
     companyId: string;
@@ -39226,21 +39231,72 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       } else {
         const geo = await getGeoFromIP(ip);
         
+        // Check if we have saved data for this visitor in database
+        const [savedVisitor] = await db
+          .select()
+          .from(liveWidgetVisitors)
+          .where(and(
+            eq(liveWidgetVisitors.visitorId, visitorId),
+            eq(liveWidgetVisitors.widgetId, widgetId)
+          ))
+          .limit(1);
+        
         visitor = {
-          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          id: savedVisitor?.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           widgetId,
           companyId: widget.companyId,
           visitorId,
+          firstName: savedVisitor?.firstName || null,
+          lastName: savedVisitor?.lastName || null,
+          email: savedVisitor?.email || null,
           ipAddress: ip,
-          city: geo?.city || null,
-          state: geo?.state || null,
-          country: geo?.country || null,
+          city: geo?.city || savedVisitor?.city || null,
+          state: geo?.state || savedVisitor?.state || null,
+          country: geo?.country || savedVisitor?.country || null,
           currentUrl: currentUrl || null,
           pageTitle: pageTitle || null,
-          firstSeenAt: now,
+          totalSessions: (savedVisitor?.totalSessions || 0) + 1,
+          totalChats: savedVisitor?.totalChats || 0,
+          firstSeenAt: savedVisitor?.firstSeenAt || now,
           lastSeenAt: now,
         };
         liveVisitors.set(key, visitor);
+        
+        // Upsert visitor data to database
+        await db
+          .insert(liveWidgetVisitors)
+          .values({
+            id: visitor.id,
+            widgetId,
+            companyId: widget.companyId,
+            visitorId,
+            firstName: visitor.firstName,
+            lastName: visitor.lastName,
+            email: visitor.email,
+            ipAddress: ip,
+            city: visitor.city,
+            state: visitor.state,
+            country: visitor.country,
+            currentUrl: currentUrl || null,
+            pageTitle: pageTitle || null,
+            totalSessions: visitor.totalSessions,
+            totalChats: visitor.totalChats,
+            firstSeenAt: visitor.firstSeenAt,
+            lastSeenAt: now,
+          })
+          .onConflictDoUpdate({
+            target: [liveWidgetVisitors.visitorId, liveWidgetVisitors.widgetId],
+            set: {
+              ipAddress: ip,
+              city: visitor.city,
+              state: visitor.state,
+              country: visitor.country,
+              currentUrl: currentUrl || null,
+              pageTitle: pageTitle || null,
+              totalSessions: sql`live_widget_visitors.total_sessions + 1`,
+              lastSeenAt: now,
+            },
+          });
       }
       
       broadcastConversationUpdate(widget.companyId);
