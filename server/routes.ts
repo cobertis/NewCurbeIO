@@ -28764,9 +28764,64 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           lastMessage: existingConversation.lastMessage,
           lastMessageAt: existingConversation.lastMessageAt,
           displayName: existingConversation.displayName,
+          rating: existingConversation.satisfactionRating,
+          feedback: existingConversation.satisfactionFeedback,
         });
       }
       
+      
+      // Check for a SOLVED conversation for this visitor (for history/rating display)
+      const [solvedConversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(
+          eq(telnyxConversations.companyId, companyId),
+          eq(telnyxConversations.phoneNumber, `livechat_${finalVisitorId}`),
+          eq(telnyxConversations.channel, "live_chat"),
+          inArray(telnyxConversations.status, ["solved", "closed"])
+        ))
+        .orderBy(desc(telnyxConversations.createdAt))
+        .limit(1);
+      
+      if (solvedConversation) {
+        console.log("[LiveChat] Found solved session for visitor:", finalVisitorId, "Rating:", solvedConversation.satisfactionRating);
+        
+        // Get agent info if was assigned
+        let solvedAgent = null;
+        if (solvedConversation.assignedTo) {
+          const agentResult = await db
+            .select()
+            .from(users)
+            .where(eq(users.id, solvedConversation.assignedTo))
+            .limit(1);
+          
+          if (agentResult.length > 0) {
+            const assignedAgent = agentResult[0];
+            solvedAgent = {
+              id: assignedAgent.id,
+              firstName: assignedAgent.firstName,
+              lastName: assignedAgent.lastName,
+              fullName: ((assignedAgent.firstName || '') + ' ' + (assignedAgent.lastName || '')).trim() || 'Support Agent',
+              profileImageUrl: assignedAgent.profileImageUrl,
+            };
+          }
+        }
+        
+        res.set({ "Access-Control-Allow-Origin": "*" });
+        return res.json({
+          sessionId: solvedConversation.id,
+          visitorId: finalVisitorId,
+          pendingSession: false,
+          resumed: false,
+          agent: solvedAgent,
+          status: solvedConversation.status,
+          lastMessage: solvedConversation.lastMessage,
+          lastMessageAt: solvedConversation.lastMessageAt,
+          displayName: solvedConversation.displayName,
+          rating: solvedConversation.satisfactionRating,
+          feedback: solvedConversation.satisfactionFeedback,
+        });
+      }
       // No open conversation exists - return visitor ID for new session creation on first message
       console.log("[LiveChat] No existing conversation for visitor:", finalVisitorId, "- will create on first message");
       res.set({ "Access-Control-Allow-Origin": "*" });
@@ -28857,7 +28912,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     try {
       // Use raw SQL to avoid Drizzle ORM field ordering issues
       const convResult = await db.execute(sql`
-        SELECT id, status, assigned_to, channel, display_name, email, 
+        SELECT id, status, assigned_to, channel, display_name, email, satisfaction_rating, satisfaction_feedback, 
                visitor_ip_address, visitor_browser, visitor_os, 
                visitor_city, visitor_country, visitor_current_url
         FROM telnyx_conversations 
@@ -28925,7 +28980,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         currentUrl: conversation.visitor_current_url || null,
       };
       
-      res.json({ messages, agent, visitor, status: conversation.status });
+      res.json({ messages, agent, visitor, status: conversation.status, rating: conversation.satisfaction_rating, feedback: conversation.satisfaction_feedback });
     } catch (error: any) {
       console.error("[LiveChat] Messages error:", error);
       res.status(500).json({ error: "Failed to fetch messages" });
