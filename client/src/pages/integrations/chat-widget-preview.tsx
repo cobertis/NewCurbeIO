@@ -104,6 +104,37 @@ export default function ChatWidgetPreviewPage() {
     enabled: !!widgetId,
   });
 
+  // Track live visitor via heartbeat
+  useEffect(() => {
+    if (!widgetId || !widgetOpen) return;
+    
+    // Get or create visitor ID
+    let visitorId = localStorage.getItem(`chat_visitor_${widgetId}`);
+    if (!visitorId) {
+      visitorId = `visitor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      localStorage.setItem(`chat_visitor_${widgetId}`, visitorId);
+    }
+    
+    const sendHeartbeat = () => {
+      fetch('/api/public/live-visitors/heartbeat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          widgetId,
+          visitorId,
+          currentUrl: window.location.href,
+          pageTitle: document.title || 'Widget Preview',
+        }),
+      }).catch(() => {});
+    };
+    
+    // Send immediately and then every 15 seconds
+    sendHeartbeat();
+    const interval = setInterval(sendHeartbeat, 15000);
+    
+    return () => clearInterval(interval);
+  }, [widgetId, widgetOpen]);
+
   // Check targeting rules via public API
   useEffect(() => {
     if (!widgetId) return;
