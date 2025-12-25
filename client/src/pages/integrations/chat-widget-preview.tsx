@@ -459,7 +459,11 @@ export default function ChatWidgetPreviewPage() {
   };
 
   const sendChatMessage = async () => {
-    if (!chatSessionId || !chatInput.trim()) return;
+    console.log('[Chat] Attempting to send message, sessionId:', chatSessionId, 'input:', chatInput);
+    if (!chatSessionId || !chatInput.trim()) {
+      console.log('[Chat] Send aborted: sessionId=', chatSessionId, 'input empty=', !chatInput.trim());
+      return;
+    }
     
     const text = chatInput.trim();
     setChatInput('');
