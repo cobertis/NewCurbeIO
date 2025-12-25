@@ -379,7 +379,7 @@ export default function InboxPage() {
         filtered = conversations.filter(c => !c.assignedTo);
         break;
       case "waiting":
-        filtered = conversations.filter(c => c.status === "pending" || c.status === "snoozed");
+        filtered = conversations.filter(c => c.channel === "live_chat" && !c.assignedTo && (c.status === "open" || c.status === "pending" || !c.status));
         break;
       case "solved":
         filtered = conversations.filter(c => c.status === "solved" || c.status === "archived");
@@ -391,7 +391,7 @@ export default function InboxPage() {
         filtered = conversations.filter(c => c.channel === "sms" || !c.channel);
         break;
       case "live-chat":
-        filtered = conversations.filter(c => c.channel === "live-chat" || c.channel === "chat-widget");
+        filtered = conversations.filter(c => c.channel === "live_chat" || c.channel === "live-chat" || c.channel === "chat-widget");
         break;
       case "whatsapp":
         filtered = conversations.filter(c => c.channel === "whatsapp");
@@ -601,7 +601,7 @@ export default function InboxPage() {
         unread: conversations.filter(c => c.unreadCount > 0).length,
         assigned: conversations.filter(c => c.assignedTo === user?.id).length,
         unassigned: conversations.filter(c => !c.assignedTo).length,
-        waiting: conversations.filter(c => c.status === "pending" || c.status === "snoozed").length,
+        waiting: conversations.filter(c => c.channel === "live_chat" && !c.assignedTo && (c.status === "open" || c.status === "pending" || !c.status)).length,
         solved: conversations.filter(c => c.status === "solved" || c.status === "archived").length,
         all: conversations.length,
       }}

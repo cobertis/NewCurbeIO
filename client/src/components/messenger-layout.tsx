@@ -109,7 +109,17 @@ export function MessengerLayout({
                 <item.icon className="h-4 w-4" />
                 <span className="flex-1 text-left">{item.label}</span>
                 {counts[item.id as keyof typeof counts] !== undefined && counts[item.id as keyof typeof counts]! > 0 && (
-                  <span className="text-xs text-muted-foreground">{counts[item.id as keyof typeof counts]}</span>
+                  item.id === "waiting" ? (
+                    <span className="min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-semibold bg-red-500 text-white rounded-full px-1">
+                      {counts[item.id as keyof typeof counts]}
+                    </span>
+                  ) : item.id === "unread" ? (
+                    <span className="min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-semibold bg-blue-500 text-white rounded-full px-1">
+                      {counts[item.id as keyof typeof counts]}
+                    </span>
+                  ) : (
+                    <span className="text-xs text-muted-foreground">{counts[item.id as keyof typeof counts]}</span>
+                  )
                 )}
               </button>
             ))}

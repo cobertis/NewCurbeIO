@@ -28533,6 +28533,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }).returning();
         conversation = newConversation;
         console.log("[LiveChat] Created new session:", conversation.id, "for visitor:", finalVisitorId);
+        // Broadcast to update inbox
+        broadcastConversationUpdate(companyId);
       } else {
         console.log("[LiveChat] Resumed existing session:", conversation.id, "for visitor:", finalVisitorId);
       }
