@@ -28610,28 +28610,29 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       if (existingConversation) {
         console.log("[LiveChat] Resuming existing session:", existingConversation.id, "for visitor:", finalVisitorId);
         
-        // Get agent info if assigned
+// Get agent info if assigned
         let agent = null;
-        if (existingConversation.assignedTo) {
-          const [assignedAgent] = await db
-            .select({
-              id: users.id,
-              firstName: users.firstName,
-              lastName: users.lastName,
-              profileImageUrl: users.profileImageUrl,
-            })
-            .from(users)
-            .where(eq(users.id, existingConversation.assignedTo));
-          
-          if (assignedAgent) {
-            agent = {
-              id: assignedAgent.id,
-              firstName: assignedAgent.firstName,
-              lastName: assignedAgent.lastName,
-              fullName: `${assignedAgent.firstName || ''} ${assignedAgent.lastName || ''}`.trim() || 'Support Agent',
-              profileImageUrl: assignedAgent.profileImageUrl,
-            };
+        try {
+          if (existingConversation.assignedTo) {
+            const agentResult = await db
+              .select()
+              .from(users)
+              .where(eq(users.id, existingConversation.assignedTo))
+              .limit(1);
+            
+            if (agentResult.length > 0) {
+              const assignedAgent = agentResult[0];
+              agent = {
+                id: assignedAgent.id,
+                firstName: assignedAgent.firstName,
+                lastName: assignedAgent.lastName,
+                fullName: ((assignedAgent.firstName || '') + ' ' + (assignedAgent.lastName || '')).trim() || 'Support Agent',
+                profileImageUrl: assignedAgent.profileImageUrl,
+              };
+            }
           }
+        } catch (agentError) {
+          console.log('[LiveChat] Error fetching agent:', agentError);
         }
         
         // Update visitor last seen
