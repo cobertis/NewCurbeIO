@@ -28934,7 +28934,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   
   // POST /api/public/live-chat/message - Send a message from visitor
   app.post("/api/public/live-chat/message", async (req: Request, res: Response) => {
-    const { sessionId, text, visitorName, widgetId, visitorId, visitorEmail, visitorUrl, visitorBrowser, visitorOs } = req.body;
+    const { sessionId, text, visitorName, widgetId, visitorId, visitorEmail, visitorUrl, visitorBrowser, visitorOs, forceNew } = req.body;
     
     if (!text) {
       return res.status(400).json({ error: "text is required" });
@@ -28970,8 +28970,10 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
         
         
-        // Check if there is a solved/archived conversation we can reopen
-        const [solvedConversation] = await db
+        // Check if there is a solved/archived conversation we can reopen (skip if forceNew)
+        let solvedConversation = null;
+        if (!forceNew) {
+          [solvedConversation] = await db
           .select()
           .from(telnyxConversations)
           .where(and(
@@ -29006,6 +29008,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           // Broadcast update to notify agents of reopened chat
           const { broadcastConversationUpdate } = await import("./websocket");
           broadcastConversationUpdate(widget.companyId);
+        }
         }
 
         // Fetch geolocation

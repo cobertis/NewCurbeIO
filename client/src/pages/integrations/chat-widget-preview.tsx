@@ -118,8 +118,27 @@ export default function ChatWidgetPreviewPage() {
     displayName: string;
     lastMessage: string | null;
     lastMessageAt: string | null;
+    status?: string | null;
+    rating?: number | null;
+    feedback?: string | null;
   } | null>(null);
+  
+  // Solved chat view state (Textmagic-style)
+  const [viewingSolvedChat, setViewingSolvedChat] = useState(false);
+  const [solvedChatData, setSolvedChatData] = useState<{
+    sessionId: string;
+    messages: Array<{ id: string; text: string; direction: string; createdAt: string }>;
+    rating: number | null;
+    feedback: string | null;
+    agentName?: string | null;
+    status?: string | null;
+  } | null>(null);
+  
+  // Survey modal state for home screen overlay
+  const [showSurveyModal, setShowSurveyModal] = useState(false);
+  const [surveyModalStep, setSurveyModalStep] = useState<'rating' | 'feedback'>('rating');
   const [showOfflineFallback, setShowOfflineFallback] = useState(false);
+  const [forceNewChat, setForceNewChat] = useState(false);
   const [agentsAvailable, setAgentsAvailable] = useState<boolean | null>(null);
   const [offlineMessage, setOfflineMessage] = useState('');
   const [showLeaveMessageForm, setShowLeaveMessageForm] = useState(false);
@@ -491,25 +510,36 @@ export default function ChatWidgetPreviewPage() {
           return;
         }
         
-        const { sessionId, visitorId, pendingSession, resumed, lastMessage, lastMessageAt, displayName, agent } = await sessionRes.json();
+        const { sessionId, visitorId, pendingSession, resumed, lastMessage, lastMessageAt, displayName, agent, status, rating, feedback } = await sessionRes.json();
         
         setChatVisitorId(visitorId);
         
-        // If there's an existing open session, show the "Back to chat" card
+        // If there's an existing session (open or solved), show the "Back to chat" card
         if (resumed && sessionId) {
           setExistingSession({
             sessionId,
-            displayName: displayName || 'Chat',
+            displayName: displayName || 'Live chat',
             lastMessage: lastMessage || null,
             lastMessageAt: lastMessageAt || null,
+            status: status || null,
+            rating: rating || null,
+            feedback: feedback || null,
           });
-          // CRITICAL: Set chatSessionId immediately so messages can be sent
-          setChatSessionId(sessionId);
-          // Store agent info if available
-          if (agent) {
-            setConnectedAgent(agent);
+          // Only set chatSessionId if NOT solved - solved chats should be viewed differently
+          if (status !== 'solved' && status !== 'closed') {
+            setChatSessionId(sessionId);
+            // Store agent info if available
+            if (agent) {
+              setConnectedAgent(agent);
+            }
           }
-          console.log('[Chat] Found existing session, set chatSessionId:', sessionId);
+          console.log('[Chat] Found existing session, status:', status, 'sessionId:', sessionId);
+          
+          // If chat was just solved and survey enabled, show survey modal
+          if ((status === 'solved' || status === 'closed') && !rating && widget.liveChatSettings?.satisfactionSurvey?.enabled) {
+            setShowSurveyModal(true);
+            setSurveyModalStep('rating');
+          }
         } else {
           setExistingSession(null);
         }
@@ -675,6 +705,77 @@ export default function ChatWidgetPreviewPage() {
     }
   };
 
+  // View solved chat history (Textmagic-style)
+  const viewSolvedChat = async () => {
+    if (!existingSession?.sessionId || !widgetId) return;
+    
+    setChatLoading(true);
+    try {
+      const msgRes = await fetch(`/api/public/live-chat/messages/${existingSession.sessionId}`);
+      if (msgRes.ok) {
+        const { messages, agent, visitor, status, rating, feedback } = await msgRes.json();
+        const sortedMessages = (messages || []).sort((a: any, b: any) => 
+          new Date(a.createdAt || a.created_at).getTime() - new Date(b.createdAt || b.created_at).getTime()
+        );
+        
+        setSolvedChatData({
+          sessionId: existingSession.sessionId,
+          messages: sortedMessages,
+          rating: rating || existingSession.rating || null,
+          feedback: feedback || existingSession.feedback || null,
+          agentName: agent?.fullName || null,
+          status: status || existingSession.status || 'solved',
+        });
+        setViewingSolvedChat(true);
+        
+        // Store the sessionId for survey submission
+        setChatSessionId(existingSession.sessionId);
+        
+        console.log('[Chat] Viewing solved chat with', sortedMessages.length, 'messages, rating:', rating);
+      }
+    } catch (error) {
+      console.error('[Chat] Failed to load solved chat:', error);
+      toast({ title: "Error", description: "Failed to load chat history", variant: "destructive" });
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  // Start a completely new chat (clears solved session reference)
+  const startNewChat = () => {
+    // Clear existing session reference but keep visitor profile
+    // Keep existingSession for solved chat history - will update after new chat is created
+    setSolvedChatData(null);
+    setViewingSolvedChat(false);
+    setChatSessionId(null);
+    setChatMessages([]);
+    setConnectedAgent(null);
+    setIsWaitingForAgent(true);
+    setShowPreChatForm(false); // Show the initial message form
+    setInitialMessage('');
+    setSentInitialMessage('');
+    setSurveyRating(null);
+    setSurveyFeedback('');
+    setSurveySubmitted(false);
+    setShowSurveyModal(false);
+    
+    // Clear the survey state from localStorage
+    if (widgetId) {
+      localStorage.removeItem(`chatSurveyState-${widgetId}`);
+    }
+    
+    setForceNewChat(true); // Signal that we want a new chat
+    console.log('[Chat] Starting new chat - cleared previous session, forceNewChat=true');
+  };
+
+  // Show survey modal from solved chat view
+  const openSurveyFromSolvedChat = () => {
+    setSurveyRating(null);
+    setSurveyFeedback('');
+    setSurveyModalStep('rating');
+    setShowSurveyModal(true);
+  };
+
   // Format relative time (e.g., "12 h ago")
   const formatRelativeTime = (dateStr: string | null) => {
     if (!dateStr) return '';
@@ -735,6 +836,7 @@ export default function ChatWidgetPreviewPage() {
           visitorUrl: window.location.href,
           visitorBrowser: browserName,
           visitorOs: osName,
+            forceNew: forceNewChat,
         }),
       });
       
@@ -779,6 +881,7 @@ export default function ChatWidgetPreviewPage() {
             visitorUrl: window.location.href,
             visitorBrowser: browserName,
             visitorOs: osName,
+            forceNew: forceNewChat,
           }),
         });
         
@@ -786,6 +889,17 @@ export default function ChatWidgetPreviewPage() {
           const { message, conversationId } = await msgRes.json();
           setChatSessionId(conversationId || sessionId);
           setChatMessages([message]);
+          setForceNewChat(false); // Reset forceNewChat after successful creation
+          // Update existingSession to point to the new chat
+          setExistingSession({
+            sessionId: conversationId || sessionId,
+            displayName: visitorName || 'Website Visitor',
+            lastMessage: message.text || null,
+            lastMessageAt: message.createdAt || new Date().toISOString(),
+            status: 'waiting',
+            rating: null,
+            feedback: null,
+          });
         }
         setInitialMessage('');
       } else {
@@ -1654,6 +1768,142 @@ export default function ChatWidgetPreviewPage() {
                 </div>
               </div>
             </div>
+          ) : viewingSolvedChat && solvedChatData ? (
+            /* Solved Chat View - Textmagic style */
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: '520px' }}>
+              {/* Header */}
+              <div className="px-4 py-3 text-white flex items-center gap-3" style={{ background: currentBackground }}>
+                <button 
+                  onClick={() => { 
+                    setViewingSolvedChat(false);
+                    setSolvedChatData(null);
+                    setChatSessionId(null);
+                  }}
+                  className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+                  data-testid="back-from-solved-chat"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                  <MessageCircle className="h-5 w-5" />
+                </div>
+                <div className="flex-1">
+                  <span className="font-semibold text-sm">Live chat</span>
+                  <p className="text-xs opacity-80">Chat has ended</p>
+                </div>
+              </div>
+              
+              {/* Messages Area for Solved Chat */}
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-slate-50 dark:bg-slate-800/50">
+                {/* Agent joined message */}
+                {solvedChatData.agentName && (
+                  <div className="text-center py-2">
+                    <span className="text-xs text-slate-500 bg-white dark:bg-slate-700 px-3 py-1 rounded-full shadow-sm">
+                      {solvedChatData.agentName} joined the chat
+                    </span>
+                  </div>
+                )}
+                
+                {/* All chat messages */}
+                {solvedChatData.messages.map((msg, idx) => (
+                  msg.direction === 'outbound' ? (
+                    <div key={msg.id || idx} className="flex items-end gap-2">
+                      <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-medium" style={{ background: currentBackground }}>
+                        {solvedChatData.agentName?.[0]?.toUpperCase() || 'SA'}
+                      </div>
+                      <div className="flex flex-col items-start">
+                        <div className="rounded-2xl rounded-bl-md bg-white dark:bg-slate-700 shadow-sm px-3 py-2 max-w-[85%]">
+                          <p className="text-sm text-slate-700 dark:text-slate-200">{msg.text}</p>
+                        </div>
+                        <span className="text-[10px] text-slate-400 mt-0.5 ml-1">{formatMessageTime(msg.createdAt)}</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div key={msg.id || idx} className="flex justify-end">
+                      <div className="flex flex-col items-end">
+                        <div className="rounded-2xl rounded-br-md px-3 py-2 max-w-[85%] text-white" style={{ background: currentBackground }}>
+                          <p className="text-sm">{msg.text}</p>
+                        </div>
+                        <span className="text-[10px] text-slate-400 mt-0.5 mr-1">{formatMessageTime(msg.createdAt)}</span>
+                      </div>
+                    </div>
+                  )
+                ))}
+                
+                {/* Agent left message */}
+                {solvedChatData.agentName && (
+                  <div className="text-center py-2">
+                    <span className="text-xs text-slate-500 bg-white dark:bg-slate-700 px-3 py-1 rounded-full shadow-sm">
+                      {solvedChatData.agentName} left the chat
+                    </span>
+                  </div>
+                )}
+                
+                {/* Rating badge if rated */}
+                {solvedChatData.rating && (
+                  <div className="flex justify-center py-2">
+                    <div className={`px-4 py-2 rounded-full flex items-center gap-2 text-sm font-medium ${
+                      solvedChatData.rating >= 4 
+                        ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' 
+                        : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-300'
+                    }`}>
+                      {solvedChatData.rating >= 4 ? (
+                        <>
+                          You rated chat as <ThumbsUp className="h-4 w-4" /> Good
+                        </>
+                      ) : (
+                        <>
+                          You rated chat as <ThumbsDown className="h-4 w-4" /> Bad
+                        </>
+                      )}
+                    </div>
+                  </div>
+                )}
+                
+                {/* Feedback if provided */}
+                {solvedChatData.feedback && (
+                  <div className="text-center px-4">
+                    <p className="text-sm text-slate-500 dark:text-slate-400 italic">
+                      "{solvedChatData.feedback}"
+                    </p>
+                  </div>
+                )}
+                
+                <div ref={messagesEndRef} />
+              </div>
+              
+              {/* Bottom buttons for solved chat */}
+              <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900 space-y-2">
+                <button
+                  onClick={startNewChat}
+                  className="w-full py-2.5 px-4 rounded-lg text-white text-sm font-medium"
+                  style={{ background: currentBackground }}
+                  data-testid="start-new-chat-button"
+                >
+                  Start new chat
+                </button>
+                {!solvedChatData.rating && widget.liveChatSettings?.satisfactionSurvey?.enabled && (
+                  <button
+                    onClick={openSurveyFromSolvedChat}
+                    className="w-full py-2.5 px-4 rounded-lg text-sm font-medium border-2 bg-transparent"
+                    style={{ 
+                      borderColor: typeof currentBackground === 'string' ? currentBackground : '#3b82f6',
+                      color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6'
+                    }}
+                    data-testid="leave-feedback-button"
+                  >
+                    Leave feedback
+                  </button>
+                )}
+              </div>
+              
+              {/* Footer */}
+              <div className="py-2 border-t border-slate-100 dark:border-slate-700 text-center bg-slate-50 dark:bg-slate-800/50">
+                <p className="text-[10px] text-slate-400 flex items-center justify-center gap-1">
+                  Powered by <img src={curbeLogo} alt="Curbe" className="h-2.5 w-auto inline-block opacity-60" />
+                </p>
+              </div>
+            </div>
           ) : chatSessionId ? (
             /* Active Live Chat View - Professional Design */
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: '520px' }}>
@@ -2168,7 +2418,7 @@ export default function ChatWidgetPreviewPage() {
           ) : activeChannel ? (
             renderChannelContent()
           ) : (
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700">
+            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 relative">
               <div className="p-5 text-white" style={{ background: currentBackground }}>
                 {widget.branding?.customLogo && (
                   <div className="mb-3">
@@ -2195,46 +2445,53 @@ export default function ChatWidgetPreviewPage() {
               )}
               
               <div className="p-4 space-y-3">
-                {/* Back to chat card for returning visitors - Textmagic style */}
+                {/* Live chat card with history preview - Textmagic style */}
                 {existingSession && !chatSessionId && !showPreChatForm && (
-                  <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden">
-                    <div className="p-4">
-                      <div className="flex items-start gap-3">
-                        <div 
-                          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                          style={{ background: currentBackground }}
-                        >
-                          <MessageCircle className="h-5 w-5 text-white" />
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                              {existingSession.displayName || 'Support Chat'}
+                  <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4">
+                    <div className="flex items-start gap-3">
+                      <div 
+                        className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                        style={{ background: currentBackground }}
+                      >
+                        <MessageCircle className="h-5 w-5 text-white" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Live chat</span>
+                          {existingSession.lastMessageAt && (
+                            <span className="text-xs text-slate-400">
+                              {formatRelativeTime(existingSession.lastMessageAt)}
                             </span>
-                            {existingSession.lastMessageAt && (
-                              <span className="text-xs text-slate-400">
-                                {formatRelativeTime(existingSession.lastMessageAt)}
-                              </span>
-                            )}
-                          </div>
-                          {existingSession.lastMessage && (
-                            <p className="text-sm text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                              {existingSession.lastMessage}
-                            </p>
                           )}
                         </div>
+                        {existingSession.lastMessage && (
+                          <p className="text-sm text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                            You: {existingSession.lastMessage.length > 25 
+                              ? existingSession.lastMessage.substring(0, 25) + '...' 
+                              : existingSession.lastMessage}
+                          </p>
+                        )}
+                        <button
+                          onClick={existingSession.status === 'solved' || existingSession.status === 'closed' ? viewSolvedChat : resumeChat}
+                          disabled={chatLoading}
+                          className="mt-2 flex items-center gap-1 text-sm font-medium hover:underline"
+                          style={{ color: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3b82f6' }}
+                          data-testid="back-to-chat-link"
+                        >
+                          {chatLoading ? (
+                            <>
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Loading...
+                            </>
+                          ) : (
+                            <>
+                              Back to chat
+                              <ChevronRight className="h-4 w-4" />
+                            </>
+                          )}
+                        </button>
                       </div>
                     </div>
-                    <button
-                      onClick={resumeChat}
-                      disabled={chatLoading}
-                      className="w-full py-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
-                      style={{ color: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3b82f6' }}
-                      data-testid="back-to-chat-card"
-                    >
-                      <span className="text-sm font-semibold">Back to chat</span>
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
                   </div>
                 )}
 
@@ -2370,6 +2627,134 @@ export default function ChatWidgetPreviewPage() {
                   Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                 </p>
               </div>
+              
+              {/* Survey Modal Overlay - Textmagic style */}
+              {showSurveyModal && (
+                <div className="absolute inset-0 bg-black/30 flex items-center justify-center p-4 rounded-xl z-50">
+                  <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-sm p-5">
+                    {surveyModalStep === 'rating' ? (
+                      <>
+                        <h5 className="font-semibold text-slate-900 dark:text-slate-100 text-center mb-2">
+                          How was the help you received?
+                        </h5>
+                        <p className="text-xs text-slate-500 text-center mb-5">
+                          We're always striving to improve and would love your feedback on the experience.
+                        </p>
+                        <div className="flex justify-center gap-8 mb-5">
+                          <button 
+                            onClick={() => {
+                              setSurveyRating(5);
+                              setSurveyModalStep('feedback');
+                            }}
+                            className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
+                            data-testid="survey-modal-thumbs-up"
+                          >
+                            <ThumbsUp className="h-8 w-8 text-white" />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setSurveyRating(1);
+                              setSurveyModalStep('feedback');
+                            }}
+                            className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
+                            data-testid="survey-modal-thumbs-down"
+                          >
+                            <ThumbsDown className="h-8 w-8 text-white" />
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setShowSurveyModal(false);
+                            setSurveyModalStep('rating');
+                            setSurveyRating(null);
+                            localStorage.removeItem(`chatSurveyState-${widgetId}`);
+                          }}
+                          className="text-sm text-slate-400 hover:text-slate-600 text-center cursor-pointer w-full"
+                          data-testid="survey-modal-skip"
+                        >
+                          Skip for now
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex justify-center mb-4">
+                          {surveyRating && surveyRating >= 4 ? (
+                            <div className="w-14 h-14 rounded-full bg-green-500 flex items-center justify-center shadow-lg">
+                              <ThumbsUp className="h-7 w-7 text-white" />
+                            </div>
+                          ) : (
+                            <div className="w-14 h-14 rounded-full bg-red-500 flex items-center justify-center shadow-lg">
+                              <ThumbsDown className="h-7 w-7 text-white" />
+                            </div>
+                          )}
+                        </div>
+                        <h5 className="font-semibold text-slate-900 dark:text-slate-100 text-center mb-2">
+                          {surveyRating && surveyRating >= 4 ? "We are glad you liked it" : "Sorry to hear that"}
+                        </h5>
+                        <p className="text-xs text-slate-500 text-center mb-4">
+                          We're always striving to improve and would love your feedback on the experience.
+                        </p>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-xs text-slate-600 dark:text-slate-400 font-medium block mb-1.5">
+                              {surveyRating && surveyRating >= 4 ? "Tell us where we did good" : "Tell us how we can improve"}
+                            </label>
+                            <textarea
+                              value={surveyFeedback}
+                              onChange={(e) => setSurveyFeedback(e.target.value)}
+                              placeholder={surveyRating && surveyRating >= 4 ? "What did you like about this chat?" : "What could we do better?"}
+                              className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-700 outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                              rows={3}
+                              data-testid="survey-modal-feedback"
+                            />
+                          </div>
+                          <button
+                            onClick={async () => {
+                              await submitSatisfactionSurvey();
+                              setShowSurveyModal(false);
+                              setSurveyModalStep('rating');
+                              // Update solved chat data if viewing
+                              if (solvedChatData) {
+                                setSolvedChatData({
+                                  ...solvedChatData,
+                                  rating: surveyRating,
+                                  feedback: surveyFeedback || null,
+                                });
+                              }
+                              // Update existing session
+                              if (existingSession) {
+                                setExistingSession({
+                                  ...existingSession,
+                                  rating: surveyRating,
+                                  feedback: surveyFeedback || null,
+                                });
+                              }
+                            }}
+                            disabled={surveySubmitting}
+                            className="w-full py-2.5 px-4 rounded-lg text-white font-medium transition-all disabled:opacity-50"
+                            style={{ background: currentBackground }}
+                            data-testid="survey-modal-submit"
+                          >
+                            {surveySubmitting ? 'Sending...' : 'Send feedback'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowSurveyModal(false);
+                              setSurveyModalStep('rating');
+                              setSurveyRating(null);
+                              setSurveyFeedback('');
+                            }}
+                            className="text-sm text-slate-400 hover:text-slate-600 text-center cursor-pointer w-full"
+                            data-testid="survey-modal-skip-feedback"
+                          >
+                            Skip for now
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
           </div>
