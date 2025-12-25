@@ -28773,52 +28773,59 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     const { since } = req.query;
     
     try {
-      // Verify session exists
-      const [conversation] = await db
-        .select()
-        .from(telnyxConversations)
-        .where(and(
-          eq(telnyxConversations.id, sessionId),
-          eq(telnyxConversations.channel, "live_chat")
-        ));
+      // Use raw SQL to avoid Drizzle ORM field ordering issues
+      const convResult = await db.execute(sql`
+        SELECT id, status, assigned_to, channel FROM telnyx_conversations 
+        WHERE id = ${sessionId} AND channel = 'live_chat'
+        LIMIT 1
+      `);
       
-      if (!conversation) {
+      if (convResult.rows.length === 0) {
         return res.status(404).json({ error: "Session not found" });
       }
       
+      const conversation = convResult.rows[0] as any;
+      
       // Get assigned agent info if chat has been accepted
       let agent = null;
-      if (conversation.assignedTo) {
-        const [assignedAgent] = await db
-          .select({
-            id: users.id,
-            firstName: users.firstName,
-            lastName: users.lastName,
-            profileImageUrl: users.profileImageUrl,
-          })
-          .from(users)
-          .where(eq(users.id, conversation.assignedTo));
+      if (conversation.assigned_to) {
+        const agentResult = await db.execute(sql`
+          SELECT id, first_name, last_name, avatar 
+          FROM users WHERE id = ${conversation.assigned_to}
+          LIMIT 1
+        `);
         
-        if (assignedAgent) {
+        if (agentResult.rows.length > 0) {
+          const assignedAgent = agentResult.rows[0] as any;
           agent = {
             id: assignedAgent.id,
-            firstName: assignedAgent.firstName,
-            lastName: assignedAgent.lastName,
-            fullName: `${assignedAgent.firstName || ''} ${assignedAgent.lastName || ''}`.trim() || 'Support Agent',
-            profileImageUrl: assignedAgent.profileImageUrl,
+            firstName: assignedAgent.first_name,
+            lastName: assignedAgent.last_name,
+            fullName: `${assignedAgent.first_name || ''} ${assignedAgent.last_name || ''}`.trim() || 'Support Agent',
+            profileImageUrl: assignedAgent.avatar,
           };
         }
       }
       
-      // Build query for messages - use simple condition to avoid Drizzle spread issue
-      const baseCondition = eq(telnyxMessages.conversationId, sessionId);
-      const sinceCondition = since ? sql`${telnyxMessages.createdAt} > ${new Date(since as string)}` : null;
-
-      const messages = await db
-        .select()
-        .from(telnyxMessages)
-        .where(sinceCondition ? and(baseCondition, sinceCondition) : baseCondition)
-        .orderBy(asc(telnyxMessages.createdAt));
+      // Get messages
+      let messages;
+      if (since) {
+        const sinceDate = new Date(since as string);
+        const result = await db.execute(sql`
+          SELECT * FROM telnyx_messages 
+          WHERE conversation_id = ${sessionId} 
+          AND created_at >= ${sinceDate}
+          ORDER BY created_at ASC
+        `);
+        messages = result.rows;
+      } else {
+        const result = await db.execute(sql`
+          SELECT * FROM telnyx_messages 
+          WHERE conversation_id = ${sessionId}
+          ORDER BY created_at ASC
+        `);
+        messages = result.rows;
+      }
       res.set({ "Access-Control-Allow-Origin": "*" });
       res.json({ messages, agent, status: conversation.status });
     } catch (error: any) {
