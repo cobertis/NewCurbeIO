@@ -351,6 +351,27 @@ export default function ChatWidgetPreviewPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
+  // Poll for agent typing indicator
+  useEffect(() => {
+    if (!chatSessionId) return;
+    
+    const pollTyping = async () => {
+      try {
+        const res = await fetch(`/api/public/live-chat/typing/${chatSessionId}`);
+        if (res.ok) {
+          const { isTyping } = await res.json();
+          setAgentTyping(isTyping);
+        }
+      } catch (error) {
+        console.error('Typing poll error:', error);
+      }
+    };
+    
+    pollTyping();
+    const interval = setInterval(pollTyping, 1000);
+    return () => clearInterval(interval);
+  }, [chatSessionId]);
+
   const defaultWidget = {
     name: "Website Widget",
     colorTheme: "blue",
@@ -1099,6 +1120,36 @@ export default function ChatWidgetPreviewPage() {
                     </div>
                   </div>
                 ))}
+                
+                {/* Agent typing indicator */}
+                {agentTyping && (
+                  <div className="flex items-end gap-2">
+                    {connectedAgent?.profileImageUrl ? (
+                      <img 
+                        src={connectedAgent.profileImageUrl} 
+                        alt={connectedAgent.fullName}
+                        className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-medium" style={{ background: currentBackground }}>
+                        {connectedAgent ? (
+                          `${connectedAgent.firstName?.[0] || ''}${connectedAgent.lastName?.[0] || ''}`.toUpperCase() || 'SA'
+                        ) : (
+                          <MessageCircle className="h-3.5 w-3.5" />
+                        )}
+                      </div>
+                    )}
+                    <div className="flex flex-col items-start">
+                      <div className="rounded-2xl rounded-bl-md bg-white dark:bg-slate-700 shadow-sm px-4 py-3 max-w-[85%]">
+                        <div className="flex items-center gap-1">
+                          <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                          <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                          <span className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 
                 <div ref={messagesEndRef} />
               </div>

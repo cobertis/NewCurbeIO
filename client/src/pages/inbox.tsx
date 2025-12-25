@@ -184,6 +184,8 @@ export default function InboxPage() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastTypingSentRef = useRef<number>(0);
 
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const userTimezone = user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -502,8 +504,44 @@ export default function InboxPage() {
     return phone.slice(-2);
   };
 
+  const sendTypingIndicator = (conversationId: string, isTyping: boolean) => {
+    fetch("/api/inbox/live-chat/typing", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ conversationId, isTyping }),
+    }).catch(console.error);
+  };
+
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const value = e.target.value;
+    setNewMessage(value);
+    
+    if (selectedConversation?.channel === "live_chat" && value.length > 0 && !isInternalNote) {
+      const now = Date.now();
+      if (now - lastTypingSentRef.current > 2000) {
+        sendTypingIndicator(selectedConversation.id, true);
+        lastTypingSentRef.current = now;
+      }
+      
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      typingTimeoutRef.current = setTimeout(() => {
+        sendTypingIndicator(selectedConversation.id, false);
+      }, 3000);
+    }
+  };
+
   const handleSendMessage = () => {
     if ((!newMessage.trim() && selectedFiles.length === 0) || !selectedConversationId) return;
+    
+    if (selectedConversation?.channel === "live_chat") {
+      if (typingTimeoutRef.current) {
+        clearTimeout(typingTimeoutRef.current);
+      }
+      sendTypingIndicator(selectedConversation.id, false);
+    }
     
     const messageText = newMessage.trim();
     const messageFiles = selectedFiles.length > 0 ? [...selectedFiles] : undefined;
@@ -1257,7 +1295,7 @@ export default function InboxPage() {
                   ref={textareaRef}
                   placeholder={isInternalNote ? "Add an internal note..." : "Type your text message here"}
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={handleMessageChange}
                   onKeyDown={(e) => {
                     if (e.key === "Enter" && !e.shiftKey) {
                       e.preventDefault();

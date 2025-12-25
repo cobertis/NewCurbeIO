@@ -28483,6 +28483,50 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // ==================== LIVE CHAT PUBLIC API ====================
   
+
+  // Live chat typing indicator storage (in-memory)
+  const liveChatTyping = new Map<string, { agentName: string; timestamp: number }>();
+  const TYPING_TIMEOUT = 3000; // 3 seconds
+
+  // POST /api/inbox/live-chat/typing - Agent sends typing indicator
+  app.post("/api/inbox/live-chat/typing", requireAuth, async (req: Request, res: Response) => {
+    const { conversationId, isTyping } = req.body;
+    const user = req.user!;
+
+    if (!conversationId) {
+      return res.status(400).json({ error: "conversationId is required" });
+    }
+
+    try {
+      const agentName = `${user.firstName || '} ${user.lastName || '}`.trim() || 'Agent';
+
+      if (isTyping) {
+        liveChatTyping.set(conversationId, { agentName, timestamp: Date.now() });
+      } else {
+        liveChatTyping.delete(conversationId);
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[LiveChat] Typing indicator error:", error);
+      res.status(500).json({ error: "Failed to update typing status" });
+    }
+  });
+
+  // GET /api/public/live-chat/typing/:sessionId - Check if agent is typing
+  app.get("/api/public/live-chat/typing/:sessionId", async (req: Request, res: Response) => {
+    const { sessionId } = req.params;
+
+    const typingInfo = liveChatTyping.get(sessionId);
+    const isTyping = typingInfo && (Date.now() - typingInfo.timestamp) < TYPING_TIMEOUT;
+
+    res.set({ "Access-Control-Allow-Origin": "*" });
+    res.json({
+      isTyping: !!isTyping,
+      agentName: isTyping ? typingInfo?.agentName : null
+    });
+  });
+
   // POST /api/public/live-chat/session - Create or resume a live chat session
   app.post("/api/public/live-chat/session", async (req: Request, res: Response) => {
     const { widgetId, visitorId, visitorName, visitorEmail } = req.body;
