@@ -5065,6 +5065,50 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: "Failed to fetch user limits" });
     }
   });
+  
+  // Get current user's availability status
+  app.get("/api/users/availability-status", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session!.userId!;
+      const [user] = await db.select({ agentAvailabilityStatus: users.agentAvailabilityStatus }).from(users).where(eq(users.id, userId));
+      res.json({ status: user?.agentAvailabilityStatus || "offline" });
+    } catch (error) {
+      console.error("Error getting availability status:", error);
+      res.status(500).json({ message: "Failed to get availability status" });
+    }
+  });
+
+  // Update current user's availability status
+  app.patch("/api/users/availability-status", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session!.userId!;
+      const { status } = req.body;
+      
+      if (!["online", "offline", "busy"].includes(status)) {
+        return res.status(400).json({ error: "Invalid status. Must be: online, offline, or busy" });
+      }
+      
+      await db.update(users).set({ agentAvailabilityStatus: status }).where(eq(users.id, userId));
+      
+      // Broadcast status update to other users in the same company
+      const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+      if (user?.companyId) {
+        broadcastToCompany(user.companyId, { 
+          type: "agent_status_updated", 
+          agentId: userId, 
+          status,
+          agentName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email
+        });
+      }
+      
+      console.log(`[Agent Availability] User ${userId} set status to: ${status}`);
+      res.json({ success: true, status });
+    } catch (error) {
+      console.error("Error updating availability status:", error);
+      res.status(500).json({ message: "Failed to update availability status" });
+    }
+  });
+
   // Get single user by ID
   app.get("/api/users/:id", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -5167,50 +5211,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // =====================================================
   // AGENT AVAILABILITY STATUS
   // =====================================================
-  
-  // Get current user's availability status
-  app.get("/api/users/availability-status", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const userId = req.session!.userId!;
-      const [user] = await db.select({ agentAvailabilityStatus: users.agentAvailabilityStatus }).from(users).where(eq(users.id, userId));
-      res.json({ status: user?.agentAvailabilityStatus || "offline" });
-    } catch (error) {
-      console.error("Error getting availability status:", error);
-      res.status(500).json({ message: "Failed to get availability status" });
-    }
-  });
-
-  // Update current user's availability status
-  app.patch("/api/users/availability-status", requireAuth, async (req: Request, res: Response) => {
-    try {
-      const userId = req.session!.userId!;
-      const { status } = req.body;
-      
-      if (!["online", "offline", "busy"].includes(status)) {
-        return res.status(400).json({ error: "Invalid status. Must be: online, offline, or busy" });
-      }
-      
-      await db.update(users).set({ agentAvailabilityStatus: status }).where(eq(users.id, userId));
-      
-      // Broadcast status update to other users in the same company
-      const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
-      if (user?.companyId) {
-        broadcastToCompany(user.companyId, { 
-          type: "agent_status_updated", 
-          agentId: userId, 
-          status,
-          agentName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email
-        });
-      }
-      
-      console.log(`[Agent Availability] User ${userId} set status to: ${status}`);
-      res.json({ success: true, status });
-    } catch (error) {
-      console.error("Error updating availability status:", error);
-      res.status(500).json({ message: "Failed to update availability status" });
-    }
-  });
-
   // Public endpoint: Check if any agents are online for a widget
   app.get("/api/public/live-chat/availability", async (req: Request, res: Response) => {
     try {
