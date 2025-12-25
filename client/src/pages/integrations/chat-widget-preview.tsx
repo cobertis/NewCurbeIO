@@ -25,6 +25,14 @@ const colorOptions = [
   { value: "teal", bg: "bg-teal-500", hex: "#14B8A6", gradient: "linear-gradient(135deg, #14B8A6, #0D9488)" },
   { value: "pink", bg: "bg-pink-500", hex: "#EC4899", gradient: "linear-gradient(135deg, #EC4899, #DB2777)" },
   { value: "indigo", bg: "bg-indigo-500", hex: "#6366F1", gradient: "linear-gradient(135deg, #6366F1, #4F46E5)" },
+  { value: "rose", bg: "bg-rose-500", hex: "#F43F5E", gradient: "linear-gradient(135deg, #F43F5E, #E11D48)" },
+  { value: "cyan", bg: "bg-cyan-500", hex: "#06B6D4", gradient: "linear-gradient(135deg, #06B6D4, #0891B2)" },
+  { value: "amber", bg: "bg-amber-500", hex: "#F59E0B", gradient: "linear-gradient(135deg, #F59E0B, #D97706)" },
+  { value: "lime", bg: "bg-lime-500", hex: "#84CC16", gradient: "linear-gradient(135deg, #84CC16, #65A30D)" },
+  { value: "emerald", bg: "bg-emerald-500", hex: "#10B981", gradient: "linear-gradient(135deg, #10B981, #059669)" },
+  { value: "sky", bg: "bg-sky-500", hex: "#0EA5E9", gradient: "linear-gradient(135deg, #0EA5E9, #0284C7)" },
+  { value: "violet", bg: "bg-violet-500", hex: "#8B5CF6", gradient: "linear-gradient(135deg, #8B5CF6, #7C3AED)" },
+  { value: "fuchsia", bg: "bg-fuchsia-500", hex: "#D946EF", gradient: "linear-gradient(135deg, #D946EF, #C026D3)" },
 ];
 
 const channelIcons: Record<string, { icon: JSX.Element; label: string }> = {
