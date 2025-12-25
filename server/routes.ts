@@ -28640,10 +28640,74 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }).returning();
         conversation = newConversation;
         console.log("[LiveChat] Created new session:", conversation.id, "for visitor:", finalVisitorId);
+        
+        // Save/update visitor in database for persistent history
+        await db.insert(liveWidgetVisitors).values({
+          visitorId: finalVisitorId,
+          widgetId,
+          firstName: visitorName?.split(" ")[0] || null,
+          lastName: visitorName?.split(" ").slice(1).join(" ") || null,
+          email: visitorEmail || null,
+          ipAddress: visitorIp || null,
+          city: (geoData as any).city || null,
+          state: (geoData as any).region || null,
+          country: (geoData as any).country_name || null,
+          currentUrl: visitorUrl || null,
+          browser: visitorBrowser || null,
+          os: visitorOs || null,
+          totalSessions: 1,
+          totalChats: 1,
+          lastSeenAt: new Date(),
+        }).onConflictDoUpdate({
+          target: [liveWidgetVisitors.visitorId, liveWidgetVisitors.widgetId],
+          set: {
+            firstName: visitorName?.split(" ")[0] || sql`${liveWidgetVisitors.firstName}`,
+            lastName: visitorName?.split(" ").slice(1).join(" ") || sql`${liveWidgetVisitors.lastName}`,
+            email: visitorEmail || sql`${liveWidgetVisitors.email}`,
+            totalChats: sql`${liveWidgetVisitors.totalChats} + 1`,
+            lastSeenAt: new Date(),
+          },
+        });
+        console.log("[LiveChat] Saved visitor data to database:", finalVisitorId);
+        
+        // Update in-memory visitor map with new name/email
+        const visitorKey = `${widgetId}:${finalVisitorId}`;
+        const existingVisitor = liveVisitors.get(visitorKey);
+        if (existingVisitor) {
+          existingVisitor.firstName = visitorName?.split(" ")[0] || existingVisitor.firstName;
+          existingVisitor.lastName = visitorName?.split(" ").slice(1).join(" ") || existingVisitor.lastName;
+          existingVisitor.email = visitorEmail || existingVisitor.email;
+          liveVisitors.set(visitorKey, existingVisitor);
+        }
+        
         // Broadcast to update inbox
         broadcastConversationUpdate(companyId);
       } else {
         console.log("[LiveChat] Resumed existing session:", conversation.id, "for visitor:", finalVisitorId);
+        // Update visitor name/email if provided on resume
+        if (visitorName || visitorEmail) {
+          await db.update(liveWidgetVisitors)
+            .set({
+              firstName: visitorName?.split(" ")[0] || undefined,
+              lastName: visitorName?.split(" ").slice(1).join(" ") || undefined,
+              email: visitorEmail || undefined,
+              lastSeenAt: new Date(),
+            })
+            .where(and(
+              eq(liveWidgetVisitors.visitorId, finalVisitorId),
+              eq(liveWidgetVisitors.widgetId, widgetId)
+            ));
+          
+          // Update in-memory
+          const visitorKey = `${widgetId}:${finalVisitorId}`;
+          const existingVisitor = liveVisitors.get(visitorKey);
+          if (existingVisitor) {
+            existingVisitor.firstName = visitorName?.split(" ")[0] || existingVisitor.firstName;
+            existingVisitor.lastName = visitorName?.split(" ").slice(1).join(" ") || existingVisitor.lastName;
+            existingVisitor.email = visitorEmail || existingVisitor.email;
+            liveVisitors.set(visitorKey, existingVisitor);
+          }
+        }
       }
       
       res.set({ "Access-Control-Allow-Origin": "*" });
@@ -37941,6 +38005,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         // Check if visitor is currently active
         const visitorKey = conv.widgetId && visitorId ? `${conv.widgetId}:${visitorId}` : null;
         const isVisitorActive = visitorKey ? liveVisitors.has(visitorKey) : false;
+        console.log("[Inbox Enrich]", { convId: conv.id, widgetId: conv.widgetId, phoneNumber: conv.phoneNumber, visitorId, visitorKey, isVisitorActive, unreadCount: conv.unreadCount, liveVisitorKeys: Array.from(liveVisitors.keys()).slice(0, 5) });
         // Check if there are unread messages (visitor sent something)
         const hasPendingMessage = (conv.unreadCount || 0) > 0;
         
