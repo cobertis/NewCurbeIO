@@ -37923,12 +37923,35 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
     try {
       // Include all conversations including waiting live chats
-      const conversations = await db
+      const rawConversations = await db
         .select()
         .from(telnyxConversations)
         .where(eq(telnyxConversations.companyId, companyId))
         .orderBy(desc(telnyxConversations.lastMessageAt));
-      console.log("[Inbox] Returning", conversations.length, "conversations for company", companyId, JSON.stringify(conversations[0] || {}));
+      
+      // Enrich waiting live chats with visitor activity status
+      const conversations = rawConversations.map(conv => {
+        if (conv.channel !== "live_chat" || conv.status !== "waiting") {
+          return conv;
+        }
+        // Extract visitorId from phoneNumber (format: visitor:xxx)
+        const visitorId = conv.phoneNumber?.startsWith("visitor:") 
+          ? conv.phoneNumber.replace("visitor:", "") 
+          : null;
+        // Check if visitor is currently active
+        const visitorKey = conv.widgetId && visitorId ? `${conv.widgetId}:${visitorId}` : null;
+        const isVisitorActive = visitorKey ? liveVisitors.has(visitorKey) : false;
+        // Check if there are unread messages (visitor sent something)
+        const hasPendingMessage = (conv.unreadCount || 0) > 0;
+        
+        return {
+          ...conv,
+          isVisitorActive,
+          hasPendingMessage,
+        };
+      });
+      
+      console.log("[Inbox] Returning", conversations.length, "conversations for company", companyId);
       res.json({ conversations });
     } catch (error: any) {
       console.error("[Inbox] Error fetching conversations:", error);

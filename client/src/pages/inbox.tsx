@@ -488,12 +488,11 @@ export default function InboxPage() {
         filtered = conversations.filter(c => !c.assignedTo && (c as any).status !== "waiting");
         break;
       case "waiting":
-        // Only show live chats in "waiting" status with recent activity (last 30 minutes)
-        const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+        // Only show live chats with active visitors who have pending messages
         filtered = conversations.filter(c => {
           if (c.channel !== "live_chat" || (c as any).status !== "waiting") return false;
-          const lastActivity = new Date(c.lastMessageAt || c.createdAt);
-          return lastActivity >= thirtyMinutesAgo;
+          // Must have an active visitor AND pending message
+          return (c as any).isVisitorActive && (c as any).hasPendingMessage;
         });
         break;
       case "solved":
@@ -755,8 +754,7 @@ export default function InboxPage() {
         unassigned: conversations.filter(c => !c.assignedTo && (c as any).status !== "waiting").length,
         waiting: conversations.filter(c => {
           if (c.channel !== "live_chat" || (c as any).status !== "waiting") return false;
-          const lastActivity = new Date(c.lastMessageAt || c.createdAt);
-          return lastActivity >= new Date(Date.now() - 30 * 60 * 1000);
+          return (c as any).isVisitorActive && (c as any).hasPendingMessage;
         }).length,
         visitors: liveVisitors.length,
         solved: conversations.filter(c => c.status === "solved" || c.status === "archived").length,
