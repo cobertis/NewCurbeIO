@@ -39344,7 +39344,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // Cleanup stale visitors every 30 seconds
   setInterval(() => {
     const now = Date.now();
-    const staleThreshold = 60000; // 60 seconds
+    const staleThreshold = 30000; // 60 seconds
     for (const [key, visitor] of liveVisitors.entries()) {
       if (now - visitor.lastSeenAt.getTime() > staleThreshold) {
         liveVisitors.delete(key);
