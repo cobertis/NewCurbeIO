@@ -805,12 +805,19 @@ export default function ChatWidgetPreviewPage() {
           if (agent && !connectedAgent) {
             setConnectedAgent(agent);
             setIsWaitingForAgent(false);
+            setShowOfflineFallback(false); // Hide offline UI when agent connects
           }
           
           // Also check status for when agent accepts but hasn't sent a message yet
           if (status === 'open' && !connectedAgent && agent) {
             setConnectedAgent(agent);
             setIsWaitingForAgent(false);
+            setShowOfflineFallback(false); // Hide offline UI when chat is open
+          }
+          
+          // Always hide offline fallback when chat is open (even if agent was already set)
+          if (status === 'open') {
+            setShowOfflineFallback(false);
           }
           
           if (messages.length > 0) {
@@ -1620,8 +1627,8 @@ export default function ChatWidgetPreviewPage() {
                   </div>
                 )}
                 
-                {/* Offline Fallback UI */}
-                {showOfflineFallback && !offlineMessageSent && (
+                {/* Offline Fallback UI - Only show when no agent connected and chat not open */}
+                {showOfflineFallback && !offlineMessageSent && !connectedAgent && (
                   <div className="bg-white dark:bg-slate-700 rounded-2xl shadow-lg p-4 mx-1">
                     {!showLeaveMessageForm ? (
                       <>
