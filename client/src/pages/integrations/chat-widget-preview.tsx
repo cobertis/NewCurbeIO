@@ -1111,7 +1111,28 @@ export default function ChatWidgetPreviewPage() {
               )
             }}
           >
-          {chatSessionId ? (
+          {chatLoading ? (
+            /* Loading state during transition */
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center" style={{ height: '520px' }}>
+              <div className="px-4 py-3 text-white w-full" style={{ background: currentBackground }}>
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+                    <MessageCircle className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <span className="font-semibold text-sm">Live Chat</span>
+                    <p className="text-xs opacity-80">Connecting...</p>
+                  </div>
+                </div>
+              </div>
+              <div className="flex-1 flex items-center justify-center">
+                <div className="text-center">
+                  <Loader2 className="h-8 w-8 animate-spin mx-auto mb-3 text-slate-400" />
+                  <p className="text-sm text-slate-500">Starting chat...</p>
+                </div>
+              </div>
+            </div>
+          ) : chatSessionId ? (
             /* Active Live Chat View - Professional Design */
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: '520px' }}>
               {/* Header with agent info */}
