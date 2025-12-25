@@ -267,11 +267,23 @@ export default function ChatWidgetPreviewPage() {
     try {
       const msgRes = await fetch(`/api/public/live-chat/messages/${existingSession.sessionId}`);
       if (msgRes.ok) {
-        const { messages } = await msgRes.json();
+        const { messages, agent, status } = await msgRes.json();
         setChatSessionId(existingSession.sessionId);
         setChatMessages(messages || []);
         setExistingSession(null);
-        console.log('[Chat] Resumed chat with', messages?.length || 0, 'messages');
+        
+        // Set connected agent if chat was accepted
+        if (agent) {
+          setConnectedAgent(agent);
+          setIsWaitingForAgent(false);
+        } else if (status === 'pending' || status === 'queued') {
+          setIsWaitingForAgent(true);
+        }
+        
+        console.log('[Chat] Resumed chat with', messages?.length || 0, 'messages, agent:', agent?.fullName || 'none');
+      } else {
+        console.error('[Chat] Failed to load messages:', msgRes.status);
+        toast({ title: "Error", description: "Failed to load chat messages", variant: "destructive" });
       }
     } catch (error) {
       console.error('[Chat] Failed to resume chat:', error);
