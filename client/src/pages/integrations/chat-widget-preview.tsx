@@ -1228,7 +1228,20 @@ export default function ChatWidgetPreviewPage() {
               {/* Header with agent info */}
               <div className="px-4 py-3 text-white flex items-center gap-3" style={{ background: currentBackground }}>
                 <button 
-                  onClick={() => { setChatSessionId(null); setChatMessages([]); setChatVisitorId(null); setConnectedAgent(null); localStorage.removeItem(`chat_visitor_${widgetId}`); }}
+                  onClick={() => { 
+                    // Keep session in localStorage so visitor can return to chat
+                    // Save current session info for "Back to chat" card
+                    const lastMsg = chatMessages[chatMessages.length - 1];
+                    setExistingSession({
+                      sessionId: chatSessionId,
+                      displayName: connectedAgent?.fullName || visitorName || 'Support Chat',
+                      lastMessage: lastMsg?.text || null,
+                      lastMessageAt: lastMsg?.createdAt || null,
+                    });
+                    setChatSessionId(null); 
+                    setChatMessages([]); 
+                    setConnectedAgent(null); 
+                  }}
                   className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
                   data-testid="back-from-chat"
                 >

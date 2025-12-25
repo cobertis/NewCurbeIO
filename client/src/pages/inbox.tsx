@@ -431,6 +431,7 @@ export default function InboxPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      setActiveView("open");
       toast({
         title: "Chat accepted",
         description: "You are now connected with the visitor.",
