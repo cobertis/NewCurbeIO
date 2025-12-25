@@ -24300,14 +24300,14 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       // Step 2: If connected, just return success
       if (evolutionState === "open") {
         await db.update(whatsappInstances)
-          .set({ status: "open", qrCode: null, lastConnectedAt: new Date(), updatedAt: new Date() })
+          .set({ status: "waiting", qrCode: null, lastConnectedAt: new Date(), updatedAt: new Date() })
           .where(eq(whatsappInstances.id, instance.id));
         console.log(`[WhatsApp] Instance ${instanceName} is already connected`);
         return res.json({
           success: true,
           connected: true,
           instanceName,
-          status: "open",
+          status: "waiting",
         });
       }
       // Step 3: If instance exists but disconnected, try to get QR
@@ -28525,7 +28525,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           displayName,
           email: visitorEmail || null,
           companyPhoneNumber: widgetId,
-          status: "open",
+          status: "waiting",
           channel: "live_chat",
           lastMessage: null,
           lastMessageAt: new Date(),
@@ -28632,7 +28632,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           lastMessageAt: new Date(),
           unreadCount: sql`${telnyxConversations.unreadCount} + 1`,
           displayName: visitorName || conversation.displayName,
-          status: "open",
+          status: "waiting",
           updatedAt: new Date(),
         })
         .where(eq(telnyxConversations.id, sessionId));
@@ -38176,6 +38176,52 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       res.status(500).json({ message: "Failed to update conversation" });
     }
   });
+
+  // POST /api/inbox/conversations/:id/accept - Accept a waiting live chat
+  app.post("/api/inbox/conversations/:id/accept", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const { id } = req.params;
+    const companyId = (req.user as any).companyId;
+    const userId = (req.user as any).id;
+    
+    try {
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(
+          eq(telnyxConversations.id, id),
+          eq(telnyxConversations.companyId, companyId),
+          eq(telnyxConversations.channel, "live_chat")
+        ));
+      
+      if (!conversation) {
+        return res.status(404).json({ message: "Conversation not found" });
+      }
+      
+      if (conversation.status !== "waiting") {
+        return res.status(409).json({ message: "Chat already accepted by another agent" });
+      }
+      
+      await db.update(telnyxConversations)
+        .set({
+          status: "open",
+          assignedTo: userId,
+          updatedAt: new Date(),
+        })
+        .where(eq(telnyxConversations.id, id));
+      
+      broadcastConversationUpdate(companyId);
+      
+      console.log(`[LiveChat] Agent ${userId} accepted chat ${id}`);
+      res.json({ success: true, conversationId: id });
+    } catch (error: any) {
+      console.error("[LiveChat] Accept error:", error);
+      res.status(500).json({ message: "Failed to accept chat" });
+    }
+  });
+
   // DELETE /api/inbox/conversations/:id - Delete conversation and all messages
   app.delete("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
     if (!req.user) {

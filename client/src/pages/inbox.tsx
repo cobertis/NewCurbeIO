@@ -28,6 +28,7 @@ import {
   ChevronUp,
   X,
   CheckCheck,
+  CheckCircle,
   Clock,
   Smile,
   FileText,
@@ -352,6 +353,26 @@ export default function InboxPage() {
     },
   });
 
+  const acceptChatMutation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      return apiRequest("POST", `/api/inbox/conversations/${conversationId}/accept`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      toast({
+        title: "Chat accepted",
+        description: "You are now connected with the visitor.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to accept chat",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
@@ -367,19 +388,21 @@ export default function InboxPage() {
     
     switch (activeView) {
       case "open":
-        filtered = conversations.filter(c => c.status === "open" || c.status === "pending" || !c.status);
+        // Exclude waiting live chats from Open view
+        filtered = conversations.filter(c => (c.status === "open" || c.status === "pending" || !c.status) && (c as any).status !== "waiting");
         break;
       case "unread":
-        filtered = conversations.filter(c => c.unreadCount > 0);
+        filtered = conversations.filter(c => c.unreadCount > 0 && (c as any).status !== "waiting");
         break;
       case "assigned":
         filtered = conversations.filter(c => c.assignedTo === user?.id);
         break;
       case "unassigned":
-        filtered = conversations.filter(c => !c.assignedTo);
+        filtered = conversations.filter(c => !c.assignedTo && (c as any).status !== "waiting");
         break;
       case "waiting":
-        filtered = conversations.filter(c => c.channel === "live_chat" && !c.assignedTo && (c.status === "open" || c.status === "pending" || !c.status));
+        // Only show live chats in "waiting" status (not yet accepted by agent)
+        filtered = conversations.filter(c => c.channel === "live_chat" && (c as any).status === "waiting");
         break;
       case "solved":
         filtered = conversations.filter(c => c.status === "solved" || c.status === "archived");
@@ -597,11 +620,11 @@ export default function InboxPage() {
       activeView={activeView} 
       onViewChange={setActiveView}
       counts={{
-        open: conversations.filter(c => c.status === "open" || c.status === "pending" || !c.status).length,
-        unread: conversations.filter(c => c.unreadCount > 0).length,
+        open: conversations.filter(c => (c.status === "open" || c.status === "pending" || !c.status) && (c as any).status !== "waiting").length,
+        unread: conversations.filter(c => c.unreadCount > 0 && (c as any).status !== "waiting").length,
         assigned: conversations.filter(c => c.assignedTo === user?.id).length,
-        unassigned: conversations.filter(c => !c.assignedTo).length,
-        waiting: conversations.filter(c => c.channel === "live_chat" && !c.assignedTo && (c.status === "open" || c.status === "pending" || !c.status)).length,
+        unassigned: conversations.filter(c => !c.assignedTo && (c as any).status !== "waiting").length,
+        waiting: conversations.filter(c => c.channel === "live_chat" && (c as any).status === "waiting").length,
         solved: conversations.filter(c => c.status === "solved" || c.status === "archived").length,
         all: conversations.length,
       }}
@@ -1012,6 +1035,38 @@ export default function InboxPage() {
             </ScrollArea>
 
             {/* Message Input / Composer - Floating */}
+            {/* Show Accept Chat button for waiting live chats */}
+            {selectedConversation.channel === "live_chat" && (selectedConversation as any).status === "waiting" ? (
+              <div className="absolute bottom-4 left-4 right-4 rounded-lg border bg-white dark:bg-gray-900 shadow-lg p-6">
+                <div className="flex flex-col items-center gap-4">
+                  <div className="text-center">
+                    <h3 className="font-semibold text-lg">New Live Chat Request</h3>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {selectedConversation.displayName || "A visitor"} is waiting for assistance
+                    </p>
+                  </div>
+                  <Button
+                    size="lg"
+                    className="bg-green-600 hover:bg-green-700 px-8"
+                    onClick={() => acceptChatMutation.mutate(selectedConversation.id)}
+                    disabled={acceptChatMutation.isPending}
+                    data-testid="btn-accept-chat"
+                  >
+                    {acceptChatMutation.isPending ? (
+                      <>
+                        <LoadingSpinner fullScreen={false} className="h-4 w-4 mr-2" />
+                        Accepting...
+                      </>
+                    ) : (
+                      <>
+                        <CheckCircle className="h-4 w-4 mr-2" />
+                        Accept Chat
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            ) : (
             <div className={cn(
               "absolute bottom-4 left-4 right-4 rounded-lg border bg-white dark:bg-gray-900 shadow-lg",
               isInternalNote && "bg-yellow-50 dark:bg-yellow-900/20"
@@ -1195,6 +1250,7 @@ export default function InboxPage() {
                 </div>
               </div>
             </div>
+            )}
           </>
         ) : (
           <div className="flex-1 flex flex-col items-center justify-center text-center p-8">
