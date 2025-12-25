@@ -5163,6 +5163,87 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       res.status(500).json({ message: error.message || "Failed to update user" });
     }
   });
+
+  // =====================================================
+  // AGENT AVAILABILITY STATUS
+  // =====================================================
+  
+  // Get current user's availability status
+  app.get("/api/users/availability-status", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session!.userId!;
+      const [user] = await db.select({ agentAvailabilityStatus: users.agentAvailabilityStatus }).from(users).where(eq(users.id, userId));
+      res.json({ status: user?.agentAvailabilityStatus || "offline" });
+    } catch (error) {
+      console.error("Error getting availability status:", error);
+      res.status(500).json({ message: "Failed to get availability status" });
+    }
+  });
+
+  // Update current user's availability status
+  app.patch("/api/users/availability-status", requireAuth, async (req: Request, res: Response) => {
+    try {
+      const userId = req.session!.userId!;
+      const { status } = req.body;
+      
+      if (!["online", "offline", "busy"].includes(status)) {
+        return res.status(400).json({ error: "Invalid status. Must be: online, offline, or busy" });
+      }
+      
+      await db.update(users).set({ agentAvailabilityStatus: status }).where(eq(users.id, userId));
+      
+      // Broadcast status update to other users in the same company
+      const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+      if (user?.companyId) {
+        broadcastToCompany(user.companyId, { 
+          type: "agent_status_updated", 
+          agentId: userId, 
+          status,
+          agentName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email
+        });
+      }
+      
+      console.log(`[Agent Availability] User ${userId} set status to: ${status}`);
+      res.json({ success: true, status });
+    } catch (error) {
+      console.error("Error updating availability status:", error);
+      res.status(500).json({ message: "Failed to update availability status" });
+    }
+  });
+
+  // Public endpoint: Check if any agents are online for a widget
+  app.get("/api/public/live-chat/availability", async (req: Request, res: Response) => {
+    try {
+      const { widgetId } = req.query;
+      if (!widgetId) {
+        return res.status(400).json({ error: "widgetId required" });
+      }
+      
+      // Get the widget to find company
+      const widget = await db.query.chatWidgets.findFirst({
+        where: eq(chatWidgets.id, widgetId as string),
+      });
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found", available: false });
+      }
+      
+      // Check if any agents in this company are online
+      const onlineAgents = await db.select({ id: users.id }).from(users)
+        .where(and(
+          eq(users.companyId, widget.companyId),
+          eq(users.agentAvailabilityStatus, "online"),
+          eq(users.isActive, true)
+        ));
+      
+      res.json({ 
+        available: onlineAgents.length > 0,
+        agentCount: onlineAgents.length 
+      });
+    } catch (error) {
+      console.error("Error checking agent availability:", error);
+      res.status(500).json({ error: "Failed to check availability", available: false });
+    }
+  });
   // Get company agents for dropdowns (policies, quotes, etc.)
   app.get("/api/company/agents", requireActiveCompany, async (req: Request, res: Response) => {
     try {
