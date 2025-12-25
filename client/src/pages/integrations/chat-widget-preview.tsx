@@ -10,7 +10,8 @@ import { SiWhatsapp, SiFacebook, SiInstagram, SiTelegram } from "react-icons/si"
 import QRCode from "qrcode";
 import curbeLogo from "@assets/logo no fondo_1760457183587.png";
 
-function formatMessageTime(date: Date | string): string {
+function formatMessageTime(date: Date | string | null | undefined): string {
+  if (!date) return '';
   const d = typeof date === 'string' ? new Date(date) : date;
   return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
 }
