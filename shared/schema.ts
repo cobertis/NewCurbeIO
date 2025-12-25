@@ -189,6 +189,7 @@ export const users = pgTable("users", {
   
   // User status
   status: text("status").notNull().default("active"), // 'pending_activation', 'active', 'deactivated'
+  agentAvailabilityStatus: text("agent_availability_status").notNull().default("offline"), // 'online', 'offline', 'busy' - for live chat routing
   isActive: boolean("is_active").notNull().default(true),
   emailVerified: boolean("email_verified").notNull().default(false),
   emailVerifiedAt: timestamp("email_verified_at"),
@@ -877,6 +878,7 @@ export const updateUserSchema = z.object({
   viewAllCompanyData: z.boolean().optional(), // Allow updating data visibility
   isActive: z.boolean().optional(),
   status: z.enum(["pending_activation", "active", "deactivated"]).optional(),
+  agentAvailabilityStatus: z.enum(["online", "offline", "busy"]).optional(),
   agentInternalCode: z.string().optional(),
   instructionLevel: z.string().optional(),
   nationalProducerNumber: z.string().regex(/^\d{6,10}$/, "NPN must be 6-10 digits").optional().or(z.literal("")),
