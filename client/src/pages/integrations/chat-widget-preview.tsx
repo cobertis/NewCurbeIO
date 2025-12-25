@@ -1081,7 +1081,7 @@ export default function ChatWidgetPreviewPage() {
               )}
               
               <div className="p-4 space-y-3">
-                {widget.channels?.liveChat && !chatSessionId && (
+                {widget.channels?.liveChat && !chatSessionId && !showPreChatForm && (
                   <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 space-y-3">
                     <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                       {widget.liveChatSettings?.preChatForm?.title || "Chat with our agent"}
@@ -1095,14 +1095,65 @@ export default function ChatWidgetPreviewPage() {
                       data-testid="initial-message-input"
                     />
                     <button 
-                      onClick={startChatSession}
-                      disabled={chatLoading}
-                      className="w-full py-2.5 px-4 rounded-lg text-white text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                      onClick={() => setShowPreChatForm(true)}
+                      className="w-full py-2.5 px-4 rounded-lg text-white text-sm font-medium flex items-center justify-center gap-2"
                       style={{ background: currentBackground }}
                       data-testid="start-chat-button"
                     >
-                      {chatLoading && <Loader2 className="h-4 w-4 animate-spin" />}
                       {widget.liveChatSettings?.welcomeScreen?.buttonLabel || "Start chat"}
+                    </button>
+                  </div>
+                )}
+                
+                {widget.channels?.liveChat && !chatSessionId && showPreChatForm && (
+                  <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 space-y-3">
+                    <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                      {widget.liveChatSettings?.preChatForm?.title || "Chat with our agent"}
+                    </h5>
+                    <div className="space-y-3">
+                      <div className="space-y-1">
+                        <span className="text-xs text-slate-500 font-medium">
+                          Name {widget.liveChatSettings?.preChatForm?.nameFieldRequired && <span className="text-red-500">*</span>}
+                        </span>
+                        <input 
+                          type="text"
+                          value={visitorName}
+                          onChange={(e) => setVisitorName(e.target.value)}
+                          placeholder="Enter your name"
+                          className="w-full p-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                          data-testid="visitor-name-input"
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-xs text-slate-500 font-medium">
+                          Email {widget.liveChatSettings?.preChatForm?.emailFieldRequired !== false && <span className="text-red-500">*</span>}
+                        </span>
+                        <input 
+                          type="email"
+                          value={visitorEmail}
+                          onChange={(e) => setVisitorEmail(e.target.value)}
+                          placeholder="your@email.com"
+                          className="w-full p-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                          data-testid="visitor-email-input"
+                        />
+                      </div>
+                    </div>
+                    <button 
+                      onClick={startChatSession}
+                      disabled={chatLoading || (widget.liveChatSettings?.preChatForm?.emailFieldRequired !== false && !visitorEmail.trim())}
+                      className="w-full py-2.5 px-4 rounded-lg text-white text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                      style={{ background: currentBackground }}
+                      data-testid="submit-prechat-button"
+                    >
+                      {chatLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                      {widget.liveChatSettings?.preChatForm?.buttonLabel || "Start chat"}
+                    </button>
+                    <button 
+                      onClick={() => setShowPreChatForm(false)}
+                      className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Select another channel
                     </button>
                   </div>
                 )}
