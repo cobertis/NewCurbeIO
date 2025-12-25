@@ -6647,6 +6647,10 @@ export const telnyxConversations = pgTable("telnyx_conversations", {
   visitorBrowser: text("visitor_browser"), // Browser name and version
   visitorOs: text("visitor_os"), // Operating system
   widgetId: varchar("widget_id").references(() => chatWidgets.id, { onDelete: "set null" }), // Widget ID for live chat
+  // Satisfaction survey fields
+  satisfactionRating: integer("satisfaction_rating"), // 1-5 rating from visitor
+  satisfactionFeedback: text("satisfaction_feedback"), // Optional text feedback
+  satisfactionSubmittedAt: timestamp("satisfaction_submitted_at"), // When survey was submitted
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
