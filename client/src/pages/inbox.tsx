@@ -769,9 +769,14 @@ export default function InboxPage() {
                                      visitor.country === 'Local' ? '🏠' : '🌍'}
                                   </span>
                                 )}
-                                <span className="text-sm">
-                                  {visitor.city && visitor.state ? `${visitor.city}` : visitor.country || 'Unknown'}
-                                </span>
+                                <div className="flex flex-col">
+                                  <span className="text-sm font-medium">
+                                    {visitor.city || 'Unknown City'}{visitor.state ? `, ${visitor.state}` : ''}
+                                  </span>
+                                  <span className="text-xs text-muted-foreground">
+                                    {visitor.country || 'Unknown Country'}
+                                  </span>
+                                </div>
                               </div>
                             </td>
                             <td className="px-6 py-4">

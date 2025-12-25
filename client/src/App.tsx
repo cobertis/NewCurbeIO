@@ -352,11 +352,16 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     };
 
     if (message.type === 'conversation_update') {
-      // When a new SMS arrives, invalidate notifications to show the new notification
+      // When conversation state changes, invalidate related queries
+      // Note: Sound is handled by specific message events (new_message, telnyx_message) not here
+      // to avoid playing sound for heartbeats and other non-message updates
       queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
-      // Also invalidate unread count for sidebar badge
       queryClient.invalidateQueries({ queryKey: ["/api/chat/unread-count"] });
-      // Play sound when new SMS arrives
+    } else if (message.type === 'new_message' || message.type === 'telnyx_message') {
+      // Play sound only for actual new incoming messages
+      queryClient.invalidateQueries({ queryKey: ["/api/notifications"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/chat/unread-count"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
       playNotificationSound();
     } else if (message.type === 'notification_update') {
       // When a broadcast notification is sent, update notifications in real-time
