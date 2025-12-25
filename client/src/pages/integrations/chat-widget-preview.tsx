@@ -122,6 +122,8 @@ export default function ChatWidgetPreviewPage() {
   const [showLeaveMessageForm, setShowLeaveMessageForm] = useState(false);
   const [offlineMessageSent, setOfflineMessageSent] = useState(false);
   const [offlineMessageLoading, setOfflineMessageLoading] = useState(false);
+  const [showEyeCatcher, setShowEyeCatcher] = useState(false);
+  const eyeCatcherTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const agentTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -159,6 +161,49 @@ export default function ChatWidgetPreviewPage() {
   // Determine which data to use based on mode
   const isLoading = isPublicMode ? publicLoading : authLoading;
   const effectiveWidgetData = isPublicMode ? publicWidgetData : authWidgetData;
+
+  // Eye-catcher message delay - show after configured seconds
+  useEffect(() => {
+    const widget = effectiveWidgetData?.widget;
+    if (!widget?.minimizedState?.eyeCatcherEnabled || !widget?.minimizedState?.eyeCatcherMessage) {
+      setShowEyeCatcher(false);
+      return;
+    }
+    
+    // Hide eye-catcher when widget is open
+    if (widgetOpen) {
+      setShowEyeCatcher(false);
+      if (eyeCatcherTimeoutRef.current) {
+        clearTimeout(eyeCatcherTimeoutRef.current);
+        eyeCatcherTimeoutRef.current = null;
+      }
+      return;
+    }
+    
+    // Get delay in milliseconds (default 0 = immediate)
+    const delaySeconds = widget.minimizedState.messageDelay || 0;
+    const delayMs = delaySeconds * 1000;
+    
+    // Clear any existing timeout
+    if (eyeCatcherTimeoutRef.current) {
+      clearTimeout(eyeCatcherTimeoutRef.current);
+    }
+    
+    // Set timeout to show eye-catcher after delay
+    eyeCatcherTimeoutRef.current = setTimeout(() => {
+      setShowEyeCatcher(true);
+    }, delayMs);
+    
+    return () => {
+      if (eyeCatcherTimeoutRef.current) {
+        clearTimeout(eyeCatcherTimeoutRef.current);
+        eyeCatcherTimeoutRef.current = null;
+      }
+    };
+  }, [effectiveWidgetData?.widget?.minimizedState?.eyeCatcherEnabled, 
+      effectiveWidgetData?.widget?.minimizedState?.eyeCatcherMessage,
+      effectiveWidgetData?.widget?.minimizedState?.messageDelay,
+      widgetOpen]);
 
   // WebSocket connection for live chat - connects when waiting for agent
   useEffect(() => {
@@ -1378,10 +1423,16 @@ export default function ChatWidgetPreviewPage() {
             )
           }}
         >
-        {!widgetOpen && widget.minimizedState?.eyeCatcherEnabled && widget.minimizedState?.eyeCatcherMessage && (
+        {showEyeCatcher && !widgetOpen && widget.minimizedState?.eyeCatcherEnabled && widget.minimizedState?.eyeCatcherMessage && (
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg px-4 py-2 flex items-center gap-2 text-sm">
             <span className="text-slate-600 dark:text-slate-300">{widget.minimizedState.eyeCatcherMessage}</span>
-            <button className="text-slate-400 hover:text-slate-600">×</button>
+            <button 
+              className="text-slate-400 hover:text-slate-600"
+              onClick={() => setShowEyeCatcher(false)}
+              data-testid="button-dismiss-eyecatcher"
+            >
+              ×
+            </button>
           </div>
         )}
         
