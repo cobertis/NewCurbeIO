@@ -6638,6 +6638,7 @@ export const telnyxConversations = pgTable("telnyx_conversations", {
   visitorCurrentUrl: text("visitor_current_url"), // Page URL where chat started
   visitorBrowser: text("visitor_browser"), // Browser name and version
   visitorOs: text("visitor_os"), // Operating system
+  widgetId: varchar("widget_id").references(() => chatWidgets.id, { onDelete: "set null" }), // Widget ID for live chat
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
