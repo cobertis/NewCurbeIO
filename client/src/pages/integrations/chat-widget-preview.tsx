@@ -271,7 +271,7 @@ export default function ChatWidgetPreviewPage() {
     }
   }, [widgetId, showSatisfactionSurvey, surveyRating, surveyFeedback, chatSessionId]);
 
-  // Eye-catcher message delay - show after configured seconds
+  // Eye-catcher message delay - show after configured seconds (but only if user never opened widget)
   useEffect(() => {
     const widget = effectiveWidgetData?.widget;
     if (!widget?.minimizedState?.eyeCatcherEnabled || !widget?.minimizedState?.eyeCatcherMessage) {
@@ -279,12 +279,23 @@ export default function ChatWidgetPreviewPage() {
       return;
     }
     
-    // Hide eye-catcher when widget is open
+    // Check if user has ever opened the widget - if so, never show eye-catcher again
+    const hasOpenedWidget = localStorage.getItem(`chatWidgetOpened-${widgetId}`);
+    if (hasOpenedWidget) {
+      setShowEyeCatcher(false);
+      return;
+    }
+    
+    // Hide eye-catcher when widget is open and mark as opened
     if (widgetOpen) {
       setShowEyeCatcher(false);
       if (eyeCatcherTimeoutRef.current) {
         clearTimeout(eyeCatcherTimeoutRef.current);
         eyeCatcherTimeoutRef.current = null;
+      }
+      // Mark that user has opened the widget - eye-catcher won't show again
+      if (widgetId) {
+        localStorage.setItem(`chatWidgetOpened-${widgetId}`, 'true');
       }
       return;
     }
@@ -312,7 +323,7 @@ export default function ChatWidgetPreviewPage() {
   }, [effectiveWidgetData?.widget?.minimizedState?.eyeCatcherEnabled, 
       effectiveWidgetData?.widget?.minimizedState?.eyeCatcherMessage,
       effectiveWidgetData?.widget?.minimizedState?.messageDelay,
-      widgetOpen]);
+      widgetOpen, widgetId]);
 
   // WebSocket connection for live chat - connects when waiting for agent
   useEffect(() => {
