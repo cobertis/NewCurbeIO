@@ -6606,7 +6606,7 @@ export const telnyxMessageTypeEnum = pgEnum("telnyx_message_type", ["incoming", 
 export const telnyxMessageChannelEnum = pgEnum("telnyx_message_channel", ["sms", "whatsapp", "imessage", "email", "facebook", "instagram", "live_chat", "rcs", "telegram"]);
 
 // Conversation status
-export const telnyxConversationStatusEnum = pgEnum("telnyx_conversation_status", ["open", "pending", "solved", "snoozed", "archived"]);
+export const telnyxConversationStatusEnum = pgEnum("telnyx_conversation_status", ["open", "pending", "solved", "snoozed", "archived", "waiting"]);
 
 // Message status
 export const telnyxMessageStatusEnum = pgEnum("telnyx_message_status", [
