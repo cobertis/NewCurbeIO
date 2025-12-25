@@ -28969,6 +28969,45 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           return res.status(404).json({ error: "Widget not found" });
         }
         
+        
+        // Check if there is a solved/archived conversation we can reopen
+        const [solvedConversation] = await db
+          .select()
+          .from(telnyxConversations)
+          .where(and(
+            eq(telnyxConversations.companyId, widget.companyId),
+            eq(telnyxConversations.phoneNumber, `livechat_${visitorId}`),
+            eq(telnyxConversations.channel, "live_chat"),
+            inArray(telnyxConversations.status, ["solved", "archived"])
+          ))
+          .orderBy(desc(telnyxConversations.createdAt))
+          .limit(1);
+        
+        if (solvedConversation) {
+          // Reopen the solved conversation instead of creating a new one
+          console.log("[LiveChat] Reopening solved conversation:", solvedConversation.id, "for visitor:", visitorId);
+          const displayName = visitorName || solvedConversation.displayName || "Website Visitor";
+          await db.update(telnyxConversations)
+            .set({
+              status: "waiting",
+              lastMessage: text.trim().substring(0, 200),
+              lastMessageAt: new Date(),
+              unreadCount: sql`${telnyxConversations.unreadCount} + 1`,
+              displayName,
+              assignedTo: null,
+              satisfactionRating: null,
+              satisfactionFeedback: null,
+              satisfactionSubmittedAt: null,
+            })
+            .where(eq(telnyxConversations.id, solvedConversation.id));
+          
+          conversation = { ...solvedConversation, status: "waiting" };
+          
+          // Broadcast update to notify agents of reopened chat
+          const { broadcastConversationUpdate } = await import("./websocket");
+          broadcastConversationUpdate(widget.companyId);
+        }
+
         // Fetch geolocation
         let geoData: any = {};
         if (visitorIp && !visitorIp.includes('127.0.0.1') && !visitorIp.includes('::1')) {
@@ -28980,6 +29019,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           } catch (geoErr) {}
         }
         
+        // Only create new conversation if we did not reopen a solved one
+        if (!conversation) {
         // Create conversation on first message
         const displayName = visitorName || "Website Visitor";
         const [newConv] = await db.insert(telnyxConversations).values({
@@ -29048,6 +29089,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           liveVisitors.set(visitorKey, existingVisitor);
         }
         broadcastConversationUpdate(widget.companyId);
+        }
       }
       
       if (!conversation) {
