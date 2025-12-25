@@ -1438,7 +1438,7 @@ export default function ChatWidgetPreviewPage() {
                   </button>
                 )}
 
-                {widget.channels?.liveChat && !chatSessionId && !showPreChatForm && (
+                {widget.channels?.liveChat && !chatSessionId && !showPreChatForm && !existingSession && (
                   <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 space-y-3">
                     <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
                       {widget.liveChatSettings?.preChatForm?.title || "Chat with our agent"}
