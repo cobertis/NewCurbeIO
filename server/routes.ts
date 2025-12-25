@@ -28657,6 +28657,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         
         // Save/update visitor in database for persistent history
         await db.insert(liveWidgetVisitors).values({
+          companyId,
           visitorId: finalVisitorId,
           widgetId,
           firstName: visitorName?.split(" ")[0] || null,
@@ -28942,6 +28943,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         
         // Save visitor to database
         await db.insert(liveWidgetVisitors).values({
+          companyId: widget.companyId,
           visitorId,
           widgetId,
           firstName: visitorName?.split(" ")[0] || null,

@@ -214,7 +214,13 @@ export default function ChatWidgetPreviewPage() {
         
         if (!sessionRes.ok) return;
         
-        const { sessionId, visitorId } = await sessionRes.json();
+        const { sessionId, visitorId, pendingSession } = await sessionRes.json();
+        
+        // If pending session (no conversation yet), just store visitorId
+        if (pendingSession || !sessionId) {
+          setChatVisitorId(visitorId);
+          return;
+        }
         
         // Only resume if there are actual messages
         const msgRes = await fetch(`/api/public/live-chat/messages/${sessionId}`);
