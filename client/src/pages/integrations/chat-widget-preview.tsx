@@ -1175,7 +1175,7 @@ export default function ChatWidgetPreviewPage() {
                     {connectedAgent ? connectedAgent.fullName : 'Live Chat'}
                   </span>
                   <p className="text-xs opacity-80">
-                    {connectedAgent ? 'Support agent' : 'Usually replies in a few minutes'}
+                    {connectedAgent ? 'Support Agent' : 'Usually replies in a few minutes'}
                   </p>
                 </div>
               </div>
