@@ -38180,6 +38180,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
     const companyId = (req.user as any).companyId;
     const userId = (req.user as any).id;
+    console.log("[LiveChat] Accept request for chat:", id, "by user:", userId);
     if (!companyId) {
       return res.status(400).json({ message: "No company associated with user" });
     }
@@ -38282,6 +38283,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       const companyId = (req.user as any).companyId;
       const userId = (req.user as any).id;
+    console.log("[LiveChat] Accept request for chat:", id, "by user:", userId);
       if (!companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
@@ -38624,6 +38626,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
 
   // POST /api/inbox/conversations/:id/accept - Accept a waiting live chat
+  console.log("[LiveChat] Accept endpoint registered");
   app.post("/api/inbox/conversations/:id/accept", requireActiveCompany, async (req: Request, res: Response) => {
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
@@ -38631,6 +38634,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     const { id } = req.params;
     const companyId = (req.user as any).companyId;
     const userId = (req.user as any).id;
+    console.log("[LiveChat] Accept request for chat:", id, "by user:", userId);
     
     try {
       const [conversation] = await db
@@ -38675,6 +38679,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
     const companyId = (req.user as any).companyId;
     const userId = (req.user as any).id;
+    console.log("[LiveChat] Accept request for chat:", id, "by user:", userId);
     const user = req.user as any;
     const { visitorId, message, widgetId } = req.body;
     
