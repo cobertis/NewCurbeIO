@@ -372,7 +372,7 @@ export default function InboxPage() {
     mutationFn: async ({ conversationId, displayName, email, jobTitle, organization }: { conversationId: string; displayName: string; email: string; jobTitle: string; organization: string }) => {
       return apiRequest("PATCH", `/api/inbox/conversations/${conversationId}`, { displayName, email, jobTitle, organization });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
       setIsEditingDetails(false);
       toast({
@@ -393,7 +393,7 @@ export default function InboxPage() {
     mutationFn: async (conversationId: string) => {
       return apiRequest("DELETE", `/api/inbox/conversations/${conversationId}`);
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
       setSelectedConversationId(null);
       setDeleteDialogOpen(false);
@@ -415,8 +415,8 @@ export default function InboxPage() {
     mutationFn: async (conversationId: string) => {
       return apiRequest("POST", `/api/inbox/conversations/${conversationId}/accept`);
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+    onSuccess: async () => {
+      await queryClient.refetchQueries({ queryKey: ["/api/inbox/conversations"] });
       toast({
         title: "Chat accepted",
         description: "You are now connected with the visitor.",
