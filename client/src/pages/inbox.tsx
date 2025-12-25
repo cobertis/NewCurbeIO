@@ -44,7 +44,9 @@ import {
   Briefcase,
   Download,
   Image,
-  Globe
+  Globe,
+  ThumbsUp,
+  ThumbsDown
 } from "lucide-react";
 import { SiFacebook, SiInstagram, SiTelegram } from "react-icons/si";
 import Picker from "@emoji-mart/react";
@@ -1385,6 +1387,42 @@ export default function InboxPage() {
                       </div>
                     </div>
                   )}
+                  
+                  {/* Satisfaction Rating Display for Solved Chats */}
+                  {(selectedConversation as any).status === "solved" && (selectedConversation as any).satisfactionRating && (
+                    <div className="flex justify-center my-4">
+                      <div className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border px-6 py-4 max-w-sm w-full">
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground mb-2">Customer Feedback</p>
+                          <div className="flex items-center justify-center gap-2 mb-3">
+                            {(selectedConversation as any).satisfactionRating >= 4 ? (
+                              <>
+                                <div className="w-10 h-10 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                                  <ThumbsUp className="h-5 w-5 text-green-600 dark:text-green-400" />
+                                </div>
+                                <span className="text-sm font-medium text-green-600 dark:text-green-400">Good</span>
+                              </>
+                            ) : (
+                              <>
+                                <div className="w-10 h-10 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                                  <ThumbsDown className="h-5 w-5 text-red-600 dark:text-red-400" />
+                                </div>
+                                <span className="text-sm font-medium text-red-600 dark:text-red-400">Bad</span>
+                              </>
+                            )}
+                          </div>
+                          {(selectedConversation as any).satisfactionFeedback && (
+                            <div className="bg-gray-50 dark:bg-gray-700/50 rounded-lg p-3">
+                              <p className="text-sm italic text-gray-600 dark:text-gray-300">
+                                "{(selectedConversation as any).satisfactionFeedback}"
+                              </p>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
                   <div ref={messagesEndRef} />
                 </div>
               )}
