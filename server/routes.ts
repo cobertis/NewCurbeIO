@@ -38870,6 +38870,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
+    const { id } = req.params;
     const { displayName, email, jobTitle, organization, status } = req.body;
     const companyId = (req.user as any).companyId;
     

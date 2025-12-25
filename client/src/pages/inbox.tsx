@@ -1150,23 +1150,14 @@ export default function InboxPage() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="hidden sm:flex"
+                  className="hidden sm:flex items-center gap-1.5 text-blue-500 border-gray-300 hover:bg-gray-50 hover:text-blue-600"
                   onClick={() => solveChatMutation.mutate(selectedConversation.id)}
                   disabled={solveChatMutation.isPending || (selectedConversation as any).status === "solved"}
                   data-testid="btn-solve"
                 >
+                  <CheckCircle className="h-4 w-4" />
                   {solveChatMutation.isPending ? "Solving..." : "Solve"}
                 </Button>
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" data-testid="btn-checkbox">
-                        <CheckSquare className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Mark as done</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
