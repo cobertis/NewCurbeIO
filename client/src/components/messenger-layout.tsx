@@ -12,7 +12,8 @@ import {
   Settings,
   Plus,
   ChevronDown,
-  ChevronUp
+  ChevronUp,
+  Eye
 } from "lucide-react";
 import { SiWhatsapp, SiFacebook, SiInstagram } from "react-icons/si";
 import { Button } from "@/components/ui/button";
@@ -23,6 +24,7 @@ export type MessengerView =
   | "assigned" 
   | "unassigned" 
   | "waiting" 
+  | "visitors"
   | "solved" 
   | "all"
   | "sms"
@@ -41,6 +43,7 @@ interface MessengerLayoutProps {
     assigned?: number;
     unassigned?: number;
     waiting?: number;
+    visitors?: number;
     solved?: number;
     all?: number;
   };
@@ -52,6 +55,7 @@ const viewItems = [
   { id: "assigned" as const, label: "Assigned to me", icon: User },
   { id: "unassigned" as const, label: "Unassigned", icon: UserMinus },
   { id: "waiting" as const, label: "Waiting live chats", icon: Clock },
+  { id: "visitors" as const, label: "Live visitors", icon: Eye },
   { id: "solved" as const, label: "Solved", icon: CheckCircle2 },
   { id: "all" as const, label: "All chats", icon: MessageSquare },
 ];
@@ -115,6 +119,10 @@ export function MessengerLayout({
                     </span>
                   ) : item.id === "unread" ? (
                     <span className="min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-semibold bg-blue-500 text-white rounded-full px-1">
+                      {counts[item.id as keyof typeof counts]}
+                    </span>
+                  ) : item.id === "visitors" ? (
+                    <span className="min-w-[18px] h-[18px] flex items-center justify-center text-[10px] font-semibold bg-green-500 text-white rounded-full px-1">
                       {counts[item.id as keyof typeof counts]}
                     </span>
                   ) : (

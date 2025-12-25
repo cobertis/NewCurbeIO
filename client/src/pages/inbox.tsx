@@ -202,6 +202,27 @@ export default function InboxPage() {
   });
   const conversations = conversationsData?.conversations || [];
 
+  interface LiveVisitor {
+    id: string;
+    widgetId: string;
+    visitorId: string;
+    ipAddress: string | null;
+    city: string | null;
+    state: string | null;
+    country: string | null;
+    currentUrl: string | null;
+    pageTitle: string | null;
+    firstSeenAt: string;
+    lastSeenAt: string;
+  }
+
+  const { data: visitorsData } = useQuery<{ visitors: LiveVisitor[] }>({
+    queryKey: ["/api/live-visitors"],
+    enabled: isAuthenticated && activeView === "visitors",
+    refetchInterval: 10000,
+  });
+  const liveVisitors = visitorsData?.visitors || [];
+
   const { data: messagesData, isLoading: loadingMessages } = useQuery<{ messages: TelnyxMessage[] }>({
     queryKey: [`/api/inbox/conversations/${selectedConversationId}/messages`],
     enabled: !!selectedConversationId,
@@ -445,6 +466,7 @@ export default function InboxPage() {
       case "assigned": return "Assigned to me";
       case "unassigned": return "Unassigned";
       case "waiting": return "Waiting live chats";
+      case "visitors": return "Live visitors";
       case "solved": return "Solved";
       case "all": return "All chats";
       case "sms": return "SMS";
@@ -625,10 +647,82 @@ export default function InboxPage() {
         assigned: conversations.filter(c => c.assignedTo === user?.id).length,
         unassigned: conversations.filter(c => !c.assignedTo && (c as any).status !== "waiting").length,
         waiting: conversations.filter(c => c.channel === "live_chat" && (c as any).status === "waiting").length,
+        visitors: liveVisitors.length,
         solved: conversations.filter(c => c.status === "solved" || c.status === "archived").length,
         all: conversations.length,
       }}
     >
+      {/* Live Visitors Panel - shown when visitors view is active */}
+      {activeView === "visitors" ? (
+        <div className="flex-1 flex flex-col bg-white dark:bg-gray-900">
+          <div className="h-[49px] px-4 border-b flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Eye className="h-4 w-4 text-green-500" />
+              <h2 className="font-semibold">Live visitors</h2>
+              {liveVisitors.length > 0 && (
+                <span className="bg-green-500 text-white text-xs px-2 py-0.5 rounded-full">{liveVisitors.length}</span>
+              )}
+            </div>
+          </div>
+          <ScrollArea className="flex-1">
+            {liveVisitors.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-12 text-center px-4">
+                <Eye className="h-12 w-12 text-muted-foreground/50 mb-3" />
+                <p className="text-sm text-muted-foreground">No visitors online</p>
+                <p className="text-xs text-muted-foreground mt-1">Visitors will appear here when they view your chat widget</p>
+              </div>
+            ) : (
+              <div className="divide-y">
+                {liveVisitors.map((visitor) => {
+                  const timeOnSite = Math.round((Date.now() - new Date(visitor.firstSeenAt).getTime()) / 1000);
+                  const minutes = Math.floor(timeOnSite / 60);
+                  const seconds = timeOnSite % 60;
+                  const duration = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
+                  
+                  return (
+                    <div
+                      key={visitor.id}
+                      className="p-4 hover:bg-muted/50 transition-colors"
+                      data-testid={`visitor-${visitor.id}`}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className="relative shrink-0">
+                          <div className="h-10 w-10 rounded-full bg-green-100 flex items-center justify-center">
+                            <User className="h-5 w-5 text-green-600" />
+                          </div>
+                          <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-500 rounded-full border-2 border-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between gap-2">
+                            <span className="font-medium text-sm truncate">
+                              {visitor.city && visitor.state ? `${visitor.city}, ${visitor.state}` : 'Unknown location'}
+                            </span>
+                            <span className="text-xs text-green-600 font-medium shrink-0">{duration}</span>
+                          </div>
+                          <p className="text-xs text-muted-foreground truncate mt-0.5" title={visitor.currentUrl || undefined}>
+                            {visitor.pageTitle || visitor.currentUrl || 'Unknown page'}
+                          </p>
+                          <div className="flex items-center gap-2 mt-1.5">
+                            <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                              {visitor.ipAddress || 'IP hidden'}
+                            </span>
+                            {visitor.country && visitor.country !== visitor.state && (
+                              <span className="text-[10px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                                {visitor.country}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </ScrollArea>
+        </div>
+      ) : (
+        <>
       {/* Conversation List Panel */}
       <div className={cn(
         "w-80 border-r flex flex-col bg-white dark:bg-gray-900",
@@ -1823,6 +1917,8 @@ export default function InboxPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      </>
+      )}
     </MessengerLayout>
   );
 }

@@ -38842,8 +38842,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   // Register SES routes
   registerSesRoutes(app, requireActiveCompany);
 
-  return httpServer;
-}
 
   // ============================================
   // LIVE VISITORS TRACKING
@@ -38876,7 +38874,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     for (const [key, visitor] of liveVisitors.entries()) {
       if (now - visitor.lastSeenAt.getTime() > staleThreshold) {
         liveVisitors.delete(key);
-        // Broadcast removal
         broadcastConversationUpdate(visitor.companyId);
       }
     }
@@ -38884,20 +38881,18 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   
   // Helper: Get geo info from IP
   async function getGeoFromIP(ip: string): Promise<{ city: string; state: string; country: string } | null> {
-    // Check cache
     const cached = geoCache.get(ip);
     if (cached && Date.now() - cached.cachedAt < GEO_CACHE_TTL) {
       return { city: cached.city, state: cached.state, country: cached.country };
     }
     
     try {
-      // Use ipapi.co free tier (1000 requests/day)
       const cleanIp = ip.replace(/^::ffff:/, '');
       if (cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp.startsWith('192.168.') || cleanIp.startsWith('10.')) {
         return { city: 'Local', state: 'Local', country: 'Local' };
       }
       
-      const response = await fetch(`https://ipapi.co/${cleanIp}/json/`);
+      const response = await fetch(`https://ipapi.co/\${cleanIp}/json/`);
       if (response.ok) {
         const data = await response.json();
         const geo = {
@@ -38923,7 +38918,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
     
     try {
-      // Get widget to find company
       const [widget] = await db
         .select({ companyId: chatWidgets.companyId })
         .from(chatWidgets)
@@ -38933,23 +38927,21 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(404).json({ error: "Widget not found" });
       }
       
-      const key = `${widgetId}:${visitorId}`;
+      const key = `\${widgetId}:\${visitorId}`;
       const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || '';
       const now = new Date();
       
       let visitor = liveVisitors.get(key);
       
       if (visitor) {
-        // Update existing visitor
         visitor.currentUrl = currentUrl || visitor.currentUrl;
         visitor.pageTitle = pageTitle || visitor.pageTitle;
         visitor.lastSeenAt = now;
       } else {
-        // New visitor - get geo info
         const geo = await getGeoFromIP(ip);
         
         visitor = {
-          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          id: `\${Date.now()}-\${Math.random().toString(36).substr(2, 9)}`,
           widgetId,
           companyId: widget.companyId,
           visitorId,
@@ -38965,7 +38957,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         liveVisitors.set(key, visitor);
       }
       
-      // Broadcast update to agents
       broadcastConversationUpdate(widget.companyId);
       
       res.set({ "Access-Control-Allow-Origin": "*" });
@@ -39005,3 +38996,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     });
     res.status(204).send();
   });
+
+  return httpServer;
+}
