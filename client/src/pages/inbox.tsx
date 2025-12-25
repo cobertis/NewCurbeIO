@@ -1041,7 +1041,9 @@ export default function InboxPage() {
                     {selectedConversation.displayName || formatForDisplay(selectedConversation.phoneNumber)}
                   </h3>
                   <p className="text-sm text-muted-foreground">
-                    {formatForDisplay(selectedConversation.phoneNumber)}
+                    {selectedConversation.channel === "live_chat" 
+                      ? ((selectedConversation as any).email || "No email provided")
+                      : formatForDisplay(selectedConversation.phoneNumber)}
                   </p>
                 </div>
               </div>
