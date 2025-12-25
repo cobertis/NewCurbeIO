@@ -169,6 +169,7 @@ export default function ChatWidgetPreviewPage() {
   const wsReconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const widgetOpenRef = useRef<boolean>(widgetOpen);
   const connectedAgentRef = useRef<typeof connectedAgent>(null);
+  const lastSeenMessageIdRef = useRef<string | null>(null);
 
   // Use authenticated API only when not in public mode
   const { data: authWidgetData, isLoading: authLoading } = useQuery<{ widget: any }>({
@@ -199,7 +200,15 @@ export default function ChatWidgetPreviewPage() {
   // Keep refs in sync with state for WebSocket callbacks
   useEffect(() => {
     widgetOpenRef.current = widgetOpen;
-  }, [widgetOpen]);
+    // When widget opens, clear the minimized notification and mark messages as seen
+    if (widgetOpen) {
+      setMinimizedNotification(null);
+      // Mark the last message as seen
+      if (chatMessages.length > 0) {
+        lastSeenMessageIdRef.current = chatMessages[chatMessages.length - 1].id;
+      }
+    }
+  }, [widgetOpen, chatMessages]);
   
   useEffect(() => {
     connectedAgentRef.current = connectedAgent;
@@ -1087,15 +1096,23 @@ export default function ChatWidgetPreviewPage() {
             if (agentMessages.length > 0) {
               setIsWaitingForAgent(false);
               
-              // Show notification when widget is minimized and there are new agent messages
+              // Show notification when widget is minimized and there are NEW unseen agent messages
               if (!widgetOpenRef.current) {
-                const latestAgentMsg = agentMessages[agentMessages.length - 1];
-                const agentInfo = connectedAgentRef.current || agent;
-                setMinimizedNotification({
-                  agentName: agentInfo?.fullName || 'Support Agent',
-                  agentPhoto: agentInfo?.profileImageUrl || null,
-                  message: latestAgentMsg.text?.substring(0, 100) || 'New message',
-                });
+                // Filter to only truly new messages (not already seen)
+                const unseenAgentMessages = agentMessages.filter((m: any) => 
+                  !lastSeenMessageIdRef.current || m.id !== lastSeenMessageIdRef.current
+                );
+                
+                if (unseenAgentMessages.length > 0) {
+                  const latestAgentMsg = unseenAgentMessages[unseenAgentMessages.length - 1];
+                  // Only show notification if this is a newer message than what we've notified about
+                  const agentInfo = connectedAgentRef.current || agent;
+                  setMinimizedNotification({
+                    agentName: agentInfo?.fullName || agent?.fullName || 'Support Agent',
+                    agentPhoto: agentInfo?.profileImageUrl || agent?.avatar || null,
+                    message: latestAgentMsg.text?.substring(0, 100) || 'New message',
+                  });
+                }
               }
             }
           }
