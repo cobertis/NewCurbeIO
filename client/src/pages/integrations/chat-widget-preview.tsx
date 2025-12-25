@@ -169,7 +169,7 @@ export default function ChatWidgetPreviewPage() {
   const wsReconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const widgetOpenRef = useRef<boolean>(widgetOpen);
   const connectedAgentRef = useRef<typeof connectedAgent>(null);
-  const lastSeenMessageIdRef = useRef<string | null>(null);
+  const lastSeenMessageTimeRef = useRef<number>(0);
 
   // Use authenticated API only when not in public mode
   const { data: authWidgetData, isLoading: authLoading } = useQuery<{ widget: any }>({
@@ -203,13 +203,14 @@ export default function ChatWidgetPreviewPage() {
     // When widget opens, clear the minimized notification and mark messages as seen
     if (widgetOpen) {
       setMinimizedNotification(null);
-      // Mark the last message as seen and persist to localStorage
+      // Mark the last message timestamp as seen and persist to localStorage
       if (chatMessages.length > 0) {
-        const lastMsgId = chatMessages[chatMessages.length - 1].id;
-        lastSeenMessageIdRef.current = lastMsgId;
+        const lastMsg = chatMessages[chatMessages.length - 1];
+        const lastMsgTime = new Date(lastMsg.createdAt).getTime();
+        lastSeenMessageTimeRef.current = lastMsgTime;
         // Persist to localStorage so it survives page reloads
         if (widgetId) {
-          localStorage.setItem(`chatLastSeenMessage-${widgetId}`, lastMsgId);
+          localStorage.setItem(`chatLastSeenMessage-${widgetId}`, String(lastMsgTime));
         }
       }
     }
@@ -235,10 +236,10 @@ export default function ChatWidgetPreviewPage() {
         if (profile.email) setVisitorEmail(profile.email);
       }
       
-      // Restore last seen message ID from localStorage
+      // Restore last seen message timestamp from localStorage
       const storedLastSeen = localStorage.getItem(`chatLastSeenMessage-${widgetId}`);
       if (storedLastSeen) {
-        lastSeenMessageIdRef.current = storedLastSeen;
+        lastSeenMessageTimeRef.current = parseInt(storedLastSeen, 10) || 0;
       }
     } catch (e) {
       console.error('[Chat] Failed to restore visitor profile:', e);
@@ -1120,14 +1121,14 @@ export default function ChatWidgetPreviewPage() {
               
               // Show notification when widget is minimized and there are NEW unseen agent messages
               if (!widgetOpenRef.current) {
-                // Filter to only truly new messages (not already seen)
-                const unseenAgentMessages = agentMessages.filter((m: any) => 
-                  !lastSeenMessageIdRef.current || m.id !== lastSeenMessageIdRef.current
-                );
+                // Filter to only truly new messages (timestamp > last seen)
+                const unseenAgentMessages = agentMessages.filter((m: any) => {
+                  const msgTime = new Date(m.createdAt).getTime();
+                  return msgTime > lastSeenMessageTimeRef.current;
+                });
                 
                 if (unseenAgentMessages.length > 0) {
                   const latestAgentMsg = unseenAgentMessages[unseenAgentMessages.length - 1];
-                  // Only show notification if this is a newer message than what we've notified about
                   const agentInfo = connectedAgentRef.current || agent;
                   setMinimizedNotification({
                     agentName: agentInfo?.fullName || agent?.fullName || 'Support Agent',
