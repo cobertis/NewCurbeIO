@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
 import { SiWhatsapp, SiFacebook, SiInstagram, SiTelegram } from "react-icons/si";
 import QRCode from "qrcode";
+import Picker from "@emoji-mart/react";
+import data from "@emoji-mart/data";
 import curbeLogo from "@assets/logo no fondo_1760457183587.png";
 
 function formatMessageTime(date: Date | string | null | undefined): string {
@@ -130,6 +132,9 @@ export default function ChatWidgetPreviewPage() {
   const [surveyFeedback, setSurveyFeedback] = useState('');
   const [surveySubmitting, setSurveySubmitting] = useState(false);
   const [surveySubmitted, setSurveySubmitted] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [pendingAttachment, setPendingAttachment] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const eyeCatcherTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const agentTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -740,7 +745,7 @@ export default function ChatWidgetPreviewPage() {
     }).catch(() => {});
   };
 
-  const handleChatInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChatInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const value = e.target.value;
     setChatInput(value);
     
@@ -1970,25 +1975,89 @@ export default function ChatWidgetPreviewPage() {
                   <p className="text-sm text-slate-500 mt-1">This conversation has been resolved</p>
                 </div>
               ) : (
-                <div className="p-3 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900">
-                  <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-full px-4 py-2">
-                    <input
-                      type="text"
+                <div className="border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900 relative">
+                  {/* Emoji Picker */}
+                  {showEmojiPicker && (
+                    <div className="absolute bottom-full left-0 mb-2 z-50">
+                      <Picker
+                        data={data}
+                        onEmojiSelect={(emoji: any) => {
+                          setChatInput(prev => prev + emoji.native);
+                          setShowEmojiPicker(false);
+                        }}
+                        theme="light"
+                        previewPosition="none"
+                        skinTonePosition="none"
+                      />
+                    </div>
+                  )}
+                  
+                  {/* Pending attachment preview */}
+                  {pendingAttachment && (
+                    <div className="px-3 pt-2 pb-1">
+                      <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-lg px-3 py-2 text-sm">
+                        <Paperclip className="h-4 w-4 text-slate-500" />
+                        <span className="flex-1 truncate text-slate-600 dark:text-slate-300">{pendingAttachment.name}</span>
+                        <button onClick={() => setPendingAttachment(null)} className="text-slate-400 hover:text-slate-600">
+                          <X className="h-4 w-4" />
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Text input */}
+                  <div className="px-3 pt-3">
+                    <textarea
                       value={chatInput}
                       onChange={handleChatInputChange}
-                      onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
-                      placeholder="Type a message..."
-                      className="flex-1 bg-transparent text-sm outline-none placeholder-slate-400"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' && !e.shiftKey) {
+                          e.preventDefault();
+                          sendChatMessage();
+                        }
+                      }}
+                      placeholder="Type your message here..."
+                      className="w-full bg-transparent text-sm outline-none placeholder-slate-400 resize-none min-h-[40px] max-h-[100px]"
+                      rows={1}
                       data-testid="chat-input"
                     />
+                  </div>
+                  
+                  {/* Bottom toolbar */}
+                  <div className="px-3 pb-3 pt-2 flex items-center justify-between">
+                    <div className="flex items-center gap-1">
+                      <button
+                        onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                        className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        data-testid="emoji-button"
+                      >
+                        <Smile className="h-5 w-5 text-slate-400" />
+                      </button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) setPendingAttachment(file);
+                        }}
+                        accept="image/*,.pdf,.doc,.docx"
+                      />
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors"
+                        data-testid="attachment-button"
+                      >
+                        <Paperclip className="h-5 w-5 text-slate-400" />
+                      </button>
+                    </div>
                     <button
                       onClick={sendChatMessage}
                       disabled={!chatInput.trim()}
-                      className="p-2 rounded-full transition-all disabled:opacity-30 hover:scale-110"
-                      style={{ background: chatInput.trim() ? currentBackground as string : 'transparent' }}
+                      className="p-2 transition-all disabled:opacity-30"
                       data-testid="send-message"
                     >
-                      <Send className={`h-4 w-4 ${chatInput.trim() ? 'text-white' : 'text-slate-400'}`} />
+                      <Send className="h-5 w-5" style={{ color: chatInput.trim() ? currentBackground as string : '#94a3b8' }} />
                     </button>
                   </div>
                 </div>
