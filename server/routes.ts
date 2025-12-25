@@ -28603,8 +28603,21 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           eq(telnyxConversations.channel, "live_chat")
         ));
       
+      // If no conversation exists and no message provided, just return the visitor ID without creating conversation
+      // Conversation will be created when the visitor sends their first message
       if (!conversation) {
-        // Fetch geolocation from IP (if valid IP)
+        console.log("[LiveChat] No existing conversation for visitor:", finalVisitorId, "- will create on first message");
+        res.set({ "Access-Control-Allow-Origin": "*" });
+        return res.json({
+          sessionId: null,
+          visitorId: finalVisitorId,
+          pendingSession: true,
+        });
+      }
+      
+      // Only return existing conversations that have messages
+      if (conversation) {
+        // Fetch geolocation from IP (if valid IP) - kept for compatibility
         let geoData = {};
         if (visitorIp && !visitorIp.includes('127.0.0.1') && !visitorIp.includes('::1')) {
           try {
@@ -28617,7 +28630,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           }
         }
         
-        // Create new conversation with visitor metadata
+        // Return existing conversation - do NOT create new one here
+        // New conversations are created when visitor sends first message
         const displayName = visitorName || "Website Visitor";
         const [newConversation] = await db.insert(telnyxConversations).values({
           companyId,
@@ -28855,24 +28869,111 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   
   // POST /api/public/live-chat/message - Send a message from visitor
   app.post("/api/public/live-chat/message", async (req: Request, res: Response) => {
-    const { sessionId, text, visitorName } = req.body;
+    const { sessionId, text, visitorName, widgetId, visitorId, visitorEmail, visitorUrl, visitorBrowser, visitorOs } = req.body;
     
-    if (!sessionId || !text) {
-      return res.status(400).json({ error: "sessionId and text are required" });
+    if (!text) {
+      return res.status(400).json({ error: "text is required" });
     }
     
+    // Get visitor IP
+    const visitorIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress || '';
+    
     try {
-      // Verify session exists
-      const [conversation] = await db
-        .select()
-        .from(telnyxConversations)
-        .where(and(
-          eq(telnyxConversations.id, sessionId),
-          eq(telnyxConversations.channel, "live_chat")
-        ));
+      let conversation;
+      
+      // If sessionId provided, find existing conversation
+      if (sessionId) {
+        const [existing] = await db
+          .select()
+          .from(telnyxConversations)
+          .where(and(
+            eq(telnyxConversations.id, sessionId),
+            eq(telnyxConversations.channel, "live_chat")
+          ));
+        conversation = existing;
+      }
+      
+      // If no conversation exists, create one now (first message creates the chat)
+      if (!conversation && widgetId && visitorId) {
+        // Get widget to find company
+        const widget = await db.query.chatWidgets.findFirst({
+          where: eq(chatWidgets.id, widgetId)
+        });
+        
+        if (!widget) {
+          return res.status(404).json({ error: "Widget not found" });
+        }
+        
+        // Fetch geolocation
+        let geoData: any = {};
+        if (visitorIp && !visitorIp.includes('127.0.0.1') && !visitorIp.includes('::1')) {
+          try {
+            const geoResponse = await fetch(`https://ipapi.co/${visitorIp}/json/`);
+            if (geoResponse.ok) {
+              geoData = await geoResponse.json();
+            }
+          } catch (geoErr) {}
+        }
+        
+        // Create conversation on first message
+        const displayName = visitorName || "Website Visitor";
+        const [newConv] = await db.insert(telnyxConversations).values({
+          companyId: widget.companyId,
+          phoneNumber: visitorId,
+          displayName,
+          email: visitorEmail || null,
+          companyPhoneNumber: widgetId,
+          status: "waiting",
+          channel: "live_chat",
+          widgetId: widgetId,
+          lastMessage: text.trim().substring(0, 200),
+          lastMessageAt: new Date(),
+          unreadCount: 1,
+          visitorIpAddress: visitorIp || null,
+          visitorCity: geoData.city || null,
+          visitorState: geoData.region || null,
+          visitorCountry: geoData.country_name || null,
+          visitorCurrentUrl: visitorUrl || null,
+          visitorBrowser: visitorBrowser || null,
+          visitorOs: visitorOs || null,
+        }).returning();
+        conversation = newConv;
+        console.log("[LiveChat] Created conversation on first message:", conversation.id, "for visitor:", visitorId);
+        
+        // Save visitor to database
+        await db.insert(liveWidgetVisitors).values({
+          visitorId,
+          widgetId,
+          firstName: visitorName?.split(" ")[0] || null,
+          lastName: visitorName?.split(" ").slice(1).join(" ") || null,
+          email: visitorEmail || null,
+          ipAddress: visitorIp || null,
+          city: geoData.city || null,
+          state: geoData.region || null,
+          country: geoData.country_name || null,
+          currentUrl: visitorUrl || null,
+          browser: visitorBrowser || null,
+          os: visitorOs || null,
+          totalSessions: 1,
+          totalChats: 1,
+          lastSeenAt: new Date(),
+        }).onConflictDoUpdate({
+          target: [liveWidgetVisitors.visitorId, liveWidgetVisitors.widgetId],
+          set: {
+            firstName: visitorName?.split(" ")[0] || sql`${liveWidgetVisitors.firstName}`,
+            lastName: visitorName?.split(" ").slice(1).join(" ") || sql`${liveWidgetVisitors.lastName}`,
+            email: visitorEmail || sql`${liveWidgetVisitors.email}`,
+            totalChats: sql`${liveWidgetVisitors.totalChats} + 1`,
+            lastSeenAt: new Date(),
+          },
+        });
+        
+        // Broadcast update
+        broadcastConversationUpdate(widget.companyId);
+      }
       
       if (!conversation) {
-        return res.status(404).json({ error: "Session not found" });
+        return res.status(404).json({ error: "Session not found and no widget/visitor info to create one" });
       }
       
       // Create the message

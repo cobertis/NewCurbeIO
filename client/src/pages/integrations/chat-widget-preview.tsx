@@ -288,9 +288,8 @@ export default function ChatWidgetPreviewPage() {
       
       if (!sessionRes.ok) throw new Error('Failed to create session');
       
-      const { sessionId, visitorId } = await sessionRes.json();
+      const { sessionId, visitorId, pendingSession } = await sessionRes.json();
       
-      setChatSessionId(sessionId);
       setChatVisitorId(visitorId);
       setShowPreChatForm(false);
       setIsWaitingForAgent(true);
@@ -299,24 +298,35 @@ export default function ChatWidgetPreviewPage() {
       const messageToSend = initialMessage.trim();
       setSentInitialMessage(messageToSend || 'Hello');
       
-      // If there's an initial message, send it immediately
+      // Use browserName and osName from earlier detection
+      
+      // If there's an initial message, send it (this will create the conversation)
       if (messageToSend) {
         const msgRes = await fetch('/api/public/live-chat/message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            sessionId,
+            sessionId: sessionId || null,
             text: messageToSend,
             visitorName: visitorName || 'Website Visitor',
+            widgetId,
+            visitorId,
+            visitorEmail: visitorEmail.trim() || undefined,
+            visitorUrl: window.location.href,
+            visitorBrowser: browserName,
+            visitorOs: osName,
           }),
         });
         
         if (msgRes.ok) {
-          const { message } = await msgRes.json();
+          const { message, conversationId } = await msgRes.json();
+          setChatSessionId(conversationId || sessionId);
           setChatMessages([message]);
         }
         setInitialMessage('');
       } else {
+        // No message - don't create conversation yet, user can type one
+        setChatSessionId(sessionId);
         setChatMessages([]);
       }
     } catch (error) {
