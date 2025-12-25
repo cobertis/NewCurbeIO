@@ -415,14 +415,31 @@ export default function InboxPage() {
     mutationFn: async (conversationId: string) => {
       return apiRequest("POST", `/api/inbox/conversations/${conversationId}/accept`);
     },
-    onSuccess: async () => {
-      await queryClient.refetchQueries({ queryKey: ["/api/inbox/conversations"] });
+    onMutate: async (conversationId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/inbox/conversations"] });
+      const previousData = queryClient.getQueryData(["/api/inbox/conversations"]);
+      queryClient.setQueryData(["/api/inbox/conversations"], (old: any) => {
+        if (!old?.conversations) return old;
+        return {
+          ...old,
+          conversations: old.conversations.map((conv: any) =>
+            conv.id === conversationId ? { ...conv, status: "open" } : conv
+          ),
+        };
+      });
+      return { previousData };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
       toast({
         title: "Chat accepted",
         description: "You are now connected with the visitor.",
       });
     },
-    onError: (error: any) => {
+    onError: (error: any, _variables, context: any) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(["/api/inbox/conversations"], context.previousData);
+      }
       toast({
         title: "Failed to accept chat",
         description: error.message || "Please try again",
