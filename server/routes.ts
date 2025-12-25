@@ -28971,6 +28971,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         });
         
         // Broadcast update
+        
+        // Update in-memory visitor map with name
+        const visitorKey = `${widgetId}:${visitorId}`;
+        const existingVisitor = liveVisitors.get(visitorKey);
+        if (existingVisitor && visitorName) {
+          existingVisitor.firstName = visitorName?.split(" ")[0] || existingVisitor.firstName;
+          existingVisitor.lastName = visitorName?.split(" ").slice(1).join(" ") || existingVisitor.lastName;
+          existingVisitor.email = visitorEmail || existingVisitor.email;
+          liveVisitors.set(visitorKey, existingVisitor);
+        }
         broadcastConversationUpdate(widget.companyId);
       }
       
@@ -38101,10 +38111,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         if (conv.channel !== "live_chat" || conv.status !== "waiting") {
           return conv;
         }
-        // Extract visitorId from phoneNumber (format: visitor:xxx)
-        const visitorId = conv.phoneNumber?.startsWith("visitor:") 
-          ? conv.phoneNumber.replace("visitor:", "") 
-          : null;
+        // Extract visitorId from phoneNumber (format: visitor_xxx)
+        const visitorId = conv.phoneNumber?.startsWith("visitor_") ? conv.phoneNumber : null;
         // Check if visitor is currently active
         const visitorKey = conv.widgetId && visitorId ? `${conv.widgetId}:${visitorId}` : null;
         const isVisitorActive = visitorKey ? liveVisitors.has(visitorKey) : false;
