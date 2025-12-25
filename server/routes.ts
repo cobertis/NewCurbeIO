@@ -28569,6 +28569,30 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(404).json({ error: "Session not found" });
       }
       
+      // Get assigned agent info if chat has been accepted
+      let agent = null;
+      if (conversation.assignedTo) {
+        const [assignedAgent] = await db
+          .select({
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            profileImageUrl: users.profileImageUrl,
+          })
+          .from(users)
+          .where(eq(users.id, conversation.assignedTo));
+        
+        if (assignedAgent) {
+          agent = {
+            id: assignedAgent.id,
+            firstName: assignedAgent.firstName,
+            lastName: assignedAgent.lastName,
+            fullName: `${assignedAgent.firstName || ''} ${assignedAgent.lastName || ''}`.trim() || 'Support Agent',
+            profileImageUrl: assignedAgent.profileImageUrl,
+          };
+        }
+      }
+      
       // Build query for messages
       let whereConditions: any[] = [eq(telnyxMessages.conversationId, sessionId)];
       
@@ -28583,7 +28607,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         .orderBy(asc(telnyxMessages.createdAt));
       
       res.set({ "Access-Control-Allow-Origin": "*" });
-      res.json({ messages });
+      res.json({ messages, agent, status: conversation.status });
     } catch (error: any) {
       console.error("[LiveChat] Messages error:", error);
       res.status(500).json({ error: "Failed to fetch messages" });

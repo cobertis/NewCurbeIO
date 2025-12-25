@@ -90,6 +90,13 @@ export default function ChatWidgetPreviewPage() {
   const [chatStartTime] = useState(new Date());
   const [isWaitingForAgent, setIsWaitingForAgent] = useState(true);
   const [sentInitialMessage, setSentInitialMessage] = useState('');
+  const [connectedAgent, setConnectedAgent] = useState<{ 
+    id: number; 
+    firstName: string | null; 
+    lastName: string | null;
+    fullName: string; 
+    profileImageUrl: string | null;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: widgetData, isLoading } = useQuery<{ widget: any }>({
@@ -271,7 +278,20 @@ export default function ChatWidgetPreviewPage() {
         const since = lastMessage?.createdAt || '';
         const res = await fetch(`/api/public/live-chat/messages/${chatSessionId}${since ? `?since=${encodeURIComponent(since)}` : ''}`);
         if (res.ok) {
-          const { messages } = await res.json();
+          const { messages, agent, status } = await res.json();
+          
+          // Update connected agent info when agent accepts the chat
+          if (agent && !connectedAgent) {
+            setConnectedAgent(agent);
+            setIsWaitingForAgent(false);
+          }
+          
+          // Also check status for when agent accepts but hasn't sent a message yet
+          if (status === 'open' && !connectedAgent && agent) {
+            setConnectedAgent(agent);
+            setIsWaitingForAgent(false);
+          }
+          
           if (messages.length > 0) {
             setChatMessages(prev => {
               const newIds = new Set(messages.map((m: any) => m.id));
@@ -293,7 +313,7 @@ export default function ChatWidgetPreviewPage() {
     pollMessages();
     const interval = setInterval(pollMessages, 3000);
     return () => clearInterval(interval);
-  }, [chatSessionId, chatMessages.length]);
+  }, [chatSessionId, chatMessages.length, connectedAgent]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -937,22 +957,38 @@ export default function ChatWidgetPreviewPage() {
               {/* Header with agent info */}
               <div className="px-4 py-3 text-white flex items-center gap-3" style={{ background: currentBackground }}>
                 <button 
-                  onClick={() => { setChatSessionId(null); setChatMessages([]); setChatVisitorId(null); localStorage.removeItem(`chat_visitor_${widgetId}`); }}
+                  onClick={() => { setChatSessionId(null); setChatMessages([]); setChatVisitorId(null); setConnectedAgent(null); localStorage.removeItem(`chat_visitor_${widgetId}`); }}
                   className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
                   data-testid="back-from-chat"
                 >
                   <ChevronLeft className="h-5 w-5" />
                 </button>
                 <div className="relative">
-                  <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm">
-                    <MessageCircle className="h-5 w-5" />
-                  </div>
+                  {connectedAgent?.profileImageUrl ? (
+                    <img 
+                      src={connectedAgent.profileImageUrl} 
+                      alt={connectedAgent.fullName}
+                      className="w-10 h-10 rounded-full object-cover border-2 border-white/30"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm text-sm font-semibold">
+                      {connectedAgent ? (
+                        `${connectedAgent.firstName?.[0] || ''}${connectedAgent.lastName?.[0] || ''}`.toUpperCase() || 'SA'
+                      ) : (
+                        <MessageCircle className="h-5 w-5" />
+                      )}
+                    </div>
+                  )}
                   {/* Online indicator */}
                   <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white" />
                 </div>
                 <div className="flex-1">
-                  <span className="font-semibold text-sm">Live Chat</span>
-                  <p className="text-xs opacity-80">Usually replies in a few minutes</p>
+                  <span className="font-semibold text-sm">
+                    {connectedAgent ? connectedAgent.fullName : 'Live Chat'}
+                  </span>
+                  <p className="text-xs opacity-80">
+                    {connectedAgent ? 'Support agent' : 'Usually replies in a few minutes'}
+                  </p>
                 </div>
               </div>
               
@@ -994,9 +1030,21 @@ export default function ChatWidgetPreviewPage() {
                 {/* Chat messages from agent */}
                 {chatMessages.filter(m => m.direction === 'outbound').map((msg) => (
                   <div key={msg.id} className="flex items-end gap-2">
-                    <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-medium" style={{ background: currentBackground }}>
-                      <MessageCircle className="h-3.5 w-3.5" />
-                    </div>
+                    {connectedAgent?.profileImageUrl ? (
+                      <img 
+                        src={connectedAgent.profileImageUrl} 
+                        alt={connectedAgent.fullName}
+                        className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                      />
+                    ) : (
+                      <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-medium" style={{ background: currentBackground }}>
+                        {connectedAgent ? (
+                          `${connectedAgent.firstName?.[0] || ''}${connectedAgent.lastName?.[0] || ''}`.toUpperCase() || 'SA'
+                        ) : (
+                          <MessageCircle className="h-3.5 w-3.5" />
+                        )}
+                      </div>
+                    )}
                     <div className="flex flex-col items-start">
                       <div className="rounded-2xl rounded-bl-md bg-white dark:bg-slate-700 shadow-sm px-3 py-2 max-w-[85%]">
                         <p className="text-sm text-slate-700 dark:text-slate-200">{msg.text}</p>
