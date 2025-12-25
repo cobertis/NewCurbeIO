@@ -267,10 +267,20 @@ export default function ChatWidgetPreviewPage() {
     try {
       const msgRes = await fetch(`/api/public/live-chat/messages/${existingSession.sessionId}`);
       if (msgRes.ok) {
-        const { messages, agent, status } = await msgRes.json();
+        const { messages, agent, visitor, status } = await msgRes.json();
         setChatSessionId(existingSession.sessionId);
         setChatMessages(messages || []);
         setExistingSession(null);
+        
+        // Restore visitor info from the conversation record
+        if (visitor) {
+          if (visitor.name && visitor.name !== 'Website Visitor') {
+            setVisitorName(visitor.name);
+          }
+          if (visitor.email) {
+            setVisitorEmail(visitor.email);
+          }
+        }
         
         // Set connected agent if chat was accepted
         if (agent) {
@@ -280,7 +290,7 @@ export default function ChatWidgetPreviewPage() {
           setIsWaitingForAgent(true);
         }
         
-        console.log('[Chat] Resumed chat with', messages?.length || 0, 'messages, agent:', agent?.fullName || 'none');
+        console.log('[Chat] Resumed chat with', messages?.length || 0, 'messages, agent:', agent?.fullName || 'none, visitor:', visitor?.name || 'unknown');
       } else {
         console.error('[Chat] Failed to load messages:', msgRes.status);
         toast({ title: "Error", description: "Failed to load chat messages", variant: "destructive" });

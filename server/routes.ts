@@ -28775,7 +28775,10 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     try {
       // Use raw SQL to avoid Drizzle ORM field ordering issues
       const convResult = await db.execute(sql`
-        SELECT id, status, assigned_to, channel FROM telnyx_conversations 
+        SELECT id, status, assigned_to, channel, display_name, email, 
+               visitor_ip_address, visitor_browser, visitor_os, 
+               visitor_city, visitor_country, visitor_current_url
+        FROM telnyx_conversations 
         WHERE id = ${sessionId} AND channel = 'live_chat'
         LIMIT 1
       `);
@@ -28827,7 +28830,20 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         messages = result.rows;
       }
       res.set({ "Access-Control-Allow-Origin": "*" });
-      res.json({ messages, agent, status: conversation.status });
+      
+      // Include visitor info from the conversation record
+      const visitor = {
+        name: conversation.display_name || 'Website Visitor',
+        email: conversation.email || null,
+        ip: conversation.visitor_ip_address || null,
+        browser: conversation.visitor_browser || null,
+        os: conversation.visitor_os || null,
+        city: conversation.visitor_city || null,
+        country: conversation.visitor_country || null,
+        currentUrl: conversation.visitor_current_url || null,
+      };
+      
+      res.json({ messages, agent, visitor, status: conversation.status });
     } catch (error: any) {
       console.error("[LiveChat] Messages error:", error);
       res.status(500).json({ error: "Failed to fetch messages" });
