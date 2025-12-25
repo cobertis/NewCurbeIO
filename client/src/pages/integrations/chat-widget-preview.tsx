@@ -1215,6 +1215,15 @@ export default function ChatWidgetPreviewPage() {
                   </div>
                 )}
                 
+                {/* Agent joined notification */}
+                {connectedAgent && (
+                  <div className="text-center py-2">
+                    <span className="text-xs text-slate-500 bg-white dark:bg-slate-700 px-3 py-1 rounded-full shadow-sm">
+                      {connectedAgent.fullName} joined the chat
+                    </span>
+                  </div>
+                )}
+                
                 {/* Chat messages from agent */}
                 {chatMessages.filter(m => m.direction === 'outbound').map((msg) => (
                   <div key={msg.id} className="flex items-end gap-2">
