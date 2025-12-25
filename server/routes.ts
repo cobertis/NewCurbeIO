@@ -28831,14 +28831,14 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           AND created_at >= ${sinceDate}
           ORDER BY created_at ASC
         `);
-        messages = result.rows;
+        messages = result.rows.map((m: any) => ({ id: m.id, text: m.text, direction: m.direction, createdAt: m.created_at, sentAt: m.sent_at, mediaUrl: m.media_url, mediaType: m.media_type }));
       } else {
         const result = await db.execute(sql`
           SELECT * FROM telnyx_messages 
           WHERE conversation_id = ${sessionId}
           ORDER BY created_at ASC
         `);
-        messages = result.rows;
+        messages = result.rows.map((m: any) => ({ id: m.id, text: m.text, direction: m.direction, createdAt: m.created_at, sentAt: m.sent_at, mediaUrl: m.media_url, mediaType: m.media_type }));
       }
       res.set({ "Access-Control-Allow-Origin": "*" });
       

@@ -278,7 +278,10 @@ export default function ChatWidgetPreviewPage() {
       if (msgRes.ok) {
         const { messages, agent, visitor, status } = await msgRes.json();
         setChatSessionId(existingSession.sessionId);
-        setChatMessages(messages || []);
+        const sortedMessages = (messages || []).sort((a: any, b: any) => 
+          new Date(a.createdAt || a.created_at).getTime() - new Date(b.createdAt || b.created_at).getTime()
+        );
+        setChatMessages(sortedMessages);
         setExistingSession(null);
         
         // Restore visitor info from the conversation record
@@ -1320,46 +1323,45 @@ export default function ChatWidgetPreviewPage() {
                   </div>
                 )}
                 
-                {/* Chat messages from agent */}
-                {chatMessages.filter(m => m.direction === 'outbound').map((msg) => (
-                  <div key={msg.id} className="flex items-end gap-2">
-                    {connectedAgent?.profileImageUrl ? (
-                      <img 
-                        src={connectedAgent.profileImageUrl} 
-                        alt={connectedAgent.fullName}
-                        className="w-7 h-7 rounded-full object-cover flex-shrink-0"
-                      />
-                    ) : (
-                      <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-medium" style={{ background: currentBackground }}>
-                        {connectedAgent ? (
-                          `${connectedAgent.firstName?.[0] || ''}${connectedAgent.lastName?.[0] || ''}`.toUpperCase() || 'SA'
-                        ) : (
-                          <MessageCircle className="h-3.5 w-3.5" />
-                        )}
-                      </div>
-                    )}
-                    <div className="flex flex-col items-start">
-                      <div className="rounded-2xl rounded-bl-md bg-white dark:bg-slate-700 shadow-sm px-3 py-2 max-w-[85%]">
-                        <p className="text-sm text-slate-700 dark:text-slate-200">{msg.text}</p>
-                      </div>
-                      <span className="text-[10px] text-slate-400 mt-0.5 ml-1">{formatMessageTime(msg.createdAt)}</span>
-                    </div>
-                  </div>
-                ))}
-                
-                {/* Visitor follow-up messages */}
-                {chatMessages.filter(m => m.direction === 'inbound').slice(1).map((msg) => (
-                  <div key={msg.id} className="flex justify-end">
-                    <div className="flex flex-col items-end">
-                      <div className="rounded-2xl rounded-br-md px-3 py-2 max-w-[85%] text-white" style={{ background: currentBackground }}>
-                        <p className="text-sm">{msg.text}</p>
-                      </div>
-                      <div className="flex items-center gap-1 mt-0.5 mr-1">
-                        <span className="text-[10px] text-slate-400">{formatMessageTime(msg.createdAt)}</span>
-                        <CheckCheck className="h-3 w-3 text-blue-500" />
+                {/* Chat messages in chronological order */}
+                {chatMessages.slice(1).map((msg) => (
+                  msg.direction === 'outbound' ? (
+                    <div key={msg.id} className="flex items-end gap-2">
+                      {connectedAgent?.profileImageUrl ? (
+                        <img 
+                          src={connectedAgent.profileImageUrl} 
+                          alt={connectedAgent.fullName}
+                          className="w-7 h-7 rounded-full object-cover flex-shrink-0"
+                        />
+                      ) : (
+                        <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-medium" style={{ background: currentBackground }}>
+                          {connectedAgent ? (
+                            `${connectedAgent.firstName?.[0] || ''}${connectedAgent.lastName?.[0] || ''}`.toUpperCase() || 'SA'
+                          ) : (
+                            <MessageCircle className="h-3.5 w-3.5" />
+                          )}
+                        </div>
+                      )}
+                      <div className="flex flex-col items-start">
+                        <div className="rounded-2xl rounded-bl-md bg-white dark:bg-slate-700 shadow-sm px-3 py-2 max-w-[85%]">
+                          <p className="text-sm text-slate-700 dark:text-slate-200">{msg.text}</p>
+                        </div>
+                        <span className="text-[10px] text-slate-400 mt-0.5 ml-1">{formatMessageTime(msg.createdAt)}</span>
                       </div>
                     </div>
-                  </div>
+                  ) : (
+                    <div key={msg.id} className="flex justify-end">
+                      <div className="flex flex-col items-end">
+                        <div className="rounded-2xl rounded-br-md px-3 py-2 max-w-[85%] text-white" style={{ background: currentBackground }}>
+                          <p className="text-sm">{msg.text}</p>
+                        </div>
+                        <div className="flex items-center gap-1 mt-0.5 mr-1">
+                          <span className="text-[10px] text-slate-400">{formatMessageTime(msg.createdAt)}</span>
+                          <CheckCheck className="h-3 w-3 text-blue-500" />
+                        </div>
+                      </div>
+                    </div>
+                  )
                 ))}
                 
                 {/* Agent typing indicator */}
