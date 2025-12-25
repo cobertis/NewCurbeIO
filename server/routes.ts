@@ -37922,17 +37922,11 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       return res.status(400).json({ message: "No company associated with user" });
     }
     try {
-      // Filter out conversations with status "waiting" - these are live chat visitors waiting for an agent to accept
+      // Include all conversations including waiting live chats
       const conversations = await db
         .select()
         .from(telnyxConversations)
-        .where(and(
-          eq(telnyxConversations.companyId, companyId),
-          or(
-            isNull(telnyxConversations.status),
-            ne(telnyxConversations.status, "waiting")
-          )
-        ))
+        .where(eq(telnyxConversations.companyId, companyId))
         .orderBy(desc(telnyxConversations.lastMessageAt));
       console.log("[Inbox] Returning", conversations.length, "conversations for company", companyId, JSON.stringify(conversations[0] || {}));
       res.json({ conversations });
