@@ -5090,16 +5090,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       await db.update(users).set({ agentAvailabilityStatus: status }).where(eq(users.id, userId));
       
-      // Broadcast status update to other users in the same company
-      const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
-      if (user?.companyId) {
-        broadcastToCompany(user.companyId, { 
-          type: "agent_status_updated", 
-          agentId: userId, 
-          status,
-          agentName: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email
-        });
-      }
       
       console.log(`[Agent Availability] User ${userId} set status to: ${status}`);
       res.json({ success: true, status });
