@@ -85,6 +85,7 @@ export default function ChatWidgetPreviewPage() {
   const [visitorName, setVisitorName] = useState('');
   const [visitorEmail, setVisitorEmail] = useState('');
   const [initialMessage, setInitialMessage] = useState('');
+  const [showPreChatForm, setShowPreChatForm] = useState(false);
   const [agentTyping, setAgentTyping] = useState(false);
   const [chatStartTime] = useState(new Date());
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -197,6 +198,7 @@ export default function ChatWidgetPreviewPage() {
       
       setChatSessionId(sessionId);
       setChatVisitorId(visitorId);
+      setShowPreChatForm(false);
       
       // If there's an initial message, send it immediately
       if (initialMessage.trim()) {
