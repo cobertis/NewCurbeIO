@@ -1772,16 +1772,25 @@ export default function InboxPage() {
                             {selectedConversation.assignedTo ? "Assigned" : "Unassigned"}
                           </span>
                         </div>
-                        {(selectedConversation as any).visitorCountry && (
-                          <div className="flex justify-between">
-                            <span className="text-xs text-muted-foreground">Location</span>
-                            <span className="text-sm font-medium flex items-center gap-1">
-                              {(selectedConversation as any).visitorCountry === "United States" && "🇺🇸"}
-                              {(selectedConversation as any).visitorCity && `${(selectedConversation as any).visitorCity}, `}
-                              {(selectedConversation as any).visitorState || (selectedConversation as any).visitorCountry}
-                            </span>
-                          </div>
-                        )}
+                        <div className="flex justify-between">
+                          <span className="text-xs text-muted-foreground">Location</span>
+                          <span className="text-sm font-medium flex items-center gap-1">
+                            {(selectedConversation as any).visitorCountry === "United States" ? "🇺🇸 " : 
+                             (selectedConversation as any).visitorCountry === "Mexico" ? "🇲🇽 " :
+                             (selectedConversation as any).visitorCountry === "Canada" ? "🇨🇦 " :
+                             (selectedConversation as any).visitorCountry === "Spain" ? "🇪🇸 " :
+                             (selectedConversation as any).visitorCountry === "United Kingdom" ? "🇬🇧 " : ""}
+                            {(selectedConversation as any).visitorCity || (selectedConversation as any).visitorState || (selectedConversation as any).visitorCountry ? (
+                              <>
+                                {(selectedConversation as any).visitorCity && `${(selectedConversation as any).visitorCity}, `}
+                                {(selectedConversation as any).visitorState && `${(selectedConversation as any).visitorState}, `}
+                                {(selectedConversation as any).visitorCountry || ""}
+                              </>
+                            ) : (
+                              "Unknown"
+                            )}
+                          </span>
+                        </div>
                         {(selectedConversation as any).visitorIpAddress && (
                           <div className="flex justify-between">
                             <span className="text-xs text-muted-foreground">IP address</span>
