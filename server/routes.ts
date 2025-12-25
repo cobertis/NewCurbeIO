@@ -28793,19 +28793,15 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
       }
       
-      // Build query for messages
-      let whereConditions: any[] = [eq(telnyxMessages.conversationId, sessionId)];
-      
-      if (since) {
-        whereConditions.push(sql`${telnyxMessages.createdAt} > ${new Date(since as string)}`);
-      }
-      
+      // Build query for messages - use simple condition to avoid Drizzle spread issue
+      const baseCondition = eq(telnyxMessages.conversationId, sessionId);
+      const sinceCondition = since ? sql`${telnyxMessages.createdAt} > ${new Date(since as string)}` : null;
+
       const messages = await db
         .select()
         .from(telnyxMessages)
-        .where(and(...whereConditions))
+        .where(sinceCondition ? and(baseCondition, sinceCondition) : baseCondition)
         .orderBy(asc(telnyxMessages.createdAt));
-      
       res.set({ "Access-Control-Allow-Origin": "*" });
       res.json({ messages, agent, status: conversation.status });
     } catch (error: any) {
