@@ -38892,7 +38892,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return { city: 'Local', state: 'Local', country: 'Local' };
       }
       
-      const response = await fetch(`https://ipapi.co/\${cleanIp}/json/`);
+      const response = await fetch(`https://ipapi.co/${cleanIp}/json/`);
       if (response.ok) {
         const data = await response.json();
         const geo = {
@@ -38927,7 +38927,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(404).json({ error: "Widget not found" });
       }
       
-      const key = `\${widgetId}:\${visitorId}`;
+      const key = `${widgetId}:${visitorId}`;
       const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || '';
       const now = new Date();
       
@@ -38941,7 +38941,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         const geo = await getGeoFromIP(ip);
         
         visitor = {
-          id: `\${Date.now()}-\${Math.random().toString(36).substr(2, 9)}`,
+          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
           widgetId,
           companyId: widget.companyId,
           visitorId,
