@@ -234,13 +234,14 @@ export default function InboxPage() {
   });
   const liveVisitors = visitorsData?.visitors || [];
 
+  const selectedConversation = conversations.find(c => c.id === selectedConversationId);
+
   const { data: messagesData, isLoading: loadingMessages } = useQuery<{ messages: TelnyxMessage[] }>({
     queryKey: [`/api/inbox/conversations/${selectedConversationId}/messages`],
     enabled: !!selectedConversationId,
+    refetchInterval: selectedConversation?.channel === "live_chat" ? 2000 : false,
   });
   const messages = messagesData?.messages || [];
-
-  const selectedConversation = conversations.find(c => c.id === selectedConversationId);
 
   const matchedContact = useMemo(() => {
     if (!selectedConversation) return null;

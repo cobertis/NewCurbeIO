@@ -29010,10 +29010,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         .where(eq(telnyxConversations.id, sessionId));
       
       // Broadcast to WebSocket clients
-      if ((global as any).wss) {
-        // Broadcast to inbox
-        broadcastInboxMessage(conversation.companyId, sessionId);
-      }
+      // Broadcast to inbox directly
+      broadcastInboxMessage(conversation.companyId, sessionId);
       
       console.log("[LiveChat] New message in conversation:", conversation.id, "text:", text.substring(0, 50));
       
