@@ -29003,7 +29003,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           lastMessageAt: new Date(),
           unreadCount: sql`${telnyxConversations.unreadCount} + 1`,
           displayName: visitorName || conversation.displayName,
-          status: "waiting",
+          // Only set status to waiting if not already accepted (open)
+          ...(conversation.status !== "open" && { status: "waiting" }),
           updatedAt: new Date(),
         })
         .where(eq(telnyxConversations.id, sessionId));
