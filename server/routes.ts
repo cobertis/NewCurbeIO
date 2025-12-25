@@ -28656,6 +28656,74 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       res.status(500).json({ error: "Failed to create session" });
     }
   });
+
+  // GET /api/public/live-chat/check-proactive/:visitorId - Check if agent started a proactive chat
+  app.get("/api/public/live-chat/check-proactive/:visitorId", async (req: Request, res: Response) => {
+    const { visitorId } = req.params;
+    const { widgetId } = req.query;
+    
+    try {
+      // Look for a conversation started by an agent for this visitor
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(
+          eq(telnyxConversations.phoneNumber, `visitor:${visitorId}`),
+          eq(telnyxConversations.channel, "live_chat"),
+          widgetId ? eq(telnyxConversations.companyPhoneNumber, widgetId as string) : sql`1=1`
+        ))
+        .orderBy(desc(telnyxConversations.createdAt))
+        .limit(1);
+      
+      if (!conversation) {
+        res.set({ "Access-Control-Allow-Origin": "*" });
+        return res.json({ hasProactiveChat: false });
+      }
+      
+      // Get the messages for this conversation
+      const messages = await db
+        .select()
+        .from(telnyxMessages)
+        .where(eq(telnyxMessages.conversationId, conversation.id))
+        .orderBy(asc(telnyxMessages.createdAt));
+      
+      // Get agent info
+      let agent = null;
+      if (conversation.assignedTo) {
+        const [assignedAgent] = await db
+          .select({
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            profileImageUrl: users.profileImageUrl,
+          })
+          .from(users)
+          .where(eq(users.id, conversation.assignedTo));
+        
+        if (assignedAgent) {
+          agent = {
+            id: assignedAgent.id,
+            firstName: assignedAgent.firstName,
+            lastName: assignedAgent.lastName,
+            fullName: `${assignedAgent.firstName || ""} ${assignedAgent.lastName || ""}`.trim() || "Support Agent",
+            profileImageUrl: assignedAgent.profileImageUrl,
+          };
+        }
+      }
+      
+      res.set({ "Access-Control-Allow-Origin": "*" });
+      res.json({
+        hasProactiveChat: true,
+        sessionId: conversation.id,
+        status: conversation.status,
+        messages,
+        agent,
+      });
+    } catch (error: any) {
+      console.error("[LiveChat] Check proactive error:", error);
+      res.status(500).json({ error: "Failed to check proactive chat" });
+    }
+  });
   
   // GET /api/public/live-chat/messages/:sessionId - Get messages for a session
   app.get("/api/public/live-chat/messages/:sessionId", async (req: Request, res: Response) => {
@@ -38357,6 +38425,110 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     } catch (error: any) {
       console.error("[LiveChat] Accept error:", error);
       res.status(500).json({ message: "Failed to accept chat" });
+    }
+  });
+
+  // POST /api/inbox/start-chat-visitor - Start a proactive chat with a live visitor
+  app.post("/api/inbox/start-chat-visitor", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const companyId = (req.user as any).companyId;
+    const userId = (req.user as any).id;
+    const user = req.user as any;
+    const { visitorId, message, widgetId } = req.body;
+    
+    if (!visitorId || !message) {
+      return res.status(400).json({ message: "visitorId and message are required" });
+    }
+    
+    try {
+      const [visitor] = await db
+        .select()
+        .from(liveVisitors)
+        .where(and(
+          eq(liveVisitors.visitorId, visitorId),
+          widgetId ? eq(liveVisitors.widgetId, widgetId) : sql`1=1`
+        ))
+        .limit(1);
+      
+      if (!visitor) {
+        return res.status(404).json({ message: "Visitor not found" });
+      }
+      
+      const [widget] = await db
+        .select()
+        .from(chatWidgets)
+        .where(eq(chatWidgets.id, visitor.widgetId));
+      
+      if (!widget || widget.companyId !== companyId) {
+        return res.status(403).json({ message: "Unauthorized access to this visitor" });
+      }
+      
+      let [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(
+          eq(telnyxConversations.companyId, companyId),
+          eq(telnyxConversations.phoneNumber, `visitor:${visitorId}`),
+          eq(telnyxConversations.channel, "live_chat")
+        ));
+      
+      const agentName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Agent";
+      
+      if (!conversation) {
+        const [newConversation] = await db
+          .insert(telnyxConversations)
+          .values({
+            companyId,
+            phoneNumber: `visitor:${visitorId}`,
+            companyPhoneNumber: widget.id,
+            channel: "live_chat",
+            status: "open",
+            displayName: null,
+            lastMessage: message.substring(0, 100),
+            lastMessageAt: new Date(),
+            unreadCount: 0,
+            assignedTo: userId,
+          })
+          .returning();
+        conversation = newConversation;
+      } else {
+        await db.update(telnyxConversations)
+          .set({
+            status: "open",
+            assignedTo: userId,
+            lastMessage: message.substring(0, 100),
+            lastMessageAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(telnyxConversations.id, conversation.id));
+      }
+      
+      const [newMessage] = await db
+        .insert(telnyxMessages)
+        .values({
+          conversationId: conversation.id,
+          direction: "outbound",
+          text: message,
+          channel: "live_chat",
+          status: "sent",
+          sentBy: userId,
+          sentAt: new Date(),
+        })
+        .returning();
+      
+      broadcastConversationUpdate(companyId);
+      
+      console.log(`[LiveChat] Agent ${userId} started proactive chat with visitor ${visitorId}`);
+      res.status(201).json({ 
+        success: true, 
+        conversation, 
+        message: newMessage 
+      });
+    } catch (error: any) {
+      console.error("[LiveChat] Start chat error:", error);
+      res.status(500).json({ message: "Failed to start chat with visitor" });
     }
   });
 

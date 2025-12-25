@@ -158,6 +158,20 @@ interface TelnyxMessage {
 
 type MobileView = "threads" | "messages" | "details";
 
+interface LiveVisitor {
+  id: string;
+  widgetId: string;
+  visitorId: string;
+  ipAddress: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  currentUrl: string | null;
+  pageTitle: string | null;
+  firstSeenAt: string;
+  lastSeenAt: string;
+}
+
 export default function InboxPage() {
   const { toast } = useToast();
   const [activeView, setActiveView] = useState<MessengerView>("open");
@@ -182,6 +196,9 @@ export default function InboxPage() {
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
   const [visitorTypingPreview, setVisitorTypingPreview] = useState<string | null>(null);
+  const [startChatDialogOpen, setStartChatDialogOpen] = useState(false);
+  const [selectedVisitor, setSelectedVisitor] = useState<LiveVisitor | null>(null);
+  const [startChatMessage, setStartChatMessage] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -209,20 +226,6 @@ export default function InboxPage() {
     staleTime: 30000,
   });
   const conversations = conversationsData?.conversations || [];
-
-  interface LiveVisitor {
-    id: string;
-    widgetId: string;
-    visitorId: string;
-    ipAddress: string | null;
-    city: string | null;
-    state: string | null;
-    country: string | null;
-    currentUrl: string | null;
-    pageTitle: string | null;
-    firstSeenAt: string;
-    lastSeenAt: string;
-  }
 
   const { data: visitorsData } = useQuery<{ visitors: LiveVisitor[] }>({
     queryKey: ["/api/live-visitors"],
@@ -422,6 +425,35 @@ export default function InboxPage() {
     onError: (error: any) => {
       toast({
         title: "Failed to accept chat",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const startChatWithVisitorMutation = useMutation({
+    mutationFn: async (data: { visitorId: string; message: string; widgetId?: string }) => {
+      const res = await apiRequest("POST", "/api/inbox/start-chat-visitor", data);
+      return res.json();
+    },
+    onSuccess: (data: any) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/live-visitors"] });
+      setStartChatDialogOpen(false);
+      setStartChatMessage("");
+      setSelectedVisitor(null);
+      if (data?.conversation?.id) {
+        setSelectedConversationId(data.conversation.id);
+        setActiveView("open");
+      }
+      toast({
+        title: "Chat started",
+        description: "Your message has been sent to the visitor.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to start chat",
         description: error.message || "Please try again",
         variant: "destructive",
       });
@@ -856,6 +888,10 @@ export default function InboxPage() {
                                 size="sm" 
                                 className="h-8 gap-1.5"
                                 data-testid={`btn-start-chat-${visitor.id}`}
+                                onClick={() => {
+                                  setSelectedVisitor(visitor);
+                                  setStartChatDialogOpen(true);
+                                }}
                               >
                                 <MessageSquare className="h-3.5 w-3.5" />
                                 Start Chat
@@ -2182,6 +2218,53 @@ export default function InboxPage() {
             >
               {deleteConversationMutation.isPending ? "Deleting..." : "Delete"}
             </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Start Chat with Visitor Dialog */}
+      <AlertDialog open={startChatDialogOpen} onOpenChange={setStartChatDialogOpen}>
+        <AlertDialogContent className="max-w-md">
+          <AlertDialogHeader>
+            <AlertDialogTitle>Start Chat with Visitor</AlertDialogTitle>
+            <AlertDialogDescription>
+              Send a proactive message to this visitor. They will see your message in the chat widget on their screen.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Textarea
+              placeholder="Type your message..."
+              value={startChatMessage}
+              onChange={(e) => setStartChatMessage(e.target.value)}
+              className="min-h-[100px] resize-none"
+              data-testid="input-start-chat-message"
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel 
+              data-testid="btn-cancel-start-chat"
+              onClick={() => {
+                setStartChatMessage("");
+                setSelectedVisitor(null);
+              }}
+            >
+              Cancel
+            </AlertDialogCancel>
+            <Button
+              onClick={() => {
+                if (selectedVisitor && startChatMessage.trim()) {
+                  startChatWithVisitorMutation.mutate({
+                    visitorId: selectedVisitor.visitorId,
+                    message: startChatMessage.trim(),
+                    widgetId: selectedVisitor.widgetId,
+                  });
+                }
+              }}
+              disabled={!startChatMessage.trim() || startChatWithVisitorMutation.isPending}
+              data-testid="btn-confirm-start-chat"
+            >
+              {startChatWithVisitorMutation.isPending ? "Sending..." : "Send Message"}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
