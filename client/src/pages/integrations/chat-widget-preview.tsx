@@ -2,7 +2,7 @@ import { useParams, Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, X, Monitor, Send, Smartphone, Globe, Check, CheckCheck, Paperclip, Smile, Clock } from "lucide-react";
+import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, X, Monitor, Send, Smartphone, Globe, Check, CheckCheck, Paperclip, Smile, Clock, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
@@ -173,6 +173,59 @@ export default function ChatWidgetPreviewPage() {
   // Determine which data to use based on mode
   const isLoading = isPublicMode ? publicLoading : authLoading;
   const effectiveWidgetData = isPublicMode ? publicWidgetData : authWidgetData;
+
+  // Restore visitor profile from localStorage (Task 3: Skip pre-chat form for returning visitors)
+  useEffect(() => {
+    if (!widgetId) return;
+    
+    try {
+      const storedProfile = localStorage.getItem(`chatVisitorProfile-${widgetId}`);
+      if (storedProfile) {
+        const profile = JSON.parse(storedProfile);
+        if (profile.name) setVisitorName(profile.name);
+        if (profile.email) setVisitorEmail(profile.email);
+      }
+    } catch (e) {
+      console.error('[Chat] Failed to restore visitor profile:', e);
+    }
+  }, [widgetId]);
+
+  // Restore survey state from localStorage (Task 2: Persist survey state)
+  useEffect(() => {
+    if (!widgetId) return;
+    
+    try {
+      const storedSurvey = localStorage.getItem(`chatSurveyState-${widgetId}`);
+      if (storedSurvey) {
+        const surveyState = JSON.parse(storedSurvey);
+        if (surveyState.showSatisfactionSurvey) setShowSatisfactionSurvey(true);
+        if (surveyState.surveyRating !== undefined) setSurveyRating(surveyState.surveyRating);
+        if (surveyState.surveyFeedback) setSurveyFeedback(surveyState.surveyFeedback);
+        if (surveyState.chatSessionId) setChatSessionId(surveyState.chatSessionId);
+      }
+    } catch (e) {
+      console.error('[Chat] Failed to restore survey state:', e);
+    }
+  }, [widgetId]);
+
+  // Persist survey state to localStorage when it changes
+  useEffect(() => {
+    if (!widgetId) return;
+    
+    // Only persist if survey is showing (don't persist initial state)
+    if (showSatisfactionSurvey) {
+      try {
+        localStorage.setItem(`chatSurveyState-${widgetId}`, JSON.stringify({
+          showSatisfactionSurvey,
+          surveyRating,
+          surveyFeedback,
+          chatSessionId,
+        }));
+      } catch (e) {
+        console.error('[Chat] Failed to persist survey state:', e);
+      }
+    }
+  }, [widgetId, showSatisfactionSurvey, surveyRating, surveyFeedback, chatSessionId]);
 
   // Eye-catcher message delay - show after configured seconds
   useEffect(() => {
@@ -693,6 +746,18 @@ export default function ChatWidgetPreviewPage() {
       setShowPreChatForm(false);
       setIsWaitingForAgent(true);
       
+      // Save visitor profile to localStorage for returning visitors (Task 3)
+      if (visitorName.trim() || visitorEmail.trim()) {
+        try {
+          localStorage.setItem(`chatVisitorProfile-${widgetId}`, JSON.stringify({
+            name: visitorName.trim(),
+            email: visitorEmail.trim(),
+          }));
+        } catch (e) {
+          console.error('[Chat] Failed to save visitor profile:', e);
+        }
+      }
+      
       // Save initial message for display in queue view
       const messageToSend = initialMessage.trim();
       setSentInitialMessage(messageToSend || 'Hello');
@@ -819,6 +884,10 @@ export default function ChatWidgetPreviewPage() {
       if (res.ok) {
         setSurveySubmitted(true);
         setShowSatisfactionSurvey(false);
+        // Clear survey state from localStorage after submission
+        if (widgetId) {
+          localStorage.removeItem(`chatSurveyState-${widgetId}`);
+        }
         console.log('[Chat] Satisfaction survey submitted successfully');
       }
     } catch (error) {
@@ -1912,55 +1981,81 @@ export default function ChatWidgetPreviewPage() {
               {/* Satisfaction Survey or Input Area */}
               {showSatisfactionSurvey ? (
                 <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900">
-                  <div className="text-center mb-3">
-                    <Check className="h-8 w-8 mx-auto mb-2 text-green-500" />
-                    <h4 className="font-semibold text-slate-900 dark:text-slate-100">Chat ended</h4>
-                    <p className="text-sm text-slate-500 mt-1">How was your experience?</p>
+                  <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-lg border">
+                    {surveyRating === null ? (
+                      <>
+                        <h5 className="font-semibold text-slate-900 dark:text-slate-100 text-center mb-2">How was the help you received?</h5>
+                        <p className="text-xs text-slate-500 text-center mb-4">We're always striving to improve and would love your feedback on the experience.</p>
+                        <div className="flex justify-center gap-6 mb-3">
+                          <button 
+                            onClick={() => setSurveyRating(5)}
+                            className="w-14 h-14 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center hover:scale-110 transition-transform"
+                            data-testid="survey-thumbs-up"
+                          >
+                            <ThumbsUp className="h-7 w-7 text-green-500" />
+                          </button>
+                          <button 
+                            onClick={() => setSurveyRating(1)}
+                            className="w-14 h-14 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center hover:scale-110 transition-transform"
+                            data-testid="survey-thumbs-down"
+                          >
+                            <ThumbsDown className="h-7 w-7 text-red-500" />
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setShowSatisfactionSurvey(false);
+                            localStorage.removeItem(`chatSurveyState-${widgetId}`);
+                          }}
+                          className="text-xs text-blue-500 text-center cursor-pointer hover:underline w-full"
+                          data-testid="survey-skip"
+                        >
+                          Skip for now
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex justify-center mb-3">
+                          {surveyRating === 5 ? (
+                            <div className="w-12 h-12 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                              <ThumbsUp className="h-6 w-6 text-green-500" />
+                            </div>
+                          ) : (
+                            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                              <ThumbsDown className="h-6 w-6 text-red-500" />
+                            </div>
+                          )}
+                        </div>
+                        <p className="text-sm text-slate-600 dark:text-slate-300 text-center mb-3">
+                          {surveyRating === 5 ? "Thanks! Want to share more details?" : "Sorry to hear that. How can we improve?"}
+                        </p>
+                        <textarea
+                          value={surveyFeedback}
+                          onChange={(e) => setSurveyFeedback(e.target.value)}
+                          placeholder="Share your feedback (optional)"
+                          className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                          rows={2}
+                          data-testid="survey-feedback"
+                        />
+                        <button
+                          onClick={submitSatisfactionSurvey}
+                          disabled={surveySubmitting}
+                          className="w-full mt-3 py-2 px-4 rounded-lg text-white font-medium transition-all disabled:opacity-50"
+                          style={{ background: currentBackground }}
+                          data-testid="survey-submit"
+                        >
+                          {surveySubmitting ? 'Submitting...' : 'Submit Feedback'}
+                        </button>
+                        <button
+                          onClick={() => setSurveyRating(null)}
+                          className="w-full mt-2 py-2 text-xs text-slate-500 hover:text-slate-700"
+                          data-testid="survey-back"
+                        >
+                          Change rating
+                        </button>
+                      </>
+                    )}
                   </div>
-                  
-                  {/* Star Rating */}
-                  <div className="flex justify-center gap-2 mb-3">
-                    {[1, 2, 3, 4, 5].map((star) => (
-                      <button
-                        key={star}
-                        onClick={() => setSurveyRating(star)}
-                        className={`p-1 transition-transform hover:scale-110 ${surveyRating && surveyRating >= star ? 'text-yellow-400' : 'text-slate-300'}`}
-                        data-testid={`survey-star-${star}`}
-                      >
-                        <svg className="h-8 w-8 fill-current" viewBox="0 0 24 24">
-                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
-                        </svg>
-                      </button>
-                    ))}
-                  </div>
-                  
-                  {/* Optional Feedback */}
-                  <textarea
-                    value={surveyFeedback}
-                    onChange={(e) => setSurveyFeedback(e.target.value)}
-                    placeholder="Share your feedback (optional)"
-                    className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-blue-500 resize-none"
-                    rows={2}
-                    data-testid="survey-feedback"
-                  />
-                  
-                  <button
-                    onClick={submitSatisfactionSurvey}
-                    disabled={!surveyRating || surveySubmitting}
-                    className="w-full mt-3 py-2 px-4 rounded-lg text-white font-medium transition-all disabled:opacity-50"
-                    style={{ background: currentBackground }}
-                    data-testid="survey-submit"
-                  >
-                    {surveySubmitting ? 'Submitting...' : 'Submit Feedback'}
-                  </button>
-                  
-                  <button
-                    onClick={() => setShowSatisfactionSurvey(false)}
-                    className="w-full mt-2 py-2 text-sm text-slate-500 hover:text-slate-700"
-                    data-testid="survey-skip"
-                  >
-                    Skip
-                  </button>
                 </div>
               ) : surveySubmitted ? (
                 <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900 text-center">
@@ -2157,7 +2252,24 @@ export default function ChatWidgetPreviewPage() {
                       data-testid="initial-message-input"
                     />
                     <button 
-                      onClick={() => setShowPreChatForm(true)}
+                      onClick={() => {
+                        // Task 3: Skip pre-chat form if visitor profile exists
+                        const storedProfile = localStorage.getItem(`chatVisitorProfile-${widgetId}`);
+                        if (storedProfile) {
+                          try {
+                            const profile = JSON.parse(storedProfile);
+                            // If we have stored profile data, start chat directly
+                            if (profile.name || profile.email) {
+                              startChatSession();
+                              return;
+                            }
+                          } catch (e) {
+                            console.error('[Chat] Failed to parse stored profile:', e);
+                          }
+                        }
+                        // Otherwise show pre-chat form
+                        setShowPreChatForm(true);
+                      }}
                       className="w-full py-2.5 px-4 rounded-lg text-white text-sm font-medium flex items-center justify-center gap-2"
                       style={{ background: currentBackground }}
                       data-testid="start-chat-button"
