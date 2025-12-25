@@ -488,8 +488,13 @@ export default function InboxPage() {
         filtered = conversations.filter(c => !c.assignedTo && (c as any).status !== "waiting");
         break;
       case "waiting":
-        // Only show live chats in "waiting" status (not yet accepted by agent)
-        filtered = conversations.filter(c => c.channel === "live_chat" && (c as any).status === "waiting");
+        // Only show live chats in "waiting" status with recent activity (last 30 minutes)
+        const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000);
+        filtered = conversations.filter(c => {
+          if (c.channel !== "live_chat" || (c as any).status !== "waiting") return false;
+          const lastActivity = new Date(c.lastMessageAt || c.createdAt);
+          return lastActivity >= thirtyMinutesAgo;
+        });
         break;
       case "solved":
         filtered = conversations.filter(c => c.status === "solved" || c.status === "archived");
@@ -748,7 +753,11 @@ export default function InboxPage() {
         unread: conversations.filter(c => c.unreadCount > 0 && (c as any).status !== "waiting").length,
         assigned: conversations.filter(c => c.assignedTo === user?.id).length,
         unassigned: conversations.filter(c => !c.assignedTo && (c as any).status !== "waiting").length,
-        waiting: conversations.filter(c => c.channel === "live_chat" && (c as any).status === "waiting").length,
+        waiting: conversations.filter(c => {
+          if (c.channel !== "live_chat" || (c as any).status !== "waiting") return false;
+          const lastActivity = new Date(c.lastMessageAt || c.createdAt);
+          return lastActivity >= new Date(Date.now() - 30 * 60 * 1000);
+        }).length,
         visitors: liveVisitors.length,
         solved: conversations.filter(c => c.status === "solved" || c.status === "archived").length,
         all: conversations.length,
