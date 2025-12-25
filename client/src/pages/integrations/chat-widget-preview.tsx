@@ -124,6 +124,12 @@ export default function ChatWidgetPreviewPage() {
   const [offlineMessageSent, setOfflineMessageSent] = useState(false);
   const [offlineMessageLoading, setOfflineMessageLoading] = useState(false);
   const [showEyeCatcher, setShowEyeCatcher] = useState(false);
+  const [chatStatus, setChatStatus] = useState<string | null>(null);
+  const [showSatisfactionSurvey, setShowSatisfactionSurvey] = useState(false);
+  const [surveyRating, setSurveyRating] = useState<number | null>(null);
+  const [surveyFeedback, setSurveyFeedback] = useState('');
+  const [surveySubmitting, setSurveySubmitting] = useState(false);
+  const [surveySubmitted, setSurveySubmitted] = useState(false);
   const eyeCatcherTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const agentTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -789,6 +795,34 @@ export default function ChatWidgetPreviewPage() {
     }
   };
 
+  // Submit satisfaction survey
+  const submitSatisfactionSurvey = async () => {
+    if (!chatSessionId || !surveyRating) return;
+    
+    setSurveySubmitting(true);
+    try {
+      const res = await fetch('/api/public/live-chat/satisfaction', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          sessionId: chatSessionId,
+          rating: surveyRating,
+          feedback: surveyFeedback || null,
+        }),
+      });
+      
+      if (res.ok) {
+        setSurveySubmitted(true);
+        setShowSatisfactionSurvey(false);
+        console.log('[Chat] Satisfaction survey submitted successfully');
+      }
+    } catch (error) {
+      console.error('Failed to submit satisfaction survey:', error);
+    } finally {
+      setSurveySubmitting(false);
+    }
+  };
+
   // Poll for new messages when in active chat
   useEffect(() => {
     if (!chatSessionId) return;
@@ -818,6 +852,14 @@ export default function ChatWidgetPreviewPage() {
           // Always hide offline fallback when chat is open (even if agent was already set)
           if (status === 'open') {
             setShowOfflineFallback(false);
+          }
+          
+          // Detect when chat is solved and show satisfaction survey
+          if (status === 'solved' && chatStatus !== 'solved' && !surveySubmitted) {
+            setChatStatus('solved');
+            setShowSatisfactionSurvey(true);
+          } else if (status) {
+            setChatStatus(status);
           }
           
           if (messages.length > 0) {
@@ -1862,29 +1904,95 @@ export default function ChatWidgetPreviewPage() {
                 <div ref={messagesEndRef} />
               </div>
               
-              {/* Input Area */}
-              <div className="p-3 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900">
-                <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-full px-4 py-2">
-                  <input
-                    type="text"
-                    value={chatInput}
-                    onChange={handleChatInputChange}
-                    onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
-                    placeholder="Type a message..."
-                    className="flex-1 bg-transparent text-sm outline-none placeholder-slate-400"
-                    data-testid="chat-input"
+              {/* Satisfaction Survey or Input Area */}
+              {showSatisfactionSurvey ? (
+                <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900">
+                  <div className="text-center mb-3">
+                    <Check className="h-8 w-8 mx-auto mb-2 text-green-500" />
+                    <h4 className="font-semibold text-slate-900 dark:text-slate-100">Chat ended</h4>
+                    <p className="text-sm text-slate-500 mt-1">How was your experience?</p>
+                  </div>
+                  
+                  {/* Star Rating */}
+                  <div className="flex justify-center gap-2 mb-3">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        onClick={() => setSurveyRating(star)}
+                        className={`p-1 transition-transform hover:scale-110 ${surveyRating && surveyRating >= star ? 'text-yellow-400' : 'text-slate-300'}`}
+                        data-testid={`survey-star-${star}`}
+                      >
+                        <svg className="h-8 w-8 fill-current" viewBox="0 0 24 24">
+                          <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                        </svg>
+                      </button>
+                    ))}
+                  </div>
+                  
+                  {/* Optional Feedback */}
+                  <textarea
+                    value={surveyFeedback}
+                    onChange={(e) => setSurveyFeedback(e.target.value)}
+                    placeholder="Share your feedback (optional)"
+                    className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-800 outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                    rows={2}
+                    data-testid="survey-feedback"
                   />
+                  
                   <button
-                    onClick={sendChatMessage}
-                    disabled={!chatInput.trim()}
-                    className="p-2 rounded-full transition-all disabled:opacity-30 hover:scale-110"
-                    style={{ background: chatInput.trim() ? currentBackground as string : 'transparent' }}
-                    data-testid="send-message"
+                    onClick={submitSatisfactionSurvey}
+                    disabled={!surveyRating || surveySubmitting}
+                    className="w-full mt-3 py-2 px-4 rounded-lg text-white font-medium transition-all disabled:opacity-50"
+                    style={{ background: currentBackground }}
+                    data-testid="survey-submit"
                   >
-                    <Send className={`h-4 w-4 ${chatInput.trim() ? 'text-white' : 'text-slate-400'}`} />
+                    {surveySubmitting ? 'Submitting...' : 'Submit Feedback'}
+                  </button>
+                  
+                  <button
+                    onClick={() => setShowSatisfactionSurvey(false)}
+                    className="w-full mt-2 py-2 text-sm text-slate-500 hover:text-slate-700"
+                    data-testid="survey-skip"
+                  >
+                    Skip
                   </button>
                 </div>
-              </div>
+              ) : surveySubmitted ? (
+                <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900 text-center">
+                  <Check className="h-8 w-8 mx-auto mb-2 text-green-500" />
+                  <h4 className="font-semibold text-slate-900 dark:text-slate-100">Thank you!</h4>
+                  <p className="text-sm text-slate-500 mt-1">Your feedback has been submitted</p>
+                </div>
+              ) : chatStatus === 'solved' ? (
+                <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900 text-center">
+                  <Check className="h-8 w-8 mx-auto mb-2 text-green-500" />
+                  <h4 className="font-semibold text-slate-900 dark:text-slate-100">Chat ended</h4>
+                  <p className="text-sm text-slate-500 mt-1">This conversation has been resolved</p>
+                </div>
+              ) : (
+                <div className="p-3 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900">
+                  <div className="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 rounded-full px-4 py-2">
+                    <input
+                      type="text"
+                      value={chatInput}
+                      onChange={handleChatInputChange}
+                      onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
+                      placeholder="Type a message..."
+                      className="flex-1 bg-transparent text-sm outline-none placeholder-slate-400"
+                      data-testid="chat-input"
+                    />
+                    <button
+                      onClick={sendChatMessage}
+                      disabled={!chatInput.trim()}
+                      className="p-2 rounded-full transition-all disabled:opacity-30 hover:scale-110"
+                      style={{ background: chatInput.trim() ? currentBackground as string : 'transparent' }}
+                      data-testid="send-message"
+                    >
+                      <Send className={`h-4 w-4 ${chatInput.trim() ? 'text-white' : 'text-slate-400'}`} />
+                    </button>
+                  </div>
+                </div>
+              )}
               
               {/* Footer */}
               <div className="py-2 border-t border-slate-100 dark:border-slate-700 text-center bg-slate-50 dark:bg-slate-800/50">
