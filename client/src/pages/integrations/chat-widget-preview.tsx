@@ -1083,9 +1083,20 @@ export default function ChatWidgetPreviewPage() {
               return [...filtered, ...messages].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
             });
             // Check if any message is from agent (outbound = from company)
-            const hasAgentMessage = messages.some((m: any) => m.direction === 'outbound');
-            if (hasAgentMessage) {
+            const agentMessages = messages.filter((m: any) => m.direction === 'outbound');
+            if (agentMessages.length > 0) {
               setIsWaitingForAgent(false);
+              
+              // Show notification when widget is minimized and there are new agent messages
+              if (!widgetOpenRef.current) {
+                const latestAgentMsg = agentMessages[agentMessages.length - 1];
+                const agentInfo = connectedAgentRef.current || agent;
+                setMinimizedNotification({
+                  agentName: agentInfo?.fullName || 'Support Agent',
+                  agentPhoto: agentInfo?.profileImageUrl || null,
+                  message: latestAgentMsg.text?.substring(0, 100) || 'New message',
+                });
+              }
             }
           }
         }
