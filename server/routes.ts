@@ -29299,6 +29299,53 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     });
     res.sendStatus(200);
   });
+  // POST /api/public/live-chat/satisfaction - Submit satisfaction survey
+  app.post("/api/public/live-chat/satisfaction", async (req: Request, res: Response) => {
+    const { sessionId, rating, feedback } = req.body;
+    
+    res.set({ "Access-Control-Allow-Origin": "*" });
+    
+    if (!sessionId || !rating) {
+      return res.status(400).json({ error: "sessionId and rating are required" });
+    }
+    
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({ error: "Rating must be between 1 and 5" });
+    }
+    
+    try {
+      // Update conversation with satisfaction survey data
+      const [updated] = await db
+        .update(telnyxConversations)
+        .set({
+          satisfactionRating: rating,
+          satisfactionFeedback: feedback || null,
+          satisfactionSubmittedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(telnyxConversations.id, sessionId),
+          eq(telnyxConversations.channel, "live_chat")
+        ))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      
+      console.log("[LiveChat] Satisfaction survey submitted for session:", sessionId, "Rating:", rating);
+      
+      // Broadcast update to notify agents of the survey result
+      const { broadcastConversationUpdate } = await import("./websocket");
+      broadcastConversationUpdate(updated.companyId);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[LiveChat] Satisfaction survey error:", error);
+      res.status(500).json({ error: "Failed to submit satisfaction survey" });
+    }
+  });
+
   
   // GET /api/voicemails - List voicemails for current user
   app.get("/api/voicemails", requireAuth, async (req: Request, res: Response) => {
