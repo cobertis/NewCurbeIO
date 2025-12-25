@@ -1162,7 +1162,7 @@ export default function ChatWidgetPreviewPage() {
                   </div>
                 )}
                 
-                {enabledChannels.filter((id: string) => id !== "liveChat").map((channelId: string) => {
+                {!chatSessionId && !showPreChatForm && enabledChannels.filter((id: string) => id !== "liveChat").map((channelId: string) => {
                   const channel = channelIcons[channelId];
                   if (!channel) return null;
                   
@@ -1197,7 +1197,7 @@ export default function ChatWidgetPreviewPage() {
               
               <div className="p-2 border-t text-center">
                 <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                  Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
+                  Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                 </p>
               </div>
             </div>
