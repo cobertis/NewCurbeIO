@@ -28462,7 +28462,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       
       return res.json({
-        widget: { ...widgetSettings, branding: (widget.branding as any) || {} },
+        widget: { ...widgetSettings, branding: (widget.branding as any) || {}, targeting: { countries: targeting.countries || "all", selectedCountries: targeting.selectedCountries || [], schedule: targeting.schedule || "always", timezone: targeting.timezone || "(UTC -05:00): America/New_York", deviceType: targeting.deviceType || "all", pageUrls: targeting.pageUrls || "all", urlRules: targeting.urlRules || [], scheduleEntries: targeting.scheduleEntries || [] } },
         shouldDisplay: finalShouldDisplay,
         visitorCountry,
         countryCode,
