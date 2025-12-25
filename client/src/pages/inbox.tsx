@@ -506,11 +506,11 @@ export default function InboxPage() {
         filtered = conversations.filter(c => !c.assignedTo && (c as any).status !== "waiting");
         break;
       case "waiting":
-        // Only show live chats with active visitors who have pending messages
+        // Show all live chats with status "waiting" - visitors waiting for an agent to accept
         filtered = conversations.filter(c => {
           if (c.channel !== "live_chat" || (c as any).status !== "waiting") return false;
-          // Must have an active visitor AND pending message
-          return (c as any).isVisitorActive && (c as any).hasPendingMessage;
+          // Show all waiting chats that have pending messages (visitor sent a message)
+          return (c as any).hasPendingMessage;
         });
         break;
       case "solved":

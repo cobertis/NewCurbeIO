@@ -38310,7 +38310,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           return conv;
         }
         // Extract visitorId from phoneNumber (format: livechat_visitor_xxx)
-        const visitorId = conv.phoneNumber?.startsWith("livechat_") ? conv.phoneNumber : null;
+        const visitorId = conv.phoneNumber?.startsWith("livechat_") ? conv.phoneNumber.replace("livechat_", "") : null;
         // Check if visitor is currently active
         const visitorKey = conv.widgetId && visitorId ? `${conv.widgetId}:${visitorId}` : null;
         const isVisitorActive = visitorKey ? liveVisitors.has(visitorKey) : false;
