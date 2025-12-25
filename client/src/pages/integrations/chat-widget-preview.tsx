@@ -145,6 +145,11 @@ export default function ChatWidgetPreviewPage() {
   const [offlineMessageSent, setOfflineMessageSent] = useState(false);
   const [offlineMessageLoading, setOfflineMessageLoading] = useState(false);
   const [showEyeCatcher, setShowEyeCatcher] = useState(false);
+  const [minimizedNotification, setMinimizedNotification] = useState<{
+    agentName: string;
+    agentPhoto: string | null;
+    message: string;
+  } | null>(null);
   const [chatStatus, setChatStatus] = useState<string | null>(null);
   const [showSatisfactionSurvey, setShowSatisfactionSurvey] = useState(false);
   const [surveyRating, setSurveyRating] = useState<number | null>(null);
@@ -162,6 +167,8 @@ export default function ChatWidgetPreviewPage() {
   const liveChatWsRef = useRef<WebSocket | null>(null);
   const wsReconnectAttemptRef = useRef<number>(0);
   const wsReconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const widgetOpenRef = useRef<boolean>(widgetOpen);
+  const connectedAgentRef = useRef<typeof connectedAgent>(null);
 
   // Use authenticated API only when not in public mode
   const { data: authWidgetData, isLoading: authLoading } = useQuery<{ widget: any }>({
@@ -188,6 +195,15 @@ export default function ChatWidgetPreviewPage() {
         setPublicLoading(false);
       });
   }, [widgetId, isPublicMode]);
+  
+  // Keep refs in sync with state for WebSocket callbacks
+  useEffect(() => {
+    widgetOpenRef.current = widgetOpen;
+  }, [widgetOpen]);
+  
+  useEffect(() => {
+    connectedAgentRef.current = connectedAgent;
+  }, [connectedAgent]);
   
   // Determine which data to use based on mode
   const isLoading = isPublicMode ? publicLoading : authLoading;
@@ -360,6 +376,16 @@ export default function ChatWidgetPreviewPage() {
                       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
                     );
                   });
+                  
+                  // Show notification when widget is minimized and message is from agent
+                  if (!widgetOpenRef.current && data.message.direction === 'outbound') {
+                    const agent = connectedAgentRef.current;
+                    setMinimizedNotification({
+                      agentName: agent?.fullName || 'Support Agent',
+                      agentPhoto: agent?.profileImageUrl || null,
+                      message: data.message.text?.substring(0, 100) || 'New message',
+                    });
+                  }
                 }
                 break;
                 
@@ -1692,7 +1718,47 @@ export default function ChatWidgetPreviewPage() {
             )
           }}
         >
-        {showEyeCatcher && !widgetOpen && widget.minimizedState?.eyeCatcherEnabled && widget.minimizedState?.eyeCatcherMessage && (
+        {/* Minimized notification - shows agent message when widget is closed */}
+        {minimizedNotification && !widgetOpen && (
+          <div 
+            className="bg-white dark:bg-slate-800 rounded-lg shadow-lg px-4 py-3 flex items-start gap-3 max-w-xs cursor-pointer hover:shadow-xl transition-shadow"
+            onClick={() => { setWidgetOpen(true); setMinimizedNotification(null); }}
+            data-testid="minimized-notification"
+          >
+            {minimizedNotification.agentPhoto ? (
+              <img 
+                src={minimizedNotification.agentPhoto} 
+                alt={minimizedNotification.agentName}
+                className="w-10 h-10 rounded-full object-cover flex-shrink-0"
+              />
+            ) : (
+              <div 
+                className="w-10 h-10 rounded-full flex-shrink-0 flex items-center justify-center text-white text-sm font-medium"
+                style={{ backgroundColor: widget.brandColor || '#3B82F6' }}
+              >
+                {minimizedNotification.agentName.split(' ').map(n => n[0]).join('').substring(0, 2).toUpperCase()}
+              </div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-medium text-slate-900 dark:text-white truncate">
+                {minimizedNotification.agentName}
+              </p>
+              <p className="text-sm text-slate-600 dark:text-slate-300 line-clamp-2">
+                {minimizedNotification.message}
+              </p>
+            </div>
+            <button 
+              className="text-slate-400 hover:text-slate-600 flex-shrink-0"
+              onClick={(e) => { e.stopPropagation(); setMinimizedNotification(null); }}
+              data-testid="button-dismiss-notification"
+            >
+              ×
+            </button>
+          </div>
+        )}
+        
+        {/* Eye-catcher - shows initial greeting when widget is closed (only if no notification) */}
+        {showEyeCatcher && !widgetOpen && !minimizedNotification && widget.minimizedState?.eyeCatcherEnabled && widget.minimizedState?.eyeCatcherMessage && (
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-lg px-4 py-2 flex items-center gap-2 text-sm">
             <span className="text-slate-600 dark:text-slate-300">{widget.minimizedState.eyeCatcherMessage}</span>
             <button 
@@ -1707,7 +1773,7 @@ export default function ChatWidgetPreviewPage() {
         
         <div className="relative">
           <button
-            onClick={() => { setWidgetOpen(!widgetOpen); setActiveChannel(null); }}
+            onClick={() => { setWidgetOpen(!widgetOpen); setActiveChannel(null); if (!widgetOpen) setMinimizedNotification(null); }}
             className="shadow-lg flex items-center justify-center gap-2 transition-transform hover:scale-105 text-white font-medium"
             style={{ 
               background: currentBackground,
