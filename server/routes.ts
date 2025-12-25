@@ -28348,8 +28348,25 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
       }
       
-      const widgetSettings = widget.widget as any || {};
-      const targeting = (widget.targeting as any) || {};
+      const widgetSettings = {
+        colorTheme: widget.colorTheme,
+        themeType: widget.themeType,
+        customColor: widget.customColor,
+        channels: widget.channels || {},
+        channelOrder: widget.channelOrder || [],
+        minimizedState: widget.minimizedState || {},
+        liveChatSettings: widget.liveChatSettings || {},
+        smsSettings: widget.smsSettings || {},
+        callSettings: widget.callSettings || {},
+        whatsappSettings: widget.whatsappSettings || {},
+        emailSettings: widget.emailSettings || {},
+        messengerSettings: widget.messengerSettings || {},
+        instagramSettings: widget.instagramSettings || {},
+        telegramSettings: widget.telegramSettings || {},
+        welcomeTitle: widget.welcomeTitle,
+        welcomeMessage: widget.welcomeMessage,
+      };
+      const targeting = (widget.targetingConfig as any) || {};
       const shouldDisplay = shouldShowWidget(targeting, visitorCountry, geoSuccess);
       
       // Check schedule-based availability
