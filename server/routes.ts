@@ -38497,6 +38497,50 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           }
         }
         // === END TELEGRAM CHANNEL ROUTING ===
+        // === LIVE CHAT CHANNEL ROUTING ===
+        if (conversation.channel === "live_chat") {
+          try {
+            // For live chat, just save the message to database - no external API needed
+            const [message] = await db
+              .insert(telnyxMessages)
+              .values({
+                conversationId: id,
+                direction: "outbound",
+                messageType: "outgoing",
+                channel: "live_chat",
+                text: text || "(attachment)",
+                contentType: mediaUrls.length > 0 ? "media" : "text",
+                status: "sent",
+                telnyxMessageId: null,
+                sentBy: userId,
+                sentAt: new Date(),
+                errorMessage: null,
+                mediaUrls: mediaUrls.length > 0 ? mediaUrls : null,
+              })
+              .returning();
+            
+            // Update conversation
+            await db
+              .update(telnyxConversations)
+              .set({ 
+                lastMessage: (text || "(attachment)").substring(0, 100), 
+                lastMediaUrls: mediaUrls.length > 0 ? mediaUrls : null, 
+                lastMessageAt: new Date(), 
+                updatedAt: new Date() 
+              })
+              .where(eq(telnyxConversations.id, id));
+            
+            // Broadcast for real-time update
+            broadcastInboxMessage(companyId, id);
+            
+            console.log(`[LiveChat] Agent ${userId} sent message to conversation ${id}`);
+            return res.status(201).json(message);
+          } catch (liveChatError: any) {
+            console.error("[Inbox LiveChat] Send error:", liveChatError);
+            return res.status(500).json({ message: "Failed to send live chat message" });
+          }
+        }
+        // === END LIVE CHAT CHANNEL ROUTING ===
         // Send message via Telnyx API using managed account
         const { sendTelnyxMessage } = await import("./services/telnyx-messaging-service");
         const sendResult = await sendTelnyxMessage({
