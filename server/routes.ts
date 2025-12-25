@@ -28601,7 +28601,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           eq(telnyxConversations.companyId, companyId),
           eq(telnyxConversations.phoneNumber, finalVisitorId),
           eq(telnyxConversations.channel, "live_chat"),
-          not(inArray(telnyxConversations.status, ["closed", "resolved"]))
+          not(inArray(telnyxConversations.status, ["solved", "archived"]))
         ))
         .orderBy(desc(telnyxConversations.createdAt))
         .limit(1);
