@@ -209,6 +209,7 @@ export default function InboxPage() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastTypingSentRef = useRef<number>(0);
+  const preserveSelectionRef = useRef<string | null>(null);
 
   const { user, isAuthenticated, isLoading: authLoading } = useAuth();
   const userTimezone = user?.timezone || Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -304,9 +305,19 @@ export default function InboxPage() {
     return () => clearInterval(interval);
   }, [selectedConversationId, selectedConversation?.channel]);
 
+  const previousViewRef = useRef<MessengerView>(activeView);
+  
   useEffect(() => {
-    setSelectedConversationId(null);
-    setMobileView("threads");
+    if (preserveSelectionRef.current) {
+      return;
+    }
+    // Only clear selection when user explicitly navigates to a different view
+    // Don't clear if the view is the same (e.g., during re-renders)
+    if (previousViewRef.current !== activeView) {
+      previousViewRef.current = activeView;
+      setSelectedConversationId(null);
+      setMobileView("threads");
+    }
   }, [activeView]);
 
   const sendMessageMutation = useMutation({
@@ -426,6 +437,7 @@ export default function InboxPage() {
       return apiRequest("POST", `/api/inbox/conversations/${conversationId}/accept`);
     },
     onMutate: async (conversationId: string) => {
+      preserveSelectionRef.current = conversationId;
       await queryClient.cancelQueries({ queryKey: ["/api/inbox/conversations"] });
       const previousData = queryClient.getQueryData(["/api/inbox/conversations"]);
       queryClient.setQueryData(["/api/inbox/conversations"], (old: any) => {
@@ -437,11 +449,15 @@ export default function InboxPage() {
           ),
         };
       });
-      return { previousData };
+      return { previousData, conversationId };
     },
-    onSuccess: () => {
+    onSuccess: (_data, conversationId) => {
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
       setActiveView("open");
+      setSelectedConversationId(conversationId);
+      setTimeout(() => {
+        preserveSelectionRef.current = null;
+      }, 100);
       toast({
         title: "Chat accepted",
         description: "You are now connected with the visitor.",
