@@ -38180,7 +38180,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
     const companyId = (req.user as any).companyId;
     const userId = (req.user as any).id;
-    console.log("[LiveChat] Accept request for chat:", id, "by user:", userId);
     if (!companyId) {
       return res.status(400).json({ message: "No company associated with user" });
     }
@@ -38283,7 +38282,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       const companyId = (req.user as any).companyId;
       const userId = (req.user as any).id;
-    console.log("[LiveChat] Accept request for chat:", id, "by user:", userId);
       if (!companyId) {
         return res.status(400).json({ message: "No company associated with user" });
       }
@@ -38679,7 +38677,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
     const companyId = (req.user as any).companyId;
     const userId = (req.user as any).id;
-    console.log("[LiveChat] Accept request for chat:", id, "by user:", userId);
     const user = req.user as any;
     const { visitorId, message, widgetId } = req.body;
     
