@@ -705,7 +705,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button 
-                    className={cn(circularButtonClass, "p-0 overflow-hidden relative")}
+                    className={cn(circularButtonClass, "p-0 relative")}
                     data-testid="button-user-menu"
                   >
                     <Avatar className="h-9 w-9">
@@ -716,7 +716,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                     </Avatar>
                     <span 
                       className={cn(
-                        "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white dark:border-gray-800",
+                        "absolute -top-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-white dark:border-gray-800 z-10",
                         getStatusColor(availabilityData?.status || "offline")
                       )}
                       data-testid="avatar-status-indicator"

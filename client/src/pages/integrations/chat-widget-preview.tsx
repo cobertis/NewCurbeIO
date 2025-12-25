@@ -462,7 +462,7 @@ export default function ChatWidgetPreviewPage() {
 
   // Check agent availability when widget opens
   useEffect(() => {
-    if (!widgetId || !isOpen) {
+    if (!widgetId || !widgetOpen) {
       setAgentsAvailable(null);
       return;
     }
@@ -480,12 +480,13 @@ export default function ChatWidgetPreviewPage() {
         }
       } catch (error) {
         console.error('[LiveChat] Error checking availability:', error);
-        setAgentsAvailable(true);
+        setAgentsAvailable(false);
+        setShowOfflineFallback(true);
       }
     };
     
     checkAvailability();
-  }, [widgetId, isOpen]);
+  }, [widgetId, widgetOpen]);
 
   // 60-second timeout for agent acceptance - triggers offline fallback
   useEffect(() => {
@@ -590,8 +591,11 @@ export default function ChatWidgetPreviewPage() {
         if (agent) {
           setConnectedAgent(agent);
           setIsWaitingForAgent(false);
+          setShowOfflineFallback(false);
         } else if (status === 'pending' || status === 'queued') {
           setIsWaitingForAgent(true);
+        } else if (status === 'open' || status === 'active') {
+          setShowOfflineFallback(false);
         }
         
         console.log('[Chat] Resumed chat with', messages?.length || 0, 'messages, agent:', agent?.fullName || 'none, visitor:', visitor?.name || 'unknown');
