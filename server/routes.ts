@@ -28789,7 +28789,20 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       const messages = await db
-        .select()
+        .select({
+          id: telnyxMessages.id,
+          conversationId: telnyxMessages.conversationId,
+          direction: telnyxMessages.direction,
+          messageType: telnyxMessages.messageType,
+          channel: telnyxMessages.channel,
+          text: telnyxMessages.text,
+          contentType: telnyxMessages.contentType,
+          mediaUrls: telnyxMessages.mediaUrls,
+          status: telnyxMessages.status,
+          sentBy: telnyxMessages.sentBy,
+          sentAt: telnyxMessages.sentAt,
+          createdAt: telnyxMessages.createdAt,
+        })
         .from(telnyxMessages)
         .where(and(...whereConditions))
         .orderBy(asc(telnyxMessages.createdAt));

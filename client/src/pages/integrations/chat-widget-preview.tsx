@@ -202,12 +202,16 @@ export default function ChatWidgetPreviewPage() {
 
 
   // Check for existing chat session for returning visitors (show "Back to chat" card)
+  // Check for existing session on page load (before widget opens)
+  const [sessionChecked, setSessionChecked] = useState(false);
+  
   useEffect(() => {
-    if (!widgetId || !widgetOpen) return;
+    if (!widgetId || sessionChecked) return;
     
     const storedVisitorId = localStorage.getItem(`chat_visitor_${widgetId}`);
     if (!storedVisitorId) {
       setExistingSession(null);
+      setSessionChecked(true);
       return;
     }
     
@@ -219,7 +223,10 @@ export default function ChatWidgetPreviewPage() {
           body: JSON.stringify({ widgetId, visitorId: storedVisitorId }),
         });
         
-        if (!sessionRes.ok) return;
+        if (!sessionRes.ok) {
+          setSessionChecked(true);
+          return;
+        }
         
         const { sessionId, visitorId, pendingSession, resumed, lastMessage, lastMessageAt, displayName, agent } = await sessionRes.json();
         
@@ -244,11 +251,13 @@ export default function ChatWidgetPreviewPage() {
       } catch (error) {
         console.error('[Chat] Failed to check session:', error);
         setExistingSession(null);
+      } finally {
+        setSessionChecked(true);
       }
     };
     
     checkExistingSession();
-  }, [widgetId, widgetOpen]);
+  }, [widgetId, sessionChecked]);
 
   // Resume existing chat session
   const resumeChat = async () => {
