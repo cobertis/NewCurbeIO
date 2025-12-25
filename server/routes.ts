@@ -28963,7 +28963,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           },
         });
         
-        // Broadcast update
+        // Broadcast update to notify agents of new waiting chat
+        const { broadcastConversationUpdate } = await import("./websocket");
+        broadcastConversationUpdate(widget.companyId);
         
         // Update in-memory visitor map with name
         const visitorKey = `${widgetId}:${visitorId}`;
