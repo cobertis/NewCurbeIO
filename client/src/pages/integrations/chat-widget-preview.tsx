@@ -203,12 +203,17 @@ export default function ChatWidgetPreviewPage() {
     // When widget opens, clear the minimized notification and mark messages as seen
     if (widgetOpen) {
       setMinimizedNotification(null);
-      // Mark the last message as seen
+      // Mark the last message as seen and persist to localStorage
       if (chatMessages.length > 0) {
-        lastSeenMessageIdRef.current = chatMessages[chatMessages.length - 1].id;
+        const lastMsgId = chatMessages[chatMessages.length - 1].id;
+        lastSeenMessageIdRef.current = lastMsgId;
+        // Persist to localStorage so it survives page reloads
+        if (widgetId) {
+          localStorage.setItem(`chatLastSeenMessage-${widgetId}`, lastMsgId);
+        }
       }
     }
-  }, [widgetOpen, chatMessages]);
+  }, [widgetOpen, chatMessages, widgetId]);
   
   useEffect(() => {
     connectedAgentRef.current = connectedAgent;
@@ -228,6 +233,12 @@ export default function ChatWidgetPreviewPage() {
         const profile = JSON.parse(storedProfile);
         if (profile.name) setVisitorName(profile.name);
         if (profile.email) setVisitorEmail(profile.email);
+      }
+      
+      // Restore last seen message ID from localStorage
+      const storedLastSeen = localStorage.getItem(`chatLastSeenMessage-${widgetId}`);
+      if (storedLastSeen) {
+        lastSeenMessageIdRef.current = storedLastSeen;
       }
     } catch (e) {
       console.error('[Chat] Failed to restore visitor profile:', e);
