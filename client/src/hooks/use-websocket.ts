@@ -24,6 +24,12 @@ export function useWebSocket(
   const reconnectTimeoutRef = useRef<NodeJS.Timeout>();
   const reconnectAttempts = useRef(0);
   const shouldReconnectRef = useRef(true);
+  const onMessageRef = useRef(onMessage);
+
+  // Update the callback ref on every render without causing reconnection
+  useEffect(() => {
+    onMessageRef.current = onMessage;
+  }, [onMessage]);
 
   // Check if user is authenticated before attempting connection
   const { data: sessionData, isLoading: isLoadingSession } = useQuery<{ user: any }>({
@@ -36,6 +42,11 @@ export function useWebSocket(
 
   const connect = useCallback(() => {
     if (!shouldReconnectRef.current || !shouldAttemptConnection) {
+      return;
+    }
+
+    // Don't create a new connection if one already exists and is open/connecting
+    if (wsRef.current && (wsRef.current.readyState === WebSocket.OPEN || wsRef.current.readyState === WebSocket.CONNECTING)) {
       return;
     }
 
@@ -53,7 +64,8 @@ export function useWebSocket(
       ws.onmessage = (event) => {
         try {
           const message = JSON.parse(event.data);
-          onMessage(message);
+          // Use the ref to call the latest callback without causing reconnection
+          onMessageRef.current(message);
         } catch (error) {
           console.error('Error parsing WebSocket message:', error);
         }
@@ -65,6 +77,7 @@ export function useWebSocket(
 
       ws.onclose = () => {
         console.log('WebSocket disconnected');
+        wsRef.current = null;
         
         // Only reconnect if component is still mounted and user is authenticated
         if (!shouldReconnectRef.current || !shouldAttemptConnection) {
@@ -87,7 +100,7 @@ export function useWebSocket(
     } catch (error) {
       console.error('Error creating WebSocket:', error);
     }
-  }, [onMessage, shouldAttemptConnection]);
+  }, [shouldAttemptConnection]); // Removed onMessage from dependencies - use ref instead
 
   useEffect(() => {
     shouldReconnectRef.current = true;
@@ -109,6 +122,7 @@ export function useWebSocket(
       // Close WebSocket connection
       if (wsRef.current) {
         wsRef.current.close();
+        wsRef.current = null;
       }
     };
   }, [connect, shouldAttemptConnection]);
