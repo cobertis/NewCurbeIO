@@ -1775,6 +1775,36 @@ export default function InboxPage() {
                             {format(new Date(selectedConversation.createdAt), "MMM d, yyyy h:mm a")}
                           </span>
                         </div>
+                        {/* Satisfaction Survey Results */}
+                        {(selectedConversation as any).satisfactionRating && (
+                          <>
+                            <div className="border-t pt-3 mt-3">
+                              <div className="flex justify-between items-center">
+                                <span className="text-xs text-muted-foreground">Satisfaction</span>
+                                <div className="flex items-center gap-1">
+                                  {[1, 2, 3, 4, 5].map((star) => (
+                                    <svg
+                                      key={star}
+                                      className={`h-4 w-4 ${star <= (selectedConversation as any).satisfactionRating ? 'text-yellow-400 fill-yellow-400' : 'text-gray-300'}`}
+                                      viewBox="0 0 24 24"
+                                    >
+                                      <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                                    </svg>
+                                  ))}
+                                  <span className="text-sm font-medium ml-1">{(selectedConversation as any).satisfactionRating}/5</span>
+                                </div>
+                              </div>
+                            </div>
+                            {(selectedConversation as any).satisfactionFeedback && (
+                              <div className="flex flex-col gap-1">
+                                <span className="text-xs text-muted-foreground">Feedback</span>
+                                <p className="text-sm bg-muted/50 rounded-md p-2 italic">
+                                  "{(selectedConversation as any).satisfactionFeedback}"
+                                </p>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
                     )}
                   </div>

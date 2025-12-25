@@ -883,7 +883,7 @@ export default function ChatWidgetPreviewPage() {
     pollMessages();
     const interval = setInterval(pollMessages, 3000);
     return () => clearInterval(interval);
-  }, [chatSessionId, chatMessages.length, connectedAgent]);
+  }, [chatSessionId, chatMessages.length, connectedAgent, chatStatus, surveySubmitted]);
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
