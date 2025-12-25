@@ -5967,7 +5967,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       // If no custom domain configured
       if (!company.customDomain || !company.cloudflareHostnameId) {
-        return res.json({
+      
+      return res.json({
           configured: false,
           domain: null,
           status: null,
@@ -5979,7 +5980,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       
       if (!result.success) {
         // If Cloudflare returns error, return what we have in DB
-        return res.json({
+      
+      return res.json({
           configured: true,
           domain: company.customDomain,
           status: company.customDomainStatus,
@@ -11158,7 +11160,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     if (!currentUser.companyId) {
       return res.status(400).json({ message: "User must belong to a company" });
     }
-    return res.json({
+      
+      return res.json({
       aca: 0,
       medicare: 0
     });
@@ -21609,7 +21612,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.log(`[BulkVS] Phone number ${did} fully activated. Subscription: ${subscription.id}`);
         // Include activation warnings in response if any
         if (activationResult.warnings.length > 0) {
-          return res.json({
+      
+      return res.json({
             ...phoneNumber,
             activationWarnings: activationResult.warnings,
             message: "Phone number provisioned successfully with some warnings. Check activationWarnings for details.",
@@ -22039,7 +22043,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
         console.log(`[REACTIVATION] ✓ Phone number ${phoneNumber.did} fully reactivated`);
         // Return success with warnings if any
         if (activationResult.warnings.length > 0) {
-          return res.json({
+      
+      return res.json({
             message: "Phone number reactivated successfully with some warnings",
             phoneNumber: updatedPhoneNumber,
             activationWarnings: activationResult.warnings,
@@ -24303,7 +24308,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           .set({ status: "waiting", qrCode: null, lastConnectedAt: new Date(), updatedAt: new Date() })
           .where(eq(whatsappInstances.id, instance.id));
         console.log(`[WhatsApp] Instance ${instanceName} is already connected`);
-        return res.json({
+      
+      return res.json({
           success: true,
           connected: true,
           instanceName,
@@ -24319,7 +24325,8 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             .set({ status: "connecting", qrCode, webhookUrl, updatedAt: new Date() })
             .where(eq(whatsappInstances.id, instance.id));
           console.log(`[WhatsApp] Got QR for existing instance ${instanceName}`);
-          return res.json({
+      
+      return res.json({
             success: true,
             qrCode,
             instanceName,
@@ -24355,6 +24362,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
       await db.update(whatsappInstances)
         .set({ webhookUrl, status: "connecting", qrCode, updatedAt: new Date() })
         .where(eq(whatsappInstances.id, instance.id));
+      
       return res.json({
         success: true,
         qrCode,
@@ -27671,6 +27679,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.json({ hasBot: false, botUsername: null, botFirstName: null, isActive: false });
       }
       
+      
       return res.json({
         hasBot: true,
         botUsername: userBot.botUsername,
@@ -28451,8 +28460,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         "Cache-Control": "no-cache, no-store, must-revalidate"
       });
       
+      
       return res.json({
-        widget: widgetSettings,
+        widget: { ...widgetSettings, branding: (widget.branding as any) || {} },
         shouldDisplay: finalShouldDisplay,
         visitorCountry,
         countryCode,
@@ -28644,7 +28654,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           ));
         
         res.set({ "Access-Control-Allow-Origin": "*" });
-        return res.json({
+      
+      return res.json({
           sessionId: existingConversation.id,
           visitorId: finalVisitorId,
           pendingSession: false,
@@ -28660,6 +28671,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       // No open conversation exists - return visitor ID for new session creation on first message
       console.log("[LiveChat] No existing conversation for visitor:", finalVisitorId, "- will create on first message");
       res.set({ "Access-Control-Allow-Origin": "*" });
+      
       return res.json({
         sessionId: null,
         visitorId: finalVisitorId,
@@ -28789,20 +28801,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       const messages = await db
-        .select({
-          id: telnyxMessages.id,
-          conversationId: telnyxMessages.conversationId,
-          direction: telnyxMessages.direction,
-          messageType: telnyxMessages.messageType,
-          channel: telnyxMessages.channel,
-          text: telnyxMessages.text,
-          contentType: telnyxMessages.contentType,
-          mediaUrls: telnyxMessages.mediaUrls,
-          status: telnyxMessages.status,
-          sentBy: telnyxMessages.sentBy,
-          sentAt: telnyxMessages.sentAt,
-          createdAt: telnyxMessages.createdAt,
-        })
+        .select()
         .from(telnyxMessages)
         .where(and(...whereConditions))
         .orderBy(asc(telnyxMessages.createdAt));
@@ -29415,7 +29414,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       const { getWalletByCompany } = await import("./services/wallet-service");
       const wallet = await getWalletByUser(user.companyId, user.id);
       if (!wallet) {
-        return res.json({
+      
+      return res.json({
           isSetup: false,
           hasWallet: false,
           hasTelnyxAccount: false,
@@ -34132,7 +34132,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       // Special case: MASTER_ACCOUNT means this company uses the main Telnyx account directly
       if (managedAccountId === "MASTER_ACCOUNT") {
-        return res.json({
+      
+      return res.json({
           configured: true,
           isMasterAccount: true,
           message: "Using main Telnyx account"
@@ -34245,7 +34246,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       if (!pricing) {
         // Return default pricing with flat field names
-        return res.json({
+      
+      return res.json({
           pricing: {
             // Voice Cost
             voiceLocalOutboundCost: "0.0047",
@@ -35714,7 +35716,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           .limit(1);
         
         if (matchedQuote.length > 0) {
-          return res.json({
+      
+      return res.json({
             found: true,
             source: 'quote',
             clientFirstName: matchedQuote[0].clientFirstName,
@@ -35744,7 +35747,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           .limit(1);
         
         if (matchedPolicy.length > 0) {
-          return res.json({
+      
+      return res.json({
             found: true,
             source: 'policy',
             clientFirstName: matchedPolicy[0].clientFirstName,
@@ -35774,7 +35778,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           .limit(1);
         
         if (matchedContact.length > 0) {
-          return res.json({
+      
+      return res.json({
             found: true,
             source: 'contact',
             clientFirstName: matchedContact[0].firstName,
@@ -37017,7 +37022,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         
         const sipDomain = settings?.sipDomain || "sip.telnyx.com";
         
-        return res.json({
+      
+      return res.json({
           extensionId: extension.id,
           extension: extension.extension,
           displayName: extension.displayName,
@@ -37036,6 +37042,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       // Use company SIP subdomain so WebRTC registers on same domain that queue dials
       const sipDomain = settings?.sipDomain || "sip.telnyx.com";
+      
       
       return res.json({
         extensionId: extension.id,
