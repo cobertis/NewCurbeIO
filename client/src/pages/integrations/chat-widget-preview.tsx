@@ -98,6 +98,8 @@ export default function ChatWidgetPreviewPage() {
     profileImageUrl: string | null;
   } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const lastPreviewSentRef = useRef<number>(0);
 
   const { data: widgetData, isLoading } = useQuery<{ widget: any }>({
     queryKey: [`/api/integrations/chat-widget/${widgetId}`],
@@ -273,11 +275,45 @@ export default function ChatWidgetPreviewPage() {
     }
   };
 
+  const sendPreviewToAgent = (text: string) => {
+    if (!chatSessionId) return;
+    fetch('/api/public/live-chat/preview', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ sessionId: chatSessionId, text }),
+    }).catch(() => {});
+  };
+
+  const handleChatInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setChatInput(value);
+    
+    if (chatSessionId) {
+      const now = Date.now();
+      if (now - lastPreviewSentRef.current > 300) {
+        sendPreviewToAgent(value);
+        lastPreviewSentRef.current = now;
+      }
+      
+      if (previewTimeoutRef.current) {
+        clearTimeout(previewTimeoutRef.current);
+      }
+      previewTimeoutRef.current = setTimeout(() => {
+        sendPreviewToAgent(value);
+      }, 300);
+    }
+  };
+
   const sendChatMessage = async () => {
     if (!chatSessionId || !chatInput.trim()) return;
     
     const text = chatInput.trim();
     setChatInput('');
+    
+    if (previewTimeoutRef.current) {
+      clearTimeout(previewTimeoutRef.current);
+    }
+    sendPreviewToAgent('');
     
     try {
       const res = await fetch('/api/public/live-chat/message', {
@@ -1160,7 +1196,7 @@ export default function ChatWidgetPreviewPage() {
                   <input
                     type="text"
                     value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
+                    onChange={handleChatInputChange}
                     onKeyDown={(e) => e.key === 'Enter' && sendChatMessage()}
                     placeholder="Type a message..."
                     className="flex-1 bg-transparent text-sm outline-none placeholder-slate-400"

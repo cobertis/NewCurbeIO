@@ -28486,7 +28486,9 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // Live chat typing indicator storage (in-memory)
   const liveChatTyping = new Map<string, { agentName: string; timestamp: number }>();
+  const liveChatVisitorPreview = new Map<string, { text: string; timestamp: number }>();
   const TYPING_TIMEOUT = 3000; // 3 seconds
+  const PREVIEW_TIMEOUT = 5000; // 5 seconds
 
   // POST /api/inbox/live-chat/typing - Agent sends typing indicator
   app.post("/api/inbox/live-chat/typing", requireAuth, async (req: Request, res: Response) => {
@@ -28524,6 +28526,44 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     res.json({
       isTyping: !!isTyping,
       agentName: isTyping ? typingInfo?.agentName : null
+    });
+  });
+
+
+  // POST /api/public/live-chat/preview - Visitor sends typing preview
+  app.post("/api/public/live-chat/preview", async (req: Request, res: Response) => {
+    const { sessionId, text } = req.body;
+
+    if (!sessionId) {
+      return res.status(400).json({ error: "sessionId is required" });
+    }
+
+    try {
+      const previewText = (text || "").slice(0, 500);
+      if (previewText.length > 0) {
+        liveChatVisitorPreview.set(sessionId, { text: previewText, timestamp: Date.now() });
+      } else {
+        liveChatVisitorPreview.delete(sessionId);
+      }
+
+      res.set({ "Access-Control-Allow-Origin": "*" });
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[LiveChat] Visitor preview error:", error);
+      res.status(500).json({ error: "Failed to update preview" });
+    }
+  });
+
+  // GET /api/inbox/live-chat/preview/:conversationId - Agent gets visitor preview
+  app.get("/api/inbox/live-chat/preview/:conversationId", requireAuth, async (req: Request, res: Response) => {
+    const { conversationId } = req.params;
+
+    const previewInfo = liveChatVisitorPreview.get(conversationId);
+    const isActive = previewInfo && (Date.now() - previewInfo.timestamp) < PREVIEW_TIMEOUT;
+
+    res.json({
+      isTyping: !!isActive,
+      text: isActive ? previewInfo?.text : null
     });
   });
 

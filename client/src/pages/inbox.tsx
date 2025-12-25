@@ -181,6 +181,7 @@ export default function InboxPage() {
   });
   const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const [visitorTypingPreview, setVisitorTypingPreview] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -269,6 +270,31 @@ export default function InboxPage() {
       }
     }
   });
+
+  useEffect(() => {
+    if (!selectedConversationId || selectedConversation?.channel !== "live_chat") {
+      setVisitorTypingPreview(null);
+      return;
+    }
+    
+    const pollPreview = async () => {
+      try {
+        const res = await fetch(`/api/inbox/live-chat/preview/${selectedConversationId}`, {
+          credentials: 'include',
+        });
+        if (res.ok) {
+          const { isTyping, text } = await res.json();
+          setVisitorTypingPreview(isTyping ? text : null);
+        }
+      } catch (error) {
+        console.error('Preview poll error:', error);
+      }
+    };
+    
+    pollPreview();
+    const interval = setInterval(pollPreview, 1000);
+    return () => clearInterval(interval);
+  }, [selectedConversationId, selectedConversation?.channel]);
 
   const sendMessageMutation = useMutation({
     mutationFn: async ({ conversationId, text, isInternalNote, files, optimisticId }: { conversationId: string; text: string; isInternalNote?: boolean; files?: File[]; optimisticId: string }) => {
@@ -1247,6 +1273,24 @@ export default function InboxPage() {
                       </div>
                     );
                   })}
+                  {/* Visitor typing preview for live_chat */}
+                  {selectedConversation?.channel === "live_chat" && visitorTypingPreview && (
+                    <div className="flex justify-start">
+                      <div className="max-w-[70%] rounded-2xl px-4 py-2 bg-white dark:bg-gray-800 shadow-sm rounded-tl-sm border border-dashed border-gray-300 dark:border-gray-600">
+                        <p className="text-sm text-gray-500 dark:text-gray-400 italic whitespace-pre-wrap">
+                          {visitorTypingPreview}
+                        </p>
+                        <div className="flex items-center gap-1 mt-1">
+                          <span className="text-[10px] text-gray-400">Typing...</span>
+                          <span className="flex gap-0.5">
+                            <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></span>
+                            <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></span>
+                            <span className="w-1 h-1 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></span>
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                   <div ref={messagesEndRef} />
                 </div>
               )}
