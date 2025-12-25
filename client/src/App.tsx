@@ -1,6 +1,6 @@
 import { useState, useCallback, useEffect, useMemo } from "react";
 import { Switch, Route, useLocation, Link, Redirect } from "wouter";
-import { queryClient, getCompanyQueryOptions } from "./lib/queryClient";
+import { queryClient, getCompanyQueryOptions, apiRequest } from "./lib/queryClient";
 import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -33,7 +33,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Bell, User as UserIcon, Settings as SettingsIcon, LogOut, LogIn, Plus, BarChart3, ChevronDown, ChevronLeft, MessageSquare, Sun, Mail, UserPlus, Check, CheckCircle, AlertTriangle, AlertCircle, Info, Globe, Search, CreditCard, Shield, FileText, DollarSign, Phone, PhoneMissed, Share2, Star, ClipboardList, Clock, Megaphone, MessageCircle, Users as UsersIcon, Gift, Layout, Wallet, Inbox } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSocket } from "@/hooks/use-websocket";
 import { formatDistanceToNow } from "date-fns";
@@ -488,6 +488,30 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
     }
   };
 
+  // Agent availability status
+  const { data: availabilityData } = useQuery<{ status: string }>({
+    queryKey: ["/api/users/availability-status"],
+  });
+
+  const updateAvailabilityMutation = useMutation({
+    mutationFn: async (status: string) => {
+      const res = await apiRequest("/api/users/availability-status", "PATCH", { status });
+      return res;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/users/availability-status"] });
+    },
+  });
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "online": return "bg-green-500";
+      case "busy": return "bg-yellow-500";
+      case "offline": return "bg-red-500";
+      default: return "bg-gray-400";
+    }
+  };
+
   const handleLogout = async () => {
     try {
       const response = await fetch("/api/logout", {
@@ -681,7 +705,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button 
-                    className={cn(circularButtonClass, "p-0 overflow-hidden")}
+                    className={cn(circularButtonClass, "p-0 overflow-hidden relative")}
                     data-testid="button-user-menu"
                   >
                     <Avatar className="h-9 w-9">
@@ -690,6 +714,13 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                         {userInitial}
                       </AvatarFallback>
                     </Avatar>
+                    <span 
+                      className={cn(
+                        "absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white dark:border-gray-800",
+                        getStatusColor(availabilityData?.status || "offline")
+                      )}
+                      data-testid="avatar-status-indicator"
+                    />
                   </button>
                 </DropdownMenuTrigger>
                 <DropdownMenuContent align="end" className="w-72 p-3 bg-white/95 dark:bg-gray-900/95 backdrop-blur-xl border-0 shadow-xl rounded-xl">
@@ -711,6 +742,42 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                       <Badge variant="secondary" className="mt-1 text-[10px] px-1.5 py-0">
                         {userSubtitle}
                       </Badge>
+                    </div>
+                  </div>
+                  
+                  <DropdownMenuSeparator className="my-2" />
+                  
+                  {/* Availability Status */}
+                  <div className="px-2 py-1.5">
+                    <p className="text-xs font-medium text-muted-foreground mb-2">Availability</p>
+                    <div className="space-y-1">
+                      <DropdownMenuItem
+                        onClick={() => updateAvailabilityMutation.mutate("online")}
+                        data-testid="menu-item-status-online"
+                        className="py-2 px-3 cursor-pointer rounded-md"
+                      >
+                        <span className="h-3 w-3 rounded-full bg-green-500 mr-3" />
+                        <span className="text-sm font-medium flex-1">Online</span>
+                        {availabilityData?.status === "online" && <Check className="h-4 w-4 text-green-500" />}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => updateAvailabilityMutation.mutate("busy")}
+                        data-testid="menu-item-status-busy"
+                        className="py-2 px-3 cursor-pointer rounded-md"
+                      >
+                        <span className="h-3 w-3 rounded-full bg-yellow-500 mr-3" />
+                        <span className="text-sm font-medium flex-1">Busy</span>
+                        {availabilityData?.status === "busy" && <Check className="h-4 w-4 text-yellow-500" />}
+                      </DropdownMenuItem>
+                      <DropdownMenuItem
+                        onClick={() => updateAvailabilityMutation.mutate("offline")}
+                        data-testid="menu-item-status-offline"
+                        className="py-2 px-3 cursor-pointer rounded-md"
+                      >
+                        <span className="h-3 w-3 rounded-full bg-red-500 mr-3" />
+                        <span className="text-sm font-medium flex-1">Offline</span>
+                        {availabilityData?.status === "offline" && <Check className="h-4 w-4 text-red-500" />}
+                      </DropdownMenuItem>
                     </div>
                   </div>
                   
