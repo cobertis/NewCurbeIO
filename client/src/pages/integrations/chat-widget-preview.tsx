@@ -1403,39 +1403,47 @@ export default function ChatWidgetPreviewPage() {
               )}
               
               <div className="p-4 space-y-3">
-                {/* Back to chat card for returning visitors */}
+                {/* Back to chat card for returning visitors - Textmagic style */}
                 {existingSession && !chatSessionId && !showPreChatForm && (
-                  <button
-                    onClick={resumeChat}
-                    disabled={chatLoading}
-                    className="w-full bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors text-left"
-                    data-testid="back-to-chat-card"
-                  >
-                    <div 
-                      className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                      style={{ background: currentBackground }}
-                    >
-                      <MessageCircle className="h-5 w-5 text-white" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                          Back to chat
-                        </span>
-                        {existingSession.lastMessageAt && (
-                          <span className="text-xs text-slate-500">
-                            {formatRelativeTime(existingSession.lastMessageAt)}
-                          </span>
-                        )}
+                  <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-lg border border-slate-100 dark:border-slate-700 overflow-hidden">
+                    <div className="p-4">
+                      <div className="flex items-start gap-3">
+                        <div 
+                          className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                          style={{ background: currentBackground }}
+                        >
+                          <MessageCircle className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center justify-between">
+                            <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                              {existingSession.displayName || 'Support Chat'}
+                            </span>
+                            {existingSession.lastMessageAt && (
+                              <span className="text-xs text-slate-400">
+                                {formatRelativeTime(existingSession.lastMessageAt)}
+                              </span>
+                            )}
+                          </div>
+                          {existingSession.lastMessage && (
+                            <p className="text-sm text-slate-500 dark:text-slate-400 truncate mt-0.5">
+                              {existingSession.lastMessage}
+                            </p>
+                          )}
+                        </div>
                       </div>
-                      {existingSession.lastMessage && (
-                        <p className="text-xs text-slate-500 truncate mt-0.5">
-                          {existingSession.lastMessage}
-                        </p>
-                      )}
                     </div>
-                    <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0" />
-                  </button>
+                    <button
+                      onClick={resumeChat}
+                      disabled={chatLoading}
+                      className="w-full py-3 border-t border-slate-100 dark:border-slate-700 flex items-center justify-center gap-1 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors"
+                      style={{ color: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3b82f6' }}
+                      data-testid="back-to-chat-card"
+                    >
+                      <span className="text-sm font-semibold">Back to chat</span>
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                  </div>
                 )}
 
                 {widget.channels?.liveChat && !chatSessionId && !showPreChatForm && !existingSession && (
