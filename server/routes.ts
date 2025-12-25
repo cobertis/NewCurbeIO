@@ -38870,13 +38870,19 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     if (!req.user) {
       return res.status(401).json({ message: "Unauthorized" });
     }
-    const { id } = req.params;
-    const { displayName, email, jobTitle, organization } = req.body;
+    const { displayName, email, jobTitle, organization, status } = req.body;
     const companyId = (req.user as any).companyId;
     
     try {
+      const updateData: any = { updatedAt: new Date() };
+      if (displayName !== undefined) updateData.displayName = displayName || null;
+      if (email !== undefined) updateData.email = email || null;
+      if (jobTitle !== undefined) updateData.jobTitle = jobTitle || null;
+      if (organization !== undefined) updateData.organization = organization || null;
+      if (status !== undefined) updateData.status = status;
+      
       await db.update(telnyxConversations)
-        .set({ displayName: displayName || null, email: email || null, jobTitle: jobTitle || null, organization: organization || null, updatedAt: new Date() })
+        .set(updateData)
         .where(and(
           eq(telnyxConversations.id, id),
           eq(telnyxConversations.companyId, companyId)

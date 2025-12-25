@@ -449,6 +449,44 @@ export default function InboxPage() {
     },
   });
 
+  const solveChatMutation = useMutation({
+    mutationFn: async (conversationId: string) => {
+      return apiRequest("PATCH", `/api/inbox/conversations/${conversationId}`, { status: "solved" });
+    },
+    onMutate: async (conversationId: string) => {
+      await queryClient.cancelQueries({ queryKey: ["/api/inbox/conversations"] });
+      const previousData = queryClient.getQueryData(["/api/inbox/conversations"]);
+      queryClient.setQueryData(["/api/inbox/conversations"], (old: any) => {
+        if (!old?.conversations) return old;
+        return {
+          ...old,
+          conversations: old.conversations.map((conv: any) =>
+            conv.id === conversationId ? { ...conv, status: "solved" } : conv
+          ),
+        };
+      });
+      return { previousData };
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      setActiveView("solved");
+      toast({
+        title: "Conversation solved",
+        description: "The conversation has been moved to Solved.",
+      });
+    },
+    onError: (error: any, _variables, context: any) => {
+      if (context?.previousData) {
+        queryClient.setQueryData(["/api/inbox/conversations"], context.previousData);
+      }
+      toast({
+        title: "Failed to solve conversation",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
   const startChatWithVisitorMutation = useMutation({
     mutationFn: async (data: { visitorId: string; message: string; widgetId?: string }) => {
       const res = await apiRequest("POST", "/api/inbox/start-chat-visitor", data);
@@ -1113,9 +1151,11 @@ export default function InboxPage() {
                   variant="outline"
                   size="sm"
                   className="hidden sm:flex"
+                  onClick={() => solveChatMutation.mutate(selectedConversation.id)}
+                  disabled={solveChatMutation.isPending || (selectedConversation as any).status === "solved"}
                   data-testid="btn-solve"
                 >
-                  Solve
+                  {solveChatMutation.isPending ? "Solving..." : "Solve"}
                 </Button>
                 <TooltipProvider>
                   <Tooltip>
