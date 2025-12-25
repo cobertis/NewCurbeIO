@@ -88,6 +88,8 @@ export default function ChatWidgetPreviewPage() {
   const [showPreChatForm, setShowPreChatForm] = useState(false);
   const [agentTyping, setAgentTyping] = useState(false);
   const [chatStartTime] = useState(new Date());
+  const [isWaitingForAgent, setIsWaitingForAgent] = useState(true);
+  const [sentInitialMessage, setSentInitialMessage] = useState('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   const { data: widgetData, isLoading } = useQuery<{ widget: any }>({
@@ -199,15 +201,20 @@ export default function ChatWidgetPreviewPage() {
       setChatSessionId(sessionId);
       setChatVisitorId(visitorId);
       setShowPreChatForm(false);
+      setIsWaitingForAgent(true);
+      
+      // Save initial message for display in queue view
+      const messageToSend = initialMessage.trim();
+      setSentInitialMessage(messageToSend || 'Hello');
       
       // If there's an initial message, send it immediately
-      if (initialMessage.trim()) {
+      if (messageToSend) {
         const msgRes = await fetch('/api/public/live-chat/message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             sessionId,
-            text: initialMessage.trim(),
+            text: messageToSend,
             visitorName: visitorName || 'Website Visitor',
           }),
         });
@@ -271,6 +278,11 @@ export default function ChatWidgetPreviewPage() {
               const filtered = prev.filter(m => !newIds.has(m.id));
               return [...filtered, ...messages].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
             });
+            // Check if any message is from agent (outbound = from company)
+            const hasAgentMessage = messages.some((m: any) => m.direction === 'outbound');
+            if (hasAgentMessage) {
+              setIsWaitingForAgent(false);
+            }
           }
         }
       } catch (error) {
@@ -945,15 +957,18 @@ export default function ChatWidgetPreviewPage() {
               </div>
               
               {/* Messages Area */}
-              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-4 bg-slate-50 dark:bg-slate-800/50">
-                {/* Date separator */}
-                <div className="flex items-center justify-center">
-                  <span className="text-[10px] text-slate-400 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-full">
-                    {chatStartTime.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                  </span>
+              <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-slate-50 dark:bg-slate-800/50">
+                {/* Visitor's initial message with Name/Email/Message */}
+                <div className="flex justify-end">
+                  <div className="rounded-2xl rounded-tr-sm px-4 py-2.5 max-w-[85%] text-white" style={{ background: currentBackground }}>
+                    <p className="text-xs mb-1"><strong>Name:</strong> {visitorName || 'Website Visitor'}</p>
+                    <p className="text-xs mb-1"><strong>Email:</strong> {visitorEmail || 'Not provided'}</p>
+                    <p className="text-xs"><strong>Message:</strong> {sentInitialMessage || chatMessages[0]?.text || 'Hello'}</p>
+                    <p className="text-[10px] opacity-75 text-right mt-1">{formatMessageTime(chatStartTime)}</p>
+                  </div>
                 </div>
                 
-                {/* Welcome system message */}
+                {/* Auto-reply system message */}
                 <div className="flex items-end gap-2">
                   <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-medium" style={{ background: currentBackground }}>
                     <MessageCircle className="h-3.5 w-3.5" />
@@ -961,61 +976,50 @@ export default function ChatWidgetPreviewPage() {
                   <div className="flex flex-col">
                     <div className="bg-white dark:bg-slate-700 rounded-2xl rounded-bl-md px-3 py-2 shadow-sm max-w-[85%]">
                       <p className="text-sm text-slate-700 dark:text-slate-200">
-                        Hi {visitorName || 'there'}! Thanks for reaching out. How can we help you today?
+                        {widget.liveChatSettings?.queueSettings?.autoReplyMessage || "Please wait a moment while we connect you with the next available agent."}
                       </p>
                     </div>
                     <span className="text-[10px] text-slate-400 mt-1 ml-1">{formatMessageTime(chatStartTime)}</span>
                   </div>
                 </div>
                 
-                {/* Chat messages */}
-                {chatMessages.map((msg, index) => (
-                  <div 
-                    key={msg.id}
-                    className={`flex ${msg.direction === 'inbound' ? 'justify-end' : 'items-end gap-2'}`}
-                  >
-                    {/* Agent avatar for outbound messages */}
-                    {msg.direction !== 'inbound' && (
-                      <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-medium" style={{ background: currentBackground }}>
-                        <MessageCircle className="h-3.5 w-3.5" />
+                {/* Queue/Waiting indicator */}
+                {isWaitingForAgent && (
+                  <div className="flex flex-col items-center justify-center py-4">
+                    <p className="text-xs text-slate-500">Searching for available agents...</p>
+                    <div className="mt-2 animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div>
+                  </div>
+                )}
+                
+                {/* Chat messages from agent */}
+                {chatMessages.filter(m => m.direction === 'outbound').map((msg) => (
+                  <div key={msg.id} className="flex items-end gap-2">
+                    <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-medium" style={{ background: currentBackground }}>
+                      <MessageCircle className="h-3.5 w-3.5" />
+                    </div>
+                    <div className="flex flex-col items-start">
+                      <div className="rounded-2xl rounded-bl-md bg-white dark:bg-slate-700 shadow-sm px-3 py-2 max-w-[85%]">
+                        <p className="text-sm text-slate-700 dark:text-slate-200">{msg.text}</p>
                       </div>
-                    )}
-                    <div className={`flex flex-col ${msg.direction === 'inbound' ? 'items-end' : 'items-start'}`}>
-                      <div 
-                        className={`rounded-2xl px-3 py-2 max-w-[85%] ${
-                          msg.direction === 'inbound' 
-                            ? 'rounded-br-md text-white' 
-                            : 'rounded-bl-md bg-white dark:bg-slate-700 shadow-sm'
-                        }`}
-                        style={msg.direction === 'inbound' ? { background: currentBackground } : {}}
-                      >
-                        <p className={`text-sm ${msg.direction === 'inbound' ? 'text-white' : 'text-slate-700 dark:text-slate-200'}`}>{msg.text}</p>
-                      </div>
-                      <div className={`flex items-center gap-1 mt-0.5 ${msg.direction === 'inbound' ? 'mr-1' : 'ml-1'}`}>
-                        <span className="text-[10px] text-slate-400">{formatMessageTime(msg.createdAt)}</span>
-                        {msg.direction === 'inbound' && (
-                          <CheckCheck className="h-3 w-3 text-blue-500" />
-                        )}
-                      </div>
+                      <span className="text-[10px] text-slate-400 mt-0.5 ml-1">{formatMessageTime(msg.createdAt)}</span>
                     </div>
                   </div>
                 ))}
                 
-                {/* Typing indicator when waiting for agent */}
-                {chatMessages.filter(m => m.direction !== 'inbound').length === 0 && (
-                  <div className="flex items-end gap-2">
-                    <div className="w-7 h-7 rounded-full flex-shrink-0 flex items-center justify-center text-white text-xs font-medium" style={{ background: currentBackground }}>
-                      <MessageCircle className="h-3.5 w-3.5" />
-                    </div>
-                    <div className="bg-white dark:bg-slate-700 rounded-2xl rounded-bl-md px-4 py-3 shadow-sm">
-                      <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
+                {/* Visitor follow-up messages */}
+                {chatMessages.filter(m => m.direction === 'inbound').slice(1).map((msg) => (
+                  <div key={msg.id} className="flex justify-end">
+                    <div className="flex flex-col items-end">
+                      <div className="rounded-2xl rounded-br-md px-3 py-2 max-w-[85%] text-white" style={{ background: currentBackground }}>
+                        <p className="text-sm">{msg.text}</p>
+                      </div>
+                      <div className="flex items-center gap-1 mt-0.5 mr-1">
+                        <span className="text-[10px] text-slate-400">{formatMessageTime(msg.createdAt)}</span>
+                        <CheckCheck className="h-3 w-3 text-blue-500" />
                       </div>
                     </div>
                   </div>
-                )}
+                ))}
                 
                 <div ref={messagesEndRef} />
               </div>
