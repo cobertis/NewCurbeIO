@@ -3964,19 +3964,11 @@ export default function ChatWidgetEditPage() {
                           <Button 
                             variant="outline" 
                             size="sm"
-                            onClick={() => setLocation(`/settings/chat-widget/${widgetId}/preview`)}
+                            onClick={() => window.open(`/widget/${widgetId}`, '_blank')}
                             data-testid="button-view-test"
                           >
                             <ExternalLink className="h-4 w-4 mr-2" />
                             View test page
-                          </Button>
-                          <Button 
-                            variant="outline" 
-                            size="sm"
-                            data-testid="button-send-instructions"
-                          >
-                            <Mail className="h-4 w-4 mr-2" />
-                            Send instructions
                           </Button>
                         </div>
                       </div>

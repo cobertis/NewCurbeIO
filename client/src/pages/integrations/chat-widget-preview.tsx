@@ -476,6 +476,13 @@ export default function ChatWidgetPreviewPage() {
     return () => clearInterval(interval);
   }, [chatSessionId]);
 
+  // Set document title for public widget preview
+  useEffect(() => {
+    if (isPublicMode) {
+      document.title = "Chat Widget Preview";
+    }
+  }, [isPublicMode]);
+
   const defaultWidget = {
     name: "Website Widget",
     colorTheme: "blue",
