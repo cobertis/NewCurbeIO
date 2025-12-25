@@ -7081,3 +7081,42 @@ export const insertSesEmailQueueSchema = createInsertSchema(sesEmailQueue).omit(
 
 export type SesEmailQueue = typeof sesEmailQueue.$inferSelect;
 export type InsertSesEmailQueue = z.infer<typeof insertSesEmailQueueSchema>;
+
+// Live Widget Visitors - Track visitors in real-time
+export const liveWidgetVisitors = pgTable("live_widget_visitors", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  widgetId: varchar("widget_id").notNull(),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  
+  // Visitor identification
+  visitorId: varchar("visitor_id").notNull(),
+  
+  // Location info from IP
+  ipAddress: text("ip_address"),
+  city: text("city"),
+  state: text("state"),
+  country: text("country"),
+  
+  // Current page
+  currentUrl: text("current_url"),
+  pageTitle: text("page_title"),
+  
+  // Timing
+  firstSeenAt: timestamp("first_seen_at").notNull().defaultNow(),
+  lastSeenAt: timestamp("last_seen_at").notNull().defaultNow(),
+  
+}, (table) => ({
+  widgetIdIdx: index("live_widget_visitors_widget_id_idx").on(table.widgetId),
+  companyIdIdx: index("live_widget_visitors_company_id_idx").on(table.companyId),
+  visitorIdWidgetUnique: unique("live_widget_visitors_visitor_widget_unique").on(table.visitorId, table.widgetId),
+  lastSeenAtIdx: index("live_widget_visitors_last_seen_idx").on(table.lastSeenAt),
+}));
+
+export const insertLiveWidgetVisitorSchema = createInsertSchema(liveWidgetVisitors).omit({
+  id: true,
+  firstSeenAt: true,
+  lastSeenAt: true,
+});
+
+export type LiveWidgetVisitor = typeof liveWidgetVisitors.$inferSelect;
+export type InsertLiveWidgetVisitor = z.infer<typeof insertLiveWidgetVisitorSchema>;

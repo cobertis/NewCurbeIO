@@ -38844,3 +38844,164 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   return httpServer;
 }
+
+  // ============================================
+  // LIVE VISITORS TRACKING
+  // ============================================
+  
+  // In-memory storage for live visitors (more efficient than DB for ephemeral data)
+  const liveVisitors = new Map<string, {
+    id: string;
+    widgetId: string;
+    companyId: string;
+    visitorId: string;
+    ipAddress: string | null;
+    city: string | null;
+    state: string | null;
+    country: string | null;
+    currentUrl: string | null;
+    pageTitle: string | null;
+    firstSeenAt: Date;
+    lastSeenAt: Date;
+  }>();
+  
+  // IP geolocation cache (1 hour TTL)
+  const geoCache = new Map<string, { city: string; state: string; country: string; cachedAt: number }>();
+  const GEO_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+  
+  // Cleanup stale visitors every 30 seconds
+  setInterval(() => {
+    const now = Date.now();
+    const staleThreshold = 60000; // 60 seconds
+    for (const [key, visitor] of liveVisitors.entries()) {
+      if (now - visitor.lastSeenAt.getTime() > staleThreshold) {
+        liveVisitors.delete(key);
+        // Broadcast removal
+        broadcastConversationUpdate(visitor.companyId);
+      }
+    }
+  }, 30000);
+  
+  // Helper: Get geo info from IP
+  async function getGeoFromIP(ip: string): Promise<{ city: string; state: string; country: string } | null> {
+    // Check cache
+    const cached = geoCache.get(ip);
+    if (cached && Date.now() - cached.cachedAt < GEO_CACHE_TTL) {
+      return { city: cached.city, state: cached.state, country: cached.country };
+    }
+    
+    try {
+      // Use ipapi.co free tier (1000 requests/day)
+      const cleanIp = ip.replace(/^::ffff:/, '');
+      if (cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp.startsWith('192.168.') || cleanIp.startsWith('10.')) {
+        return { city: 'Local', state: 'Local', country: 'Local' };
+      }
+      
+      const response = await fetch(`https://ipapi.co/${cleanIp}/json/`);
+      if (response.ok) {
+        const data = await response.json();
+        const geo = {
+          city: data.city || 'Unknown',
+          state: data.region || 'Unknown',
+          country: data.country_name || 'Unknown',
+        };
+        geoCache.set(ip, { ...geo, cachedAt: Date.now() });
+        return geo;
+      }
+    } catch (error) {
+      console.error('[LiveVisitors] Geo lookup error:', error);
+    }
+    return null;
+  }
+  
+  // POST /api/public/live-visitors/heartbeat - Track visitor activity
+  app.post("/api/public/live-visitors/heartbeat", async (req: Request, res: Response) => {
+    const { widgetId, visitorId, currentUrl, pageTitle } = req.body;
+    
+    if (!widgetId || !visitorId) {
+      return res.status(400).json({ error: "widgetId and visitorId are required" });
+    }
+    
+    try {
+      // Get widget to find company
+      const [widget] = await db
+        .select({ companyId: chatWidgets.companyId })
+        .from(chatWidgets)
+        .where(eq(chatWidgets.id, widgetId));
+      
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      const key = `${widgetId}:${visitorId}`;
+      const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || '';
+      const now = new Date();
+      
+      let visitor = liveVisitors.get(key);
+      
+      if (visitor) {
+        // Update existing visitor
+        visitor.currentUrl = currentUrl || visitor.currentUrl;
+        visitor.pageTitle = pageTitle || visitor.pageTitle;
+        visitor.lastSeenAt = now;
+      } else {
+        // New visitor - get geo info
+        const geo = await getGeoFromIP(ip);
+        
+        visitor = {
+          id: `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          widgetId,
+          companyId: widget.companyId,
+          visitorId,
+          ipAddress: ip,
+          city: geo?.city || null,
+          state: geo?.state || null,
+          country: geo?.country || null,
+          currentUrl: currentUrl || null,
+          pageTitle: pageTitle || null,
+          firstSeenAt: now,
+          lastSeenAt: now,
+        };
+        liveVisitors.set(key, visitor);
+      }
+      
+      // Broadcast update to agents
+      broadcastConversationUpdate(widget.companyId);
+      
+      res.set({ "Access-Control-Allow-Origin": "*" });
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('[LiveVisitors] Heartbeat error:', error);
+      res.status(500).json({ error: "Failed to track visitor" });
+    }
+  });
+  
+  // GET /api/live-visitors - Get live visitors for company (requires auth)
+  app.get("/api/live-visitors", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    const companyId = (req.user as any).companyId;
+    
+    try {
+      const visitors = Array.from(liveVisitors.values())
+        .filter(v => v.companyId === companyId)
+        .sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime());
+      
+      res.json({ visitors });
+    } catch (error: any) {
+      console.error('[LiveVisitors] List error:', error);
+      res.status(500).json({ error: "Failed to fetch visitors" });
+    }
+  });
+  
+  // CORS preflight for heartbeat
+  app.options("/api/public/live-visitors/heartbeat", (req: Request, res: Response) => {
+    res.set({
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    });
+    res.status(204).send();
+  });
