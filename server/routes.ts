@@ -28736,7 +28736,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
                 firstName: assignedAgent.firstName,
                 lastName: assignedAgent.lastName,
                 fullName: ((assignedAgent.firstName || '') + ' ' + (assignedAgent.lastName || '')).trim() || 'Support Agent',
-                profileImageUrl: assignedAgent.profileImageUrl,
+                profileImageUrl: assignedAgent.avatar,
               };
             }
           }
@@ -28802,7 +28802,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
               firstName: assignedAgent.firstName,
               lastName: assignedAgent.lastName,
               fullName: ((assignedAgent.firstName || '') + ' ' + (assignedAgent.lastName || '')).trim() || 'Support Agent',
-              profileImageUrl: assignedAgent.profileImageUrl,
+              profileImageUrl: assignedAgent.avatar,
             };
           }
         }
@@ -28874,7 +28874,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             id: users.id,
             firstName: users.firstName,
             lastName: users.lastName,
-            profileImageUrl: users.profileImageUrl,
+            avatar: users.avatar,
           })
           .from(users)
           .where(eq(users.id, conversation.assignedTo));
@@ -28885,7 +28885,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             firstName: assignedAgent.firstName,
             lastName: assignedAgent.lastName,
             fullName: `${assignedAgent.firstName || ""} ${assignedAgent.lastName || ""}`.trim() || "Support Agent",
-            profileImageUrl: assignedAgent.profileImageUrl,
+            profileImageUrl: assignedAgent.avatar,
           };
         }
       }
