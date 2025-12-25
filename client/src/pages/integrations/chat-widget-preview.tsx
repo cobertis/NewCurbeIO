@@ -249,11 +249,13 @@ export default function ChatWidgetPreviewPage() {
             lastMessage: lastMessage || null,
             lastMessageAt: lastMessageAt || null,
           });
+          // CRITICAL: Set chatSessionId immediately so messages can be sent
+          setChatSessionId(sessionId);
           // Store agent info if available
           if (agent) {
             setConnectedAgent(agent);
           }
-          console.log('[Chat] Found existing session:', sessionId);
+          console.log('[Chat] Found existing session, set chatSessionId:', sessionId);
         } else {
           setExistingSession(null);
         }
