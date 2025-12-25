@@ -1882,7 +1882,7 @@ export default function ChatWidgetPreviewPage() {
                 >
                   Start new chat
                 </button>
-                {!solvedChatData.rating && widget.liveChatSettings?.satisfactionSurvey?.enabled && (
+                {widget.liveChatSettings?.satisfactionSurvey?.enabled && (
                   <button
                     onClick={openSurveyFromSolvedChat}
                     className="w-full py-2.5 px-4 rounded-lg text-sm font-medium border-2 bg-transparent"

@@ -164,6 +164,9 @@ interface LiveVisitor {
   id: string;
   widgetId: string;
   visitorId: string;
+  firstName: string | null;
+  lastName: string | null;
+  email: string | null;
   ipAddress: string | null;
   city: string | null;
   state: string | null;
@@ -300,6 +303,11 @@ export default function InboxPage() {
     const interval = setInterval(pollPreview, 1000);
     return () => clearInterval(interval);
   }, [selectedConversationId, selectedConversation?.channel]);
+
+  useEffect(() => {
+    setSelectedConversationId(null);
+    setMobileView("threads");
+  }, [activeView]);
 
   const sendMessageMutation = useMutation({
     mutationFn: async ({ conversationId, text, isInternalNote, files, optimisticId }: { conversationId: string; text: string; isInternalNote?: boolean; files?: File[]; optimisticId: string }) => {
@@ -471,6 +479,8 @@ export default function InboxPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/inbox/conversations"] });
+      setSelectedConversationId(null);
+      setMobileView("threads");
       setActiveView("solved");
       toast({
         title: "Conversation solved",
@@ -888,9 +898,12 @@ export default function InboxPage() {
                         const minutes = Math.floor(timeOnSite / 60);
                         const seconds = timeOnSite % 60;
                         const duration = minutes > 0 ? `${minutes}m ${seconds}s` : `${seconds}s`;
-                        const animalName = getAnimalName(visitor.visitorId);
+                        const realName = visitor.firstName 
+                          ? `${visitor.firstName}${visitor.lastName ? ' ' + visitor.lastName : ''}`
+                          : null;
+                        const displayName = realName || getAnimalName(visitor.visitorId);
                         const avatarColors = getAvatarColor(visitor.visitorId);
-                        const initials = animalName.split(' ').map(w => w[0]).join('');
+                        const initials = displayName.split(' ').map(w => w[0]).join('');
                         
                         return (
                           <tr
@@ -907,7 +920,7 @@ export default function InboxPage() {
                                   <div className="absolute -bottom-0.5 -right-0.5 h-3 w-3 bg-green-500 rounded-full border-2 border-white" />
                                 </div>
                                 <div>
-                                  <p className="font-medium text-sm">{animalName}</p>
+                                  <p className="font-medium text-sm">{displayName}</p>
                                   <p className="text-xs text-muted-foreground">{formatDistanceToNow(new Date(visitor.firstSeenAt), { addSuffix: true })}</p>
                                 </div>
                               </div>
