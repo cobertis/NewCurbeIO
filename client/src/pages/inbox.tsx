@@ -1021,7 +1021,7 @@ export default function InboxPage() {
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
                         <span className="font-medium truncate">
-                          {conversation.displayName || formatForDisplay(conversation.phoneNumber)}
+                          {conversation.displayName || (conversation.channel === "live_chat" ? "Website Visitor" : formatForDisplay(conversation.phoneNumber))}
                         </span>
                         <span className="text-xs text-muted-foreground shrink-0">
                           {conversation.lastMessageAt && formatMessageTime(conversation.lastMessageAt)}
@@ -1318,7 +1318,7 @@ export default function InboxPage() {
                           {/* Timestamp and status inside bubble at bottom right */}
                           <div className="flex items-center gap-1 mt-1 justify-end">
                             <span className="text-[11px] text-gray-500">
-                              {format(new Date(message.createdAt), "h:mm a")}
+                              {new Intl.DateTimeFormat('default', { hour: 'numeric', minute: '2-digit' }).format(new Date(message.createdAt))}
                             </span>
                             {isOutbound && !isNote && (
                               <span className="text-green-500">
@@ -1784,15 +1784,27 @@ export default function InboxPage() {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
-                        <div className="flex-1">
-                          <p className="text-xs text-muted-foreground">Phone</p>
-                          <p className="text-sm font-medium" data-testid="text-phone">
-                            {formatForDisplay(selectedConversation.phoneNumber)}
-                          </p>
+                      {selectedConversation.channel === "live_chat" ? (
+                        <div className="flex items-center gap-3">
+                          <Globe className="h-4 w-4 text-orange-500 shrink-0" />
+                          <div className="flex-1">
+                            <p className="text-xs text-muted-foreground">Channel</p>
+                            <p className="text-sm font-medium" data-testid="text-phone">
+                              Live Chat
+                            </p>
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="flex items-center gap-3">
+                          <Phone className="h-4 w-4 text-muted-foreground shrink-0" />
+                          <div className="flex-1">
+                            <p className="text-xs text-muted-foreground">Phone</p>
+                            <p className="text-sm font-medium" data-testid="text-phone">
+                              {formatForDisplay(selectedConversation.phoneNumber)}
+                            </p>
+                          </div>
+                        </div>
+                      )}
                       <div className="flex items-center gap-3">
                         <Mail className="h-4 w-4 text-muted-foreground shrink-0" />
                         <div className="flex-1">
@@ -1813,17 +1825,19 @@ export default function InboxPage() {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <MessageSquare className="h-4 w-4 text-blue-600 shrink-0" />
-                        <div className="flex-1">
-                          <p className="text-xs text-muted-foreground">
-                            {selectedConversation.channel === "imessage" ? "iMessage" : "SMS"}
-                          </p>
-                          <p className="text-sm font-medium" data-testid="text-channel-number">
-                            {formatForDisplay(selectedConversation.phoneNumber)}
-                          </p>
+                      {selectedConversation.channel !== "live_chat" && (
+                        <div className="flex items-center gap-3">
+                          <MessageSquare className="h-4 w-4 text-blue-600 shrink-0" />
+                          <div className="flex-1">
+                            <p className="text-xs text-muted-foreground">
+                              {selectedConversation.channel === "imessage" ? "iMessage" : "SMS"}
+                            </p>
+                            <p className="text-sm font-medium" data-testid="text-channel-number">
+                              {formatForDisplay(selectedConversation.phoneNumber)}
+                            </p>
+                          </div>
                         </div>
-                      </div>
+                      )}
                       <div className="flex items-center gap-3">
                         <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
                         <div className="flex-1">

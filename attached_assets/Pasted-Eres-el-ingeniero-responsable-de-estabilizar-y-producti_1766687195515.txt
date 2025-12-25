@@ -1,0 +1,150 @@
+Eres el ingeniero responsable de estabilizar y “production-hardening” el módulo Chat Widget + Inbox de Curbe.io. Ya funciona end-to-end, pero hay errores de estado, sincronización y datos. Necesito que revises el sistema completo (frontend widget, frontend inbox, backend realtime, DB) y lo dejes sólido, consistente y sin “unknown states”.
+
+CONTEXTO (lo que ya existe y funciona)
+- Settings > Chat widget:
+  - Lista de widgets (ej: “InsureMax”) pero Status aparece “Unknown” y Domain vacío.
+  - Editor del widget con secciones: Appearance (Color theme, Branding, Minimized state, Welcome screen), Channels (Live chat, Text message, Call, WhatsApp, Telegram…), Targeting y Embed code.
+  - Preview del widget a la derecha.
+- Widget embebible:
+  - Pantalla inicial con “Hi there” + opciones (Start chat + canales alternos).
+  - Flujo Start chat: pide Name + Email (y message) y pasa a “Searching for available agents…”.
+  - Cuando agente entra, aparece header con avatar/nombre (ej: Javier Lazo) y mensaje “joined the chat”.
+- Inbox:
+  - Vistas: Open/Unread/Assigned/Unassigned/Waiting live chats/Live visitors/Solved/All chats.
+  - Live visitors: muestra visitante (ej: Pink Lion), URL, location, time on site, botón Start Chat.
+  - Waiting live chats: aparece conversación (ej: Carlos Lopez, “hola”), botón “Accept Chat”.
+  - Panel derecha muestra details (status Waiting, assignee Unassigned, IP, URL, browser, OS, Chat ID, created, contact fields).
+
+PROBLEMAS OBSERVADOS (basado en screenshots)
+P0 (bloqueantes):
+1) Widget list: Status “Unknown” y Domain vacío.
+   - Debe mostrar Active/Installed/Seen + última actividad, y el domain actual detectado (si lo configuran por Targeting).
+2) Estado del chat en widget:
+   - Se queda en “Searching for available agents…” incluso cuando el agente entra.
+   - Falta transición clara: WAITING → CONNECTED → ACTIVE.
+   - Falta timeout: si no hay agentes en X segundos, debe mostrar fallback (“Leave a message / We’re offline / Schedule / SMS / WhatsApp”).
+3) Timestamps inconsistentes:
+   - Cliente 1:20 PM y agente 6:21 PM en el mismo thread: hay bug de timezone o createdAt.
+4) Contact details mal mapeados:
+   - “Phone” y “SMS” muestran valores tipo visitor_XXXXXXXX. Eso NO es teléfono.
+   - visitor_id debe vivir en campo propio (visitorId/sessionId), no en phone/sms.
+P1 (importantes):
+5) Live visitors vs conversations:
+   - Asegurar que cuando un visitor crea chat, desaparece o cambia estado y la conversación se refleja correctamente en Waiting/Open.
+6) Real-time reliability:
+   - Mensajes deben llegar en tiempo real a Inbox y a Widget sin refresh.
+   - Reconnect: si el widget recarga, debe re-hidratar conversación (continuidad).
+P2 (mejoras):
+7) UX: cuando agente acepta, el widget debe:
+   - Quitar spinner
+   - Cambiar copy a “Connected with {agentName}”
+   - Mostrar indicador “agent online”
+8) “Copy embed code” debe generar snippet correcto por widget + tenant + domain.
+
+OBJETIVO FINAL / CRITERIOS DE ACEPTACIÓN
+A. “Status” del widget:
+- Al cargar un sitio con el snippet, el backend registra un “installation ping” y marca el widget como Active.
+- Lista de widgets muestra:
+  - Domain detectado o el domain objetivo (según Targeting)
+  - Last seen timestamp
+  - Status: Active / Inactive / Misconfigured (si snippet no reporta en 24h)
+B. Flujo live chat robusto:
+- Visitor inicia chat → se crea conversation en estado WAITING.
+- Inbox muestra conversación en “Waiting live chats” con botón Accept.
+- Agente presiona Accept → conversation pasa a ASSIGNED/OPEN y se asigna a ese agente.
+- Widget recibe evento realtime y cambia de WAITING a CONNECTED/ACTIVE (sin quedarse “Searching…”).
+- Mensajes bidireccionales en tiempo real.
+- Botón Solve marca la conversación como SOLVED y el widget muestra mensaje final + opción de “start new chat”.
+C. Datos correctos:
+- Contact guarda name/email/ip/userAgent/currentUrl/visitorId.
+- NO guardar visitorId en phone o sms.
+- Timestamp consistente en UI (usar ISO + timezone claro).
+D. Fallback/Offline:
+- Si no hay agentes online o nadie acepta en 60s:
+  - Widget muestra “We’re offline” + alternativas: leave message (creates ticket), WhatsApp, SMS, Call.
+- Ese “leave message” debe crear conversación tipo “offline_message” o ticket interno.
+
+IMPLEMENTACIÓN (guía técnica, sin inventar frameworks)
+1) Handshake/heartbeat del widget (P0):
+- El snippet del widget debe enviar:
+  - widgetId
+  - tenantId (si aplica)
+  - currentDomain
+  - currentUrl
+  - visitorId (cookie/localStorage)
+  - timestamp
+- Endpoint: POST /api/chat/widgets/:id/heartbeat
+- Backend:
+  - valida widgetId (y domain si Targeting está configurado)
+  - actualiza: lastSeenAt, lastSeenDomain, lastSeenUrl, status=ACTIVE
+  - si domain no coincide con targeting -> status=MISCONFIGURED y no servir widget (o servir con warning según config)
+
+2) Real-time events (P0/P1):
+- Usa un canal realtime (WebSocket/SSE) para:
+  - visitor_presence_update (para Live visitors)
+  - conversation_created
+  - conversation_status_changed
+  - conversation_assigned
+  - message_created
+- IMPORTANTE: widget client y inbox client deben escuchar el mismo “truth stream”.
+- Al aceptar chat, el backend debe emitir conversation_assigned y conversation_status_changed.
+
+3) Estado de conversación (P0):
+- Define estados claros:
+  - WAITING (visitor creó chat, sin agente)
+  - OPEN (asignada, en curso)
+  - SOLVED (cerrada)
+- Widget UI:
+  - WAITING => spinner + “connecting…”
+  - OPEN => input habilitado, header con agente, se elimina “connecting…”
+  - SOLVED => input deshabilitado + “chat ended”
+
+4) Timestamps (P0):
+- Guardar createdAt en UTC ISO (server).
+- UI: renderizar con Intl.DateTimeFormat usando timezone del navegador.
+- Revisar que no estés mezclando Date.now() del cliente para unos mensajes y server time para otros.
+
+5) Modelo de Contact (P0):
+- Campos: visitorId, name, email, phone(optional), ip, userAgent, currentUrl, location(optional).
+- Quitar cualquier mapeo visitorId → phone/sms.
+- Si no hay phone, mostrar “—”.
+
+6) Live visitors (P1):
+- Visitor session:
+  - Cada heartbeat actualiza timeOnSite y currentUrl
+  - Live visitors expira si lastSeenAt > 60s
+- Al iniciar chat, el visitor sigue “live” pero con badge “in chat” o se mueve a vista correspondiente.
+
+7) Timeout + offline fallback (P1):
+- Widget: si estado WAITING > 60s sin assigned agent:
+  - mostrar alternativas + “leave message”
+- Backend: si nadie acepta en 60s:
+  - opcional: auto-assign por round-robin a un agente online
+  - o mantener WAITING pero widget no se queda colgado.
+
+8) Embed code (P2):
+- “Copy embed code” debe incluir:
+  - script src único (tu CDN/app)
+  - data-widget-id
+  - data-tenant (si aplica)
+  - opcional: data-theme
+- Snippet debe funcionar sin depender del CRM.
+
+QA / TEST PLAN (obligatorio antes de darlo por listo)
+- Caso 1: Nuevo widget → copiar snippet → pegar en site → Status pasa a Active y domain se llena.
+- Caso 2: Visitor aparece en Live visitors con URL correcta y timeOnSite sube.
+- Caso 3: Visitor inicia chat → aparece en Waiting live chats en inbox.
+- Caso 4: Agente Accept → widget cambia a Connected inmediatamente, sin spinner eterno.
+- Caso 5: Mensajes bidireccionales real-time.
+- Caso 6: Refresh widget → mantiene conversación (rehidratación con visitorId).
+- Caso 7: Sin agentes online → widget hace timeout y ofrece fallback (leave message / WhatsApp / SMS / Call).
+- Caso 8: Solve → conversación se archiva y widget muestra cierre.
+
+ENTREGABLES
+1) Lista de bugs corregidos + PRs/commits.
+2) Documentación corta: endpoints, eventos realtime, estados de conversación.
+3) Video corto (screen recording) demostrando los 8 casos QA.
+
+PRIORIDAD
+Primero P0 (status/domain/assignment/timestamps/contact mapping). Luego P1 (presence/offline). Luego P2 (polish).
+No agregues features nuevas hasta que P0 esté limpio.

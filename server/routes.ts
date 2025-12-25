@@ -12,7 +12,7 @@ import { sesService } from "./services/ses-service";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
-import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppMessage, broadcastWhatsAppChatUpdate, broadcastWhatsAppConnection, broadcastWhatsAppQrCode, broadcastWhatsAppTyping, broadcastWhatsAppMessageStatus, broadcastWhatsAppEvent, broadcastWalletUpdate, broadcastNewCallLog, broadcastInboxMessage } from "./websocket";
+import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppMessage, broadcastWhatsAppChatUpdate, broadcastWhatsAppConnection, broadcastWhatsAppQrCode, broadcastWhatsAppTyping, broadcastWhatsAppMessageStatus, broadcastWhatsAppEvent, broadcastWalletUpdate, broadcastNewCallLog, broadcastInboxMessage, broadcastLiveChatEvent } from "./websocket";
 import { chargeCallToWallet } from "./services/pricing-service";
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
@@ -28637,7 +28637,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         .from(telnyxConversations)
         .where(and(
           eq(telnyxConversations.companyId, companyId),
-          eq(telnyxConversations.phoneNumber, finalVisitorId),
+          eq(telnyxConversations.phoneNumber, `livechat_${finalVisitorId}`),
           eq(telnyxConversations.channel, "live_chat"),
           not(inArray(telnyxConversations.status, ["solved", "archived"]))
         ))
@@ -28721,7 +28721,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         .select()
         .from(telnyxConversations)
         .where(and(
-          eq(telnyxConversations.phoneNumber, `visitor:${visitorId}`),
+          eq(telnyxConversations.phoneNumber, `livechat_${visitorId}`),
           eq(telnyxConversations.channel, "live_chat"),
           widgetId ? eq(telnyxConversations.companyPhoneNumber, widgetId as string) : sql`1=1`
         ))
@@ -28913,7 +28913,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         const displayName = visitorName || "Website Visitor";
         const [newConv] = await db.insert(telnyxConversations).values({
           companyId: widget.companyId,
-          phoneNumber: visitorId,
+          phoneNumber: `livechat_${visitorId}`,
           displayName,
           email: visitorEmail || null,
           companyPhoneNumber: widgetId,
@@ -29023,6 +29023,202 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
   
+  // POST /api/public/live-chat/heartbeat - Widget heartbeat for tracking
+  app.post("/api/public/live-chat/heartbeat", async (req: Request, res: Response) => {
+    res.set({ "Access-Control-Allow-Origin": "*" });
+    
+    const { widgetId, domain, currentUrl, visitorId } = req.body;
+    
+    if (!widgetId) {
+      return res.status(400).json({ error: "widgetId is required" });
+    }
+    
+    try {
+      // Verify widget exists
+      const widget = await db.query.chatWidgets.findFirst({
+        where: eq(chatWidgets.id, widgetId)
+      });
+      
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      // Update widget lastSeenAt and lastSeenDomain
+      await db
+        .update(chatWidgets)
+        .set({
+          lastSeenAt: new Date(),
+          lastSeenDomain: domain || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(chatWidgets.id, widgetId));
+      
+      // Update or create liveWidgetVisitors record if visitorId provided
+      if (visitorId) {
+        const visitorIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress || '';
+        
+        // Check if visitor exists
+        const [existingVisitor] = await db
+          .select()
+          .from(liveWidgetVisitors)
+          .where(and(
+            eq(liveWidgetVisitors.visitorId, visitorId),
+            eq(liveWidgetVisitors.widgetId, widgetId)
+          ))
+          .limit(1);
+        
+        if (existingVisitor) {
+          // Update existing visitor
+          await db
+            .update(liveWidgetVisitors)
+            .set({
+              currentUrl: currentUrl || existingVisitor.currentUrl,
+              lastSeenAt: new Date(),
+              ipAddress: visitorIp || existingVisitor.ipAddress,
+            })
+            .where(eq(liveWidgetVisitors.id, existingVisitor.id));
+        } else {
+          // Create new visitor record
+          await db.insert(liveWidgetVisitors).values({
+            widgetId,
+            companyId: widget.companyId,
+            visitorId,
+            currentUrl: currentUrl || null,
+            ipAddress: visitorIp || null,
+            totalSessions: 1,
+            totalChats: 0,
+          });
+        }
+      }
+      
+      // Return widget configuration for the client
+      res.json({
+        success: true,
+        widget: {
+          id: widget.id,
+          status: widget.status,
+          primaryColor: widget.primaryColor,
+          welcomeMessage: widget.welcomeMessage,
+          welcomeTitle: widget.welcomeTitle,
+          companyName: widget.companyName,
+          avatarUrl: widget.avatarUrl,
+          position: widget.position,
+          channels: widget.channels,
+          liveChatSettings: widget.liveChatSettings,
+        }
+      });
+    } catch (error: any) {
+      console.error("[LiveChat] Heartbeat error:", error);
+      res.status(500).json({ error: "Failed to process heartbeat" });
+    }
+  });
+  
+
+  // POST /api/public/live-chat/offline-message - Submit offline message when no agent is available
+  app.post("/api/public/live-chat/offline-message", async (req: Request, res: Response) => {
+    const { widgetId, visitorId, sessionId, visitorName, visitorEmail, message } = req.body;
+    
+    res.set({ "Access-Control-Allow-Origin": "*" });
+    
+    if (!message || !widgetId) {
+      return res.status(400).json({ error: "message and widgetId are required" });
+    }
+    
+    try {
+      // Get widget to find company
+      const widget = await db.query.chatWidgets.findFirst({
+        where: eq(chatWidgets.id, widgetId)
+      });
+      
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      // Get visitor IP
+      const visitorIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress || '';
+      
+      // Check if we have an existing session to update
+      let conversation;
+      if (sessionId) {
+        const [existing] = await db
+          .select()
+          .from(telnyxConversations)
+          .where(and(
+            eq(telnyxConversations.id, sessionId),
+            eq(telnyxConversations.channel, "live_chat")
+          ));
+        conversation = existing;
+      }
+      
+      if (conversation) {
+        // Update existing conversation status to pending/offline
+        await db
+          .update(telnyxConversations)
+          .set({
+            status: "waiting",
+            lastMessage: `[Offline Message] ${message.substring(0, 150)}`,
+            lastMessageAt: new Date(),
+            unreadCount: sql`${telnyxConversations.unreadCount} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(eq(telnyxConversations.id, sessionId));
+          
+        // Add the offline message
+        await db.insert(telnyxMessages).values({
+          conversationId: sessionId,
+          direction: "inbound",
+          messageType: "incoming",
+          channel: "live_chat",
+          text: `[Offline Message]\n${message}`,
+          contentType: "text",
+          status: "delivered",
+          createdAt: new Date(),
+        });
+        
+        console.log("[LiveChat] Added offline message to existing conversation:", sessionId);
+      } else {
+        // Create new conversation for offline message
+        const displayName = visitorName || "Website Visitor";
+        const [newConv] = await db.insert(telnyxConversations).values({
+          companyId: widget.companyId,
+          phoneNumber: `livechat_offline_${visitorId || Date.now()}`,
+          displayName,
+          email: visitorEmail || null,
+          companyPhoneNumber: widgetId,
+          status: "waiting",
+          channel: "live_chat",
+          widgetId: widgetId,
+          lastMessage: `[Offline Message] ${message.substring(0, 150)}`,
+          lastMessageAt: new Date(),
+          unreadCount: 1,
+          visitorIpAddress: visitorIp || null,
+        }).returning();
+        
+        // Add the offline message
+        await db.insert(telnyxMessages).values({
+          conversationId: newConv.id,
+          direction: "inbound",
+          messageType: "incoming",
+          channel: "live_chat",
+          text: `[Offline Message]\nName: ${visitorName || 'Not provided'}\nEmail: ${visitorEmail || 'Not provided'}\n\nMessage:\n${message}`,
+          contentType: "text",
+          status: "delivered",
+          createdAt: new Date(),
+        });
+        
+        console.log("[LiveChat] Created new conversation for offline message:", newConv.id);
+        
+        // Broadcast update to notify agents
+        const { broadcastConversationUpdate } = await import("./websocket");
+        broadcastConversationUpdate(widget.companyId);
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[LiveChat] Offline message error:", error);
+      res.status(500).json({ error: "Failed to submit offline message" });
+    }
+  });
   // OPTIONS handler for CORS preflight
   app.options("/api/public/live-chat/*", (req: Request, res: Response) => {
     res.set({
@@ -38113,8 +38309,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         if (conv.channel !== "live_chat" || conv.status !== "waiting") {
           return conv;
         }
-        // Extract visitorId from phoneNumber (format: visitor_xxx)
-        const visitorId = conv.phoneNumber?.startsWith("visitor_") ? conv.phoneNumber : null;
+        // Extract visitorId from phoneNumber (format: livechat_visitor_xxx)
+        const visitorId = conv.phoneNumber?.startsWith("livechat_") ? conv.phoneNumber : null;
         // Check if visitor is currently active
         const visitorKey = conv.widgetId && visitorId ? `${conv.widgetId}:${visitorId}` : null;
         const isVisitorActive = visitorKey ? liveVisitors.has(visitorKey) : false;
@@ -38651,6 +38847,20 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(409).json({ message: "Chat already accepted by another agent" });
       }
       
+      // Get agent info for the response and WebSocket broadcast
+      const [agent] = await db
+        .select({
+          id: users.id,
+          firstName: users.firstName,
+          lastName: users.lastName,
+          email: users.email,
+          avatar: users.avatar,
+        })
+        .from(users)
+        .where(eq(users.id, userId));
+      
+      const agentName = agent ? `${agent.firstName || ""} ${agent.lastName || ""}`.trim() || "Agent" : "Agent";
+      
       await db.update(telnyxConversations)
         .set({
           status: "open",
@@ -38659,10 +38869,29 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         })
         .where(eq(telnyxConversations.id, id));
       
+      // Broadcast to inbox UI
       broadcastConversationUpdate(companyId);
       
-      console.log(`[LiveChat] Agent ${userId} accepted chat ${id}`);
-      res.json({ success: true, conversationId: id });
+      // Broadcast to live chat widget via WebSocket
+      // The sessionId for live_chat is the conversation.id (also used as phoneNumber field)
+      const sessionId = conversation.id;
+      broadcastLiveChatEvent(companyId, sessionId, {
+        type: 'chat_accepted',
+        agentName,
+        agentId: userId,
+        agentAvatar: agent?.avatar || null,
+      });
+      
+      console.log(`[LiveChat] Agent ${userId} (${agentName}) accepted chat ${id}`);
+      res.json({ 
+        success: true, 
+        conversationId: id,
+        agent: {
+          id: userId,
+          name: agentName,
+          avatar: agent?.avatar || null,
+        }
+      });
     } catch (error: any) {
       console.error("[LiveChat] Accept error:", error);
       res.status(500).json({ message: "Failed to accept chat" });
@@ -38711,7 +38940,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         .from(telnyxConversations)
         .where(and(
           eq(telnyxConversations.companyId, companyId),
-          eq(telnyxConversations.phoneNumber, `visitor:${visitorId}`),
+          eq(telnyxConversations.phoneNumber, `livechat_${visitorId}`),
           eq(telnyxConversations.channel, "live_chat")
         ));
       
@@ -38722,7 +38951,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           .insert(telnyxConversations)
           .values({
             companyId,
-            phoneNumber: `visitor:${visitorId}`,
+            phoneNumber: `livechat_${visitorId}`,
             companyPhoneNumber: widget.id,
             channel: "live_chat",
             status: "open",

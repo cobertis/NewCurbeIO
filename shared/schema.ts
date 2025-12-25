@@ -4893,6 +4893,10 @@ export const chatWidgets = pgTable("chat_widgets", {
   // Channel order
   channelOrder: text("channel_order").array(),
   
+  // Widget tracking
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  lastSeenDomain: text("last_seen_domain"),
+  
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
 }, (table) => ({
@@ -4902,6 +4906,8 @@ export const chatWidgets = pgTable("chat_widgets", {
 
 export const insertChatWidgetSchema = createInsertSchema(chatWidgets).omit({
   id: true,
+  lastSeenAt: true,
+  lastSeenDomain: true,
   createdAt: true,
   updatedAt: true,
 });

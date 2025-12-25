@@ -2,7 +2,7 @@ import { useParams, Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, X, Monitor, Send, Smartphone, Globe, Check, CheckCheck, Paperclip, Smile } from "lucide-react";
+import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, X, Monitor, Send, Smartphone, Globe, Check, CheckCheck, Paperclip, Smile, Clock } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
@@ -13,7 +13,7 @@ import curbeLogo from "@assets/logo no fondo_1760457183587.png";
 function formatMessageTime(date: Date | string | null | undefined): string {
   if (!date) return '';
   const d = typeof date === 'string' ? new Date(date) : date;
-  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+  return new Intl.DateTimeFormat('default', { hour: 'numeric', minute: '2-digit' }).format(d);
 }
 
 const colorOptions = [
@@ -102,7 +102,6 @@ export default function ChatWidgetPreviewPage() {
   const [initialMessage, setInitialMessage] = useState('');
   const [showPreChatForm, setShowPreChatForm] = useState(false);
   const [agentTyping, setAgentTyping] = useState(false);
-  const [chatStartTime] = useState(new Date());
   const [isWaitingForAgent, setIsWaitingForAgent] = useState(true);
   const [sentInitialMessage, setSentInitialMessage] = useState('');
   const [connectedAgent, setConnectedAgent] = useState<{ 
@@ -118,9 +117,18 @@ export default function ChatWidgetPreviewPage() {
     lastMessage: string | null;
     lastMessageAt: string | null;
   } | null>(null);
+  const [showOfflineFallback, setShowOfflineFallback] = useState(false);
+  const [offlineMessage, setOfflineMessage] = useState('');
+  const [showLeaveMessageForm, setShowLeaveMessageForm] = useState(false);
+  const [offlineMessageSent, setOfflineMessageSent] = useState(false);
+  const [offlineMessageLoading, setOfflineMessageLoading] = useState(false);
+  const agentTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastPreviewSentRef = useRef<number>(0);
+  const liveChatWsRef = useRef<WebSocket | null>(null);
+  const wsReconnectAttemptRef = useRef<number>(0);
+  const wsReconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Use authenticated API only when not in public mode
   const { data: authWidgetData, isLoading: authLoading } = useQuery<{ widget: any }>({
@@ -151,6 +159,142 @@ export default function ChatWidgetPreviewPage() {
   // Determine which data to use based on mode
   const isLoading = isPublicMode ? publicLoading : authLoading;
   const effectiveWidgetData = isPublicMode ? publicWidgetData : authWidgetData;
+
+  // WebSocket connection for live chat - connects when waiting for agent
+  useEffect(() => {
+    if (!chatSessionId || !widgetId) return;
+    
+    // Get companyId from widget data
+    const widget = effectiveWidgetData?.widget;
+    const companyId = widget?.companyId;
+    
+    if (!companyId) {
+      console.log('[LiveChat WS] No companyId available yet, waiting...');
+      return;
+    }
+    
+    const connectWebSocket = () => {
+      // Build WebSocket URL
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws/live-chat/${chatSessionId}?widgetId=${widgetId}&companyId=${companyId}`;
+      
+      console.log('[LiveChat WS] Connecting to:', wsUrl);
+      
+      try {
+        const ws = new WebSocket(wsUrl);
+        liveChatWsRef.current = ws;
+        
+        ws.onopen = () => {
+          console.log('[LiveChat WS] Connected successfully');
+          wsReconnectAttemptRef.current = 0; // Reset reconnect attempts on successful connection
+        };
+        
+        ws.onmessage = (event) => {
+          try {
+            const data = JSON.parse(event.data);
+            console.log('[LiveChat WS] Received:', data.type);
+            
+            switch (data.type) {
+              case 'connected':
+                console.log('[LiveChat WS] Connection acknowledged for session:', data.sessionId);
+                break;
+                
+              case 'chat_accepted':
+                console.log('[LiveChat WS] Agent accepted chat:', data.agentName);
+                // Cancel the offline timeout since an agent accepted
+                if (agentTimeoutRef.current) {
+                  clearTimeout(agentTimeoutRef.current);
+                  agentTimeoutRef.current = null;
+                  console.log('[LiveChat] Agent accepted - cancelled offline timeout');
+                }
+                // Update UI state from waiting to active
+                setConnectedAgent({
+                  id: parseInt(data.agentId) || 0,
+                  firstName: data.agentName?.split(' ')[0] || null,
+                  lastName: data.agentName?.split(' ').slice(1).join(' ') || null,
+                  fullName: data.agentName || 'Support Agent',
+                  profileImageUrl: data.agentAvatar || null,
+                });
+                setIsWaitingForAgent(false);
+                setShowOfflineFallback(false);
+                break;
+                
+              case 'new_message':
+                // Handle incoming messages via WebSocket (real-time)
+                if (data.message) {
+                  setChatMessages(prev => {
+                    // Check if message already exists to avoid duplicates
+                    if (prev.some(m => m.id === data.message.id)) {
+                      return prev;
+                    }
+                    return [...prev, data.message].sort((a, b) => 
+                      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+                    );
+                  });
+                }
+                break;
+                
+              case 'agent_typing':
+                setAgentTyping(data.isTyping ?? true);
+                break;
+                
+              case 'pong':
+                // Keepalive response, no action needed
+                break;
+            }
+          } catch (e) {
+            console.error('[LiveChat WS] Failed to parse message:', e);
+          }
+        };
+        
+        ws.onerror = (error) => {
+          console.error('[LiveChat WS] WebSocket error:', error);
+        };
+        
+        ws.onclose = (event) => {
+          console.log('[LiveChat WS] Disconnected, code:', event.code);
+          liveChatWsRef.current = null;
+          
+          // Attempt reconnection with exponential backoff (only if session still active)
+          if (chatSessionId) {
+            const maxAttempts = 5;
+            if (wsReconnectAttemptRef.current < maxAttempts) {
+              const delay = Math.min(1000 * Math.pow(2, wsReconnectAttemptRef.current), 30000);
+              console.log(`[LiveChat WS] Reconnecting in ${delay}ms (attempt ${wsReconnectAttemptRef.current + 1}/${maxAttempts})`);
+              wsReconnectAttemptRef.current++;
+              wsReconnectTimeoutRef.current = setTimeout(connectWebSocket, delay);
+            } else {
+              console.log('[LiveChat WS] Max reconnect attempts reached, falling back to polling');
+            }
+          }
+        };
+      } catch (error) {
+        console.error('[LiveChat WS] Failed to create WebSocket:', error);
+      }
+    };
+    
+    // Initial connection
+    connectWebSocket();
+    
+    // Send periodic ping to keep connection alive
+    const pingInterval = setInterval(() => {
+      if (liveChatWsRef.current?.readyState === WebSocket.OPEN) {
+        liveChatWsRef.current.send(JSON.stringify({ type: 'ping' }));
+      }
+    }, 30000);
+    
+    // Cleanup on unmount or when session changes
+    return () => {
+      clearInterval(pingInterval);
+      if (wsReconnectTimeoutRef.current) {
+        clearTimeout(wsReconnectTimeoutRef.current);
+      }
+      if (liveChatWsRef.current) {
+        liveChatWsRef.current.close();
+        liveChatWsRef.current = null;
+      }
+    };
+  }, [chatSessionId, widgetId, effectiveWidgetData?.widget?.companyId]);
 
   // Track live visitor via heartbeat - runs always when component is mounted
   useEffect(() => {
@@ -269,6 +413,79 @@ export default function ChatWidgetPreviewPage() {
     
     checkExistingSession();
   }, [widgetId, sessionChecked]);
+
+  // 60-second timeout for agent acceptance - triggers offline fallback
+  useEffect(() => {
+    // Get timeout from widget settings, default to 60 seconds
+    const widget = effectiveWidgetData?.widget;
+    const timeoutSeconds = widget?.liveChatSettings?.queueSettings?.agentTimeout || 60;
+    
+    // Only start timer when actively waiting for an agent
+    if (isWaitingForAgent && chatSessionId && !connectedAgent && !showOfflineFallback) {
+      console.log(`[LiveChat] Starting ${timeoutSeconds}s timeout for agent acceptance`);
+      
+      agentTimeoutRef.current = setTimeout(() => {
+        console.log('[LiveChat] Agent timeout reached - showing offline fallback');
+        setShowOfflineFallback(true);
+      }, timeoutSeconds * 1000);
+      
+      return () => {
+        if (agentTimeoutRef.current) {
+          clearTimeout(agentTimeoutRef.current);
+          agentTimeoutRef.current = null;
+        }
+      };
+    }
+    
+    // Cleanup when agent connects or chat closes
+    return () => {
+      if (agentTimeoutRef.current) {
+        clearTimeout(agentTimeoutRef.current);
+        agentTimeoutRef.current = null;
+      }
+    };
+  }, [isWaitingForAgent, chatSessionId, connectedAgent, showOfflineFallback, effectiveWidgetData?.widget?.liveChatSettings?.queueSettings?.agentTimeout]);
+
+  // Handle dismissing offline fallback to continue waiting
+  const dismissOfflineFallback = () => {
+    setShowOfflineFallback(false);
+    // Don't restart the timer - let the visitor wait indefinitely if they choose
+  };
+
+  // Submit offline message
+  const submitOfflineMessage = async () => {
+    if (!offlineMessage.trim() || !widgetId) return;
+    
+    setOfflineMessageLoading(true);
+    try {
+      const visitorIdStored = localStorage.getItem(`chat_visitor_${widgetId}`);
+      
+      const res = await fetch('/api/public/live-chat/offline-message', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          widgetId,
+          visitorId: visitorIdStored || chatVisitorId,
+          sessionId: chatSessionId,
+          visitorName: visitorName || 'Website Visitor',
+          visitorEmail: visitorEmail || undefined,
+          message: offlineMessage.trim(),
+        }),
+      });
+      
+      if (res.ok) {
+        setOfflineMessageSent(true);
+        setShowLeaveMessageForm(false);
+        console.log('[LiveChat] Offline message submitted successfully');
+      } else {
+        console.error('[LiveChat] Failed to submit offline message');
+      }
+    } catch (error) {
+      console.error('[LiveChat] Error submitting offline message:', error);
+    } finally {
+      setOfflineMessageLoading(false);
+    }
+  };
 
   // Resume existing chat session
   const resumeChat = async () => {
@@ -1293,7 +1510,7 @@ export default function ChatWidgetPreviewPage() {
                     <p className="text-xs mb-1"><strong>Name:</strong> {visitorName || 'Website Visitor'}</p>
                     <p className="text-xs mb-1"><strong>Email:</strong> {visitorEmail || 'Not provided'}</p>
                     <p className="text-xs"><strong>Message:</strong> {sentInitialMessage || chatMessages[0]?.text || 'Hello'}</p>
-                    <p className="text-[10px] opacity-75 text-right mt-1">{formatMessageTime(chatStartTime)}</p>
+                    <p className="text-[10px] opacity-75 text-right mt-1">{formatMessageTime(chatMessages[0]?.createdAt)}</p>
                   </div>
                 </div>
                 
@@ -1308,15 +1525,167 @@ export default function ChatWidgetPreviewPage() {
                         {widget.liveChatSettings?.queueSettings?.autoReplyMessage || "Please wait a moment while we connect you with the next available agent."}
                       </p>
                     </div>
-                    <span className="text-[10px] text-slate-400 mt-1 ml-1">{formatMessageTime(chatStartTime)}</span>
+                    <span className="text-[10px] text-slate-400 mt-1 ml-1">{formatMessageTime(chatMessages[0]?.createdAt)}</span>
                   </div>
                 </div>
                 
                 {/* Queue/Waiting indicator */}
-                {isWaitingForAgent && (
+                {isWaitingForAgent && !showOfflineFallback && (
                   <div className="flex flex-col items-center justify-center py-4">
                     <p className="text-xs text-slate-500">Searching for available agents...</p>
                     <div className="mt-2 animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div>
+                  </div>
+                )}
+                
+                {/* Offline Fallback UI */}
+                {showOfflineFallback && !offlineMessageSent && (
+                  <div className="bg-white dark:bg-slate-700 rounded-2xl shadow-lg p-4 mx-1">
+                    {!showLeaveMessageForm ? (
+                      <>
+                        <div className="text-center mb-4">
+                          <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                            <Clock className="h-6 w-6 text-amber-600 dark:text-amber-400" />
+                          </div>
+                          <h4 className="font-semibold text-slate-900 dark:text-slate-100">We're currently unavailable</h4>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                            All our agents are busy at the moment. You can leave a message or try an alternative channel.
+                          </p>
+                        </div>
+                        
+                        <div className="space-y-2">
+                          <button
+                            onClick={() => setShowLeaveMessageForm(true)}
+                            className="w-full py-2.5 px-4 rounded-lg text-white text-sm font-medium flex items-center justify-center gap-2"
+                            style={{ background: currentBackground }}
+                            data-testid="leave-message-button"
+                          >
+                            <Mail className="h-4 w-4" />
+                            Leave a message
+                          </button>
+                          
+                          {/* Alternative contact channels */}
+                          {widget.channels && (
+                            <div className="pt-2 border-t border-slate-100 dark:border-slate-600 mt-3">
+                              <p className="text-xs text-slate-500 dark:text-slate-400 text-center mb-2">Or contact us via:</p>
+                              <div className="flex flex-wrap gap-2 justify-center">
+                                {widget.channels.whatsapp && (
+                                  <a
+                                    href={`https://wa.me/${widget.whatsappSettings?.numberSettings?.customNumber?.replace(/[^0-9]/g, '') || ''}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-2 rounded-lg bg-green-500 hover:bg-green-600 transition-colors"
+                                    data-testid="offline-whatsapp-button"
+                                  >
+                                    <SiWhatsapp className="h-5 w-5 text-white" />
+                                  </a>
+                                )}
+                                {widget.channels.sms && widget.smsSettings?.numberSettings?.customNumber && (
+                                  <a
+                                    href={`sms:${widget.smsSettings.numberSettings.customNumber}`}
+                                    className="p-2 rounded-lg bg-blue-500 hover:bg-blue-600 transition-colors"
+                                    data-testid="offline-sms-button"
+                                  >
+                                    <MessageSquare className="h-5 w-5 text-white" />
+                                  </a>
+                                )}
+                                {widget.channels.phone && widget.callSettings?.numbersAndCountries?.entries?.[0]?.phoneNumber && (
+                                  <a
+                                    href={`tel:${widget.callSettings.numbersAndCountries.entries[0].phoneNumber}`}
+                                    className="p-2 rounded-lg bg-emerald-500 hover:bg-emerald-600 transition-colors"
+                                    data-testid="offline-call-button"
+                                  >
+                                    <Phone className="h-5 w-5 text-white" />
+                                  </a>
+                                )}
+                                {widget.channels.email && (
+                                  <button
+                                    onClick={() => setActiveChannel('email')}
+                                    className="p-2 rounded-lg bg-purple-500 hover:bg-purple-600 transition-colors"
+                                    data-testid="offline-email-button"
+                                  >
+                                    <Mail className="h-5 w-5 text-white" />
+                                  </button>
+                                )}
+                                {widget.channels.telegram && (
+                                  <a
+                                    href={`https://t.me/${widget.telegramSettings?.botUsername || ''}`}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="p-2 rounded-lg bg-sky-500 hover:bg-sky-600 transition-colors"
+                                    data-testid="offline-telegram-button"
+                                  >
+                                    <SiTelegram className="h-5 w-5 text-white" />
+                                  </a>
+                                )}
+                              </div>
+                            </div>
+                          )}
+                          
+                          <button
+                            onClick={dismissOfflineFallback}
+                            className="w-full py-2 px-4 text-sm text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200 transition-colors"
+                            data-testid="continue-waiting-button"
+                          >
+                            Continue waiting
+                          </button>
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        <div className="mb-3">
+                          <button
+                            onClick={() => setShowLeaveMessageForm(false)}
+                            className="text-sm text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1"
+                          >
+                            <ArrowLeft className="h-4 w-4" />
+                            Back
+                          </button>
+                        </div>
+                        <h4 className="font-semibold text-slate-900 dark:text-slate-100 mb-2">Leave us a message</h4>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
+                          We'll get back to you as soon as possible.
+                        </p>
+                        <div className="space-y-3">
+                          <textarea
+                            value={offlineMessage}
+                            onChange={(e) => setOfflineMessage(e.target.value)}
+                            placeholder="Type your message here..."
+                            rows={4}
+                            className="w-full p-3 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-600 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                            data-testid="offline-message-input"
+                          />
+                          <button
+                            onClick={submitOfflineMessage}
+                            disabled={!offlineMessage.trim() || offlineMessageLoading}
+                            className="w-full py-2.5 px-4 rounded-lg text-white text-sm font-medium flex items-center justify-center gap-2 disabled:opacity-50"
+                            style={{ background: currentBackground }}
+                            data-testid="submit-offline-message-button"
+                          >
+                            {offlineMessageLoading ? (
+                              <div className="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent" />
+                            ) : (
+                              <>
+                                <Send className="h-4 w-4" />
+                                Send message
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                )}
+                
+                {/* Offline Message Sent Confirmation */}
+                {offlineMessageSent && (
+                  <div className="bg-white dark:bg-slate-700 rounded-2xl shadow-lg p-4 mx-1 text-center">
+                    <div className="w-12 h-12 mx-auto mb-3 rounded-full bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
+                      <CheckCheck className="h-6 w-6 text-green-600 dark:text-green-400" />
+                    </div>
+                    <h4 className="font-semibold text-slate-900 dark:text-slate-100">Message sent!</h4>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                      Thank you for reaching out. We'll get back to you as soon as possible.
+                    </p>
                   </div>
                 )}
                 
