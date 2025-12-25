@@ -752,7 +752,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                     <p className="text-xs font-medium text-muted-foreground mb-2">Availability</p>
                     <div className="space-y-1">
                       <DropdownMenuItem
-                        onClick={() => updateAvailabilityMutation.mutate("online")}
+                        onSelect={() => updateAvailabilityMutation.mutate("online")}
                         data-testid="menu-item-status-online"
                         className="py-2 px-3 cursor-pointer rounded-md"
                       >
@@ -761,7 +761,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                         {availabilityData?.status === "online" && <Check className="h-4 w-4 text-green-500" />}
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => updateAvailabilityMutation.mutate("busy")}
+                        onSelect={() => updateAvailabilityMutation.mutate("busy")}
                         data-testid="menu-item-status-busy"
                         className="py-2 px-3 cursor-pointer rounded-md"
                       >
@@ -770,7 +770,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                         {availabilityData?.status === "busy" && <Check className="h-4 w-4 text-yellow-500" />}
                       </DropdownMenuItem>
                       <DropdownMenuItem
-                        onClick={() => updateAvailabilityMutation.mutate("offline")}
+                        onSelect={() => updateAvailabilityMutation.mutate("offline")}
                         data-testid="menu-item-status-offline"
                         className="py-2 px-3 cursor-pointer rounded-md"
                       >
