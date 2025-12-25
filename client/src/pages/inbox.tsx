@@ -43,7 +43,8 @@ import {
   Building2,
   Briefcase,
   Download,
-  Image
+  Image,
+  Globe
 } from "lucide-react";
 import { SiFacebook, SiInstagram, SiTelegram } from "react-icons/si";
 import Picker from "@emoji-mart/react";
@@ -114,6 +115,8 @@ const getChannelIcon = (channel?: string) => {
       return <MessageSquare className="h-2.5 w-2.5 text-white" />;
     case "sms":
       return <MessageSquare className="h-2.5 w-2.5 text-white" />;
+    case "live_chat":
+      return <Globe className="h-2.5 w-2.5 text-white" />;
     default:
       return <MessageSquare className="h-2.5 w-2.5 text-white" />;
   }
@@ -129,6 +132,8 @@ const getChannelColor = (channel?: string) => {
       return "bg-purple-500";
     case "sms":
       return "bg-green-500";
+    case "live_chat":
+      return "bg-orange-500";
     default:
       return "bg-green-500";
   }
