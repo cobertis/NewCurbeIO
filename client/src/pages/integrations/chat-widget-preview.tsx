@@ -1,4 +1,4 @@
-import { useParams, Link } from "wouter";
+import { useParams, Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -64,6 +64,7 @@ function QRCodeDisplay({ value, size }: { value: string; size: number }) {
 
 export default function ChatWidgetPreviewPage() {
   const { id: widgetId } = useParams<{ id: string }>();
+  const [location] = useLocation();
   const { toast } = useToast();
   const [copied, setCopied] = useState(false);
   const [widgetOpen, setWidgetOpen] = useState(false);
@@ -75,6 +76,11 @@ export default function ChatWidgetPreviewPage() {
   const [deviceInfo, setDeviceInfo] = useState<{ visitorDeviceType: string; widgetDeviceType: string; matches: boolean } | null>(null);
   const [pageUrlInfo, setPageUrlInfo] = useState<{ pageUrls: string; urlRules: Array<{ condition: string; value: string }> }>({ pageUrls: 'all', urlRules: [] });
   const [testUrl, setTestUrl] = useState<string>('https://example.com/contact');
+  const [publicWidgetData, setPublicWidgetData] = useState<any>(null);
+  const [publicLoading, setPublicLoading] = useState(true);
+  
+  // Detect if we're in public mode (URL starts with /widget/)
+  const isPublicMode = location.startsWith('/widget/');
 
   // Live chat state
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
@@ -101,10 +107,35 @@ export default function ChatWidgetPreviewPage() {
   const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastPreviewSentRef = useRef<number>(0);
 
-  const { data: widgetData, isLoading } = useQuery<{ widget: any }>({
+  // Use authenticated API only when not in public mode
+  const { data: authWidgetData, isLoading: authLoading } = useQuery<{ widget: any }>({
     queryKey: [`/api/integrations/chat-widget/${widgetId}`],
-    enabled: !!widgetId,
+    enabled: !!widgetId && !isPublicMode,
   });
+  
+  // Fetch widget data from public API when in public mode
+  useEffect(() => {
+    if (!widgetId || !isPublicMode) {
+      setPublicLoading(false);
+      return;
+    }
+    
+    fetch(`/api/public/chat-widget/${widgetId}`)
+      .then(res => res.json())
+      .then(data => {
+        if (data.widget) {
+          setPublicWidgetData({ widget: data.widget });
+        }
+        setPublicLoading(false);
+      })
+      .catch(() => {
+        setPublicLoading(false);
+      });
+  }, [widgetId, isPublicMode]);
+  
+  // Determine which data to use based on mode
+  const isLoading = isPublicMode ? publicLoading : authLoading;
+  const effectiveWidgetData = isPublicMode ? publicWidgetData : authWidgetData;
 
   // Track live visitor via heartbeat - runs always when component is mounted
   useEffect(() => {
@@ -469,9 +500,9 @@ export default function ChatWidgetPreviewPage() {
 
   const widget = { 
     ...defaultWidget, 
-    ...widgetData?.widget,
-    channels: { ...defaultWidget.channels, ...widgetData?.widget?.channels },
-    channelOrder: widgetData?.widget?.channelOrder || defaultWidget.channelOrder,
+    ...effectiveWidgetData?.widget,
+    channels: { ...defaultWidget.channels, ...effectiveWidgetData?.widget?.channels },
+    channelOrder: effectiveWidgetData?.widget?.channelOrder || defaultWidget.channelOrder,
   };
   
   const currentColor = colorOptions.find(c => c.value === widget.colorTheme) || colorOptions[0];
@@ -903,54 +934,56 @@ export default function ChatWidgetPreviewPage() {
           </p>
         </div>
 
-        <Card className="border-slate-200 dark:border-slate-800 mb-8">
-          <CardContent className="p-6">
-            <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">
-              Install Curbe code to your website
-            </h3>
-            <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
-              Copy the code below and add it to your website before the closing <code className="text-blue-600">&lt;/body&gt;</code> tag.
-            </p>
-            
-            <div className="relative mb-4">
-              <pre className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs overflow-x-auto border">
-                <code className="text-slate-700 dark:text-slate-300">{embedCode}</code>
-              </pre>
-            </div>
+        {!isPublicMode && (
+          <Card className="border-slate-200 dark:border-slate-800 mb-8">
+            <CardContent className="p-6">
+              <h3 className="text-sm font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                Install Curbe code to your website
+              </h3>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mb-4">
+                Copy the code below and add it to your website before the closing <code className="text-blue-600">&lt;/body&gt;</code> tag.
+              </p>
+              
+              <div className="relative mb-4">
+                <pre className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg text-xs overflow-x-auto border">
+                  <code className="text-slate-700 dark:text-slate-300">{embedCode}</code>
+                </pre>
+              </div>
 
-            <div className="flex items-center gap-3">
-              <Button 
-                variant="outline" 
-                size="sm"
-                onClick={handleCopyCode}
-                data-testid="button-copy-code"
-              >
-                <Copy className="h-4 w-4 mr-2" />
-                {copied ? "Copied" : "Copy code"}
-              </Button>
-              <Button 
-                variant="outline" 
-                size="sm"
-                data-testid="button-send-instructions"
-              >
-                <Mail className="h-4 w-4 mr-2" />
-                Send instructions via email
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
+              <div className="flex items-center gap-3">
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  onClick={handleCopyCode}
+                  data-testid="button-copy-code"
+                >
+                  <Copy className="h-4 w-4 mr-2" />
+                  {copied ? "Copied" : "Copy code"}
+                </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm"
+                  data-testid="button-send-instructions"
+                >
+                  <Mail className="h-4 w-4 mr-2" />
+                  Send instructions via email
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
-        {/* Targeting status banner */}
-        {getTargetingBanner()}
+        {/* Targeting status banner - only show for admins */}
+        {!isPublicMode && getTargetingBanner()}
         
-        {/* Schedule status banner */}
-        {getScheduleBanner()}
+        {/* Schedule status banner - only show for admins */}
+        {!isPublicMode && getScheduleBanner()}
         
-        {/* Device type status banner */}
-        {getDeviceTypeBanner()}
+        {/* Device type status banner - only show for admins */}
+        {!isPublicMode && getDeviceTypeBanner()}
         
-        {/* Widget hidden message */}
-        {shouldDisplay === false && (
+        {/* Widget hidden message - only show for admins */}
+        {!isPublicMode && shouldDisplay === false && (
           <Card className="border-red-200 dark:border-red-800 bg-red-50 dark:bg-red-900/20 mb-8">
             <CardContent className="p-6 text-center">
               <X className="h-12 w-12 text-red-500 mx-auto mb-4" />
@@ -980,23 +1013,25 @@ export default function ChatWidgetPreviewPage() {
           </Card>
         )}
 
-        <div className="flex items-center justify-center gap-4 text-sm">
-          <Link 
-            href={`/settings/chat-widget/${widgetId}/settings`}
-            className="text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1"
-          >
-            <ArrowLeft className="h-4 w-4" />
-            Go back to widget settings
-          </Link>
-          <a 
-            href="https://support.curbe.io" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
-          >
-            Visit help center
-          </a>
-        </div>
+        {!isPublicMode && (
+          <div className="flex items-center justify-center gap-4 text-sm">
+            <Link 
+              href={`/settings/chat-widget/${widgetId}/settings`}
+              className="text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              Go back to widget settings
+            </Link>
+            <a 
+              href="https://support.curbe.io" 
+              target="_blank" 
+              rel="noopener noreferrer"
+              className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+            >
+              Visit help center
+            </a>
+          </div>
+        )}
       </div>
 
       {/* Only show widget if targeting rules allow */}
