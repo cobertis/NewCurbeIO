@@ -104,9 +104,9 @@ export default function ChatWidgetPreviewPage() {
     enabled: !!widgetId,
   });
 
-  // Track live visitor via heartbeat
+  // Track live visitor via heartbeat - runs always when component is mounted
   useEffect(() => {
-    if (!widgetId || !widgetOpen) return;
+    if (!widgetId) return;
     
     // Get or create visitor ID
     let visitorId = localStorage.getItem(`chat_visitor_${widgetId}`);
@@ -133,7 +133,7 @@ export default function ChatWidgetPreviewPage() {
     const interval = setInterval(sendHeartbeat, 15000);
     
     return () => clearInterval(interval);
-  }, [widgetId, widgetOpen]);
+  }, [widgetId]);
 
   // Check targeting rules via public API
   useEffect(() => {
