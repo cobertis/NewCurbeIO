@@ -118,6 +118,7 @@ export default function ChatWidgetPreviewPage() {
     lastMessageAt: string | null;
   } | null>(null);
   const [showOfflineFallback, setShowOfflineFallback] = useState(false);
+  const [agentsAvailable, setAgentsAvailable] = useState<boolean | null>(null);
   const [offlineMessage, setOfflineMessage] = useState('');
   const [showLeaveMessageForm, setShowLeaveMessageForm] = useState(false);
   const [offlineMessageSent, setOfflineMessageSent] = useState(false);
@@ -458,6 +459,33 @@ export default function ChatWidgetPreviewPage() {
     
     checkExistingSession();
   }, [widgetId, sessionChecked]);
+
+  // Check agent availability when widget opens
+  useEffect(() => {
+    if (!widgetId || !isOpen) {
+      setAgentsAvailable(null);
+      return;
+    }
+    
+    const checkAvailability = async () => {
+      try {
+        const res = await fetch(`/api/public/live-chat/availability?widgetId=${widgetId}`);
+        const data = await res.json();
+        setAgentsAvailable(data.available);
+        console.log('[LiveChat] Agent availability check:', data);
+        
+        // If no agents available, show offline fallback immediately
+        if (!data.available) {
+          setShowOfflineFallback(true);
+        }
+      } catch (error) {
+        console.error('[LiveChat] Error checking availability:', error);
+        setAgentsAvailable(true);
+      }
+    };
+    
+    checkAvailability();
+  }, [widgetId, isOpen]);
 
   // 60-second timeout for agent acceptance - triggers offline fallback
   useEffect(() => {
