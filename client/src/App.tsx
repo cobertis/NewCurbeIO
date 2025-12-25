@@ -495,7 +495,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
 
   const updateAvailabilityMutation = useMutation({
     mutationFn: async (status: string) => {
-      const res = await apiRequest("/api/users/availability-status", "PATCH", { status });
+      const res = await apiRequest("PATCH", "/api/users/availability-status", { status });
       return res;
     },
     onSuccess: () => {
@@ -748,38 +748,36 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
                   <DropdownMenuSeparator className="my-2" />
                   
                   {/* Availability Status */}
-                  <div className="px-2 py-1.5">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Availability</p>
-                    <div className="space-y-1">
-                      <DropdownMenuItem
-                        onSelect={() => updateAvailabilityMutation.mutate("online")}
-                        data-testid="menu-item-status-online"
-                        className="py-2 px-3 cursor-pointer rounded-md"
-                      >
-                        <span className="h-3 w-3 rounded-full bg-green-500 mr-3" />
-                        <span className="text-sm font-medium flex-1">Online</span>
-                        {availabilityData?.status === "online" && <Check className="h-4 w-4 text-green-500" />}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onSelect={() => updateAvailabilityMutation.mutate("busy")}
-                        data-testid="menu-item-status-busy"
-                        className="py-2 px-3 cursor-pointer rounded-md"
-                      >
-                        <span className="h-3 w-3 rounded-full bg-yellow-500 mr-3" />
-                        <span className="text-sm font-medium flex-1">Busy</span>
-                        {availabilityData?.status === "busy" && <Check className="h-4 w-4 text-yellow-500" />}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        onSelect={() => updateAvailabilityMutation.mutate("offline")}
-                        data-testid="menu-item-status-offline"
-                        className="py-2 px-3 cursor-pointer rounded-md"
-                      >
-                        <span className="h-3 w-3 rounded-full bg-red-500 mr-3" />
-                        <span className="text-sm font-medium flex-1">Offline</span>
-                        {availabilityData?.status === "offline" && <Check className="h-4 w-4 text-red-500" />}
-                      </DropdownMenuItem>
-                    </div>
-                  </div>
+                  <DropdownMenuLabel className="text-xs font-medium text-muted-foreground px-2 py-1.5">
+                    Availability
+                  </DropdownMenuLabel>
+                  <DropdownMenuItem
+                    onClick={() => updateAvailabilityMutation.mutate("online")}
+                    data-testid="menu-item-status-online"
+                    className="py-2 px-3 cursor-pointer rounded-md"
+                  >
+                    <span className="h-3 w-3 rounded-full bg-green-500 mr-3" />
+                    <span className="text-sm font-medium flex-1">Online</span>
+                    {availabilityData?.status === "online" && <Check className="h-4 w-4 text-green-500" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => updateAvailabilityMutation.mutate("busy")}
+                    data-testid="menu-item-status-busy"
+                    className="py-2 px-3 cursor-pointer rounded-md"
+                  >
+                    <span className="h-3 w-3 rounded-full bg-yellow-500 mr-3" />
+                    <span className="text-sm font-medium flex-1">Busy</span>
+                    {availabilityData?.status === "busy" && <Check className="h-4 w-4 text-yellow-500" />}
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    onClick={() => updateAvailabilityMutation.mutate("offline")}
+                    data-testid="menu-item-status-offline"
+                    className="py-2 px-3 cursor-pointer rounded-md"
+                  >
+                    <span className="h-3 w-3 rounded-full bg-red-500 mr-3" />
+                    <span className="text-sm font-medium flex-1">Offline</span>
+                    {availabilityData?.status === "offline" && <Check className="h-4 w-4 text-red-500" />}
+                  </DropdownMenuItem>
                   
                   <DropdownMenuSeparator className="my-2" />
                   
