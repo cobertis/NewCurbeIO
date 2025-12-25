@@ -23797,7 +23797,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
           lastMessageFromMe: true,
         });
       }
-      res.json({ message });
+      res.json({ message, conversationId: conversation.id });
     } catch (error: any) {
       console.error("Error sending iMessage:", error);
       res.status(500).json({ message: "Failed to send message", error: error.message });
@@ -29019,10 +29019,10 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         broadcastInboxMessage(conversation.companyId, sessionId);
       }
       
-      console.log("[LiveChat] New message in session:", sessionId, "text:", text.substring(0, 50));
+      console.log("[LiveChat] New message in conversation:", conversation.id, "text:", text.substring(0, 50));
       
       res.set({ "Access-Control-Allow-Origin": "*" });
-      res.json({ message });
+      res.json({ message, conversationId: conversation.id });
     } catch (error: any) {
       console.error("[LiveChat] Send message error:", error);
       res.status(500).json({ error: "Failed to send message" });
