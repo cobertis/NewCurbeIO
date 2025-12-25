@@ -94,7 +94,7 @@ import {
 } from "@shared/schema";
 import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
-import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull } from "drizzle-orm";
+import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull, not } from "drizzle-orm";
 import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, oauthStates, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, chatWidgets, liveWidgetVisitors } from "@shared/schema";
 import { encryptToken, decryptToken } from "./crypto";
 // NOTE: All encryption and masking functions removed per user requirement
@@ -28593,149 +28593,82 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       // Generate visitor ID if not provided
       const finalVisitorId = visitorId || `visitor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
       
-      // Check if conversation already exists for this visitor
-      let [conversation] = await db
+      // Check if an OPEN conversation already exists for this visitor (not closed/resolved)
+      let [existingConversation] = await db
         .select()
         .from(telnyxConversations)
         .where(and(
           eq(telnyxConversations.companyId, companyId),
           eq(telnyxConversations.phoneNumber, finalVisitorId),
-          eq(telnyxConversations.channel, "live_chat")
-        ));
+          eq(telnyxConversations.channel, "live_chat"),
+          not(inArray(telnyxConversations.status, ["closed", "resolved"]))
+        ))
+        .orderBy(desc(telnyxConversations.createdAt))
+        .limit(1);
       
-      // If no conversation exists and no message provided, just return the visitor ID without creating conversation
-      // Conversation will be created when the visitor sends their first message
-      if (!conversation) {
-        console.log("[LiveChat] No existing conversation for visitor:", finalVisitorId, "- will create on first message");
+      // If an open conversation exists, RESUME it instead of creating new
+      if (existingConversation) {
+        console.log("[LiveChat] Resuming existing session:", existingConversation.id, "for visitor:", finalVisitorId);
+        
+        // Get agent info if assigned
+        let agent = null;
+        if (existingConversation.assignedTo) {
+          const [assignedAgent] = await db
+            .select({
+              id: users.id,
+              firstName: users.firstName,
+              lastName: users.lastName,
+              profileImageUrl: users.profileImageUrl,
+            })
+            .from(users)
+            .where(eq(users.id, existingConversation.assignedTo));
+          
+          if (assignedAgent) {
+            agent = {
+              id: assignedAgent.id,
+              firstName: assignedAgent.firstName,
+              lastName: assignedAgent.lastName,
+              fullName: `${assignedAgent.firstName || ''} ${assignedAgent.lastName || ''}`.trim() || 'Support Agent',
+              profileImageUrl: assignedAgent.profileImageUrl,
+            };
+          }
+        }
+        
+        // Update visitor last seen
+        await db.update(liveWidgetVisitors)
+          .set({ lastSeenAt: new Date() })
+          .where(and(
+            eq(liveWidgetVisitors.visitorId, finalVisitorId),
+            eq(liveWidgetVisitors.widgetId, widgetId)
+          ));
+        
         res.set({ "Access-Control-Allow-Origin": "*" });
         return res.json({
-          sessionId: null,
+          sessionId: existingConversation.id,
           visitorId: finalVisitorId,
-          pendingSession: true,
+          pendingSession: false,
+          resumed: true,
+          agent,
+          status: existingConversation.status,
+          lastMessage: existingConversation.lastMessage,
+          lastMessageAt: existingConversation.lastMessageAt,
+          displayName: existingConversation.displayName,
         });
       }
       
-      // Only return existing conversations that have messages
-      if (conversation) {
-        // Fetch geolocation from IP (if valid IP) - kept for compatibility
-        let geoData = {};
-        if (visitorIp && !visitorIp.includes('127.0.0.1') && !visitorIp.includes('::1')) {
-          try {
-            const geoResponse = await fetch(`https://ipapi.co/${visitorIp}/json/`);
-            if (geoResponse.ok) {
-              geoData = await geoResponse.json();
-            }
-          } catch (geoErr) {
-            console.log("[LiveChat] Geolocation lookup failed:", geoErr);
-          }
-        }
-        
-        // Return existing conversation - do NOT create new one here
-        // New conversations are created when visitor sends first message
-        const displayName = visitorName || "Website Visitor";
-        const [newConversation] = await db.insert(telnyxConversations).values({
-          companyId,
-          phoneNumber: finalVisitorId,
-          displayName,
-          email: visitorEmail || null,
-          companyPhoneNumber: widgetId,
-          status: "waiting",
-          channel: "live_chat",
-          lastMessage: null,
-          lastMessageAt: new Date(),
-          unreadCount: 0,
-          visitorIpAddress: visitorIp || null,
-          visitorCity: (geoData as any).city || null,
-          visitorState: (geoData as any).region || null,
-          visitorCountry: (geoData as any).country_name || null,
-          visitorCurrentUrl: visitorUrl || null,
-          visitorBrowser: visitorBrowser || null,
-          visitorOs: visitorOs || null,
-        }).returning();
-        conversation = newConversation;
-        console.log("[LiveChat] Created new session:", conversation.id, "for visitor:", finalVisitorId);
-        
-        // Save/update visitor in database for persistent history
-        await db.insert(liveWidgetVisitors).values({
-          companyId,
-          visitorId: finalVisitorId,
-          widgetId,
-          firstName: visitorName?.split(" ")[0] || null,
-          lastName: visitorName?.split(" ").slice(1).join(" ") || null,
-          email: visitorEmail || null,
-          ipAddress: visitorIp || null,
-          city: (geoData as any).city || null,
-          state: (geoData as any).region || null,
-          country: (geoData as any).country_name || null,
-          currentUrl: visitorUrl || null,
-          browser: visitorBrowser || null,
-          os: visitorOs || null,
-          totalSessions: 1,
-          totalChats: 1,
-          lastSeenAt: new Date(),
-        }).onConflictDoUpdate({
-          target: [liveWidgetVisitors.visitorId, liveWidgetVisitors.widgetId],
-          set: {
-            firstName: visitorName?.split(" ")[0] || sql`${liveWidgetVisitors.firstName}`,
-            lastName: visitorName?.split(" ").slice(1).join(" ") || sql`${liveWidgetVisitors.lastName}`,
-            email: visitorEmail || sql`${liveWidgetVisitors.email}`,
-            totalChats: sql`${liveWidgetVisitors.totalChats} + 1`,
-            lastSeenAt: new Date(),
-          },
-        });
-        console.log("[LiveChat] Saved visitor data to database:", finalVisitorId);
-        
-        // Update in-memory visitor map with new name/email
-        const visitorKey = `${widgetId}:${finalVisitorId}`;
-        const existingVisitor = liveVisitors.get(visitorKey);
-        if (existingVisitor) {
-          existingVisitor.firstName = visitorName?.split(" ")[0] || existingVisitor.firstName;
-          existingVisitor.lastName = visitorName?.split(" ").slice(1).join(" ") || existingVisitor.lastName;
-          existingVisitor.email = visitorEmail || existingVisitor.email;
-          liveVisitors.set(visitorKey, existingVisitor);
-        }
-        
-        // Broadcast to update inbox
-        broadcastConversationUpdate(companyId);
-      } else {
-        console.log("[LiveChat] Resumed existing session:", conversation.id, "for visitor:", finalVisitorId);
-        // Update visitor name/email if provided on resume
-        if (visitorName || visitorEmail) {
-          await db.update(liveWidgetVisitors)
-            .set({
-              firstName: visitorName?.split(" ")[0] || undefined,
-              lastName: visitorName?.split(" ").slice(1).join(" ") || undefined,
-              email: visitorEmail || undefined,
-              lastSeenAt: new Date(),
-            })
-            .where(and(
-              eq(liveWidgetVisitors.visitorId, finalVisitorId),
-              eq(liveWidgetVisitors.widgetId, widgetId)
-            ));
-          
-          // Update in-memory
-          const visitorKey = `${widgetId}:${finalVisitorId}`;
-          const existingVisitor = liveVisitors.get(visitorKey);
-          if (existingVisitor) {
-            existingVisitor.firstName = visitorName?.split(" ")[0] || existingVisitor.firstName;
-            existingVisitor.lastName = visitorName?.split(" ").slice(1).join(" ") || existingVisitor.lastName;
-            existingVisitor.email = visitorEmail || existingVisitor.email;
-            liveVisitors.set(visitorKey, existingVisitor);
-          }
-        }
-      }
-      
+      // No open conversation exists - return visitor ID for new session creation on first message
+      console.log("[LiveChat] No existing conversation for visitor:", finalVisitorId, "- will create on first message");
       res.set({ "Access-Control-Allow-Origin": "*" });
-      res.json({
-        sessionId: conversation.id,
+      return res.json({
+        sessionId: null,
         visitorId: finalVisitorId,
+        pendingSession: true,
       });
     } catch (error: any) {
       console.error("[LiveChat] Session error:", error);
-      res.status(500).json({ error: "Failed to create session" });
+      res.status(500).json({ error: "Failed to create/resume session" });
     }
   });
-
   // GET /api/public/live-chat/check-proactive/:visitorId - Check if agent started a proactive chat
   app.get("/api/public/live-chat/check-proactive/:visitorId", async (req: Request, res: Response) => {
     const { visitorId } = req.params;

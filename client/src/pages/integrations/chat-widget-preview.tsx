@@ -103,6 +103,12 @@ export default function ChatWidgetPreviewPage() {
     fullName: string; 
     profileImageUrl: string | null;
   } | null>(null);
+  const [existingSession, setExistingSession] = useState<{
+    sessionId: string;
+    displayName: string;
+    lastMessage: string | null;
+    lastMessageAt: string | null;
+  } | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const previewTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const lastPreviewSentRef = useRef<number>(0);
@@ -195,17 +201,18 @@ export default function ChatWidgetPreviewPage() {
   }, [widgetId]);
 
 
-  // Resume existing chat session for returning visitors
+  // Check for existing chat session for returning visitors (show "Back to chat" card)
   useEffect(() => {
-    // Only try to resume if widget is open and we have a stored visitor
-    if (!widgetId || !widgetOpen || chatSessionId) return;
+    if (!widgetId || !widgetOpen) return;
     
     const storedVisitorId = localStorage.getItem(`chat_visitor_${widgetId}`);
-    if (!storedVisitorId) return;
+    if (!storedVisitorId) {
+      setExistingSession(null);
+      return;
+    }
     
-    const resumeSession = async () => {
+    const checkExistingSession = async () => {
       try {
-        // First check if there are messages for this visitor
         const sessionRes = await fetch('/api/public/live-chat/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -214,38 +221,74 @@ export default function ChatWidgetPreviewPage() {
         
         if (!sessionRes.ok) return;
         
-        const { sessionId, visitorId, pendingSession } = await sessionRes.json();
+        const { sessionId, visitorId, pendingSession, resumed, lastMessage, lastMessageAt, displayName, agent } = await sessionRes.json();
         
-        // If pending session (no conversation yet), just store visitorId
-        if (pendingSession || !sessionId) {
-          setChatVisitorId(visitorId);
-          return;
-        }
+        setChatVisitorId(visitorId);
         
-        // Only resume if there are actual messages
-        const msgRes = await fetch(`/api/public/live-chat/messages/${sessionId}`);
-        if (msgRes.ok) {
-          const { messages } = await msgRes.json();
-          if (messages && messages.length > 0) {
-            setChatSessionId(sessionId);
-            setChatVisitorId(visitorId);
-            setChatMessages(messages);
-            console.log('[Chat] Resumed session with', messages.length, 'messages');
-          } else {
-            // No messages means incomplete session - clear localStorage
-            localStorage.removeItem(`chat_visitor_${widgetId}`);
-            console.log('[Chat] Cleared stale visitor session');
+        // If there's an existing open session, show the "Back to chat" card
+        if (resumed && sessionId) {
+          setExistingSession({
+            sessionId,
+            displayName: displayName || 'Chat',
+            lastMessage: lastMessage || null,
+            lastMessageAt: lastMessageAt || null,
+          });
+          // Store agent info if available
+          if (agent) {
+            setConnectedAgent(agent);
           }
+          console.log('[Chat] Found existing session:', sessionId);
+        } else {
+          setExistingSession(null);
         }
       } catch (error) {
-        console.error('[Chat] Failed to resume session:', error);
-        // Clear localStorage on error
-        localStorage.removeItem(`chat_visitor_${widgetId}`);
+        console.error('[Chat] Failed to check session:', error);
+        setExistingSession(null);
       }
     };
     
-    resumeSession();
-  }, [widgetId, widgetOpen, chatSessionId]);
+    checkExistingSession();
+  }, [widgetId, widgetOpen]);
+
+  // Resume existing chat session
+  const resumeChat = async () => {
+    if (!existingSession?.sessionId || !widgetId) return;
+    
+    setChatLoading(true);
+    try {
+      const msgRes = await fetch(`/api/public/live-chat/messages/${existingSession.sessionId}`);
+      if (msgRes.ok) {
+        const { messages } = await msgRes.json();
+        setChatSessionId(existingSession.sessionId);
+        setChatMessages(messages || []);
+        setExistingSession(null);
+        console.log('[Chat] Resumed chat with', messages?.length || 0, 'messages');
+      }
+    } catch (error) {
+      console.error('[Chat] Failed to resume chat:', error);
+      toast({ title: "Error", description: "Failed to resume chat", variant: "destructive" });
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  // Format relative time (e.g., "12 h ago")
+  const formatRelativeTime = (dateStr: string | null) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} h ago`;
+    if (diffDays < 7) return `${diffDays} d ago`;
+    return date.toLocaleDateString();
+  };
+
   // Live chat functions
   const startChatSession = async () => {
     if (!widgetId) return;
@@ -1360,6 +1403,41 @@ export default function ChatWidgetPreviewPage() {
               )}
               
               <div className="p-4 space-y-3">
+                {/* Back to chat card for returning visitors */}
+                {existingSession && !chatSessionId && !showPreChatForm && (
+                  <button
+                    onClick={resumeChat}
+                    disabled={chatLoading}
+                    className="w-full bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 flex items-center gap-3 hover:bg-slate-50 dark:hover:bg-slate-750 transition-colors text-left"
+                    data-testid="back-to-chat-card"
+                  >
+                    <div 
+                      className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
+                      style={{ background: currentBackground }}
+                    >
+                      <MessageCircle className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          Back to chat
+                        </span>
+                        {existingSession.lastMessageAt && (
+                          <span className="text-xs text-slate-500">
+                            {formatRelativeTime(existingSession.lastMessageAt)}
+                          </span>
+                        )}
+                      </div>
+                      {existingSession.lastMessage && (
+                        <p className="text-xs text-slate-500 truncate mt-0.5">
+                          {existingSession.lastMessage}
+                        </p>
+                      )}
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0" />
+                  </button>
+                )}
+
                 {widget.channels?.liveChat && !chatSessionId && !showPreChatForm && (
                   <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 space-y-3">
                     <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
