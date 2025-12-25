@@ -28569,7 +28569,10 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // POST /api/public/live-chat/session - Create or resume a live chat session
   app.post("/api/public/live-chat/session", async (req: Request, res: Response) => {
-    const { widgetId, visitorId, visitorName, visitorEmail } = req.body;
+    const { widgetId, visitorId, visitorName, visitorEmail, visitorUrl, visitorBrowser, visitorOs } = req.body;
+    
+    // Get visitor IP from request headers
+    const visitorIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress || '';
     
     if (!widgetId) {
       return res.status(400).json({ error: "widgetId is required" });
@@ -28601,7 +28604,20 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         ));
       
       if (!conversation) {
-        // Create new conversation
+        // Fetch geolocation from IP (if valid IP)
+        let geoData = {};
+        if (visitorIp && !visitorIp.includes('127.0.0.1') && !visitorIp.includes('::1')) {
+          try {
+            const geoResponse = await fetch(`https://ipapi.co/${visitorIp}/json/`);
+            if (geoResponse.ok) {
+              geoData = await geoResponse.json();
+            }
+          } catch (geoErr) {
+            console.log("[LiveChat] Geolocation lookup failed:", geoErr);
+          }
+        }
+        
+        // Create new conversation with visitor metadata
         const displayName = visitorName || "Website Visitor";
         const [newConversation] = await db.insert(telnyxConversations).values({
           companyId,
@@ -28614,6 +28630,13 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           lastMessage: null,
           lastMessageAt: new Date(),
           unreadCount: 0,
+          visitorIpAddress: visitorIp || null,
+          visitorCity: (geoData as any).city || null,
+          visitorState: (geoData as any).region || null,
+          visitorCountry: (geoData as any).country_name || null,
+          visitorCurrentUrl: visitorUrl || null,
+          visitorBrowser: visitorBrowser || null,
+          visitorOs: visitorOs || null,
         }).returning();
         conversation = newConversation;
         console.log("[LiveChat] Created new session:", conversation.id, "for visitor:", finalVisitorId);

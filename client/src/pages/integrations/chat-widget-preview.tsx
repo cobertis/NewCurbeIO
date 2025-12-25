@@ -222,7 +222,25 @@ export default function ChatWidgetPreviewPage() {
         localStorage.setItem(`chat_visitor_${widgetId}`, storedVisitorId);
       }
       
-      // Create session with visitor info
+      // Detect browser and OS from userAgent
+      const ua = navigator.userAgent;
+      let browserName = 'Unknown';
+      let osName = 'Unknown';
+      
+      // Detect browser
+      if (ua.includes('Chrome') && !ua.includes('Edg')) browserName = `Chrome ${ua.match(/Chrome\/(\d+)/)?.[1] || ''}`.trim();
+      else if (ua.includes('Safari') && !ua.includes('Chrome')) browserName = `Safari ${ua.match(/Version\/(\d+)/)?.[1] || ''}`.trim();
+      else if (ua.includes('Firefox')) browserName = `Firefox ${ua.match(/Firefox\/(\d+)/)?.[1] || ''}`.trim();
+      else if (ua.includes('Edg')) browserName = `Edge ${ua.match(/Edg\/(\d+)/)?.[1] || ''}`.trim();
+      
+      // Detect OS
+      if (ua.includes('Windows')) osName = 'Windows';
+      else if (ua.includes('Mac OS X')) osName = `Mac ${ua.match(/Mac OS X (\d+[._]\d+)/)?.[1]?.replace('_', '.') || ''}`.trim();
+      else if (ua.includes('Linux')) osName = 'Linux';
+      else if (ua.includes('Android')) osName = 'Android';
+      else if (ua.includes('iPhone') || ua.includes('iPad')) osName = 'iOS';
+      
+      // Create session with visitor info and metadata
       const sessionRes = await fetch('/api/public/live-chat/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -231,6 +249,9 @@ export default function ChatWidgetPreviewPage() {
           visitorId: storedVisitorId,
           visitorName: visitorName || 'Website Visitor',
           visitorEmail: visitorEmail.trim() || undefined,
+          visitorUrl: window.location.href,
+          visitorBrowser: browserName,
+          visitorOs: osName,
         }),
       });
       

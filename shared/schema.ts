@@ -6630,6 +6630,14 @@ export const telnyxConversations = pgTable("telnyx_conversations", {
   status: telnyxConversationStatusEnum("status").notNull().default("open"), // Conversation status for filtering
   channel: telnyxMessageChannelEnum("channel").notNull().default("sms"), // Primary channel for this conversation
   assignedTo: varchar("assigned_to").references(() => users.id, { onDelete: "set null" }), // Assigned agent
+  // Live chat visitor metadata
+  visitorIpAddress: text("visitor_ip_address"), // Visitor IP address
+  visitorCity: text("visitor_city"), // Visitor city from geolocation
+  visitorState: text("visitor_state"), // Visitor state from geolocation
+  visitorCountry: text("visitor_country"), // Visitor country from geolocation
+  visitorCurrentUrl: text("visitor_current_url"), // Page URL where chat started
+  visitorBrowser: text("visitor_browser"), // Browser name and version
+  visitorOs: text("visitor_os"), // Operating system
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({

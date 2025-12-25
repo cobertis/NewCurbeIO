@@ -1590,6 +1590,104 @@ export default function InboxPage() {
             </div>
             <ScrollArea className="flex-1">
               <div className="p-4 space-y-6">
+                {/* Live Chat Info - Only for live_chat channel */}
+                {selectedConversation.channel === "live_chat" && (
+                  <div className="space-y-4">
+                    <button 
+                      onClick={() => setContactInfoOpen(!contactInfoOpen)}
+                      className="flex items-center justify-between w-full text-left"
+                      data-testid="btn-toggle-live-chat-info"
+                    >
+                      <h4 className="text-sm font-medium text-muted-foreground">Live chat</h4>
+                      {contactInfoOpen ? (
+                        <ChevronUp className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <ChevronDown className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </button>
+                    {contactInfoOpen && (
+                      <div className="space-y-3" data-testid="section-live-chat-info">
+                        <div className="flex justify-between">
+                          <span className="text-xs text-muted-foreground">Status</span>
+                          <Badge 
+                            variant="secondary" 
+                            className={cn(
+                              "text-xs",
+                              (selectedConversation as any).status === "waiting" && "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200",
+                              (selectedConversation as any).status === "open" && "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200",
+                              (selectedConversation as any).status === "solved" && "bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-200"
+                            )}
+                          >
+                            {(selectedConversation as any).status === "waiting" ? "Waiting" : 
+                             (selectedConversation as any).status === "open" ? "Open" : 
+                             (selectedConversation as any).status?.charAt(0).toUpperCase() + (selectedConversation as any).status?.slice(1)}
+                          </Badge>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-xs text-muted-foreground">Assignee</span>
+                          <span className="text-sm font-medium">
+                            {selectedConversation.assignedTo ? "Assigned" : "Unassigned"}
+                          </span>
+                        </div>
+                        {(selectedConversation as any).visitorCountry && (
+                          <div className="flex justify-between">
+                            <span className="text-xs text-muted-foreground">Location</span>
+                            <span className="text-sm font-medium flex items-center gap-1">
+                              {(selectedConversation as any).visitorCountry === "United States" && "🇺🇸"}
+                              {(selectedConversation as any).visitorCity && `${(selectedConversation as any).visitorCity}, `}
+                              {(selectedConversation as any).visitorState || (selectedConversation as any).visitorCountry}
+                            </span>
+                          </div>
+                        )}
+                        {(selectedConversation as any).visitorIpAddress && (
+                          <div className="flex justify-between">
+                            <span className="text-xs text-muted-foreground">IP address</span>
+                            <span className="text-sm font-medium font-mono text-xs">
+                              {(selectedConversation as any).visitorIpAddress}
+                            </span>
+                          </div>
+                        )}
+                        {(selectedConversation as any).visitorCurrentUrl && (
+                          <div className="flex justify-between">
+                            <span className="text-xs text-muted-foreground">URL</span>
+                            <a 
+                              href={(selectedConversation as any).visitorCurrentUrl}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-sm text-blue-600 hover:underline truncate max-w-[200px]"
+                              title={(selectedConversation as any).visitorCurrentUrl}
+                            >
+                              {(selectedConversation as any).visitorCurrentUrl.replace(/^https?:\/\//, '').substring(0, 30)}...
+                            </a>
+                          </div>
+                        )}
+                        {(selectedConversation as any).visitorBrowser && (
+                          <div className="flex justify-between">
+                            <span className="text-xs text-muted-foreground">Browser</span>
+                            <span className="text-sm font-medium">{(selectedConversation as any).visitorBrowser}</span>
+                          </div>
+                        )}
+                        {(selectedConversation as any).visitorOs && (
+                          <div className="flex justify-between">
+                            <span className="text-xs text-muted-foreground">OS</span>
+                            <span className="text-sm font-medium">{(selectedConversation as any).visitorOs}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between">
+                          <span className="text-xs text-muted-foreground">Chat ID</span>
+                          <span className="text-sm font-medium font-mono">{selectedConversation.id.substring(0, 8)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-xs text-muted-foreground">Created</span>
+                          <span className="text-sm font-medium">
+                            {format(new Date(selectedConversation.createdAt), "MMM d, yyyy h:mm a")}
+                          </span>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
                 {/* Contact Info - Collapsible */}
                 <div className="space-y-4">
                   <button 
@@ -1597,7 +1695,7 @@ export default function InboxPage() {
                     className="flex items-center justify-between w-full text-left"
                     data-testid="btn-toggle-contact-info"
                   >
-                    <h4 className="text-sm font-medium text-muted-foreground">Contact info</h4>
+                    <h4 className="text-sm font-medium text-muted-foreground">{selectedConversation.channel === "live_chat" ? "Contact" : "Contact info"}</h4>
                     {contactInfoOpen ? (
                       <ChevronUp className="h-4 w-4 text-muted-foreground" />
                     ) : (
