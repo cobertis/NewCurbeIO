@@ -12,7 +12,7 @@ export function WidgetHeader({ config, onClose }: WidgetHeaderProps) {
 
   return (
     <div
-      className="px-5 py-4 flex items-center justify-between"
+      className="px-4 py-3 flex items-center justify-between rounded-xl"
       style={headerStyle}
       data-testid="widget-header"
     >
