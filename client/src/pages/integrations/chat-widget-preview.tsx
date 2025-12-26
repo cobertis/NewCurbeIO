@@ -202,27 +202,12 @@ export default function ChatWidgetPreviewPage() {
     enabled: !!widgetId && !isPublicMode,
   });
   
-  // Fetch widget data from public API when in public mode
-  // OR when authenticated mode fails (fallback for expired sessions)
-  // This consolidated fetch sets BOTH publicWidgetData AND targeting metadata
+  // ALWAYS fetch from public API - it has targeting data we need
+  // This ensures both public mode and authenticated mode get targeting metadata
   useEffect(() => {
-    // Use public API if in public mode OR if auth failed
-    const shouldUsePublicApi = isPublicMode || authError;
-    
-    if (!widgetId || (!isPublicMode && !authError)) {
-      // In authenticated preview mode, set targeting defaults since we won't fetch from public API
+    if (!widgetId) {
       setPublicLoading(false);
-      setShouldDisplay(true);
       setTargetingChecked(true);
-      setScheduleStatus({ isOnline: true, nextAvailable: null });
-      return;
-    }
-    
-    if (!shouldUsePublicApi) {
-      setPublicLoading(false);
-      setShouldDisplay(true);
-      setTargetingChecked(true);
-      setScheduleStatus({ isOnline: true, nextAvailable: null });
       return;
     }
     
@@ -232,7 +217,6 @@ export default function ChatWidgetPreviewPage() {
         if (data.widget) {
           setPublicWidgetData({ widget: data.widget });
         }
-        // Also set targeting metadata from the same response
         setShouldDisplay(data.shouldDisplay ?? true);
         setVisitorCountry(data.visitorCountry || null);
         setScheduleStatus(data.scheduleStatus || { isOnline: true, nextAvailable: null });
@@ -251,7 +235,7 @@ export default function ChatWidgetPreviewPage() {
         setTargetingChecked(true);
         setPublicLoading(false);
       });
-  }, [widgetId, isPublicMode, authError]);
+  }, [widgetId]);
   
   // Keep refs in sync with state for WebSocket callbacks
   useEffect(() => {
@@ -277,9 +261,14 @@ export default function ChatWidgetPreviewPage() {
   }, [connectedAgent]);
   
   // Determine which data to use based on mode
-  // Use public data as fallback when auth fails (expired session)
-  const isLoading = isPublicMode ? publicLoading : (authError ? publicLoading : authLoading);
-  const effectiveWidgetData = isPublicMode ? publicWidgetData : (authError ? publicWidgetData : authWidgetData);
+  // In public mode or when auth fails, use public data
+  // In authenticated mode with valid auth, prefer auth data but wait for public targeting data too
+  const isLoading = isPublicMode 
+    ? publicLoading 
+    : (authError ? publicLoading : (authLoading || publicLoading));
+  const effectiveWidgetData = isPublicMode 
+    ? publicWidgetData 
+    : (authError ? publicWidgetData : (authWidgetData || publicWidgetData));
 
   // Restore visitor profile from localStorage (Task 3: Skip pre-chat form for returning visitors)
   useEffect(() => {
