@@ -4,7 +4,6 @@ import type { WidgetConfig } from "@shared/widget-config";
 import { WidgetHeader } from "./WidgetHeader";
 import { WidgetChannelList } from "./WidgetChannelList";
 import { applyWidgetTheme, getIconColor } from "./theme-utils";
-import curbeLogo from "@assets/logo no fondo_1760457183587.png";
 
 interface HelpArticle {
   id: string;
@@ -253,18 +252,6 @@ export function WidgetRenderer({
       {/* Content */}
       <div className="px-5 flex-1 overflow-y-auto">
         {renderContent()}
-
-        {/* Footer Branding */}
-        {config.branding.showBranding && (
-          <div className="text-center py-4">
-            <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-              Powered by{" "}
-              <a href="https://curbe.io" target="_blank" rel="noopener noreferrer">
-                <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
-              </a>
-            </p>
-          </div>
-        )}
       </div>
 
       {/* Bottom Navigation */}
