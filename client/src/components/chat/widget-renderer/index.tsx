@@ -22,7 +22,7 @@ export function WidgetRenderer({ config, mode, onClose, onChannelClick }: Widget
   return (
     <div
       ref={containerRef}
-      className="rounded-2xl overflow-hidden shadow-lg p-5"
+      className="rounded-2xl overflow-hidden shadow-lg p-5 pb-16"
       style={{ backgroundColor: "#edf1ff" }}
       data-testid="widget-renderer"
       data-mode={mode}
