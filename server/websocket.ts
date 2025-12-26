@@ -553,12 +553,77 @@ async function handleLiveChatWidgetConnection(ws: LiveChatWidgetWebSocket, req: 
     }));
   });
   
-  // Handle ping/pong for keepalive
-  ws.on('message', (data) => {
+  // Handle ping/pong for keepalive and resync
+  ws.on('message', async (data) => {
     try {
       const msg = JSON.parse(data.toString());
       if (msg.type === 'ping') {
         ws.send(JSON.stringify({ type: 'pong' }));
+      } else if (msg.type === 'resync') {
+        // INVARIANT E: Safe WebSocket reconnect with resync
+        // Client sends lastSeenMessageId to get messages they missed
+        const { lastSeenMessageId } = msg;
+        
+        if (!sessionId) {
+          ws.send(JSON.stringify({ type: 'resync_error', error: 'No session' }));
+          return;
+        }
+        
+        try {
+          const { db } = await import('./db');
+          const { telnyxMessages } = await import('@shared/schema');
+          const { eq, gt, and } = await import('drizzle-orm');
+          
+          let missedMessages;
+          if (lastSeenMessageId) {
+            // Get the timestamp of the last seen message
+            const [lastSeen] = await db.select({ createdAt: telnyxMessages.createdAt })
+              .from(telnyxMessages)
+              .where(eq(telnyxMessages.id, lastSeenMessageId));
+            
+            if (lastSeen) {
+              // Get all messages after the last seen one
+              missedMessages = await db.select({
+                id: telnyxMessages.id,
+                text: telnyxMessages.text,
+                direction: telnyxMessages.direction,
+                createdAt: telnyxMessages.createdAt,
+                sentBy: telnyxMessages.sentBy,
+              })
+              .from(telnyxMessages)
+              .where(and(
+                eq(telnyxMessages.conversationId, sessionId),
+                gt(telnyxMessages.createdAt, lastSeen.createdAt)
+              ))
+              .orderBy(telnyxMessages.createdAt);
+            }
+          }
+          
+          // Log resync event
+          logChatEvent(createTraceContext({
+            action: "ws_resync",
+            companyId: ws.companyId,
+            widgetId: ws.widgetId,
+            deviceId: '',
+            contactId: null,
+            conversationId: sessionId,
+            sessionId: sessionId,
+            status: "resyncing",
+            lastMessageId: lastSeenMessageId || null,
+            unreadCount: missedMessages?.length || 0,
+          }));
+          
+          ws.send(JSON.stringify({ 
+            type: 'resync_complete', 
+            missedMessages: missedMessages || [],
+            lastSeenMessageId,
+          }));
+          
+          console.log(`[LiveChat WebSocket] Resync complete: ${missedMessages?.length || 0} missed messages for session ${sessionId}`);
+        } catch (err) {
+          console.error('[LiveChat WebSocket] Resync error:', err);
+          ws.send(JSON.stringify({ type: 'resync_error', error: 'Failed to resync' }));
+        }
       }
     } catch (e) {
       // Ignore parse errors
