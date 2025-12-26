@@ -6656,7 +6656,9 @@ export const telnyxConversations = pgTable("telnyx_conversations", {
   deviceId: varchar("device_id"), // Reference to the device that owns this conversation
   visitorLastReadAt: timestamp("visitor_last_read_at"), // When visitor last read the conversation
   agentLastReadAt: timestamp("agent_last_read_at"), // When agent last read the conversation
-  agentSeenAt: timestamp("agent_seen_at"), // When agent started typing/responded (Intercom-style "seen")
+  visitorLastSeenAt: timestamp("visitor_last_seen_at"), // When visitor saw the agent's response
+  agentLastSeenAt: timestamp("agent_last_seen_at"), // When agent started typing/responded (Intercom-style "seen")
+  conversationStatus: varchar("conversation_status").default("open"), // open, closed for Intercom-style lifecycle
   
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

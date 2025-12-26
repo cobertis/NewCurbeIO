@@ -29812,6 +29812,69 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
 
+  // POST /api/public/live-chat/mark-read - Mark conversation as read by visitor
+  app.post("/api/public/live-chat/mark-read", async (req: Request, res: Response) => {
+    const { sessionId, isVisitor } = req.body;
+    
+    res.set({ "Access-Control-Allow-Origin": "*" });
+    
+    if (!sessionId) {
+      return res.status(400).json({ error: "sessionId is required" });
+    }
+    
+    try {
+      const columnToUpdate = isVisitor === false ? "agent_last_read_at" : "visitor_last_read_at";
+      
+      await db.execute(sql`
+        UPDATE telnyx_conversations 
+        SET ${sql.raw(columnToUpdate)} = NOW(), updated_at = NOW()
+        WHERE id = ${sessionId} AND channel = 'live_chat'
+      `);
+      
+      console.log("[LiveChat] Marked as read:", sessionId, "by:", isVisitor === false ? "agent" : "visitor");
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[LiveChat] Mark read error:", error);
+      res.status(500).json({ error: "Failed to mark as read" });
+    }
+  });
+
+  // POST /api/public/live-chat/mark-seen - Mark conversation as seen (when agent types/responds)
+  app.post("/api/public/live-chat/mark-seen", async (req: Request, res: Response) => {
+    const { sessionId, isVisitor } = req.body;
+    
+    res.set({ "Access-Control-Allow-Origin": "*" });
+    
+    if (!sessionId) {
+      return res.status(400).json({ error: "sessionId is required" });
+    }
+    
+    try {
+      const columnToUpdate = isVisitor === false ? "agent_last_seen_at" : "visitor_last_seen_at";
+      
+      await db.execute(sql`
+        UPDATE telnyx_conversations 
+        SET ${sql.raw(columnToUpdate)} = NOW(), updated_at = NOW()
+        WHERE id = ${sessionId} AND channel = 'live_chat'
+      `);
+      
+      // Broadcast the seen update via WebSocket
+      const { broadcastConversationUpdate } = await import("./websocket");
+      const [conversation] = await db.select().from(telnyxConversations).where(eq(telnyxConversations.id, sessionId));
+      if (conversation) {
+        broadcastConversationUpdate(conversation.companyId);
+      }
+      
+      console.log("[LiveChat] Marked as seen:", sessionId, "by:", isVisitor === false ? "agent" : "visitor");
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[LiveChat] Mark seen error:", error);
+      res.status(500).json({ error: "Failed to mark as seen" });
+    }
+  });
+
   
   // GET /api/voicemails - List voicemails for current user
   app.get("/api/voicemails", requireAuth, async (req: Request, res: Response) => {
