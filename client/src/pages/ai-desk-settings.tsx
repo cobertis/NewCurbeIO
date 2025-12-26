@@ -10,6 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { Slider } from "@/components/ui/slider";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -30,10 +31,12 @@ import {
   Database,
   History,
   CheckCheck,
-  XCircle
+  XCircle,
+  ChevronRight
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { LoadingSpinner } from "@/components/loading-spinner";
+import aiDeskHeroImage from "@assets/image_1766776300912.png";
 
 interface AiSettings {
   id: string;
@@ -220,13 +223,130 @@ export default function AiDeskSettingsPage() {
     }
   };
 
+  const [showSettings, setShowSettings] = useState(false);
+
+  if (!showSettings) {
+    return (
+      <div className="space-y-8" data-testid="page-ai-desk">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+          <span>Settings</span>
+          <ChevronRight className="h-4 w-4" />
+          <span className="font-medium text-foreground">AI Desk</span>
+        </div>
+
+        <h1 className="text-2xl font-bold" data-testid="heading-ai-desk">AI Desk</h1>
+
+        <Card className="border-0 shadow-none bg-slate-50 dark:bg-slate-900">
+          <CardContent className="p-8">
+            <div className="flex flex-col lg:flex-row items-start gap-8">
+              <div className="flex-1 space-y-6">
+                <div className="space-y-3">
+                  <h2 className="text-xl font-semibold">Respond faster with AI assistant</h2>
+                  <p className="text-muted-foreground">
+                    Help your team respond quickly using AI-powered replies based on your knowledge base. Upload
+                    documents, manage sources, and boost productivity with instant, accurate answers.
+                  </p>
+                </div>
+
+                <ul className="space-y-2">
+                  <li className="flex items-center gap-2 text-sm">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span>Answer questions instantly using AI</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-sm">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span>Get replies from your trusted sources</span>
+                  </li>
+                  <li className="flex items-center gap-2 text-sm">
+                    <CheckCircle className="h-4 w-4 text-green-500" />
+                    <span>Add and update knowledge anytime</span>
+                  </li>
+                </ul>
+
+                <div className="flex gap-3">
+                  <Button onClick={() => setShowSettings(true)} data-testid="button-get-started">
+                    Get started
+                  </Button>
+                  <Button variant="outline" data-testid="button-learn-more">
+                    Learn more
+                  </Button>
+                </div>
+              </div>
+
+              <div className="flex-1 flex justify-center">
+                <img 
+                  src={aiDeskHeroImage} 
+                  alt="AI Desk Assistant" 
+                  className="max-w-md w-full rounded-lg shadow-lg"
+                  data-testid="img-ai-desk-hero"
+                />
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <div className="space-y-6">
+          <div className="text-center space-y-2">
+            <h2 className="text-xl font-semibold">AI assistant FAQ</h2>
+            <p className="text-muted-foreground">
+              Haven't found what you were looking for?{" "}
+              <a href="#" className="text-primary hover:underline">Contact us</a>
+            </p>
+          </div>
+
+          <Accordion type="single" collapsible className="w-full max-w-3xl mx-auto">
+            <AccordionItem value="what-is">
+              <AccordionTrigger className="text-left">What is AI Desk?</AccordionTrigger>
+              <AccordionContent>
+                AI Desk is a smart assistant that helps you get accurate answers to your questions based on the knowledge you provide. Simply upload documents or share links to create a custom knowledge base.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="who-for">
+              <AccordionTrigger className="text-left">Who is AI Desk for?</AccordionTrigger>
+              <AccordionContent>
+                AI Desk is designed for teams and individuals who need fast access to information, whether it's for customer support, team collaboration, or personal productivity.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="how-works">
+              <AccordionTrigger className="text-left">How does AI Desk work?</AccordionTrigger>
+              <AccordionContent>
+                AI Desk uses the content you upload - such as files, documents, or links - and uses advanced AI to answer your questions based on that information. It learns from your sources to provide relevant, accurate responses.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="copilot">
+              <AccordionTrigger className="text-left">What is Copilot mode?</AccordionTrigger>
+              <AccordionContent>
+                Copilot mode generates draft reply suggestions for your agents to review and edit before sending. It helps speed up responses while keeping humans in control of the final message.
+              </AccordionContent>
+            </AccordionItem>
+            <AccordionItem value="autopilot">
+              <AccordionTrigger className="text-left">What is Autopilot mode?</AccordionTrigger>
+              <AccordionContent>
+                Autopilot mode allows AI to automatically respond to messages when it's confident enough. Responses that need human review are held for approval before being sent.
+              </AccordionContent>
+            </AccordionItem>
+          </Accordion>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container mx-auto py-6 space-y-6" data-testid="page-ai-desk-settings">
+    <div className="space-y-6" data-testid="page-ai-desk-settings">
+      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+        <button onClick={() => setShowSettings(false)} className="hover:text-foreground">Settings</button>
+        <ChevronRight className="h-4 w-4" />
+        <span className="font-medium text-foreground">AI Desk</span>
+      </div>
+
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="heading-ai-desk">AI Desk</h1>
+          <h1 className="text-2xl font-bold" data-testid="heading-ai-desk-settings">AI Desk Settings</h1>
           <p className="text-muted-foreground">Configure AI-powered support for your team</p>
         </div>
+        <Button variant="outline" onClick={() => setShowSettings(false)} data-testid="button-back">
+          Back
+        </Button>
       </div>
 
       <Tabs defaultValue="settings" className="space-y-4">
