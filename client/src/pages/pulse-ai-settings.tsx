@@ -173,11 +173,11 @@ const multiUrlFormSchema = z.object({
 
 type MultiUrlFormValues = z.infer<typeof multiUrlFormSchema>;
 
-interface AiDeskSettingsProps {
+interface PulseAiSettingsProps {
   embedded?: boolean;
 }
 
-export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsProps) {
+export default function PulseAiSettings({ embedded = false }: PulseAiSettingsProps) {
   const { toast } = useToast();
   const [isSourceDialogOpen, setIsSourceDialogOpen] = useState(false);
   const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
@@ -416,7 +416,7 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
       return <LoadingSpinner message="Loading AI settings..." />;
     }
     return (
-      <SettingsLayout activeSection="ai-desk">
+      <SettingsLayout activeSection="pulse-ai">
         <LoadingSpinner />
       </SettingsLayout>
     );
@@ -455,12 +455,12 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
 
   const landingPageContent = (
     <>
-      <div className="space-y-8" data-testid="page-ai-desk">
+      <div className="space-y-8" data-testid="page-pulse-ai">
         {!embedded && (
-          <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-ai-desk">
+          <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-pulse-ai">
             <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
             <ChevronRight className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium">AI Desk</span>
+            <span className="font-medium">Pulse AI</span>
           </div>
         )}
         
@@ -502,7 +502,7 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
                   <Button 
                     variant="outline"
                     className="gap-2"
-                    onClick={() => window.open("https://support.curbe.io/ai-desk", "_blank")}
+                    onClick={() => window.open("https://support.curbe.io/pulse-ai", "_blank")}
                     data-testid="button-watch-tutorial"
                   >
                     <PlayCircle className="h-4 w-4" />
@@ -514,9 +514,9 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
               <div className="w-full md:w-96 shrink-0">
                 <img 
                   src={aiDeskHeroImage} 
-                  alt="AI Desk Assistant interface preview"
+                  alt="Pulse AI Assistant interface preview"
                   className="w-full h-auto rounded-lg"
-                  data-testid="img-ai-desk-hero"
+                  data-testid="img-pulse-ai-hero"
                 />
               </div>
             </div>
@@ -525,7 +525,7 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
         
         <div className="space-y-4">
           <div className="text-center">
-            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">AI Desk FAQ</h3>
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">Pulse AI FAQ</h3>
             <p className="text-sm text-slate-500 dark:text-slate-400">
               Haven't found what you were looking for?{" "}
               <a 
@@ -543,28 +543,28 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
           <Accordion type="single" collapsible className="w-full">
             <AccordionItem value="what-is" className="border border-slate-200 dark:border-slate-800 rounded-lg mb-2 px-4">
               <AccordionTrigger className="text-sm font-medium text-slate-900 dark:text-slate-100 hover:no-underline" data-testid="faq-what-is">
-                What is AI Desk?
+                What is Pulse AI?
               </AccordionTrigger>
               <AccordionContent className="text-sm text-slate-600 dark:text-slate-400">
-                AI Desk is a smart assistant that helps you get accurate answers to your questions based on the knowledge you provide. Simply upload documents or share links to create a custom knowledge base.
+                Pulse AI is a smart assistant that helps you get accurate answers to your questions based on the knowledge you provide. Simply upload documents or share links to create a custom knowledge base.
               </AccordionContent>
             </AccordionItem>
             
             <AccordionItem value="who-for" className="border border-slate-200 dark:border-slate-800 rounded-lg mb-2 px-4">
               <AccordionTrigger className="text-sm font-medium text-slate-900 dark:text-slate-100 hover:no-underline" data-testid="faq-who-for">
-                Who is AI Desk for?
+                Who is Pulse AI for?
               </AccordionTrigger>
               <AccordionContent className="text-sm text-slate-600 dark:text-slate-400">
-                AI Desk is designed for teams and individuals who need fast access to information, whether it's for customer support, team collaboration, or personal productivity.
+                Pulse AI is designed for teams and individuals who need fast access to information, whether it's for customer support, team collaboration, or personal productivity.
               </AccordionContent>
             </AccordionItem>
             
             <AccordionItem value="how-works" className="border border-slate-200 dark:border-slate-800 rounded-lg mb-2 px-4">
               <AccordionTrigger className="text-sm font-medium text-slate-900 dark:text-slate-100 hover:no-underline" data-testid="faq-how-works">
-                How does AI Desk work?
+                How does Pulse AI work?
               </AccordionTrigger>
               <AccordionContent className="text-sm text-slate-600 dark:text-slate-400">
-                AI Desk uses the content you upload - such as files, documents, or links - and uses advanced AI to answer your questions based on that information. It learns from your sources to provide relevant, accurate responses.
+                Pulse AI uses the content you upload - such as files, documents, or links - and uses advanced AI to answer your questions based on that information. It learns from your sources to provide relevant, accurate responses.
               </AccordionContent>
             </AccordionItem>
             
@@ -637,25 +637,25 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
       return landingPageContent;
     }
     return (
-      <SettingsLayout activeSection="ai-desk">
+      <SettingsLayout activeSection="pulse-ai">
         {landingPageContent}
       </SettingsLayout>
     );
   }
 
   const settingsContent = (
-    <div className="space-y-6" data-testid="page-ai-desk-settings">
+    <div className="space-y-6" data-testid="page-pulse-ai-settings">
       {!embedded && (
-        <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-ai-desk-settings">
+        <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-pulse-ai-settings">
           <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
           <ChevronRight className="h-4 w-4 text-muted-foreground" />
-          <span className="font-medium">AI Desk</span>
+          <span className="font-medium">Pulse AI</span>
         </div>
       )}
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold" data-testid="heading-ai-desk-settings">AI Desk Settings</h1>
+          <h1 className="text-2xl font-bold" data-testid="heading-pulse-ai-settings">Pulse AI Settings</h1>
           <p className="text-muted-foreground">Configure AI-powered support for your team</p>
         </div>
         {!embedded && !hasExistingSources && (
@@ -903,7 +903,7 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
               ))}
               <Button
                 type="button"
-                variant="link"
+                variant="ghost"
                 className="text-primary p-0 h-auto"
                 onClick={() => setUrlInputs([...urlInputs, ''])}
                 data-testid="button-add-another-url"
@@ -1216,7 +1216,7 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
   }
 
   return (
-    <SettingsLayout activeSection="ai-desk">
+    <SettingsLayout activeSection="pulse-ai">
       {settingsContent}
     </SettingsLayout>
   );

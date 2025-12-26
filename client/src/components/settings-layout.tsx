@@ -34,7 +34,7 @@ export function SettingsLayout({ children, activeSection }: SettingsLayoutProps)
     if (location.startsWith("/settings/sms-voice")) return "sms-voice";
     if (location.startsWith("/settings/email")) return "email";
     if (location.startsWith("/settings/automations")) return "automations";
-    if (location.startsWith("/settings/ai-desk")) return "ai-desk";
+    if (location.startsWith("/settings/pulse-ai")) return "pulse-ai";
     if (location.startsWith("/settings/whatsapp")) return "whatsapp";
     if (location.startsWith("/settings/facebook")) return "facebook";
     if (location.startsWith("/settings/instagram")) return "instagram";
@@ -66,7 +66,7 @@ export function SettingsLayout({ children, activeSection }: SettingsLayoutProps)
     ],
     features: [
       { label: "Automations", href: "/settings/automations", icon: Zap, active: activeView === "automations" },
-      { label: "AI Desk", href: "/settings/ai-desk", icon: Bot, active: activeView === "ai-desk" },
+      { label: "Pulse AI", href: "/settings/pulse-ai", icon: Bot, active: activeView === "pulse-ai" },
     ],
   };
 

@@ -41,20 +41,21 @@ Implements Telnyx WebRTC with specific call options and audio settings. Uses a d
 **Wallet System Architecture:**
 Supports Apple Wallet (PKPass) and Google Wallet with smart links, analytics, and APNs push notifications for proactive payment collection. Key components include dedicated services, PassKit Web Service, and a scheduler for daily payment reminders. The "Cenicienta Strategy" ensures lock-screen persistence for passes by setting `relevantDate` to the end of the day. Pass images are "baked in," with only text/data updated via push notifications.
 
-**AI Desk (Point-like AI Assistant):**
-AI-powered customer support system with knowledge base management and intelligent response capabilities:
-- **Knowledge Base Management:** URL-based document ingestion with web crawling, text chunking (1500 tokens), and embedding generation via OpenAI text-embedding-3-small. Content deduplication via SHA256 hashing with version tracking and automatic obsolete chunk cleanup.
+**Pulse AI (Intelligent CRM Engine):**
+AI-powered operational engine with knowledge base management and intelligent response capabilities. Tagline: "From message to action."
+- **Branding:** Use "Pulse AI" (with space) in UI. Use "Pulse" in buttons ("Suggest with Pulse", "Pulse Autopilot").
+- **Knowledge Base Management:** URL-based document ingestion with Jina Reader for JS-rendered sites, text chunking (1500 tokens), and embedding generation via OpenAI text-embedding-3-small. Content deduplication via SHA256 hashing with version tracking and automatic obsolete chunk cleanup. Auto-filters legal pages (privacy policies, terms of service) with toggle control.
 - **Database Tables:** `ai_assistant_settings`, `ai_kb_sources`, `ai_kb_documents`, `ai_kb_chunks`, `ai_runs`, `ai_action_logs`, `ai_outbox_messages`.
-- **Copilot Mode:** Generates draft reply suggestions for agents with intent detection, confidence scoring, and citation references. Purple "Suggest Reply" button in inbox composer triggers drafts.
-- **Autopilot Mode:** Autonomous response generation with tool execution capabilities. Includes approval workflow for human review when confidence is low or escalation is needed.
+- **Copilot Mode:** Generates draft reply suggestions for agents with intent detection, confidence scoring, and citation references. "Suggest with Pulse" button in inbox composer triggers drafts.
+- **Autopilot Mode:** Autonomous response generation with tool execution capabilities. Includes approval workflow for human review when confidence is low or escalation is needed. Integrated with webchat for automatic visitor responses.
 - **Tool Registry:** 10 built-in tools - `search_knowledge_base`, `get_customer_info`, `transfer_to_human`, `create_task`, `update_conversation_status`, `send_message`, `create_ticket`, `update_contact_field`, `assign_conversation`, `tag_conversation`.
-- **Autopilot Levels:** Level 1 (send_message, transfer_to_human), Level 2 (+assign_conversation, tag_conversation), Level 3 (+create_ticket, update_contact_field).
+- **Pulse Levels:** Level 1 (send_message, transfer_to_human), Level 2 (+assign_conversation, tag_conversation), Level 3 (+create_ticket, update_contact_field).
 - **Approval Workflow:** Runs pending approval when: confidence below threshold, needsHuman flag true, or escalation rules apply. Human agents can approve (sends message) or reject with reason.
 - **Idempotency:** Run states (completed, pending_approval, approved_sent, rejected, send_failed) with atomic transitions. Outbox table with UNIQUE(run_id) prevents duplicate sends.
 - **Security:** Multi-tenant isolation (companyId from session only), prompt injection protection (KB marked as untrusted), tool whitelist per mode/level with runtime validation, blocked tools auto-escalate to human.
 - **Metrics Dashboard:** Performance metrics (approval rate, rejection reasons, intent distribution, daily stats), token usage, feedback loop tracking (wasEdited, editRate).
 - **Activity Logs:** Comprehensive audit trail of all AI runs with input/output text, intent, confidence, tokens used, latency, and action logs.
-- **Settings UI:** Located at `/ai-desk` with tabs for Settings (Copilot/Autopilot toggles), Knowledge Base (source management), Usage (metrics dashboard), and Activity (audit logs).
+- **Settings UI:** Located at `/pulse-ai` with tabs for Settings (Copilot/Autopilot toggles), Knowledge Base (source management), Usage (metrics dashboard), and Activity (audit logs).
 - **Key Services:** `ai-desk-service.ts`, `ai-openai-service.ts`, `ai-ingestion-service.ts`, `ai-tool-registry.ts`, `ai-autopilot-service.ts`.
 
 **Chat Widget System (Intercom-style):**
