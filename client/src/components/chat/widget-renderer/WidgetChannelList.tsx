@@ -106,7 +106,7 @@ export function WidgetChannelList({ config, onChannelClick }: WidgetChannelListP
           <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
             {channel.getLabel(config)}
           </span>
-          <Send className="h-5 w-5" style={{ color: iconColor }} />
+          <span style={{ color: iconColor }}>{channel.icon}</span>
         </button>
       ))}
     </div>
