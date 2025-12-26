@@ -196,14 +196,9 @@ export default function ChatWidgetPreviewPage() {
   const lastSeenMessageTimeRef = useRef<number>(0);
   const initialMessageInputRef = useRef<HTMLTextAreaElement>(null);
 
-  // Use authenticated API only when not in public mode
-  const { data: authWidgetData, isLoading: authLoading, isError: authError } = useQuery<{ widget: any }>({
-    queryKey: [`/api/integrations/chat-widget/${widgetId}`],
-    enabled: !!widgetId && !isPublicMode,
-  });
-  
-  // ALWAYS fetch from public API - it has targeting data we need
-  // This ensures both public mode and authenticated mode get targeting metadata
+  // SINGLE SOURCE OF TRUTH: Always use public API for widget data
+  // This API returns both widget config AND targeting metadata
+  // No more dual-fetch complexity - one fetch, one state
   useEffect(() => {
     if (!widgetId) {
       setPublicLoading(false);
@@ -211,6 +206,7 @@ export default function ChatWidgetPreviewPage() {
       return;
     }
     
+    setPublicLoading(true);
     fetch(`/api/public/chat-widget/${widgetId}`)
       .then(res => res.json())
       .then(data => {
@@ -260,15 +256,9 @@ export default function ChatWidgetPreviewPage() {
     connectedAgentRef.current = connectedAgent;
   }, [connectedAgent]);
   
-  // Determine which data to use based on mode
-  // In public mode or when auth fails, use public data
-  // In authenticated mode with valid auth, prefer auth data but wait for public targeting data too
-  const isLoading = isPublicMode 
-    ? publicLoading 
-    : (authError ? publicLoading : (authLoading || publicLoading));
-  const effectiveWidgetData = isPublicMode 
-    ? publicWidgetData 
-    : (authError ? publicWidgetData : (authWidgetData || publicWidgetData));
+  // SIMPLE: One source of data, one loading state
+  const isLoading = publicLoading;
+  const effectiveWidgetData = publicWidgetData;
 
   // Restore visitor profile from localStorage (Task 3: Skip pre-chat form for returning visitors)
   useEffect(() => {
