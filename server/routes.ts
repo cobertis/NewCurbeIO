@@ -12,7 +12,7 @@ import { sesService } from "./services/ses-service";
 import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
-import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppMessage, broadcastWhatsAppChatUpdate, broadcastWhatsAppConnection, broadcastWhatsAppQrCode, broadcastWhatsAppTyping, broadcastWhatsAppMessageStatus, broadcastWhatsAppEvent, broadcastWalletUpdate, broadcastNewCallLog, broadcastInboxMessage } from "./websocket";
+import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppMessage, broadcastWhatsAppChatUpdate, broadcastWhatsAppConnection, broadcastWhatsAppQrCode, broadcastWhatsAppTyping, broadcastWhatsAppMessageStatus, broadcastWhatsAppEvent, broadcastWalletUpdate, broadcastNewCallLog, broadcastInboxMessage, broadcastLiveChatEvent } from "./websocket";
 import { chargeCallToWallet } from "./services/pricing-service";
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
@@ -95,7 +95,7 @@ import {
 import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull, not } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, oauthStates, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, oauthStates, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, chatWidgets, liveWidgetVisitors, liveChatDevices } from "@shared/schema";
 import { encryptToken, decryptToken } from "./crypto";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -105,7 +105,6 @@ import { promises as fsPromises } from "fs";
 import crypto from "crypto";
 import multer from "multer";
 import { registerSesRoutes } from "./ses-routes";
-import { registerWidgetApiRoutes } from "./routes/widget-api";
 // Temporary in-memory storage for MMS attachments (files expire after 10 minutes)
 const mmsFileCache = new Map<string, { buffer: Buffer; contentType: string; expiresAt: number }>();
 // Helper to build absolute URL from request for external services (Telnyx)
@@ -5196,6 +5195,43 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
     } catch (error: any) {
       console.error("Error updating user:", error);
       res.status(500).json({ message: error.message || "Failed to update user" });
+    }
+  });
+
+  // =====================================================
+  // AGENT AVAILABILITY STATUS
+  // =====================================================
+  // Public endpoint: Check if any agents are online for a widget
+  app.get("/api/public/live-chat/availability", async (req: Request, res: Response) => {
+    try {
+      const { widgetId } = req.query;
+      if (!widgetId) {
+        return res.status(400).json({ error: "widgetId required" });
+      }
+      
+      // Get the widget to find company
+      const widget = await db.query.chatWidgets.findFirst({
+        where: eq(chatWidgets.id, widgetId as string),
+      });
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found", available: false });
+      }
+      
+      // Check if any agents in this company are online
+      const onlineAgents = await db.select({ id: users.id }).from(users)
+        .where(and(
+          eq(users.companyId, widget.companyId),
+          eq(users.agentAvailabilityStatus, "online"),
+          eq(users.isActive, true)
+        ));
+      
+      res.json({ 
+        available: onlineAgents.length > 0,
+        agentCount: onlineAgents.length 
+      });
+    } catch (error) {
+      console.error("Error checking agent availability:", error);
+      res.status(500).json({ error: "Failed to check availability", available: false });
     }
   });
   // Get company agents for dropdowns (policies, quotes, etc.)
@@ -28210,6 +28246,1573 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
   // ==================== VOICEMAIL API ====================
 
+  // ==================== CHAT WIDGET API ====================
+
+  // GET /api/integrations/chat-widget/list - List all chat widgets for company
+  app.get("/api/integrations/chat-widget/list", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    
+    try {
+      const widgets = await db.query.chatWidgets.findMany({
+        where: eq(chatWidgets.companyId, user.companyId),
+        orderBy: desc(chatWidgets.createdAt)
+      });
+      
+      return res.json({ widgets });
+    } catch (error: any) {
+      console.error("[Chat Widget] List error:", error);
+      return res.status(500).json({ error: "Failed to list widgets" });
+    }
+  });
+
+  // POST /api/integrations/chat-widget/create - Create a new chat widget
+  app.post("/api/integrations/chat-widget/create", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    const { name } = req.body;
+    
+    if (!name || typeof name !== "string" || name.trim().length === 0) {
+      return res.status(400).json({ error: "Widget name is required" });
+    }
+    
+    try {
+      const [widget] = await db.insert(chatWidgets).values({
+        companyId: user.companyId,
+        name: name.trim(),
+        status: "draft",
+        channels: [
+          { type: "live_chat", enabled: true, label: "Live Chat", order: 0 },
+          { type: "whatsapp", enabled: false, label: "WhatsApp", order: 1 },
+          { type: "email", enabled: false, label: "Email", order: 2 },
+          { type: "phone", enabled: false, label: "Phone", order: 3 },
+          { type: "sms", enabled: false, label: "SMS", order: 4 },
+          { type: "messenger", enabled: false, label: "Messenger", order: 5 },
+          { type: "instagram", enabled: false, label: "Instagram", order: 6 },
+        ],
+      }).returning();
+      
+      console.log("[Chat Widget] Created widget " + widget.id + " for company " + user.companyId);
+      return res.json({ widgetId: widget.id, widget });
+    } catch (error: any) {
+      console.error("[Chat Widget] Create error:", error);
+      return res.status(500).json({ error: "Failed to create widget" });
+    }
+  });
+
+  // GET /api/integrations/chat-widget/:id - Get a specific chat widget
+  app.get("/api/integrations/chat-widget/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    const { id } = req.params;
+    
+    try {
+      const widget = await db.query.chatWidgets.findFirst({
+        where: and(
+          eq(chatWidgets.id, id),
+          eq(chatWidgets.companyId, user.companyId)
+        )
+      });
+      
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      return res.json({ widget });
+    } catch (error: any) {
+      console.error("[Chat Widget] Get error:", error);
+      return res.status(500).json({ error: "Failed to get widget" });
+    }
+  });
+
+  // PATCH /api/integrations/chat-widget/:id - Update a chat widget
+  app.patch("/api/integrations/chat-widget/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    const { id } = req.params;
+    const updates = req.body;
+    
+    console.log("[Chat Widget] PATCH received updates:", JSON.stringify(updates, null, 2));
+    try {
+      const existing = await db.query.chatWidgets.findFirst({
+        where: and(
+          eq(chatWidgets.id, id),
+          eq(chatWidgets.companyId, user.companyId)
+        )
+      });
+      
+      if (!existing) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      delete updates.id;
+      delete updates.companyId;
+      delete updates.createdAt;
+      
+      const [widget] = await db.update(chatWidgets)
+        .set({ ...updates, updatedAt: new Date() })
+        .where(eq(chatWidgets.id, id))
+        .returning();
+      
+      console.log("[Chat Widget] Updated widget " + id);
+      return res.json({ widget });
+    } catch (error: any) {
+      console.error("[Chat Widget] Update error:", error);
+      return res.status(500).json({ error: "Failed to update widget" });
+    }
+  });
+
+  // DELETE /api/integrations/chat-widget/:id - Delete a chat widget
+  app.delete("/api/integrations/chat-widget/:id", requireActiveCompany, async (req: Request, res: Response) => {
+    const user = req.user as any;
+    const { id } = req.params;
+    
+    try {
+      const existing = await db.query.chatWidgets.findFirst({
+        where: and(
+          eq(chatWidgets.id, id),
+          eq(chatWidgets.companyId, user.companyId)
+        )
+      });
+      
+      if (!existing) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      await db.delete(chatWidgets).where(eq(chatWidgets.id, id));
+      
+      console.log("[Chat Widget] Deleted widget " + id);
+      return res.json({ success: true });
+    } catch (error: any) {
+      console.error("[Chat Widget] Delete error:", error);
+      return res.status(500).json({ error: "Failed to delete widget" });
+    }
+  });
+
+  // PUBLIC: GET /api/public/chat-widget/:id - Get widget config for embed (with geolocation)
+  app.get("/api/public/chat-widget/:id", async (req: Request, res: Response) => {
+    const { id } = req.params;
+    const forceCountry = req.query.country as string | undefined;
+    
+    try {
+      const widget = await db.query.chatWidgets.findFirst({
+        where: eq(chatWidgets.id, id)
+      });
+      
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+
+      const clientIP = (req.headers["x-forwarded-for"] as string)?.split(",")[0]?.trim() 
+        || req.headers["x-real-ip"] as string 
+        || req.socket.remoteAddress 
+        || "";
+      
+      const { getCountryFromIP, shouldShowWidget } = await import("./services/geolocation");
+      
+      let visitorCountry = forceCountry || "";
+      let countryCode = "";
+      let geoSuccess = !!forceCountry;
+      
+      if (!forceCountry) {
+        const geo = await getCountryFromIP(clientIP);
+        geoSuccess = geo.success;
+        if (geo.success) {
+          visitorCountry = geo.countryName;
+          countryCode = geo.countryCode;
+        }
+      }
+      
+      const widgetSettings = {
+        id: widget.id,
+        companyId: widget.companyId,
+        colorTheme: widget.colorTheme,
+        themeType: widget.themeType,
+        customColor: widget.customColor,
+        primaryColor: widget.primaryColor,
+        position: widget.position,
+        buttonSize: widget.buttonSize,
+        borderRadius: widget.borderRadius,
+        companyName: widget.companyName,
+        avatarUrl: widget.avatarUrl,
+        autoOpen: widget.autoOpen,
+        autoOpenDelay: widget.autoOpenDelay,
+        showOnMobile: widget.showOnMobile,
+        showBranding: widget.showBranding,
+        offlineMessage: widget.offlineMessage,
+        channels: widget.channels || {},
+        channelOrder: widget.channelOrder || [],
+        minimizedState: widget.minimizedState || {},
+        liveChatSettings: widget.liveChatSettings || {},
+        smsSettings: widget.smsSettings || {},
+        callSettings: widget.callSettings || {},
+        whatsappSettings: widget.whatsappSettings || {},
+        emailSettings: widget.emailSettings || {},
+        messengerSettings: widget.messengerSettings || {},
+        instagramSettings: widget.instagramSettings || {},
+        telegramSettings: widget.telegramSettings || {},
+        welcomeTitle: widget.welcomeTitle,
+        welcomeMessage: widget.welcomeMessage,
+      };
+      const targeting = (widget.targetingConfig as any) || {};
+      const shouldDisplay = shouldShowWidget(targeting, visitorCountry, geoSuccess);
+      
+      // Check schedule-based availability
+      const checkScheduleAvailability = () => {
+        const schedule = targeting.schedule || "always";
+        if (schedule === "always") {
+          return { isOnline: true, nextAvailable: null };
+        }
+        
+        const timezone = targeting.timezone || "(UTC -05:00): America/New_York";
+        const scheduleEntries = targeting.scheduleEntries || [];
+        
+        // Extract IANA timezone from format like "(UTC -05:00): America/New_York"
+        const tzMatch = timezone.match(/\):\s*(.+)$/);
+        const ianaTimezone = tzMatch ? tzMatch[1].trim() : "America/New_York";
+        
+        // Get current time in the widget timezone
+        const now = new Date();
+        const options: Intl.DateTimeFormatOptions = { 
+          timeZone: ianaTimezone, 
+          weekday: "long",
+          hour: "numeric",
+          minute: "numeric",
+          hour12: true
+        };
+        
+        const formatter = new Intl.DateTimeFormat("en-US", options);
+        const parts = formatter.formatToParts(now);
+        
+        const dayPart = parts.find(p => p.type === "weekday")?.value || "";
+        const hourPart = parts.find(p => p.type === "hour")?.value || "0";
+        const minutePart = parts.find(p => p.type === "minute")?.value || "0";
+        const dayPeriod = parts.find(p => p.type === "dayPeriod")?.value?.toUpperCase() || "AM";
+        
+        const currentTimeStr = `${hourPart}:${minutePart.padStart(2, "0")} ${dayPeriod}`;
+        
+        // Find today schedule entry
+        const todayEntry = scheduleEntries.find((e: any) => e.day === dayPart);
+        
+        if (!todayEntry || !todayEntry.enabled) {
+          return { isOnline: false, nextAvailable: findNextAvailable(scheduleEntries, dayPart) };
+        }
+        
+        // Parse time strings to compare
+        const parseTime = (timeStr: string) => {
+          const match = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+          if (!match) return 0;
+          let hours = parseInt(match[1]);
+          const minutes = parseInt(match[2]);
+          const period = match[3].toUpperCase();
+          if (period === "PM" && hours !== 12) hours += 12;
+          if (period === "AM" && hours === 12) hours = 0;
+          return hours * 60 + minutes;
+        };
+        
+        const currentMinutes = parseTime(currentTimeStr);
+        const startMinutes = parseTime(todayEntry.startTime);
+        const endMinutes = parseTime(todayEntry.endTime);
+        
+        const isWithinHours = currentMinutes >= startMinutes && currentMinutes < endMinutes;
+        
+        if (!isWithinHours) {
+          return { 
+            isOnline: false, 
+            nextAvailable: currentMinutes < startMinutes 
+              ? `Today at ${todayEntry.startTime}` 
+              : findNextAvailable(scheduleEntries, dayPart)
+          };
+        }
+        
+        return { isOnline: true, nextAvailable: null };
+      };
+      
+      const findNextAvailable = (entries: any[], currentDay: string) => {
+        const dayOrder = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const currentIdx = dayOrder.indexOf(currentDay);
+        
+        for (let i = 1; i <= 7; i++) {
+          const nextIdx = (currentIdx + i) % 7;
+          const nextDay = dayOrder[nextIdx];
+          const entry = entries.find((e: any) => e.day === nextDay);
+          if (entry && entry.enabled) {
+            return `${nextDay} at ${entry.startTime}`;
+          }
+        }
+        return null;
+      };
+      
+      const scheduleStatus = checkScheduleAvailability();
+      
+      // Detect device type from User-Agent
+      const userAgent = req.headers["user-agent"] || "";
+      const detectDeviceType = (ua: string): "desktop" | "mobile" => {
+        const mobileRegex = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini|Mobile|mobile|CriOS/i;
+        return mobileRegex.test(ua) ? "mobile" : "desktop";
+      };
+      const visitorDeviceType = detectDeviceType(userAgent);
+      const widgetDeviceType = targeting.deviceType || "all";
+      
+      // Check if widget should display based on device type
+      const deviceTypeMatches = widgetDeviceType === "all" || widgetDeviceType === visitorDeviceType;
+      const finalShouldDisplay = shouldDisplay && deviceTypeMatches;
+      
+      res.set({
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+        "Cache-Control": "no-cache, no-store, must-revalidate"
+      });
+      
+      
+      return res.json({
+        widget: { ...widgetSettings, branding: (widget.branding as any) || {}, targeting: { countries: targeting.countries || "all", selectedCountries: targeting.selectedCountries || [], schedule: targeting.schedule || "always", timezone: targeting.timezone || "(UTC -05:00): America/New_York", deviceType: targeting.deviceType || "all", pageUrls: targeting.pageUrls || "all", urlRules: targeting.urlRules || [], scheduleEntries: targeting.scheduleEntries || [] } },
+        shouldDisplay: finalShouldDisplay,
+        visitorCountry,
+        countryCode,
+        targeting: {
+          countries: targeting.countries || "all",
+          selectedCountries: targeting.selectedCountries || [],
+          schedule: targeting.schedule || "always",
+          timezone: targeting.timezone || "(UTC -05:00): America/New_York",
+          deviceType: widgetDeviceType,
+          pageUrls: targeting.pageUrls || "all",
+          urlRules: targeting.urlRules || []
+        },
+        scheduleStatus: {
+          isOnline: scheduleStatus.isOnline,
+          nextAvailable: scheduleStatus.nextAvailable
+        },
+        deviceInfo: {
+          visitorDeviceType,
+          widgetDeviceType,
+          matches: deviceTypeMatches
+        }
+      });
+    } catch (error: any) {
+      console.error("[Chat Widget Public] Error:", error);
+      return res.status(500).json({ error: "Failed to fetch widget", shouldDisplay: true });
+    }
+  });
+
+  // ==================== LIVE CHAT PUBLIC API ====================
+  
+
+  // Live chat typing indicator storage (in-memory)
+  const liveChatTyping = new Map<string, { agentName: string; timestamp: number }>();
+  const liveChatVisitorPreview = new Map<string, { text: string; timestamp: number }>();
+  const TYPING_TIMEOUT = 3000; // 3 seconds
+  const PREVIEW_TIMEOUT = 5000; // 5 seconds
+
+  // POST /api/inbox/live-chat/typing - Agent sends typing indicator
+  app.post("/api/inbox/live-chat/typing", requireAuth, async (req: Request, res: Response) => {
+    const { conversationId, isTyping } = req.body;
+    const user = req.user!;
+
+    if (!conversationId) {
+      return res.status(400).json({ error: "conversationId is required" });
+    }
+
+    try {
+      const agentName = `${user.firstName || '} ${user.lastName || '}`.trim() || 'Agent';
+
+      if (isTyping) {
+        liveChatTyping.set(conversationId, { agentName, timestamp: Date.now() });
+      } else {
+        liveChatTyping.delete(conversationId);
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[LiveChat] Typing indicator error:", error);
+      res.status(500).json({ error: "Failed to update typing status" });
+    }
+  });
+
+  // GET /api/public/live-chat/typing/:sessionId - Check if agent is typing
+  app.get("/api/public/live-chat/typing/:sessionId", async (req: Request, res: Response) => {
+    const { sessionId } = req.params;
+
+    const typingInfo = liveChatTyping.get(sessionId);
+    const isTyping = typingInfo && (Date.now() - typingInfo.timestamp) < TYPING_TIMEOUT;
+
+    res.set({ "Access-Control-Allow-Origin": "*" });
+    res.json({
+      isTyping: !!isTyping,
+      agentName: isTyping ? typingInfo?.agentName : null
+    });
+  });
+
+
+  // POST /api/public/live-chat/preview - Visitor sends typing preview
+  app.post("/api/public/live-chat/preview", async (req: Request, res: Response) => {
+    const { sessionId, text } = req.body;
+
+    if (!sessionId) {
+      return res.status(400).json({ error: "sessionId is required" });
+    }
+
+    try {
+      const previewText = (text || "").slice(0, 500);
+      if (previewText.length > 0) {
+        liveChatVisitorPreview.set(sessionId, { text: previewText, timestamp: Date.now() });
+      } else {
+        liveChatVisitorPreview.delete(sessionId);
+      }
+
+      res.set({ "Access-Control-Allow-Origin": "*" });
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[LiveChat] Visitor preview error:", error);
+      res.status(500).json({ error: "Failed to update preview" });
+    }
+  });
+
+  // GET /api/inbox/live-chat/preview/:conversationId - Agent gets visitor preview
+  app.get("/api/inbox/live-chat/preview/:conversationId", requireAuth, async (req: Request, res: Response) => {
+    const { conversationId } = req.params;
+
+    const previewInfo = liveChatVisitorPreview.get(conversationId);
+    const isActive = previewInfo && (Date.now() - previewInfo.timestamp) < PREVIEW_TIMEOUT;
+
+    res.json({
+      isTyping: !!isActive,
+      text: isActive ? previewInfo?.text : null
+    });
+  });
+
+  // =====================================================
+  // MESSENGER BOOTSTRAP & IDENTIFY ENDPOINTS (Intercom-style)
+  // =====================================================
+
+  // GET /api/messenger/bootstrap - Called when widget loads to restore identity
+  app.get("/api/messenger/bootstrap", async (req: Request, res: Response) => {
+    const { widgetId, deviceId } = req.query;
+    
+    res.set({ "Access-Control-Allow-Origin": "*" });
+    
+    if (!widgetId || !deviceId) {
+      return res.status(400).json({ error: "widgetId and deviceId are required" });
+    }
+    
+    try {
+      // Verify widget exists and get config
+      const widget = await db.query.chatWidgets.findFirst({
+        where: eq(chatWidgets.id, widgetId as string)
+      });
+      
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      const companyId = widget.companyId;
+      
+      // Find or create device record
+      let device = await db.query.liveChatDevices.findFirst({
+        where: and(
+          eq(liveChatDevices.deviceId, deviceId as string),
+          eq(liveChatDevices.widgetId, widgetId as string)
+        )
+      });
+      
+      if (!device) {
+        // Create new device record (anonymous)
+        const [newDevice] = await db.insert(liveChatDevices).values({
+          deviceId: deviceId as string,
+          companyId,
+          widgetId: widgetId as string,
+          contactType: "anonymous",
+          lastSeenAt: new Date(),
+        }).returning();
+        device = newDevice;
+        console.log(`[Messenger] Created new device: ${deviceId}`);
+      } else {
+        // Update last seen timestamp
+        await db.update(liveChatDevices)
+          .set({ lastSeenAt: new Date(), updatedAt: new Date() })
+          .where(eq(liveChatDevices.id, device.id));
+      }
+      
+      // Get open conversations for this device
+      const openConversations = await db.query.telnyxConversations.findMany({
+        where: and(
+          eq(telnyxConversations.deviceId, deviceId as string),
+          eq(telnyxConversations.companyId, companyId),
+          eq(telnyxConversations.channel, "live_chat"),
+          or(
+            eq(telnyxConversations.status, "open"),
+            eq(telnyxConversations.status, "active")
+          )
+        ),
+        orderBy: [desc(telnyxConversations.lastMessageAt)],
+        limit: 10
+      });
+      
+      // Get recent conversations (last 20, including closed)
+      const recentConversations = await db.query.telnyxConversations.findMany({
+        where: and(
+          eq(telnyxConversations.deviceId, deviceId as string),
+          eq(telnyxConversations.companyId, companyId),
+          eq(telnyxConversations.channel, "live_chat")
+        ),
+        orderBy: [desc(telnyxConversations.lastMessageAt)],
+        limit: 20
+      });
+      
+      // Calculate total unread count
+      let unreadCount = 0;
+      for (const conv of openConversations) {
+        unreadCount += conv.unreadCount || 0;
+      }
+      
+      // Return bootstrap data
+      res.json({
+        success: true,
+        contactId: device.contactId,
+        contactType: device.contactType,
+        email: device.email,
+        name: device.name,
+        openConversations: openConversations.map(c => ({
+          id: c.id,
+          status: c.status,
+          unreadCount: c.unreadCount,
+          lastMessage: c.lastMessage,
+          lastMessageAt: c.lastMessageAt,
+        })),
+        recentConversations: recentConversations.map(c => ({
+          id: c.id,
+          status: c.status,
+          createdAt: c.createdAt,
+          lastMessageAt: c.lastMessageAt,
+        })),
+        unreadCount,
+        widget: {
+          id: widget.id,
+          name: widget.name,
+          primaryColor: widget.primaryColor,
+          welcomeMessage: widget.welcomeMessage,
+          offlineMessage: widget.offlineMessage,
+          position: widget.position,
+          showLauncher: widget.showLauncher,
+        }
+      });
+    } catch (error: any) {
+      console.error("[Messenger] Bootstrap error:", error);
+      res.status(500).json({ error: "Failed to bootstrap messenger" });
+    }
+  });
+
+  // POST /api/messenger/identify - Called when user logs in to identify/upgrade device
+  app.post("/api/messenger/identify", async (req: Request, res: Response) => {
+    const { widgetId, deviceId, userId, email, name } = req.body;
+    
+    res.set({ "Access-Control-Allow-Origin": "*" });
+    
+    if (!widgetId || !deviceId) {
+      return res.status(400).json({ error: "widgetId and deviceId are required" });
+    }
+    
+    if (!userId && !email) {
+      return res.status(400).json({ error: "userId or email is required to identify" });
+    }
+    
+    try {
+      // Verify widget exists
+      const widget = await db.query.chatWidgets.findFirst({
+        where: eq(chatWidgets.id, widgetId)
+      });
+      
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      const companyId = widget.companyId;
+      
+      // Find or create device record
+      let device = await db.query.liveChatDevices.findFirst({
+        where: and(
+          eq(liveChatDevices.deviceId, deviceId),
+          eq(liveChatDevices.widgetId, widgetId)
+        )
+      });
+      
+      const wasAnonymous = !device || device.contactType === "anonymous";
+      let mergedConversationCount = 0;
+      
+      // Generate contactId if needed
+      const contactId = device?.contactId || `contact_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Determine contact type based on userId presence
+      const contactType = userId ? "user" : "lead";
+      
+      if (!device) {
+        // Create new identified device
+        const [newDevice] = await db.insert(liveChatDevices).values({
+          deviceId,
+          companyId,
+          widgetId,
+          contactId,
+          contactType,
+          userId: userId || null,
+          email: email || null,
+          name: name || null,
+          lastSeenAt: new Date(),
+        }).returning();
+        device = newDevice;
+        console.log(`[Messenger] Created identified device: ${deviceId} as ${contactType}`);
+      } else {
+        // Update existing device with identity
+        await db.update(liveChatDevices)
+          .set({
+            contactId,
+            contactType,
+            userId: userId || device.userId,
+            email: email || device.email,
+            name: name || device.name,
+            lastSeenAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(liveChatDevices.id, device.id));
+        
+        console.log(`[Messenger] Upgraded device ${deviceId} from ${device.contactType} to ${contactType}`);
+      }
+      
+      // If device was anonymous, look for other devices with same email and merge conversations
+      if (wasAnonymous && email) {
+        // Find other devices with same email that might have conversations
+        const otherDevices = await db.query.liveChatDevices.findMany({
+          where: and(
+            eq(liveChatDevices.email, email),
+            eq(liveChatDevices.companyId, companyId),
+            ne(liveChatDevices.deviceId, deviceId)
+          )
+        });
+        
+        // Reassign conversations from other devices to this device
+        for (const otherDevice of otherDevices) {
+          const result = await db.update(telnyxConversations)
+            .set({
+              deviceId: deviceId,
+              updatedAt: new Date(),
+            })
+            .where(and(
+              eq(telnyxConversations.deviceId, otherDevice.deviceId),
+              eq(telnyxConversations.companyId, companyId),
+              eq(telnyxConversations.channel, "live_chat")
+            ));
+          
+          mergedConversationCount += result.rowCount || 0;
+          
+          // Mark old device as merged
+          await db.update(liveChatDevices)
+            .set({
+              mergedFromDeviceId: deviceId,
+              updatedAt: new Date(),
+            })
+            .where(eq(liveChatDevices.id, otherDevice.id));
+        }
+        
+        if (mergedConversationCount > 0) {
+          console.log(`[Messenger] Merged ${mergedConversationCount} conversations to device ${deviceId}`);
+        }
+      }
+      
+      res.json({
+        success: true,
+        contactId,
+        contactType,
+        mergedConversationCount,
+        message: wasAnonymous 
+          ? `Device upgraded from anonymous to ${contactType}` 
+          : `Device already identified as ${contactType}`
+      });
+    } catch (error: any) {
+      console.error("[Messenger] Identify error:", error);
+      res.status(500).json({ error: "Failed to identify device" });
+    }
+  });
+
+
+  // POST /api/public/live-chat/session - Create or resume a live chat session
+  app.post("/api/public/live-chat/session", async (req: Request, res: Response) => {
+    const { widgetId, visitorId, visitorName, visitorEmail, visitorUrl, visitorBrowser, visitorOs, forceNew, deviceId } = req.body;
+    
+    // Get visitor IP from request headers
+    const visitorIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress || '';
+    
+    if (!widgetId) {
+      return res.status(400).json({ error: "widgetId is required" });
+    }
+    
+    try {
+      // Verify widget exists and get company
+      const widget = await db.query.chatWidgets.findFirst({
+        where: eq(chatWidgets.id, widgetId)
+      });
+      
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      const companyId = widget.companyId;
+      
+      // Generate visitor ID if not provided
+      const finalVisitorId = visitorId || `visitor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Check if an OPEN conversation already exists for this visitor (not closed/resolved)
+      // Skip if forceNew is true - user wants a completely new session
+      let existingConversation = null;
+      if (!forceNew) {
+        const result = await db
+          .select()
+          .from(telnyxConversations)
+          .where(and(
+            eq(telnyxConversations.companyId, companyId),
+            eq(telnyxConversations.phoneNumber, `livechat_${finalVisitorId}`),
+            eq(telnyxConversations.channel, "live_chat"),
+            not(inArray(telnyxConversations.status, ["solved", "archived"]))
+          ))
+          .orderBy(desc(telnyxConversations.createdAt))
+          .limit(1);
+        existingConversation = result[0] || null;
+      }
+      
+      // If an open conversation exists, RESUME it instead of creating new
+      if (existingConversation) {
+        console.log("[LiveChat] Resuming existing session:", existingConversation.id, "for visitor:", finalVisitorId);
+        
+// Get agent info if assigned
+        let agent = null;
+        try {
+          if (existingConversation.assignedTo) {
+            const agentResult = await db
+              .select()
+              .from(users)
+              .where(eq(users.id, existingConversation.assignedTo))
+              .limit(1);
+            
+            if (agentResult.length > 0) {
+              const assignedAgent = agentResult[0];
+              agent = {
+                id: assignedAgent.id,
+                firstName: assignedAgent.firstName,
+                lastName: assignedAgent.lastName,
+                fullName: ((assignedAgent.firstName || '') + ' ' + (assignedAgent.lastName || '')).trim() || 'Support Agent',
+                profileImageUrl: assignedAgent.avatar,
+              };
+            }
+          }
+        } catch (agentError) {
+          console.log('[LiveChat] Error fetching agent:', agentError);
+        }
+        
+        // Update visitor last seen
+        await db.update(liveWidgetVisitors)
+          .set({ lastSeenAt: new Date() })
+          .where(and(
+            eq(liveWidgetVisitors.visitorId, finalVisitorId),
+            eq(liveWidgetVisitors.widgetId, widgetId)
+          ));
+        
+        res.set({ "Access-Control-Allow-Origin": "*" });
+      
+      return res.json({
+          sessionId: existingConversation.id,
+          visitorId: finalVisitorId,
+          pendingSession: false,
+          resumed: true,
+          agent,
+          status: existingConversation.status,
+          lastMessage: existingConversation.lastMessage,
+          lastMessageAt: existingConversation.lastMessageAt,
+          displayName: existingConversation.displayName,
+          rating: existingConversation.satisfactionRating,
+          feedback: existingConversation.satisfactionFeedback,
+        });
+      }
+      
+      
+      // Check for a SOLVED conversation for this visitor (for history/rating display)
+      // Skip if forceNew is true - user wants a completely fresh session
+      let solvedConversation = null;
+      if (!forceNew) {
+        const solvedResult = await db
+          .select()
+          .from(telnyxConversations)
+          .where(and(
+            eq(telnyxConversations.companyId, companyId),
+            eq(telnyxConversations.phoneNumber, `livechat_${finalVisitorId}`),
+            eq(telnyxConversations.channel, "live_chat"),
+            inArray(telnyxConversations.status, ["solved", "archived"])
+          ))
+          .orderBy(desc(telnyxConversations.createdAt))
+          .limit(1);
+        solvedConversation = solvedResult[0] || null;
+      }
+      
+      if (solvedConversation) {
+        // Previous chat was solved/closed - allow starting a NEW chat
+        // Return sessionId: null so frontend creates new session on first message
+        console.log("[LiveChat] Found solved session for visitor:", finalVisitorId, "- allowing new chat session");
+        
+        res.set({ "Access-Control-Allow-Origin": "*" });
+        return res.json({
+          sessionId: null,
+          visitorId: finalVisitorId,
+          pendingSession: true,
+          previousSessionSolved: true,
+        });
+      }
+      // No open conversation exists - return visitor ID for new session creation on first message
+      console.log("[LiveChat] No existing conversation for visitor:", finalVisitorId, "- will create on first message");
+      res.set({ "Access-Control-Allow-Origin": "*" });
+      
+      return res.json({
+        sessionId: null,
+        visitorId: finalVisitorId,
+        pendingSession: true,
+      });
+    } catch (error: any) {
+      console.error("[LiveChat] Session error:", error);
+      res.status(500).json({ error: "Failed to create/resume session" });
+    }
+  });
+
+
+  // GET /api/public/live-chat/sessions - Get all chat sessions for a visitor
+  app.get("/api/public/live-chat/sessions", async (req: Request, res: Response) => {
+    const { widgetId, visitorId } = req.query;
+    
+    if (!widgetId || !visitorId) {
+      return res.status(400).json({ error: "widgetId and visitorId are required" });
+    }
+    
+    try {
+      // Verify widget exists
+      const widget = await db.query.chatWidgets.findFirst({
+        where: eq(chatWidgets.id, widgetId as string)
+      });
+      
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      const companyId = widget.companyId;
+      
+      // Get ALL conversations for this visitor (both open and solved)
+      const conversations = await db
+        .select({
+          id: telnyxConversations.id,
+          status: telnyxConversations.status,
+          displayName: telnyxConversations.displayName,
+          lastMessage: telnyxConversations.lastMessage,
+          lastMessageAt: telnyxConversations.lastMessageAt,
+          createdAt: telnyxConversations.createdAt,
+          assignedTo: telnyxConversations.assignedTo,
+          satisfactionRating: telnyxConversations.satisfactionRating,
+        })
+        .from(telnyxConversations)
+        .where(and(
+          eq(telnyxConversations.companyId, companyId),
+          sql`${telnyxConversations.phoneNumber} LIKE 'livechat_' || ${visitorId} || '%'`,
+          eq(telnyxConversations.channel, "live_chat")
+        ))
+        .orderBy(desc(telnyxConversations.createdAt));
+      
+      // Get agent info for each conversation
+      const sessionsWithAgents = await Promise.all(
+        conversations.map(async (conv) => {
+          let agent = null;
+          if (conv.assignedTo) {
+            const agentResult = await db
+              .select({
+                id: users.id,
+                firstName: users.firstName,
+                lastName: users.lastName,
+                avatar: users.avatar,
+              })
+              .from(users)
+              .where(eq(users.id, conv.assignedTo))
+              .limit(1);
+            
+            if (agentResult.length > 0) {
+              const a = agentResult[0];
+              agent = {
+                id: a.id,
+                fullName: ((a.firstName || '') + ' ' + (a.lastName || '')).trim() || 'Support Agent',
+                avatar: a.avatar,
+              };
+            }
+          }
+          
+          return {
+            sessionId: conv.id,
+            status: conv.status,
+            displayName: conv.displayName,
+            lastMessage: conv.lastMessage,
+            lastMessageAt: conv.lastMessageAt,
+            createdAt: conv.createdAt,
+            rating: conv.satisfactionRating,
+            agent,
+          };
+        })
+      );
+      
+      res.set({ "Access-Control-Allow-Origin": "*" });
+      return res.json({ sessions: sessionsWithAgents });
+    } catch (error: any) {
+      console.error("[LiveChat] Get sessions error:", error);
+      res.status(500).json({ error: "Failed to get sessions" });
+    }
+  });
+  // POST /api/public/live-chat/session/:sessionId/finish - Visitor ends the chat
+  app.post("/api/public/live-chat/session/:sessionId/finish", async (req: Request, res: Response) => {
+    const { sessionId } = req.params;
+    
+    try {
+      // Find the conversation by session ID (which is the conversation ID)
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(eq(telnyxConversations.id, sessionId))
+        .limit(1);
+      
+      if (!conversation) {
+        return res.json({ messages: [], agent: null, status: 'pending' });
+      }
+      
+      // Update conversation status to solved
+      await db
+        .update(telnyxConversations)
+        .set({ 
+          status: 'solved',
+          updatedAt: new Date()
+        })
+        .where(eq(telnyxConversations.id, sessionId));
+      
+      // Broadcast conversation update to connected agents
+      broadcastConversationUpdate(conversation.companyId, sessionId);  // FIXED: Was using undefined broadcastToCompany
+      
+      console.log(`[LiveChat] Visitor ended chat session: ${sessionId}`);
+      
+      res.json({ success: true, status: 'solved' });
+    } catch (error: any) {
+      console.error("[LiveChat] Finish session error:", error);
+      res.status(500).json({ error: "Failed to end chat session" });
+    }
+  });
+  // GET /api/public/live-chat/check-proactive/:visitorId - Check if agent started a proactive chat
+  app.get("/api/public/live-chat/check-proactive/:visitorId", async (req: Request, res: Response) => {
+    const { visitorId } = req.params;
+    const { widgetId } = req.query;
+    
+    try {
+      // Look for a conversation started by an agent for this visitor
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(
+          sql`${telnyxConversations.phoneNumber} LIKE 'livechat_' || ${visitorId} || '%'`,
+          eq(telnyxConversations.channel, "live_chat"),
+          widgetId ? eq(telnyxConversations.companyPhoneNumber, widgetId as string) : sql`1=1`
+        ))
+        .orderBy(desc(telnyxConversations.createdAt))
+        .limit(1);
+      
+      if (!conversation) {
+        res.set({ "Access-Control-Allow-Origin": "*" });
+        return res.json({ hasProactiveChat: false });
+      }
+      
+      // Get the messages for this conversation
+      const messages = await db
+        .select()
+        .from(telnyxMessages)
+        .where(eq(telnyxMessages.conversationId, conversation.id))
+        .orderBy(asc(telnyxMessages.createdAt));
+      
+      // Get agent info
+      let agent = null;
+      if (conversation.assignedTo) {
+        const [assignedAgent] = await db
+          .select({
+            id: users.id,
+            firstName: users.firstName,
+            lastName: users.lastName,
+            avatar: users.avatar,
+          })
+          .from(users)
+          .where(eq(users.id, conversation.assignedTo));
+        
+        if (assignedAgent) {
+          agent = {
+            id: assignedAgent.id,
+            firstName: assignedAgent.firstName,
+            lastName: assignedAgent.lastName,
+            fullName: `${assignedAgent.firstName || ""} ${assignedAgent.lastName || ""}`.trim() || "Support Agent",
+            profileImageUrl: assignedAgent.avatar,
+          };
+        }
+      }
+      
+      res.set({ "Access-Control-Allow-Origin": "*" });
+      res.json({
+        hasProactiveChat: true,
+        sessionId: conversation.id,
+        status: conversation.status,
+        messages,
+        agent,
+      });
+    } catch (error: any) {
+      console.error("[LiveChat] Check proactive error:", error);
+      res.status(500).json({ error: "Failed to check proactive chat" });
+    }
+  });
+  
+  // GET /api/public/live-chat/messages/:sessionId - Get messages for a session
+  app.get("/api/public/live-chat/messages/:sessionId", async (req: Request, res: Response) => {
+    const { sessionId } = req.params;
+    const { since } = req.query;
+    
+    try {
+      // Use raw SQL to avoid Drizzle ORM field ordering issues
+      const convResult = await db.execute(sql`
+        SELECT id, status, assigned_to, channel, display_name, email, satisfaction_rating, satisfaction_feedback, 
+               visitor_ip_address, visitor_browser, visitor_os, 
+               visitor_city, visitor_country, visitor_current_url
+        FROM telnyx_conversations 
+        WHERE id = ${sessionId} AND channel = 'live_chat'
+        LIMIT 1
+      `);
+      
+      if (convResult.rows.length === 0) {
+        return res.json({ messages: [], agent: null, status: 'pending' });
+      }
+      
+      const conversation = convResult.rows[0] as any;
+      
+      // Get assigned agent info if chat has been accepted
+      let agent = null;
+      if (conversation.assigned_to) {
+        const agentResult = await db.execute(sql`
+          SELECT id, first_name, last_name, avatar 
+          FROM users WHERE id = ${conversation.assigned_to}
+          LIMIT 1
+        `);
+        
+        if (agentResult.rows.length > 0) {
+          const assignedAgent = agentResult.rows[0] as any;
+          agent = {
+            id: assignedAgent.id,
+            firstName: assignedAgent.first_name,
+            lastName: assignedAgent.last_name,
+            fullName: `${assignedAgent.first_name || ''} ${assignedAgent.last_name || ''}`.trim() || 'Support Agent',
+            profileImageUrl: assignedAgent.avatar,
+          };
+        }
+      }
+      
+      // Get messages
+      let messages;
+      if (since) {
+        const sinceDate = new Date(since as string);
+        const result = await db.execute(sql`
+          SELECT * FROM telnyx_messages 
+          WHERE conversation_id = ${sessionId} 
+          AND created_at >= ${sinceDate}
+          ORDER BY created_at ASC
+        `);
+        messages = result.rows.map((m: any) => ({ id: m.id, text: m.text, direction: m.direction, createdAt: m.created_at, sentAt: m.sent_at, mediaUrl: m.media_url, mediaType: m.media_type }));
+      } else {
+        const result = await db.execute(sql`
+          SELECT * FROM telnyx_messages 
+          WHERE conversation_id = ${sessionId}
+          ORDER BY created_at ASC
+        `);
+        messages = result.rows.map((m: any) => ({ id: m.id, text: m.text, direction: m.direction, createdAt: m.created_at, sentAt: m.sent_at, mediaUrl: m.media_url, mediaType: m.media_type }));
+      }
+      res.set({ "Access-Control-Allow-Origin": "*" });
+      
+      // Include visitor info from the conversation record
+      const visitor = {
+        name: conversation.display_name || 'Website Visitor',
+        email: conversation.email || null,
+        ip: conversation.visitor_ip_address || null,
+        browser: conversation.visitor_browser || null,
+        os: conversation.visitor_os || null,
+        city: conversation.visitor_city || null,
+        country: conversation.visitor_country || null,
+        currentUrl: conversation.visitor_current_url || null,
+      };
+      
+      res.json({ messages, agent, visitor, status: conversation.status, rating: conversation.satisfaction_rating, feedback: conversation.satisfaction_feedback });
+    } catch (error: any) {
+      console.error("[LiveChat] Messages error:", error);
+      res.status(500).json({ error: "Failed to fetch messages" });
+    }
+  });
+  
+  // POST /api/public/live-chat/message - Send a message from visitor
+  app.post("/api/public/live-chat/message", async (req: Request, res: Response) => {
+    const { sessionId, text, visitorName, widgetId, visitorId, visitorEmail, visitorUrl, visitorBrowser, visitorOs, forceNew, clientMessageId, deviceId } = req.body;
+    
+    if (!text) {
+      return res.status(400).json({ error: "text is required" });
+    }
+    
+    // Get visitor IP
+    const visitorIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress || '';
+    
+    try {
+      let conversation;
+      
+      // If sessionId provided, find existing conversation
+      if (sessionId) {
+        const [existing] = await db
+          .select()
+          .from(telnyxConversations)
+          .where(and(
+            eq(telnyxConversations.id, sessionId),
+            eq(telnyxConversations.channel, "live_chat")
+          ));
+        conversation = existing;
+      }
+      
+      // If no conversation exists, create one now (first message creates the chat)
+      if (!conversation && widgetId && visitorId) {
+        // Get widget to find company
+        const widget = await db.query.chatWidgets.findFirst({
+          where: eq(chatWidgets.id, widgetId)
+        });
+        
+        if (!widget) {
+          return res.status(404).json({ error: "Widget not found" });
+        }
+        
+        
+        
+        // Check if there is a solved/archived conversation we can reopen
+        // ONLY reopen if forceNew is NOT true - when forceNew is true, always create a brand new session
+        let solvedConversation = null;
+        if (!forceNew) {
+          [solvedConversation] = await db
+            .select()
+            .from(telnyxConversations)
+            .where(and(
+              eq(telnyxConversations.companyId, widget.companyId),
+              sql`${telnyxConversations.phoneNumber} LIKE 'livechat_' || ${visitorId} || '%'`,
+              eq(telnyxConversations.channel, "live_chat"),
+              inArray(telnyxConversations.status, ["solved", "archived"])
+            ))
+            .orderBy(desc(telnyxConversations.createdAt))
+            .limit(1);
+          
+          if (solvedConversation) {
+            // Reopen the solved conversation (clears satisfaction data for fresh start)
+            console.log("[LiveChat] Reopening solved conversation:", solvedConversation.id, "for visitor:", visitorId);
+            const displayName = visitorName || solvedConversation.displayName || "Website Visitor";
+            await db.update(telnyxConversations)
+              .set({
+                status: "waiting",
+                lastMessage: text.trim().substring(0, 200),
+                lastMessageAt: new Date(),
+                unreadCount: sql`${telnyxConversations.unreadCount} + 1`,
+                displayName,
+                assignedTo: null,
+                satisfactionRating: null,
+                satisfactionFeedback: null,
+                satisfactionSubmittedAt: null,
+              })
+              .where(eq(telnyxConversations.id, solvedConversation.id));
+            
+            conversation = { ...solvedConversation, status: "waiting" };
+            
+            // Broadcast update to notify agents of reopened chat
+            const { broadcastConversationUpdate } = await import("./websocket");
+            broadcastConversationUpdate(widget.companyId);
+          }
+        }
+
+        // Fetch geolocation
+        let geoData: any = {};
+        if (visitorIp && !visitorIp.includes('127.0.0.1') && !visitorIp.includes('::1')) {
+          try {
+            const geoResponse = await fetch(`https://ipapi.co/${visitorIp}/json/`);
+            if (geoResponse.ok) {
+              geoData = await geoResponse.json();
+            }
+          } catch (geoErr) {}
+        }
+        
+        // Only create new conversation if we did not reopen a solved one
+        if (!conversation) {
+        // Create conversation on first message
+        const displayName = visitorName || "Website Visitor";
+        const [newConv] = await db.insert(telnyxConversations).values({
+          companyId: widget.companyId,
+          phoneNumber: forceNew ? `livechat_${visitorId}_${Date.now()}` : `livechat_${visitorId}`,
+          displayName,
+          email: visitorEmail || null,
+          companyPhoneNumber: widgetId,
+          status: "waiting",
+          channel: "live_chat",
+          widgetId: widgetId,
+          lastMessage: text.trim().substring(0, 200),
+          lastMessageAt: new Date(),
+          unreadCount: 1,
+          visitorIpAddress: visitorIp || null,
+          visitorCity: geoData.city || null,
+          visitorState: geoData.region || null,
+          visitorCountry: geoData.country_name || null,
+          visitorCurrentUrl: visitorUrl || null,
+          visitorBrowser: visitorBrowser || null,
+          visitorOs: visitorOs || null,
+          deviceId: deviceId || null,
+        }).returning();
+        conversation = newConv;
+        console.log("[LiveChat] Created conversation on first message:", conversation.id, "for visitor:", visitorId);
+        
+        // Save visitor to database
+        await db.insert(liveWidgetVisitors).values({
+          companyId: widget.companyId,
+          visitorId,
+          widgetId,
+          firstName: visitorName?.split(" ")[0] || null,
+          lastName: visitorName?.split(" ").slice(1).join(" ") || null,
+          email: visitorEmail || null,
+          ipAddress: visitorIp || null,
+          city: geoData.city || null,
+          state: geoData.region || null,
+          country: geoData.country_name || null,
+          currentUrl: visitorUrl || null,
+          browser: visitorBrowser || null,
+          os: visitorOs || null,
+          totalSessions: 1,
+          totalChats: 1,
+          lastSeenAt: new Date(),
+        }).onConflictDoUpdate({
+          target: [liveWidgetVisitors.visitorId, liveWidgetVisitors.widgetId],
+          set: {
+            firstName: visitorName?.split(" ")[0] || sql`${liveWidgetVisitors.firstName}`,
+            lastName: visitorName?.split(" ").slice(1).join(" ") || sql`${liveWidgetVisitors.lastName}`,
+            email: visitorEmail || sql`${liveWidgetVisitors.email}`,
+            totalChats: sql`${liveWidgetVisitors.totalChats} + 1`,
+            lastSeenAt: new Date(),
+          },
+        });
+        
+        // Broadcast update to notify agents of new waiting chat
+        const { broadcastConversationUpdate } = await import("./websocket");
+        broadcastConversationUpdate(widget.companyId);
+        
+        // Update in-memory visitor map with name
+        const visitorKey = `${widgetId}:${visitorId}`;
+        const existingVisitor = liveVisitors.get(visitorKey);
+        if (existingVisitor && visitorName) {
+          existingVisitor.firstName = visitorName?.split(" ")[0] || existingVisitor.firstName;
+          existingVisitor.lastName = visitorName?.split(" ").slice(1).join(" ") || existingVisitor.lastName;
+          existingVisitor.email = visitorEmail || existingVisitor.email;
+          liveVisitors.set(visitorKey, existingVisitor);
+        }
+        broadcastConversationUpdate(widget.companyId);
+        }
+      }
+      
+      if (!conversation) {
+        return res.status(404).json({ error: "Session not found and no widget/visitor info to create one" });
+      }
+      
+      // Create the message
+      const [message] = await db.insert(telnyxMessages).values({
+        conversationId: conversation.id,
+        direction: "inbound",
+        messageType: "incoming",
+        channel: "live_chat",
+        text: text.trim(),
+        contentType: "text",
+        status: "delivered",
+        createdAt: new Date(),
+        clientMessageId: clientMessageId || null,
+      }).returning();
+      
+      // Update conversation
+      await db
+        .update(telnyxConversations)
+        .set({
+          lastMessage: text.trim().substring(0, 200),
+          lastMessageAt: new Date(),
+          unreadCount: sql`${telnyxConversations.unreadCount} + 1`,
+          displayName: visitorName || conversation.displayName,
+          // Only set status to waiting if not already accepted (open)
+          ...(conversation.status !== "open" && { status: "waiting" }),
+          updatedAt: new Date(),
+        })
+        .where(eq(telnyxConversations.id, sessionId));
+      
+      // Broadcast to WebSocket clients
+      // Broadcast to inbox directly
+      broadcastInboxMessage(conversation.companyId, sessionId);
+      
+      console.log("[LiveChat] New message in conversation:", conversation.id, "text:", text.substring(0, 50));
+      
+      res.set({ "Access-Control-Allow-Origin": "*" });
+      res.json({ message, conversationId: conversation.id });
+    } catch (error: any) {
+      console.error("[LiveChat] Send message error:", error);
+      res.status(500).json({ error: "Failed to send message" });
+    }
+  });
+  
+  // POST /api/public/live-chat/heartbeat - Widget heartbeat for tracking
+  app.post("/api/public/live-chat/heartbeat", async (req: Request, res: Response) => {
+    res.set({ "Access-Control-Allow-Origin": "*" });
+    
+    const { widgetId, domain, currentUrl, visitorId } = req.body;
+    
+    if (!widgetId) {
+      return res.status(400).json({ error: "widgetId is required" });
+    }
+    
+    try {
+      // Verify widget exists
+      const widget = await db.query.chatWidgets.findFirst({
+        where: eq(chatWidgets.id, widgetId)
+      });
+      
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      // Update widget lastSeenAt and lastSeenDomain
+      await db
+        .update(chatWidgets)
+        .set({
+          lastSeenAt: new Date(),
+          lastSeenDomain: domain || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(chatWidgets.id, widgetId));
+      
+      // Update or create liveWidgetVisitors record if visitorId provided
+      if (visitorId) {
+        const visitorIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress || '';
+        
+        // Check if visitor exists
+        const [existingVisitor] = await db
+          .select()
+          .from(liveWidgetVisitors)
+          .where(and(
+            eq(liveWidgetVisitors.visitorId, visitorId),
+            eq(liveWidgetVisitors.widgetId, widgetId)
+          ))
+          .limit(1);
+        
+        if (existingVisitor) {
+          // Update existing visitor
+          await db
+            .update(liveWidgetVisitors)
+            .set({
+              currentUrl: currentUrl || existingVisitor.currentUrl,
+              lastSeenAt: new Date(),
+              ipAddress: visitorIp || existingVisitor.ipAddress,
+            })
+            .where(eq(liveWidgetVisitors.id, existingVisitor.id));
+        } else {
+          // Create new visitor record
+          await db.insert(liveWidgetVisitors).values({
+            widgetId,
+            companyId: widget.companyId,
+            visitorId,
+            currentUrl: currentUrl || null,
+            ipAddress: visitorIp || null,
+            totalSessions: 1,
+            totalChats: 0,
+          });
+        }
+      }
+      
+      // Return widget configuration for the client
+      res.json({
+        success: true,
+        widget: {
+          id: widget.id,
+          status: widget.status,
+          primaryColor: widget.primaryColor,
+          welcomeMessage: widget.welcomeMessage,
+          welcomeTitle: widget.welcomeTitle,
+          companyName: widget.companyName,
+          avatarUrl: widget.avatarUrl,
+          position: widget.position,
+          channels: widget.channels,
+          liveChatSettings: widget.liveChatSettings,
+        }
+      });
+    } catch (error: any) {
+      console.error("[LiveChat] Heartbeat error:", error);
+      res.status(500).json({ error: "Failed to process heartbeat" });
+    }
+  });
+  
+
+  // POST /api/public/live-chat/offline-message - Submit offline message when no agent is available
+  app.post("/api/public/live-chat/offline-message", async (req: Request, res: Response) => {
+    const { widgetId, visitorId, sessionId, visitorName, visitorEmail, message } = req.body;
+    
+    res.set({ "Access-Control-Allow-Origin": "*" });
+    
+    if (!message || !widgetId) {
+      return res.status(400).json({ error: "message and widgetId are required" });
+    }
+    
+    try {
+      // Get widget to find company
+      const widget = await db.query.chatWidgets.findFirst({
+        where: eq(chatWidgets.id, widgetId)
+      });
+      
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      // Get visitor IP
+      const visitorIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress || '';
+      
+      // Check if we have an existing session to update
+      let conversation;
+      if (sessionId) {
+        const [existing] = await db
+          .select()
+          .from(telnyxConversations)
+          .where(and(
+            eq(telnyxConversations.id, sessionId),
+            eq(telnyxConversations.channel, "live_chat")
+          ));
+        conversation = existing;
+      }
+      
+      if (conversation) {
+        // Update existing conversation status to pending/offline
+        await db
+          .update(telnyxConversations)
+          .set({
+            status: "waiting",
+            lastMessage: `[Offline Message] ${message.substring(0, 150)}`,
+            lastMessageAt: new Date(),
+            unreadCount: sql`${telnyxConversations.unreadCount} + 1`,
+            updatedAt: new Date(),
+          })
+          .where(eq(telnyxConversations.id, sessionId));
+          
+        // Add the offline message
+        await db.insert(telnyxMessages).values({
+          conversationId: sessionId,
+          direction: "inbound",
+          messageType: "incoming",
+          channel: "live_chat",
+          text: `[Offline Message]\n${message}`,
+          contentType: "text",
+          status: "delivered",
+          createdAt: new Date(),
+        });
+        
+        console.log("[LiveChat] Added offline message to existing conversation:", sessionId);
+      } else {
+        // Create new conversation for offline message
+        const displayName = visitorName || "Website Visitor";
+        const [newConv] = await db.insert(telnyxConversations).values({
+          companyId: widget.companyId,
+          phoneNumber: `livechat_offline_${visitorId || Date.now()}`,
+          displayName,
+          email: visitorEmail || null,
+          companyPhoneNumber: widgetId,
+          status: "waiting",
+          channel: "live_chat",
+          widgetId: widgetId,
+          lastMessage: `[Offline Message] ${message.substring(0, 150)}`,
+          lastMessageAt: new Date(),
+          unreadCount: 1,
+          visitorIpAddress: visitorIp || null,
+        }).returning();
+        
+        // Add the offline message
+        await db.insert(telnyxMessages).values({
+          conversationId: newConv.id,
+          direction: "inbound",
+          messageType: "incoming",
+          channel: "live_chat",
+          text: `[Offline Message]\nName: ${visitorName || 'Not provided'}\nEmail: ${visitorEmail || 'Not provided'}\n\nMessage:\n${message}`,
+          contentType: "text",
+          status: "delivered",
+          createdAt: new Date(),
+        });
+        
+        console.log("[LiveChat] Created new conversation for offline message:", newConv.id);
+        
+        // Broadcast update to notify agents
+        const { broadcastConversationUpdate } = await import("./websocket");
+        broadcastConversationUpdate(widget.companyId);
+      }
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[LiveChat] Offline message error:", error);
+      res.status(500).json({ error: "Failed to submit offline message" });
+    }
+  });
+  // OPTIONS handler for CORS preflight
+  app.options("/api/public/live-chat/*", (req: Request, res: Response) => {
+    res.set({
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    });
+    res.sendStatus(200);
+  });
+  // POST /api/public/live-chat/satisfaction - Submit satisfaction survey
+  app.post("/api/public/live-chat/satisfaction", async (req: Request, res: Response) => {
+    const { sessionId, rating, feedback } = req.body;
+    
+    res.set({ "Access-Control-Allow-Origin": "*" });
+    
+    if (!sessionId || !rating) {
+      return res.status(400).json({ error: "sessionId and rating are required" });
+    }
+    
+    if (rating < 1 || rating > 5) {
+      return res.status(400).json({ error: "Rating must be between 1 and 5" });
+    }
+    
+    try {
+      // Update conversation with satisfaction survey data
+      const [updated] = await db
+        .update(telnyxConversations)
+        .set({
+          satisfactionRating: rating,
+          satisfactionFeedback: feedback || null,
+          satisfactionSubmittedAt: new Date(),
+          updatedAt: new Date(),
+        })
+        .where(and(
+          eq(telnyxConversations.id, sessionId),
+          eq(telnyxConversations.channel, "live_chat")
+        ))
+        .returning();
+      
+      if (!updated) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+      
+      console.log("[LiveChat] Satisfaction survey submitted for session:", sessionId, "Rating:", rating);
+      
+      // Broadcast update to notify agents of the survey result
+      const { broadcastConversationUpdate } = await import("./websocket");
+      broadcastConversationUpdate(updated.companyId);
+      
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error("[LiveChat] Satisfaction survey error:", error);
+      res.status(500).json({ error: "Failed to submit satisfaction survey" });
+    }
+  });
+
+  
   // GET /api/voicemails - List voicemails for current user
   app.get("/api/voicemails", requireAuth, async (req: Request, res: Response) => {
     try {
@@ -37865,6 +39468,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       broadcastConversationUpdate(companyId);
       
       // Broadcast to live chat widget via WebSocket
+      // The sessionId for live_chat is the conversation.id (also used as phoneNumber field)
+      const sessionId = conversation.id;
+      broadcastLiveChatEvent(companyId, sessionId, {
+        type: 'chat_accepted',
+        agentName,
+        agentId: userId,
+        agentAvatar: agent?.avatar || null,
+      });
+      
+      console.log(`[LiveChat] Agent ${userId} (${agentName}) accepted chat ${id}`);
       res.json({ 
         success: true, 
         conversationId: id,
@@ -37880,6 +39493,109 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
 
+  // POST /api/inbox/start-chat-visitor - Start a proactive chat with a live visitor
+  app.post("/api/inbox/start-chat-visitor", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    const companyId = (req.user as any).companyId;
+    const userId = (req.user as any).id;
+    const user = req.user as any;
+    const { visitorId, message, widgetId } = req.body;
+    
+    if (!visitorId || !message) {
+      return res.status(400).json({ message: "visitorId and message are required" });
+    }
+    
+    try {
+      const [visitor] = await db
+        .select()
+        .from(liveVisitors)
+        .where(and(
+          eq(liveVisitors.visitorId, visitorId),
+          widgetId ? eq(liveVisitors.widgetId, widgetId) : sql`1=1`
+        ))
+        .limit(1);
+      
+      if (!visitor) {
+        return res.status(404).json({ message: "Visitor not found" });
+      }
+      
+      const [widget] = await db
+        .select()
+        .from(chatWidgets)
+        .where(eq(chatWidgets.id, visitor.widgetId));
+      
+      if (!widget || widget.companyId !== companyId) {
+        return res.status(403).json({ message: "Unauthorized access to this visitor" });
+      }
+      
+      let [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(and(
+          eq(telnyxConversations.companyId, companyId),
+          sql`${telnyxConversations.phoneNumber} LIKE 'livechat_' || ${visitorId} || '%'`,
+          eq(telnyxConversations.channel, "live_chat")
+        ));
+      
+      const agentName = `${user.firstName || ""} ${user.lastName || ""}`.trim() || "Agent";
+      
+      if (!conversation) {
+        const [newConversation] = await db
+          .insert(telnyxConversations)
+          .values({
+            companyId,
+            phoneNumber: forceNew ? `livechat_${visitorId}_${Date.now()}` : `livechat_${visitorId}`,
+            companyPhoneNumber: widget.id,
+            channel: "live_chat",
+            status: "open",
+            displayName: null,
+            lastMessage: message.substring(0, 100),
+            lastMessageAt: new Date(),
+            unreadCount: 0,
+            assignedTo: userId,
+          })
+          .returning();
+        conversation = newConversation;
+      } else {
+        await db.update(telnyxConversations)
+          .set({
+            status: "open",
+            assignedTo: userId,
+            lastMessage: message.substring(0, 100),
+            lastMessageAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(telnyxConversations.id, conversation.id));
+      }
+      
+      const [newMessage] = await db
+        .insert(telnyxMessages)
+        .values({
+          conversationId: conversation.id,
+          direction: "outbound",
+          text: message,
+          channel: "live_chat",
+          status: "sent",
+          sentBy: userId,
+          sentAt: new Date(),
+        })
+        .returning();
+      
+      broadcastConversationUpdate(companyId);
+      
+      console.log(`[LiveChat] Agent ${userId} started proactive chat with visitor ${visitorId}`);
+      res.status(201).json({ 
+        success: true, 
+        conversation, 
+        message: newMessage 
+      });
+    } catch (error: any) {
+      console.error("[LiveChat] Start chat error:", error);
+      res.status(500).json({ message: "Failed to start chat with visitor" });
+    }
+  });
 
   // DELETE /api/inbox/conversations/:id - Delete conversation and all messages
   app.delete("/api/inbox/conversations/:id", requireActiveCompany, async (req: Request, res: Response) => {
@@ -38475,8 +40191,218 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
 
   // Register SES routes
-  registerWidgetApiRoutes(app);
   registerSesRoutes(app, requireActiveCompany);
+
+
+  // ============================================
+  // LIVE VISITORS TRACKING
+  // ============================================
+  
+  // In-memory storage for live visitors (more efficient than DB for ephemeral data)
+  const liveVisitors = new Map<string, {
+    firstName: string | null;
+    lastName: string | null;
+    email: string | null;
+    totalSessions: number;
+    totalChats: number;
+    id: string;
+    widgetId: string;
+    companyId: string;
+    visitorId: string;
+    ipAddress: string | null;
+    city: string | null;
+    state: string | null;
+    country: string | null;
+    currentUrl: string | null;
+    pageTitle: string | null;
+    firstSeenAt: Date;
+    lastSeenAt: Date;
+  }>();
+  
+  // IP geolocation cache (1 hour TTL)
+  const geoCache = new Map<string, { city: string; state: string; country: string; cachedAt: number }>();
+  const GEO_CACHE_TTL = 60 * 60 * 1000; // 1 hour
+  
+  // Cleanup stale visitors every 30 seconds
+  setInterval(() => {
+    const now = Date.now();
+    const staleThreshold = 30000; // 60 seconds
+    for (const [key, visitor] of liveVisitors.entries()) {
+      if (now - visitor.lastSeenAt.getTime() > staleThreshold) {
+        liveVisitors.delete(key);
+        broadcastConversationUpdate(visitor.companyId);
+      }
+    }
+  }, 30000);
+  
+  // Helper: Get geo info from IP
+  async function getGeoFromIP(ip: string): Promise<{ city: string; state: string; country: string } | null> {
+    const cached = geoCache.get(ip);
+    if (cached && Date.now() - cached.cachedAt < GEO_CACHE_TTL) {
+      return { city: cached.city, state: cached.state, country: cached.country };
+    }
+    
+    try {
+      const cleanIp = ip.replace(/^::ffff:/, '');
+      if (cleanIp === '127.0.0.1' || cleanIp === '::1' || cleanIp.startsWith('192.168.') || cleanIp.startsWith('10.')) {
+        return { city: 'Local', state: 'Local', country: 'Local' };
+      }
+      
+      const response = await fetch(`https://ipapi.co/${cleanIp}/json/`);
+      if (response.ok) {
+        const data = await response.json();
+        const geo = {
+          city: data.city || 'Unknown',
+          state: data.region || 'Unknown',
+          country: data.country_name || 'Unknown',
+        };
+        geoCache.set(ip, { ...geo, cachedAt: Date.now() });
+        return geo;
+      }
+    } catch (error) {
+      console.error('[LiveVisitors] Geo lookup error:', error);
+    }
+    return null;
+  }
+  
+  // POST /api/public/live-visitors/heartbeat - Track visitor activity
+  app.post("/api/public/live-visitors/heartbeat", async (req: Request, res: Response) => {
+    const { widgetId, visitorId, currentUrl, pageTitle } = req.body;
+    
+    if (!widgetId || !visitorId) {
+      return res.status(400).json({ error: "widgetId and visitorId are required" });
+    }
+    
+    try {
+      const [widget] = await db
+        .select({ companyId: chatWidgets.companyId })
+        .from(chatWidgets)
+        .where(eq(chatWidgets.id, widgetId));
+      
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      const key = `${widgetId}:${visitorId}`;
+      const ip = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || '';
+      const now = new Date();
+      
+      let visitor = liveVisitors.get(key);
+      
+      if (visitor) {
+        visitor.currentUrl = currentUrl || visitor.currentUrl;
+        visitor.pageTitle = pageTitle || visitor.pageTitle;
+        visitor.lastSeenAt = now;
+      } else {
+        const geo = await getGeoFromIP(ip);
+        
+        // Check if we have saved data for this visitor in database
+        const [savedVisitor] = await db
+          .select()
+          .from(liveWidgetVisitors)
+          .where(and(
+            eq(liveWidgetVisitors.visitorId, visitorId),
+            eq(liveWidgetVisitors.widgetId, widgetId)
+          ))
+          .limit(1);
+        
+        visitor = {
+          id: savedVisitor?.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          widgetId,
+          companyId: widget.companyId,
+          visitorId,
+          firstName: savedVisitor?.firstName || null,
+          lastName: savedVisitor?.lastName || null,
+          email: savedVisitor?.email || null,
+          ipAddress: ip,
+          city: geo?.city || savedVisitor?.city || null,
+          state: geo?.state || savedVisitor?.state || null,
+          country: geo?.country || savedVisitor?.country || null,
+          currentUrl: currentUrl || null,
+          pageTitle: pageTitle || null,
+          totalSessions: (savedVisitor?.totalSessions || 0) + 1,
+          totalChats: savedVisitor?.totalChats || 0,
+          firstSeenAt: savedVisitor?.firstSeenAt || now,
+          lastSeenAt: now,
+        };
+        liveVisitors.set(key, visitor);
+        
+        // Upsert visitor data to database
+        await db
+          .insert(liveWidgetVisitors)
+          .values({
+            id: visitor.id,
+            widgetId,
+            companyId: widget.companyId,
+            visitorId,
+            firstName: visitor.firstName,
+            lastName: visitor.lastName,
+            email: visitor.email,
+            ipAddress: ip,
+            city: visitor.city,
+            state: visitor.state,
+            country: visitor.country,
+            currentUrl: currentUrl || null,
+            pageTitle: pageTitle || null,
+            totalSessions: visitor.totalSessions,
+            totalChats: visitor.totalChats,
+            firstSeenAt: visitor.firstSeenAt,
+            lastSeenAt: now,
+          })
+          .onConflictDoUpdate({
+            target: [liveWidgetVisitors.visitorId, liveWidgetVisitors.widgetId],
+            set: {
+              ipAddress: ip,
+              city: visitor.city,
+              state: visitor.state,
+              country: visitor.country,
+              currentUrl: currentUrl || null,
+              pageTitle: pageTitle || null,
+              totalSessions: sql`live_widget_visitors.total_sessions + 1`,
+              lastSeenAt: now,
+            },
+          });
+      }
+      
+      broadcastConversationUpdate(widget.companyId);
+      
+      res.set({ "Access-Control-Allow-Origin": "*" });
+      res.json({ success: true });
+    } catch (error: any) {
+      console.error('[LiveVisitors] Heartbeat error:', error);
+      res.status(500).json({ error: "Failed to track visitor" });
+    }
+  });
+  
+  // GET /api/live-visitors - Get live visitors for company (requires auth)
+  app.get("/api/live-visitors", requireActiveCompany, async (req: Request, res: Response) => {
+    if (!req.user) {
+      return res.status(401).json({ message: "Unauthorized" });
+    }
+    
+    const companyId = (req.user as any).companyId;
+    
+    try {
+      const visitors = Array.from(liveVisitors.values())
+        .filter(v => v.companyId === companyId)
+        .sort((a, b) => b.lastSeenAt.getTime() - a.lastSeenAt.getTime());
+      
+      res.json({ visitors });
+    } catch (error: any) {
+      console.error('[LiveVisitors] List error:', error);
+      res.status(500).json({ error: "Failed to fetch visitors" });
+    }
+  });
+  
+  // CORS preflight for heartbeat
+  app.options("/api/public/live-visitors/heartbeat", (req: Request, res: Response) => {
+    res.set({
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "POST, OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+    });
+    res.status(204).send();
+  });
 
   return httpServer;
 }

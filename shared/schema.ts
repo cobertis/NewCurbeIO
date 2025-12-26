@@ -4754,6 +4754,167 @@ export type InsertWaWebhookLog = z.infer<typeof insertWaWebhookLogSchema>;
 export type OauthState = typeof oauthStates.$inferSelect;
 export type InsertOauthState = z.infer<typeof insertOauthStateSchema>;
 
+// =====================================================
+// CHAT WIDGETS (Embeddable chat widgets for websites)
+// =====================================================
+
+export const chatWidgetStatusEnum = pgEnum("chat_widget_status", ["active", "inactive", "draft"]);
+
+export const chatWidgets = pgTable("chat_widgets", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  domain: text("domain"),
+  status: chatWidgetStatusEnum("status").notNull().default("draft"),
+  
+  // Appearance settings
+  primaryColor: text("primary_color").default("#2563eb"),
+  position: text("position").default("bottom-right"), // bottom-right, bottom-left
+  buttonSize: text("button_size").default("medium"), // small, medium, large
+  borderRadius: text("border_radius").default("rounded"), // rounded, square
+  welcomeMessage: text("welcome_message").default("Hi! How can we help you today?"),
+  offlineMessage: text("offline_message").default("We're currently offline. Leave a message and we'll get back to you."),
+  companyName: text("company_name"),
+  avatarUrl: text("avatar_url"),
+  
+  // Channels configuration (which channels to show)
+  channels: jsonb("channels").$type<{
+    type: string;
+    enabled: boolean;
+    label?: string;
+    value?: string;
+    order?: number;
+  }[]>().default([]),
+  
+  // Targeting settings
+  targetCountries: text("target_countries").array(),
+  targetDevices: text("target_devices").array(), // desktop, mobile, tablet
+  targetPages: jsonb("target_pages").$type<{ type: string; value: string }[]>(),
+  schedule: jsonb("schedule").$type<{
+    enabled: boolean;
+    timezone?: string;
+    days?: { day: string; enabled: boolean; startTime?: string; endTime?: string }[];
+  }>(),
+  
+  // Behavior settings
+  autoOpen: boolean("auto_open").default(false),
+  autoOpenDelay: integer("auto_open_delay").default(5), // seconds
+  showOnMobile: boolean("show_on_mobile").default(true),
+  showBranding: boolean("show_branding").default(true),
+  
+  // Extended appearance settings
+  welcomeTitle: text("welcome_title").default("Hi there 👋"),
+  colorTheme: text("color_theme").default("blue"),
+  themeType: text("theme_type").default("gradient"), // gradient, solid, custom
+  customColor: text("custom_color"),
+  
+  // Branding configuration (logo, etc)
+  branding: jsonb("branding").$type<{
+    customLogo?: string | null;
+    logoFileName?: string | null;
+    logoFileSize?: string | null;
+  }>(),
+  
+  // Minimized state configuration
+  minimizedState: jsonb("minimized_state").$type<{
+    includeButtonText?: boolean;
+    icon?: string;
+    buttonText?: string;
+    borderRadius?: number;
+    alignTo?: string;
+    sideSpacing?: number;
+    bottomSpacing?: number;
+    eyeCatcherEnabled?: boolean;
+    eyeCatcherMessage?: string;
+    messageDelay?: number;
+  }>(),
+  
+  // Targeting configuration
+  targeting: jsonb("targeting_config").$type<{
+    countries?: string;
+    selectedCountries?: string[];
+    pages?: string;
+    selectedPages?: { type: string; value: string }[];
+    devices?: { desktop?: boolean; mobile?: boolean; tablet?: boolean };
+    schedule?: { enabled?: boolean; timezone?: string; businessHours?: any };
+  }>(),
+  
+  // Live chat settings
+  liveChatSettings: jsonb("live_chat_settings").$type<{
+    enabled?: boolean;
+    teamMembers?: any[];
+    autoAssign?: boolean;
+  }>(),
+  
+  // Call settings
+  callSettings: jsonb("call_settings").$type<{
+    phoneNumber?: string;
+    showCallButton?: boolean;
+  }>(),
+  
+  // WhatsApp settings
+  whatsappSettings: jsonb("whatsapp_settings").$type<{
+    phoneNumber?: string;
+    defaultMessage?: string;
+  }>(),
+  
+  // Email settings
+  emailSettings: jsonb("email_settings").$type<{
+    emailAddress?: string;
+    subject?: string;
+  }>(),
+  
+  // SMS settings
+  smsSettings: jsonb("sms_settings").$type<{
+    welcomeScreen?: { channelName?: string };
+    messageScreen?: { title?: string; description?: string; buttonLabel?: string; showQRCode?: boolean };
+    numberSettings?: { numberType?: string; customNumber?: string; connectedNumber?: string };
+  }>(),
+  
+  // Messenger settings
+  messengerSettings: jsonb("messenger_settings").$type<{
+    welcomeScreen?: { channelName?: string };
+    pageSettings?: { title?: string; description?: string; buttonLabel?: string };
+    pageConnection?: { pageId?: string; pageName?: string };
+  }>(),
+  
+  // Instagram settings
+  instagramSettings: jsonb("instagram_settings").$type<{
+    welcomeScreen?: { channelName?: string };
+    profileSettings?: { title?: string; description?: string; buttonLabel?: string };
+    accountConnection?: { username?: string; accountName?: string };
+  }>(),
+  
+  // Telegram settings
+  telegramSettings: jsonb("telegram_settings").$type<{
+    welcomeScreen?: { channelName?: string };
+    messageUsScreen?: { showQRCode?: boolean; title?: string; description?: string; buttonLabel?: string };
+    botConnection?: { connectionType?: string; botUsername?: string; botName?: string; customUrl?: string };
+  }>(),
+  
+  // Channel order
+  channelOrder: text("channel_order").array(),
+  
+  // Widget tracking
+  lastSeenAt: timestamp("last_seen_at", { withTimezone: true }),
+  lastSeenDomain: text("last_seen_domain"),
+  
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("chat_widgets_company_id_idx").on(table.companyId),
+  statusIdx: index("chat_widgets_status_idx").on(table.status),
+}));
+
+export const insertChatWidgetSchema = createInsertSchema(chatWidgets).omit({
+  id: true,
+  lastSeenAt: true,
+  lastSeenDomain: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type ChatWidget = typeof chatWidgets.$inferSelect;
+export type InsertChatWidget = z.infer<typeof insertChatWidgetSchema>;
 
 // =====================================================
 // TELEGRAM INTEGRATION TABLES
@@ -6340,10 +6501,6 @@ export type InsertWalletDevice = z.infer<typeof insertWalletDeviceSchema>;
 export type WalletSettings = typeof walletSettings.$inferSelect;
 export type InsertWalletSettings = z.infer<typeof insertWalletSettingsSchema>;
 
-// Legacy enums - kept for database compatibility during migration
-export const chatWidgetStatusEnum = pgEnum("chat_widget_status", ["active", "inactive", "draft"]);
-export const telegramMessageDirectionEnum = pgEnum("telegram_message_direction", ["inbound", "outbound"]);
-
 // ==================== 10DLC Brand Registration ====================
 
 export const brandEntityTypeEnum = pgEnum("brand_entity_type", [
@@ -6489,7 +6646,7 @@ export const telnyxConversations = pgTable("telnyx_conversations", {
   visitorCurrentUrl: text("visitor_current_url"), // Page URL where chat started
   visitorBrowser: text("visitor_browser"), // Browser name and version
   visitorOs: text("visitor_os"), // Operating system
-  widgetId: varchar("widget_id"), // Widget ID for live chat
+  widgetId: varchar("widget_id").references(() => chatWidgets.id, { onDelete: "set null" }), // Widget ID for live chat
   // Satisfaction survey fields
   satisfactionRating: integer("satisfaction_rating"), // 1-5 rating from visitor
   satisfactionFeedback: text("satisfaction_feedback"), // Optional text feedback
@@ -6499,9 +6656,7 @@ export const telnyxConversations = pgTable("telnyx_conversations", {
   deviceId: varchar("device_id"), // Reference to the device that owns this conversation
   visitorLastReadAt: timestamp("visitor_last_read_at"), // When visitor last read the conversation
   agentLastReadAt: timestamp("agent_last_read_at"), // When agent last read the conversation
-  visitorLastSeenAt: timestamp("visitor_last_seen_at"), // When visitor saw the agent's response
-  agentLastSeenAt: timestamp("agent_last_seen_at"), // When agent started typing/responded (Intercom-style "seen")
-  conversationStatus: varchar("conversation_status").default("open"), // open, closed for Intercom-style lifecycle
+  agentSeenAt: timestamp("agent_seen_at"), // When agent started typing/responded (Intercom-style "seen")
   
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -6959,379 +7114,120 @@ export const insertSesEmailQueueSchema = createInsertSchema(sesEmailQueue).omit(
 export type SesEmailQueue = typeof sesEmailQueue.$inferSelect;
 export type InsertSesEmailQueue = z.infer<typeof insertSesEmailQueueSchema>;
 
-// =====================================================
-// LIVE CHAT WIDGET SYSTEM (Chatwoot-inspired architecture)
-// =====================================================
-
-// Widget reply time expectations
-export const widgetReplyTimeEnum = pgEnum("widget_reply_time", ["in_a_few_minutes", "in_a_few_hours", "in_a_day"]);
-
-// Widget Configs - Core widget settings (like Chatwoot's channel_web_widgets)
-export const widgetConfigs = pgTable("widget_configs", {
+// Live Widget Visitors - Track visitors in real-time
+export const liveWidgetVisitors = pgTable("live_widget_visitors", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  widgetId: varchar("widget_id").notNull(),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
   
-  // Unique tokens for identification and security
-  websiteToken: varchar("website_token").notNull().unique(), // Public token for embedding
-  hmacToken: varchar("hmac_token").notNull().unique(), // Secret token for HMAC identity verification
+  // Visitor identification
+  visitorId: varchar("visitor_id").notNull(),
   
-  // Basic settings
-  name: text("name").notNull().default("Website Widget"),
-  websiteUrl: text("website_url"), // Primary website URL
-  allowedDomains: text("allowed_domains").default(""), // Comma-separated allowed domains
-  
-  // Appearance
-  widgetColor: text("widget_color").default("#2563eb"),
-  position: text("position").default("right"), // left, right
-  
-  // Welcome messages
-  welcomeTitle: text("welcome_title").default("Hi there!"),
-  welcomeTagline: text("welcome_tagline").default("We usually reply in a few minutes."),
-  
-  // Pre-chat form
-  preChatFormEnabled: boolean("pre_chat_form_enabled").default(false),
-  preChatFormOptions: jsonb("pre_chat_form_options").$type<{
-    preChatMessage?: string;
-    requireEmail?: boolean;
-    preChatFields?: {
-      fieldType: string;
-      label: string;
-      name: string;
-      type: string;
-      placeholder?: string;
-      required: boolean;
-      enabled: boolean;
-      values?: string[];
-      regexPattern?: string;
-      regexCue?: string;
-    }[];
-  }>().default({
-    preChatMessage: "Please share your details to help us serve you better.",
-    preChatFields: [
-      { fieldType: "standard", label: "Email", name: "email", type: "email", required: true, enabled: true },
-      { fieldType: "standard", label: "Full Name", name: "fullName", type: "text", required: false, enabled: true }
-    ]
-  }),
-  
-  // Reply time expectation
-  replyTime: widgetReplyTimeEnum("reply_time").default("in_a_few_minutes"),
-  
-  // Feature flags (bitfield: 1=attachments, 2=emoji, 4=end_conversation, 8=use_inbox_avatar)
-  featureFlags: integer("feature_flags").default(7),
-  
-  // Security
-  hmacMandatory: boolean("hmac_mandatory").default(false),
-  
-  // Continuity
-  continuityViaEmail: boolean("continuity_via_email").default(true),
-  
-  // Business hours
-  businessHoursEnabled: boolean("business_hours_enabled").default(false),
-  businessHours: jsonb("business_hours").$type<{
-    timezone?: string;
-    schedule?: { day: number; openHour: number; openMinute: number; closeHour: number; closeMinute: number; enabled: boolean }[];
-  }>(),
-  outOfOfficeMessage: text("out_of_office_message").default("We're currently offline. Leave us a message and we'll get back to you."),
-  
-  // Auto-assignment
-  autoAssignmentEnabled: boolean("auto_assignment_enabled").default(true),
-  
-  // Team members assigned to this widget
-  teamMemberIds: text("team_member_ids").array(),
-  
-  // CSAT survey
-  csatSurveyEnabled: boolean("csat_survey_enabled").default(false),
-  
-  // Branding
-  showBranding: boolean("show_branding").default(true),
-  customLogo: text("custom_logo"),
-  
-  isActive: boolean("is_active").default(true),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => ({
-  companyIdIdx: index("widget_configs_company_id_idx").on(table.companyId),
-  websiteTokenIdx: index("widget_configs_website_token_idx").on(table.websiteToken),
-  hmacTokenIdx: index("widget_configs_hmac_token_idx").on(table.hmacToken),
-}));
-
-export const insertWidgetConfigSchema = createInsertSchema(widgetConfigs).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export type WidgetConfig = typeof widgetConfigs.$inferSelect;
-export type InsertWidgetConfig = z.infer<typeof insertWidgetConfigSchema>;
-
-// Widget contact types
-export const widgetContactTypeEnum = pgEnum("widget_contact_type", ["visitor", "lead", "customer"]);
-
-// Widget Contacts - Visitors/leads identified via widget
-export const widgetContacts = pgTable("widget_contacts", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-  widgetConfigId: varchar("widget_config_id").notNull().references(() => widgetConfigs.id, { onDelete: "cascade" }),
-  
-  // Contact type progression
-  contactType: widgetContactTypeEnum("contact_type").default("visitor"),
-  
-  // Identification
-  identifier: varchar("identifier"),
-  sourceId: varchar("source_id").notNull(),
-  
-  // Basic info
-  name: text("name").default(""),
+  // Contact info (saved when visitor starts a chat)
+  firstName: text("first_name"),
+  lastName: text("last_name"),
   email: text("email"),
-  phoneNumber: text("phone_number"),
-  avatarUrl: text("avatar_url"),
   
-  // Location
-  location: text("location").default(""),
-  countryCode: text("country_code").default(""),
-  city: text("city"),
+  // Location info from IP
   ipAddress: text("ip_address"),
+  city: text("city"),
+  state: text("state"),
+  country: text("country"),
   
-  // Browser/device info
-  browser: text("browser"),
-  browserLanguage: text("browser_language"),
-  os: text("os"),
-  deviceType: text("device_type"),
+  // Current page
+  currentUrl: text("current_url"),
+  pageTitle: text("page_title"),
   
-  // Custom attributes
-  customAttributes: jsonb("custom_attributes").$type<Record<string, any>>().default({}),
-  additionalAttributes: jsonb("additional_attributes").$type<{
-    referer?: string;
-    initialPageUrl?: string;
-    browser_language?: string;
-    city?: string;
-    country?: string;
-  }>().default({}),
+  // Session tracking
+  totalSessions: integer("total_sessions").default(1),
+  totalChats: integer("total_chats").default(0),
   
-  // Activity tracking
-  lastActivityAt: timestamp("last_activity_at").defaultNow(),
-  lastSeenAt: timestamp("last_seen_at").defaultNow(),
+  // Timing
+  firstSeenAt: timestamp("first_seen_at").notNull().defaultNow(),
+  lastSeenAt: timestamp("last_seen_at").notNull().defaultNow(),
   
-  // Blocking
-  blocked: boolean("blocked").default(false),
+}, (table) => ({
+  widgetIdIdx: index("live_widget_visitors_widget_id_idx").on(table.widgetId),
+  companyIdIdx: index("live_widget_visitors_company_id_idx").on(table.companyId),
+  visitorIdWidgetUnique: unique("live_widget_visitors_visitor_widget_unique").on(table.visitorId, table.widgetId),
+  lastSeenAtIdx: index("live_widget_visitors_last_seen_idx").on(table.lastSeenAt),
+}));
+
+export const insertLiveWidgetVisitorSchema = createInsertSchema(liveWidgetVisitors).omit({
+  id: true,
+  firstSeenAt: true,
+  lastSeenAt: true,
+});
+
+export type LiveWidgetVisitor = typeof liveWidgetVisitors.$inferSelect;
+export type InsertLiveWidgetVisitor = z.infer<typeof insertLiveWidgetVisitorSchema>;
+
+// =====================================================
+// LIVE CHAT DEVICES (Intercom-style persistent identity)
+// =====================================================
+
+export const liveChatContactTypeEnum = pgEnum("live_chat_contact_type", ["anonymous", "lead", "user"]);
+
+export const liveChatDevices = pgTable("live_chat_devices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  deviceId: varchar("device_id").notNull(), // UUID persistente por dispositivo
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  widgetId: varchar("widget_id").references(() => chatWidgets.id, { onDelete: "set null" }),
+  contactId: varchar("contact_id"), // Nullable al inicio, se llena cuando se identifica
+  contactType: liveChatContactTypeEnum("contact_type").notNull().default("anonymous"),
   
+  // Contact info when identified
+  userId: varchar("user_id"), // Si el usuario está logueado en la app del cliente
+  email: text("email"),
+  name: text("name"),
+  
+  // Merge tracking
+  mergedFromDeviceId: varchar("merged_from_device_id"), // Si este dispositivo fue fusionado desde otro
+  
+  // Session tracking
+  lastSeenAt: timestamp("last_seen_at").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
-  companyIdIdx: index("widget_contacts_company_id_idx").on(table.companyId),
-  widgetConfigIdIdx: index("widget_contacts_widget_config_id_idx").on(table.widgetConfigId),
-  sourceIdIdx: index("widget_contacts_source_id_idx").on(table.sourceId),
-  emailIdx: index("widget_contacts_email_idx").on(table.email),
-  identifierIdx: index("widget_contacts_identifier_idx").on(table.identifier),
-  lastActivityIdx: index("widget_contacts_last_activity_idx").on(table.lastActivityAt),
-  sourceIdWidgetUnique: unique("widget_contacts_source_widget_unique").on(table.sourceId, table.widgetConfigId),
+  deviceWidgetUnique: unique("live_chat_devices_device_widget_unique").on(table.deviceId, table.widgetId),
+  companyIdIdx: index("live_chat_devices_company_id_idx").on(table.companyId),
+  contactIdIdx: index("live_chat_devices_contact_id_idx").on(table.contactId),
+  lastSeenIdx: index("live_chat_devices_last_seen_idx").on(table.lastSeenAt),
 }));
 
-export const insertWidgetContactSchema = createInsertSchema(widgetContacts).omit({
+export const insertLiveChatDeviceSchema = createInsertSchema(liveChatDevices).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
 });
-export type WidgetContact = typeof widgetContacts.$inferSelect;
-export type InsertWidgetContact = z.infer<typeof insertWidgetContactSchema>;
 
-// Widget conversation status (Chatwoot-style state machine)
-export const widgetConversationStatusEnum = pgEnum("widget_conversation_status", ["open", "pending", "resolved", "snoozed"]);
-export const widgetConversationPriorityEnum = pgEnum("widget_conversation_priority", ["low", "medium", "high", "urgent"]);
+export type LiveChatDevice = typeof liveChatDevices.$inferSelect;
+export type InsertLiveChatDevice = z.infer<typeof insertLiveChatDeviceSchema>;
 
-// Widget Conversations - Chat sessions
-export const widgetConversations = pgTable("widget_conversations", {
+// =====================================================
+// LIVE CHAT CONVERSATION RATINGS (tied to conversation, not session)
+// =====================================================
+
+export const liveChatConversationRatings = pgTable("live_chat_conversation_ratings", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull().references(() => telnyxConversations.id, { onDelete: "cascade" }),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-  widgetConfigId: varchar("widget_config_id").notNull().references(() => widgetConfigs.id, { onDelete: "cascade" }),
-  widgetContactId: varchar("widget_contact_id").notNull().references(() => widgetContacts.id, { onDelete: "cascade" }),
+  deviceId: varchar("device_id"), // Reference to the device that submitted the rating
   
-  // Display ID (human-readable, auto-incrementing per company)
-  displayId: integer("display_id").notNull(),
+  rating: integer("rating").notNull(), // 1-5 rating
+  feedback: text("feedback"), // Optional text feedback
   
-  // UUID for public access
-  uuid: varchar("uuid").notNull().unique().default(sql`gen_random_uuid()`),
-  
-  // Status & priority
-  status: widgetConversationStatusEnum("status").default("open"),
-  priority: widgetConversationPriorityEnum("priority"),
-  
-  // Assignment
-  assigneeId: varchar("assignee_id").references(() => users.id, { onDelete: "set null" }),
-  teamId: varchar("team_id"),
-  
-  // Snooze functionality
-  snoozedUntil: timestamp("snoozed_until"),
-  
-  // Waiting state tracking
-  waitingSince: timestamp("waiting_since"),
-  
-  // Activity timestamps
-  lastActivityAt: timestamp("last_activity_at").notNull().defaultNow(),
-  firstReplyCreatedAt: timestamp("first_reply_created_at"),
-  agentLastSeenAt: timestamp("agent_last_seen_at"),
-  contactLastSeenAt: timestamp("contact_last_seen_at"),
-  
-  // Custom attributes
-  customAttributes: jsonb("custom_attributes").$type<Record<string, any>>().default({}),
-  additionalAttributes: jsonb("additional_attributes").$type<{
-    referer?: string;
-    initialPageUrl?: string;
-    browser?: string;
-    browserLanguage?: string;
-  }>().default({}),
-  
-  // Labels/tags
-  labels: text("labels").array(),
-  
-  // Message counts
-  messagesCount: integer("messages_count").default(0),
-  unreadMessagesCount: integer("unread_messages_count").default(0),
-  
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => ({
-  companyIdIdx: index("widget_conversations_company_id_idx").on(table.companyId),
-  widgetConfigIdIdx: index("widget_conversations_widget_config_id_idx").on(table.widgetConfigId),
-  widgetContactIdIdx: index("widget_conversations_widget_contact_id_idx").on(table.widgetContactId),
-  assigneeIdIdx: index("widget_conversations_assignee_id_idx").on(table.assigneeId),
-  statusIdx: index("widget_conversations_status_idx").on(table.status),
-  lastActivityIdx: index("widget_conversations_last_activity_idx").on(table.lastActivityAt),
-  displayIdCompanyUnique: unique("widget_conversations_display_id_company_unique").on(table.displayId, table.companyId),
-  uuidIdx: index("widget_conversations_uuid_idx").on(table.uuid),
-}));
-
-export const insertWidgetConversationSchema = createInsertSchema(widgetConversations).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export type WidgetConversation = typeof widgetConversations.$inferSelect;
-export type InsertWidgetConversation = z.infer<typeof insertWidgetConversationSchema>;
-
-// Widget message types
-export const widgetMessageTypeEnum = pgEnum("widget_message_type", ["incoming", "outgoing", "activity", "template"]);
-export const widgetMessageStatusEnum = pgEnum("widget_message_status", ["sent", "delivered", "read", "failed"]);
-export const widgetMessageContentTypeEnum = pgEnum("widget_message_content_type", ["text", "input_text", "input_email", "input_select", "cards", "form", "article", "sticker"]);
-
-// Widget Messages
-export const widgetMessages = pgTable("widget_messages", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-  widgetConversationId: varchar("widget_conversation_id").notNull().references(() => widgetConversations.id, { onDelete: "cascade" }),
-  
-  // Message type and direction
-  messageType: widgetMessageTypeEnum("message_type").notNull().default("incoming"),
-  
-  // Sender info
-  senderId: varchar("sender_id"),
-  senderType: text("sender_type"),
-  
-  // Content
-  content: text("content"),
-  contentType: widgetMessageContentTypeEnum("content_type").default("text"),
-  contentAttributes: jsonb("content_attributes").$type<{
-    items?: any[];
-    submitted_email?: string;
-    submitted_values?: Record<string, any>;
-  }>().default({}),
-  
-  // Private notes
-  private: boolean("private").default(false),
-  
-  // Status tracking
-  status: widgetMessageStatusEnum("status").default("sent"),
-  
-  // Attachments
-  attachments: jsonb("attachments").$type<{
-    id: string;
-    type: string;
-    url: string;
-    name: string;
-    size?: number;
-    thumbnailUrl?: string;
-  }[]>().default([]),
-  
-  // External reference
-  externalSourceId: varchar("external_source_id"),
-  
-  // Metadata
-  additionalAttributes: jsonb("additional_attributes").$type<Record<string, any>>().default({}),
-  
-  // Reply tracking
-  inReplyToId: varchar("in_reply_to_id"),
-  
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-  updatedAt: timestamp("updated_at").notNull().defaultNow(),
-}, (table) => ({
-  companyIdIdx: index("widget_messages_company_id_idx").on(table.companyId),
-  conversationIdIdx: index("widget_messages_conversation_id_idx").on(table.widgetConversationId),
-  senderIdx: index("widget_messages_sender_idx").on(table.senderId, table.senderType),
-  createdAtIdx: index("widget_messages_created_at_idx").on(table.createdAt),
-  externalSourceIdx: index("widget_messages_external_source_idx").on(table.externalSourceId),
-}));
-
-export const insertWidgetMessageSchema = createInsertSchema(widgetMessages).omit({
-  id: true,
-  createdAt: true,
-  updatedAt: true,
-});
-export type WidgetMessage = typeof widgetMessages.$inferSelect;
-export type InsertWidgetMessage = z.infer<typeof insertWidgetMessageSchema>;
-
-// Widget CSAT Survey Responses
-export const widgetCsatResponses = pgTable("widget_csat_responses", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-  widgetConversationId: varchar("widget_conversation_id").notNull().references(() => widgetConversations.id, { onDelete: "cascade" }),
-  widgetContactId: varchar("widget_contact_id").notNull().references(() => widgetContacts.id, { onDelete: "cascade" }),
-  assigneeId: varchar("assignee_id").references(() => users.id, { onDelete: "set null" }),
-  
-  rating: integer("rating").notNull(),
-  feedbackMessage: text("feedback_message"),
-  
+  submittedAt: timestamp("submitted_at").notNull().defaultNow(),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({
-  companyIdIdx: index("widget_csat_company_id_idx").on(table.companyId),
-  conversationIdUnique: unique("widget_csat_conversation_unique").on(table.widgetConversationId),
-  assigneeIdIdx: index("widget_csat_assignee_id_idx").on(table.assigneeId),
+  conversationUnique: unique("live_chat_ratings_conversation_unique").on(table.conversationId),
+  companyIdIdx: index("live_chat_ratings_company_id_idx").on(table.companyId),
 }));
 
-export const insertWidgetCsatResponseSchema = createInsertSchema(widgetCsatResponses).omit({
+export const insertLiveChatConversationRatingSchema = createInsertSchema(liveChatConversationRatings).omit({
   id: true,
   createdAt: true,
 });
-export type WidgetCsatResponse = typeof widgetCsatResponses.$inferSelect;
-export type InsertWidgetCsatResponse = z.infer<typeof insertWidgetCsatResponseSchema>;
 
-// Widget Sessions - JWT session management
-export const widgetSessions = pgTable("widget_sessions", {
-  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
-  widgetConfigId: varchar("widget_config_id").notNull().references(() => widgetConfigs.id, { onDelete: "cascade" }),
-  widgetContactId: varchar("widget_contact_id").notNull().references(() => widgetContacts.id, { onDelete: "cascade" }),
-  
-  tokenHash: varchar("token_hash").notNull(),
-  deviceId: varchar("device_id"),
-  userAgent: text("user_agent"),
-  
-  expiresAt: timestamp("expires_at").notNull(),
-  lastUsedAt: timestamp("last_used_at").defaultNow(),
-  revokedAt: timestamp("revoked_at"),
-  
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-}, (table) => ({
-  companyIdIdx: index("widget_sessions_company_id_idx").on(table.companyId),
-  tokenHashIdx: index("widget_sessions_token_hash_idx").on(table.tokenHash),
-  contactIdIdx: index("widget_sessions_contact_id_idx").on(table.widgetContactId),
-  expiresAtIdx: index("widget_sessions_expires_at_idx").on(table.expiresAt),
-}));
-
-export const insertWidgetSessionSchema = createInsertSchema(widgetSessions).omit({
-  id: true,
-  createdAt: true,
-});
-export type WidgetSession = typeof widgetSessions.$inferSelect;
-export type InsertWidgetSession = z.infer<typeof insertWidgetSessionSchema>;
-
-
-
+export type LiveChatConversationRating = typeof liveChatConversationRatings.$inferSelect;
+export type InsertLiveChatConversationRating = z.infer<typeof insertLiveChatConversationRatingSchema>;

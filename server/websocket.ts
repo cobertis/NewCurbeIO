@@ -66,8 +66,19 @@ interface AuthenticatedWebSocket extends WebSocket {
   role?: string;
   isAuthenticated: boolean;
 }
+
+// Extended WebSocket type for live chat widget connections (public, unauthenticated)
+interface LiveChatWidgetWebSocket extends WebSocket {
+  sessionId: string;
+  companyId: string;
+  widgetId: string;
+}
+
 let wss: WebSocketServer | null = null;
 let sessionStore: any = null;
+
+// Track live chat widget connections by sessionId for real-time event broadcasting
+const liveChatWidgetConnections = new Map<string, Set<LiveChatWidgetWebSocket>>();
 
 export function setupWebSocket(server: Server, pgSessionStore?: any) {
   sessionStore = pgSessionStore;
@@ -79,6 +90,16 @@ export function setupWebSocket(server: Server, pgSessionStore?: any) {
   server.on('upgrade', (request, socket, head) => {
     const pathname = request.url || '';
     
+    // Handle live chat widget connections (public, no auth required)
+    // Path format: /ws/live-chat/:sessionId?widgetId=xxx&companyId=xxx
+    if (pathname.startsWith('/ws/live-chat/')) {
+      if (wss) {
+        wss.handleUpgrade(request, socket, head, (ws) => {
+          handleLiveChatWidgetConnection(ws as LiveChatWidgetWebSocket, request);
+        });
+      }
+      return;
+    }
     
     // Only handle our specific authenticated WebSocket paths
     if (!pathname.startsWith('/ws/sip') && !pathname.startsWith('/ws/chat') && !pathname.startsWith('/ws/pbx')) {
@@ -430,6 +451,96 @@ async function handlePbxConnection(ws: AuthenticatedWebSocket, req: IncomingMess
   });
 }
 
+// Live Chat Widget WebSocket Handler (public, no authentication required)
+function handleLiveChatWidgetConnection(ws: LiveChatWidgetWebSocket, req: IncomingMessage) {
+  const url = new URL(req.url || '', `http://${req.headers.host}`);
+  const pathParts = url.pathname.split('/');
+  const sessionId = pathParts[pathParts.length - 1]; // Extract sessionId from path
+  const widgetId = url.searchParams.get('widgetId') || '';
+  const companyId = url.searchParams.get('companyId') || '';
+  
+  if (!sessionId || !widgetId || !companyId) {
+    console.log('[LiveChat WebSocket] Missing required params - closing');
+    ws.close(1008, 'Missing required parameters');
+    return;
+  }
+  
+  // Set connection properties
+  ws.sessionId = sessionId;
+  ws.widgetId = widgetId;
+  ws.companyId = companyId;
+  
+  // Register connection
+  if (!liveChatWidgetConnections.has(sessionId)) {
+    liveChatWidgetConnections.set(sessionId, new Set());
+  }
+  liveChatWidgetConnections.get(sessionId)!.add(ws);
+  
+  console.log(`[LiveChat WebSocket] Widget connected: sessionId=${sessionId}, widgetId=${widgetId}`);
+  
+  // Send connection acknowledgment
+  ws.send(JSON.stringify({ type: 'connected', sessionId }));
+  
+  ws.on('error', (err) => {
+    console.error('[LiveChat WebSocket] Error:', err.message);
+  });
+  
+  ws.on('close', () => {
+    const connections = liveChatWidgetConnections.get(sessionId);
+    if (connections) {
+      connections.delete(ws);
+      if (connections.size === 0) {
+        liveChatWidgetConnections.delete(sessionId);
+      }
+    }
+    console.log(`[LiveChat WebSocket] Widget disconnected: sessionId=${sessionId}`);
+  });
+  
+  // Handle ping/pong for keepalive
+  ws.on('message', (data) => {
+    try {
+      const msg = JSON.parse(data.toString());
+      if (msg.type === 'ping') {
+        ws.send(JSON.stringify({ type: 'pong' }));
+      }
+    } catch (e) {
+      // Ignore parse errors
+    }
+  });
+}
+
+// Broadcast live chat event to widget connections by sessionId
+export function broadcastLiveChatEvent(companyId: string, sessionId: string, event: {
+  type: string;
+  agentName?: string;
+  agentId?: string;
+  message?: any;
+  [key: string]: any;
+}) {
+  const connections = liveChatWidgetConnections.get(sessionId);
+  
+  if (!connections || connections.size === 0) {
+    console.log(`[LiveChat WebSocket] No widget connections for session: ${sessionId}`);
+    return;
+  }
+  
+  const payload = JSON.stringify({
+    ...event,
+    sessionId,
+    companyId,
+    timestamp: new Date().toISOString()
+  });
+  
+  let sentCount = 0;
+  connections.forEach((ws) => {
+    if (ws.readyState === WebSocket.OPEN && ws.companyId === companyId) {
+      ws.send(payload);
+      sentCount++;
+    }
+  });
+  
+  console.log(`[LiveChat WebSocket] Broadcast ${event.type} to ${sentCount} widget connection(s) for session: ${sessionId}`);
+}
 
 // Broadcast new message to tenant-scoped clients only
 // NOTE: companyId should be passed based on the conversation/phone number owner

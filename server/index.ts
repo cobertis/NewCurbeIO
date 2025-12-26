@@ -80,9 +80,6 @@ app.use(cookieParser()); // Required to read cookies like 'trusted_device'
 // Serve static files from uploads directory
 app.use('/uploads', express.static('uploads'));
 
-// Serve widget SDK and frame from public directory
-app.use('/widget', express.static('public/widget'));
-
 // Configure PostgreSQL session store for persistent sessions
 const PgStore = connectPgSimple(session);
 

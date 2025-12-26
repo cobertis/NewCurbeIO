@@ -1848,7 +1848,7 @@ export default function InboxPage() {
                         <div className="flex justify-between">
                           <span className="text-xs text-muted-foreground">Created</span>
                           <span className="text-sm font-medium">
-                            {(selectedConversation as any).createdAt && format(new Date((selectedConversation as any).createdAt), "MMM d, yyyy h:mm a")}
+                            {format(new Date(selectedConversation.createdAt), "MMM d, yyyy h:mm a")}
                           </span>
                         </div>
                       </div>
