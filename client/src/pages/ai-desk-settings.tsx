@@ -27,7 +27,10 @@ import {
   CheckCircle,
   Clock,
   FileText,
-  Database
+  Database,
+  History,
+  CheckCheck,
+  XCircle
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { LoadingSpinner } from "@/components/loading-spinner";
@@ -66,6 +69,39 @@ interface UsageStats {
   avgLatencyMs: number;
 }
 
+interface AiRun {
+  id: string;
+  companyId: string;
+  conversationId: string | null;
+  messageId: string | null;
+  mode: string;
+  status: string;
+  intent: string | null;
+  confidence: string | null;
+  needsHuman: boolean;
+  inputText: string;
+  outputText: string | null;
+  model: string;
+  tokensIn: number | null;
+  tokensOut: number | null;
+  latencyMs: number | null;
+  createdAt: string;
+}
+
+interface AiActionLog {
+  id: string;
+  runId: string;
+  toolName: string;
+  args: Record<string, unknown>;
+  result: Record<string, unknown> | null;
+  success: boolean;
+  error: string | null;
+  requiresApproval: boolean;
+  approvedByUserId: string | null;
+  approvedAt: string | null;
+  createdAt: string;
+}
+
 const sourceFormSchema = z.object({
   type: z.literal("url"),
   name: z.string().min(1, "Name is required"),
@@ -90,6 +126,10 @@ export default function AiDeskSettingsPage() {
 
   const { data: usage } = useQuery<UsageStats>({
     queryKey: ["/api/ai/usage"],
+  });
+
+  const { data: runs, isLoading: runsLoading } = useQuery<AiRun[]>({
+    queryKey: ["/api/ai/runs"],
   });
 
   const updateSettingsMutation = useMutation({
@@ -202,6 +242,10 @@ export default function AiDeskSettingsPage() {
           <TabsTrigger value="usage" data-testid="tab-usage">
             <Database className="w-4 h-4 mr-2" />
             Usage
+          </TabsTrigger>
+          <TabsTrigger value="activity" data-testid="tab-activity">
+            <History className="w-4 h-4 mr-2" />
+            Activity
           </TabsTrigger>
         </TabsList>
 
@@ -419,6 +463,102 @@ export default function AiDeskSettingsPage() {
                   <p className="text-2xl font-bold">${(usage?.totalCost ?? 0).toFixed(4)}</p>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="activity" className="space-y-4">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <History className="w-5 h-5" />
+                Recent AI Activity
+              </CardTitle>
+              <CardDescription>
+                View recent AI runs, responses, and tool executions
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {runsLoading ? (
+                <LoadingSpinner fullScreen={false} message="Loading activity..." />
+              ) : runs && runs.length > 0 ? (
+                <div className="space-y-4">
+                  {runs.slice(0, 20).map((run) => (
+                    <div
+                      key={run.id}
+                      className="border rounded-lg p-4 space-y-3"
+                      data-testid={`activity-run-${run.id}`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {run.mode === "copilot" ? (
+                            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
+                              <Sparkles className="w-3 h-3 mr-1" />
+                              Copilot
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
+                              <Brain className="w-3 h-3 mr-1" />
+                              Autopilot
+                            </Badge>
+                          )}
+                          <Badge variant={run.status === "completed" ? "default" : run.status === "failed" ? "destructive" : "secondary"}>
+                            {run.status === "completed" && <CheckCheck className="w-3 h-3 mr-1" />}
+                            {run.status === "failed" && <XCircle className="w-3 h-3 mr-1" />}
+                            {run.status === "pending" && <Clock className="w-3 h-3 mr-1" />}
+                            {run.status}
+                          </Badge>
+                          {run.needsHuman && (
+                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
+                              Needs Human
+                            </Badge>
+                          )}
+                        </div>
+                        <span className="text-sm text-muted-foreground">
+                          {new Date(run.createdAt).toLocaleString()}
+                        </span>
+                      </div>
+
+                      <div className="grid gap-2 text-sm">
+                        <div>
+                          <span className="font-medium">Input:</span>
+                          <p className="text-muted-foreground truncate max-w-xl">{run.inputText}</p>
+                        </div>
+                        {run.outputText && (
+                          <div>
+                            <span className="font-medium">Output:</span>
+                            <p className="text-muted-foreground truncate max-w-xl">{run.outputText}</p>
+                          </div>
+                        )}
+                        {run.intent && (
+                          <div>
+                            <span className="font-medium">Intent:</span>{" "}
+                            <span className="text-muted-foreground">{run.intent}</span>
+                            {run.confidence && (
+                              <span className="text-muted-foreground ml-2">
+                                ({(parseFloat(run.confidence) * 100).toFixed(0)}% confidence)
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
+                        <span>Model: {run.model}</span>
+                        {run.tokensIn !== null && <span>Tokens in: {run.tokensIn}</span>}
+                        {run.tokensOut !== null && <span>Tokens out: {run.tokensOut}</span>}
+                        {run.latencyMs !== null && <span>Latency: {run.latencyMs}ms</span>}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <History className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                  <p>No AI activity yet</p>
+                  <p className="text-sm">AI runs will appear here when Copilot or Autopilot is used</p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>

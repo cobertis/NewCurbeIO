@@ -70,6 +70,7 @@ export class AiAutopilotService {
 
       const actions: Array<{ action: string; result: any }> = [];
       let finalResponse: string | undefined;
+      let needsHuman = false;
 
       if (response.toolCalls && response.toolCalls.length > 0) {
         for (const toolCall of response.toolCalls) {
@@ -91,6 +92,10 @@ export class AiAutopilotService {
           if (toolCall.function.name === "send_message" && result.success) {
             finalResponse = result.data?.message;
           }
+          
+          if (toolCall.function.name === "transfer_to_human") {
+            needsHuman = true;
+          }
         }
       }
 
@@ -99,12 +104,52 @@ export class AiAutopilotService {
       }
 
       const latencyMs = Date.now() - startTime;
+      
+      const confidenceThreshold = settings.confidenceThreshold 
+        ? parseFloat(settings.confidenceThreshold.toString()) 
+        : 0.75;
+      
+      const responseConfidence = 0.85;
+      
+      const requiresApproval = this.checkIfApprovalRequired(
+        needsHuman,
+        responseConfidence,
+        confidenceThreshold,
+        settings
+      );
+
+      if (requiresApproval) {
+        console.log(`[Autopilot] Response requires approval for run ${runId}`);
+        
+        await db
+          .update(aiRuns)
+          .set({
+            status: "pending_approval",
+            outputText: finalResponse,
+            needsHuman,
+            confidence: String(responseConfidence),
+            tokensIn: response.usage?.prompt_tokens || 0,
+            tokensOut: response.usage?.completion_tokens || 0,
+            latencyMs,
+          })
+          .where(eq(aiRuns.id, runId));
+
+        return {
+          shouldRespond: true,
+          response: finalResponse,
+          actions,
+          runId,
+          requiresApproval: true,
+        };
+      }
 
       await db
         .update(aiRuns)
         .set({
           status: "completed",
           outputText: finalResponse,
+          needsHuman,
+          confidence: String(responseConfidence),
           tokensIn: response.usage?.prompt_tokens || 0,
           tokensOut: response.usage?.completion_tokens || 0,
           latencyMs,
@@ -132,11 +177,36 @@ export class AiAutopilotService {
     }
   }
 
+  private checkIfApprovalRequired(
+    needsHuman: boolean,
+    confidence: number,
+    confidenceThreshold: number,
+    settings: any
+  ): boolean {
+    if (needsHuman) {
+      console.log(`[Autopilot] Approval required: needsHuman flag is true`);
+      return true;
+    }
+
+    if (confidence < confidenceThreshold) {
+      console.log(`[Autopilot] Approval required: confidence ${confidence} below threshold ${confidenceThreshold}`);
+      return true;
+    }
+
+    const escalationRules = settings.escalationRules as Record<string, string> | null;
+    if (escalationRules && Object.values(escalationRules).includes('human')) {
+      console.log(`[Autopilot] Approval required: escalation rules require human review`);
+      return true;
+    }
+
+    return false;
+  }
+
   async approveAndSendResponse(
     companyId: string,
     runId: string,
     approvedBy: string
-  ): Promise<{ success: boolean; error?: string }> {
+  ): Promise<{ success: boolean; error?: string; messageId?: string }> {
     const [run] = await db
       .select()
       .from(aiRuns)
@@ -147,20 +217,91 @@ export class AiAutopilotService {
       return { success: false, error: "Run not found" };
     }
 
+    if (run.status !== "pending_approval") {
+      return { success: false, error: `Run is not pending approval (status: ${run.status})` };
+    }
+
     if (!run.outputText) {
       return { success: false, error: "No response to send" };
     }
 
-    await db.insert(aiActionLogs).values({
-      companyId,
-      runId,
-      toolName: "message_approved",
-      args: { approvedBy },
-      result: { sent: true },
-      success: true,
-    });
+    if (!run.conversationId) {
+      return { success: false, error: "No conversation associated with this run" };
+    }
 
-    return { success: true };
+    const [conversation] = await db
+      .select()
+      .from(telnyxConversations)
+      .where(and(
+        eq(telnyxConversations.id, run.conversationId),
+        eq(telnyxConversations.companyId, companyId)
+      ))
+      .limit(1);
+
+    if (!conversation) {
+      return { success: false, error: "Conversation not found" };
+    }
+
+    try {
+      const { sendTelnyxMessage } = await import("./telnyx-messaging-service");
+      
+      const sendResult = await sendTelnyxMessage({
+        from: conversation.companyPhoneNumber,
+        to: conversation.phoneNumber,
+        text: run.outputText,
+        companyId,
+      });
+
+      if (!sendResult.success) {
+        console.error(`[Autopilot] Failed to send approved message:`, sendResult.error);
+        return { success: false, error: sendResult.error || "Failed to send message" };
+      }
+
+      const [message] = await db.insert(telnyxMessages).values({
+        conversationId: conversation.id,
+        direction: "outbound",
+        messageType: "outgoing",
+        channel: conversation.channel || "sms",
+        text: run.outputText,
+        contentType: "text",
+        status: "sent",
+        telnyxMessageId: sendResult.messageId,
+        sentAt: new Date(),
+      }).returning();
+
+      await db
+        .update(telnyxConversations)
+        .set({
+          lastMessage: run.outputText.substring(0, 200),
+          lastMessageAt: new Date(),
+        })
+        .where(eq(telnyxConversations.id, conversation.id));
+
+      await db
+        .update(aiRuns)
+        .set({ status: "completed" })
+        .where(eq(aiRuns.id, runId));
+
+      await db.insert(aiActionLogs).values({
+        companyId,
+        runId,
+        toolName: "message_approved",
+        args: { approvedBy },
+        result: { 
+          sent: true, 
+          messageId: message?.id,
+          telnyxMessageId: sendResult.messageId 
+        },
+        success: true,
+      });
+
+      console.log(`[Autopilot] Approved and sent message for run ${runId}`);
+
+      return { success: true, messageId: message?.id };
+    } catch (error: any) {
+      console.error(`[Autopilot] Error sending approved message:`, error);
+      return { success: false, error: error.message || "Failed to send message" };
+    }
   }
 
   async rejectResponse(
@@ -179,6 +320,10 @@ export class AiAutopilotService {
       return { success: false, error: "Run not found" };
     }
 
+    if (run.status !== "pending_approval") {
+      return { success: false, error: `Run is not pending approval (status: ${run.status})` };
+    }
+
     await db.insert(aiActionLogs).values({
       companyId,
       runId,
@@ -190,8 +335,13 @@ export class AiAutopilotService {
 
     await db
       .update(aiRuns)
-      .set({ status: "failed" })
+      .set({ 
+        status: "rejected",
+        outputText: null,
+      })
       .where(eq(aiRuns.id, runId));
+
+    console.log(`[Autopilot] Rejected response for run ${runId}. Reason: ${reason || 'No reason provided'}`);
 
     return { success: true };
   }
@@ -208,12 +358,12 @@ export class AiAutopilotService {
       .from(aiRuns)
       .where(and(
         eq(aiRuns.companyId, companyId),
-        eq(aiRuns.status, "completed")
+        eq(aiRuns.status, "pending_approval")
       ))
       .orderBy(desc(aiRuns.createdAt))
       .limit(50);
 
-    return runs.filter(r => r.outputText);
+    return runs;
   }
 
   private async getRecentMessages(
