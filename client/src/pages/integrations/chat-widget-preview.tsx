@@ -2458,88 +2458,89 @@ export default function ChatWidgetPreviewPage() {
           ) : (chatFlowState === 'activeChat' || chatFlowState === 'postChatSurvey') ? (
             /* Active Live Chat View or Post-Chat Survey - Professional Design */
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: '680px' }}>
-              {/* Header - Clean design like Textmagic */}
-              <div 
-                className="px-4 py-4 border-b border-slate-200 dark:border-slate-700"
-                style={{ background: currentBackground }}
-              >
-                <div className="flex items-center justify-between">
-                  {/* Back button + Logo */}
-                  <div className="flex items-center gap-3">
-                    <button
-                      onClick={() => {
-                        setChatSessionId(null);
-                        setConnectedAgent(null);
-                        setChatMessages([]);
-                        setChatStatus('active');
-                        setActiveWidgetTab("home");
-                      }}
-                      className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
-                      title="Back to home"
-                      data-testid="button-back-to-home"
-                    >
-                      <ChevronLeft className="h-5 w-5 text-white" />
-                    </button>
-                    {widget.branding?.customLogo ? (
+              {/* Header - same style as Home (WidgetHeader) */}
+              <div className="px-5 py-4 flex items-center justify-between bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
+                {/* Back button + Logo */}
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => {
+                      setChatSessionId(null);
+                      setConnectedAgent(null);
+                      setChatMessages([]);
+                      setChatStatus('active');
+                      setActiveWidgetTab("home");
+                    }}
+                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+                    title="Back to home"
+                    data-testid="button-back-to-home"
+                  >
+                    <ChevronLeft className="h-5 w-5 text-slate-500" />
+                  </button>
+                  {widget.branding?.customLogo ? (
+                    <img 
+                      src={widget.branding.customLogo} 
+                      alt="Logo" 
+                      className="h-7 object-contain"
+                    />
+                  ) : (
+                    <span className="font-semibold text-slate-900 dark:text-white text-lg">
+                      {widget.welcomeTitle?.split(' ')[0] || 'Support'}
+                    </span>
+                  )}
+                </div>
+                
+                {/* Agent photos */}
+                <div className="flex items-center gap-3">
+                  <div className="flex -space-x-2">
+                    {connectedAgent?.profileImageUrl ? (
                       <img 
-                        src={widget.branding.customLogo} 
-                        alt="Logo" 
-                        className="h-8 w-auto brightness-0 invert"
+                        src={connectedAgent.profileImageUrl} 
+                        alt={connectedAgent.fullName}
+                        className="w-9 h-9 rounded-full object-cover border-2 border-white shadow-sm"
                       />
                     ) : (
-                      <span className="font-semibold text-white text-lg">
-                        {widget.welcomeTitle?.split(' ')[0] || 'Support'}
-                      </span>
+                      [
+                        "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face",
+                        "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
+                        "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face",
+                      ].map((avatar, i) => (
+                        <div 
+                          key={i} 
+                          className="w-9 h-9 rounded-full border-2 border-white overflow-hidden shadow-sm"
+                        >
+                          <img 
+                            src={avatar} 
+                            alt={`Team member ${i + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                        </div>
+                      ))
                     )}
                   </div>
                   
-                  {/* Agent photos */}
-                  <div className="flex items-center gap-2">
-                    <div className="flex -space-x-2">
-                      {connectedAgent?.profileImageUrl ? (
-                        <img 
-                          src={connectedAgent.profileImageUrl} 
-                          alt={connectedAgent.fullName}
-                          className="w-9 h-9 rounded-full object-cover border-2 border-white dark:border-slate-800 shadow-sm"
-                        />
-                      ) : (
-                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold border-2 border-white dark:border-slate-800 shadow-sm" style={{ background: currentBackground }}>
-                          {connectedAgent ? (
-                            `${connectedAgent.firstName?.[0] || ''}${connectedAgent.lastName?.[0] || ''}`.toUpperCase() || 'SA'
-                          ) : (
-                            <MessageCircle className="h-4 w-4" />
-                          )}
-                        </div>
-                      )}
-                    </div>
-                    
-                    {/* Close/Finish button */}
-                    {chatStatus !== 'solved' && (
-                      <button
-                        onClick={() => setShowFinishConfirm(true)}
-                        className="p-1.5 hover:bg-white/10 rounded-full transition-colors ml-2"
-                        title="End chat"
-                        data-testid="button-finish-chat"
-                      >
-                        <X className="h-5 w-5 text-white" />
-                      </button>
-                    )}
-                  </div>
-                </div>
-                
-                {/* Greeting text */}
-                <div className="mt-3">
-                  <h4 className="text-xl font-bold text-white">
-                    {connectedAgent ? `Chat with ${connectedAgent.firstName || connectedAgent.fullName}` : (
-                      <div style={{ fontSize: '24px', lineHeight: '1.2' }}>
-                        <div>Hi there 👋</div>
-                        <div>How can we help?</div>
-                      </div>
-                    )}
-                  </h4>
-                  <p className="text-sm text-white/80 mt-0.5">
-                    {connectedAgent ? 'Support Agent' : 'We typically reply in a few minutes'}
-                  </p>
+                  {/* Close/Finish button */}
+                  {chatStatus !== 'solved' ? (
+                    <button
+                      onClick={() => setShowFinishConfirm(true)}
+                      className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors z-10"
+                      title="End chat"
+                      data-testid="button-finish-chat"
+                    >
+                      <ChevronDown className="h-6 w-6 text-slate-500" />
+                    </button>
+                  ) : (
+                    <button
+                      className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors z-10"
+                      onClick={() => {
+                        resetChatSession();
+                        setChatFlowState('idle');
+                        setActiveWidgetTab('home');
+                      }}
+                      data-testid="widget-close-button"
+                    >
+                      <ChevronDown className="h-6 w-6 text-slate-500" />
+                    </button>
+                  )}
                 </div>
               </div>
               
