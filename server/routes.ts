@@ -3585,8 +3585,6 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
             isNotNull(complianceApplications.selectedPhoneNumber)
           ))
           .limit(1);
-        existingConversation = result[0] || null;
-      }
         const hasCompliancePhone = activeApp.length > 0;
         
         phoneSetup = hasCompanyPhone || hasSipEnabled || hasCompliancePhone;
@@ -28207,8 +28205,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
               )
             ))
             .limit(1);
-        existingConversation = result[0] || null;
-      }
           
           if (contact) {
             contactId = contact.id;
@@ -28711,16 +28707,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       let existingConversation = null;
       if (!forceNew) {
         const result = await db
-        .select()
-        .from(telnyxConversations)
-        .where(and(
-          eq(telnyxConversations.companyId, companyId),
-          eq(telnyxConversations.phoneNumber, `livechat_${finalVisitorId}`),
-          eq(telnyxConversations.channel, "live_chat"),
-          not(inArray(telnyxConversations.status, ["solved", "archived"]))
-        ))
-        .orderBy(desc(telnyxConversations.createdAt))
-        .limit(1);
+          .select()
+          .from(telnyxConversations)
+          .where(and(
+            eq(telnyxConversations.companyId, companyId),
+            eq(telnyxConversations.phoneNumber, `livechat_${finalVisitorId}`),
+            eq(telnyxConversations.channel, "live_chat"),
+            not(inArray(telnyxConversations.status, ["solved", "archived"]))
+          ))
+          .orderBy(desc(telnyxConversations.createdAt))
+          .limit(1);
         existingConversation = result[0] || null;
       }
       
@@ -28737,8 +28733,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
               .from(users)
               .where(eq(users.id, existingConversation.assignedTo))
               .limit(1);
-        existingConversation = result[0] || null;
-      }
             
             if (agentResult.length > 0) {
               const assignedAgent = agentResult[0];
@@ -28793,8 +28787,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         ))
         .orderBy(desc(telnyxConversations.createdAt))
         .limit(1);
-        existingConversation = result[0] || null;
-      }
       
       if (solvedConversation) {
         console.log("[LiveChat] Found solved session for visitor:", finalVisitorId, "Rating:", solvedConversation.satisfactionRating);
@@ -28807,8 +28799,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             .from(users)
             .where(eq(users.id, solvedConversation.assignedTo))
             .limit(1);
-        existingConversation = result[0] || null;
-      }
           
           if (agentResult.length > 0) {
             const assignedAgent = agentResult[0];
@@ -28908,8 +28898,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
               .from(users)
               .where(eq(users.id, conv.assignedTo))
               .limit(1);
-        existingConversation = result[0] || null;
-      }
             
             if (agentResult.length > 0) {
               const a = agentResult[0];
@@ -28952,8 +28940,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         .from(telnyxConversations)
         .where(eq(telnyxConversations.id, sessionId))
         .limit(1);
-        existingConversation = result[0] || null;
-      }
       
       if (!conversation) {
         return res.status(404).json({ error: "Session not found" });
@@ -29000,8 +28986,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         ))
         .orderBy(desc(telnyxConversations.createdAt))
         .limit(1);
-        existingConversation = result[0] || null;
-      }
       
       if (!conversation) {
         res.set({ "Access-Control-Allow-Origin": "*" });
@@ -29188,8 +29172,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           ))
           .orderBy(desc(telnyxConversations.createdAt))
           .limit(1);
-        existingConversation = result[0] || null;
-      }
         
         if (solvedConversation) {
           // Reopen the solved conversation instead of creating a new one
@@ -29388,8 +29370,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             eq(liveWidgetVisitors.widgetId, widgetId)
           ))
           .limit(1);
-        existingConversation = result[0] || null;
-      }
         
         if (existingVisitor) {
           // Update existing visitor
@@ -30263,8 +30243,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         )
         .orderBy(desc(telephonyCredentials.lastUsedAt))
         .limit(1);
-        existingConversation = result[0] || null;
-      }
       
       const sipUsername = credential?.sipUsername;
       if (!sipUsername) {
@@ -31412,8 +31390,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             .from(users)
             .where(eq(users.id, num.ownerUserId))
             .limit(1);
-        existingConversation = result[0] || null;
-      }
           if (owner) {
             ownerFirstName = owner.firstName;
             ownerLastName = owner.lastName;
@@ -31506,8 +31482,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           eq(telnyxPhoneNumbers.companyId, companyId)
         ))
         .limit(1);
-        existingConversation = result[0] || null;
-      }
       
       if (phoneNumber.length === 0) {
         return res.status(404).json({ message: "Phone number not found" });
@@ -31558,8 +31532,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           eq(telnyxPhoneNumbers.companyId, companyId)
         ))
         .limit(1);
-        existingConversation = result[0] || null;
-      }
       
       if (phoneNumberRecord.length === 0) {
         return res.status(404).json({ message: "Phone number not found" });
@@ -35420,8 +35392,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         )
         .orderBy(desc(telephonyCredentials.lastUsedAt))
         .limit(1);
-        existingConversation = result[0] || null;
-      }
       if (!credential || !credential.sipUsername || !credential.sipPassword) {
         console.error("[TURN Credentials] No active credentials found for company:", user.companyId);
         return res.status(404).json({ 
@@ -35555,8 +35525,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             )
           )
           .limit(1);
-        existingConversation = result[0] || null;
-      }
         if (matchingCalls.length > 0) {
           await db
             .update(callLogs)
@@ -36008,8 +35976,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         )
         .orderBy(desc(telephonyCredentials.lastUsedAt))
         .limit(1);
-        existingConversation = result[0] || null;
-      }
       let callControlIdToHangup = telnyxLegId;
       let dialedLegToHangup: string | undefined;
       if (credential?.sipUsername) {
@@ -36124,8 +36090,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         )
         .orderBy(desc(telephonyCredentials.lastUsedAt))
         .limit(1);
-        existingConversation = result[0] || null;
-      }
       if (!credential?.sipUsername) {
         console.log("[WebRTC Server Hangup] No credential found for company:", user.companyId);
         return res.status(404).json({ success: false, message: "No WebRTC credential found" });
@@ -36345,8 +36309,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             )
           )
           .limit(1);
-        existingConversation = result[0] || null;
-      }
         
         if (matchedQuote.length > 0) {
       
@@ -36378,8 +36340,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             )
           )
           .limit(1);
-        existingConversation = result[0] || null;
-      }
         
         if (matchedPolicy.length > 0) {
       
@@ -36411,8 +36371,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             )
           )
           .limit(1);
-        existingConversation = result[0] || null;
-      }
         
         if (matchedContact.length > 0) {
       
@@ -36498,8 +36456,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
               )
             )
             .limit(1);
-        existingConversation = result[0] || null;
-      }
           
           if (matchingContact) {
             return {
@@ -36530,8 +36486,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
               )
             )
             .limit(1);
-        existingConversation = result[0] || null;
-      }
           
           if (matchingPolicy) {
             return {
@@ -36979,8 +36933,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         .from(deploymentJobs)
         .where(eq(deploymentJobs.status, "in_progress"))
         .limit(1);
-        existingConversation = result[0] || null;
-      }
       
       if (existingJob) {
         return res.status(202).json({ 
@@ -37028,8 +36980,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         .from(deploymentJobs)
         .where(eq(deploymentJobs.status, "in_progress"))
         .limit(1);
-        existingConversation = result[0] || null;
-      }
       
       if (existingJob) {
         return res.status(202).json({ 
@@ -39329,8 +39279,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           widgetId ? eq(liveVisitors.widgetId, widgetId) : sql`1=1`
         ))
         .limit(1);
-        existingConversation = result[0] || null;
-      }
       
       if (!visitor) {
         return res.status(404).json({ message: "Visitor not found" });
@@ -39557,8 +39505,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         )
         .orderBy(desc(complianceApplications.createdAt))
         .limit(1);
-        existingConversation = result[0] || null;
-      }
       
       res.json({ application: application || null });
     } catch (error: any) {
@@ -39586,8 +39532,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         )
         .orderBy(desc(complianceApplications.createdAt))
         .limit(1);
-        existingConversation = result[0] || null;
-      }
       
       res.json({ application: application || null });
     } catch (error: any) {
@@ -40124,8 +40068,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
             eq(liveWidgetVisitors.widgetId, widgetId)
           ))
           .limit(1);
-        existingConversation = result[0] || null;
-      }
         
         visitor = {
           id: savedVisitor?.id || `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
