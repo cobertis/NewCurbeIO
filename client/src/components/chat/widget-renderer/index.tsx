@@ -267,7 +267,6 @@ export function WidgetRenderer({
     <div
       ref={containerRef}
       className="rounded-2xl overflow-hidden shadow-lg bg-white flex flex-col"
-      style={{ height: "720px", minHeight: "720px" }}
       data-testid="widget-renderer"
       data-mode={mode}
     >
@@ -276,8 +275,8 @@ export function WidgetRenderer({
         <WidgetHeader config={config} onClose={onClose} />
       </div>
 
-      {/* Scrollable Content */}
-      <div className="flex-1 overflow-y-auto px-5">
+      {/* Content */}
+      <div className="px-5">
         {renderContent()}
 
         {/* Footer Branding */}

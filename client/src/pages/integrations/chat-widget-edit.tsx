@@ -5089,7 +5089,7 @@ export default function ChatWidgetEditPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="relative" style={{ height: "720px" }}>
+                  <div className="relative">
                     <WidgetRenderer 
                       config={mapChatWidgetToConfig(widget)}
                       mode="preview"
