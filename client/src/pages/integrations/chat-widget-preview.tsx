@@ -152,6 +152,7 @@ export default function ChatWidgetPreviewPage() {
   } | null>(null);
   const [chatStatus, setChatStatus] = useState<string | null>(null);
   const [showSatisfactionSurvey, setShowSatisfactionSurvey] = useState(false);
+  const [showFinishConfirm, setShowFinishConfirm] = useState(false);
   const [surveyRating, setSurveyRating] = useState<number | null>(null);
   const [surveyFeedback, setSurveyFeedback] = useState('');
   const [surveySubmitting, setSurveySubmitting] = useState(false);
@@ -2096,7 +2097,7 @@ export default function ChatWidgetPreviewPage() {
                 {/* Finish chat button */}
                 {chatStatus !== 'solved' && (
                   <button
-                    onClick={handleFinishChat}
+                    onClick={() => setShowFinishConfirm(true)}
                     className="p-1.5 hover:bg-white/20 rounded-full transition-colors ml-auto"
                     title="Finish chat"
                     data-testid="button-finish-chat"
@@ -2105,6 +2106,32 @@ export default function ChatWidgetPreviewPage() {
                   </button>
                 )}
               </div>
+              
+              {/* Finish Chat Confirmation Dialog */}
+              {showFinishConfirm && (
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 rounded-2xl">
+                  <div className="bg-white dark:bg-slate-800 rounded-xl p-5 mx-4 shadow-xl max-w-xs w-full">
+                    <h3 className="font-semibold text-slate-900 dark:text-white mb-2">End conversation?</h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Are you sure you want to end this chat? You will be asked to rate your experience.</p>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => setShowFinishConfirm(false)}
+                        className="flex-1 px-4 py-2 text-sm font-medium text-slate-700 dark:text-slate-300 bg-slate-100 dark:bg-slate-700 rounded-lg hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
+                        data-testid="button-cancel-finish"
+                      >
+                        Cancel
+                      </button>
+                      <button
+                        onClick={() => { setShowFinishConfirm(false); handleFinishChat(); }}
+                        className="flex-1 px-4 py-2 text-sm font-medium text-white bg-red-500 rounded-lg hover:bg-red-600 transition-colors"
+                        data-testid="button-confirm-finish"
+                      >
+                        End Chat
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              )}
               
               {/* Messages Area */}
               <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3 bg-slate-50 dark:bg-slate-800/50">
