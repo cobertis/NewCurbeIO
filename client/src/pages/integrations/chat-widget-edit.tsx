@@ -5183,8 +5183,8 @@ export default function ChatWidgetEditPage() {
                           setExpandedChannel('liveChat');
                           setActiveLiveChatSubSection('welcomeScreen');
                         } else {
+                          // Only set previewActiveChannel - this keeps the channel content inside WidgetRenderer
                           setPreviewActiveChannel(channel);
-                          setExpandedChannel(channel);
                         }
                       }}
                       activeChannel={previewActiveChannel}
