@@ -1,5 +1,5 @@
 import { db } from "../db";
-import { eq, and, desc, asc, sql, isNull, inArray } from "drizzle-orm";
+import { eq, and, desc, asc, sql, isNull, inArray, lt } from "drizzle-orm";
 import {
   aiKbSources,
   aiKbDocuments,
@@ -176,6 +176,67 @@ export class AiDeskService {
   async createChunks(chunks: InsertAiKbChunk[]): Promise<AiKbChunk[]> {
     if (chunks.length === 0) return [];
     return db.insert(aiKbChunks).values(chunks).returning();
+  }
+
+  async createChunksWithDedup(chunks: InsertAiKbChunk[]): Promise<{ created: number; skipped: number; chunks: AiKbChunk[] }> {
+    if (chunks.length === 0) return { created: 0, skipped: 0, chunks: [] };
+
+    const createdChunks: AiKbChunk[] = [];
+    let skipped = 0;
+
+    for (const chunk of chunks) {
+      if (chunk.contentHash) {
+        const existing = await this.getChunkByHash(
+          chunk.companyId,
+          chunk.documentId,
+          chunk.contentHash
+        );
+        if (existing) {
+          await db
+            .update(aiKbChunks)
+            .set({ version: chunk.version ?? 1 })
+            .where(eq(aiKbChunks.id, existing.id));
+          skipped++;
+          continue;
+        }
+      }
+
+      const [created] = await db.insert(aiKbChunks).values(chunk).returning();
+      createdChunks.push(created);
+    }
+
+    return { created: createdChunks.length, skipped, chunks: createdChunks };
+  }
+
+  async getChunkByHash(companyId: string, documentId: string, contentHash: string): Promise<AiKbChunk | null> {
+    const [chunk] = await db
+      .select()
+      .from(aiKbChunks)
+      .where(and(
+        eq(aiKbChunks.companyId, companyId),
+        eq(aiKbChunks.documentId, documentId),
+        eq(aiKbChunks.contentHash, contentHash)
+      ))
+      .limit(1);
+    return chunk ?? null;
+  }
+
+  async getNextChunkVersion(companyId: string): Promise<number> {
+    const [result] = await db
+      .select({ maxVersion: sql<number>`COALESCE(MAX(${aiKbChunks.version}), 0)` })
+      .from(aiKbChunks)
+      .where(eq(aiKbChunks.companyId, companyId));
+    return (result?.maxVersion ?? 0) + 1;
+  }
+
+  async archiveObsoleteChunks(companyId: string, currentVersion: number): Promise<number> {
+    const result = await db
+      .delete(aiKbChunks)
+      .where(and(
+        eq(aiKbChunks.companyId, companyId),
+        sql`${aiKbChunks.version} < ${currentVersion}`
+      ));
+    return 0;
   }
 
   async deleteChunksByDocument(companyId: string, documentId: string): Promise<void> {

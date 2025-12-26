@@ -7316,12 +7316,15 @@ export const aiKbChunks = pgTable("ai_kb_chunks", {
   documentId: varchar("document_id").notNull().references(() => aiKbDocuments.id, { onDelete: "cascade" }),
   chunkIndex: integer("chunk_index").notNull(),
   content: text("content").notNull(),
+  contentHash: varchar("content_hash"), // SHA256 hash of content for deduplication
+  version: integer("version").notNull().default(1), // Version for tracking chunk updates during resync
   embedding: text("embedding"), // Store as JSON string array for now (pgvector can be added later)
   meta: jsonb("meta").default({}), // { pageUrl, headings, position }
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({
   companyIdIdx: index("ai_kb_chunks_company_id_idx").on(table.companyId),
   documentIdIdx: index("ai_kb_chunks_document_id_idx").on(table.documentId),
+  dedupIdx: uniqueIndex("ai_kb_chunks_dedup_idx").on(table.companyId, table.documentId, table.contentHash),
 }));
 
 export const insertAiKbChunkSchema = createInsertSchema(aiKbChunks).omit({

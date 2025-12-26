@@ -9,6 +9,7 @@ export interface IngestionResult {
   success: boolean;
   pagesProcessed: number;
   chunksCreated: number;
+  chunksSkipped: number;
   error?: string;
 }
 
@@ -16,7 +17,7 @@ export class AiIngestionService {
   async syncSource(companyId: string, sourceId: string): Promise<IngestionResult> {
     const source = await aiDeskService.getKbSource(companyId, sourceId);
     if (!source) {
-      return { success: false, pagesProcessed: 0, chunksCreated: 0, error: "Source not found" };
+      return { success: false, pagesProcessed: 0, chunksCreated: 0, chunksSkipped: 0, error: "Source not found" };
     }
 
     await aiDeskService.updateKbSourceStatus(companyId, sourceId, "syncing");
@@ -26,11 +27,11 @@ export class AiIngestionService {
         return await this.processUrl(companyId, sourceId, source.url, source.config as any);
       }
       
-      return { success: false, pagesProcessed: 0, chunksCreated: 0, error: "Unsupported source type" };
+      return { success: false, pagesProcessed: 0, chunksCreated: 0, chunksSkipped: 0, error: "Unsupported source type" };
     } catch (error: any) {
       const errorMsg = error.message || String(error);
       await aiDeskService.updateKbSourceStatus(companyId, sourceId, "failed", errorMsg);
-      return { success: false, pagesProcessed: 0, chunksCreated: 0, error: errorMsg };
+      return { success: false, pagesProcessed: 0, chunksCreated: 0, chunksSkipped: 0, error: errorMsg };
     }
   }
 
@@ -47,9 +48,12 @@ export class AiIngestionService {
     const queue: string[] = [url];
     let pagesProcessed = 0;
     let chunksCreated = 0;
+    let chunksSkipped = 0;
 
     const baseUrl = new URL(url);
     const baseDomain = baseUrl.hostname;
+
+    const currentVersion = await aiDeskService.getNextChunkVersion(companyId);
 
     while (queue.length > 0 && pagesProcessed < maxPages) {
       const currentUrl = queue.shift()!;
@@ -93,17 +97,23 @@ export class AiIngestionService {
         
         const { embeddings } = await aiOpenAIService.createEmbeddings(chunks);
 
-        const chunkRecords = chunks.map((text, index) => ({
-          companyId,
-          documentId: doc.id,
-          chunkIndex: index,
-          content: text,
-          embedding: JSON.stringify(embeddings[index] || []),
-          meta: { url: currentUrl },
-        }));
+        const chunkRecords = chunks.map((text, index) => {
+          const chunkHash = crypto.createHash("sha256").update(text).digest("hex");
+          return {
+            companyId,
+            documentId: doc.id,
+            chunkIndex: index,
+            content: text,
+            contentHash: chunkHash,
+            version: currentVersion,
+            embedding: JSON.stringify(embeddings[index] || []),
+            meta: { url: currentUrl },
+          };
+        });
 
-        await aiDeskService.createChunks(chunkRecords);
-        chunksCreated += chunks.length;
+        const result = await aiDeskService.createChunksWithDedup(chunkRecords);
+        chunksCreated += result.created;
+        chunksSkipped += result.skipped;
         pagesProcessed++;
 
         if (sameDomainOnly) {
@@ -121,10 +131,13 @@ export class AiIngestionService {
       }
     }
 
+    await aiDeskService.archiveObsoleteChunks(companyId, currentVersion);
     await aiDeskService.updateSourceCounts(companyId, sourceId);
     await aiDeskService.updateKbSourceStatus(companyId, sourceId, "ready");
 
-    return { success: true, pagesProcessed, chunksCreated };
+    console.log(`[AI-Ingestion] Processed ${pagesProcessed} pages, ${chunksCreated} new chunks, ${chunksSkipped} duplicates skipped`);
+
+    return { success: true, pagesProcessed, chunksCreated, chunksSkipped };
   }
 
   private parseHtml(html: string, baseUrl: string): { title: string; content: string; links: string[] } {
