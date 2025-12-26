@@ -6664,6 +6664,12 @@ export const telnyxConversations = pgTable("telnyx_conversations", {
   // Unique conversation per phone number pair per company
   companyPhoneUnique: uniqueIndex("telnyx_conversations_company_phone_unique").on(table.companyId, table.phoneNumber, table.companyPhoneNumber),
   deviceIdIdx: index("telnyx_conversations_device_id_idx").on(table.deviceId),
+  // INVARIANT A: Only ONE open live_chat conversation per device (Intercom-style)
+  // This prevents duplicate sessions when user clicks "New Chat" multiple times
+  // The partial index only applies when status='open' AND channel='live_chat'
+  deviceOpenLiveChatUnique: uniqueIndex("telnyx_conversations_device_open_livechat_unique")
+    .on(table.deviceId, table.status, table.channel)
+    .where(sql`status = 'open' AND channel = 'live_chat' AND device_id IS NOT NULL`),
 }));
 
 export const insertTelnyxConversationSchema = createInsertSchema(telnyxConversations).omit({
@@ -6698,6 +6704,11 @@ export const telnyxMessages = pgTable("telnyx_messages", {
   conversationIdx: index("telnyx_messages_conversation_idx").on(table.conversationId),
   telnyxMessageIdIdx: index("telnyx_messages_telnyx_id_idx").on(table.telnyxMessageId),
   clientMessageIdIdx: index("telnyx_messages_client_message_id_idx").on(table.clientMessageId),
+  // INVARIANT D: Message idempotency - prevent duplicate messages from client retries
+  // Each client_message_id must be unique within a conversation (allows reuse across conversations)
+  clientMessageIdConversationUnique: uniqueIndex("telnyx_messages_client_msg_conv_unique")
+    .on(table.conversationId, table.clientMessageId)
+    .where(sql`client_message_id IS NOT NULL`),
 }));
 
 export const insertTelnyxMessageSchema = createInsertSchema(telnyxMessages).omit({

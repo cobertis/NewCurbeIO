@@ -15,6 +15,7 @@ export interface TraceContext {
   status: string | null;
   lastMessageId: string | null;
   unreadCount: number | null;
+  clientMessageId?: string | null;
   timestamp: string; // ISO
   action: string;
 }
@@ -55,10 +56,11 @@ export function logChatEvent(context: TraceContext): void {
     status,
     lastMessageId,
     unreadCount,
+    clientMessageId,
   } = context;
 
   console.log(
-    `[ChatWidget] action=${action} traceId=${traceId} companyId=${companyId} widgetId=${widgetId} deviceId=${deviceId} contactId=${contactId ?? ""} conversationId=${conversationId ?? ""} sessionId=${sessionId ?? ""} status=${status ?? ""} lastMessageId=${lastMessageId ?? ""} unreadCount=${unreadCount ?? ""}`
+    `[ChatWidget] action=${action} traceId=${traceId} companyId=${companyId} widgetId=${widgetId} deviceId=${deviceId} contactId=${contactId ?? ""} conversationId=${conversationId ?? ""} sessionId=${sessionId ?? ""} status=${status ?? ""} lastMessageId=${lastMessageId ?? ""} unreadCount=${unreadCount ?? ""} clientMessageId=${clientMessageId ?? ""}`
   );
 }
 
@@ -79,6 +81,7 @@ export function extractTraceFromRequest(req: Request): Partial<TraceContext> {
     status: (source.status as string) || null,
     lastMessageId: (source.lastMessageId as string) || (source.last_message_id as string) || null,
     unreadCount: source.unreadCount !== undefined ? Number(source.unreadCount) : null,
+    clientMessageId: (source.clientMessageId as string) || (source.client_message_id as string) || null,
     action: (source.action as string) || "",
   };
 }

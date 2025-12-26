@@ -29457,7 +29457,23 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           return res.status(404).json({ error: "Widget not found" });
         }
         
-        
+        // INVARIANT A - Single Open Conversation: Check if there's already an open/waiting conversation for this device
+        if (deviceId) {
+          const [existingOpen] = await db
+            .select()
+            .from(telnyxConversations)
+            .where(and(
+              eq(telnyxConversations.deviceId, deviceId),
+              eq(telnyxConversations.channel, "live_chat"),
+              inArray(telnyxConversations.status, ["open", "waiting"])
+            ))
+            .limit(1);
+          
+          if (existingOpen) {
+            console.log("[LiveChat] Found existing open conversation for device:", existingOpen.id);
+            conversation = existingOpen;
+          }
+        }
         
         // Check if there is a solved/archived conversation we can reopen
         // ONLY reopen if forceNew is NOT true - when forceNew is true, always create a brand new session
@@ -29514,31 +29530,55 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         
         // Only create new conversation if we did not reopen a solved one
         if (!conversation) {
-        // Create conversation on first message
-        const displayName = visitorName || "Website Visitor";
-        const [newConv] = await db.insert(telnyxConversations).values({
-          companyId: widget.companyId,
-          phoneNumber: forceNew ? `livechat_${visitorId}_${Date.now()}` : `livechat_${visitorId}`,
-          displayName,
-          email: visitorEmail || null,
-          companyPhoneNumber: widgetId,
-          status: "waiting",
-          channel: "live_chat",
-          widgetId: widgetId,
-          lastMessage: text.trim().substring(0, 200),
-          lastMessageAt: new Date(),
-          unreadCount: 1,
-          visitorIpAddress: visitorIp || null,
-          visitorCity: geoData.city || null,
-          visitorState: geoData.region || null,
-          visitorCountry: geoData.country_name || null,
-          visitorCurrentUrl: visitorUrl || null,
-          visitorBrowser: visitorBrowser || null,
-          visitorOs: visitorOs || null,
-          deviceId: deviceId || null,
-        }).returning();
-        conversation = newConv;
-        console.log("[LiveChat] Created conversation on first message:", conversation.id, "for visitor:", visitorId);
+        // Create conversation on first message with try-catch for unique constraint handling
+        try {
+          const displayName = visitorName || "Website Visitor";
+          const [newConv] = await db.insert(telnyxConversations).values({
+            companyId: widget.companyId,
+            phoneNumber: forceNew ? `livechat_${visitorId}_${Date.now()}` : `livechat_${visitorId}`,
+            displayName,
+            email: visitorEmail || null,
+            companyPhoneNumber: widgetId,
+            status: "waiting",
+            channel: "live_chat",
+            widgetId: widgetId,
+            lastMessage: text.trim().substring(0, 200),
+            lastMessageAt: new Date(),
+            unreadCount: 1,
+            visitorIpAddress: visitorIp || null,
+            visitorCity: geoData.city || null,
+            visitorState: geoData.region || null,
+            visitorCountry: geoData.country_name || null,
+            visitorCurrentUrl: visitorUrl || null,
+            visitorBrowser: visitorBrowser || null,
+            visitorOs: visitorOs || null,
+            deviceId: deviceId || null,
+          }).returning();
+          conversation = newConv;
+          console.log("[LiveChat] Created conversation on first message:", conversation.id, "for visitor:", visitorId);
+        } catch (convErr: any) {
+          // Handle unique constraint violation - refetch existing conversation
+          if (convErr.code === "23505" && deviceId) {
+            console.log("[LiveChat] Unique constraint hit, refetching existing conversation for device:", deviceId);
+            const [existingConv] = await db
+              .select()
+              .from(telnyxConversations)
+              .where(and(
+                eq(telnyxConversations.deviceId, deviceId),
+                eq(telnyxConversations.channel, "live_chat"),
+                inArray(telnyxConversations.status, ["open", "waiting"])
+              ))
+              .limit(1);
+            if (existingConv) {
+              conversation = existingConv;
+              console.log("[LiveChat] Found existing conversation after constraint:", conversation.id);
+            } else {
+              throw convErr; // Re-throw if we can't find the conversation
+            }
+          } else {
+            throw convErr; // Re-throw other errors
+          }
+        }
         
         // Save visitor to database
         await db.insert(liveWidgetVisitors).values({
@@ -29590,6 +29630,28 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         return res.status(404).json({ error: "Session not found and no widget/visitor info to create one" });
       }
       
+      // INVARIANT D - Message Idempotency: Check if clientMessageId already exists
+      if (clientMessageId) {
+        const [existingMsg] = await db
+          .select()
+          .from(telnyxMessages)
+          .where(and(
+            eq(telnyxMessages.conversationId, conversation.id),
+            eq(telnyxMessages.clientMessageId, clientMessageId)
+          ));
+        if (existingMsg) {
+          console.log("[LiveChat] Message already exists (idempotent retry):", existingMsg.id);
+          // Return success with existing message
+          res.set({ "Access-Control-Allow-Origin": "*" });
+          return res.json({ 
+            success: true, 
+            sessionId: conversation.id, 
+            messageId: existingMsg.id,
+            idempotent: true 
+          });
+        }
+      }
+      
       // Create the message
       const [message] = await db.insert(telnyxMessages).values({
         conversationId: conversation.id,
@@ -29616,6 +29678,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         status: conversation.status || null,
         lastMessageId: message.id,
         unreadCount: null,
+        clientMessageId: clientMessageId || null,
       }));
       // Update conversation
       await db
