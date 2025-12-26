@@ -126,6 +126,22 @@ export default function ChatWidgetPreviewPage() {
     feedback?: string | null;
   } | null>(null);
   
+  // Multiple sessions support
+  const [allSessions, setAllSessions] = useState<Array<{
+    sessionId: string;
+    displayName: string | null;
+    lastMessage: string | null;
+    lastMessageAt: string | null;
+    createdAt?: string | null;
+    status?: string | null;
+    rating?: number | null;
+    agent?: {
+      id: string;
+      fullName: string;
+      avatar?: string | null;
+    } | null;
+  }>>([]);
+  
   // Solved chat view state (Textmagic-style)
   const [viewingSolvedChat, setViewingSolvedChat] = useState(false);
   const [solvedChatData, setSolvedChatData] = useState<{
@@ -614,6 +630,23 @@ export default function ChatWidgetPreviewPage() {
     };
     
     checkExistingSession();
+    
+    // Also load all sessions for the Messages tab
+    const loadAllSessions = async () => {
+      try {
+        const res = await fetch(`/api/public/live-chat/sessions?widgetId=${widgetId}&visitorId=${storedVisitorId}`);
+        if (res.ok) {
+          const data = await res.json();
+          if (data.sessions) {
+            setAllSessions(data.sessions);
+          }
+        }
+      } catch (error) {
+        console.error('[Chat] Failed to load all sessions:', error);
+      }
+    };
+    
+    loadAllSessions();
   }, [widgetId, sessionChecked]);
 
   // Check agent availability when widget opens
@@ -798,6 +831,76 @@ export default function ChatWidgetPreviewPage() {
     } catch (error) {
       console.error('[Chat] Failed to load solved chat:', error);
       toast({ title: "Error", description: "Failed to load chat history", variant: "destructive" });
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  // Load and view a solved chat by sessionId (for Messages tab)
+  const loadAndViewSolvedChat = async (sessionId: string) => {
+    if (!widgetId) return;
+    
+    setChatLoading(true);
+    try {
+      const msgRes = await fetch(`/api/public/live-chat/messages/${sessionId}`);
+      if (msgRes.ok) {
+        const { messages, agent, visitor, status, rating, feedback } = await msgRes.json();
+        const sortedMessages = (messages || []).sort((a: any, b: any) => 
+          new Date(a.createdAt || a.created_at).getTime() - new Date(b.createdAt || b.created_at).getTime()
+        );
+        
+        setSolvedChatData({
+          sessionId,
+          messages: sortedMessages,
+          rating: rating || null,
+          feedback: feedback || null,
+          agentName: agent?.fullName || null,
+          status: status || 'solved',
+        });
+        setViewingSolvedChat(true);
+        
+        console.log('[Chat] Viewing solved chat with', sortedMessages.length, 'messages, rating:', rating);
+      }
+    } catch (error) {
+      console.error('[Chat] Failed to load solved chat:', error);
+      toast({ title: "Error", description: "Failed to load chat history", variant: "destructive" });
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
+  // Load existing messages for an active chat (for Messages tab)
+  const loadExistingMessages = async (sessionId: string) => {
+    if (!widgetId) return;
+    
+    setChatLoading(true);
+    try {
+      const msgRes = await fetch(`/api/public/live-chat/messages/${sessionId}`);
+      if (msgRes.ok) {
+        const { messages, agent, visitor, status } = await msgRes.json();
+        const sortedMessages = (messages || []).sort((a: any, b: any) => 
+          new Date(a.createdAt || a.created_at).getTime() - new Date(b.createdAt || b.created_at).getTime()
+        );
+        
+        setChatMessages(sortedMessages.map((m: any) => ({
+          id: m.id || String(Date.now()),
+          text: m.body || m.text || '',
+          direction: m.direction || 'outbound',
+          createdAt: m.createdAt || m.created_at || new Date().toISOString(),
+        })));
+        
+        if (agent) {
+          setConnectedAgent(agent);
+          setIsWaitingForAgent(false);
+        }
+        
+        // Note: WebSocket connects automatically via useEffect when chatSessionId changes
+        
+        console.log('[Chat] Loaded active chat with', sortedMessages.length, 'messages');
+      }
+    } catch (error) {
+      console.error('[Chat] Failed to load messages:', error);
+      toast({ title: "Error", description: "Failed to load chat messages", variant: "destructive" });
     } finally {
       setChatLoading(false);
     }
@@ -2795,6 +2898,39 @@ export default function ChatWidgetPreviewPage() {
                   activeChannel={activeChannel}
                   onBackFromChannel={() => setActiveChannel(null)}
                   channelContent={activeChannel ? renderChannelContentInline() : undefined}
+                  sessions={allSessions}
+                  onSelectSession={(sessionId) => {
+                    const session = allSessions.find(s => s.sessionId === sessionId);
+                    if (session) {
+                      if (session.status === 'solved' || session.status === 'archived') {
+                        // View solved chat (read-only)
+                        setChatSessionId(sessionId);
+                        loadAndViewSolvedChat(sessionId);
+                      } else {
+                        // Resume active chat
+                        setChatSessionId(sessionId);
+                        setActiveChannel('liveChat');
+                        loadExistingMessages(sessionId);
+                      }
+                    }
+                  }}
+                  onStartNewChat={() => {
+                    const storedProfile = localStorage.getItem(`chatVisitorProfile-${widgetId}`);
+                    if (storedProfile) {
+                      try {
+                        const profile = JSON.parse(storedProfile);
+                        if (profile.name || profile.email) {
+                          setForceNewChat(true);
+                          startChatSession();
+                          return;
+                        }
+                      } catch (e) {
+                        console.error('[Chat] Failed to parse stored profile:', e);
+                      }
+                    }
+                    setForceNewChat(true);
+                    setShowPreChatForm(true);
+                  }}
                 />
               ) : showPreChatForm ? (
                 <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 h-full">
