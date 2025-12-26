@@ -58,6 +58,7 @@ import Companies from "@/pages/companies";
 import CompanyDetail from "@/pages/company-detail";
 import Plans from "@/pages/plans";
 import Features from "@/pages/features";
+import AiDeskSettings from "@/pages/ai-desk-settings";
 import Invoices from "@/pages/invoices";
 import Settings from "@/pages/settings";
 import AuditLogs from "@/pages/audit-logs";
@@ -608,6 +609,7 @@ function DashboardLayout({ children }: { children: React.ReactNode }) {
         { title: "Users", url: "/users" },
         { title: "Plans", url: "/plans" },
         { title: "Features", url: "/features" },
+        { title: "AI Desk", url: "/ai-desk" },
         { title: "Invoices", url: "/invoices" },
         { title: "Tickets", url: "/tickets" },
         { title: "Audit Logs", url: "/audit-logs" },
@@ -1562,6 +1564,13 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/quotes/new">
+      <Route path="/ai-desk">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <AiDeskSettings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
         <ProtectedRoute>
           <DashboardLayout>
             <Quotes />
