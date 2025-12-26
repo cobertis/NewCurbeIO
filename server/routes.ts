@@ -13,6 +13,7 @@ import { hashPassword, verifyPassword } from "./auth";
 import { LoggingService } from "./logging-service";
 import { emailService } from "./email";
 import { setupWebSocket, broadcastConversationUpdate, broadcastNotificationUpdate, broadcastNotificationUpdateToUser, broadcastBulkvsMessage, broadcastBulkvsThreadUpdate, broadcastBulkvsMessageStatus, broadcastImessageMessage, broadcastImessageTyping, broadcastImessageReaction, broadcastImessageReadReceipt, broadcastWhatsAppMessage, broadcastWhatsAppChatUpdate, broadcastWhatsAppConnection, broadcastWhatsAppQrCode, broadcastWhatsAppTyping, broadcastWhatsAppMessageStatus, broadcastWhatsAppEvent, broadcastWalletUpdate, broadcastNewCallLog, broadcastInboxMessage, broadcastLiveChatEvent } from "./websocket";
+import { createTraceContext, logChatEvent, extractTraceFromRequest, generateTraceId } from "./lib/chat-trace";
 import { chargeCallToWallet } from "./services/pricing-service";
 import { twilioService } from "./twilio";
 import { EmailCampaignService } from "./email-campaign-service";
@@ -28762,6 +28763,20 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         unreadCount += conv.unreadCount || 0;
       }
       
+      
+      // Log chat event for bootstrap
+      logChatEvent(createTraceContext({
+        action: "bootstrap",
+        companyId: widget.companyId,
+        widgetId: widgetId as string,
+        deviceId: deviceId as string,
+        contactId: device?.contactId || null,
+        conversationId: openConversations[0]?.id || null,
+        sessionId: null,
+        status: openConversations[0]?.status || null,
+        lastMessageId: null,
+        unreadCount: unreadCount,
+      }));
       // Return bootstrap data
       res.json({
         success: true,
@@ -28914,6 +28929,20 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
       }
       
+      // Log chat event for identify
+      logChatEvent(createTraceContext({
+        action: "identify",
+        companyId,
+        widgetId,
+        deviceId,
+        contactId,
+        conversationId: null,
+        sessionId: null,
+        status: null,
+        lastMessageId: null,
+        unreadCount: null,
+      }));
+
       res.json({
         success: true,
         contactId,
@@ -29013,6 +29042,20 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         
         res.set({ "Access-Control-Allow-Origin": "*" });
       
+      
+      // Log chat event for create_session (resumed)
+      logChatEvent(createTraceContext({
+        action: "create_session",
+        companyId,
+        widgetId,
+        deviceId: deviceId || "",
+        contactId: null,
+        conversationId: existingConversation.id,
+        sessionId: existingConversation.id,
+        status: existingConversation.status || null,
+        lastMessageId: null,
+        unreadCount: existingConversation.unreadCount || null,
+      }));
       return res.json({
           sessionId: existingConversation.id,
           visitorId: finalVisitorId,
@@ -29192,6 +29235,20 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       console.log(`[LiveChat] Visitor ended chat session: ${sessionId}`);
       
+      // Log chat event for finish_session
+      logChatEvent(createTraceContext({
+        action: "finish_session",
+        companyId: conversation.companyId,
+        widgetId: conversation.companyPhoneNumber || "",
+        deviceId: conversation.deviceId || "",
+        contactId: null,
+        conversationId: sessionId,
+        sessionId: sessionId,
+        status: "solved",
+        lastMessageId: null,
+        unreadCount: null,
+      }));
+      
       res.json({ success: true, status: 'solved' });
     } catch (error: any) {
       console.error("[LiveChat] Finish session error:", error);
@@ -29342,6 +29399,20 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         currentUrl: conversation.visitor_current_url || null,
       };
       
+      
+      // Log chat event for list_messages
+      logChatEvent(createTraceContext({
+        action: "list_messages",
+        companyId: conversation.company_id || "",
+        widgetId: conversation.widget_id || "",
+        deviceId: "",
+        contactId: null,
+        conversationId: sessionId,
+        sessionId: sessionId,
+        status: conversation.status || null,
+        lastMessageId: null,
+        unreadCount: null,
+      }));
       res.json({ messages, agent, visitor, status: conversation.status, rating: conversation.satisfaction_rating, feedback: conversation.satisfaction_feedback });
     } catch (error: any) {
       console.error("[LiveChat] Messages error:", error);
@@ -29532,6 +29603,20 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         clientMessageId: clientMessageId || null,
       }).returning();
       
+      
+      // Log chat event for send_message
+      logChatEvent(createTraceContext({
+        action: "send_message",
+        companyId: conversation.companyId,
+        widgetId: widgetId || conversation.companyPhoneNumber || "",
+        deviceId: deviceId || "",
+        contactId: null,
+        conversationId: conversation.id,
+        sessionId: conversation.id,
+        status: conversation.status || null,
+        lastMessageId: message.id,
+        unreadCount: null,
+      }));
       // Update conversation
       await db
         .update(telnyxConversations)

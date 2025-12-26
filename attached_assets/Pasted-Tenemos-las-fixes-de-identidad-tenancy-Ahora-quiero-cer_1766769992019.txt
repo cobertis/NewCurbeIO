@@ -1,0 +1,120 @@
+Tenemos las fixes de identidad/tenancy. Ahora quiero cerrar los bugs que quedan con un enfoque de repro + instrumentación + invariantes. Implementen lo siguiente:
+
+1) Instrumentación obligatoria (sin esto, no se depura)
+
+Agregar logs estructurados con un traceId por carga del widget y propagarlo en:
+
+bootstrap
+
+create conversation/session
+
+send message
+
+ws connect/reconnect
+
+list conversations
+
+mark read/seen
+
+En cada log incluir siempre:
+traceId, companyId, widgetId, deviceId, contactId, conversationId, sessionId (si existe), status, lastMessageId, unreadCount.
+
+En el cliente, loggear lo mismo (temporalmente) y exponer un botón “Copy debug info”.
+
+Criterio: yo debo poder copiar un blob JSON y ustedes reconstruyen exactamente el flujo.
+
+2) Invariantes de Intercom (si alguno falla, es bug)
+
+A. Conversación “open” única por contacto (o lista explícita)
+
+Definir regla: ¿permitimos múltiples open por contactId?
+
+Si NO: enforce en backend (getOrCreateOpenConversation) y evitar duplicados bajo concurrencia.
+
+Si SÍ: UI debe listar threads y “New chat” crea uno nuevo solo explícitamente.
+
+B. “New chat” no debe crear duplicados
+
+Si existe open → abrir esa.
+
+Si se fuerza “new” → cerrar/archivar la anterior o crear nueva con UI clara.
+
+C. Unread/read consistentes
+
+unreadCount debe derivar de last_read_message_id/at vs latest_message.
+
+Prohibido que unread dependa de localStorage como fuente de verdad. LocalStorage solo cache.
+
+D. Idempotencia de mensajes
+
+client_message_id obligatorio y unique por conversación.
+
+Retries/reconnect NO duplican.
+
+E. Reconnect seguro
+
+WebSocket reconecta y hace resync (pull de mensajes/conversaciones) para evitar “mensajes perdidos”.
+
+3) Bugs típicos que quiero que validen con pruebas (y arreglen)
+
+Implementar un “QA harness” (playwright/cypress) o al menos scripts manuales con resultados esperados:
+
+Reload loop
+
+Abrir widget → enviar mensaje → reload → debe volver al mismo hilo y mostrar el mensaje.
+
+Expected: mismo conversationId, no “chat nuevo”.
+
+Two tabs
+
+Abrir 2 tabs del mismo site → enviar mensaje en una → aparece en la otra sin duplicar.
+
+Expected: unreadCount consistente.
+
+Race: double-click start chat
+
+Click “Send us a message” rápido 2 veces / latency simulada.
+
+Expected: 1 sola conversación open.
+
+WS disconnect
+
+Cortar WS (simular offline 10s) → mandar verificación al reconectar.
+
+Expected: no pérdida de mensajes, no estado “stuck waiting”.
+
+Prechat form caching
+
+chatVisitorProfile-* no debe bloquear el merge o romper identidad.
+
+Expected: prechat se salta solo si corresponde, pero contactId sigue estable.
+
+Survey state
+
+chatSurveyState-* no debe crear conversación nueva ni impedir reabrir la anterior.
+
+Expected: survey asociado al conversationId correcto.
+
+4) Checklist de endpoints que deben estar alineados (fuente única)
+
+Asegurar que todo gira alrededor de conversations (no “sessions” sueltas):
+
+bootstrap devuelve conversaciones desde DB por contactId.
+
+create session debe crear/actualizar conversation y devolver conversationId.
+
+WS path debe resolverse a conversationId (o map sessionId->conversationId) consistentemente.
+
+“Messages tab” debe listar desde conversations siempre.
+
+Si aún existe “sessionId” separado, documentar el mapping y hacerlo determinista.
+
+5) Entregable
+
+Quiero:
+
+Documento corto “State machine del widget” (idle → prechat → waiting → active → solved → survey) con transiciones.
+
+Tabla de “source of truth” por estado (DB vs localStorage vs memory).
+
+PR con instrumentación + QA cases (o un script reproducible).

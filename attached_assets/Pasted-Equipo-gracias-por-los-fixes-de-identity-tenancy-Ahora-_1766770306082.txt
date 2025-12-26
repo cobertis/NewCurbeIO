@@ -1,0 +1,74 @@
+Equipo, gracias por los fixes de identity/tenancy. Ahora necesitamos cerrar el gap para que el widget se comporte como Intercom. No quiero más parches de UI: quiero invariantes + pruebas reproducibles.
+
+A) Reglas que deben cumplirse (Intercom parity)
+
+Source of truth server-side
+
+unreadCount, read/seen, open/closed, conversaciones y mensajes deben venir de DB.
+
+LocalStorage solo para UX (widget opened, last tab, draft), nunca para unread/historial.
+
+Idempotencia completa
+
+Mensajes: client_message_id + unique constraint.
+
+Crear chat: endpoint getOrCreateOpenConversation(contactId) o client_conversation_id para evitar duplicados por double-click/retry.
+
+Read vs Seen
+
+read cuando el usuario abre el hilo.
+
+seen NO se marca por abrir en admin; se marca cuando el agente escribe o responde (definir regla y aplicarla).
+
+WS confiable con resync + dedupe
+
+Al conectar/reconectar: fetch de últimos mensajes/conversaciones (resync).
+
+Eventos con event_id y dedupe en cliente para evitar duplicados por reconexión.
+
+Estado “waiting” no se puede quedar pegado
+
+Timeout server-side + evento waiting_expired + fallback (offline/email) según config.
+
+Reopen vs New conversation definido
+
+Responder a conversación closed: ¿reabre o crea nueva? Definirlo y hacerlo consistente en backend + UI.
+
+Asignación de agente
+
+Conversation debe tener assigned_to y eventos conversation.assigned/unassigned para consistencia.
+
+B) Instrumentación obligatoria (sin esto no se depura)
+
+Agregar traceId por carga del widget y log estructurado (cliente + servidor) con:
+traceId, companyId, widgetId, deviceId, contactId, conversationId, status, lastMessageId, unreadCount, wsConnected.
+
+Agregar botón “Copy debug info” en el widget (solo en modo dev) para pegar un JSON con esos campos.
+
+C) Tests que deben pasar (entregable)
+
+Implementen QA (Playwright/Cypress o script manual con expected output) para estos casos:
+
+Reload: abrir → enviar → reload → debe volver al mismo conversationId.
+
+Double-click start chat con latency: debe crear 1 open conversation.
+
+Two tabs: enviar en una → aparece en otra sin duplicar; unread consistente.
+
+WS disconnect 10s: reconecta → resync → no pierde mensajes ni se desordena.
+
+Survey: no crea conversación nueva ni bloquea reabrir historial.
+
+Cross-domain same company: dominio A y B → misma conversación.
+
+Cross-company: nunca mezcla conversaciones.
+
+D) Entregables
+
+Documento de la state machine del widget (idle/prechat/waiting/active/solved/survey).
+
+PR con instrumentación + resync/dedupe + idempotencia en creación de conversación.
+
+Evidencia de tests pasando (videos o logs).
+
+Si algo de arriba no está implementado, el widget seguirá “no guardando” o creando chats raros bajo condiciones reales.

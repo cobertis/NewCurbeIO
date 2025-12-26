@@ -1,0 +1,288 @@
+Construye dentro del CRM un módulo llamado “AI Desk (Point-like)” para SaaS multi-tenant.
+
+Objetivo
+
+Un módulo donde cada tenant pueda:
+
+Conectar fuentes de conocimiento (URL + upload) y mantenerlas sincronizadas.
+
+Tener un copiloto en el inbox que sugiera respuestas basadas en KB.
+
+Activar un modo autopilot (con reglas) que pueda:
+
+Responder chats automáticamente
+
+Crear tickets
+
+Ejecutar acciones dentro del CRM mediante herramientas (tools)
+
+Escalar a humano cuando no hay confianza o faltan datos
+
+Tener auditoría y logs (quién hizo qué, y por qué), por tenant.
+
+1) Arquitectura (obligatoria)
+
+Implementar 3 piezas:
+
+A) UI del CRM (frontend)
+
+Rutas:
+
+/settings/ai-desk (config)
+
+/settings/ai-desk/knowledge (fuentes KB)
+
+/settings/ai-desk/assistant (config del asistente)
+
+/settings/ai-desk/logs (auditoría)
+
+B) API Backend del CRM (tu servidor)
+
+Responsable de auth, tenant isolation, tools, y workflows.
+Nunca confiar en tenant_id enviado por el navegador. El tenant se resuelve desde la sesión/JWT del CRM.
+
+C) Workers/Jobs (background)
+
+Para:
+
+Ingesta/sync de URLs
+
+Procesamiento de uploads
+
+Re-embeddings
+
+Limpieza HTML → texto → chunking → embeddings → pgvector
+
+Reintentos, timeouts, rate limits por tenant
+
+Usar Redis queue (BullMQ/Cloud) o el job system existente del proyecto.
+
+2) Data model (Postgres)
+
+Crear tablas multi-tenant. Todo tiene tenant_id y índices.
+
+Knowledge
+
+ai_kb_sources
+
+id, tenant_id
+
+type: url | file
+
+url, file_id
+
+status: idle|queued|syncing|ok|failed
+
+last_synced_at, error
+
+config jsonb (max_pages, same_domain_only, include_paths, exclude_paths)
+
+ai_kb_documents
+
+id, tenant_id, source_id
+
+title, meta jsonb, created_at
+
+ai_kb_chunks
+
+id, tenant_id, document_id
+
+chunk_index
+
+content
+
+embedding vector(1536 o 3072 según modelo)
+
+meta jsonb (page_url, headings)
+
+created_at
+
+índice HNSW en embedding + tenant_id filtro
+
+Conversaciones y auditoría
+
+ai_conversations (por canal/inbox thread)
+
+ai_messages (user/assistant/system)
+
+ai_runs
+
+status, model, tokens_in/out, latency_ms, cost_estimate
+
+input_hash, output_json
+
+ai_actions_log
+
+run_id, tool_name, args jsonb, result jsonb, success, error
+
+requires_approval boolean + approved_by_user_id
+
+3) Endpoints internos (Backend)
+Knowledge
+
+POST /api/ai/kb/sources (crear source url/file)
+
+POST /api/ai/kb/sources/:id/sync (enqueue job)
+
+GET /api/ai/kb/sources (list)
+
+GET /api/ai/kb/sources/:id (detail + stats)
+
+DELETE /api/ai/kb/sources/:id
+
+Retrieval
+
+POST /api/ai/kb/query
+Body:
+
+{ "query":"...", "top_k": 5, "filters": { "source_id": null } }
+
+
+Response: chunks + citations.
+
+Assistant (copiloto)
+
+POST /api/ai/assist/draft-reply
+Body:
+
+{ "conversation_id":"...", "message":"..." }
+
+
+Response:
+
+{ "reply":"...", "citations":[...], "confidence":0.0-1.0 }
+
+Autopilot (agente)
+
+POST /api/ai/agent/handle-message
+Body:
+
+{ "conversation_id":"...", "message_id":"..." }
+
+
+Esto ejecuta el flujo agentic: retrieval → decisión → tools → reply → log.
+
+4) Integración con OpenAI (cerebro)
+
+Usar OpenAI para:
+
+Embeddings (para chunks + query)
+
+Respuestas agentic con tools
+
+Salida estructurada (JSON schema estricto)
+
+Requisitos:
+
+El modelo debe devolver un JSON con schema exacto:
+
+{
+  "intent": "support|sales|billing|other",
+  "confidence": 0.0,
+  "needs_human": true,
+  "missing_fields": ["policy_number"],
+  "reply": "texto para el cliente",
+  "actions": [
+    { "tool": "create_ticket", "args": { "subject":"", "priority":"", "summary":"" } }
+  ]
+}
+
+
+Reglas:
+
+Si confidence < 0.75 ⇒ needs_human=true y NO ejecutar tools.
+
+Si missing_fields.length>0 ⇒ responder pidiendo esos campos y NO ejecutar tools.
+
+Tools sensibles (cambiar plan, crédito, cancelar) ⇒ requires_approval=true siempre.
+
+5) Tools (Action API del CRM)
+
+Implementar un “tool registry” en el backend. Tools iniciales (seguras):
+
+create_ticket(contact_id, subject, priority, summary, tags[])
+
+add_internal_note(conversation_id, note)
+
+set_contact_field(contact_id, field, value)
+
+create_task(assignee_id, due_at, note)
+
+handoff_to_human(conversation_id, reason)
+
+IMPORTANTE: el modelo nunca toca DB directo. Solo llama tools. Backend valida permisos, tenant, y campos.
+
+6) UI/UX del módulo (lo mínimo pero completo)
+Knowledge tab
+
+Botón: “Add Source”
+
+URL: campos + opciones (max_pages, same_domain_only, include/exclude paths)
+
+File upload: PDF/DOC/TXT
+
+Lista de sources con estado (ok/syncing/failed)
+
+Botón “Sync now”
+
+Stats: pages, chunks, last sync, últimos errores
+
+Assistant tab
+
+Toggle: “Copilot in Inbox”
+
+Toggle: “Autopilot”
+
+Slider thresholds: confidence min
+
+Checklist: acciones permitidas (tools allowed)
+
+Escalation rules (billing, legal, cancellations => human)
+
+Logs tab
+
+Lista de runs (fecha, intent, confidence, actions ejecutadas)
+
+Detalle con:
+
+mensaje de entrada
+
+chunks usados (citations)
+
+JSON output
+
+tool calls + results
+
+7) Seguridad y multi-tenant (no negociable)
+
+Prohibido recibir tenant_id del browser.
+
+Toda query, insert y tool call debe filtrar por tenant.
+
+Rate limit por tenant para sync y para agent runs.
+
+Redactar PII en logs (por ejemplo últimos 4 dígitos, etc.) o tener modo “no log content”.
+
+8) Criterios de aceptación (tests reales)
+
+Crear tenant A y B. Ingestar KB distinta. Query desde A jamás devuelve chunks de B.
+
+Copilot genera draft con citations y no inventa “fuentes”.
+
+Autopilot crea ticket SOLO si confidence >= threshold y no faltan datos.
+
+Logs muestran run completo + tool calls.
+
+Re-sync no duplica chunks (hash/dedup por chunk).
+
+Entregar con:
+
+migraciones DB
+
+endpoints listos
+
+UI funcionando
+
+seed demo tenant
+
+README interno del módulo
