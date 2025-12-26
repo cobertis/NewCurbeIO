@@ -4026,7 +4026,7 @@ export function WidgetAdminSection() {
 
   const createWidgetMutation = useMutation({
     mutationFn: async (data: Partial<WidgetConfig>) => {
-      return apiRequest("/api/widget/admin/widgets", { method: "POST", body: JSON.stringify(data) });
+      return apiRequest("POST", "/api/widget/admin/widgets", data);
     },
     onSuccess: () => {
       toast({ title: "Widget created", description: "Widget configuration has been created successfully." });
@@ -4041,7 +4041,7 @@ export function WidgetAdminSection() {
 
   const updateWidgetMutation = useMutation({
     mutationFn: async ({ id, data }: { id: string; data: Partial<WidgetConfig> }) => {
-      return apiRequest(`/api/widget/admin/widgets/${id}`, { method: "PATCH", body: JSON.stringify(data) });
+      return apiRequest("PATCH", `/api/widget/admin/widgets/${id}`, data);
     },
     onSuccess: () => {
       toast({ title: "Widget updated", description: "Widget configuration has been updated successfully." });
@@ -4056,7 +4056,7 @@ export function WidgetAdminSection() {
 
   const deleteWidgetMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/widget/admin/widgets/${id}`, { method: "DELETE" });
+      return apiRequest("DELETE", `/api/widget/admin/widgets/${id}`);
     },
     onSuccess: () => {
       toast({ title: "Widget deleted", description: "Widget configuration has been deleted." });
@@ -4071,7 +4071,7 @@ export function WidgetAdminSection() {
 
   const regenerateHmacMutation = useMutation({
     mutationFn: async (id: string) => {
-      return apiRequest(`/api/widget/admin/widgets/${id}/regenerate-hmac`, { method: "POST" });
+      return apiRequest("POST", `/api/widget/admin/widgets/${id}/regenerate-hmac`);
     },
     onSuccess: () => {
       toast({ title: "HMAC Secret regenerated", description: "Your widget's HMAC secret has been regenerated. Update your server-side code." });
