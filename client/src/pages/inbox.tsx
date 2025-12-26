@@ -2486,8 +2486,8 @@ export default function InboxPage() {
                   <div className="p-4 space-y-4">
                     {pulseAiMessages.length === 0 ? (
                       <div className="flex flex-col items-center pt-16">
-                        {/* Sparkles Icon */}
-                        <Sparkles className="h-10 w-10 text-violet-500 mb-4" />
+                        {/* Pulse Icon */}
+                        <Activity className="h-10 w-10 text-violet-500 mb-4" />
                         
                         {/* Title */}
                         <h3 className="text-base font-semibold mb-1">Hi, I'm Pulse AI</h3>
@@ -2530,7 +2530,7 @@ export default function InboxPage() {
                         >
                           {msg.role === "assistant" && (
                             <div className="h-6 w-6 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0">
-                              <Sparkles className="h-3 w-3 text-white" />
+                              <Activity className="h-3 w-3 text-white" />
                             </div>
                           )}
                           <div 
