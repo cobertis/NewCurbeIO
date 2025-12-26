@@ -16,7 +16,18 @@ interface ChatCompletionResponse {
   id: string;
   choices: Array<{
     index: number;
-    message: { role: string; content: string };
+    message: { 
+      role: string; 
+      content: string | null;
+      tool_calls?: Array<{
+        id: string;
+        type: string;
+        function: {
+          name: string;
+          arguments: string;
+        };
+      }>;
+    };
     finish_reason: string;
   }>;
   usage: { prompt_tokens: number; completion_tokens: number; total_tokens: number };
@@ -29,6 +40,33 @@ interface StructuredDraftResponse {
   missingFields: string[];
   draftReply: string;
   citations: Array<{ chunkId: string; snippet: string; url?: string }>;
+}
+
+interface ToolDefinition {
+  name: string;
+  description: string;
+  parameters: {
+    type: "object";
+    properties: Record<string, any>;
+    required: string[];
+  };
+}
+
+interface ChatWithToolsResponse {
+  content: string | null;
+  toolCalls?: Array<{
+    id: string;
+    type: string;
+    function: {
+      name: string;
+      arguments: string;
+    };
+  }>;
+  usage?: {
+    prompt_tokens: number;
+    completion_tokens: number;
+    total_tokens: number;
+  };
 }
 
 export class AiOpenAIService {
@@ -139,10 +177,64 @@ export class AiOpenAIService {
     const choice = data.choices[0];
 
     return {
-      content: choice.message.content,
+      content: choice.message.content || "",
       tokensIn: data.usage.prompt_tokens,
       tokensOut: data.usage.completion_tokens,
       finishReason: choice.finish_reason,
+    };
+  }
+
+  async chatWithTools(
+    systemPrompt: string,
+    messages: Array<{ role: "user" | "assistant"; content: string }>,
+    tools: Array<{ type: "function"; function: ToolDefinition }>,
+    options?: {
+      temperature?: number;
+      maxTokens?: number;
+      model?: string;
+    }
+  ): Promise<ChatWithToolsResponse> {
+    const apiKey = this.getApiKey();
+    const model = options?.model ?? CHAT_MODEL;
+
+    const chatMessages: ChatMessage[] = [
+      { role: "system", content: systemPrompt },
+      ...messages.map(m => ({ role: m.role as "user" | "assistant", content: m.content })),
+    ];
+
+    const requestBody: Record<string, any> = {
+      model,
+      messages: chatMessages,
+      temperature: options?.temperature ?? 0.3,
+      max_tokens: options?.maxTokens ?? 1024,
+    };
+
+    if (tools && tools.length > 0) {
+      requestBody.tools = tools;
+      requestBody.tool_choice = "auto";
+    }
+
+    const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const error = await response.text();
+      throw new Error(`OpenAI chat with tools error: ${response.status} - ${error}`);
+    }
+
+    const data: ChatCompletionResponse = await response.json();
+    const choice = data.choices[0];
+
+    return {
+      content: choice.message.content,
+      toolCalls: choice.message.tool_calls,
+      usage: data.usage,
     };
   }
 

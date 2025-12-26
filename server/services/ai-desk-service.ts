@@ -184,6 +184,21 @@ export class AiDeskService {
       ));
   }
 
+  async searchChunks(
+    companyId: string,
+    query: string,
+    limit: number = 5
+  ): Promise<(AiKbChunk & { similarity?: number })[]> {
+    const { aiOpenAIService } = await import("./ai-openai-service");
+    try {
+      const embeddingJson = await aiOpenAIService.getEmbedding(query);
+      return this.searchChunksByEmbedding(companyId, embeddingJson, limit);
+    } catch (error) {
+      console.error("[AiDeskService] Failed to get embedding for search:", error);
+      return [];
+    }
+  }
+
   async searchChunksByEmbedding(
     companyId: string,
     embeddingJson: string,

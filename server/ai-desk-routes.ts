@@ -307,4 +307,56 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
       res.status(500).json({ error: error.message });
     }
   });
+
+  app.get("/api/ai/autopilot/pending", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = getCompanyId(req);
+      if (!companyId) return res.status(400).json({ error: "No company" });
+
+      const { aiAutopilotService } = await import("./services/ai-autopilot-service");
+      const pending = await aiAutopilotService.getPendingApprovals(companyId);
+      res.json({ pending });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/ai/autopilot/approve/:runId", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = getCompanyId(req);
+      const userId = req.user?.id;
+      if (!companyId || !userId) return res.status(400).json({ error: "No company or user" });
+
+      const { aiAutopilotService } = await import("./services/ai-autopilot-service");
+      const result = await aiAutopilotService.approveAndSendResponse(companyId, req.params.runId, userId);
+      
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/ai/autopilot/reject/:runId", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = getCompanyId(req);
+      const userId = req.user?.id;
+      if (!companyId || !userId) return res.status(400).json({ error: "No company or user" });
+
+      const { reason } = req.body;
+      const { aiAutopilotService } = await import("./services/ai-autopilot-service");
+      const result = await aiAutopilotService.rejectResponse(companyId, req.params.runId, userId, reason);
+      
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 }
