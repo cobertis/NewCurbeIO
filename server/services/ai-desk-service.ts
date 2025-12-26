@@ -178,6 +178,36 @@ export class AiDeskService {
       .orderBy(desc(aiKbDocuments.createdAt));
   }
 
+  async listChunksBySource(companyId: string, sourceId: string): Promise<Array<{
+    id: string;
+    documentId: string;
+    documentTitle: string | null;
+    documentUrl: string | null;
+    chunkIndex: number;
+    content: string;
+    createdAt: Date | null;
+  }>> {
+    const result = await db
+      .select({
+        id: aiKbChunks.id,
+        documentId: aiKbChunks.documentId,
+        documentTitle: aiKbDocuments.title,
+        documentUrl: aiKbDocuments.url,
+        chunkIndex: aiKbChunks.chunkIndex,
+        content: aiKbChunks.content,
+        createdAt: aiKbChunks.createdAt,
+      })
+      .from(aiKbChunks)
+      .innerJoin(aiKbDocuments, eq(aiKbChunks.documentId, aiKbDocuments.id))
+      .where(and(
+        eq(aiKbChunks.companyId, companyId),
+        eq(aiKbDocuments.sourceId, sourceId)
+      ))
+      .orderBy(aiKbDocuments.title, aiKbChunks.chunkIndex);
+    
+    return result;
+  }
+
   async getDocumentByHash(companyId: string, sourceId: string, hash: string): Promise<AiKbDocument | null> {
     const [doc] = await db
       .select()
@@ -301,8 +331,8 @@ export class AiDeskService {
   ): Promise<(AiKbChunk & { similarity?: number })[]> {
     const { aiOpenAIService } = await import("./ai-openai-service");
     try {
-      const embeddingJson = await aiOpenAIService.getEmbedding(query);
-      return this.searchChunksByEmbedding(companyId, embeddingJson, limit);
+      const { embedding } = await aiOpenAIService.createEmbedding(query);
+      return this.searchChunksByEmbedding(companyId, JSON.stringify(embedding), limit);
     } catch (error) {
       console.error("[AiDeskService] Failed to get embedding for search:", error);
       return [];

@@ -274,7 +274,15 @@ export class AiIngestionService {
 
         const chunks = this.chunkText(content);
         
-        const { embeddings } = await aiOpenAIService.createEmbeddings(chunks);
+        // Try to create embeddings, but continue without them if OpenAI is not configured
+        let embeddings: number[][] = [];
+        try {
+          const embeddingResult = await aiOpenAIService.createEmbeddings(chunks);
+          embeddings = embeddingResult.embeddings;
+        } catch (embeddingError: any) {
+          console.log(`[AI-Ingestion] Embeddings skipped: ${embeddingError?.message || 'OpenAI not configured'}`);
+          // Continue without embeddings - chunks will still be saved for viewing
+        }
 
         const chunkRecords = chunks.map((text, index) => {
           const chunkHash = crypto.createHash("sha256").update(text).digest("hex");

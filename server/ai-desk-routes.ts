@@ -295,6 +295,19 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
     }
   });
 
+  // Get chunks for a source (with content preview)
+  app.get("/api/ai/kb/sources/:sourceId/chunks", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = getCompanyId(req);
+      if (!companyId) return res.status(400).json({ error: "No company" });
+
+      const chunks = await aiDeskService.listChunksBySource(companyId, req.params.sourceId);
+      res.json(chunks);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/ai/kb/query", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = getCompanyId(req);
