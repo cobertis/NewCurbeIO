@@ -2278,29 +2278,68 @@ export default function ChatWidgetPreviewPage() {
           ) : viewingSolvedChat && solvedChatData ? (
             /* Solved Chat View - Textmagic style */
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: '680px' }}>
-              {/* Header */}
-              <div className="px-4 py-3 text-white flex items-center gap-3" style={{ background: currentBackground }}>
-                <button 
-                  onClick={() => { 
-                    // Exit solved chat view and return to Messages tab
-                    setViewingSolvedChat(false);
-                    setSolvedChatData(null);
-                    setChatSessionId(null);
-                    setActiveChannel(null);
-                    setChatFlowState('idle');
-                    setActiveWidgetTab('messages');
-                  }}
-                  className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
-                  data-testid="back-from-solved-chat"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-                <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
-                  <MessageCircle className="h-5 w-5" />
+              {/* Header - same style as Home (WidgetHeader) */}
+              <div className="px-5 py-4 flex items-center justify-between bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
+                {/* Back button + Logo */}
+                <div className="flex items-center gap-3">
+                  <button 
+                    onClick={() => { 
+                      // Exit solved chat view and return to Messages tab
+                      setViewingSolvedChat(false);
+                      setSolvedChatData(null);
+                      setChatSessionId(null);
+                      setActiveChannel(null);
+                      setChatFlowState('idle');
+                      setActiveWidgetTab('messages');
+                    }}
+                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"
+                    data-testid="back-from-solved-chat"
+                  >
+                    <ChevronLeft className="h-5 w-5 text-slate-500" />
+                  </button>
+                  {widget.branding?.customLogo ? (
+                    <img src={widget.branding.customLogo} alt="Logo" className="h-7 object-contain" />
+                  ) : (
+                    <span className="font-semibold text-slate-900 dark:text-white text-lg">
+                      {widget.welcomeTitle?.split(' ')[0] || 'Support'}
+                    </span>
+                  )}
                 </div>
-                <div className="flex-1">
-                  <span className="font-semibold text-sm">Live chat</span>
-                  <p className="text-xs opacity-80">Chat has ended</p>
+                
+                {/* Agent photos */}
+                <div className="flex items-center gap-3">
+                  <div className="flex -space-x-2">
+                    {[
+                      "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face",
+                      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop&crop=face",
+                      "https://images.unsplash.com/photo-1500648767791-00dcc994a43e?w=100&h=100&fit=crop&crop=face",
+                    ].map((avatar, i) => (
+                      <div 
+                        key={i} 
+                        className="w-9 h-9 rounded-full border-2 border-white overflow-hidden shadow-sm"
+                      >
+                        <img 
+                          src={avatar} 
+                          alt={`Team member ${i + 1}`}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                  <button
+                    className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors z-10"
+                    onClick={() => {
+                      setViewingSolvedChat(false);
+                      setSolvedChatData(null);
+                      setChatSessionId(null);
+                      setActiveChannel(null);
+                      setChatFlowState('idle');
+                      setActiveWidgetTab('messages');
+                    }}
+                    data-testid="widget-close-button"
+                  >
+                    <ChevronDown className="h-6 w-6 text-slate-500" />
+                  </button>
                 </div>
               </div>
               
