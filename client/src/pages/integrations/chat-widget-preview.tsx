@@ -3207,9 +3207,10 @@ export default function ChatWidgetPreviewPage() {
                         setChatSessionId(sessionId);
                         loadAndViewSolvedChat(sessionId);
                       } else {
-                        // Resume active chat
+                        // Resume active chat - set flow state to show active chat view
                         setChatSessionId(sessionId);
                         setActiveChannel('liveChat');
+                        setChatFlowState('activeChat');
                         loadExistingMessages(sessionId);
                       }
                     }
