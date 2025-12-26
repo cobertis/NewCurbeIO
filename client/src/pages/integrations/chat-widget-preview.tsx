@@ -204,15 +204,23 @@ export default function ChatWidgetPreviewPage() {
       return;
     }
     
+    let mounted = true;
     setPublicLoading(true);
-    console.log('[Widget] Fetching widget data for:', widgetId);
+    
+    // Safety timeout - ensure loading state ends even if fetch hangs
+    const safetyTimeout = setTimeout(() => {
+      if (mounted) {
+        console.warn('[Widget] Safety timeout triggered - forcing load complete');
+        setPublicLoading(false);
+        setTargetingChecked(true);
+      }
+    }, 5000);
+    
     fetch(`/api/public/chat-widget/${widgetId}`)
-      .then(res => {
-        console.log('[Widget] Response status:', res.status);
-        return res.json();
-      })
+      .then(res => res.json())
       .then(data => {
-        console.log('[Widget] Data received:', JSON.stringify(data).substring(0, 200));
+        if (!mounted) return;
+        clearTimeout(safetyTimeout);
         // Set widget data directly - the server returns { widget: {...} }
         setPublicWidgetData(data);
         setShouldDisplay(data.shouldDisplay ?? true);
@@ -227,6 +235,8 @@ export default function ChatWidgetPreviewPage() {
         setPublicLoading(false);
       })
       .catch((err) => {
+        if (!mounted) return;
+        clearTimeout(safetyTimeout);
         console.error('[Widget] Fetch error:', err);
         setShouldDisplay(true);
         setScheduleStatus({ isOnline: true, nextAvailable: null });
@@ -234,6 +244,11 @@ export default function ChatWidgetPreviewPage() {
         setTargetingChecked(true);
         setPublicLoading(false);
       });
+      
+    return () => {
+      mounted = false;
+      clearTimeout(safetyTimeout);
+    };
   }, [widgetId]);
   
   // Keep refs in sync with state for WebSocket callbacks
@@ -1481,10 +1496,13 @@ export default function ChatWidgetPreviewPage() {
     (ch: string) => widget.channels?.[ch as keyof typeof widget.channels]
   );
 
-  if (isLoading || !targetingChecked) {
+  // SIMPLIFIED: Only show loading if we don't have widget data yet
+  // With safety timeout, this should never spin forever
+  if (publicLoading && !publicWidgetData?.widget) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center flex-col gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+        <p className="text-sm text-muted-foreground">Loading widget...</p>
       </div>
     );
   }
