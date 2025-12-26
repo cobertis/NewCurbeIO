@@ -32,7 +32,9 @@ import {
   History,
   CheckCheck,
   XCircle,
-  ChevronRight
+  ChevronRight,
+  Globe,
+  Upload
 } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { LoadingSpinner } from "@/components/loading-spinner";
@@ -224,6 +226,21 @@ export default function AiDeskSettingsPage() {
   };
 
   const [showSettings, setShowSettings] = useState(false);
+  const [showAddSourceDialog, setShowAddSourceDialog] = useState(false);
+  const [sourceType, setSourceType] = useState<"url" | "document" | null>(null);
+
+  const handleGetStarted = () => {
+    setShowAddSourceDialog(true);
+  };
+
+  const handleSelectSourceType = (type: "url" | "document") => {
+    setSourceType(type);
+    setShowAddSourceDialog(false);
+    if (type === "url") {
+      setIsSourceDialogOpen(true);
+    }
+    setShowSettings(true);
+  };
 
   if (!showSettings) {
     return (
@@ -264,7 +281,7 @@ export default function AiDeskSettingsPage() {
                 </ul>
 
                 <div className="flex gap-3">
-                  <Button onClick={() => setShowSettings(true)} data-testid="button-get-started">
+                  <Button onClick={handleGetStarted} data-testid="button-get-started">
                     Get started
                   </Button>
                   <Button variant="outline" data-testid="button-learn-more">
@@ -327,6 +344,47 @@ export default function AiDeskSettingsPage() {
             </AccordionItem>
           </Accordion>
         </div>
+
+        <Dialog open={showAddSourceDialog} onOpenChange={setShowAddSourceDialog}>
+          <DialogContent className="sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Add source</DialogTitle>
+            </DialogHeader>
+            <div className="grid grid-cols-2 gap-4 py-6">
+              <button
+                onClick={() => handleSelectSourceType("url")}
+                className="flex flex-col items-center justify-center gap-4 p-8 rounded-lg bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-2 border-transparent hover:border-primary"
+                data-testid="button-source-website"
+              >
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <Globe className="w-8 h-8 text-primary" />
+                </div>
+                <div className="text-center">
+                  <p className="font-semibold">Website link</p>
+                  <p className="text-sm text-muted-foreground">Add link to a public website</p>
+                </div>
+              </button>
+              <button
+                onClick={() => handleSelectSourceType("document")}
+                className="flex flex-col items-center justify-center gap-4 p-8 rounded-lg bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-2 border-transparent hover:border-primary"
+                data-testid="button-source-document"
+              >
+                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                  <FileText className="w-8 h-8 text-primary" />
+                </div>
+                <div className="text-center">
+                  <p className="font-semibold">Document</p>
+                  <p className="text-sm text-muted-foreground">Upload a file from your computer</p>
+                </div>
+              </button>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setShowAddSourceDialog(false)}>
+                Cancel
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
     );
   }
