@@ -269,6 +269,20 @@ export const credentialProvider = {
     return result;
   },
 
+  async getOpenai(): Promise<{ apiKey: string }> {
+    const cacheKey = getCacheKey('openai');
+    const cached = getFromCache<{ apiKey: string }>(cacheKey);
+    if (cached) return cached;
+
+    const apiKey = await secretsService.getCredential("openai" as ApiProvider, "api_key") || 
+                   process.env.AI_INTEGRATIONS_OPENAI_API_KEY || 
+                   process.env.OPENAI_API_KEY || '';
+    
+    const result = { apiKey };
+    setCache(cacheKey, result);
+    return result;
+  },
+
   async get(service: string, key: string): Promise<string> {
     const cacheKey = getCacheKey(service, key);
     const cached = getFromCache<string>(cacheKey);

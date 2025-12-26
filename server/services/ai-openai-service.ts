@@ -1,3 +1,5 @@
+import { credentialProvider } from "./credential-provider";
+
 const OPENAI_BASE_URL = "https://api.openai.com/v1";
 const EMBEDDING_MODEL = "text-embedding-3-small";
 const CHAT_MODEL = "gpt-4o-mini";
@@ -70,16 +72,16 @@ interface ChatWithToolsResponse {
 }
 
 export class AiOpenAIService {
-  private getApiKey(): string {
-    const key = process.env.AI_INTEGRATIONS_OPENAI_API_KEY || process.env.OPENAI_API_KEY;
-    if (!key) {
-      throw new Error("OpenAI API key not configured. Set AI_INTEGRATIONS_OPENAI_API_KEY or OPENAI_API_KEY.");
+  private async getApiKey(): Promise<string> {
+    const { apiKey } = await credentialProvider.getOpenai();
+    if (!apiKey) {
+      throw new Error("OpenAI API key not configured. Set it in Super Admin > API Credentials > OpenAI, or use AI_INTEGRATIONS_OPENAI_API_KEY environment variable.");
     }
-    return key;
+    return apiKey;
   }
 
   async createEmbedding(text: string): Promise<{ embedding: number[]; tokensUsed: number }> {
-    const apiKey = this.getApiKey();
+    const apiKey = await this.getApiKey();
     
     const response = await fetch(`${OPENAI_BASE_URL}/embeddings`, {
       method: "POST",
@@ -108,7 +110,7 @@ export class AiOpenAIService {
   async createEmbeddings(texts: string[]): Promise<{ embeddings: number[][]; tokensUsed: number }> {
     if (texts.length === 0) return { embeddings: [], tokensUsed: 0 };
 
-    const apiKey = this.getApiKey();
+    const apiKey = await this.getApiKey();
     
     const response = await fetch(`${OPENAI_BASE_URL}/embeddings`, {
       method: "POST",
@@ -151,7 +153,7 @@ export class AiOpenAIService {
     tokensOut: number;
     finishReason: string;
   }> {
-    const apiKey = this.getApiKey();
+    const apiKey = await this.getApiKey();
     const model = options?.model ?? CHAT_MODEL;
 
     const response = await fetch(`${OPENAI_BASE_URL}/chat/completions`, {
@@ -194,7 +196,7 @@ export class AiOpenAIService {
       model?: string;
     }
   ): Promise<ChatWithToolsResponse> {
-    const apiKey = this.getApiKey();
+    const apiKey = await this.getApiKey();
     const model = options?.model ?? CHAT_MODEL;
 
     const chatMessages: ChatMessage[] = [
