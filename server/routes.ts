@@ -28837,6 +28837,93 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
     }
   });
 
+
+  // GET /api/public/live-chat/sessions - Get all chat sessions for a visitor
+  app.get("/api/public/live-chat/sessions", async (req: Request, res: Response) => {
+    const { widgetId, visitorId } = req.query;
+    
+    if (!widgetId || !visitorId) {
+      return res.status(400).json({ error: "widgetId and visitorId are required" });
+    }
+    
+    try {
+      // Verify widget exists
+      const widget = await db.query.chatWidgets.findFirst({
+        where: eq(chatWidgets.id, widgetId as string)
+      });
+      
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      const companyId = widget.companyId;
+      
+      // Get ALL conversations for this visitor (both open and solved)
+      const conversations = await db
+        .select({
+          id: telnyxConversations.id,
+          status: telnyxConversations.status,
+          displayName: telnyxConversations.displayName,
+          lastMessage: telnyxConversations.lastMessage,
+          lastMessageAt: telnyxConversations.lastMessageAt,
+          createdAt: telnyxConversations.createdAt,
+          assignedTo: telnyxConversations.assignedTo,
+          satisfactionRating: telnyxConversations.satisfactionRating,
+        })
+        .from(telnyxConversations)
+        .where(and(
+          eq(telnyxConversations.companyId, companyId),
+          eq(telnyxConversations.phoneNumber, `livechat_${visitorId}`),
+          eq(telnyxConversations.channel, "live_chat")
+        ))
+        .orderBy(desc(telnyxConversations.createdAt));
+      
+      // Get agent info for each conversation
+      const sessionsWithAgents = await Promise.all(
+        conversations.map(async (conv) => {
+          let agent = null;
+          if (conv.assignedTo) {
+            const agentResult = await db
+              .select({
+                id: users.id,
+                firstName: users.firstName,
+                lastName: users.lastName,
+                avatar: users.avatar,
+              })
+              .from(users)
+              .where(eq(users.id, conv.assignedTo))
+              .limit(1);
+            
+            if (agentResult.length > 0) {
+              const a = agentResult[0];
+              agent = {
+                id: a.id,
+                fullName: ((a.firstName || '') + ' ' + (a.lastName || '')).trim() || 'Support Agent',
+                avatar: a.avatar,
+              };
+            }
+          }
+          
+          return {
+            sessionId: conv.id,
+            status: conv.status,
+            displayName: conv.displayName,
+            lastMessage: conv.lastMessage,
+            lastMessageAt: conv.lastMessageAt,
+            createdAt: conv.createdAt,
+            rating: conv.satisfactionRating,
+            agent,
+          };
+        })
+      );
+      
+      res.set({ "Access-Control-Allow-Origin": "*" });
+      return res.json({ sessions: sessionsWithAgents });
+    } catch (error: any) {
+      console.error("[LiveChat] Get sessions error:", error);
+      res.status(500).json({ error: "Failed to get sessions" });
+    }
+  });
   // POST /api/public/live-chat/session/:sessionId/finish - Visitor ends the chat
   app.post("/api/public/live-chat/session/:sessionId/finish", async (req: Request, res: Response) => {
     const { sessionId } = req.params;
