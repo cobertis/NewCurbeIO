@@ -7,6 +7,7 @@ import {
   aiAssistantSettings,
   aiRuns,
   aiActionLogs,
+  aiOutboxMessages,
   type AiKbSource,
   type InsertAiKbSource,
   type AiKbDocument,
@@ -19,6 +20,8 @@ import {
   type InsertAiRun,
   type AiActionLog,
   type InsertAiActionLog,
+  type AiOutboxMessage,
+  type InsertAiOutboxMessage,
 } from "@shared/schema";
 
 export class AiDeskService {
@@ -361,6 +364,62 @@ export class AiDeskService {
         ? runs.reduce((acc, r) => acc + (r.latencyMs ?? 0), 0) / runs.length
         : 0,
     };
+  }
+
+  async getRun(companyId: string, runId: string): Promise<AiRun | null> {
+    const [run] = await db
+      .select()
+      .from(aiRuns)
+      .where(and(
+        eq(aiRuns.id, runId),
+        eq(aiRuns.companyId, companyId)
+      ))
+      .limit(1);
+    return run ?? null;
+  }
+
+  async createOutboxMessage(data: InsertAiOutboxMessage): Promise<AiOutboxMessage> {
+    const [message] = await db
+      .insert(aiOutboxMessages)
+      .values(data)
+      .returning();
+    return message;
+  }
+
+  async getOutboxMessageByRunId(companyId: string, runId: string): Promise<AiOutboxMessage | null> {
+    const [message] = await db
+      .select()
+      .from(aiOutboxMessages)
+      .where(and(
+        eq(aiOutboxMessages.runId, runId),
+        eq(aiOutboxMessages.companyId, companyId)
+      ))
+      .limit(1);
+    return message ?? null;
+  }
+
+  async updateOutboxMessage(companyId: string, id: string, data: Partial<AiOutboxMessage>): Promise<AiOutboxMessage | null> {
+    const [updated] = await db
+      .update(aiOutboxMessages)
+      .set(data)
+      .where(and(
+        eq(aiOutboxMessages.id, id),
+        eq(aiOutboxMessages.companyId, companyId)
+      ))
+      .returning();
+    return updated ?? null;
+  }
+
+  async getPendingApprovalRuns(companyId: string): Promise<AiRun[]> {
+    return db
+      .select()
+      .from(aiRuns)
+      .where(and(
+        eq(aiRuns.companyId, companyId),
+        eq(aiRuns.runState, "pending_approval")
+      ))
+      .orderBy(desc(aiRuns.createdAt))
+      .limit(50);
   }
 }
 

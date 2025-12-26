@@ -131,6 +131,7 @@ export class AiAutopilotService {
           .update(aiRuns)
           .set({
             status: "pending_approval",
+            runState: "pending_approval",
             outputText: finalResponse,
             needsHuman,
             confidence: String(responseConfidence),
@@ -153,6 +154,7 @@ export class AiAutopilotService {
         .update(aiRuns)
         .set({
           status: "completed",
+          runState: "completed",
           outputText: finalResponse,
           needsHuman,
           confidence: String(responseConfidence),
@@ -212,19 +214,26 @@ export class AiAutopilotService {
     companyId: string,
     runId: string,
     approvedBy: string
-  ): Promise<{ success: boolean; error?: string; messageId?: string }> {
-    const [run] = await db
-      .select()
-      .from(aiRuns)
-      .where(and(eq(aiRuns.id, runId), eq(aiRuns.companyId, companyId)))
-      .limit(1);
-
+  ): Promise<{ success: boolean; error?: string; messageId?: string; alreadyProcessed?: boolean }> {
+    const { aiDeskService } = await import("./ai-desk-service");
+    
+    const run = await aiDeskService.getRun(companyId, runId);
     if (!run) {
       return { success: false, error: "Run not found" };
     }
 
-    if (run.status !== "pending_approval") {
-      return { success: false, error: `Run is not pending approval (status: ${run.status})` };
+    if (run.runState === "approved_sent" || run.runState === "rejected") {
+      console.log(`[Autopilot] Run ${runId} already processed (runState: ${run.runState}), returning success for idempotency`);
+      const existingOutbox = await aiDeskService.getOutboxMessageByRunId(companyId, runId);
+      return { 
+        success: true, 
+        alreadyProcessed: true, 
+        messageId: existingOutbox?.sentMessageId || undefined 
+      };
+    }
+
+    if (run.runState !== "pending_approval") {
+      return { success: false, error: `Run is not pending approval (runState: ${run.runState})` };
     }
 
     if (!run.outputText) {
@@ -249,6 +258,40 @@ export class AiAutopilotService {
     }
 
     try {
+      const existingOutbox = await aiDeskService.getOutboxMessageByRunId(companyId, runId);
+      if (existingOutbox) {
+        if (existingOutbox.status === "sent") {
+          console.log(`[Autopilot] Outbox message already sent for run ${runId}`);
+          return { success: true, alreadyProcessed: true, messageId: existingOutbox.sentMessageId || undefined };
+        }
+      }
+
+      let outboxMessage = existingOutbox;
+      if (!outboxMessage) {
+        outboxMessage = await aiDeskService.createOutboxMessage({
+          companyId,
+          runId,
+          conversationId: run.conversationId,
+          messageContent: run.outputText,
+          status: "pending",
+          attempts: 0,
+        });
+      }
+
+      await db
+        .update(aiRuns)
+        .set({ 
+          runState: "approved_sent",
+          status: "completed",
+          approvedByUserId: approvedBy,
+          approvedAt: new Date(),
+        })
+        .where(and(
+          eq(aiRuns.id, runId),
+          eq(aiRuns.companyId, companyId),
+          eq(aiRuns.runState, "pending_approval")
+        ));
+
       const { sendTelnyxMessage } = await import("./telnyx-messaging-service");
       
       const sendResult = await sendTelnyxMessage({
@@ -260,6 +303,15 @@ export class AiAutopilotService {
 
       if (!sendResult.success) {
         console.error(`[Autopilot] Failed to send approved message:`, sendResult.error);
+        await aiDeskService.updateOutboxMessage(companyId, outboxMessage.id, {
+          status: "failed",
+          lastError: sendResult.error || "Failed to send",
+          attempts: (outboxMessage.attempts || 0) + 1,
+        });
+        await db
+          .update(aiRuns)
+          .set({ runState: "send_failed" })
+          .where(eq(aiRuns.id, runId));
         return { success: false, error: sendResult.error || "Failed to send message" };
       }
 
@@ -283,10 +335,12 @@ export class AiAutopilotService {
         })
         .where(eq(telnyxConversations.id, conversation.id));
 
-      await db
-        .update(aiRuns)
-        .set({ status: "completed" })
-        .where(eq(aiRuns.id, runId));
+      await aiDeskService.updateOutboxMessage(companyId, outboxMessage.id, {
+        status: "sent",
+        sentMessageId: message?.id,
+        sentAt: new Date(),
+        attempts: (outboxMessage.attempts || 0) + 1,
+      });
 
       await db.insert(aiActionLogs).values({
         companyId,
@@ -315,19 +369,49 @@ export class AiAutopilotService {
     runId: string,
     rejectedBy: string,
     reason?: string
-  ): Promise<{ success: boolean; error?: string }> {
-    const [run] = await db
-      .select()
-      .from(aiRuns)
-      .where(and(eq(aiRuns.id, runId), eq(aiRuns.companyId, companyId)))
-      .limit(1);
-
+  ): Promise<{ success: boolean; error?: string; alreadyProcessed?: boolean }> {
+    const { aiDeskService } = await import("./ai-desk-service");
+    
+    const run = await aiDeskService.getRun(companyId, runId);
     if (!run) {
       return { success: false, error: "Run not found" };
     }
 
-    if (run.status !== "pending_approval") {
-      return { success: false, error: `Run is not pending approval (status: ${run.status})` };
+    if (run.runState === "rejected") {
+      console.log(`[Autopilot] Run ${runId} already rejected, returning success for idempotency`);
+      return { success: true, alreadyProcessed: true };
+    }
+
+    if (run.runState === "approved_sent") {
+      return { success: false, error: "Run has already been approved and sent" };
+    }
+
+    if (run.runState !== "pending_approval") {
+      return { success: false, error: `Run is not pending approval (runState: ${run.runState})` };
+    }
+
+    const result = await db
+      .update(aiRuns)
+      .set({ 
+        runState: "rejected",
+        status: "rejected",
+        rejectedReason: reason || null,
+        rejectedByUserId: rejectedBy,
+        rejectedAt: new Date(),
+      })
+      .where(and(
+        eq(aiRuns.id, runId),
+        eq(aiRuns.companyId, companyId),
+        eq(aiRuns.runState, "pending_approval")
+      ))
+      .returning();
+
+    if (result.length === 0) {
+      const currentRun = await aiDeskService.getRun(companyId, runId);
+      if (currentRun?.runState === "rejected") {
+        return { success: true, alreadyProcessed: true };
+      }
+      return { success: false, error: "Failed to update run state (concurrent modification)" };
     }
 
     await db.insert(aiActionLogs).values({
@@ -338,14 +422,6 @@ export class AiAutopilotService {
       result: { rejected: true },
       success: true,
     });
-
-    await db
-      .update(aiRuns)
-      .set({ 
-        status: "rejected",
-        outputText: null,
-      })
-      .where(eq(aiRuns.id, runId));
 
     console.log(`[Autopilot] Rejected response for run ${runId}. Reason: ${reason || 'No reason provided'}`);
 
@@ -359,17 +435,7 @@ export class AiAutopilotService {
       return [];
     }
 
-    const runs = await db
-      .select()
-      .from(aiRuns)
-      .where(and(
-        eq(aiRuns.companyId, companyId),
-        eq(aiRuns.status, "pending_approval")
-      ))
-      .orderBy(desc(aiRuns.createdAt))
-      .limit(50);
-
-    return runs;
+    return aiDeskService.getPendingApprovalRuns(companyId);
   }
 
   private async getRecentMessages(

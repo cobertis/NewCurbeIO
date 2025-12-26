@@ -7368,6 +7368,8 @@ export const aiRuns = pgTable("ai_runs", {
   messageId: varchar("message_id"), // Triggering message
   mode: text("mode").notNull(), // 'copilot' | 'autopilot'
   status: text("status").notNull().default("pending"), // 'pending' | 'running' | 'completed' | 'failed'
+  // Run state for idempotency: completed | pending_approval | approved_sent | rejected | send_failed
+  runState: text("run_state").notNull().default("completed"),
   intent: text("intent"),
   confidence: numeric("confidence"),
   needsHuman: boolean("needs_human").notNull().default(false),
@@ -7380,10 +7382,17 @@ export const aiRuns = pgTable("ai_runs", {
   tokensOut: integer("tokens_out"),
   latencyMs: integer("latency_ms"),
   costEstimate: numeric("cost_estimate"),
+  // Approval tracking
+  approvedByUserId: varchar("approved_by_user_id").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  rejectedReason: text("rejected_reason"),
+  rejectedByUserId: varchar("rejected_by_user_id").references(() => users.id),
+  rejectedAt: timestamp("rejected_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({
   companyIdIdx: index("ai_runs_company_id_idx").on(table.companyId),
   conversationIdIdx: index("ai_runs_conversation_id_idx").on(table.conversationId),
+  runStateIdx: index("ai_runs_run_state_idx").on(table.runState),
 }));
 
 export const insertAiRunSchema = createInsertSchema(aiRuns).omit({
@@ -7423,3 +7432,33 @@ export const insertAiActionLogSchema = createInsertSchema(aiActionLogs).omit({
 
 export type AiActionLog = typeof aiActionLogs.$inferSelect;
 export type InsertAiActionLog = z.infer<typeof insertAiActionLogSchema>;
+
+// =====================================================
+// AI DESK MODULE - Outbox Messages (Idempotency)
+// =====================================================
+
+export const aiOutboxMessages = pgTable("ai_outbox_messages", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  runId: varchar("run_id").notNull().unique().references(() => aiRuns.id, { onDelete: "cascade" }),
+  conversationId: varchar("conversation_id").notNull(),
+  messageContent: text("message_content").notNull(),
+  status: text("status").notNull().default("pending"), // pending | sent | failed
+  sentMessageId: varchar("sent_message_id"), // Reference to actual sent message
+  attempts: integer("attempts").notNull().default(0),
+  lastError: text("last_error"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  sentAt: timestamp("sent_at"),
+}, (table) => ({
+  companyIdIdx: index("ai_outbox_messages_company_id_idx").on(table.companyId),
+  runIdIdx: index("ai_outbox_messages_run_id_idx").on(table.runId),
+  statusIdx: index("ai_outbox_messages_status_idx").on(table.status),
+}));
+
+export const insertAiOutboxMessageSchema = createInsertSchema(aiOutboxMessages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type AiOutboxMessage = typeof aiOutboxMessages.$inferSelect;
+export type InsertAiOutboxMessage = z.infer<typeof insertAiOutboxMessageSchema>;
