@@ -39,8 +39,19 @@ export function generateHmacSignature(data: string, hmacToken: string): string {
 }
 
 export function verifyHmacSignature(identifier: string, signature: string, hmacToken: string): boolean {
-  const expectedSignature = generateHmacSignature(identifier, hmacToken);
-  return crypto.timingSafeEqual(Buffer.from(signature), Buffer.from(expectedSignature));
+  try {
+    const expectedSignature = generateHmacSignature(identifier, hmacToken);
+    const signatureBuffer = Buffer.from(signature, 'hex');
+    const expectedBuffer = Buffer.from(expectedSignature, 'hex');
+    
+    if (signatureBuffer.length !== expectedBuffer.length) {
+      return false;
+    }
+    
+    return crypto.timingSafeEqual(signatureBuffer, expectedBuffer);
+  } catch {
+    return false;
+  }
 }
 
 export async function createWidgetToken(

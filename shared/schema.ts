@@ -6340,6 +6340,10 @@ export type InsertWalletDevice = z.infer<typeof insertWalletDeviceSchema>;
 export type WalletSettings = typeof walletSettings.$inferSelect;
 export type InsertWalletSettings = z.infer<typeof insertWalletSettingsSchema>;
 
+// Legacy enums - kept for database compatibility during migration
+export const chatWidgetStatusEnum = pgEnum("chat_widget_status", ["active", "inactive", "draft"]);
+export const telegramMessageDirectionEnum = pgEnum("telegram_message_direction", ["inbound", "outbound"]);
+
 // ==================== 10DLC Brand Registration ====================
 
 export const brandEntityTypeEnum = pgEnum("brand_entity_type", [

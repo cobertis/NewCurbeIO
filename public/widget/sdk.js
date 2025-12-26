@@ -347,7 +347,7 @@
       iframe.setAttribute('allow', 'microphone; camera');
       iframe.setAttribute('title', 'Curbe Chat Widget');
       
-      var frameUrl = this.config.baseUrl + '/widget/frame.html';
+      var frameUrl = this.config.baseUrl + '/widget/frame';
       frameUrl += '?token=' + encodeURIComponent(this.token);
       frameUrl += '&websiteToken=' + encodeURIComponent(this.config.websiteToken);
       frameUrl += '&locale=' + encodeURIComponent(this.locale);
