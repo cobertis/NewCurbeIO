@@ -275,7 +275,14 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
               sameDomainOnly: data.sameDomainOnly ?? true 
             },
           });
-          results.push(await res.json());
+          const source = await res.json();
+          results.push(source);
+          // Auto-sync the source immediately after creation
+          try {
+            await apiRequest("POST", `/api/ai/kb/sources/${source.id}/sync`);
+          } catch {
+            // Silently continue if sync fails
+          }
         } catch {
           // Silently continue - we'll show success for whatever worked
         }
@@ -285,7 +292,7 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
     onSuccess: (results) => {
       queryClient.invalidateQueries({ queryKey: ["/api/ai/kb/sources"] });
       if (results.length > 0) {
-        toast({ title: `${results.length} source(s) added` });
+        toast({ title: `${results.length} source(s) added and syncing` });
       }
       setIsSourceDialogOpen(false);
       setUrlInputs(['']);
