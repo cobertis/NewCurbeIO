@@ -97,25 +97,26 @@ export function WidgetChannelList({ config, onChannelClick, hideLiveChat = false
         </button>
       )}
 
-      {otherChannels.map((channel) => (
-        <button
-          key={channel.id}
-          className="w-full flex items-center gap-3 py-2.5 px-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
-          onClick={() => onChannelClick?.(channel.id)}
-          data-testid={`widget-channel-${channel.id}`}
-        >
-          <span 
-            className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm"
-            style={{ color: iconColor }}
-          >
-            <span className="[&>svg]:h-4 [&>svg]:w-4">{channel.icon}</span>
-          </span>
-          <span className="flex-1 text-left text-sm font-medium text-slate-900">
-            {channel.getLabel(config)}
-          </span>
-          <ChevronRight className="h-4 w-4 text-slate-400" />
-        </button>
-      ))}
+      {otherChannels.length > 0 && (
+        <div className="pt-3 mt-2 border-t border-slate-100">
+          <p className="text-xs text-slate-400 mb-2">Other ways to reach us</p>
+          <div className="flex flex-wrap gap-2">
+            {otherChannels.map((channel) => (
+              <button
+                key={channel.id}
+                className="flex items-center gap-1.5 py-1.5 px-3 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors cursor-pointer text-xs font-medium text-slate-600"
+                onClick={() => onChannelClick?.(channel.id)}
+                data-testid={`widget-channel-${channel.id}`}
+              >
+                <span className="[&>svg]:h-3.5 [&>svg]:w-3.5" style={{ color: iconColor }}>
+                  {channel.icon}
+                </span>
+                <span>{channel.getLabel(config)}</span>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
