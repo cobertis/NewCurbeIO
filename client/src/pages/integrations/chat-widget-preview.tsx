@@ -1341,7 +1341,6 @@ export default function ChatWidgetPreviewPage() {
           
           // Detect when chat is solved and transition to survey via state machine
           if (status === 'solved' && chatStatus !== 'solved' && !surveySubmitted) {
-            console.log('[Chat] Status changed to solved, showing survey. surveyEnabled:', effectiveWidgetData?.widget?.liveChatSettings?.satisfactionSurvey?.enabled);
             setChatStatus('solved');
             // Only show survey if enabled in widget settings
             const surveyEnabled = effectiveWidgetData?.widget?.liveChatSettings?.satisfactionSurvey?.enabled;
@@ -2870,12 +2869,38 @@ export default function ChatWidgetPreviewPage() {
                   <Check className="h-8 w-8 mx-auto mb-2 text-green-500" />
                   <h4 className="font-semibold text-slate-900 dark:text-slate-100">Thank you!</h4>
                   <p className="text-sm text-slate-500 mt-1">Your feedback has been submitted</p>
+                  <button
+                    onClick={() => {
+                      resetChatSession();
+                      setForceNewChat(true);
+                      setChatFlowState('idle');
+                      setActiveWidgetTab('home');
+                    }}
+                    className="mt-3 px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors"
+                    style={{ background: currentBackground }}
+                    data-testid="button-start-new-chat-after-survey"
+                  >
+                    Start New Chat
+                  </button>
                 </div>
               ) : chatStatus === 'solved' ? (
                 <div className="p-4 border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900 text-center">
                   <Check className="h-8 w-8 mx-auto mb-2 text-green-500" />
                   <h4 className="font-semibold text-slate-900 dark:text-slate-100">Chat ended</h4>
                   <p className="text-sm text-slate-500 mt-1">This conversation has been resolved</p>
+                  <button
+                    onClick={() => {
+                      resetChatSession();
+                      setForceNewChat(true);
+                      setChatFlowState('idle');
+                      setActiveWidgetTab('home');
+                    }}
+                    className="mt-3 px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors"
+                    style={{ background: currentBackground }}
+                    data-testid="button-start-new-chat-after-solved"
+                  >
+                    Start New Chat
+                  </button>
                 </div>
               ) : (
                 <div className="border-t border-slate-100 dark:border-slate-700 bg-white dark:bg-slate-900 relative">
