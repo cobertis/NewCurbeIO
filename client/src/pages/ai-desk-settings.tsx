@@ -665,124 +665,96 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
         )}
       </div>
 
-      <Tabs defaultValue="settings" className="space-y-4">
-        <TabsList>
-          <TabsTrigger value="settings" data-testid="tab-settings">
-            <Bot className="w-4 h-4 mr-2" />
-            Settings
-          </TabsTrigger>
-          <TabsTrigger value="knowledge" data-testid="tab-knowledge">
-            <BookOpen className="w-4 h-4 mr-2" />
-            Knowledge Base
-          </TabsTrigger>
-          <TabsTrigger value="usage" data-testid="tab-usage">
-            <Database className="w-4 h-4 mr-2" />
-            Usage
-          </TabsTrigger>
-          <TabsTrigger value="activity" data-testid="tab-activity">
-            <History className="w-4 h-4 mr-2" />
-            Activity
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="settings" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="w-5 h-5" />
-                Copilot
-              </CardTitle>
-              <CardDescription>
-                AI drafts reply suggestions for your agents to review and send
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Enable Copilot</p>
-                  <p className="text-sm text-muted-foreground">Show AI draft suggestions when composing replies</p>
-                </div>
-                <Switch
-                  checked={settings?.copilotEnabled ?? false}
-                  onCheckedChange={(checked) =>
-                    updateSettingsMutation.mutate({ copilotEnabled: checked })
-                  }
-                  data-testid="switch-copilot"
-                />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Brain className="w-5 h-5" />
-                Autopilot
-              </CardTitle>
-              <CardDescription>
-                AI automatically responds to messages when confident enough
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="font-medium">Enable Autopilot</p>
-                  <p className="text-sm text-muted-foreground">Allow AI to send replies automatically</p>
-                </div>
-                <Switch
-                  checked={settings?.autopilotEnabled ?? false}
-                  onCheckedChange={(checked) =>
-                    updateSettingsMutation.mutate({ autopilotEnabled: checked })
-                  }
-                  data-testid="switch-autopilot"
-                />
-              </div>
-
-              {settings?.autopilotEnabled && (
-                <div className="space-y-2 pt-4 border-t">
-                  <div className="flex justify-between">
-                    <p className="font-medium">Confidence Threshold</p>
-                    <span className="text-sm text-muted-foreground">
-                      {Math.round(Number(settings.confidenceThreshold || 0.75) * 100)}%
-                    </span>
-                  </div>
-                  <p className="text-sm text-muted-foreground">
-                    AI will only auto-respond when confidence is above this threshold
-                  </p>
-                  <Slider
-                    value={[Number(settings.confidenceThreshold || 0.75) * 100]}
-                    onValueChange={([value]) =>
-                      updateSettingsMutation.mutate({ confidenceThreshold: (value / 100) as any })
-                    }
-                    max={100}
-                    min={50}
-                    step={5}
-                    className="w-full"
-                    data-testid="slider-confidence"
-                  />
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="knowledge" className="space-y-4">
-          <div className="flex justify-between items-center">
-            <div>
-              <h3 className="text-lg font-medium">Knowledge Sources</h3>
-              <p className="text-sm text-muted-foreground">
-                Add websites or documents for AI to learn from
-              </p>
+      {/* AI Settings Section */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Sparkles className="w-4 h-4" />
+              Copilot
+            </CardTitle>
+            <CardDescription className="text-sm">
+              AI drafts reply suggestions for agents to review
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between">
+              <p className="text-sm">Enable Copilot</p>
+              <Switch
+                checked={settings?.copilotEnabled ?? false}
+                onCheckedChange={(checked) =>
+                  updateSettingsMutation.mutate({ copilotEnabled: checked })
+                }
+                data-testid="switch-copilot"
+              />
             </div>
-            <Button onClick={() => setShowAddSourceDialog(true)} data-testid="button-add-source">
-              <Plus className="w-4 h-4 mr-2" />
-              Add Source
-            </Button>
-          </div>
+          </CardContent>
+        </Card>
 
-          {sourcesLoading ? (
-            <LoadingSpinner fullScreen={false} />
-          ) : sources?.length === 0 ? (
+        <Card>
+          <CardHeader className="pb-3">
+            <CardTitle className="flex items-center gap-2 text-base">
+              <Brain className="w-4 h-4" />
+              Autopilot
+            </CardTitle>
+            <CardDescription className="text-sm">
+              AI automatically responds when confident
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            <div className="flex items-center justify-between">
+              <p className="text-sm">Enable Autopilot</p>
+              <Switch
+                checked={settings?.autopilotEnabled ?? false}
+                onCheckedChange={(checked) =>
+                  updateSettingsMutation.mutate({ autopilotEnabled: checked })
+                }
+                data-testid="switch-autopilot"
+              />
+            </div>
+            {settings?.autopilotEnabled && (
+              <div className="space-y-2 pt-2 border-t">
+                <div className="flex justify-between text-sm">
+                  <span>Confidence Threshold</span>
+                  <span className="text-muted-foreground">
+                    {Math.round(Number(settings.confidenceThreshold || 0.75) * 100)}%
+                  </span>
+                </div>
+                <Slider
+                  value={[Number(settings.confidenceThreshold || 0.75) * 100]}
+                  onValueChange={([value]) =>
+                    updateSettingsMutation.mutate({ confidenceThreshold: (value / 100) as any })
+                  }
+                  max={100}
+                  min={50}
+                  step={5}
+                  className="w-full"
+                  data-testid="slider-confidence"
+                />
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Knowledge Base Section */}
+      <div className="space-y-4">
+        <div className="flex justify-between items-center">
+          <div>
+            <h3 className="text-lg font-medium">Knowledge Sources</h3>
+            <p className="text-sm text-muted-foreground">
+              Add websites or documents for AI to learn from
+            </p>
+          </div>
+          <Button onClick={() => setShowAddSourceDialog(true)} data-testid="button-add-source">
+            <Plus className="w-4 h-4 mr-2" />
+            Add Source
+          </Button>
+        </div>
+
+        {sourcesLoading ? (
+          <LoadingSpinner fullScreen={false} />
+        ) : sources?.length === 0 ? (
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-12">
                 <BookOpen className="w-12 h-12 text-muted-foreground mb-4" />
@@ -879,283 +851,7 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
               ))}
             </div>
           )}
-        </TabsContent>
-
-        <TabsContent value="usage" className="space-y-4">
-          {metricsLoading ? (
-            <LoadingSpinner fullScreen={false} message="Loading metrics..." />
-          ) : (
-            <>
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-                <Card data-testid="card-total-runs">
-                  <CardHeader className="pb-2">
-                    <CardDescription className="flex items-center gap-1">
-                      <TrendingUp className="w-4 h-4" />
-                      Total AI Runs
-                    </CardDescription>
-                    <CardTitle className="text-3xl">{metrics?.overview.totalRuns ?? 0}</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <Sparkles className="w-3 h-3" />
-                        {metrics?.overview.copilotRuns ?? 0} Copilot
-                      </span>
-                      <span className="flex items-center gap-1">
-                        <Brain className="w-3 h-3" />
-                        {metrics?.overview.autopilotRuns ?? 0} Autopilot
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card data-testid="card-approval-rate">
-                  <CardHeader className="pb-2">
-                    <CardDescription className="flex items-center gap-1">
-                      <Percent className="w-4 h-4" />
-                      Approval Rate
-                    </CardDescription>
-                    <CardTitle className="text-3xl">{metrics?.overview.approvalRate ?? 0}%</CardTitle>
-                  </CardHeader>
-                  <CardContent className="pt-0">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1 text-green-600">
-                        <ThumbsUp className="w-3 h-3" />
-                        {metrics?.overview.approved ?? 0}
-                      </span>
-                      <span className="flex items-center gap-1 text-red-600">
-                        <ThumbsDown className="w-3 h-3" />
-                        {metrics?.overview.rejected ?? 0}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card data-testid="card-avg-confidence">
-                  <CardHeader className="pb-2">
-                    <CardDescription className="flex items-center gap-1">
-                      <BarChart3 className="w-4 h-4" />
-                      Avg Confidence
-                    </CardDescription>
-                    <CardTitle className="text-3xl">{metrics?.overview.avgConfidence ?? 0}%</CardTitle>
-                  </CardHeader>
-                </Card>
-                <Card data-testid="card-avg-latency">
-                  <CardHeader className="pb-2">
-                    <CardDescription className="flex items-center gap-1">
-                      <Zap className="w-4 h-4" />
-                      Avg Latency
-                    </CardDescription>
-                    <CardTitle className="text-3xl">
-                      {metrics?.overview.avgLatencyMs ? `${metrics.overview.avgLatencyMs}ms` : "-"}
-                    </CardTitle>
-                  </CardHeader>
-                </Card>
-                <Card data-testid="card-pending-approval">
-                  <CardHeader className="pb-2">
-                    <CardDescription className="flex items-center gap-1">
-                      <Clock className="w-4 h-4" />
-                      Pending Approval
-                    </CardDescription>
-                    <CardTitle className="text-3xl">{metrics?.overview.pendingApproval ?? 0}</CardTitle>
-                  </CardHeader>
-                </Card>
-              </div>
-
-              <div className="grid gap-4 md:grid-cols-2">
-                <Card data-testid="card-intent-distribution">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <BarChart3 className="w-5 h-5" />
-                      Intent Distribution
-                    </CardTitle>
-                    <CardDescription>Top intents from AI runs</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {metrics?.intentDistribution && metrics.intentDistribution.length > 0 ? (
-                      <ResponsiveContainer width="100%" height={250}>
-                        <BarChart data={metrics.intentDistribution} layout="vertical" margin={{ left: 20, right: 20 }}>
-                          <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
-                          <XAxis type="number" />
-                          <YAxis 
-                            dataKey="intent" 
-                            type="category" 
-                            width={100} 
-                            tick={{ fontSize: 12 }}
-                            tickFormatter={(value) => value.length > 15 ? `${value.slice(0, 15)}...` : value}
-                          />
-                          <Tooltip 
-                            contentStyle={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
-                            labelStyle={{ fontWeight: 'bold' }}
-                          />
-                          <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
-                        </BarChart>
-                      </ResponsiveContainer>
-                    ) : (
-                      <div className="flex items-center justify-center h-[250px] text-muted-foreground">
-                        <div className="text-center">
-                          <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-20" />
-                          <p>No intent data available</p>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-
-                <Card data-testid="card-rejection-reasons">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <XCircle className="w-5 h-5" />
-                      Rejection Reasons
-                    </CardTitle>
-                    <CardDescription>Why responses were rejected</CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {metrics?.rejectionReasons && metrics.rejectionReasons.length > 0 ? (
-                      <div className="space-y-3">
-                        {metrics.rejectionReasons.map((item, index) => (
-                          <div key={index} className="flex items-center justify-between" data-testid={`rejection-reason-${index}`}>
-                            <span className="text-sm truncate max-w-[200px]" title={item.reason}>
-                              {item.reason}
-                            </span>
-                            <Badge variant="secondary">{item.count}</Badge>
-                          </div>
-                        ))}
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-center h-[200px] text-muted-foreground">
-                        <div className="text-center">
-                          <CheckCircle className="w-12 h-12 mx-auto mb-2 opacity-20 text-green-500" />
-                          <p>No rejections recorded</p>
-                        </div>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card data-testid="card-token-usage">
-                <CardHeader>
-                  <CardTitle>Token Usage</CardTitle>
-                  <CardDescription>Last 30 days</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Input Tokens</p>
-                      <p className="text-2xl font-bold">{(metrics?.overview.totalTokensIn ?? 0).toLocaleString()}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Output Tokens</p>
-                      <p className="text-2xl font-bold">{(metrics?.overview.totalTokensOut ?? 0).toLocaleString()}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Total Tokens</p>
-                      <p className="text-2xl font-bold">
-                        {((metrics?.overview.totalTokensIn ?? 0) + (metrics?.overview.totalTokensOut ?? 0)).toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            </>
-          )}
-        </TabsContent>
-
-        <TabsContent value="activity" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <History className="w-5 h-5" />
-                Recent AI Activity
-              </CardTitle>
-              <CardDescription>
-                View recent AI runs, responses, and tool executions
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {runsLoading ? (
-                <LoadingSpinner fullScreen={false} message="Loading activity..." />
-              ) : runs && runs.length > 0 ? (
-                <div className="space-y-4">
-                  {runs.slice(0, 20).map((run) => (
-                    <div
-                      key={run.id}
-                      className="border rounded-lg p-4 space-y-3"
-                      data-testid={`activity-run-${run.id}`}
-                    >
-                      <div className="flex items-center justify-between">
-                        <div className="flex items-center gap-2">
-                          {run.mode === "copilot" ? (
-                            <Badge variant="outline" className="bg-purple-50 text-purple-700 border-purple-200">
-                              <Sparkles className="w-3 h-3 mr-1" />
-                              Copilot
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">
-                              <Brain className="w-3 h-3 mr-1" />
-                              Autopilot
-                            </Badge>
-                          )}
-                          <Badge variant={run.status === "completed" ? "default" : run.status === "failed" ? "destructive" : "secondary"}>
-                            {run.status === "completed" && <CheckCheck className="w-3 h-3 mr-1" />}
-                            {run.status === "failed" && <XCircle className="w-3 h-3 mr-1" />}
-                            {run.status === "pending" && <Clock className="w-3 h-3 mr-1" />}
-                            {run.status}
-                          </Badge>
-                          {run.needsHuman && (
-                            <Badge variant="outline" className="bg-orange-50 text-orange-700 border-orange-200">
-                              Needs Human
-                            </Badge>
-                          )}
-                        </div>
-                        <span className="text-sm text-muted-foreground">
-                          {new Date(run.createdAt).toLocaleString()}
-                        </span>
-                      </div>
-
-                      <div className="grid gap-2 text-sm">
-                        <div>
-                          <span className="font-medium">Input:</span>
-                          <p className="text-muted-foreground truncate max-w-xl">{run.inputText}</p>
-                        </div>
-                        {run.outputText && (
-                          <div>
-                            <span className="font-medium">Output:</span>
-                            <p className="text-muted-foreground truncate max-w-xl">{run.outputText}</p>
-                          </div>
-                        )}
-                        {run.intent && (
-                          <div>
-                            <span className="font-medium">Intent:</span>{" "}
-                            <span className="text-muted-foreground">{run.intent}</span>
-                            {run.confidence && (
-                              <span className="text-muted-foreground ml-2">
-                                ({(parseFloat(run.confidence) * 100).toFixed(0)}% confidence)
-                              </span>
-                            )}
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                        <span>Model: {run.model}</span>
-                        {run.tokensIn !== null && <span>Tokens in: {run.tokensIn}</span>}
-                        {run.tokensOut !== null && <span>Tokens out: {run.tokensOut}</span>}
-                        {run.latencyMs !== null && <span>Latency: {run.latencyMs}ms</span>}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-8 text-muted-foreground">
-                  <History className="w-12 h-12 mx-auto mb-4 opacity-20" />
-                  <p>No AI activity yet</p>
-                  <p className="text-sm">AI runs will appear here when Copilot or Autopilot is used</p>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+      </div>
 
       <Dialog open={isSourceDialogOpen} onOpenChange={(open) => {
         setIsSourceDialogOpen(open);
