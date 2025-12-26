@@ -19,22 +19,22 @@ function formatMessageTime(date: Date | string | null | undefined): string {
 }
 
 const colorOptions = [
-  { value: "blue", bg: "bg-blue-500", hex: "#3B82F6", gradient: "linear-gradient(135deg, #3B82F6, #1D4ED8)" },
-  { value: "green", bg: "bg-green-500", hex: "#22C55E", gradient: "linear-gradient(135deg, #22C55E, #16A34A)" },
-  { value: "purple", bg: "bg-purple-500", hex: "#A855F7", gradient: "linear-gradient(135deg, #A855F7, #7C3AED)" },
-  { value: "red", bg: "bg-red-500", hex: "#EF4444", gradient: "linear-gradient(135deg, #EF4444, #DC2626)" },
-  { value: "orange", bg: "bg-orange-500", hex: "#F97316", gradient: "linear-gradient(135deg, #F97316, #EA580C)" },
-  { value: "teal", bg: "bg-teal-500", hex: "#14B8A6", gradient: "linear-gradient(135deg, #14B8A6, #0D9488)" },
-  { value: "pink", bg: "bg-pink-500", hex: "#EC4899", gradient: "linear-gradient(135deg, #EC4899, #DB2777)" },
-  { value: "indigo", bg: "bg-indigo-500", hex: "#6366F1", gradient: "linear-gradient(135deg, #6366F1, #4F46E5)" },
-  { value: "rose", bg: "bg-rose-500", hex: "#F43F5E", gradient: "linear-gradient(135deg, #F43F5E, #E11D48)" },
-  { value: "cyan", bg: "bg-cyan-500", hex: "#06B6D4", gradient: "linear-gradient(135deg, #06B6D4, #0891B2)" },
-  { value: "amber", bg: "bg-amber-500", hex: "#F59E0B", gradient: "linear-gradient(135deg, #F59E0B, #D97706)" },
-  { value: "lime", bg: "bg-lime-500", hex: "#84CC16", gradient: "linear-gradient(135deg, #84CC16, #65A30D)" },
-  { value: "emerald", bg: "bg-emerald-500", hex: "#10B981", gradient: "linear-gradient(135deg, #10B981, #059669)" },
-  { value: "sky", bg: "bg-sky-500", hex: "#0EA5E9", gradient: "linear-gradient(135deg, #0EA5E9, #0284C7)" },
-  { value: "violet", bg: "bg-violet-500", hex: "#8B5CF6", gradient: "linear-gradient(135deg, #8B5CF6, #7C3AED)" },
-  { value: "fuchsia", bg: "bg-fuchsia-500", hex: "#D946EF", gradient: "linear-gradient(135deg, #D946EF, #C026D3)" },
+  { value: "blue", bg: "bg-blue-500", hex: "#3B82F6", gradient: "linear-gradient(135deg, #edf1ff, #3B82F6)" },
+  { value: "green", bg: "bg-green-500", hex: "#22C55E", gradient: "linear-gradient(135deg, #edf1ff, #22C55E)" },
+  { value: "purple", bg: "bg-purple-500", hex: "#A855F7", gradient: "linear-gradient(135deg, #edf1ff, #A855F7)" },
+  { value: "red", bg: "bg-red-500", hex: "#EF4444", gradient: "linear-gradient(135deg, #edf1ff, #EF4444)" },
+  { value: "orange", bg: "bg-orange-500", hex: "#F97316", gradient: "linear-gradient(135deg, #edf1ff, #F97316)" },
+  { value: "teal", bg: "bg-teal-500", hex: "#14B8A6", gradient: "linear-gradient(135deg, #edf1ff, #14B8A6)" },
+  { value: "pink", bg: "bg-pink-500", hex: "#EC4899", gradient: "linear-gradient(135deg, #edf1ff, #EC4899)" },
+  { value: "indigo", bg: "bg-indigo-500", hex: "#6366F1", gradient: "linear-gradient(135deg, #edf1ff, #6366F1)" },
+  { value: "rose", bg: "bg-rose-500", hex: "#F43F5E", gradient: "linear-gradient(135deg, #edf1ff, #F43F5E)" },
+  { value: "cyan", bg: "bg-cyan-500", hex: "#06B6D4", gradient: "linear-gradient(135deg, #edf1ff, #06B6D4)" },
+  { value: "amber", bg: "bg-amber-500", hex: "#F59E0B", gradient: "linear-gradient(135deg, #edf1ff, #F59E0B)" },
+  { value: "lime", bg: "bg-lime-500", hex: "#84CC16", gradient: "linear-gradient(135deg, #edf1ff, #84CC16)" },
+  { value: "emerald", bg: "bg-emerald-500", hex: "#10B981", gradient: "linear-gradient(135deg, #edf1ff, #10B981)" },
+  { value: "sky", bg: "bg-sky-500", hex: "#0EA5E9", gradient: "linear-gradient(135deg, #edf1ff, #0EA5E9)" },
+  { value: "violet", bg: "bg-violet-500", hex: "#8B5CF6", gradient: "linear-gradient(135deg, #edf1ff, #8B5CF6)" },
+  { value: "fuchsia", bg: "bg-fuchsia-500", hex: "#D946EF", gradient: "linear-gradient(135deg, #edf1ff, #D946EF)" },
 ];
 
 const channelIcons: Record<string, { icon: JSX.Element; label: string }> = {
@@ -2602,122 +2602,113 @@ export default function ChatWidgetPreviewPage() {
           ) : activeChannel ? (
             renderChannelContent()
           ) : (
-            <div className="bg-white dark:bg-slate-900 rounded-xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 relative">
-              <div className="p-5 text-white" style={{ background: currentBackground }}>
-                {widget.branding?.customLogo && (
-                  <div className="mb-3">
-                    <img src={widget.branding.customLogo} alt="Logo" className="h-10 object-contain" />
-                  </div>
-                )}
-                <h4 className="text-lg font-bold">{widget.welcomeTitle}</h4>
-                <p className="text-sm opacity-90 mt-1">{widget.welcomeMessage}</p>
-              </div>
-              
-              {/* Offline status banner */}
-              {!scheduleStatus.isOnline && (
-                <div className="bg-amber-50 dark:bg-amber-900/30 border-b border-amber-200 dark:border-amber-800 px-4 py-3">
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                    <span className="text-sm font-medium text-amber-800 dark:text-amber-200">We're currently offline</span>
-                  </div>
-                  {scheduleStatus.nextAvailable && (
-                    <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 ml-4">
-                      Back {scheduleStatus.nextAvailable}
-                    </p>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 relative" style={{ height: '520px' }}>
+              {/* Header with logo and agent photos - gradient background */}
+              <div 
+                className="px-5 py-4 flex items-center justify-between"
+                style={{ background: currentBackground }}
+              >
+                {/* Logo */}
+                <div className="flex items-center">
+                  {widget.branding?.customLogo ? (
+                    <img src={widget.branding.customLogo} alt="Logo" className="h-6 object-contain brightness-0 invert" />
+                  ) : (
+                    <span className="font-semibold text-white text-lg">
+                      {widget.welcomeTitle?.split(' ')[0] || 'Support'}
+                    </span>
                   )}
                 </div>
-              )}
-              
-              <div className="p-4 space-y-3">
-                {/* Live chat card with history preview - Textmagic style */}
-                {existingSession && !chatSessionId && !showPreChatForm && (
-                  <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4">
-                    <div className="flex items-start gap-3">
+                
+                {/* Agent photos + close button */}
+                <div className="flex items-center gap-3">
+                  <div className="flex -space-x-2">
+                    {[1, 2, 3].map((i) => (
                       <div 
-                        className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
-                        style={{ background: currentBackground }}
+                        key={i}
+                        className="w-8 h-8 rounded-full bg-white/30 border-2 border-white flex items-center justify-center overflow-hidden"
                       >
-                        <MessageCircle className="h-5 w-5 text-white" />
+                        <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-400" />
                       </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center justify-between">
-                          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">Live chat</span>
-                          {existingSession.lastMessageAt && (
-                            <span className="text-xs text-slate-400">
-                              {formatRelativeTime(existingSession.lastMessageAt)}
-                            </span>
-                          )}
-                        </div>
-                        {existingSession.lastMessage && (
-                          <p className="text-sm text-slate-500 dark:text-slate-400 truncate mt-0.5">
-                            You: {existingSession.lastMessage.length > 25 
-                              ? existingSession.lastMessage.substring(0, 25) + '...' 
-                              : existingSession.lastMessage}
-                          </p>
-                        )}
-                        <button
-                          onClick={existingSession.status === 'solved' || existingSession.status === 'closed' ? viewSolvedChat : resumeChat}
-                          disabled={chatLoading}
-                          className="mt-2 flex items-center gap-1 text-sm font-medium hover:underline"
-                          style={{ color: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : '#3b82f6' }}
-                          data-testid="back-to-chat-link"
-                        >
-                          {chatLoading ? (
-                            <>
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                              Loading...
-                            </>
-                          ) : (
-                            <>
-                              Back to chat
-                              <ChevronRight className="h-4 w-4" />
-                            </>
-                          )}
-                        </button>
-                      </div>
+                    ))}
+                  </div>
+                  <button 
+                    onClick={() => setWidgetOpen(false)}
+                    className="p-1 hover:bg-white/20 rounded-full transition-colors"
+                    data-testid="close-widget"
+                  >
+                    <X className="h-5 w-5 text-white" />
+                  </button>
+                </div>
+              </div>
+              
+              {/* Main content area - white background */}
+              <div className="flex-1 p-5 flex flex-col">
+                {/* Welcome text - black on white */}
+                <div className="mb-6">
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-tight">
+                    Hi there 👋
+                  </h3>
+                  <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-tight">
+                    How can we help?
+                  </h3>
+                </div>
+                
+                {/* Offline status banner */}
+                {!scheduleStatus.isOnline && (
+                  <div className="bg-amber-50 dark:bg-amber-900/30 rounded-lg px-4 py-3 mb-4">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                      <span className="text-sm font-medium text-amber-800 dark:text-amber-200">We're currently offline</span>
                     </div>
+                    {scheduleStatus.nextAvailable && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 ml-4">
+                        Back {scheduleStatus.nextAvailable}
+                      </p>
+                    )}
                   </div>
                 )}
+                
+                {/* Existing session card */}
+                {existingSession && !chatSessionId && !showPreChatForm && (
+                  <button
+                    onClick={existingSession.status === 'solved' || existingSession.status === 'closed' ? viewSolvedChat : resumeChat}
+                    disabled={chatLoading}
+                    className="w-full bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors mb-3"
+                    data-testid="back-to-chat-link"
+                  >
+                    <span className="text-base font-medium text-slate-900 dark:text-slate-100">Back to your chat</span>
+                    {chatLoading ? (
+                      <Loader2 className="h-5 w-5 animate-spin" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
+                    ) : (
+                      <Send className="h-5 w-5" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
+                    )}
+                  </button>
+                )}
 
+                {/* Send us a message button - simple clean style like image */}
                 {widget.channels?.liveChat && !chatSessionId && !showPreChatForm && !existingSession && (
-                  <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 space-y-3">
-                    <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      {widget.liveChatSettings?.preChatForm?.title || "Chat with our agent"}
-                    </h5>
-                    <textarea 
-                      value={initialMessage}
-                      onChange={(e) => setInitialMessage(e.target.value)}
-                      placeholder="Type your message here"
-                      rows={3}
-                      className="w-full p-3 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                      data-testid="initial-message-input"
-                    />
-                    <button 
-                      onClick={() => {
-                        // Task 3: Skip pre-chat form if visitor profile exists
-                        const storedProfile = localStorage.getItem(`chatVisitorProfile-${widgetId}`);
-                        if (storedProfile) {
-                          try {
-                            const profile = JSON.parse(storedProfile);
-                            // If we have stored profile data, start chat directly
-                            if (profile.name || profile.email) {
-                              startChatSession();
-                              return;
-                            }
-                          } catch (e) {
-                            console.error('[Chat] Failed to parse stored profile:', e);
+                  <button 
+                    onClick={() => {
+                      const storedProfile = localStorage.getItem(`chatVisitorProfile-${widgetId}`);
+                      if (storedProfile) {
+                        try {
+                          const profile = JSON.parse(storedProfile);
+                          if (profile.name || profile.email) {
+                            startChatSession();
+                            return;
                           }
+                        } catch (e) {
+                          console.error('[Chat] Failed to parse stored profile:', e);
                         }
-                        // Otherwise show pre-chat form
-                        setShowPreChatForm(true);
-                      }}
-                      className="w-full py-2.5 px-4 rounded-lg text-white text-sm font-medium flex items-center justify-center gap-2"
-                      style={{ background: currentBackground }}
-                      data-testid="start-chat-button"
-                    >
-                      {widget.liveChatSettings?.welcomeScreen?.buttonLabel || "Start chat"}
-                    </button>
-                  </div>
+                      }
+                      setShowPreChatForm(true);
+                    }}
+                    className="w-full bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors mb-3"
+                    data-testid="start-chat-button"
+                  >
+                    <span className="text-base font-medium text-slate-900 dark:text-slate-100">Send us a message</span>
+                    <Send className="h-5 w-5" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
+                  </button>
                 )}
                 
                 {widget.channels?.liveChat && !chatSessionId && showPreChatForm && (
