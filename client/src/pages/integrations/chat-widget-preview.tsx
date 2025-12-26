@@ -210,12 +210,19 @@ export default function ChatWidgetPreviewPage() {
     const shouldUsePublicApi = isPublicMode || authError;
     
     if (!widgetId || (!isPublicMode && !authError)) {
+      // In authenticated preview mode, set targeting defaults since we won't fetch from public API
       setPublicLoading(false);
+      setShouldDisplay(true);
+      setTargetingChecked(true);
+      setScheduleStatus({ isOnline: true, nextAvailable: null });
       return;
     }
     
     if (!shouldUsePublicApi) {
       setPublicLoading(false);
+      setShouldDisplay(true);
+      setTargetingChecked(true);
+      setScheduleStatus({ isOnline: true, nextAvailable: null });
       return;
     }
     
