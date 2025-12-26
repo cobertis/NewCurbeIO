@@ -267,7 +267,7 @@ export function WidgetRenderer({
     <div
       ref={containerRef}
       className="rounded-2xl overflow-hidden shadow-lg bg-white flex flex-col"
-      style={{ height: "560px", minHeight: "560px" }}
+      style={{ height: "720px", minHeight: "720px" }}
       data-testid="widget-renderer"
       data-mode={mode}
     >
