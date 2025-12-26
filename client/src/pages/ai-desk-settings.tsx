@@ -1,8 +1,10 @@
 import { useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
+import { Link } from "wouter";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { SettingsLayout } from "@/components/settings-layout";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -294,7 +296,14 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
   const [sourceType, setSourceType] = useState<"url" | "document" | null>(null);
 
   if (settingsLoading) {
-    return <LoadingSpinner message="Loading AI settings..." />;
+    if (embedded) {
+      return <LoadingSpinner message="Loading AI settings..." />;
+    }
+    return (
+      <SettingsLayout activeSection="ai-desk">
+        <LoadingSpinner />
+      </SettingsLayout>
+    );
   }
 
   const getStatusBadge = (status: string) => {
@@ -328,11 +337,19 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
     setShowSettings(true);
   };
 
-  if (!showSettings && !hasExistingSources) {
-    return (
+  const landingPageContent = (
+    <>
       <div className="space-y-8" data-testid="page-ai-desk">
+        {!embedded && (
+          <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-ai-desk">
+            <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
+            <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            <span className="font-medium">AI Desk</span>
+          </div>
+        )}
+        
         <Card className="border-slate-200 dark:border-slate-800">
-          <CardContent className="p-6 md:p-8">
+          <CardContent className="p-6 md:py-8 md:px-[10%]">
             <div className="flex flex-col md:flex-row gap-8 items-center">
               <div className="flex-1 space-y-6">
                 <div>
@@ -454,58 +471,69 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
             </AccordionItem>
           </Accordion>
         </div>
-
-        <Dialog open={showAddSourceDialog} onOpenChange={setShowAddSourceDialog}>
-          <DialogContent className="sm:max-w-lg">
-            <DialogHeader>
-              <DialogTitle>Add source</DialogTitle>
-            </DialogHeader>
-            <div className="grid grid-cols-2 gap-4 py-6">
-              <button
-                onClick={() => handleSelectSourceType("url")}
-                className="flex flex-col items-center justify-center gap-4 p-8 rounded-lg bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-2 border-transparent hover:border-primary"
-                data-testid="button-source-website"
-              >
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Globe className="w-8 h-8 text-primary" />
-                </div>
-                <div className="text-center">
-                  <p className="font-semibold">Website link</p>
-                  <p className="text-sm text-muted-foreground">Add link to a public website</p>
-                </div>
-              </button>
-              <button
-                onClick={() => handleSelectSourceType("document")}
-                className="flex flex-col items-center justify-center gap-4 p-8 rounded-lg bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-2 border-transparent hover:border-primary"
-                data-testid="button-source-document"
-              >
-                <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
-                  <FileText className="w-8 h-8 text-primary" />
-                </div>
-                <div className="text-center">
-                  <p className="font-semibold">Document</p>
-                  <p className="text-sm text-muted-foreground">Upload a file from your computer</p>
-                </div>
-              </button>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setShowAddSourceDialog(false)}>
-                Cancel
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
       </div>
+
+      <Dialog open={showAddSourceDialog} onOpenChange={setShowAddSourceDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add source</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-6">
+            <button
+              onClick={() => handleSelectSourceType("url")}
+              className="flex flex-col items-center justify-center gap-4 p-8 rounded-lg bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-2 border-transparent hover:border-primary"
+              data-testid="button-source-website"
+            >
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <Globe className="w-8 h-8 text-primary" />
+              </div>
+              <div className="text-center">
+                <p className="font-semibold">Website link</p>
+                <p className="text-sm text-muted-foreground">Add link to a public website</p>
+              </div>
+            </button>
+            <button
+              onClick={() => handleSelectSourceType("document")}
+              className="flex flex-col items-center justify-center gap-4 p-8 rounded-lg bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-2 border-transparent hover:border-primary"
+              data-testid="button-source-document"
+            >
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <FileText className="w-8 h-8 text-primary" />
+              </div>
+              <div className="text-center">
+                <p className="font-semibold">Document</p>
+                <p className="text-sm text-muted-foreground">Upload a file from your computer</p>
+              </div>
+            </button>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddSourceDialog(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+
+  if (!showSettings && !hasExistingSources) {
+    if (embedded) {
+      return landingPageContent;
+    }
+    return (
+      <SettingsLayout activeSection="ai-desk">
+        {landingPageContent}
+      </SettingsLayout>
     );
   }
 
-  return (
+  const settingsContent = (
     <div className="space-y-6" data-testid="page-ai-desk-settings">
       {!embedded && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-          <button onClick={() => setShowSettings(false)} className="hover:text-foreground">Settings</button>
-          <ChevronRight className="h-4 w-4" />
-          <span className="font-medium text-foreground">AI Desk</span>
+        <div className="flex items-center gap-2 text-sm" data-testid="breadcrumb-ai-desk-settings">
+          <Link href="/settings" className="text-muted-foreground hover:text-foreground transition-colors">Settings</Link>
+          <ChevronRight className="h-4 w-4 text-muted-foreground" />
+          <span className="font-medium">AI Desk</span>
         </div>
       )}
 
@@ -1215,5 +1243,15 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
         </DialogContent>
       </Dialog>
     </div>
+  );
+
+  if (embedded) {
+    return settingsContent;
+  }
+
+  return (
+    <SettingsLayout activeSection="ai-desk">
+      {settingsContent}
+    </SettingsLayout>
   );
 }
