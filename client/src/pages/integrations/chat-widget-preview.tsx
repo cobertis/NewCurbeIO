@@ -375,7 +375,8 @@ export default function ChatWidgetPreviewPage() {
 
   // WebSocket connection for live chat - connects when waiting for agent
   useEffect(() => {
-    if (!chatSessionId || !widgetId) return;
+    // Don't connect WebSocket for pending sessions (no real conversation yet)
+    if (!chatSessionId || !widgetId || chatSessionId.startsWith('pending_')) return;
     
     // Get companyId from widget data
     const widget = effectiveWidgetData?.widget;
@@ -739,13 +740,16 @@ export default function ChatWidgetPreviewPage() {
     try {
       const visitorIdStored = localStorage.getItem(`chat_visitor_${widgetId}`);
       
+      // For pending sessions, send null instead of the pending ID
+      const effectiveSessionId = chatSessionId?.startsWith('pending_') ? null : chatSessionId;
+      
       const res = await fetch('/api/public/live-chat/offline-message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           widgetId,
           visitorId: visitorIdStored || chatVisitorId,
-          sessionId: chatSessionId,
+          sessionId: effectiveSessionId,
           visitorName: visitorName || 'Website Visitor',
           visitorEmail: visitorEmail || undefined,
           message: offlineMessage.trim(),
@@ -1109,21 +1113,8 @@ export default function ChatWidgetPreviewPage() {
       const messageToSend = (messageOverride !== undefined ? messageOverride : initialMessage).trim();
       setSentInitialMessage(messageToSend || 'Hello');
       
-      // DEBUG: Log all values being sent
-      console.log('[Chat] startChatSession - Preparing to send message:', {
-        messageToSend,
-        messageOverride,
-        initialMessage,
-        widgetId,
-        visitorId,
-        sessionId,
-      });
-      
-      // Use browserName and osName from earlier detection
-      
       // If there's an initial message, send it (this will create the conversation)
       if (messageToSend) {
-        console.log('[Chat] Sending first message to create conversation...');
         const msgRes = await fetch('/api/public/live-chat/message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1177,7 +1168,8 @@ export default function ChatWidgetPreviewPage() {
   };
 
   const sendPreviewToAgent = (text: string) => {
-    if (!chatSessionId) return;
+    // Don't send preview for pending sessions (no real conversation yet)
+    if (!chatSessionId || chatSessionId.startsWith('pending_')) return;
     fetch('/api/public/live-chat/preview', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -1208,7 +1200,8 @@ export default function ChatWidgetPreviewPage() {
 
   // Handle visitor finishing the chat
   const handleFinishChat = async () => {
-    if (!chatSessionId) return;
+    // Can't finish a pending session (no real conversation exists)
+    if (!chatSessionId || chatSessionId.startsWith('pending_')) return;
     
     try {
       const res = await fetch(`/api/public/live-chat/session/${chatSessionId}/finish`, {
@@ -1277,7 +1270,8 @@ export default function ChatWidgetPreviewPage() {
 
   // Submit satisfaction survey
   const submitSatisfactionSurvey = async () => {
-    if (!chatSessionId || !surveyRating) return;
+    // Can't submit survey for pending session (no real conversation exists)
+    if (!chatSessionId || chatSessionId.startsWith('pending_') || !surveyRating) return;
     
     setSurveySubmitting(true);
     try {

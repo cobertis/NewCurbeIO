@@ -29129,7 +29129,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   app.post("/api/public/live-chat/message", async (req: Request, res: Response) => {
     const { sessionId, text, visitorName, widgetId, visitorId, visitorEmail, visitorUrl, visitorBrowser, visitorOs, forceNew } = req.body;
     
-    console.log("[LiveChat Message] Received:", { sessionId, widgetId, visitorId, text: text?.substring(0, 50), forceNew });
     if (!text) {
       return res.status(400).json({ error: "text is required" });
     }
