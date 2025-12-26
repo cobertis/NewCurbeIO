@@ -2510,7 +2510,7 @@ export default function InboxPage() {
                         
                         {/* Manage Sources Link */}
                         <Link 
-                          href="/pulse-ai" 
+                          href="/settings/pulse-ai" 
                           className="text-sm text-blue-600 hover:text-blue-700 font-medium mt-6 inline-flex items-center gap-1.5"
                           data-testid="link-manage-sources"
                         >

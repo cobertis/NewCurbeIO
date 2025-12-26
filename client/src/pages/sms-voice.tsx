@@ -248,7 +248,7 @@ export default function SmsVoice() {
       { label: "Tickets", href: "/tickets", icon: Ticket },
       { label: "Tasks", href: "/tasks", icon: ListTodo },
       { label: "Deals", href: "/deals", icon: DollarSign },
-      { label: "Pulse AI", href: "/pulse-ai", icon: Activity },
+      { label: "Pulse AI", href: "/settings/pulse-ai", icon: Activity },
     ],
     administration: [
       { label: "Workspace", href: "/settings/company", icon: Building },

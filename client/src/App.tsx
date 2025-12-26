@@ -1571,6 +1571,13 @@ function Router() {
           </DashboardLayout>
         </ProtectedRoute>
       </Route>
+      <Route path="/settings/pulse-ai">
+        <ProtectedRoute>
+          <DashboardLayout>
+            <PulseAiSettings />
+          </DashboardLayout>
+        </ProtectedRoute>
+      </Route>
         <ProtectedRoute>
           <DashboardLayout>
             <Quotes />
