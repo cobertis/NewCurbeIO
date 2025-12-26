@@ -188,6 +188,8 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
   const [copiedChunkId, setCopiedChunkId] = useState<string | null>(null);
   const [urlInputs, setUrlInputs] = useState<string[]>(['']);
   const [multiUrlSettings, setMultiUrlSettings] = useState({ maxPages: 25, sameDomainOnly: true, excludeLegal: true });
+  const [syncingSourceId, setSyncingSourceId] = useState<string | null>(null);
+  const [purgingSourceId, setPurgingSourceId] = useState<string | null>(null);
 
   const { data: settings, isLoading: settingsLoading } = useQuery<AiSettings>({
     queryKey: ["/api/ai/settings"],
@@ -311,15 +313,18 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
 
   const syncSourceMutation = useMutation({
     mutationFn: async (sourceId: string) => {
+      setSyncingSourceId(sourceId);
       const res = await apiRequest("POST", `/api/ai/kb/sources/${sourceId}/sync`);
       return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ai/kb/sources"] });
       toast({ title: "Sync started" });
+      setSyncingSourceId(null);
     },
     onError: () => {
       toast({ title: "Failed to start sync", variant: "destructive" });
+      setSyncingSourceId(null);
     },
   });
 
@@ -339,6 +344,7 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
 
   const purgeLegalMutation = useMutation({
     mutationFn: async (sourceId: string) => {
+      setPurgingSourceId(sourceId);
       const res = await apiRequest("POST", `/api/ai/kb/sources/${sourceId}/purge-legal`);
       return res.json();
     },
@@ -349,9 +355,11 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
       } else {
         toast({ title: "No legal pages found to remove" });
       }
+      setPurgingSourceId(null);
     },
     onError: () => {
       toast({ title: "Failed to purge legal pages", variant: "destructive" });
+      setPurgingSourceId(null);
     },
   });
 
@@ -842,10 +850,10 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
                         variant="outline"
                         size="sm"
                         onClick={() => syncSourceMutation.mutate(source.id)}
-                        disabled={source.status === "syncing" || source.status === "queued" || syncSourceMutation.isPending}
+                        disabled={source.status === "syncing" || source.status === "queued" || syncingSourceId === source.id}
                         data-testid={`button-sync-${source.id}`}
                       >
-                        <RefreshCw className={`w-4 h-4 mr-1 ${source.status === "syncing" ? "animate-spin" : ""}`} />
+                        <RefreshCw className={`w-4 h-4 mr-1 ${source.status === "syncing" || syncingSourceId === source.id ? "animate-spin" : ""}`} />
                         {source.status === "queued" ? "Queued" : "Sync"}
                       </Button>
                       {source.type === "url" && (
@@ -853,12 +861,12 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
                           variant="outline"
                           size="sm"
                           onClick={() => purgeLegalMutation.mutate(source.id)}
-                          disabled={purgeLegalMutation.isPending || source.chunksCount === 0}
+                          disabled={purgingSourceId === source.id || source.chunksCount === 0}
                           title="Remove Privacy Policy, Terms of Service, and other legal pages"
                           data-testid={`button-purge-legal-${source.id}`}
                         >
-                          <ShieldX className="w-4 h-4 mr-1" />
-                          Purge Legal
+                          <ShieldX className={`w-4 h-4 mr-1 ${purgingSourceId === source.id ? "animate-spin" : ""}`} />
+                          {purgingSourceId === source.id ? "Purging..." : "Purge Legal"}
                         </Button>
                       )}
                       <Button
