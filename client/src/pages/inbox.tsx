@@ -49,7 +49,8 @@ import {
   ThumbsDown,
   Sparkles,
   RotateCcw,
-  Activity
+  Activity,
+  Settings
 } from "lucide-react";
 import { Link } from "wouter";
 import { SiFacebook, SiInstagram, SiTelegram } from "react-icons/si";
@@ -1883,16 +1884,26 @@ export default function InboxPage() {
         {selectedConversation && (
           <>
             <div className="h-[73px] px-4 border-b flex items-center justify-between">
-              <div className="flex items-center gap-6">
+              <div className="flex items-center gap-8">
                 <button 
-                  className={cn("text-sm font-medium transition-colors", rightPanelTab === "details" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
+                  className={cn(
+                    "text-sm font-medium transition-colors pb-2 -mb-[1px] border-b-2",
+                    rightPanelTab === "details" 
+                      ? "text-foreground border-blue-500" 
+                      : "text-muted-foreground hover:text-foreground border-transparent"
+                  )}
                   onClick={() => setRightPanelTab("details")}
                   data-testid="btn-tab-details"
                 >
                   Details
                 </button>
                 <button 
-                  className={cn("text-sm font-medium flex items-center gap-1.5 transition-colors", rightPanelTab === "pulse-ai" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
+                  className={cn(
+                    "text-sm font-medium flex items-center gap-1.5 transition-colors pb-2 -mb-[1px] border-b-2",
+                    rightPanelTab === "pulse-ai" 
+                      ? "text-foreground border-blue-500" 
+                      : "text-muted-foreground hover:text-foreground border-transparent"
+                  )}
                   onClick={() => setRightPanelTab("pulse-ai")}
                   data-testid="btn-tab-pulse-ai"
                 >
@@ -2470,48 +2481,42 @@ export default function InboxPage() {
             {/* Pulse AI Tab Content */}
             {rightPanelTab === "pulse-ai" && (
               <div className="flex-1 flex flex-col" data-testid="pulse-ai-panel">
-                {/* Pulse AI Header */}
-                <div className="p-4 border-b">
-                  <div className="flex items-center gap-2 mb-3">
-                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
-                      <Sparkles className="h-4 w-4 text-white" />
-                    </div>
-                    <div>
-                      <p className="text-sm font-medium">Hi, I'm Pulse AI</p>
-                      <p className="text-xs text-muted-foreground">Ask me anything about this conversation.</p>
-                    </div>
-                  </div>
-                  
-                  {/* Instructions Card */}
-                  <div className="bg-muted/50 rounded-lg p-3 space-y-2">
-                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                      <span className="text-violet-500">•</span>
-                      <span>Highlight any text and click 'Ask Pulse AI'</span>
-                    </div>
-                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
-                      <span className="text-violet-500">•</span>
-                      <span>Or, just type your question in the field below and submit</span>
-                    </div>
-                  </div>
-                  
-                  {/* Manage Sources Link */}
-                  <Link 
-                    href="/pulse-ai" 
-                    className="text-xs text-violet-600 hover:text-violet-700 font-medium mt-3 inline-flex items-center gap-1"
-                    data-testid="link-manage-sources"
-                  >
-                    Manage sources
-                    <ChevronRight className="h-3 w-3" />
-                  </Link>
-                </div>
-                
                 {/* Messages Area */}
-                <ScrollArea className="flex-1 p-4" data-testid="pulse-ai-messages">
-                  <div className="space-y-4">
+                <ScrollArea className="flex-1" data-testid="pulse-ai-messages">
+                  <div className="p-4 space-y-4">
                     {pulseAiMessages.length === 0 ? (
-                      <div className="text-center py-8 text-muted-foreground">
-                        <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-30" />
-                        <p className="text-sm">Start a conversation with Pulse AI</p>
+                      <div className="flex flex-col items-center pt-16">
+                        {/* Sparkles Icon */}
+                        <Sparkles className="h-10 w-10 text-violet-500 mb-4" />
+                        
+                        {/* Title */}
+                        <h3 className="text-base font-semibold mb-1">Hi, I'm Pulse AI</h3>
+                        <p className="text-sm text-muted-foreground mb-6">Ask me anything about this conversation.</p>
+                        
+                        {/* Instructions Card */}
+                        <div className="bg-violet-50 dark:bg-violet-950/30 rounded-lg p-4 w-full max-w-[320px]">
+                          <p className="text-sm text-muted-foreground mb-3">To start a conversation with a bot</p>
+                          <ul className="space-y-2 text-sm">
+                            <li className="flex items-start gap-2">
+                              <span className="text-violet-500 mt-0.5">•</span>
+                              <span><strong className="font-medium">Highlight any text</strong> you're interested in and click "Ask Pulse AI"</span>
+                            </li>
+                            <li className="flex items-start gap-2">
+                              <span className="text-violet-500 mt-0.5">•</span>
+                              <span>Or, just <strong className="font-medium">type your question</strong> in the field below and submit.</span>
+                            </li>
+                          </ul>
+                        </div>
+                        
+                        {/* Manage Sources Link */}
+                        <Link 
+                          href="/pulse-ai" 
+                          className="text-sm text-blue-600 hover:text-blue-700 font-medium mt-6 inline-flex items-center gap-1.5"
+                          data-testid="link-manage-sources"
+                        >
+                          <Settings className="h-4 w-4" />
+                          Manage sources
+                        </Link>
                       </div>
                     ) : (
                       pulseAiMessages.map((msg, idx) => (
