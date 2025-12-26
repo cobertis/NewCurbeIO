@@ -11,6 +11,8 @@ import QRCode from "qrcode";
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
 import curbeLogo from "@assets/logo no fondo_1760457183587.png";
+import { WidgetRenderer } from "@/components/chat/widget-renderer";
+import { mapChatWidgetToConfig } from "@shared/widget-config";
 
 function formatMessageTime(date: Date | string | null | undefined): string {
   if (!date) return '';
@@ -2602,93 +2604,15 @@ export default function ChatWidgetPreviewPage() {
           ) : activeChannel ? (
             renderChannelContent()
           ) : (
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 relative" style={{ height: '520px' }}>
-              {/* Header with logo and agent photos - gradient background */}
-              <div 
-                className="px-5 py-4 flex items-center justify-between"
-                style={{ background: currentBackground }}
-              >
-                {/* Logo */}
-                <div className="flex items-center">
-                  {widget.branding?.customLogo ? (
-                    <img src={widget.branding.customLogo} alt="Logo" className="h-6 object-contain brightness-0 invert" />
-                  ) : (
-                    <span className="font-semibold text-white text-lg">
-                      {widget.welcomeTitle?.split(' ')[0] || 'Support'}
-                    </span>
-                  )}
-                </div>
-                
-                {/* Agent photos + close button */}
-                <div className="flex items-center gap-3">
-                  <div className="flex -space-x-2">
-                    {[1, 2, 3].map((i) => (
-                      <div 
-                        key={i}
-                        className="w-8 h-8 rounded-full bg-white/30 border-2 border-white flex items-center justify-center overflow-hidden"
-                      >
-                        <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-400" />
-                      </div>
-                    ))}
-                  </div>
-                  <button 
-                    onClick={() => setWidgetOpen(false)}
-                    className="p-1 hover:bg-white/20 rounded-full transition-colors"
-                    data-testid="close-widget"
-                  >
-                    <X className="h-5 w-5 text-white" />
-                  </button>
-                </div>
-              </div>
-              
-              {/* Main content area - white background */}
-              <div className="flex-1 p-5 flex flex-col">
-                {/* Welcome text - black on white */}
-                <div className="mb-6">
-                  <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-tight">
-                    Hi there 👋
-                  </h3>
-                  <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-tight">
-                    How can we help?
-                  </h3>
-                </div>
-                
-                {/* Offline status banner */}
-                {!scheduleStatus.isOnline && (
-                  <div className="bg-amber-50 dark:bg-amber-900/30 rounded-lg px-4 py-3 mb-4">
-                    <div className="flex items-center gap-2">
-                      <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                      <span className="text-sm font-medium text-amber-800 dark:text-amber-200">We're currently offline</span>
-                    </div>
-                    {scheduleStatus.nextAvailable && (
-                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 ml-4">
-                        Back {scheduleStatus.nextAvailable}
-                      </p>
-                    )}
-                  </div>
-                )}
-                
-                {/* Existing session card */}
-                {existingSession && !chatSessionId && !showPreChatForm && (
-                  <button
-                    onClick={existingSession.status === 'solved' || existingSession.status === 'closed' ? viewSolvedChat : resumeChat}
-                    disabled={chatLoading}
-                    className="w-full bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors mb-3"
-                    data-testid="back-to-chat-link"
-                  >
-                    <span className="text-base font-medium text-slate-900 dark:text-slate-100">Back to your chat</span>
-                    {chatLoading ? (
-                      <Loader2 className="h-5 w-5 animate-spin" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
-                    ) : (
-                      <Send className="h-5 w-5" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
-                    )}
-                  </button>
-                )}
-
-                {/* Send us a message button - simple clean style like image */}
-                {widget.channels?.liveChat && !chatSessionId && !showPreChatForm && !existingSession && (
-                  <button 
-                    onClick={() => {
+            <div className="relative" style={{ height: '520px' }}>
+              {/* Home screen using WidgetRenderer - shown when no special overlays are active */}
+              {!showPreChatForm && !existingSession && effectiveWidgetData?.widget ? (
+                <WidgetRenderer 
+                  config={mapChatWidgetToConfig(effectiveWidgetData.widget)}
+                  mode="embed"
+                  onClose={() => setWidgetOpen(false)}
+                  onChannelClick={(channel) => {
+                    if (channel === 'liveChat') {
                       const storedProfile = localStorage.getItem(`chatVisitorProfile-${widgetId}`);
                       if (storedProfile) {
                         try {
@@ -2702,106 +2626,206 @@ export default function ChatWidgetPreviewPage() {
                         }
                       }
                       setShowPreChatForm(true);
-                    }}
-                    className="w-full bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors mb-3"
-                    data-testid="start-chat-button"
+                    } else {
+                      setActiveChannel(channel);
+                    }
+                  }}
+                />
+              ) : (
+                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 h-full">
+                  {/* Header with logo and agent photos - gradient background */}
+                  <div 
+                    className="px-5 py-4 flex items-center justify-between"
+                    style={{ background: currentBackground }}
                   >
-                    <span className="text-base font-medium text-slate-900 dark:text-slate-100">Send us a message</span>
-                    <Send className="h-5 w-5" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
-                  </button>
-                )}
-                
-                {widget.channels?.liveChat && !chatSessionId && showPreChatForm && (
-                  <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 space-y-3">
-                    <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                      {widget.liveChatSettings?.preChatForm?.title || "Chat with our agent"}
-                    </h5>
-                    <div className="space-y-3">
-                      <div className="space-y-1">
-                        <span className="text-xs text-slate-500 font-medium">
-                          Name {widget.liveChatSettings?.preChatForm?.nameFieldRequired && <span className="text-red-500">*</span>}
+                    {/* Logo */}
+                    <div className="flex items-center">
+                      {widget.branding?.customLogo ? (
+                        <img src={widget.branding.customLogo} alt="Logo" className="h-6 object-contain brightness-0 invert" />
+                      ) : (
+                        <span className="font-semibold text-white text-lg">
+                          {widget.welcomeTitle?.split(' ')[0] || 'Support'}
                         </span>
-                        <input 
-                          type="text"
-                          value={visitorName}
-                          onChange={(e) => setVisitorName(e.target.value)}
-                          placeholder="Enter your name"
-                          className="w-full p-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                          data-testid="visitor-name-input"
-                        />
-                      </div>
-                      <div className="space-y-1">
-                        <span className="text-xs text-slate-500 font-medium">
-                          Email {widget.liveChatSettings?.preChatForm?.emailFieldRequired !== false && <span className="text-red-500">*</span>}
-                        </span>
-                        <input 
-                          type="email"
-                          value={visitorEmail}
-                          onChange={(e) => setVisitorEmail(e.target.value)}
-                          placeholder="your@email.com"
-                          className="w-full p-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                          data-testid="visitor-email-input"
-                        />
-                      </div>
+                      )}
                     </div>
-                    <button 
-                      onClick={startChatSession}
-                      disabled={chatLoading || (widget.liveChatSettings?.preChatForm?.emailFieldRequired !== false && !visitorEmail.trim())}
-                      className="w-full py-2.5 px-4 rounded-lg text-white text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
-                      style={{ background: currentBackground }}
-                      data-testid="submit-prechat-button"
-                    >
-                      {chatLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                      {widget.liveChatSettings?.preChatForm?.buttonLabel || "Start chat"}
-                    </button>
-                    <button 
-                      onClick={() => setShowPreChatForm(false)}
-                      className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      Select another channel
-                    </button>
-                  </div>
-                )}
-                
-                {!chatSessionId && !showPreChatForm && enabledChannels.filter((id: string) => id !== "liveChat").map((channelId: string) => {
-                  const channel = channelIcons[channelId];
-                  if (!channel) return null;
-                  
-                  // Get configured channel name from widget settings
-                  let channelLabel = channel.label;
-                  if (channelId === "sms") {
-                    channelLabel = widget.smsSettings?.welcomeScreen?.channelName || "Text us";
-                  } else if (channelId === "whatsapp") {
-                    channelLabel = widget.whatsappSettings?.welcomeScreen?.channelName || "Chat on WhatsApp";
-                  } else if (channelId === "email") {
-                    channelLabel = widget.emailSettings?.welcomeScreen?.channelName || "Send an email";
-                  }
-                  
-                  return (
-                    <button
-                      key={channelId}
-                      onClick={() => setActiveChannel(channelId)}
-                      className="w-full flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-                      data-testid={`channel-${channelId}`}
-                    >
-                      <div className="flex items-center gap-3">
-                        <div style={{ color: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : currentColor.hex }}>
-                          {channel.icon}
-                        </div>
-                        <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{channelLabel}</span>
+                    
+                    {/* Agent photos + close button */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex -space-x-2">
+                        {[1, 2, 3].map((i) => (
+                          <div 
+                            key={i}
+                            className="w-8 h-8 rounded-full bg-white/30 border-2 border-white flex items-center justify-center overflow-hidden"
+                          >
+                            <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-400" />
+                          </div>
+                        ))}
                       </div>
-                      <ChevronRight className="h-4 w-4 text-slate-400" />
-                    </button>
-                  );
-                })}
-              </div>
+                      <button 
+                        onClick={() => setWidgetOpen(false)}
+                        className="p-1 hover:bg-white/20 rounded-full transition-colors"
+                        data-testid="close-widget"
+                      >
+                        <X className="h-5 w-5 text-white" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Main content area - white background */}
+                  <div className="flex-1 p-5 flex flex-col">
+                    {/* Welcome text - black on white */}
+                    <div className="mb-6">
+                      <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-tight">
+                        {widget.welcomeTitle || "Hi there 👋"}
+                      </h3>
+                      <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-tight">
+                        {widget.welcomeMessage || "How can we help?"}
+                      </h3>
+                    </div>
+                    
+                    {/* Offline status banner */}
+                    {!scheduleStatus.isOnline && (
+                      <div className="bg-amber-50 dark:bg-amber-900/30 rounded-lg px-4 py-3 mb-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                          <span className="text-sm font-medium text-amber-800 dark:text-amber-200">We're currently offline</span>
+                        </div>
+                        {scheduleStatus.nextAvailable && (
+                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 ml-4">
+                            Back {scheduleStatus.nextAvailable}
+                          </p>
+                        )}
+                      </div>
+                    )}
+                    
+                    {/* Existing session card */}
+                    {existingSession && !chatSessionId && !showPreChatForm && (
+                      <button
+                        onClick={existingSession.status === 'solved' || existingSession.status === 'closed' ? viewSolvedChat : resumeChat}
+                        disabled={chatLoading}
+                        className="w-full bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors mb-3"
+                        data-testid="back-to-chat-link"
+                      >
+                        <span className="text-base font-medium text-slate-900 dark:text-slate-100">Back to your chat</span>
+                        {chatLoading ? (
+                          <Loader2 className="h-5 w-5 animate-spin" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
+                        ) : (
+                          <Send className="h-5 w-5" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
+                        )}
+                      </button>
+                    )}
+
+                    {/* Pre-chat form */}
+                    {widget.channels?.liveChat && !chatSessionId && showPreChatForm && (
+                      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 space-y-3">
+                        <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+                          {widget.liveChatSettings?.preChatForm?.title || "Chat with our agent"}
+                        </h5>
+                        <div className="space-y-3">
+                          <div className="space-y-1">
+                            <span className="text-xs text-slate-500 font-medium">
+                              Name {widget.liveChatSettings?.preChatForm?.nameFieldRequired && <span className="text-red-500">*</span>}
+                            </span>
+                            <input 
+                              type="text"
+                              value={visitorName}
+                              onChange={(e) => setVisitorName(e.target.value)}
+                              placeholder="Enter your name"
+                              className="w-full p-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                              data-testid="visitor-name-input"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <span className="text-xs text-slate-500 font-medium">
+                              Email {widget.liveChatSettings?.preChatForm?.emailFieldRequired !== false && <span className="text-red-500">*</span>}
+                            </span>
+                            <input 
+                              type="email"
+                              value={visitorEmail}
+                              onChange={(e) => setVisitorEmail(e.target.value)}
+                              placeholder="your@email.com"
+                              className="w-full p-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                              data-testid="visitor-email-input"
+                            />
+                          </div>
+                        </div>
+                        <button 
+                          onClick={startChatSession}
+                          disabled={chatLoading || (widget.liveChatSettings?.preChatForm?.emailFieldRequired !== false && !visitorEmail.trim())}
+                          className="w-full py-2.5 px-4 rounded-lg text-white text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+                          style={{ background: currentBackground }}
+                          data-testid="submit-prechat-button"
+                        >
+                          {chatLoading && <Loader2 className="h-4 w-4 animate-spin" />}
+                          {widget.liveChatSettings?.preChatForm?.buttonLabel || "Start chat"}
+                        </button>
+                        <button 
+                          onClick={() => setShowPreChatForm(false)}
+                          className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700"
+                        >
+                          <ChevronLeft className="h-4 w-4" />
+                          Select another channel
+                        </button>
+                      </div>
+                    )}
+                    
+                    {/* Other channel buttons (when existing session is shown) */}
+                    {!chatSessionId && !showPreChatForm && enabledChannels.filter((id: string) => id !== "liveChat").map((channelId: string) => {
+                      const channel = channelIcons[channelId];
+                      if (!channel) return null;
+                      
+                      let channelLabel = channel.label;
+                      if (channelId === "sms") {
+                        channelLabel = widget.smsSettings?.welcomeScreen?.channelName || "Text us";
+                      } else if (channelId === "whatsapp") {
+                        channelLabel = widget.whatsappSettings?.welcomeScreen?.channelName || "Chat on WhatsApp";
+                      } else if (channelId === "email") {
+                        channelLabel = widget.emailSettings?.welcomeScreen?.channelName || "Send an email";
+                      }
+                      
+                      return (
+                        <button
+                          key={channelId}
+                          onClick={() => setActiveChannel(channelId)}
+                          className="w-full flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
+                          data-testid={`channel-${channelId}`}
+                        >
+                          <div className="flex items-center gap-3">
+                            <div style={{ color: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : currentColor.hex }}>
+                              {channel.icon}
+                            </div>
+                            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{channelLabel}</span>
+                          </div>
+                          <ChevronRight className="h-4 w-4 text-slate-400" />
+                        </button>
+                      );
+                    })}
+                  </div>
+                  
+                  <div className="p-2 border-t text-center">
+                    <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+                      Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
+                    </p>
+                  </div>
+                </div>
+              )}
               
-              <div className="p-2 border-t text-center">
-                <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                  Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
-                </p>
-              </div>
+              {/* Offline status overlay for WidgetRenderer mode */}
+              {!showPreChatForm && !existingSession && effectiveWidgetData?.widget && !scheduleStatus.isOnline && (
+                <div className="absolute top-[80px] left-5 right-5 z-10">
+                  <div className="bg-amber-50 dark:bg-amber-900/30 rounded-lg px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                      <span className="text-sm font-medium text-amber-800 dark:text-amber-200">We're currently offline</span>
+                    </div>
+                    {scheduleStatus.nextAvailable && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 ml-4">
+                        Back {scheduleStatus.nextAvailable}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              )}
               
               {/* Survey Modal Overlay - Textmagic style */}
               {showSurveyModal && (
@@ -2888,7 +2912,6 @@ export default function ChatWidgetPreviewPage() {
                               await submitSatisfactionSurvey();
                               setShowSurveyModal(false);
                               setSurveyModalStep('rating');
-                              // Update solved chat data if viewing
                               if (solvedChatData) {
                                 setSolvedChatData({
                                   ...solvedChatData,
@@ -2896,7 +2919,6 @@ export default function ChatWidgetPreviewPage() {
                                   feedback: surveyFeedback || null,
                                 });
                               }
-                              // Update existing session
                               if (existingSession) {
                                 setExistingSession({
                                   ...existingSession,

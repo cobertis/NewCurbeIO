@@ -69,6 +69,8 @@ import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { allCountries, getCountryByName } from "@/lib/countries";
+import { WidgetRenderer } from "@/components/chat/widget-renderer";
+import { mapChatWidgetToConfig } from "@shared/widget-config";
 
 function QRCodeDisplay({ value, size = 128 }: { value: string; size?: number }) {
   const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
@@ -5052,88 +5054,12 @@ export default function ChatWidgetEditPage() {
                   </div>
                 ) : (
                   <div className="relative">
-                    <div className="rounded-2xl overflow-hidden shadow-lg bg-white dark:bg-slate-900">
-                      {/* Header with logo and agent photos */}
-                      <div className="px-5 py-4 flex items-center justify-between" style={{ background: currentBackground }}>
-                        <div className="flex items-center">
-                          {widget.branding?.customLogo ? (
-                            <img src={widget.branding.customLogo} alt="Logo" className="h-6 object-contain brightness-0 invert" />
-                          ) : (
-                            <span className="font-semibold text-white text-lg">Support</span>
-                          )}
-                        </div>
-                        <div className="flex items-center gap-3">
-                          <div className="flex -space-x-2">
-                            {[1, 2, 3].map((i) => (
-                              <div key={i} className="w-8 h-8 rounded-full bg-white/30 border-2 border-white overflow-hidden">
-                                <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-400" />
-                              </div>
-                            ))}
-                          </div>
-                          <button className="p-1 hover:bg-white/20 rounded-full transition-colors">
-                            <X className="h-5 w-5 text-white" />
-                          </button>
-                        </div>
-                      </div>
-                      
-                      {/* Main content - white background */}
-                      <div className="p-5">
-                        {/* Welcome text in BLACK */}
-                        <div className="mb-6">
-                          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-tight">Hi there 👋</h3>
-                          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-tight">How can we help?</h3>
-                        </div>
-                        
-                        {/* Send us a message button */}
-                        {widget.channels.liveChat && (
-                          <div className="flex items-center justify-between py-4 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 mb-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
-                            <span className="text-base font-medium text-slate-900 dark:text-slate-100">Send us a message</span>
-                            <Send className="h-5 w-5" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
-                          </div>
-                        )}
-                        
-                        {(widget.channelOrder || channelConfigs.map(c => c.id)).filter(channelId => {
-                          if (channelId === "liveChat") return false;
-                          const channelKey = channelId === "phone" ? "phone" : 
-                                            channelId === "email" ? "email" :
-                                            channelId === "sms" ? "sms" :
-                                            channelId === "whatsapp" ? "whatsapp" :
-                                            channelId === "facebook" ? "facebook" :
-                                            channelId === "instagram" ? "instagram" :
-                                            channelId === "telegram" ? "telegram" : null;
-                          return channelKey && widget.channels[channelKey as keyof typeof widget.channels];
-                        }).map((channelId) => {
-                          const config = channelConfigs.find(c => c.id === channelId);
-                          if (!config) return null;
-                          
-                          const getChannelLabel = () => {
-                            switch (channelId) {
-                              case "phone": return widget.callSettings?.callUsScreen?.title || "Call us";
-                              case "whatsapp": return widget.whatsappSettings?.welcomeScreen?.channelName || "Chat on WhatsApp";
-                              case "email": return widget.emailSettings?.welcomeScreen?.channelName || "Email us";
-                              case "sms": return widget.smsSettings?.welcomeScreen?.channelName || "Text us";
-                              case "facebook": return widget.messengerSettings?.welcomeScreen?.channelName || "Messenger";
-                              case "instagram": return widget.instagramSettings?.welcomeScreen?.channelName || "Instagram";
-                              case "telegram": return widget.telegramSettings?.welcomeScreen?.channelName || "Chat on Telegram";
-                              default: return config.label;
-                            }
-                          };
-                          
-                          return (
-                            <div key={channelId} className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 mb-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
-                              <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{getChannelLabel()}</span>
-                              <Send className="h-5 w-5" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
-                            </div>
-                          );
-                        })}
-                        
-                        <div className="text-center pt-4">
-                          <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                            Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
-                          </p>
-                        </div>
-                      </div>
-                    </div>
+                    <WidgetRenderer 
+                      config={mapChatWidgetToConfig(widget)}
+                      mode="preview"
+                      onClose={() => {}}
+                      onChannelClick={(channel) => setExpandedChannel(channel)}
+                    />
                     
                     <div 
                       className="absolute -bottom-16 right-0 flex items-center justify-center rounded-full shadow-xl cursor-pointer"

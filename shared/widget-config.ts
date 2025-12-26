@@ -256,17 +256,49 @@ export function mapChatWidgetToConfig(widget: ChatWidget): WidgetConfig {
   const primaryColor = getPrimaryColor(widget);
   const headerBackground = getBackgroundColor(widget);
 
-  const channels = widget.channels as Array<{ type: string; enabled: boolean }> | null;
-  const channelsConfig: WidgetChannels = {
-    liveChat: channels?.find(c => c.type === "liveChat")?.enabled ?? false,
-    sms: channels?.find(c => c.type === "sms")?.enabled ?? false,
-    phone: channels?.find(c => c.type === "phone")?.enabled ?? false,
-    whatsapp: channels?.find(c => c.type === "whatsapp")?.enabled ?? false,
-    email: channels?.find(c => c.type === "email")?.enabled ?? false,
-    telegram: channels?.find(c => c.type === "telegram")?.enabled ?? false,
-    messenger: channels?.find(c => c.type === "facebook")?.enabled ?? false,
-    instagram: channels?.find(c => c.type === "instagram")?.enabled ?? false,
-  };
+  // Handle both array format [{ type: "liveChat", enabled: true }] and object format { liveChat: true }
+  const rawChannels = widget.channels;
+  let channelsConfig: WidgetChannels;
+  
+  if (Array.isArray(rawChannels)) {
+    // Array format: [{ type: "liveChat", enabled: true }, ...]
+    const channels = rawChannels as Array<{ type: string; enabled: boolean }>;
+    channelsConfig = {
+      liveChat: channels.find(c => c.type === "liveChat")?.enabled ?? false,
+      sms: channels.find(c => c.type === "sms")?.enabled ?? false,
+      phone: channels.find(c => c.type === "phone")?.enabled ?? false,
+      whatsapp: channels.find(c => c.type === "whatsapp")?.enabled ?? false,
+      email: channels.find(c => c.type === "email")?.enabled ?? false,
+      telegram: channels.find(c => c.type === "telegram")?.enabled ?? false,
+      messenger: channels.find(c => c.type === "facebook")?.enabled ?? false,
+      instagram: channels.find(c => c.type === "instagram")?.enabled ?? false,
+    };
+  } else if (rawChannels && typeof rawChannels === 'object') {
+    // Object format: { liveChat: true, email: false, ... }
+    const channels = rawChannels as Record<string, boolean>;
+    channelsConfig = {
+      liveChat: channels.liveChat ?? false,
+      sms: channels.sms ?? false,
+      phone: channels.phone ?? false,
+      whatsapp: channels.whatsapp ?? false,
+      email: channels.email ?? false,
+      telegram: channels.telegram ?? false,
+      messenger: channels.facebook ?? false,
+      instagram: channels.instagram ?? false,
+    };
+  } else {
+    // Default: all disabled
+    channelsConfig = {
+      liveChat: false,
+      sms: false,
+      phone: false,
+      whatsapp: false,
+      email: false,
+      telegram: false,
+      messenger: false,
+      instagram: false,
+    };
+  }
 
   const minimizedStateData = widget.minimizedState as {
     icon?: string;
