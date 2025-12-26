@@ -164,6 +164,14 @@ const sourceFormSchema = z.object({
 
 type SourceFormValues = z.infer<typeof sourceFormSchema>;
 
+const multiUrlFormSchema = z.object({
+  urls: z.array(z.string().url("Must be a valid URL")).min(1, "At least one URL is required"),
+  maxPages: z.number().min(1).max(200).optional(),
+  sameDomainOnly: z.boolean().optional(),
+});
+
+type MultiUrlFormValues = z.infer<typeof multiUrlFormSchema>;
+
 interface AiDeskSettingsProps {
   embedded?: boolean;
 }
@@ -177,6 +185,8 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
   const [isUploading, setIsUploading] = useState(false);
   const [viewChunksSource, setViewChunksSource] = useState<KbSource | null>(null);
   const [copiedChunkId, setCopiedChunkId] = useState<string | null>(null);
+  const [urlInputs, setUrlInputs] = useState<string[]>(['']);
+  const [multiUrlSettings, setMultiUrlSettings] = useState({ maxPages: 25, sameDomainOnly: true });
 
   const { data: settings, isLoading: settingsLoading } = useQuery<AiSettings>({
     queryKey: ["/api/ai/settings"],
@@ -247,6 +257,40 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
     },
     onError: () => {
       toast({ title: "Failed to add source", variant: "destructive" });
+    },
+  });
+
+  const createMultipleSourcesMutation = useMutation({
+    mutationFn: async (data: { urls: string[]; maxPages: number; sameDomainOnly: boolean }) => {
+      const results = [];
+      for (const url of data.urls) {
+        try {
+          const hostname = new URL(url).hostname.replace('www.', '');
+          const res = await apiRequest("POST", "/api/ai/kb/sources", {
+            type: "url",
+            name: hostname,
+            url,
+            config: { 
+              maxPages: data.maxPages || 25, 
+              sameDomainOnly: data.sameDomainOnly ?? true 
+            },
+          });
+          results.push(await res.json());
+        } catch (e) {
+          console.error(`Failed to add source for ${url}:`, e);
+        }
+      }
+      return results;
+    },
+    onSuccess: (results) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/kb/sources"] });
+      toast({ title: `${results.length} source(s) added` });
+      setIsSourceDialogOpen(false);
+      setUrlInputs(['']);
+      setMultiUrlSettings({ maxPages: 25, sameDomainOnly: true });
+    },
+    onError: () => {
+      toast({ title: "Failed to add sources", variant: "destructive" });
     },
   });
 
@@ -1063,93 +1107,141 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
         </TabsContent>
       </Tabs>
 
-      <Dialog open={isSourceDialogOpen} onOpenChange={setIsSourceDialogOpen}>
-        <DialogContent>
+      <Dialog open={isSourceDialogOpen} onOpenChange={(open) => {
+        setIsSourceDialogOpen(open);
+        if (!open) {
+          setUrlInputs(['']);
+          setMultiUrlSettings({ maxPages: 25, sameDomainOnly: true });
+        }
+      }}>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Add Knowledge Source</DialogTitle>
+            <DialogTitle>Add website link</DialogTitle>
             <DialogDescription>
-              Add a website URL for AI to crawl and learn from
+              Add one or more website URLs for AI to crawl and learn from
             </DialogDescription>
           </DialogHeader>
-          <Form {...sourceForm}>
-            <form onSubmit={sourceForm.handleSubmit((data) => createSourceMutation.mutate(data))} className="space-y-4">
-              <FormField
-                control={sourceForm.control}
-                name="name"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Help Center" {...field} data-testid="input-source-name" />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={sourceForm.control}
-                name="url"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>URL</FormLabel>
-                    <FormControl>
-                      <Input placeholder="https://help.example.com" {...field} data-testid="input-source-url" />
-                    </FormControl>
-                    <FormDescription>The starting URL to crawl</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={sourceForm.control}
-                name="maxPages"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Max Pages</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="number"
-                        min={1}
-                        max={200}
-                        {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 25)}
-                        data-testid="input-source-maxpages"
-                      />
-                    </FormControl>
-                    <FormDescription>Maximum number of pages to crawl (1-200)</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={sourceForm.control}
-                name="sameDomainOnly"
-                render={({ field }) => (
-                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+          <div className="space-y-4">
+            <div className="space-y-3">
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-medium">URL</span>
+                <span className="text-destructive">*</span>
+              </div>
+              {urlInputs.map((url, index) => (
+                <div key={index} className="flex items-center gap-2">
+                  <Input
+                    placeholder="https://www.example.com"
+                    value={url}
+                    onChange={(e) => {
+                      const newUrls = [...urlInputs];
+                      newUrls[index] = e.target.value;
+                      setUrlInputs(newUrls);
+                    }}
+                    data-testid={`input-url-${index}`}
+                  />
+                  {urlInputs.length > 1 && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => {
+                        const newUrls = urlInputs.filter((_, i) => i !== index);
+                        setUrlInputs(newUrls);
+                      }}
+                      data-testid={`button-remove-url-${index}`}
+                    >
+                      <Trash2 className="w-4 h-4 text-muted-foreground" />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="link"
+                className="text-primary p-0 h-auto"
+                onClick={() => setUrlInputs([...urlInputs, ''])}
+                data-testid="button-add-another-url"
+              >
+                <Plus className="w-4 h-4 mr-1" />
+                Add another
+              </Button>
+            </div>
+
+            <Accordion type="single" collapsible className="w-full">
+              <AccordionItem value="settings" className="border rounded-lg px-3">
+                <AccordionTrigger className="text-sm py-3">Advanced settings</AccordionTrigger>
+                <AccordionContent className="space-y-4 pb-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">Max pages per URL</label>
+                    <Input
+                      type="number"
+                      min={1}
+                      max={200}
+                      value={multiUrlSettings.maxPages}
+                      onChange={(e) => setMultiUrlSettings(prev => ({ 
+                        ...prev, 
+                        maxPages: parseInt(e.target.value) || 25 
+                      }))}
+                      data-testid="input-multi-maxpages"
+                    />
+                    <p className="text-xs text-muted-foreground">Maximum pages to crawl per URL (1-200)</p>
+                  </div>
+                  <div className="flex items-center justify-between rounded-lg border p-3">
                     <div className="space-y-0.5">
-                      <FormLabel>Same domain only</FormLabel>
-                      <FormDescription>Only crawl pages from the same domain</FormDescription>
+                      <label className="text-sm font-medium">Same domain only</label>
+                      <p className="text-xs text-muted-foreground">Only crawl pages from the same domain</p>
                     </div>
-                    <FormControl>
-                      <Switch
-                        checked={field.value ?? true}
-                        onCheckedChange={field.onChange}
-                        data-testid="switch-same-domain"
-                      />
-                    </FormControl>
-                  </FormItem>
-                )}
-              />
-              <DialogFooter>
-                <Button type="button" variant="outline" onClick={() => setIsSourceDialogOpen(false)}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={createSourceMutation.isPending} data-testid="button-submit-source">
-                  {createSourceMutation.isPending ? <LoadingSpinner fullScreen={false} /> : "Add Source"}
-                </Button>
-              </DialogFooter>
-            </form>
-          </Form>
+                    <Switch
+                      checked={multiUrlSettings.sameDomainOnly}
+                      onCheckedChange={(checked) => setMultiUrlSettings(prev => ({ 
+                        ...prev, 
+                        sameDomainOnly: checked 
+                      }))}
+                      data-testid="switch-multi-same-domain"
+                    />
+                  </div>
+                </AccordionContent>
+              </AccordionItem>
+            </Accordion>
+          </div>
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => {
+                setIsSourceDialogOpen(false);
+                setUrlInputs(['']);
+                setMultiUrlSettings({ maxPages: 25, sameDomainOnly: true });
+              }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={() => {
+                const validUrls = urlInputs.filter(url => {
+                  try {
+                    new URL(url);
+                    return true;
+                  } catch {
+                    return false;
+                  }
+                });
+                if (validUrls.length === 0) {
+                  toast({ title: "Please enter at least one valid URL", variant: "destructive" });
+                  return;
+                }
+                createMultipleSourcesMutation.mutate({
+                  urls: validUrls,
+                  maxPages: multiUrlSettings.maxPages,
+                  sameDomainOnly: multiUrlSettings.sameDomainOnly,
+                });
+              }}
+              disabled={createMultipleSourcesMutation.isPending || urlInputs.every(u => !u.trim())}
+              data-testid="button-submit-sources"
+            >
+              {createMultipleSourcesMutation.isPending ? <LoadingSpinner fullScreen={false} /> : "Save"}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
 
