@@ -28708,7 +28708,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       let device = await db.query.liveChatDevices.findFirst({
         where: and(
           eq(liveChatDevices.deviceId, deviceId as string),
-          eq(liveChatDevices.widgetId, widgetId as string)
+          eq(liveChatDevices.companyId, companyId)
         )
       });
       
@@ -28829,7 +28829,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       let device = await db.query.liveChatDevices.findFirst({
         where: and(
           eq(liveChatDevices.deviceId, deviceId),
-          eq(liveChatDevices.widgetId, widgetId)
+          eq(liveChatDevices.companyId, companyId)
         )
       });
       

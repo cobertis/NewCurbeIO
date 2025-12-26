@@ -298,16 +298,37 @@ export default function ChatWidgetPreviewPage() {
   const [bootstrapLoading, setBootstrapLoading] = useState(true);
 
   // Initialize deviceId from localStorage or create new
+  // FIX Bug #1: Device identity is per-company, NOT per-widget
+  // This ensures consistent identity across all widgets of the same company
   useEffect(() => {
-    if (!widgetId) return;
-    const storageKey = `curbe_device_id:${widgetId}`;
-    let storedDeviceId = localStorage.getItem(storageKey);
+    if (!widgetId || !stableCompanyId) return;
+    
+    // New key: company-scoped identity
+    const newStorageKey = `curbe_device_id:${stableCompanyId}`;
+    // Legacy key: widget-scoped identity (for migration)
+    const legacyStorageKey = `curbe_device_id:${widgetId}`;
+    
+    let storedDeviceId = localStorage.getItem(newStorageKey);
+    
     if (!storedDeviceId) {
-      storedDeviceId = crypto.randomUUID();
-      localStorage.setItem(storageKey, storedDeviceId);
+      // Check for legacy widget-scoped deviceId and migrate it
+      const legacyDeviceId = localStorage.getItem(legacyStorageKey);
+      if (legacyDeviceId) {
+        // Migrate: copy to new key
+        storedDeviceId = legacyDeviceId;
+        localStorage.setItem(newStorageKey, storedDeviceId);
+        console.log(`[Device Identity] Migrated deviceId from widget to company scope`);
+        // Keep legacy key for backwards compatibility during transition
+      } else {
+        // Create new device identity
+        storedDeviceId = crypto.randomUUID();
+        localStorage.setItem(newStorageKey, storedDeviceId);
+        console.log(`[Device Identity] Created new deviceId for company: ${stableCompanyId}`);
+      }
     }
+    
     setDeviceId(storedDeviceId);
-  }, [widgetId]);
+  }, [widgetId, stableCompanyId]);
 
   // Bootstrap: fetch persistent identity and conversations
   useEffect(() => {

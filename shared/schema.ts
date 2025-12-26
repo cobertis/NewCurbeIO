@@ -7189,10 +7189,14 @@ export const liveChatDevices = pgTable("live_chat_devices", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
-  deviceWidgetUnique: unique("live_chat_devices_device_widget_unique").on(table.deviceId, table.widgetId),
+  // CRITICAL: Device identity is per-company, NOT per-widget
+  // This ensures the same device has a consistent identity across all widgets of the same company
+  deviceCompanyUnique: unique("live_chat_devices_device_company_unique").on(table.deviceId, table.companyId),
   companyIdIdx: index("live_chat_devices_company_id_idx").on(table.companyId),
   contactIdIdx: index("live_chat_devices_contact_id_idx").on(table.contactId),
   lastSeenIdx: index("live_chat_devices_last_seen_idx").on(table.lastSeenAt),
+  // Index for widget lookups (non-unique, a device can interact with multiple widgets)
+  widgetIdIdx: index("live_chat_devices_widget_id_idx").on(table.widgetId),
 }));
 
 export const insertLiveChatDeviceSchema = createInsertSchema(liveChatDevices).omit({

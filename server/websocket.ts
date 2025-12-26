@@ -452,20 +452,48 @@ async function handlePbxConnection(ws: AuthenticatedWebSocket, req: IncomingMess
 }
 
 // Live Chat Widget WebSocket Handler (public, no authentication required)
-function handleLiveChatWidgetConnection(ws: LiveChatWidgetWebSocket, req: IncomingMessage) {
+// SECURITY FIX: companyId is now derived from widgetId lookup, NOT from query params
+async function handleLiveChatWidgetConnection(ws: LiveChatWidgetWebSocket, req: IncomingMessage) {
   const url = new URL(req.url || '', `http://${req.headers.host}`);
   const pathParts = url.pathname.split('/');
   const sessionId = pathParts[pathParts.length - 1]; // Extract sessionId from path
   const widgetId = url.searchParams.get('widgetId') || '';
-  const companyId = url.searchParams.get('companyId') || '';
+  // NOTE: companyId from query param is IGNORED for security - we derive it from widgetId
   
-  if (!sessionId || !widgetId || !companyId) {
-    console.log('[LiveChat WebSocket] Missing required params - closing');
+  if (!sessionId || !widgetId) {
+    console.log('[LiveChat WebSocket] Missing required params (sessionId or widgetId) - closing');
     ws.close(1008, 'Missing required parameters');
     return;
   }
   
-  // Set connection properties
+  // SECURITY: Derive companyId from widgetId via database lookup
+  // This prevents tenant isolation bypass attacks
+  let companyId: string;
+  try {
+    const { db } = await import('./db');
+    const { chatWidgets } = await import('@shared/schema');
+    const { eq } = await import('drizzle-orm');
+    
+    const widget = await db.query.chatWidgets.findFirst({
+      where: eq(chatWidgets.id, widgetId),
+      columns: { companyId: true }
+    });
+    
+    if (!widget) {
+      console.log(`[LiveChat WebSocket] Widget not found: ${widgetId} - closing`);
+      ws.close(1008, 'Invalid widget');
+      return;
+    }
+    
+    companyId = widget.companyId;
+    console.log(`[LiveChat WebSocket] Resolved companyId=${companyId} from widgetId=${widgetId}`);
+  } catch (error) {
+    console.error('[LiveChat WebSocket] Failed to resolve companyId:', error);
+    ws.close(1011, 'Internal error');
+    return;
+  }
+  
+  // Set connection properties with validated companyId
   ws.sessionId = sessionId;
   ws.widgetId = widgetId;
   ws.companyId = companyId;
@@ -476,10 +504,10 @@ function handleLiveChatWidgetConnection(ws: LiveChatWidgetWebSocket, req: Incomi
   }
   liveChatWidgetConnections.get(sessionId)!.add(ws);
   
-  console.log(`[LiveChat WebSocket] Widget connected: sessionId=${sessionId}, widgetId=${widgetId}`);
+  console.log(`[LiveChat WebSocket] Widget connected: sessionId=${sessionId}, widgetId=${widgetId}, companyId=${companyId}`);
   
-  // Send connection acknowledgment
-  ws.send(JSON.stringify({ type: 'connected', sessionId }));
+  // Send connection acknowledgment with companyId for frontend reference
+  ws.send(JSON.stringify({ type: 'connected', sessionId, companyId }));
   
   ws.on('error', (err) => {
     console.error('[LiveChat WebSocket] Error:', err.message);
