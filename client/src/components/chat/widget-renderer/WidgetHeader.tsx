@@ -1,4 +1,4 @@
-import { X } from "lucide-react";
+import { ChevronDown } from "lucide-react";
 import type { WidgetConfig } from "@shared/widget-config";
 
 interface WidgetHeaderProps {
@@ -53,7 +53,7 @@ export function WidgetHeader({ config, onClose }: WidgetHeaderProps) {
           onClick={onClose}
           data-testid="widget-close-button"
         >
-          <X className="h-5 w-5 text-slate-500" />
+          <ChevronDown className="h-5 w-5 text-slate-500" />
         </button>
       </div>
     </div>
