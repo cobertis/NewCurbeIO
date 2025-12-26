@@ -142,7 +142,11 @@ const sourceFormSchema = z.object({
 
 type SourceFormValues = z.infer<typeof sourceFormSchema>;
 
-export default function AiDeskSettingsPage() {
+interface AiDeskSettingsProps {
+  embedded?: boolean;
+}
+
+export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsProps) {
   const { toast } = useToast();
   const [isSourceDialogOpen, setIsSourceDialogOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<KbSource | null>(null);
@@ -255,7 +259,9 @@ export default function AiDeskSettingsPage() {
     }
   };
 
-  const [showSettings, setShowSettings] = useState(false);
+  // Show settings directly if embedded or if there are existing sources
+  const hasExistingSources = (sources?.length ?? 0) > 0;
+  const [showSettings, setShowSettings] = useState(hasExistingSources);
   const [showAddSourceDialog, setShowAddSourceDialog] = useState(false);
   const [sourceType, setSourceType] = useState<"url" | "document" | null>(null);
 
@@ -272,14 +278,16 @@ export default function AiDeskSettingsPage() {
     setShowSettings(true);
   };
 
-  if (!showSettings) {
+  if (!showSettings && !hasExistingSources) {
     return (
       <div className="space-y-8" data-testid="page-ai-desk">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-          <span>Settings</span>
-          <ChevronRight className="h-4 w-4" />
-          <span className="font-medium text-foreground">AI Desk</span>
-        </div>
+        {!embedded && (
+          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+            <span>Settings</span>
+            <ChevronRight className="h-4 w-4" />
+            <span className="font-medium text-foreground">AI Desk</span>
+          </div>
+        )}
 
         <h1 className="text-2xl font-bold" data-testid="heading-ai-desk">AI Desk</h1>
 
@@ -421,20 +429,24 @@ export default function AiDeskSettingsPage() {
 
   return (
     <div className="space-y-6" data-testid="page-ai-desk-settings">
-      <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-        <button onClick={() => setShowSettings(false)} className="hover:text-foreground">Settings</button>
-        <ChevronRight className="h-4 w-4" />
-        <span className="font-medium text-foreground">AI Desk</span>
-      </div>
+      {!embedded && (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
+          <button onClick={() => setShowSettings(false)} className="hover:text-foreground">Settings</button>
+          <ChevronRight className="h-4 w-4" />
+          <span className="font-medium text-foreground">AI Desk</span>
+        </div>
+      )}
 
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold" data-testid="heading-ai-desk-settings">AI Desk Settings</h1>
           <p className="text-muted-foreground">Configure AI-powered support for your team</p>
         </div>
-        <Button variant="outline" onClick={() => setShowSettings(false)} data-testid="button-back">
-          Back
-        </Button>
+        {!embedded && !hasExistingSources && (
+          <Button variant="outline" onClick={() => setShowSettings(false)} data-testid="button-back">
+            Back
+          </Button>
+        )}
       </div>
 
       <Tabs defaultValue="settings" className="space-y-4">

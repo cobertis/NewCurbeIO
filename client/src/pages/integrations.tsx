@@ -23,6 +23,7 @@ import SettingsPage from "@/pages/settings";
 import SmsVoice, { SmsVoiceContent } from "@/pages/sms-voice";
 import { WhiteLabelSettings } from "@/components/white-label-settings";
 import EmailIntegration from "@/pages/email-integration";
+import AiDeskSettings from "@/pages/ai-desk-settings";
 import whatsappPreviewImg from "@assets/image_1766559979785.png";
 
 type ChannelType = "whatsapp" | "instagram" | "facebook";
@@ -1816,7 +1817,7 @@ export default function IntegrationsPage() {
     if (location.startsWith("/settings/telegram")) return "telegram";
     if (location.startsWith("/settings/chat-widget")) return "chat-widget";
     if (location.startsWith("/settings/white-label")) return "white-label";
-    if (location.startsWith("/ai-desk")) return "ai-desk";
+    if (location.startsWith("/settings/ai-desk")) return "ai-desk";
     return "profile";
   };
   
@@ -1843,7 +1844,7 @@ export default function IntegrationsPage() {
     features: [
       { label: "Integrations", href: "/settings/integrations", icon: Plug, active: activeView === "integrations" },
       { label: "Automations", href: "/settings/automations", icon: Zap, active: activeView === "automations" },
-      { label: "AI Desk", href: "/ai-desk", icon: Bot, active: activeView === "ai-desk" },
+      { label: "AI Desk", href: "/settings/ai-desk", icon: Bot, active: activeView === "ai-desk" },
     ],
   };
 
@@ -2013,6 +2014,12 @@ export default function IntegrationsPage() {
           <div>
             <SettingsBreadcrumb pageName="White Label" />
             <WhiteLabelSettings />
+          </div>
+        )}
+        {activeView === "ai-desk" && (
+          <div>
+            <SettingsBreadcrumb pageName="AI Desk" />
+            <AiDeskSettings embedded />
           </div>
         )}
       </div>
