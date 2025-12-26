@@ -2598,6 +2598,7 @@ export default function ChatWidgetEditPage() {
   
   // Preview navigation state for interactive WidgetRenderer
   const [previewActiveTab, setPreviewActiveTab] = useState<"home" | "messages" | "help" | "news">("home");
+  const [previewActiveChannel, setPreviewActiveChannel] = useState<string | null>(null);
   
   // Handler to reset preview to home state
   const handleBackToHome = () => {
@@ -2606,6 +2607,87 @@ export default function ChatWidgetEditPage() {
     setActiveEmailSubSection(null);
     setActiveSmsSubSection(null);
     setPreviewActiveTab("home");
+    setPreviewActiveChannel(null);
+  };
+  
+  // Render channel content for preview
+  const renderPreviewChannelContent = () => {
+    if (!previewActiveChannel) return null;
+    
+    const channelLabels: Record<string, string> = {
+      sms: widget.smsSettings?.messageScreen?.title || "Send us a text message",
+      phone: widget.callSettings?.callUsScreen?.title || "Speak with an agent",
+      whatsapp: widget.whatsappSettings?.messageScreen?.title || "Message us on WhatsApp",
+      email: widget.emailSettings?.formFields?.title || "Get response via email",
+      facebook: widget.messengerSettings?.messageUsScreen?.title || "Message us on Facebook",
+      instagram: widget.instagramSettings?.messageUsScreen?.title || "Message us on Instagram",
+      telegram: widget.telegramSettings?.messageUsScreen?.title || "Message us on Telegram",
+    };
+    
+    const channelDescriptions: Record<string, string> = {
+      sms: widget.smsSettings?.messageScreen?.description || "Click the button below to send us an SMS.",
+      phone: widget.callSettings?.callUsScreen?.description || "Call us for urgent matters.",
+      whatsapp: widget.whatsappSettings?.messageScreen?.description || "Click the button below or scan the QR code.",
+      email: widget.emailSettings?.formFields?.description || "Fill the details and we will reply.",
+      facebook: widget.messengerSettings?.messageUsScreen?.description || "Click the button below or scan the QR code.",
+      instagram: widget.instagramSettings?.messageUsScreen?.description || "Click the button below or scan the QR code.",
+      telegram: widget.telegramSettings?.messageUsScreen?.description || "Click the button below or scan the QR code.",
+    };
+    
+    const channelButtons: Record<string, string> = {
+      sms: widget.smsSettings?.messageScreen?.buttonLabel || "Send SMS",
+      phone: widget.callSettings?.callUsScreen?.buttonLabel || "Call now",
+      whatsapp: widget.whatsappSettings?.messageScreen?.buttonLabel || "Open chat",
+      email: widget.emailSettings?.formFields?.buttonLabel || "Send email",
+      facebook: widget.messengerSettings?.messageUsScreen?.buttonLabel || "Open Facebook",
+      instagram: widget.instagramSettings?.messageUsScreen?.buttonLabel || "Open Instagram",
+      telegram: widget.telegramSettings?.messageUsScreen?.buttonLabel || "Open Telegram",
+    };
+    
+    const themeColor = widget.theme?.type === 'solid' 
+      ? widget.theme.color 
+      : widget.theme?.gradient?.from || '#4F46E5';
+    
+    return (
+      <div className="py-4 space-y-4">
+        <h4 className="text-lg font-semibold text-slate-900">{channelLabels[previewActiveChannel] || previewActiveChannel}</h4>
+        <p className="text-sm text-slate-600">{channelDescriptions[previewActiveChannel] || ""}</p>
+        
+        {(previewActiveChannel === "sms" || previewActiveChannel === "whatsapp" || previewActiveChannel === "phone") && (
+          <div className="text-center">
+            <p className="text-xl font-bold text-slate-900">+1 (844) 507-5800</p>
+          </div>
+        )}
+        
+        {previewActiveChannel === "email" && (
+          <div className="space-y-3">
+            <input type="text" placeholder="Your name" className="w-full p-2 border rounded-lg text-sm" disabled />
+            <input type="email" placeholder="Your email" className="w-full p-2 border rounded-lg text-sm" disabled />
+            <textarea placeholder="Your message" rows={3} className="w-full p-2 border rounded-lg text-sm" disabled />
+          </div>
+        )}
+        
+        <button 
+          className="w-full py-3 rounded-lg text-white font-medium"
+          style={{ backgroundColor: themeColor }}
+        >
+          {channelButtons[previewActiveChannel] || "Open"}
+        </button>
+        
+        {previewActiveChannel !== "email" && (
+          <>
+            <div className="flex justify-center py-2">
+              <div className="w-32 h-32 bg-slate-100 rounded-lg flex items-center justify-center">
+                <span className="text-xs text-slate-400">QR Code Preview</span>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 text-center">
+              Scan QR code to {previewActiveChannel === "phone" ? "call" : "message"}
+            </p>
+          </>
+        )}
+      </div>
+    );
   };
 
   const handleLiveChatSettingsChange = (settings: Partial<WidgetConfig["liveChatSettings"]>) => {
@@ -5101,9 +5183,13 @@ export default function ChatWidgetEditPage() {
                           setExpandedChannel('liveChat');
                           setActiveLiveChatSubSection('welcomeScreen');
                         } else {
+                          setPreviewActiveChannel(channel);
                           setExpandedChannel(channel);
                         }
                       }}
+                      activeChannel={previewActiveChannel}
+                      onBackFromChannel={() => setPreviewActiveChannel(null)}
+                      channelContent={renderPreviewChannelContent()}
                     />
                     
                     <div 
