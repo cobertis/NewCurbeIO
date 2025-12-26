@@ -298,21 +298,85 @@ export class AiIngestionService {
       title = this.decodeHtmlEntities(titleMatch[1].trim());
     }
 
-    let content = html
+    // Also try og:title or meta description as fallback for title
+    if (!title) {
+      const ogTitleMatch = html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) ||
+                           html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
+      if (ogTitleMatch) {
+        title = this.decodeHtmlEntities(ogTitleMatch[1].trim());
+      }
+    }
+
+    // Extract meta description as additional content
+    let metaDescription = "";
+    const metaDescMatch = html.match(/<meta[^>]+name=["']description["'][^>]+content=["']([^"']+)["']/i) ||
+                          html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+name=["']description["']/i);
+    if (metaDescMatch) {
+      metaDescription = this.decodeHtmlEntities(metaDescMatch[1].trim());
+    }
+
+    // Remove scripts, styles, and comments first (these definitely need to go)
+    let cleanHtml = html
       .replace(/<script[\s\S]*?<\/script>/gi, "")
       .replace(/<style[\s\S]*?<\/style>/gi, "")
       .replace(/<noscript[\s\S]*?<\/noscript>/gi, "")
-      .replace(/<nav[\s\S]*?<\/nav>/gi, "")
-      .replace(/<header[\s\S]*?<\/header>/gi, "")
-      .replace(/<footer[\s\S]*?<\/footer>/gi, "")
-      .replace(/<aside[\s\S]*?<\/aside>/gi, "")
       .replace(/<!--[\s\S]*?-->/g, "")
-      .replace(/<[^>]+>/g, " ")
-      .replace(/\s+/g, " ")
-      .trim();
+      .replace(/<svg[\s\S]*?<\/svg>/gi, "")
+      .replace(/<iframe[\s\S]*?<\/iframe>/gi, "");
+
+    // Strategy 1: Try to find main content areas
+    let content = "";
+    const mainMatch = cleanHtml.match(/<main[^>]*>([\s\S]*?)<\/main>/i) ||
+                      cleanHtml.match(/<article[^>]*>([\s\S]*?)<\/article>/i) ||
+                      cleanHtml.match(/<div[^>]*class="[^"]*(?:content|main|body|article)[^"]*"[^>]*>([\s\S]*?)<\/div>/i) ||
+                      cleanHtml.match(/<div[^>]*id="[^"]*(?:content|main|body|article)[^"]*"[^>]*>([\s\S]*?)<\/div>/i);
+    
+    if (mainMatch && mainMatch[1]) {
+      content = mainMatch[1]
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    // Strategy 2: If main content not found or too short, use body without nav/header/footer
+    if (content.length < 100) {
+      const bodyMatch = cleanHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      let bodyContent = bodyMatch ? bodyMatch[1] : cleanHtml;
+      
+      bodyContent = bodyContent
+        .replace(/<nav[\s\S]*?<\/nav>/gi, "")
+        .replace(/<header[\s\S]*?<\/header>/gi, "")
+        .replace(/<footer[\s\S]*?<\/footer>/gi, "")
+        .replace(/<aside[\s\S]*?<\/aside>/gi, "");
+
+      content = bodyContent
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
+
+    // Strategy 3: If still empty, extract ALL text from the entire HTML (most aggressive)
+    if (content.length < 50) {
+      content = cleanHtml
+        .replace(/<[^>]+>/g, " ")
+        .replace(/\s+/g, " ")
+        .trim();
+    }
 
     content = this.decodeHtmlEntities(content);
 
+    // Add meta description to content if we have it and content is short
+    if (metaDescription && content.length < 200) {
+      content = metaDescription + " " + content;
+    }
+
+    // If content is still empty, log for debugging
+    if (content.length < 50) {
+      console.log(`[AI-Ingestion] Very short content (${content.length} chars). This site may require JavaScript rendering.`);
+      console.log(`[AI-Ingestion] Raw HTML sample: ${html.substring(0, 1000)}`);
+    }
+
+    // Extract links
     const links: string[] = [];
     const hrefRegex = /<a[^>]+href=["']([^"']+)["']/gi;
     let match;
