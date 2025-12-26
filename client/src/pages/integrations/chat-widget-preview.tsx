@@ -2,7 +2,7 @@ import { useParams, Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, ChevronDown, X, Monitor, Send, Smartphone, Globe, Check, CheckCheck, Paperclip, Smile, Clock, ThumbsUp, ThumbsDown, User } from "lucide-react";
+import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, ChevronDown, X, Monitor, Send, Smartphone, Globe, Check, CheckCheck, Paperclip, Smile, Clock, ThumbsUp, ThumbsDown, User, Bug } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
@@ -198,6 +198,33 @@ export default function ChatWidgetPreviewPage() {
   const initialMessageInputRef = useRef<HTMLTextAreaElement>(null);
   const forceNewSessionRef = useRef<boolean>(false);
 
+  // Debug instrumentation state for troubleshooting
+  const [debugInfo, setDebugInfo] = useState<{
+    traceId: string;
+    companyId: string;
+    widgetId: string;
+    deviceId: string;
+    contactId: string | null;
+    conversationId: string | null;
+    sessionId: string | null;
+    status: string;
+    lastMessageId: string | null;
+    unreadCount: number;
+    timestamp: string;
+  }>({
+    traceId: `cw-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`,
+    companyId: '',
+    widgetId: widgetId || '',
+    deviceId: '',
+    contactId: null,
+    conversationId: null,
+    sessionId: null,
+    status: 'idle',
+    lastMessageId: null,
+    unreadCount: 0,
+    timestamp: new Date().toISOString(),
+  });
+
   // SINGLE SOURCE OF TRUTH: Always use public API for widget data
   useEffect(() => {
     if (!widgetId) {
@@ -329,6 +356,23 @@ export default function ChatWidgetPreviewPage() {
     
     setDeviceId(storedDeviceId);
   }, [widgetId, stableCompanyId]);
+
+  // Update debugInfo whenever relevant state changes
+  useEffect(() => {
+    setDebugInfo(prev => ({
+      ...prev,
+      companyId: stableCompanyId || '',
+      widgetId: widgetId || '',
+      deviceId: deviceId || localStorage.getItem(`curbe_device_id:${stableCompanyId}`) || '',
+      contactId: bootstrapData?.contactId || null,
+      conversationId: chatSessionId || null,
+      sessionId: chatSessionId || null,
+      status: chatFlowState,
+      lastMessageId: chatMessages.length > 0 ? chatMessages[chatMessages.length - 1].id : null,
+      unreadCount: bootstrapData?.unreadCount || 0,
+      timestamp: new Date().toISOString(),
+    }));
+  }, [stableCompanyId, widgetId, deviceId, bootstrapData, chatSessionId, chatFlowState, chatMessages]);
 
   // Bootstrap: fetch persistent identity and conversations
   useEffect(() => {
@@ -2592,7 +2636,25 @@ export default function ChatWidgetPreviewPage() {
               </div>
               
               {/* Footer */}
-              <div className="py-2 border-t border-slate-100 dark:border-slate-700 text-center bg-slate-50 dark:bg-slate-800/50">
+              <div className="py-2 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between px-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-[10px] text-muted-foreground h-auto py-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  onClick={() => {
+                    const info = {
+                      ...debugInfo,
+                      timestamp: new Date().toISOString(),
+                      userAgent: navigator.userAgent,
+                      url: window.location.href,
+                    };
+                    navigator.clipboard.writeText(JSON.stringify(info, null, 2));
+                    toast({ title: "Debug info copied", description: "Paste this to support for troubleshooting" });
+                  }}
+                  data-testid="button-copy-debug-solved"
+                >
+                  <Bug className="h-3 w-3 mr-1" /> Debug
+                </Button>
                 <a href="https://curbe.io" target="_blank" rel="noopener noreferrer" className="text-[10px] text-slate-400 flex items-center justify-center gap-1 hover:text-slate-600 transition-colors">
                   Powered by <img src={curbeLogo} alt="Curbe" className="h-2.5 w-auto inline-block opacity-60" />
                 </a>
@@ -3320,7 +3382,25 @@ export default function ChatWidgetPreviewPage() {
               )}
               
               {/* Footer */}
-              <div className="py-2 border-t border-slate-100 dark:border-slate-700 text-center bg-slate-50 dark:bg-slate-800/50">
+              <div className="py-2 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between px-3">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-[10px] text-muted-foreground h-auto py-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  onClick={() => {
+                    const info = {
+                      ...debugInfo,
+                      timestamp: new Date().toISOString(),
+                      userAgent: navigator.userAgent,
+                      url: window.location.href,
+                    };
+                    navigator.clipboard.writeText(JSON.stringify(info, null, 2));
+                    toast({ title: "Debug info copied", description: "Paste this to support for troubleshooting" });
+                  }}
+                  data-testid="button-copy-debug-active"
+                >
+                  <Bug className="h-3 w-3 mr-1" /> Debug
+                </Button>
                 <a href="https://curbe.io" target="_blank" rel="noopener noreferrer" className="text-[10px] text-slate-400 flex items-center justify-center gap-1 hover:text-slate-600 transition-colors">
                   Powered by <img src={curbeLogo} alt="Curbe" className="h-2.5 w-auto inline-block opacity-60" />
                 </a>
@@ -3435,7 +3515,25 @@ export default function ChatWidgetPreviewPage() {
                   </div>
                   
                   {/* Footer */}
-                  <div className="absolute bottom-0 left-0 right-0 py-2 border-t border-slate-100 dark:border-slate-700 text-center bg-slate-50 dark:bg-slate-800/50">
+                  <div className="absolute bottom-0 left-0 right-0 py-2 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 flex items-center justify-between px-3">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-[10px] text-muted-foreground h-auto py-1 px-1.5 hover:bg-slate-100 dark:hover:bg-slate-700"
+                      onClick={() => {
+                        const info = {
+                          ...debugInfo,
+                          timestamp: new Date().toISOString(),
+                          userAgent: navigator.userAgent,
+                          url: window.location.href,
+                        };
+                        navigator.clipboard.writeText(JSON.stringify(info, null, 2));
+                        toast({ title: "Debug info copied", description: "Paste this to support for troubleshooting" });
+                      }}
+                      data-testid="button-copy-debug"
+                    >
+                      <Bug className="h-3 w-3 mr-1" /> Debug
+                    </Button>
                     <a href="https://curbe.io" target="_blank" rel="noopener noreferrer" className="text-[10px] text-slate-400 flex items-center justify-center gap-1 hover:text-slate-600 transition-colors">
                       Powered by <img src={curbeLogo} alt="Curbe" className="h-2.5 w-auto inline-block opacity-60" />
                     </a>

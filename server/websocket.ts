@@ -3,6 +3,7 @@ import { Server } from 'http';
 import type { IncomingMessage } from 'http';
 import signature from 'cookie-signature';
 import { extensionCallService } from './services/extension-call-service';
+import { createTraceContext, logChatEvent } from './lib/chat-trace';
 
 // Session data structure
 interface SessionData {
@@ -506,6 +507,20 @@ async function handleLiveChatWidgetConnection(ws: LiveChatWidgetWebSocket, req: 
   
   console.log(`[LiveChat WebSocket] Widget connected: sessionId=${sessionId}, widgetId=${widgetId}, companyId=${companyId}`);
   
+  // Log WebSocket connection event
+  logChatEvent(createTraceContext({
+    action: "ws_connect",
+    companyId,
+    widgetId,
+    deviceId: url.searchParams.get('deviceId') || '',
+    contactId: null,
+    conversationId: sessionId,
+    sessionId,
+    status: "connected",
+    lastMessageId: null,
+    unreadCount: null,
+  }));
+  
   // Send connection acknowledgment with companyId for frontend reference
   ws.send(JSON.stringify({ type: 'connected', sessionId, companyId }));
   
@@ -522,6 +537,20 @@ async function handleLiveChatWidgetConnection(ws: LiveChatWidgetWebSocket, req: 
       }
     }
     console.log(`[LiveChat WebSocket] Widget disconnected: sessionId=${sessionId}`);
+    
+    // Log WebSocket disconnect event
+    logChatEvent(createTraceContext({
+      action: "ws_disconnect",
+      companyId: ws.companyId,
+      widgetId: ws.widgetId,
+      deviceId: '',
+      contactId: null,
+      conversationId: ws.sessionId,
+      sessionId: ws.sessionId,
+      status: "disconnected",
+      lastMessageId: null,
+      unreadCount: null,
+    }));
   });
   
   // Handle ping/pong for keepalive
