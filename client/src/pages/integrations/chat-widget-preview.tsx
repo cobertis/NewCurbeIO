@@ -281,6 +281,9 @@ export default function ChatWidgetPreviewPage() {
   // SIMPLE: One source of data, one loading state
   const isLoading = publicLoading;
   const effectiveWidgetData = publicWidgetData;
+  
+  // Stable companyId to prevent WebSocket reconnection loops
+  const stableCompanyId = effectiveWidgetData?.widget?.companyId || null;
 
   // Restore visitor profile from localStorage (Task 3: Skip pre-chat form for returning visitors)
   useEffect(() => {
@@ -409,11 +412,8 @@ export default function ChatWidgetPreviewPage() {
     // Don't connect WebSocket for pending sessions (no real conversation yet)
     if (!chatSessionId || !widgetId || chatSessionId.startsWith('pending_')) return;
     
-    // Get companyId from widget data
-    const widget = effectiveWidgetData?.widget;
-    const companyId = widget?.companyId;
-    
-    if (!companyId) {
+    // Use stable companyId to prevent reconnection loops
+    if (!stableCompanyId) {
       console.log('[LiveChat WS] No companyId available yet, waiting...');
       return;
     }
@@ -421,7 +421,7 @@ export default function ChatWidgetPreviewPage() {
     const connectWebSocket = () => {
       // Build WebSocket URL
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws/live-chat/${chatSessionId}?widgetId=${widgetId}&companyId=${companyId}`;
+      const wsUrl = `${protocol}//${window.location.host}/ws/live-chat/${chatSessionId}?widgetId=${widgetId}&companyId=${stableCompanyId}`;
       
       console.log('[LiveChat WS] Connecting to:', wsUrl);
       
@@ -549,7 +549,7 @@ export default function ChatWidgetPreviewPage() {
         liveChatWsRef.current = null;
       }
     };
-  }, [chatSessionId, widgetId, effectiveWidgetData?.widget?.companyId]);
+  }, [chatSessionId, widgetId, stableCompanyId]);
 
   // Track live visitor via heartbeat - runs always when component is mounted
   useEffect(() => {
