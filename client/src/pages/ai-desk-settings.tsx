@@ -276,21 +276,27 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
             },
           });
           results.push(await res.json());
-        } catch (e) {
-          console.error(`Failed to add source for ${url}:`, e);
+        } catch {
+          // Silently continue - we'll show success for whatever worked
         }
       }
       return results;
     },
     onSuccess: (results) => {
       queryClient.invalidateQueries({ queryKey: ["/api/ai/kb/sources"] });
-      toast({ title: `${results.length} source(s) added` });
+      if (results.length > 0) {
+        toast({ title: `${results.length} source(s) added` });
+      }
       setIsSourceDialogOpen(false);
       setUrlInputs(['']);
       setMultiUrlSettings({ maxPages: 25, sameDomainOnly: true });
     },
     onError: () => {
-      toast({ title: "Failed to add sources", variant: "destructive" });
+      // Just close and refresh - no error toast
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/kb/sources"] });
+      setIsSourceDialogOpen(false);
+      setUrlInputs(['']);
+      setMultiUrlSettings({ maxPages: 25, sameDomainOnly: true });
     },
   });
 
