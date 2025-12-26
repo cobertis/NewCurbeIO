@@ -239,7 +239,8 @@ export function WidgetRenderer({
   return (
     <div
       ref={containerRef}
-      className={`rounded-2xl shadow-lg bg-white flex flex-col ${mode === "embed" ? "overflow-hidden h-[600px]" : ""}`}
+      className="rounded-2xl shadow-lg bg-white flex flex-col overflow-hidden"
+      style={{ width: "360px", height: "520px" }}
       data-testid="widget-renderer"
       data-mode={mode}
     >
@@ -249,7 +250,7 @@ export function WidgetRenderer({
       </div>
 
       {/* Content */}
-      <div className={`px-5 ${mode === "embed" ? "flex-1 overflow-y-auto" : ""}`}>
+      <div className="px-5 flex-1 overflow-y-auto">
         {renderContent()}
 
         {/* Footer Branding */}

@@ -1879,7 +1879,7 @@ export default function ChatWidgetPreviewPage() {
 
         {widgetOpen && (
           <div 
-            className="fixed w-[380px]"
+            className="fixed w-[360px]"
             style={{
               bottom: `${(widget.minimizedState?.bottomSpacing || 26) + 70}px`,
               ...(widget.minimizedState?.alignTo === "left" 
