@@ -41,6 +41,16 @@ Implements Telnyx WebRTC with specific call options and audio settings. Uses a d
 **Wallet System Architecture:**
 Supports Apple Wallet (PKPass) and Google Wallet with smart links, analytics, and APNs push notifications for proactive payment collection. Key components include dedicated services, PassKit Web Service, and a scheduler for daily payment reminders. The "Cenicienta Strategy" ensures lock-screen persistence for passes by setting `relevantDate` to the end of the day. Pass images are "baked in," with only text/data updated via push notifications.
 
+**Chat Widget System (Intercom-style):**
+Multi-tenant embeddable live chat widget with comprehensive instrumentation and Intercom-style invariants:
+- **Device Identity:** Persistent `deviceId` in localStorage scoped per company (`curbe_chat_device_{companyId}`), with migration from legacy keys.
+- **TraceContext Logging:** Structured logging with `[ChatWidget]` prefix for actions: bootstrap, identify, create_session, finish_session, list_messages, send_message, ws_connect, ws_disconnect, ws_resync.
+- **Invariant A (Single Open Conversation):** Partial unique index `telnyx_conversations_device_open_livechat_unique` ensures one open/waiting conversation per device.
+- **Invariant D (Message Idempotency):** Uses `clientMessageId` with partial unique index `telnyx_messages_client_msg_conv_unique`. Server returns `{ idempotent: true }` for duplicate sends.
+- **Invariant E (Safe WS Resync):** On reconnection, client sends `{ type: 'resync', lastSeenMessageId }`, server returns missed messages.
+- **Debug Button:** "Copy Debug Info" button on widget preview copies full TraceContext JSON for debugging.
+- **Documentation:** See `docs/CHAT_WIDGET_STATE_MACHINE.md` for state transitions and `docs/CHAT_WIDGET_QA_HARNESS.md` for QA test scenarios.
+
 **Security Architecture:**
 Includes session security, webhook signature validation (Twilio, BulkVS, BlueBubbles), Zod schema validation, open redirect protection, unsubscribe token enforcement, user-scoped data isolation, iMessage webhook secret isolation, multi-tenant WhatsApp session isolation, and token encryption for sensitive data.
 

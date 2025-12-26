@@ -4,6 +4,9 @@ import type { IncomingMessage } from 'http';
 import signature from 'cookie-signature';
 import { extensionCallService } from './services/extension-call-service';
 import { createTraceContext, logChatEvent } from './lib/chat-trace';
+import { db } from './db';
+import { telnyxMessages } from '@shared/schema';
+import { eq, gt, and } from 'drizzle-orm';
 
 // Session data structure
 interface SessionData {
@@ -570,10 +573,6 @@ async function handleLiveChatWidgetConnection(ws: LiveChatWidgetWebSocket, req: 
         }
         
         try {
-          const { db } = await import('./db');
-          const { telnyxMessages } = await import('@shared/schema');
-          const { eq, gt, and } = await import('drizzle-orm');
-          
           let missedMessages;
           if (lastSeenMessageId) {
             // Get the timestamp of the last seen message
