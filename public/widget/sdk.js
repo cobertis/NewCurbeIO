@@ -47,29 +47,14 @@
 
     initSession: function() {
       var self = this;
-      var storedSession = this.getStoredSession();
+      this.cleanupLegacySessions();
+      this.createNewSession();
+    },
 
-      if (storedSession && storedSession.token && !this.isTokenExpired(storedSession)) {
-        this.token = storedSession.token;
-        this.sessionData = storedSession;
-        this.scheduleTokenRefresh(storedSession);
-        this.setupWidget();
-        this.processQueue();
-      } else if (storedSession && storedSession.token) {
-        this.refreshToken(storedSession.token)
-          .then(function(newToken) {
-            self.token = newToken;
-            self.sessionData.token = newToken;
-            self.storeSession(self.sessionData);
-            self.setupWidget();
-            self.processQueue();
-          })
-          .catch(function() {
-            self.createNewSession();
-          });
-      } else {
-        this.createNewSession();
-      }
+    cleanupLegacySessions: function() {
+      try {
+        localStorage.removeItem('curbe_widget_session');
+      } catch (e) {}
     },
 
     createNewSession: function() {
