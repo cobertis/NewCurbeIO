@@ -29700,6 +29700,60 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       // Broadcast to inbox directly
       broadcastInboxMessage(conversation.companyId, sessionId);
       
+      // AI Autopilot Integration - Process message asynchronously
+      (async () => {
+        try {
+          const { AiAutopilotService } = await import("./services/ai-autopilot-service");
+          const autopilotService = new AiAutopilotService();
+          
+          const autopilotResult = await autopilotService.processIncomingMessage(
+            conversation.companyId,
+            conversation.id,
+            text.trim(),
+            "visitor"
+          );
+          
+          if (autopilotResult.shouldRespond && autopilotResult.response && !autopilotResult.requiresApproval) {
+            // Save AI response as outbound message
+            const [aiMessage] = await db.insert(telnyxMessages).values({
+              conversationId: conversation.id,
+              direction: "outbound",
+              messageType: "outgoing",
+              channel: "live_chat",
+              text: autopilotResult.response,
+              contentType: "text",
+              status: "delivered",
+              createdAt: new Date(),
+              sentAt: new Date(),
+            }).returning();
+            
+            // Update conversation with AI response
+            await db
+              .update(telnyxConversations)
+              .set({
+                lastMessage: autopilotResult.response.substring(0, 200),
+                lastMessageAt: new Date(),
+                updatedAt: new Date(),
+              })
+              .where(eq(telnyxConversations.id, conversation.id));
+            
+            // Broadcast AI response to visitor and agents (use sessionId for parity with human flow)
+            broadcastInboxMessage(conversation.companyId, sessionId);
+            broadcastLiveChatEvent(conversation.companyId, sessionId, "new_message", {
+              message: aiMessage,
+              isAiResponse: true,
+              direction: "outbound",
+            });
+            
+            console.log("[LiveChat AI] Autopilot responded to conversation:", conversation.id);
+          } else if (autopilotResult.requiresApproval) {
+            console.log("[LiveChat AI] Response requires approval, waiting for agent:", autopilotResult.runId);
+          }
+        } catch (aiError) {
+          console.error("[LiveChat AI] Autopilot error:", aiError.message);
+        }
+      })();
+      
       console.log("[LiveChat] New message in conversation:", conversation.id, "text:", text.substring(0, 50));
       
       res.set({ "Access-Control-Allow-Origin": "*" });
