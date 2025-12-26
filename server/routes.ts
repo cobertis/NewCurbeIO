@@ -38639,8 +38639,12 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         if (conv.channel !== "live_chat" || conv.status !== "waiting") {
           return conv;
         }
-        // Extract visitorId from phoneNumber (format: livechat_visitor_xxx)
-        const visitorId = conv.phoneNumber?.startsWith("livechat_") ? conv.phoneNumber.replace("livechat_", "") : null;
+        // Extract visitorId from phoneNumber (format: livechat_visitor_xxx or livechat_visitor_xxx_TIMESTAMP)
+        let visitorId = conv.phoneNumber?.startsWith("livechat_") ? conv.phoneNumber.replace("livechat_", "") : null;
+        // Remove timestamp suffix if present (format: _1234567890123 at the end - 13 digit timestamp)
+        if (visitorId && /^visitor_\d+_[a-z0-9]+_\d{13}$/.test(visitorId)) {
+          visitorId = visitorId.replace(/_\d{13}$/, "");
+        }
         // Check if visitor is currently active
         const visitorKey = conv.widgetId && visitorId ? `${conv.widgetId}:${visitorId}` : null;
         const isVisitorActive = visitorKey ? liveVisitors.has(visitorKey) : false;
