@@ -7246,3 +7246,180 @@ export const insertLiveChatConversationRatingSchema = createInsertSchema(liveCha
 
 export type LiveChatConversationRating = typeof liveChatConversationRatings.$inferSelect;
 export type InsertLiveChatConversationRating = z.infer<typeof insertLiveChatConversationRatingSchema>;
+
+// =====================================================
+// AI DESK MODULE - Knowledge Base Sources
+// =====================================================
+
+export const aiKbSources = pgTable("ai_kb_sources", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  type: text("type").notNull(), // 'url' | 'file'
+  name: text("name").notNull(), // Display name
+  url: text("url"), // For URL sources
+  fileId: varchar("file_id"), // Reference to uploaded file
+  status: text("status").notNull().default("idle"), // 'idle' | 'queued' | 'syncing' | 'ready' | 'failed'
+  lastSyncedAt: timestamp("last_synced_at"),
+  lastError: text("last_error"),
+  config: jsonb("config").default({}), // { maxPages, sameDomainOnly, includePaths, excludePaths }
+  pagesCount: integer("pages_count").notNull().default(0),
+  chunksCount: integer("chunks_count").notNull().default(0),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("ai_kb_sources_company_id_idx").on(table.companyId),
+}));
+
+export const insertAiKbSourceSchema = createInsertSchema(aiKbSources).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type AiKbSource = typeof aiKbSources.$inferSelect;
+export type InsertAiKbSource = z.infer<typeof insertAiKbSourceSchema>;
+
+// =====================================================
+// AI DESK MODULE - Ingested Documents/Pages
+// =====================================================
+
+export const aiKbDocuments = pgTable("ai_kb_documents", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  sourceId: varchar("source_id").notNull().references(() => aiKbSources.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  url: text("url"), // Original URL
+  contentHash: varchar("content_hash").notNull(), // For deduplication
+  meta: jsonb("meta").default({}), // { headers, description, etc }
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("ai_kb_documents_company_id_idx").on(table.companyId),
+  sourceIdIdx: index("ai_kb_documents_source_id_idx").on(table.sourceId),
+  contentHashIdx: index("ai_kb_documents_content_hash_idx").on(table.contentHash),
+}));
+
+export const insertAiKbDocumentSchema = createInsertSchema(aiKbDocuments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type AiKbDocument = typeof aiKbDocuments.$inferSelect;
+export type InsertAiKbDocument = z.infer<typeof insertAiKbDocumentSchema>;
+
+// =====================================================
+// AI DESK MODULE - Text Chunks with Embeddings
+// =====================================================
+
+export const aiKbChunks = pgTable("ai_kb_chunks", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  documentId: varchar("document_id").notNull().references(() => aiKbDocuments.id, { onDelete: "cascade" }),
+  chunkIndex: integer("chunk_index").notNull(),
+  content: text("content").notNull(),
+  embedding: text("embedding"), // Store as JSON string array for now (pgvector can be added later)
+  meta: jsonb("meta").default({}), // { pageUrl, headings, position }
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("ai_kb_chunks_company_id_idx").on(table.companyId),
+  documentIdIdx: index("ai_kb_chunks_document_id_idx").on(table.documentId),
+}));
+
+export const insertAiKbChunkSchema = createInsertSchema(aiKbChunks).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type AiKbChunk = typeof aiKbChunks.$inferSelect;
+export type InsertAiKbChunk = z.infer<typeof insertAiKbChunkSchema>;
+
+// =====================================================
+// AI DESK MODULE - Per-Tenant AI Settings
+// =====================================================
+
+export const aiAssistantSettings = pgTable("ai_assistant_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().unique().references(() => companies.id, { onDelete: "cascade" }),
+  copilotEnabled: boolean("copilot_enabled").notNull().default(false),
+  autopilotEnabled: boolean("autopilot_enabled").notNull().default(false),
+  confidenceThreshold: numeric("confidence_threshold").notNull().default("0.75"),
+  allowedTools: jsonb("allowed_tools").default([]), // Array of tool names
+  escalationRules: jsonb("escalation_rules").default({}), // { billing: 'human', legal: 'human', etc }
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertAiAssistantSettingsSchema = createInsertSchema(aiAssistantSettings).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type AiAssistantSettings = typeof aiAssistantSettings.$inferSelect;
+export type InsertAiAssistantSettings = z.infer<typeof insertAiAssistantSettingsSchema>;
+
+// =====================================================
+// AI DESK MODULE - Execution Logs (AI Runs)
+// =====================================================
+
+export const aiRuns = pgTable("ai_runs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  conversationId: varchar("conversation_id"), // Reference to conversation
+  messageId: varchar("message_id"), // Triggering message
+  mode: text("mode").notNull(), // 'copilot' | 'autopilot'
+  status: text("status").notNull().default("pending"), // 'pending' | 'running' | 'completed' | 'failed'
+  intent: text("intent"),
+  confidence: numeric("confidence"),
+  needsHuman: boolean("needs_human").notNull().default(false),
+  missingFields: jsonb("missing_fields"),
+  inputText: text("input_text").notNull(),
+  outputText: text("output_text"),
+  citations: jsonb("citations").default([]), // Array of chunk references
+  model: text("model").notNull(), // Model used
+  tokensIn: integer("tokens_in"),
+  tokensOut: integer("tokens_out"),
+  latencyMs: integer("latency_ms"),
+  costEstimate: numeric("cost_estimate"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("ai_runs_company_id_idx").on(table.companyId),
+  conversationIdIdx: index("ai_runs_conversation_id_idx").on(table.conversationId),
+}));
+
+export const insertAiRunSchema = createInsertSchema(aiRuns).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type AiRun = typeof aiRuns.$inferSelect;
+export type InsertAiRun = z.infer<typeof insertAiRunSchema>;
+
+// =====================================================
+// AI DESK MODULE - Tool Execution Logs (Action Logs)
+// =====================================================
+
+export const aiActionLogs = pgTable("ai_action_logs", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  runId: varchar("run_id").notNull().references(() => aiRuns.id, { onDelete: "cascade" }),
+  toolName: text("tool_name").notNull(),
+  args: jsonb("args").default({}),
+  result: jsonb("result"),
+  success: boolean("success"),
+  error: text("error"),
+  requiresApproval: boolean("requires_approval").notNull().default(false),
+  approvedByUserId: varchar("approved_by_user_id").references(() => users.id),
+  approvedAt: timestamp("approved_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("ai_action_logs_company_id_idx").on(table.companyId),
+  runIdIdx: index("ai_action_logs_run_id_idx").on(table.runId),
+}));
+
+export const insertAiActionLogSchema = createInsertSchema(aiActionLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type AiActionLog = typeof aiActionLogs.$inferSelect;
+export type InsertAiActionLog = z.infer<typeof insertAiActionLogSchema>;
