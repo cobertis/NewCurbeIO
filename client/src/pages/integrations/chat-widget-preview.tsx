@@ -3203,14 +3203,14 @@ export default function ChatWidgetPreviewPage() {
                     setShowPreChatForm(true);
                   }}
                 />
-              ) : chatFlowState === 'idle' && !effectiveWidgetData?.widget ? (
-                <div className="flex-1 flex items-center justify-center">
+              ) : (
+                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center" style={{ height: '680px' }}>
                   <div className="text-center">
                     <div className="animate-spin h-8 w-8 border-4 border-slate-300 border-t-slate-600 rounded-full mx-auto mb-3"></div>
-                    <p className="text-sm text-slate-500">Loading chat widget...</p>
+                    <p className="text-sm text-slate-500">Loading...</p>
                   </div>
                 </div>
-              ) : null}
+              )}
               
               {/* Offline status overlay for WidgetRenderer mode */}
               {!showPreChatForm && effectiveWidgetData?.widget && !scheduleStatus.isOnline && (
