@@ -197,6 +197,14 @@ export class AiIngestionService {
 
       try {
         console.log(`[AI-Ingestion] Fetching: ${currentUrl}`);
+        
+        // First try direct fetch
+        let html = "";
+        let title = "";
+        let content = "";
+        let links: string[] = [];
+        let usedJinaReader = false;
+        
         const response = await fetch(currentUrl, {
           headers: { 
             "User-Agent": "Mozilla/5.0 (compatible; CurbeKBBot/1.0; +https://curbe.io)",
@@ -217,10 +225,30 @@ export class AiIngestionService {
           continue;
         }
 
-        const html = await response.text();
+        html = await response.text();
         console.log(`[AI-Ingestion] HTML length: ${html.length}`);
-        const { title, content, links } = this.parseHtml(html, currentUrl);
+        const parsed = this.parseHtml(html, currentUrl);
+        title = parsed.title;
+        content = parsed.content;
+        links = parsed.links;
         console.log(`[AI-Ingestion] Parsed content length: ${content.length}, title: ${title}`);
+
+        // If content is too short, try Jina Reader API (renders JavaScript)
+        if (content.length < 100) {
+          console.log(`[AI-Ingestion] Content too short, trying Jina Reader for JS rendering...`);
+          try {
+            const jinaResult = await this.fetchWithJinaReader(currentUrl);
+            if (jinaResult.content.length > content.length) {
+              content = jinaResult.content;
+              title = jinaResult.title || title;
+              links = [...links, ...jinaResult.links];
+              usedJinaReader = true;
+              console.log(`[AI-Ingestion] Jina Reader success: ${content.length} chars, title: ${title}`);
+            }
+          } catch (jinaError: any) {
+            console.log(`[AI-Ingestion] Jina Reader failed: ${jinaError?.message || jinaError}`);
+          }
+        }
 
         if (!content || content.length < 100) {
           console.log(`[AI-Ingestion] Content too short (${content.length} chars), skipping`);
@@ -402,6 +430,74 @@ export class AiIngestionService {
       .replace(/&#39;/g, "'")
       .replace(/&#x27;/g, "'")
       .replace(/&#(\d+);/g, (_, num) => String.fromCharCode(parseInt(num, 10)));
+  }
+
+  private async fetchWithJinaReader(url: string): Promise<{ title: string; content: string; links: string[] }> {
+    const jinaUrl = `https://r.jina.ai/${url}`;
+    console.log(`[AI-Ingestion] Using Jina Reader: ${jinaUrl}`);
+    
+    const response = await fetch(jinaUrl, {
+      headers: {
+        "Accept": "text/plain",
+        "User-Agent": "Mozilla/5.0 (compatible; CurbeKBBot/1.0)",
+      },
+      signal: AbortSignal.timeout(60000),
+    });
+
+    if (!response.ok) {
+      throw new Error(`Jina Reader HTTP ${response.status}`);
+    }
+
+    const text = await response.text();
+    console.log(`[AI-Ingestion] Jina Reader returned ${text.length} chars`);
+
+    let title = "";
+    let content = text;
+    const links: string[] = [];
+
+    const titleMatch = text.match(/^Title:\s*(.+)$/m);
+    if (titleMatch) {
+      title = titleMatch[1].trim();
+      content = text.replace(/^Title:\s*.+$/m, "").trim();
+    }
+
+    const urlSourceMatch = text.match(/^URL Source:\s*(.+)$/m);
+    if (urlSourceMatch) {
+      content = content.replace(/^URL Source:\s*.+$/m, "").trim();
+    }
+
+    const markdownHeader = text.match(/^Markdown Content:\s*$/m);
+    if (markdownHeader) {
+      const markdownIndex = text.indexOf("Markdown Content:");
+      if (markdownIndex !== -1) {
+        content = text.substring(markdownIndex + "Markdown Content:".length).trim();
+      }
+    }
+
+    content = content
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, "$1")
+      .replace(/#{1,6}\s*/g, "")
+      .replace(/\*\*([^*]+)\*\*/g, "$1")
+      .replace(/\*([^*]+)\*/g, "$1")
+      .replace(/`([^`]+)`/g, "$1")
+      .replace(/!\[([^\]]*)\]\([^)]+\)/g, "")
+      .replace(/^[-*+]\s+/gm, "")
+      .replace(/^\d+\.\s+/gm, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+    const linkRegex = /\[([^\]]+)\]\(([^)]+)\)/g;
+    let match;
+    while ((match = linkRegex.exec(text)) !== null) {
+      try {
+        const absoluteUrl = new URL(match[2], url).href;
+        if (absoluteUrl.startsWith("http")) {
+          links.push(absoluteUrl);
+        }
+      } catch {}
+    }
+
+    return { title, content, links };
   }
 
   private chunkText(text: string): string[] {
