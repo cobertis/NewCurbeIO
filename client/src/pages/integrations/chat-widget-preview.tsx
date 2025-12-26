@@ -2046,7 +2046,10 @@ export default function ChatWidgetPreviewPage() {
             /* Active Live Chat View - Professional Design */
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: '520px' }}>
               {/* Header - Clean design like Textmagic */}
-              <div className="px-4 py-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+              <div 
+                className="px-4 py-4 border-b border-slate-200 dark:border-slate-700"
+                style={{ background: currentBackground }}
+              >
                 <div className="flex items-center justify-between">
                   {/* Logo */}
                   <div className="flex items-center gap-3">
@@ -2054,10 +2057,10 @@ export default function ChatWidgetPreviewPage() {
                       <img 
                         src={widget.branding.customLogo} 
                         alt="Logo" 
-                        className="h-8 w-auto"
+                        className="h-8 w-auto brightness-0 invert"
                       />
                     ) : (
-                      <span className="font-semibold text-slate-900 dark:text-white text-lg">
+                      <span className="font-semibold text-white text-lg">
                         {widget.welcomeTitle?.split(' ')[0] || 'Support'}
                       </span>
                     )}
@@ -2087,11 +2090,11 @@ export default function ChatWidgetPreviewPage() {
                     {chatStatus !== 'solved' && (
                       <button
                         onClick={() => setShowFinishConfirm(true)}
-                        className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors ml-2"
+                        className="p-1.5 hover:bg-white/10 rounded-full transition-colors ml-2"
                         title="End chat"
                         data-testid="button-finish-chat"
                       >
-                        <X className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+                        <X className="h-5 w-5 text-white" />
                       </button>
                     )}
                   </div>
@@ -2099,10 +2102,15 @@ export default function ChatWidgetPreviewPage() {
                 
                 {/* Greeting text */}
                 <div className="mt-3">
-                  <h4 className="text-xl font-bold text-slate-900 dark:text-white">
-                    {connectedAgent ? `Chat with ${connectedAgent.firstName || connectedAgent.fullName}` : 'Hi there 👋'}
+                  <h4 className="text-xl font-bold text-white">
+                    {connectedAgent ? `Chat with ${connectedAgent.firstName || connectedAgent.fullName}` : (
+                      <div style={{ fontSize: '24px', lineHeight: '1.2' }}>
+                        <div>Hi there 👋</div>
+                        <div>How can we help?</div>
+                      </div>
+                    )}
                   </h4>
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                  <p className="text-sm text-white/80 mt-0.5">
                     {connectedAgent ? 'Support Agent' : 'How can we help?'}
                   </p>
                 </div>
