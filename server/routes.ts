@@ -29135,10 +29135,11 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
         
         
-        // Check if there is a solved/archived conversation we can reopen (skip if forceNew)
+        // Check if there is a solved/archived conversation we can reopen
+        // When forceNew is true, we STILL need to find and reuse the existing conversation
+        // to avoid unique constraint violation - we just clear the old data
         let solvedConversation = null;
-        if (!forceNew) {
-          [solvedConversation] = await db
+        [solvedConversation] = await db
           .select()
           .from(telnyxConversations)
           .where(and(
@@ -29151,8 +29152,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           .limit(1);
         
         if (solvedConversation) {
-          // Reopen the solved conversation instead of creating a new one
-          console.log("[LiveChat] Reopening solved conversation:", solvedConversation.id, "for visitor:", visitorId);
+          // Reopen the solved conversation (clears satisfaction data for fresh start)
+          console.log("[LiveChat] Reopening solved conversation:", solvedConversation.id, "for visitor:", visitorId, forceNew ? "(forceNew)" : "");
           const displayName = visitorName || solvedConversation.displayName || "Website Visitor";
           await db.update(telnyxConversations)
             .set({
@@ -29173,7 +29174,6 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           // Broadcast update to notify agents of reopened chat
           const { broadcastConversationUpdate } = await import("./websocket");
           broadcastConversationUpdate(widget.companyId);
-        }
         }
 
         // Fetch geolocation

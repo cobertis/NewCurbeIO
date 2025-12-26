@@ -3017,17 +3017,14 @@ export default function ChatWidgetPreviewPage() {
               {chatFlowState === 'preChatForm' ? (
                 /* Pre-chat form - controlled by state machine */
                 <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 h-full">
-                  {/* Header with logo and agent photos - gradient background */}
-                  <div 
-                    className="px-5 py-4 flex items-center justify-between"
-                    style={{ background: currentBackground }}
-                  >
+                  {/* Header - same style as Home (WidgetHeader) */}
+                  <div className="px-5 py-4 flex items-center justify-between bg-white dark:bg-slate-900 border-b border-slate-100 dark:border-slate-700">
                     {/* Logo */}
                     <div className="flex items-center">
                       {widget.branding?.customLogo ? (
-                        <img src={widget.branding.customLogo} alt="Logo" className="h-6 object-contain brightness-0 invert" />
+                        <img src={widget.branding.customLogo} alt="Logo" className="h-7 object-contain" />
                       ) : (
-                        <span className="font-semibold text-white text-lg">
+                        <span className="font-semibold text-slate-900 dark:text-white text-lg">
                           {widget.welcomeTitle?.split(' ')[0] || 'Support'}
                         </span>
                       )}
@@ -3057,10 +3054,10 @@ export default function ChatWidgetPreviewPage() {
                         onClick={() => { 
                           resetChatSession();
                         }}
-                        className="p-1.5 hover:bg-white/10 rounded-full transition-colors"
+                        className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors z-10"
                         data-testid="button-close-prechat"
                       >
-                        <X className="h-5 w-5 text-white" />
+                        <ChevronDown className="h-6 w-6 text-slate-500" />
                       </button>
                     </div>
                   </div>
