@@ -1,5 +1,8 @@
 import { Express, Request, Response } from "express";
 import { z } from "zod";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import { aiDeskService } from "./services/ai-desk-service";
 import { aiOpenAIService } from "./services/ai-openai-service";
 import { aiIngestionService } from "./services/ai-ingestion-service";
@@ -8,6 +11,45 @@ const getCompanyId = (req: Request): string | null => {
   const user = (req as any).user;
   return user?.companyId || null;
 };
+
+const uploadsDir = path.join(process.cwd(), "uploads", "kb-files");
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
+const kbFileStorage = multer.diskStorage({
+  destination: (_req, _file, cb) => {
+    cb(null, uploadsDir);
+  },
+  filename: (_req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    const ext = path.extname(file.originalname);
+    cb(null, `kb-${uniqueSuffix}${ext}`);
+  },
+});
+
+const kbFileFilter = (_req: Request, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+  const allowedMimeTypes = [
+    "application/pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+    "text/plain",
+    "text/markdown",
+  ];
+  const allowedExtensions = [".pdf", ".docx", ".txt", ".md"];
+  const ext = path.extname(file.originalname).toLowerCase();
+  
+  if (allowedMimeTypes.includes(file.mimetype) || allowedExtensions.includes(ext)) {
+    cb(null, true);
+  } else {
+    cb(new Error("Only PDF, DOCX, TXT, and MD files are allowed"));
+  }
+};
+
+const kbUpload = multer({
+  storage: kbFileStorage,
+  fileFilter: kbFileFilter,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50MB max
+});
 
 export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActiveCompany: any) {
   
@@ -137,6 +179,89 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Create URL source with config options
+  app.post("/api/ai/kb/sources/url", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = getCompanyId(req);
+      if (!companyId) return res.status(400).json({ error: "No company" });
+
+      const schema = z.object({
+        name: z.string().min(1),
+        url: z.string().url(),
+        maxPages: z.number().min(1).max(100).optional(),
+        sameDomainOnly: z.boolean().optional(),
+        includePaths: z.array(z.string()).optional(),
+        excludePaths: z.array(z.string()).optional(),
+      });
+
+      const data = schema.parse(req.body);
+      const source = await aiDeskService.createKbSource({
+        companyId,
+        type: "url",
+        name: data.name,
+        url: data.url,
+        config: {
+          maxPages: data.maxPages ?? 10,
+          sameDomainOnly: data.sameDomainOnly ?? true,
+          includePaths: data.includePaths ?? [],
+          excludePaths: data.excludePaths ?? [],
+        },
+        status: "idle",
+        pagesCount: 0,
+        chunksCount: 0,
+      });
+      res.status(201).json({ source });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  // Create File source (multipart upload)
+  app.post("/api/ai/kb/sources/file", requireAuth, requireActiveCompany, kbUpload.single("file"), async (req: Request, res: Response) => {
+    try {
+      const companyId = getCompanyId(req);
+      if (!companyId) return res.status(400).json({ error: "No company" });
+
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ error: "No file uploaded" });
+      }
+
+      const name = req.body.name || file.originalname;
+      const storageKey = path.join("uploads", "kb-files", file.filename);
+
+      // Create file record
+      const fileRecord = await aiDeskService.createFile({
+        companyId,
+        storageKey,
+        mimeType: file.mimetype,
+        originalName: file.originalname,
+        size: file.size,
+      });
+
+      // Create source record linked to file
+      const source = await aiDeskService.createKbSource({
+        companyId,
+        type: "file",
+        name,
+        fileId: fileRecord.id,
+        config: {},
+        status: "idle",
+        pagesCount: 0,
+        chunksCount: 0,
+      });
+
+      res.status(201).json({ source, file: fileRecord });
+
+      // Start background ingestion
+      aiIngestionService.syncSource(companyId, source.id).catch((err) => {
+        console.error("[AI-Desk] File ingestion error:", err);
+      });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
     }
   });
 

@@ -7248,6 +7248,30 @@ export type LiveChatConversationRating = typeof liveChatConversationRatings.$inf
 export type InsertLiveChatConversationRating = z.infer<typeof insertLiveChatConversationRatingSchema>;
 
 // =====================================================
+// AI DESK MODULE - Uploaded Files for Knowledge Base
+// =====================================================
+
+export const aiKbFiles = pgTable("ai_kb_files", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  storageKey: varchar("storage_key").notNull(),
+  mimeType: varchar("mime_type").notNull(),
+  originalName: varchar("original_name").notNull(),
+  size: integer("size").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  companyIdIdx: index("ai_kb_files_company_id_idx").on(table.companyId),
+}));
+
+export const insertAiKbFileSchema = createInsertSchema(aiKbFiles).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type AiKbFile = typeof aiKbFiles.$inferSelect;
+export type InsertAiKbFile = z.infer<typeof insertAiKbFileSchema>;
+
+// =====================================================
 // AI DESK MODULE - Knowledge Base Sources
 // =====================================================
 
@@ -7255,13 +7279,13 @@ export const aiKbSources = pgTable("ai_kb_sources", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
   type: text("type").notNull(), // 'url' | 'file'
-  name: text("name").notNull(), // Display name
-  url: text("url"), // For URL sources
-  fileId: varchar("file_id"), // Reference to uploaded file
+  name: text("name").notNull(),
+  url: text("url"),
+  fileId: varchar("file_id").references(() => aiKbFiles.id, { onDelete: "set null" }),
   status: text("status").notNull().default("idle"), // 'idle' | 'queued' | 'syncing' | 'ready' | 'failed'
   lastSyncedAt: timestamp("last_synced_at"),
   lastError: text("last_error"),
-  config: jsonb("config").default({}), // { maxPages, sameDomainOnly, includePaths, excludePaths }
+  config: jsonb("config").default({}), // { maxPages, sameDomainOnly, includePaths[], excludePaths[] }
   pagesCount: integer("pages_count").notNull().default(0),
   chunksCount: integer("chunks_count").notNull().default(0),
   createdAt: timestamp("created_at").notNull().defaultNow(),

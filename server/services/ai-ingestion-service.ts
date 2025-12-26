@@ -1,9 +1,37 @@
 import { aiDeskService } from "./ai-desk-service";
 import { aiOpenAIService } from "./ai-openai-service";
 import crypto from "crypto";
+import fs from "fs";
+import path from "path";
 
 const MAX_CHUNK_SIZE = 1500;
 const CHUNK_OVERLAP = 200;
+
+// Dynamic imports for file processing to handle missing packages gracefully
+let pdfParse: any = null;
+let mammoth: any = null;
+
+async function loadPdfParse() {
+  if (!pdfParse) {
+    try {
+      pdfParse = (await import("pdf-parse")).default;
+    } catch (e) {
+      console.warn("[AI-Ingestion] pdf-parse not available");
+    }
+  }
+  return pdfParse;
+}
+
+async function loadMammoth() {
+  if (!mammoth) {
+    try {
+      mammoth = await import("mammoth");
+    } catch (e) {
+      console.warn("[AI-Ingestion] mammoth not available");
+    }
+  }
+  return mammoth;
+}
 
 export interface IngestionResult {
   success: boolean;
@@ -27,10 +55,115 @@ export class AiIngestionService {
         return await this.processUrl(companyId, sourceId, source.url, source.config as any);
       }
       
+      if (source.type === "file" && source.fileId) {
+        const file = await aiDeskService.getFile(companyId, source.fileId);
+        if (!file) {
+          throw new Error("File record not found");
+        }
+        const filePath = path.join(process.cwd(), file.storageKey);
+        return await this.ingestFile(companyId, sourceId, filePath, file.mimeType, file.originalName);
+      }
+      
       return { success: false, pagesProcessed: 0, chunksCreated: 0, chunksSkipped: 0, error: "Unsupported source type" };
     } catch (error: any) {
       const errorMsg = error.message || String(error);
       await aiDeskService.updateKbSourceStatus(companyId, sourceId, "failed", errorMsg);
+      return { success: false, pagesProcessed: 0, chunksCreated: 0, chunksSkipped: 0, error: errorMsg };
+    }
+  }
+
+  async ingestFile(
+    companyId: string,
+    sourceId: string,
+    filePath: string,
+    mimeType: string,
+    fileName: string
+  ): Promise<IngestionResult> {
+    let text = "";
+
+    try {
+      const ext = path.extname(fileName).toLowerCase();
+
+      if (mimeType === "application/pdf" || ext === ".pdf") {
+        const pdfParser = await loadPdfParse();
+        if (!pdfParser) {
+          throw new Error("PDF parsing not available - pdf-parse package not installed");
+        }
+        const dataBuffer = fs.readFileSync(filePath);
+        const pdfData = await pdfParser(dataBuffer);
+        text = pdfData.text || "";
+      } else if (
+        mimeType === "application/vnd.openxmlformats-officedocument.wordprocessingml.document" ||
+        ext === ".docx"
+      ) {
+        const mammothLib = await loadMammoth();
+        if (!mammothLib) {
+          throw new Error("DOCX parsing not available - mammoth package not installed");
+        }
+        const dataBuffer = fs.readFileSync(filePath);
+        const result = await mammothLib.extractRawText({ buffer: dataBuffer });
+        text = result.value || "";
+      } else if (mimeType === "text/plain" || mimeType === "text/markdown" || ext === ".txt" || ext === ".md") {
+        text = fs.readFileSync(filePath, "utf-8");
+      } else {
+        throw new Error(`Unsupported file type: ${mimeType}`);
+      }
+
+      if (!text || text.trim().length < 50) {
+        throw new Error("File contains insufficient text content");
+      }
+
+      const contentHash = crypto.createHash("sha256").update(text).digest("hex");
+      const currentVersion = await aiDeskService.getNextChunkVersion(companyId);
+
+      // Create document record
+      const doc = await aiDeskService.createDocument({
+        companyId,
+        sourceId,
+        title: fileName,
+        contentHash,
+        meta: { processedAt: new Date().toISOString(), fileType: mimeType },
+      });
+
+      // Chunk the text
+      const chunks = this.chunkText(text);
+      
+      // Create embeddings
+      const { embeddings } = await aiOpenAIService.createEmbeddings(chunks);
+
+      // Save chunks
+      const chunkRecords = chunks.map((content, index) => {
+        const chunkHash = crypto.createHash("sha256").update(content).digest("hex");
+        return {
+          companyId,
+          documentId: doc.id,
+          chunkIndex: index,
+          content,
+          contentHash: chunkHash,
+          version: currentVersion,
+          embedding: JSON.stringify(embeddings[index] || []),
+          meta: { fileName },
+        };
+      });
+
+      const result = await aiDeskService.createChunksWithDedup(chunkRecords);
+
+      await aiDeskService.archiveObsoleteChunks(companyId, currentVersion);
+      await aiDeskService.updateSourceCounts(companyId, sourceId);
+      await aiDeskService.updateKbSourceStatus(companyId, sourceId, "ready");
+
+      console.log(`[AI-Ingestion] File processed: ${fileName}, ${result.created} chunks created, ${result.skipped} skipped`);
+
+      return {
+        success: true,
+        pagesProcessed: 1,
+        chunksCreated: result.created,
+        chunksSkipped: result.skipped,
+      };
+    } catch (error: any) {
+      const errorMsg = error.message || String(error);
+      await aiDeskService.updateKbSourceStatus(companyId, sourceId, "failed", errorMsg);
+      console.error(`[AI-Ingestion] File ingestion failed: ${errorMsg}`);
       return { success: false, pagesProcessed: 0, chunksCreated: 0, chunksSkipped: 0, error: errorMsg };
     }
   }

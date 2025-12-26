@@ -1,6 +1,7 @@
 import { db } from "../db";
 import { eq, and, desc, asc, sql, isNull, inArray, lt } from "drizzle-orm";
 import {
+  aiKbFiles,
   aiKbSources,
   aiKbDocuments,
   aiKbChunks,
@@ -8,6 +9,8 @@ import {
   aiRuns,
   aiActionLogs,
   aiOutboxMessages,
+  type AiKbFile,
+  type InsertAiKbFile,
   type AiKbSource,
   type InsertAiKbSource,
   type AiKbDocument,
@@ -25,6 +28,49 @@ import {
 } from "@shared/schema";
 
 export class AiDeskService {
+  // =====================================================
+  // File Methods
+  // =====================================================
+
+  async createFile(data: InsertAiKbFile): Promise<AiKbFile> {
+    const [file] = await db.insert(aiKbFiles).values(data).returning();
+    return file;
+  }
+
+  async getFile(companyId: string, fileId: string): Promise<AiKbFile | null> {
+    const [file] = await db
+      .select()
+      .from(aiKbFiles)
+      .where(and(
+        eq(aiKbFiles.id, fileId),
+        eq(aiKbFiles.companyId, companyId)
+      ))
+      .limit(1);
+    return file ?? null;
+  }
+
+  async deleteFile(companyId: string, fileId: string): Promise<boolean> {
+    await db
+      .delete(aiKbFiles)
+      .where(and(
+        eq(aiKbFiles.id, fileId),
+        eq(aiKbFiles.companyId, companyId)
+      ));
+    return true;
+  }
+
+  async listFiles(companyId: string): Promise<AiKbFile[]> {
+    return db
+      .select()
+      .from(aiKbFiles)
+      .where(eq(aiKbFiles.companyId, companyId))
+      .orderBy(desc(aiKbFiles.createdAt));
+  }
+
+  // =====================================================
+  // AI Settings Methods
+  // =====================================================
+
   async getAiSettings(companyId: string): Promise<AiAssistantSettings | null> {
     const [settings] = await db
       .select()
