@@ -196,6 +196,7 @@ export default function ChatWidgetPreviewPage() {
   const widgetOpenRef = useRef<boolean>(widgetOpen);
   const connectedAgentRef = useRef<typeof connectedAgent>(null);
   const lastSeenMessageTimeRef = useRef<number>(0);
+  const initialMessageInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Use authenticated API only when not in public mode
   const { data: authWidgetData, isLoading: authLoading } = useQuery<{ widget: any }>({
@@ -1290,7 +1291,8 @@ export default function ChatWidgetPreviewPage() {
 
   // Poll for new messages when in active chat
   useEffect(() => {
-    if (!chatSessionId) return;
+    // Don't poll for pending sessions - they don't exist on the server yet
+    if (!chatSessionId || chatSessionId.startsWith('pending_')) return;
     
     const pollMessages = async () => {
       try {
@@ -1377,7 +1379,8 @@ export default function ChatWidgetPreviewPage() {
 
   // Poll for agent typing indicator
   useEffect(() => {
-    if (!chatSessionId) return;
+    // Don't poll for pending sessions - they don't exist on the server yet
+    if (!chatSessionId || chatSessionId.startsWith('pending_')) return;
     
     const pollTyping = async () => {
       try {
@@ -3028,6 +3031,7 @@ export default function ChatWidgetPreviewPage() {
                         data-testid="input-visitor-email"
                       />
                       <textarea
+                        ref={initialMessageInputRef}
                         placeholder="How can we help?"
                         value={initialMessage}
                         onChange={(e) => setInitialMessage(e.target.value)}
@@ -3039,8 +3043,10 @@ export default function ChatWidgetPreviewPage() {
                     
                     <button
                       onClick={() => {
-                        // Capture form values at click time to avoid React state sync issues
-                        startChatSession(undefined, initialMessage);
+                        // Capture form values DIRECTLY from input ref to avoid React state sync issues
+                        const messageValue = initialMessageInputRef.current?.value || initialMessage || '';
+                        console.log('[Chat] Pre-chat form submit - message value:', messageValue);
+                        startChatSession(undefined, messageValue);
                       }}
                       disabled={chatLoading}
                       className="w-full py-3 rounded-lg text-white font-medium transition-all hover:opacity-90 disabled:opacity-50"

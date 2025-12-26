@@ -1,0 +1,306 @@
+(Not Found)
+apply @ injected.js:214
+pollMessages @ chat-widget-preview.tsx:1299
+setInterval
+(anonymous) @ chat-widget-preview.tsx:1369
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=2456cdb5:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=2456cdb5:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=2456cdb5:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=2456cdb5:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=2456cdb5:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=2456cdb5:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=2456cdb5:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=2456cdb5:19328
+workLoop @ chunk-RPCDYKBN.js?v=2456cdb5:197
+flushWork @ chunk-RPCDYKBN.js?v=2456cdb5:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=2456cdb5:384Understand this error
+injected.js:214  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/public/live-chat/messages/pending_visitor_1766722464588_3o5qhbwn5 404 (Not Found)
+apply @ injected.js:214
+pollMessages @ chat-widget-preview.tsx:1299
+setInterval
+(anonymous) @ chat-widget-preview.tsx:1369
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=2456cdb5:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=2456cdb5:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=2456cdb5:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=2456cdb5:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=2456cdb5:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=2456cdb5:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=2456cdb5:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=2456cdb5:19328
+workLoop @ chunk-RPCDYKBN.js?v=2456cdb5:197
+flushWork @ chunk-RPCDYKBN.js?v=2456cdb5:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=2456cdb5:384Understand this error
+injected.js:214  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/public/live-chat/messages/pending_visitor_1766722464588_3o5qhbwn5 404 (Not Found)
+apply @ injected.js:214
+pollMessages @ chat-widget-preview.tsx:1299
+setInterval
+(anonymous) @ chat-widget-preview.tsx:1369
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=2456cdb5:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=2456cdb5:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=2456cdb5:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=2456cdb5:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=2456cdb5:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=2456cdb5:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=2456cdb5:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=2456cdb5:19328
+workLoop @ chunk-RPCDYKBN.js?v=2456cdb5:197
+flushWork @ chunk-RPCDYKBN.js?v=2456cdb5:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=2456cdb5:384Understand this error
+injected.js:214  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/public/live-chat/messages/pending_visitor_1766722464588_3o5qhbwn5 404 (Not Found)
+apply @ injected.js:214
+pollMessages @ chat-widget-preview.tsx:1299
+setInterval
+(anonymous) @ chat-widget-preview.tsx:1369
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=2456cdb5:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=2456cdb5:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=2456cdb5:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=2456cdb5:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=2456cdb5:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=2456cdb5:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=2456cdb5:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=2456cdb5:19328
+workLoop @ chunk-RPCDYKBN.js?v=2456cdb5:197
+flushWork @ chunk-RPCDYKBN.js?v=2456cdb5:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=2456cdb5:384Understand this error
+injected.js:214  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/public/live-chat/messages/pending_visitor_1766722464588_3o5qhbwn5 404 (Not Found)
+apply @ injected.js:214
+pollMessages @ chat-widget-preview.tsx:1299
+setInterval
+(anonymous) @ chat-widget-preview.tsx:1369
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=2456cdb5:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=2456cdb5:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=2456cdb5:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=2456cdb5:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=2456cdb5:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=2456cdb5:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=2456cdb5:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=2456cdb5:19328
+workLoop @ chunk-RPCDYKBN.js?v=2456cdb5:197
+flushWork @ chunk-RPCDYKBN.js?v=2456cdb5:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=2456cdb5:384Understand this error
+injected.js:214  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/public/live-chat/messages/pending_visitor_1766722464588_3o5qhbwn5 404 (Not Found)
+apply @ injected.js:214
+pollMessages @ chat-widget-preview.tsx:1299
+setInterval
+(anonymous) @ chat-widget-preview.tsx:1369
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=2456cdb5:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=2456cdb5:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=2456cdb5:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=2456cdb5:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=2456cdb5:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=2456cdb5:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=2456cdb5:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=2456cdb5:19328
+workLoop @ chunk-RPCDYKBN.js?v=2456cdb5:197
+flushWork @ chunk-RPCDYKBN.js?v=2456cdb5:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=2456cdb5:384Understand this error
+injected.js:214  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/public/live-chat/messages/pending_visitor_1766722464588_3o5qhbwn5 404 (Not Found)
+apply @ injected.js:214
+pollMessages @ chat-widget-preview.tsx:1299
+setInterval
+(anonymous) @ chat-widget-preview.tsx:1369
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=2456cdb5:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=2456cdb5:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=2456cdb5:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=2456cdb5:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=2456cdb5:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=2456cdb5:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=2456cdb5:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=2456cdb5:19328
+workLoop @ chunk-RPCDYKBN.js?v=2456cdb5:197
+flushWork @ chunk-RPCDYKBN.js?v=2456cdb5:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=2456cdb5:384Understand this error
+injected.js:214  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/public/live-chat/messages/pending_visitor_1766722464588_3o5qhbwn5 404 (Not Found)
+apply @ injected.js:214
+pollMessages @ chat-widget-preview.tsx:1299
+setInterval
+(anonymous) @ chat-widget-preview.tsx:1369
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=2456cdb5:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=2456cdb5:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=2456cdb5:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=2456cdb5:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=2456cdb5:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=2456cdb5:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=2456cdb5:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=2456cdb5:19328
+workLoop @ chunk-RPCDYKBN.js?v=2456cdb5:197
+flushWork @ chunk-RPCDYKBN.js?v=2456cdb5:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=2456cdb5:384Understand this error
+injected.js:37 [LiveChat] Agent timeout reached - showing offline fallback
+injected.js:214  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/public/live-chat/messages/pending_visitor_1766722464588_3o5qhbwn5 404 (Not Found)
+apply @ injected.js:214
+pollMessages @ chat-widget-preview.tsx:1299
+setInterval
+(anonymous) @ chat-widget-preview.tsx:1369
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=2456cdb5:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=2456cdb5:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=2456cdb5:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=2456cdb5:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=2456cdb5:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=2456cdb5:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=2456cdb5:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=2456cdb5:19328
+workLoop @ chunk-RPCDYKBN.js?v=2456cdb5:197
+flushWork @ chunk-RPCDYKBN.js?v=2456cdb5:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=2456cdb5:384Understand this error
+injected.js:214  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/public/live-chat/messages/pending_visitor_1766722464588_3o5qhbwn5 404 (Not Found)
+apply @ injected.js:214
+pollMessages @ chat-widget-preview.tsx:1299
+setInterval
+(anonymous) @ chat-widget-preview.tsx:1369
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=2456cdb5:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=2456cdb5:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=2456cdb5:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=2456cdb5:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=2456cdb5:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=2456cdb5:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=2456cdb5:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=2456cdb5:19328
+workLoop @ chunk-RPCDYKBN.js?v=2456cdb5:197
+flushWork @ chunk-RPCDYKBN.js?v=2456cdb5:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=2456cdb5:384Understand this error
+injected.js:214  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/public/live-chat/messages/pending_visitor_1766722464588_3o5qhbwn5 404 (Not Found)
+apply @ injected.js:214
+pollMessages @ chat-widget-preview.tsx:1299
+setInterval
+(anonymous) @ chat-widget-preview.tsx:1369
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=2456cdb5:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=2456cdb5:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=2456cdb5:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=2456cdb5:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=2456cdb5:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=2456cdb5:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=2456cdb5:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=2456cdb5:19328
+workLoop @ chunk-RPCDYKBN.js?v=2456cdb5:197
+flushWork @ chunk-RPCDYKBN.js?v=2456cdb5:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=2456cdb5:384Understand this error
+injected.js:214  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/public/live-chat/messages/pending_visitor_1766722464588_3o5qhbwn5 404 (Not Found)
+apply @ injected.js:214
+pollMessages @ chat-widget-preview.tsx:1299
+setInterval
+(anonymous) @ chat-widget-preview.tsx:1369
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=2456cdb5:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=2456cdb5:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=2456cdb5:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=2456cdb5:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=2456cdb5:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=2456cdb5:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=2456cdb5:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=2456cdb5:19328
+workLoop @ chunk-RPCDYKBN.js?v=2456cdb5:197
+flushWork @ chunk-RPCDYKBN.js?v=2456cdb5:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=2456cdb5:384Understand this error
+injected.js:214  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/public/live-chat/messages/pending_visitor_1766722464588_3o5qhbwn5 404 (Not Found)
+apply @ injected.js:214
+pollMessages @ chat-widget-preview.tsx:1299
+setInterval
+(anonymous) @ chat-widget-preview.tsx:1369
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=2456cdb5:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=2456cdb5:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=2456cdb5:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=2456cdb5:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=2456cdb5:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=2456cdb5:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=2456cdb5:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=2456cdb5:19328
+workLoop @ chunk-RPCDYKBN.js?v=2456cdb5:197
+flushWork @ chunk-RPCDYKBN.js?v=2456cdb5:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=2456cdb5:384Understand this error
+injected.js:214  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/public/live-chat/messages/pending_visitor_1766722464588_3o5qhbwn5 404 (Not Found)
+apply @ injected.js:214
+pollMessages @ chat-widget-preview.tsx:1299
+setInterval
+(anonymous) @ chat-widget-preview.tsx:1369
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=2456cdb5:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=2456cdb5:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=2456cdb5:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=2456cdb5:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=2456cdb5:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=2456cdb5:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=2456cdb5:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=2456cdb5:19328
+workLoop @ chunk-RPCDYKBN.js?v=2456cdb5:197
+flushWork @ chunk-RPCDYKBN.js?v=2456cdb5:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=2456cdb5:384Understand this error
+injected.js:214  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/public/live-chat/messages/pending_visitor_1766722464588_3o5qhbwn5 404 (Not Found)
+apply @ injected.js:214
+pollMessages @ chat-widget-preview.tsx:1299
+setInterval
+(anonymous) @ chat-widget-preview.tsx:1369
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=2456cdb5:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=2456cdb5:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=2456cdb5:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=2456cdb5:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=2456cdb5:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=2456cdb5:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=2456cdb5:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=2456cdb5:19328
+workLoop @ chunk-RPCDYKBN.js?v=2456cdb5:197
+flushWork @ chunk-RPCDYKBN.js?v=2456cdb5:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=2456cdb5:384Understand this error
+injected.js:214  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/public/live-chat/messages/pending_visitor_1766722464588_3o5qhbwn5 404 (Not Found)
+apply @ injected.js:214
+pollMessages @ chat-widget-preview.tsx:1299
+setInterval
+(anonymous) @ chat-widget-preview.tsx:1369
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=2456cdb5:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=2456cdb5:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=2456cdb5:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=2456cdb5:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=2456cdb5:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=2456cdb5:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=2456cdb5:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=2456cdb5:19328
+workLoop @ chunk-RPCDYKBN.js?v=2456cdb5:197
+flushWork @ chunk-RPCDYKBN.js?v=2456cdb5:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=2456cdb5:384Understand this error
+injected.js:214  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/public/live-chat/messages/pending_visitor_1766722464588_3o5qhbwn5 404 (Not Found)
+apply @ injected.js:214
+pollMessages @ chat-widget-preview.tsx:1299
+setInterval
+(anonymous) @ chat-widget-preview.tsx:1369
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=2456cdb5:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=2456cdb5:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=2456cdb5:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=2456cdb5:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=2456cdb5:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=2456cdb5:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=2456cdb5:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=2456cdb5:19328
+workLoop @ chunk-RPCDYKBN.js?v=2456cdb5:197
+flushWork @ chunk-RPCDYKBN.js?v=2456cdb5:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=2456cdb5:384Understand this error
+injected.js:214  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/public/live-chat/messages/pending_visitor_1766722464588_3o5qhbwn5 404 (Not Found)
+apply @ injected.js:214
+pollMessages @ chat-widget-preview.tsx:1299
+setInterval
+(anonymous) @ chat-widget-preview.tsx:1369
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=2456cdb5:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=2456cdb5:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=2456cdb5:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=2456cdb5:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=2456cdb5:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=2456cdb5:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=2456cdb5:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=2456cdb5:19328
+workLoop @ chunk-RPCDYKBN.js?v=2456cdb5:197
+flushWork @ chunk-RPCDYKBN.js?v=2456cdb5:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=2456cdb5:384Understand this error
+injected.js:214  GET https://8bb41dbe-f08e-48eb-a4e6-b7cff9250c1a-00-2vhiuc4jpu1u6.worf.replit.dev/api/public/live-chat/messages/pending_visitor_1766722464588_3o5qhbwn5 404 (Not Found)
+apply @ injected.js:214
+pollMessages @ chat-widget-preview.tsx:1299
+setInterval
+(anonymous) @ chat-widget-preview.tsx:1369
+commitHookEffectListMount @ chunk-RPCDYKBN.js?v=2456cdb5:16915
+commitPassiveMountOnFiber @ chunk-RPCDYKBN.js?v=2456cdb5:18156
+commitPassiveMountEffects_complete @ chunk-RPCDYKBN.js?v=2456cdb5:18129
+commitPassiveMountEffects_begin @ chunk-RPCDYKBN.js?v=2456cdb5:18119
+commitPassiveMountEffects @ chunk-RPCDYKBN.js?v=2456cdb5:18109
+flushPassiveEffectsImpl @ chunk-RPCDYKBN.js?v=2456cdb5:19490
+flushPassiveEffects @ chunk-RPCDYKBN.js?v=2456cdb5:19447
+(anonymous) @ chunk-RPCDYKBN.js?v=2456cdb5:19328
+workLoop @ chunk-RPCDYKBN.js?v=2456cdb5:197
+flushWork @ chunk-RPCDYKBN.js?v=2456cdb5:176
+performWorkUntilDeadline @ chunk-RPCDYKBN.js?v=2456cdb5:384Understand this error
+injected.js:37 [LiveChat] Starting 60s timeout for agent acceptance
