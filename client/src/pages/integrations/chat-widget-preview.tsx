@@ -287,6 +287,61 @@ export default function ChatWidgetPreviewPage() {
   // Stable companyId to prevent WebSocket reconnection loops
   const stableCompanyId = effectiveWidgetData?.widget?.companyId || null;
 
+  // Persistent device identity (Intercom model)
+  const [deviceId, setDeviceId] = useState<string | null>(null);
+  const [bootstrapData, setBootstrapData] = useState<{
+    contactId: string | null;
+    contactType: string;
+    conversations: Array<any>;
+    unreadCount: number;
+  } | null>(null);
+  const [bootstrapLoading, setBootstrapLoading] = useState(true);
+
+  // Initialize deviceId from localStorage or create new
+  useEffect(() => {
+    if (!widgetId) return;
+    const storageKey = `curbe_device_id:${widgetId}`;
+    let storedDeviceId = localStorage.getItem(storageKey);
+    if (!storedDeviceId) {
+      storedDeviceId = crypto.randomUUID();
+      localStorage.setItem(storageKey, storedDeviceId);
+    }
+    setDeviceId(storedDeviceId);
+  }, [widgetId]);
+
+  // Bootstrap: fetch persistent identity and conversations
+  useEffect(() => {
+    if (!widgetId || !deviceId) return;
+    setBootstrapLoading(true);
+    fetch(`/api/messenger/bootstrap?widgetId=${widgetId}&deviceId=${deviceId}`)
+      .then(res => res.json())
+      .then(data => {
+        setBootstrapData({
+          contactId: data.contactId,
+          contactType: data.contactType,
+          conversations: data.conversations || [],
+          unreadCount: data.unreadCount || 0,
+        });
+        // Set allSessions from bootstrap conversations
+        if (data.conversations && data.conversations.length > 0) {
+          setAllSessions(data.conversations.map((c: any) => ({
+            sessionId: c.id.toString(),
+            displayName: c.displayName,
+            lastMessage: c.lastMessage,
+            lastMessageAt: c.lastMessageAt,
+            createdAt: c.createdAt,
+            status: c.status,
+            agent: c.agent,
+          })));
+        }
+        setBootstrapLoading(false);
+      })
+      .catch(err => {
+        console.error('[Bootstrap] Error:', err);
+        setBootstrapLoading(false);
+      });
+  }, [widgetId, deviceId]);
+
   // Restore visitor profile from localStorage (Task 3: Skip pre-chat form for returning visitors)
   useEffect(() => {
     if (!widgetId) return;
@@ -308,6 +363,14 @@ export default function ChatWidgetPreviewPage() {
       console.error('[Chat] Failed to restore visitor profile:', e);
     }
   }, [widgetId]);
+
+  // Restore visitor profile from bootstrap data (skip pre-chat form for identified users)
+  useEffect(() => {
+    if (bootstrapData?.contactId && bootstrapData.contactType !== 'anonymous') {
+      // Skip pre-chat form for identified users - they have a persistent identity
+      console.log('[Bootstrap] Identified user detected, contactId:', bootstrapData.contactId);
+    }
+  }, [bootstrapData]);
 
   // Restore survey state from localStorage (Task 2: Persist survey state)
   useEffect(() => {
@@ -1125,6 +1188,7 @@ export default function ChatWidgetPreviewPage() {
         body: JSON.stringify({
           widgetId,
           visitorId: storedVisitorId,
+          deviceId,
           visitorName: visitorName || 'Website Visitor',
           visitorEmail: visitorEmail.trim() || undefined,
           visitorUrl: window.location.href,
@@ -1301,6 +1365,7 @@ export default function ChatWidgetPreviewPage() {
     const isPendingSession = chatSessionId.startsWith('pending_');
     
     try {
+      const clientMessageId = crypto.randomUUID();
       const res = await fetch('/api/public/live-chat/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1308,10 +1373,12 @@ export default function ChatWidgetPreviewPage() {
           // For pending sessions, send null so server creates conversation
           sessionId: isPendingSession ? null : chatSessionId,
           text,
+          clientMessageId,
           visitorName: visitorName || 'Website Visitor',
           // Always include widgetId and visitorId for conversation creation
           widgetId,
           visitorId: chatVisitorId,
+          deviceId,
           visitorEmail: visitorEmail.trim() || undefined,
           visitorUrl: window.location.href,
         }),
@@ -3403,6 +3470,15 @@ export default function ChatWidgetPreviewPage() {
                     }
                   }}
                   onStartNewChat={() => {
+                    // Check if there's an active (non-solved, non-archived) conversation
+                    const hasOpenConversation = allSessions.some(s => s.status !== 'solved' && s.status !== 'archived');
+                    if (hasOpenConversation) {
+                      toast({
+                        title: "Active conversation exists",
+                        description: "Please finish your current conversation first",
+                      });
+                      return;
+                    }
                     // Use state machine to start a new chat cleanly
                     resetChatSession();
                     // Always show pre-chat form so user can write their message

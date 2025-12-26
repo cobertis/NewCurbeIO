@@ -28932,7 +28932,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
 
   // POST /api/public/live-chat/session - Create or resume a live chat session
   app.post("/api/public/live-chat/session", async (req: Request, res: Response) => {
-    const { widgetId, visitorId, visitorName, visitorEmail, visitorUrl, visitorBrowser, visitorOs, forceNew } = req.body;
+    const { widgetId, visitorId, visitorName, visitorEmail, visitorUrl, visitorBrowser, visitorOs, forceNew, deviceId } = req.body;
     
     // Get visitor IP from request headers
     const visitorIp = (req.headers['x-forwarded-for'] as string)?.split(',')[0]?.trim() || req.ip || req.socket.remoteAddress || '';
@@ -29351,7 +29351,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   
   // POST /api/public/live-chat/message - Send a message from visitor
   app.post("/api/public/live-chat/message", async (req: Request, res: Response) => {
-    const { sessionId, text, visitorName, widgetId, visitorId, visitorEmail, visitorUrl, visitorBrowser, visitorOs, forceNew } = req.body;
+    const { sessionId, text, visitorName, widgetId, visitorId, visitorEmail, visitorUrl, visitorBrowser, visitorOs, forceNew, clientMessageId, deviceId } = req.body;
     
     if (!text) {
       return res.status(400).json({ error: "text is required" });
@@ -29464,6 +29464,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           visitorCurrentUrl: visitorUrl || null,
           visitorBrowser: visitorBrowser || null,
           visitorOs: visitorOs || null,
+          deviceId: deviceId || null,
         }).returning();
         conversation = newConv;
         console.log("[LiveChat] Created conversation on first message:", conversation.id, "for visitor:", visitorId);
@@ -29528,6 +29529,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         contentType: "text",
         status: "delivered",
         createdAt: new Date(),
+        clientMessageId: clientMessageId || null,
       }).returning();
       
       // Update conversation
