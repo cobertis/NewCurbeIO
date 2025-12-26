@@ -327,6 +327,36 @@ export class AiDeskService {
     return run;
   }
 
+  async recordReplyFeedback(companyId: string, runId: string, finalReply: string): Promise<AiRun | null> {
+    const run = await db
+      .select()
+      .from(aiRuns)
+      .where(and(
+        eq(aiRuns.id, runId),
+        eq(aiRuns.companyId, companyId)
+      ))
+      .limit(1)
+      .then(rows => rows[0]);
+
+    if (!run) return null;
+
+    const original = run.outputText || "";
+    const wasEdited = original !== finalReply;
+    const editDistance = Math.abs(finalReply.length - original.length); // simple character count difference as requested
+
+    const [updated] = await db
+      .update(aiRuns)
+      .set({
+        aiReplyFinal: finalReply,
+        wasEdited,
+        editDistance,
+      })
+      .where(eq(aiRuns.id, runId))
+      .returning();
+
+    return updated ?? null;
+  }
+
   async updateRun(companyId: string, runId: string, data: Partial<InsertAiRun>): Promise<AiRun | null> {
     const [updated] = await db
       .update(aiRuns)
@@ -481,6 +511,125 @@ export class AiDeskService {
       ))
       .orderBy(desc(aiRuns.createdAt))
       .limit(50);
+  }
+
+  async getAiMetrics(companyId: string, days: number = 30): Promise<{
+    overview: {
+      totalRuns: number;
+      copilotRuns: number;
+      autopilotRuns: number;
+      pendingApproval: number;
+      approved: number;
+      rejected: number;
+      approvalRate: number;
+      avgConfidence: number;
+      avgLatencyMs: number;
+      totalTokensIn: number;
+      totalTokensOut: number;
+      editedReplies: number;
+      editRate: number;
+    };
+    rejectionReasons: { reason: string; count: number }[];
+    intentDistribution: { intent: string; count: number }[];
+    dailyStats: { date: string; runs: number; approved: number; rejected: number }[];
+  }> {
+    const startDate = new Date(Date.now() - days * 24 * 60 * 60 * 1000);
+    
+    const runs = await db
+      .select()
+      .from(aiRuns)
+      .where(and(
+        eq(aiRuns.companyId, companyId),
+        sql`${aiRuns.createdAt} >= ${startDate}`
+      ));
+
+    const copilotRuns = runs.filter((r) => r.mode === "copilot");
+    const autopilotRuns = runs.filter((r) => r.mode === "autopilot");
+    const pendingApproval = runs.filter((r) => r.runState === "pending_approval");
+    const approved = runs.filter((r) => r.runState === "approved_sent");
+    const rejected = runs.filter((r) => r.runState === "rejected");
+    
+    const approvedCount = approved.length;
+    const rejectedCount = rejected.length;
+    const totalDecisions = approvedCount + rejectedCount;
+    const approvalRate = totalDecisions > 0 ? (approvedCount / totalDecisions) * 100 : 0;
+    
+    const editedReplies = copilotRuns.filter((r) => r.wasEdited).length;
+    const editRate = copilotRuns.length > 0 ? (editedReplies / copilotRuns.length) * 100 : 0;
+    
+    const confidenceValues = runs
+      .filter((r) => r.confidence !== null)
+      .map((r) => parseFloat(r.confidence!));
+    const avgConfidence = confidenceValues.length > 0
+      ? (confidenceValues.reduce((a, b) => a + b, 0) / confidenceValues.length) * 100
+      : 0;
+    
+    const latencyValues = runs.filter((r) => r.latencyMs !== null);
+    const avgLatencyMs = latencyValues.length > 0
+      ? latencyValues.reduce((acc, r) => acc + (r.latencyMs ?? 0), 0) / latencyValues.length
+      : 0;
+
+    const rejectionReasonCounts: Record<string, number> = {};
+    rejected.forEach((r) => {
+      const reason = r.rejectedReason || "No reason provided";
+      rejectionReasonCounts[reason] = (rejectionReasonCounts[reason] || 0) + 1;
+    });
+    const rejectionReasons = Object.entries(rejectionReasonCounts)
+      .map(([reason, count]) => ({ reason, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    const intentCounts: Record<string, number> = {};
+    runs.forEach((r) => {
+      const intent = r.intent || "Unknown";
+      intentCounts[intent] = (intentCounts[intent] || 0) + 1;
+    });
+    const intentDistribution = Object.entries(intentCounts)
+      .map(([intent, count]) => ({ intent, count }))
+      .sort((a, b) => b.count - a.count)
+      .slice(0, 10);
+
+    const dailyStatsMap: Record<string, { runs: number; approved: number; rejected: number }> = {};
+    for (let i = 0; i < days; i++) {
+      const d = new Date(Date.now() - i * 24 * 60 * 60 * 1000);
+      const dateStr = d.toISOString().split("T")[0];
+      dailyStatsMap[dateStr] = { runs: 0, approved: 0, rejected: 0 };
+    }
+    runs.forEach((r) => {
+      const dateStr = new Date(r.createdAt).toISOString().split("T")[0];
+      if (dailyStatsMap[dateStr]) {
+        dailyStatsMap[dateStr].runs++;
+        if (r.runState === "approved_sent") {
+          dailyStatsMap[dateStr].approved++;
+        } else if (r.runState === "rejected") {
+          dailyStatsMap[dateStr].rejected++;
+        }
+      }
+    });
+    const dailyStats = Object.entries(dailyStatsMap)
+      .map(([date, stats]) => ({ date, ...stats }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+
+    return {
+      overview: {
+        totalRuns: runs.length,
+        copilotRuns: copilotRuns.length,
+        autopilotRuns: autopilotRuns.length,
+        pendingApproval: pendingApproval.length,
+        approved: approvedCount,
+        rejected: rejectedCount,
+        approvalRate: Math.round(approvalRate * 10) / 10,
+        avgConfidence: Math.round(avgConfidence * 10) / 10,
+        avgLatencyMs: Math.round(avgLatencyMs),
+        totalTokensIn: runs.reduce((acc, r) => acc + (r.tokensIn ?? 0), 0),
+        totalTokensOut: runs.reduce((acc, r) => acc + (r.tokensOut ?? 0), 0),
+        editedReplies,
+        editRate: Math.round(editRate * 10) / 10,
+      },
+      rejectionReasons,
+      intentDistribution,
+      dailyStats,
+    };
   }
 }
 

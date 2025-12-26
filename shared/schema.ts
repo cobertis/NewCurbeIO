@@ -7386,6 +7386,11 @@ export const aiRuns = pgTable("ai_runs", {
   tokensOut: integer("tokens_out"),
   latencyMs: integer("latency_ms"),
   costEstimate: numeric("cost_estimate"),
+  // Feedback tracking
+  aiReplyOriginal: text("ai_reply_original"),
+  aiReplyFinal: text("ai_reply_final"),
+  wasEdited: boolean("was_edited").default(false),
+  editDistance: integer("edit_distance"),
   // Approval tracking
   approvedByUserId: varchar("approved_by_user_id").references(() => users.id),
   approvedAt: timestamp("approved_at"),

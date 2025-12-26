@@ -34,8 +34,15 @@ import {
   XCircle,
   ChevronRight,
   Globe,
-  Upload
+  Upload,
+  TrendingUp,
+  Percent,
+  Zap,
+  ThumbsUp,
+  ThumbsDown,
+  BarChart3
 } from "lucide-react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import aiDeskHeroImage from "@assets/image_1766776300912.png";
@@ -72,6 +79,25 @@ interface UsageStats {
   totalTokensOut: number;
   totalCost: number;
   avgLatencyMs: number;
+}
+
+interface AiMetrics {
+  overview: {
+    totalRuns: number;
+    copilotRuns: number;
+    autopilotRuns: number;
+    pendingApproval: number;
+    approved: number;
+    rejected: number;
+    approvalRate: number;
+    avgConfidence: number;
+    avgLatencyMs: number;
+    totalTokensIn: number;
+    totalTokensOut: number;
+  };
+  rejectionReasons: { reason: string; count: number }[];
+  intentDistribution: { intent: string; count: number }[];
+  dailyStats: { date: string; runs: number; approved: number; rejected: number }[];
 }
 
 interface AiRun {
@@ -131,6 +157,10 @@ export default function AiDeskSettingsPage() {
 
   const { data: usage } = useQuery<UsageStats>({
     queryKey: ["/api/ai/usage"],
+  });
+
+  const { data: metrics, isLoading: metricsLoading } = useQuery<AiMetrics>({
+    queryKey: ["/api/ai/metrics"],
   });
 
   const { data: runs, isLoading: runsLoading } = useQuery<AiRun[]>({
@@ -592,57 +622,182 @@ export default function AiDeskSettingsPage() {
         </TabsContent>
 
         <TabsContent value="usage" className="space-y-4">
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Total AI Runs</CardDescription>
-                <CardTitle className="text-3xl">{usage?.totalRuns ?? 0}</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Copilot Drafts</CardDescription>
-                <CardTitle className="text-3xl">{usage?.copilotRuns ?? 0}</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Autopilot Replies</CardDescription>
-                <CardTitle className="text-3xl">{usage?.autopilotRuns ?? 0}</CardTitle>
-              </CardHeader>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardDescription>Avg Response Time</CardDescription>
-                <CardTitle className="text-3xl">
-                  {usage?.avgLatencyMs ? `${Math.round(usage.avgLatencyMs)}ms` : "-"}
-                </CardTitle>
-              </CardHeader>
-            </Card>
-          </div>
-
-          <Card>
-            <CardHeader>
-              <CardTitle>Token Usage</CardTitle>
-              <CardDescription>Last 30 days</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="grid gap-4 md:grid-cols-3">
-                <div>
-                  <p className="text-sm text-muted-foreground">Input Tokens</p>
-                  <p className="text-2xl font-bold">{(usage?.totalTokensIn ?? 0).toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Output Tokens</p>
-                  <p className="text-2xl font-bold">{(usage?.totalTokensOut ?? 0).toLocaleString()}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Estimated Cost</p>
-                  <p className="text-2xl font-bold">${(usage?.totalCost ?? 0).toFixed(4)}</p>
-                </div>
+          {metricsLoading ? (
+            <LoadingSpinner fullScreen={false} message="Loading metrics..." />
+          ) : (
+            <>
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
+                <Card data-testid="card-total-runs">
+                  <CardHeader className="pb-2">
+                    <CardDescription className="flex items-center gap-1">
+                      <TrendingUp className="w-4 h-4" />
+                      Total AI Runs
+                    </CardDescription>
+                    <CardTitle className="text-3xl">{metrics?.overview.totalRuns ?? 0}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1">
+                        <Sparkles className="w-3 h-3" />
+                        {metrics?.overview.copilotRuns ?? 0} Copilot
+                      </span>
+                      <span className="flex items-center gap-1">
+                        <Brain className="w-3 h-3" />
+                        {metrics?.overview.autopilotRuns ?? 0} Autopilot
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card data-testid="card-approval-rate">
+                  <CardHeader className="pb-2">
+                    <CardDescription className="flex items-center gap-1">
+                      <Percent className="w-4 h-4" />
+                      Approval Rate
+                    </CardDescription>
+                    <CardTitle className="text-3xl">{metrics?.overview.approvalRate ?? 0}%</CardTitle>
+                  </CardHeader>
+                  <CardContent className="pt-0">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1 text-green-600">
+                        <ThumbsUp className="w-3 h-3" />
+                        {metrics?.overview.approved ?? 0}
+                      </span>
+                      <span className="flex items-center gap-1 text-red-600">
+                        <ThumbsDown className="w-3 h-3" />
+                        {metrics?.overview.rejected ?? 0}
+                      </span>
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card data-testid="card-avg-confidence">
+                  <CardHeader className="pb-2">
+                    <CardDescription className="flex items-center gap-1">
+                      <BarChart3 className="w-4 h-4" />
+                      Avg Confidence
+                    </CardDescription>
+                    <CardTitle className="text-3xl">{metrics?.overview.avgConfidence ?? 0}%</CardTitle>
+                  </CardHeader>
+                </Card>
+                <Card data-testid="card-avg-latency">
+                  <CardHeader className="pb-2">
+                    <CardDescription className="flex items-center gap-1">
+                      <Zap className="w-4 h-4" />
+                      Avg Latency
+                    </CardDescription>
+                    <CardTitle className="text-3xl">
+                      {metrics?.overview.avgLatencyMs ? `${metrics.overview.avgLatencyMs}ms` : "-"}
+                    </CardTitle>
+                  </CardHeader>
+                </Card>
+                <Card data-testid="card-pending-approval">
+                  <CardHeader className="pb-2">
+                    <CardDescription className="flex items-center gap-1">
+                      <Clock className="w-4 h-4" />
+                      Pending Approval
+                    </CardDescription>
+                    <CardTitle className="text-3xl">{metrics?.overview.pendingApproval ?? 0}</CardTitle>
+                  </CardHeader>
+                </Card>
               </div>
-            </CardContent>
-          </Card>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <Card data-testid="card-intent-distribution">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <BarChart3 className="w-5 h-5" />
+                      Intent Distribution
+                    </CardTitle>
+                    <CardDescription>Top intents from AI runs</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {metrics?.intentDistribution && metrics.intentDistribution.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={250}>
+                        <BarChart data={metrics.intentDistribution} layout="vertical" margin={{ left: 20, right: 20 }}>
+                          <CartesianGrid strokeDasharray="3 3" horizontal={true} vertical={false} />
+                          <XAxis type="number" />
+                          <YAxis 
+                            dataKey="intent" 
+                            type="category" 
+                            width={100} 
+                            tick={{ fontSize: 12 }}
+                            tickFormatter={(value) => value.length > 15 ? `${value.slice(0, 15)}...` : value}
+                          />
+                          <Tooltip 
+                            contentStyle={{ background: 'hsl(var(--background))', border: '1px solid hsl(var(--border))' }}
+                            labelStyle={{ fontWeight: 'bold' }}
+                          />
+                          <Bar dataKey="count" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="flex items-center justify-center h-[250px] text-muted-foreground">
+                        <div className="text-center">
+                          <BarChart3 className="w-12 h-12 mx-auto mb-2 opacity-20" />
+                          <p>No intent data available</p>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card data-testid="card-rejection-reasons">
+                  <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                      <XCircle className="w-5 h-5" />
+                      Rejection Reasons
+                    </CardTitle>
+                    <CardDescription>Why responses were rejected</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {metrics?.rejectionReasons && metrics.rejectionReasons.length > 0 ? (
+                      <div className="space-y-3">
+                        {metrics.rejectionReasons.map((item, index) => (
+                          <div key={index} className="flex items-center justify-between" data-testid={`rejection-reason-${index}`}>
+                            <span className="text-sm truncate max-w-[200px]" title={item.reason}>
+                              {item.reason}
+                            </span>
+                            <Badge variant="secondary">{item.count}</Badge>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-[200px] text-muted-foreground">
+                        <div className="text-center">
+                          <CheckCircle className="w-12 h-12 mx-auto mb-2 opacity-20 text-green-500" />
+                          <p>No rejections recorded</p>
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              <Card data-testid="card-token-usage">
+                <CardHeader>
+                  <CardTitle>Token Usage</CardTitle>
+                  <CardDescription>Last 30 days</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Input Tokens</p>
+                      <p className="text-2xl font-bold">{(metrics?.overview.totalTokensIn ?? 0).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Output Tokens</p>
+                      <p className="text-2xl font-bold">{(metrics?.overview.totalTokensOut ?? 0).toLocaleString()}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Total Tokens</p>
+                      <p className="text-2xl font-bold">
+                        {((metrics?.overview.totalTokensIn ?? 0) + (metrics?.overview.totalTokensOut ?? 0)).toLocaleString()}
+                      </p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </>
+          )}
         </TabsContent>
 
         <TabsContent value="activity" className="space-y-4">

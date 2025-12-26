@@ -250,6 +250,7 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
         tokensOut: result.tokensOut,
         latencyMs,
         costEstimate: String(aiOpenAIService.estimateCost(result.tokensIn, result.tokensOut)),
+        aiReplyOriginal: result.draftReply,
       });
 
       res.json({
@@ -282,6 +283,28 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
     }
   });
 
+  app.post("/api/ai/runs/:runId/feedback", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = getCompanyId(req);
+      if (!companyId) return res.status(400).json({ error: "No company" });
+
+      const schema = z.object({
+        finalReply: z.string(),
+      });
+
+      const { finalReply } = schema.parse(req.body);
+      const run = await aiDeskService.recordReplyFeedback(companyId, req.params.runId, finalReply);
+      
+      if (!run) {
+        return res.status(404).json({ error: "Run not found" });
+      }
+
+      res.json({ success: true, run });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/ai/runs/:runId/actions", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
     try {
       const companyId = getCompanyId(req);
@@ -304,6 +327,19 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
 
       const stats = await aiDeskService.getUsageStats(companyId, startDate, endDate);
       res.json(stats);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/ai/metrics", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = getCompanyId(req);
+      if (!companyId) return res.status(400).json({ error: "No company" });
+
+      const days = parseInt(req.query.days as string) || 30;
+      const metrics = await aiDeskService.getAiMetrics(companyId, days);
+      res.json(metrics);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
