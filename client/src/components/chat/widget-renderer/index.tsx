@@ -266,7 +266,7 @@ export function WidgetRenderer({
   return (
     <div
       ref={containerRef}
-      className="rounded-2xl shadow-lg bg-white flex flex-col"
+      className={`rounded-2xl shadow-lg bg-white flex flex-col ${mode === "embed" ? "overflow-hidden h-[600px]" : ""}`}
       data-testid="widget-renderer"
       data-mode={mode}
     >
@@ -276,7 +276,7 @@ export function WidgetRenderer({
       </div>
 
       {/* Content */}
-      <div className="px-5">
+      <div className={`px-5 ${mode === "embed" ? "flex-1 overflow-y-auto" : ""}`}>
         {renderContent()}
 
         {/* Footer Branding */}
