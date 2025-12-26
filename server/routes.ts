@@ -28776,17 +28776,22 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       
       
       // Check for a SOLVED conversation for this visitor (for history/rating display)
-      const [solvedConversation] = await db
-        .select()
-        .from(telnyxConversations)
-        .where(and(
-          eq(telnyxConversations.companyId, companyId),
-          eq(telnyxConversations.phoneNumber, `livechat_${finalVisitorId}`),
-          eq(telnyxConversations.channel, "live_chat"),
-          inArray(telnyxConversations.status, ["solved", "archived"])
-        ))
-        .orderBy(desc(telnyxConversations.createdAt))
-        .limit(1);
+      // Skip if forceNew is true - user wants a completely fresh session
+      let solvedConversation = null;
+      if (!forceNew) {
+        const solvedResult = await db
+          .select()
+          .from(telnyxConversations)
+          .where(and(
+            eq(telnyxConversations.companyId, companyId),
+            eq(telnyxConversations.phoneNumber, `livechat_${finalVisitorId}`),
+            eq(telnyxConversations.channel, "live_chat"),
+            inArray(telnyxConversations.status, ["solved", "archived"])
+          ))
+          .orderBy(desc(telnyxConversations.createdAt))
+          .limit(1);
+        solvedConversation = solvedResult[0] || null;
+      }
       
       if (solvedConversation) {
         console.log("[LiveChat] Found solved session for visitor:", finalVisitorId, "Rating:", solvedConversation.satisfactionRating);

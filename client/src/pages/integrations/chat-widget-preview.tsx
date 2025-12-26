@@ -963,8 +963,11 @@ export default function ChatWidgetPreviewPage() {
   };
 
   // Live chat functions
-  const startChatSession = async () => {
+  const startChatSession = async (overrideForceNew?: boolean) => {
     if (!widgetId) return;
+    
+    // Use override if provided, otherwise use state (override handles React async state issue)
+    const shouldForceNew = overrideForceNew ?? forceNewChat;
     
     setChatLoading(true);
     try {
@@ -1005,7 +1008,7 @@ export default function ChatWidgetPreviewPage() {
           visitorUrl: window.location.href,
           visitorBrowser: browserName,
           visitorOs: osName,
-            forceNew: forceNewChat,
+          forceNew: shouldForceNew,
         }),
       });
       
@@ -1050,7 +1053,7 @@ export default function ChatWidgetPreviewPage() {
             visitorUrl: window.location.href,
             visitorBrowser: browserName,
             visitorOs: osName,
-            forceNew: forceNewChat,
+            forceNew: shouldForceNew,
           }),
         });
         
@@ -2919,13 +2922,24 @@ export default function ChatWidgetPreviewPage() {
                     }
                   }}
                   onStartNewChat={() => {
+                    // Clear any existing solved chat state
+                    setSolvedChatData(null);
+                    setViewingSolvedChat(false);
+                    setChatSessionId(null);
+                    setChatMessages([]);
+                    setConnectedAgent(null);
+                    setSurveyRating(null);
+                    setSurveyFeedback('');
+                    setSurveySubmitted(false);
+                    setShowSurveyModal(false);
+                    
                     const storedProfile = localStorage.getItem(`chatVisitorProfile-${widgetId}`);
                     if (storedProfile) {
                       try {
                         const profile = JSON.parse(storedProfile);
                         if (profile.name || profile.email) {
                           setForceNewChat(true);
-                          startChatSession();
+                          startChatSession(true); // Pass true directly to avoid React state timing issue
                           return;
                         }
                       } catch (e) {
@@ -3055,7 +3069,7 @@ export default function ChatWidgetPreviewPage() {
                           </div>
                         </div>
                         <button 
-                          onClick={startChatSession}
+                          onClick={() => startChatSession()}
                           disabled={chatLoading || (widget.liveChatSettings?.preChatForm?.emailFieldRequired !== false && !visitorEmail.trim())}
                           className="w-full py-2.5 px-4 rounded-lg text-white text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
                           style={{ background: currentBackground }}
