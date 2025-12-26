@@ -82,6 +82,7 @@ export default function ChatWidgetPreviewPage() {
   const [copied, setCopied] = useState(false);
   const [widgetOpen, setWidgetOpen] = useState(false);
   const [activeChannel, setActiveChannel] = useState<string | null>(null);
+  const [activeWidgetTab, setActiveWidgetTab] = useState<"home" | "messages" | "help" | "news">("home");
   const [shouldDisplay, setShouldDisplay] = useState<boolean | null>(null);
   const [visitorCountry, setVisitorCountry] = useState<string | null>(null);
   const [targetingChecked, setTargetingChecked] = useState(false);
@@ -2606,10 +2607,21 @@ export default function ChatWidgetPreviewPage() {
           ) : (
             <div className="relative" style={{ height: '520px' }}>
               {/* Home screen using WidgetRenderer - shown when no special overlays are active */}
-              {!showPreChatForm && !existingSession && effectiveWidgetData?.widget ? (
+              {!showPreChatForm && effectiveWidgetData?.widget ? (
                 <WidgetRenderer 
                   config={mapChatWidgetToConfig(effectiveWidgetData.widget)}
                   mode="embed"
+                  activeTab={activeWidgetTab}
+                  onTabChange={(tab) => {
+                    setActiveWidgetTab(tab);
+                    if (tab === "messages" && existingSession) {
+                      if (existingSession.status === 'solved' || existingSession.status === 'closed') {
+                        viewSolvedChat();
+                      } else {
+                        resumeChat();
+                      }
+                    }
+                  }}
                   onClose={() => setWidgetOpen(false)}
                   onChannelClick={(channel) => {
                     if (channel === 'liveChat') {
@@ -2630,8 +2642,18 @@ export default function ChatWidgetPreviewPage() {
                       setActiveChannel(channel);
                     }
                   }}
+                  existingSession={existingSession}
+                  onResumeChat={() => {
+                    if (existingSession?.status === 'solved' || existingSession?.status === 'closed') {
+                      viewSolvedChat();
+                    } else {
+                      resumeChat();
+                    }
+                  }}
+                  isOffline={!scheduleStatus.isOnline}
+                  nextAvailable={scheduleStatus.nextAvailable}
                 />
-              ) : (
+              ) : showPreChatForm ? (
                 <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 h-full">
                   {/* Header with logo and agent photos - gradient background */}
                   <div 
@@ -2808,10 +2830,10 @@ export default function ChatWidgetPreviewPage() {
                     </p>
                   </div>
                 </div>
-              )}
+              ) : null}
               
               {/* Offline status overlay for WidgetRenderer mode */}
-              {!showPreChatForm && !existingSession && effectiveWidgetData?.widget && !scheduleStatus.isOnline && (
+              {!showPreChatForm && effectiveWidgetData?.widget && !scheduleStatus.isOnline && (
                 <div className="absolute top-[80px] left-5 right-5 z-10">
                   <div className="bg-amber-50 dark:bg-amber-900/30 rounded-lg px-4 py-3">
                     <div className="flex items-center gap-2">
