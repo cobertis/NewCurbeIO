@@ -250,30 +250,27 @@ export function WidgetRenderer({
       data-testid="widget-renderer"
       data-mode={mode}
     >
-      {/* Header */}
+      {/* Header - Always show logo and avatars */}
       <div className="p-4">
-        {activeChannel ? (
-          <div 
-            className="flex items-center gap-2 text-white rounded-xl px-4 py-3"
-            style={{ backgroundColor: iconColor }}
-          >
-            <button 
-              onClick={onBackFromChannel} 
-              className="hover:opacity-80 transition-opacity"
-              data-testid="widget-back-button"
-            >
-              <ChevronLeft className="h-5 w-5" />
-            </button>
-            <span className="font-medium capitalize">{activeChannel}</span>
-          </div>
-        ) : (
-          <WidgetHeader config={config} onClose={onClose} />
-        )}
+        <WidgetHeader config={config} onClose={onClose} />
       </div>
 
       {/* Content */}
       <div className="px-5 flex-1 overflow-y-auto">
-        {activeChannel && channelContent ? channelContent : renderContent()}
+        {activeChannel && channelContent ? (
+          <>
+            {/* Back button inside content area */}
+            <button 
+              onClick={onBackFromChannel}
+              className="flex items-center gap-1 text-sm text-slate-500 hover:text-slate-700 mb-3 -ml-1"
+              data-testid="widget-back-button"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              <span>Back</span>
+            </button>
+            {channelContent}
+          </>
+        ) : renderContent()}
       </div>
 
       {/* Bottom Navigation */}
