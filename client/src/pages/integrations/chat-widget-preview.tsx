@@ -977,22 +977,7 @@ export default function ChatWidgetPreviewPage() {
   const startNewChat = () => {
     resetChatSession();
     
-    // Check for stored profile to decide flow
-    const storedProfile = localStorage.getItem(`chatVisitorProfile-${widgetId}`);
-    if (storedProfile) {
-      try {
-        const profile = JSON.parse(storedProfile);
-        if (profile.name || profile.email) {
-          // Has profile - start chat directly
-          startChatSession(true);
-          return;
-        }
-      } catch (e) {
-        console.error('[Chat] Failed to parse stored profile:', e);
-      }
-    }
-    
-    // No profile - show pre-chat form
+    // Always show pre-chat form so user can write their message
     setChatFlowState('preChatForm');
     console.log('[Chat] Starting new chat - showing pre-chat form');
   };
