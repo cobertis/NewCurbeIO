@@ -1853,9 +1853,9 @@ export default function ChatWidgetPreviewPage() {
           )}
           
           <div className="text-center pt-2">
-            <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
+            <a href="https://curbe.io" target="_blank" rel="noopener noreferrer" className="text-xs text-slate-400 flex items-center justify-center gap-1 hover:text-slate-600 transition-colors">
               Powered by <img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" />
-            </p>
+            </a>
           </div>
         </div>
       </div>
@@ -2371,9 +2371,9 @@ export default function ChatWidgetPreviewPage() {
               
               {/* Footer */}
               <div className="py-2 border-t border-slate-100 dark:border-slate-700 text-center bg-slate-50 dark:bg-slate-800/50">
-                <p className="text-[10px] text-slate-400 flex items-center justify-center gap-1">
+                <a href="https://curbe.io" target="_blank" rel="noopener noreferrer" className="text-[10px] text-slate-400 flex items-center justify-center gap-1 hover:text-slate-600 transition-colors">
                   Powered by <img src={curbeLogo} alt="Curbe" className="h-2.5 w-auto inline-block opacity-60" />
-                </p>
+                </a>
               </div>
             </div>
           ) : chatFlowState === 'activeChat' ? (
@@ -2942,9 +2942,9 @@ export default function ChatWidgetPreviewPage() {
               
               {/* Footer */}
               <div className="py-2 border-t border-slate-100 dark:border-slate-700 text-center bg-slate-50 dark:bg-slate-800/50">
-                <p className="text-[10px] text-slate-400 flex items-center justify-center gap-1">
+                <a href="https://curbe.io" target="_blank" rel="noopener noreferrer" className="text-[10px] text-slate-400 flex items-center justify-center gap-1 hover:text-slate-600 transition-colors">
                   Powered by <img src={curbeLogo} alt="Curbe" className="h-2.5 w-auto inline-block opacity-60" />
-                </p>
+                </a>
               </div>
             </div>
           ) : (
@@ -3057,9 +3057,9 @@ export default function ChatWidgetPreviewPage() {
                   
                   {/* Footer */}
                   <div className="absolute bottom-0 left-0 right-0 py-2 border-t border-slate-100 dark:border-slate-700 text-center bg-slate-50 dark:bg-slate-800/50">
-                    <p className="text-[10px] text-slate-400 flex items-center justify-center gap-1">
+                    <a href="https://curbe.io" target="_blank" rel="noopener noreferrer" className="text-[10px] text-slate-400 flex items-center justify-center gap-1 hover:text-slate-600 transition-colors">
                       Powered by <img src={curbeLogo} alt="Curbe" className="h-2.5 w-auto inline-block opacity-60" />
-                    </p>
+                    </a>
                   </div>
                 </div>
               ) : chatFlowState === 'idle' && effectiveWidgetData?.widget ? (
