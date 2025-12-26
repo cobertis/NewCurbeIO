@@ -26,6 +26,7 @@ import {
   Sparkles,
   AlertCircle,
   CheckCircle,
+  CheckCircle2,
   Clock,
   FileText,
   Database,
@@ -40,7 +41,8 @@ import {
   Zap,
   ThumbsUp,
   ThumbsDown,
-  BarChart3
+  BarChart3,
+  PlayCircle
 } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -329,102 +331,124 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
   if (!showSettings && !hasExistingSources) {
     return (
       <div className="space-y-8" data-testid="page-ai-desk">
-        {!embedded && (
-          <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-            <span>Settings</span>
-            <ChevronRight className="h-4 w-4" />
-            <span className="font-medium text-foreground">AI Desk</span>
-          </div>
-        )}
-
-        <h1 className="text-2xl font-bold" data-testid="heading-ai-desk">AI Desk</h1>
-
-        <Card className="border-0 shadow-none bg-slate-50 dark:bg-slate-900">
-          <CardContent className="p-8">
-            <div className="flex flex-col lg:flex-row items-start gap-8">
+        <Card className="border-slate-200 dark:border-slate-800">
+          <CardContent className="p-6 md:p-8">
+            <div className="flex flex-col md:flex-row gap-8 items-center">
               <div className="flex-1 space-y-6">
-                <div className="space-y-3">
-                  <h2 className="text-xl font-semibold">Respond faster with AI assistant</h2>
-                  <p className="text-muted-foreground">
-                    Help your team respond quickly using AI-powered replies based on your knowledge base. Upload
-                    documents, manage sources, and boost productivity with instant, accurate answers.
+                <div>
+                  <h2 className="text-xl font-semibold text-slate-900 dark:text-slate-100 mb-2">
+                    Respond faster with AI assistant
+                  </h2>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">
+                    Help your team respond quickly using AI-powered replies based on your knowledge base. Upload documents, manage sources, and boost productivity with instant, accurate answers.
                   </p>
                 </div>
-
-                <ul className="space-y-2">
-                  <li className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span>Answer questions instantly using AI</span>
-                  </li>
-                  <li className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span>Get replies from your trusted sources</span>
-                  </li>
-                  <li className="flex items-center gap-2 text-sm">
-                    <CheckCircle className="h-4 w-4 text-green-500" />
-                    <span>Add and update knowledge anytime</span>
-                  </li>
-                </ul>
-
-                <div className="flex gap-3">
-                  <Button onClick={handleGetStarted} data-testid="button-get-started">
+                
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                    <span className="text-sm text-slate-700 dark:text-slate-300">Answer questions instantly using AI</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                    <span className="text-sm text-slate-700 dark:text-slate-300">Get replies from your trusted sources</span>
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />
+                    <span className="text-sm text-slate-700 dark:text-slate-300">Add and update knowledge anytime</span>
+                  </div>
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  <Button 
+                    onClick={handleGetStarted}
+                    data-testid="button-get-started"
+                  >
                     Get started
                   </Button>
-                  <Button variant="outline" data-testid="button-learn-more">
-                    Learn more
+                  <Button 
+                    variant="outline"
+                    className="gap-2"
+                    onClick={() => window.open("https://support.curbe.io/ai-desk", "_blank")}
+                    data-testid="button-watch-tutorial"
+                  >
+                    <PlayCircle className="h-4 w-4" />
+                    Watch tutorial
                   </Button>
                 </div>
               </div>
-
-              <div className="flex-1 flex justify-center">
+              
+              <div className="w-full md:w-96 shrink-0">
                 <img 
                   src={aiDeskHeroImage} 
-                  alt="AI Desk Assistant" 
-                  className="max-w-md w-full rounded-lg shadow-lg"
+                  alt="AI Desk Assistant interface preview"
+                  className="w-full h-auto rounded-lg"
                   data-testid="img-ai-desk-hero"
                 />
               </div>
             </div>
           </CardContent>
         </Card>
-
-        <div className="space-y-6">
-          <div className="text-center space-y-2">
-            <h2 className="text-xl font-semibold">AI assistant FAQ</h2>
-            <p className="text-muted-foreground">
+        
+        <div className="space-y-4">
+          <div className="text-center">
+            <h3 className="text-lg font-semibold text-slate-900 dark:text-slate-100">AI Desk FAQ</h3>
+            <p className="text-sm text-slate-500 dark:text-slate-400">
               Haven't found what you were looking for?{" "}
-              <a href="#" className="text-primary hover:underline">Contact us</a>
+              <a 
+                href="https://support.curbe.io/contact" 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-700 dark:text-blue-400"
+                data-testid="link-contact-us"
+              >
+                Contact us
+              </a>
             </p>
           </div>
-
-          <Accordion type="single" collapsible className="w-full max-w-3xl mx-auto">
-            <AccordionItem value="what-is">
-              <AccordionTrigger className="text-left">What is AI Desk?</AccordionTrigger>
-              <AccordionContent>
+          
+          <Accordion type="single" collapsible className="w-full">
+            <AccordionItem value="what-is" className="border border-slate-200 dark:border-slate-800 rounded-lg mb-2 px-4">
+              <AccordionTrigger className="text-sm font-medium text-slate-900 dark:text-slate-100 hover:no-underline" data-testid="faq-what-is">
+                What is AI Desk?
+              </AccordionTrigger>
+              <AccordionContent className="text-sm text-slate-600 dark:text-slate-400">
                 AI Desk is a smart assistant that helps you get accurate answers to your questions based on the knowledge you provide. Simply upload documents or share links to create a custom knowledge base.
               </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="who-for">
-              <AccordionTrigger className="text-left">Who is AI Desk for?</AccordionTrigger>
-              <AccordionContent>
+            
+            <AccordionItem value="who-for" className="border border-slate-200 dark:border-slate-800 rounded-lg mb-2 px-4">
+              <AccordionTrigger className="text-sm font-medium text-slate-900 dark:text-slate-100 hover:no-underline" data-testid="faq-who-for">
+                Who is AI Desk for?
+              </AccordionTrigger>
+              <AccordionContent className="text-sm text-slate-600 dark:text-slate-400">
                 AI Desk is designed for teams and individuals who need fast access to information, whether it's for customer support, team collaboration, or personal productivity.
               </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="how-works">
-              <AccordionTrigger className="text-left">How does AI Desk work?</AccordionTrigger>
-              <AccordionContent>
+            
+            <AccordionItem value="how-works" className="border border-slate-200 dark:border-slate-800 rounded-lg mb-2 px-4">
+              <AccordionTrigger className="text-sm font-medium text-slate-900 dark:text-slate-100 hover:no-underline" data-testid="faq-how-works">
+                How does AI Desk work?
+              </AccordionTrigger>
+              <AccordionContent className="text-sm text-slate-600 dark:text-slate-400">
                 AI Desk uses the content you upload - such as files, documents, or links - and uses advanced AI to answer your questions based on that information. It learns from your sources to provide relevant, accurate responses.
               </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="copilot">
-              <AccordionTrigger className="text-left">What is Copilot mode?</AccordionTrigger>
-              <AccordionContent>
+            
+            <AccordionItem value="copilot" className="border border-slate-200 dark:border-slate-800 rounded-lg mb-2 px-4">
+              <AccordionTrigger className="text-sm font-medium text-slate-900 dark:text-slate-100 hover:no-underline" data-testid="faq-copilot">
+                What is Copilot mode?
+              </AccordionTrigger>
+              <AccordionContent className="text-sm text-slate-600 dark:text-slate-400">
                 Copilot mode generates draft reply suggestions for your agents to review and edit before sending. It helps speed up responses while keeping humans in control of the final message.
               </AccordionContent>
             </AccordionItem>
-            <AccordionItem value="autopilot">
-              <AccordionTrigger className="text-left">What is Autopilot mode?</AccordionTrigger>
-              <AccordionContent>
+            
+            <AccordionItem value="autopilot" className="border border-slate-200 dark:border-slate-800 rounded-lg px-4">
+              <AccordionTrigger className="text-sm font-medium text-slate-900 dark:text-slate-100 hover:no-underline" data-testid="faq-autopilot">
+                What is Autopilot mode?
+              </AccordionTrigger>
+              <AccordionContent className="text-sm text-slate-600 dark:text-slate-400">
                 Autopilot mode allows AI to automatically respond to messages when it's confident enough. Responses that need human review are held for approval before being sent.
               </AccordionContent>
             </AccordionItem>
