@@ -28962,11 +28962,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         .where(eq(telnyxConversations.id, sessionId));
       
       // Broadcast conversation update to connected agents
-      broadcastToCompany(conversation.companyId, {
-        type: 'conversation_update',
-        conversationId: sessionId,
-        status: 'solved',
-      });
+      broadcastConversationUpdate(conversation.companyId, sessionId);  // FIXED: Was using undefined broadcastToCompany
       
       console.log(`[LiveChat] Visitor ended chat session: ${sessionId}`);
       
