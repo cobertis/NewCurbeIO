@@ -197,15 +197,24 @@ export default function ChatWidgetPreviewPage() {
   const initialMessageInputRef = useRef<HTMLTextAreaElement>(null);
 
   // Use authenticated API only when not in public mode
-  const { data: authWidgetData, isLoading: authLoading } = useQuery<{ widget: any }>({
+  const { data: authWidgetData, isLoading: authLoading, isError: authError } = useQuery<{ widget: any }>({
     queryKey: [`/api/integrations/chat-widget/${widgetId}`],
     enabled: !!widgetId && !isPublicMode,
   });
   
   // Fetch widget data from public API when in public mode
+  // OR when authenticated mode fails (fallback for expired sessions)
   // This consolidated fetch sets BOTH publicWidgetData AND targeting metadata
   useEffect(() => {
-    if (!widgetId || !isPublicMode) {
+    // Use public API if in public mode OR if auth failed
+    const shouldUsePublicApi = isPublicMode || authError;
+    
+    if (!widgetId || (!isPublicMode && !authError)) {
+      setPublicLoading(false);
+      return;
+    }
+    
+    if (!shouldUsePublicApi) {
       setPublicLoading(false);
       return;
     }
@@ -235,7 +244,7 @@ export default function ChatWidgetPreviewPage() {
         setTargetingChecked(true);
         setPublicLoading(false);
       });
-  }, [widgetId, isPublicMode]);
+  }, [widgetId, isPublicMode, authError]);
   
   // Keep refs in sync with state for WebSocket callbacks
   useEffect(() => {
@@ -261,8 +270,9 @@ export default function ChatWidgetPreviewPage() {
   }, [connectedAgent]);
   
   // Determine which data to use based on mode
-  const isLoading = isPublicMode ? publicLoading : authLoading;
-  const effectiveWidgetData = isPublicMode ? publicWidgetData : authWidgetData;
+  // Use public data as fallback when auth fails (expired session)
+  const isLoading = isPublicMode ? publicLoading : (authError ? publicLoading : authLoading);
+  const effectiveWidgetData = isPublicMode ? publicWidgetData : (authError ? publicWidgetData : authWidgetData);
 
   // Restore visitor profile from localStorage (Task 3: Skip pre-chat form for returning visitors)
   useEffect(() => {
