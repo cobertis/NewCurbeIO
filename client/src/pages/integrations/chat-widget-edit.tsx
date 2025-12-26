@@ -2595,6 +2595,18 @@ export default function ChatWidgetEditPage() {
   const [activeLiveChatSubSection, setActiveLiveChatSubSection] = useState<"welcomeScreen" | "preChatForm" | "queueSettings" | "satisfactionSurvey" | "offlineMode" | "additionalSettings" | null>(null);
   const [activeEmailSubSection, setActiveEmailSubSection] = useState<"welcomeScreen" | "formFields" | "successScreen" | "associatedEmail" | null>(null);
   const [activeSmsSubSection, setActiveSmsSubSection] = useState<"welcomeScreen" | "messageScreen" | "numberSettings" | null>(null);
+  
+  // Preview navigation state for interactive WidgetRenderer
+  const [previewActiveTab, setPreviewActiveTab] = useState<"home" | "messages" | "help" | "news">("home");
+  
+  // Handler to reset preview to home state
+  const handleBackToHome = () => {
+    setExpandedChannel(null);
+    setActiveLiveChatSubSection(null);
+    setActiveEmailSubSection(null);
+    setActiveSmsSubSection(null);
+    setPreviewActiveTab("home");
+  };
 
   const handleLiveChatSettingsChange = (settings: Partial<WidgetConfig["liveChatSettings"]>) => {
     updateLocalWidget({
@@ -4230,7 +4242,9 @@ export default function ChatWidgetEditPage() {
                     <div className="rounded-xl overflow-hidden shadow-lg">
                       <div className="p-4 text-white flex items-center justify-between" style={{ background: currentBackground }}>
                         <div className="flex items-center gap-2">
-                          <ChevronLeft className="h-5 w-5" />
+                          <button onClick={handleBackToHome} className="p-1 hover:bg-white/20 rounded-full transition-colors" data-testid="back-from-queue-preview">
+                            <ChevronLeft className="h-5 w-5" />
+                          </button>
                           <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: currentBackground }}>
                             <MessageCircle className="h-4 w-4 text-white" />
                           </div>
@@ -4285,7 +4299,9 @@ export default function ChatWidgetEditPage() {
                     <div className="rounded-xl overflow-hidden shadow-lg">
                       <div className="p-4 text-white flex items-center justify-between" style={{ background: currentBackground }}>
                         <div className="flex items-center gap-2">
-                          <ChevronLeft className="h-5 w-5" />
+                          <button onClick={handleBackToHome} className="p-1 hover:bg-white/20 rounded-full transition-colors" data-testid="back-from-survey-preview">
+                            <ChevronLeft className="h-5 w-5" />
+                          </button>
                           <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: currentBackground }}>
                             <MessageCircle className="h-4 w-4 text-white" />
                           </div>
@@ -4359,7 +4375,9 @@ export default function ChatWidgetEditPage() {
                     <div className="rounded-xl overflow-hidden shadow-lg">
                       <div className="p-4 text-white flex items-center justify-between" style={{ background: currentBackground }}>
                         <div className="flex items-center gap-2">
-                          <ChevronLeft className="h-5 w-5" />
+                          <button onClick={handleBackToHome} className="p-1 hover:bg-white/20 rounded-full transition-colors" data-testid="back-from-offline-preview">
+                            <ChevronLeft className="h-5 w-5" />
+                          </button>
                           <div className="w-8 h-8 rounded-full flex items-center justify-center" style={{ background: currentBackground }}>
                             <MessageCircle className="h-4 w-4 text-white" />
                           </div>
@@ -4544,7 +4562,9 @@ export default function ChatWidgetEditPage() {
                     <div className="rounded-xl overflow-hidden shadow-lg">
                       <div className="p-4 text-white" style={{ background: currentBackground }}>
                         <div className="flex items-center gap-2 mb-3">
-                          <ChevronLeft className="h-5 w-5" />
+                          <button onClick={handleBackToHome} className="p-1 hover:bg-white/20 rounded-full transition-colors" data-testid="back-from-phone-preview">
+                            <ChevronLeft className="h-5 w-5" />
+                          </button>
                           <Phone className="h-5 w-5" />
                           <span className="font-medium">Call us</span>
                         </div>
@@ -4609,7 +4629,9 @@ export default function ChatWidgetEditPage() {
                     <div className="rounded-xl overflow-hidden shadow-lg">
                       <div className="p-4 text-white" style={{ background: currentBackground }}>
                         <div className="flex items-center gap-2">
-                          <ChevronLeft className="h-5 w-5" />
+                          <button onClick={handleBackToHome} className="p-1 hover:bg-white/20 rounded-full transition-colors" data-testid="back-from-whatsapp-preview">
+                            <ChevronLeft className="h-5 w-5" />
+                          </button>
                           <SiWhatsapp className="h-5 w-5" />
                           <span className="font-medium">{widget.whatsappSettings?.welcomeScreen?.channelName || "Chat on WhatsApp"}</span>
                         </div>
@@ -4666,7 +4688,9 @@ export default function ChatWidgetEditPage() {
                     <div className="rounded-xl overflow-hidden shadow-lg">
                       <div className="p-4 text-white" style={{ background: currentBackground }}>
                         <div className="flex items-center gap-2">
-                          <ChevronLeft className="h-5 w-5" />
+                          <button onClick={handleBackToHome} className="p-1 hover:bg-white/20 rounded-full transition-colors" data-testid="back-from-email-success-preview">
+                            <ChevronLeft className="h-5 w-5" />
+                          </button>
                           <Mail className="h-5 w-5" />
                           <span className="font-medium">{widget.emailSettings?.welcomeScreen?.channelName || "Send an email"}</span>
                         </div>
@@ -4702,7 +4726,9 @@ export default function ChatWidgetEditPage() {
                     <div className="rounded-xl overflow-hidden shadow-lg">
                       <div className="p-4 text-white" style={{ background: currentBackground }}>
                         <div className="flex items-center gap-2 mb-3">
-                          <ChevronLeft className="h-5 w-5" />
+                          <button onClick={handleBackToHome} className="p-1 hover:bg-white/20 rounded-full transition-colors" data-testid="back-from-email-preview">
+                            <ChevronLeft className="h-5 w-5" />
+                          </button>
                           <Mail className="h-5 w-5" />
                           <span className="font-medium">{widget.emailSettings?.welcomeScreen?.channelName || "Email"}</span>
                         </div>
@@ -4756,7 +4782,9 @@ export default function ChatWidgetEditPage() {
                     <div className="rounded-xl overflow-hidden shadow-lg">
                       <div className="p-4 text-white" style={{ background: currentBackground }}>
                         <div className="flex items-center gap-2">
-                          <ChevronLeft className="h-5 w-5" />
+                          <button onClick={handleBackToHome} className="p-1 hover:bg-white/20 rounded-full transition-colors" data-testid="back-from-sms-message-preview">
+                            <ChevronLeft className="h-5 w-5" />
+                          </button>
                           <MessageSquare className="h-5 w-5" />
                           <span className="font-medium">{widget.smsSettings?.welcomeScreen?.channelName || "Text us"}</span>
                         </div>
@@ -4818,7 +4846,9 @@ export default function ChatWidgetEditPage() {
                     <div className="rounded-xl overflow-hidden shadow-lg">
                       <div className="p-4 text-white" style={{ background: currentBackground }}>
                         <div className="flex items-center gap-2">
-                          <ChevronLeft className="h-5 w-5" />
+                          <button onClick={handleBackToHome} className="p-1 hover:bg-white/20 rounded-full transition-colors" data-testid="back-from-sms-preview">
+                            <ChevronLeft className="h-5 w-5" />
+                          </button>
                           <MessageSquare className="h-5 w-5" />
                           <span className="font-medium">{widget.smsSettings?.welcomeScreen?.channelName || "Text us"}</span>
                         </div>
@@ -4880,7 +4910,9 @@ export default function ChatWidgetEditPage() {
                     <div className="rounded-xl overflow-hidden shadow-lg">
                       <div className="p-4 text-white" style={{ background: currentBackground }}>
                         <div className="flex items-center gap-2">
-                          <ChevronLeft className="h-5 w-5" />
+                          <button onClick={handleBackToHome} className="p-1 hover:bg-white/20 rounded-full transition-colors" data-testid="back-from-facebook-preview">
+                            <ChevronLeft className="h-5 w-5" />
+                          </button>
                           <SiFacebook className="h-5 w-5" />
                           <span className="font-medium">{widget.messengerSettings?.welcomeScreen?.channelName || "Chat on Facebook"}</span>
                         </div>
@@ -4939,7 +4971,9 @@ export default function ChatWidgetEditPage() {
                     <div className="rounded-xl overflow-hidden shadow-lg">
                       <div className="p-4 text-white" style={{ background: currentBackground }}>
                         <div className="flex items-center gap-2 mb-3">
-                          <ChevronLeft className="h-5 w-5" />
+                          <button onClick={handleBackToHome} className="p-1 hover:bg-white/20 rounded-full transition-colors" data-testid="back-from-instagram-preview">
+                            <ChevronLeft className="h-5 w-5" />
+                          </button>
                           <SiInstagram className="h-5 w-5" />
                           <span className="font-medium">{widget.instagramSettings?.welcomeScreen?.channelName || "Instagram"}</span>
                         </div>
@@ -4998,7 +5032,9 @@ export default function ChatWidgetEditPage() {
                     <div className="rounded-xl overflow-hidden shadow-lg">
                       <div className="p-4 text-white" style={{ background: currentBackground }}>
                         <div className="flex items-center gap-2 mb-3">
-                          <ChevronLeft className="h-5 w-5" />
+                          <button onClick={handleBackToHome} className="p-1 hover:bg-white/20 rounded-full transition-colors" data-testid="back-from-telegram-preview">
+                            <ChevronLeft className="h-5 w-5" />
+                          </button>
                           <SiTelegram className="h-5 w-5" />
                           <span className="font-medium">{widget.telegramSettings?.welcomeScreen?.channelName || "Telegram"}</span>
                         </div>
@@ -5057,8 +5093,17 @@ export default function ChatWidgetEditPage() {
                     <WidgetRenderer 
                       config={mapChatWidgetToConfig(widget)}
                       mode="preview"
-                      onClose={() => {}}
-                      onChannelClick={(channel) => setExpandedChannel(channel)}
+                      activeTab={previewActiveTab}
+                      onTabChange={(tab) => setPreviewActiveTab(tab)}
+                      onClose={handleBackToHome}
+                      onChannelClick={(channel) => {
+                        if (channel === 'liveChat') {
+                          setExpandedChannel('liveChat');
+                          setActiveLiveChatSubSection('welcomeScreen');
+                        } else {
+                          setExpandedChannel(channel);
+                        }
+                      }}
                     />
                     
                     <div 
