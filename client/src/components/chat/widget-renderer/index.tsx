@@ -266,7 +266,7 @@ export function WidgetRenderer({
   return (
     <div
       ref={containerRef}
-      className="rounded-2xl overflow-hidden shadow-lg bg-white flex flex-col"
+      className="rounded-2xl shadow-lg bg-white flex flex-col"
       data-testid="widget-renderer"
       data-mode={mode}
     >
