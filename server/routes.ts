@@ -28836,6 +28836,47 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       res.status(500).json({ error: "Failed to create/resume session" });
     }
   });
+
+  // POST /api/public/live-chat/session/:sessionId/finish - Visitor ends the chat
+  app.post("/api/public/live-chat/session/:sessionId/finish", async (req: Request, res: Response) => {
+    const { sessionId } = req.params;
+    
+    try {
+      // Find the conversation by session ID (which is the conversation ID)
+      const [conversation] = await db
+        .select()
+        .from(telnyxConversations)
+        .where(eq(telnyxConversations.id, sessionId))
+        .limit(1);
+      
+      if (!conversation) {
+        return res.status(404).json({ error: "Session not found" });
+      }
+      
+      // Update conversation status to solved
+      await db
+        .update(telnyxConversations)
+        .set({ 
+          status: 'solved',
+          updatedAt: new Date()
+        })
+        .where(eq(telnyxConversations.id, sessionId));
+      
+      // Broadcast conversation update to connected agents
+      broadcastToCompany(conversation.companyId, {
+        type: 'conversation_update',
+        conversationId: sessionId,
+        status: 'solved',
+      });
+      
+      console.log(`[LiveChat] Visitor ended chat session: ${sessionId}`);
+      
+      res.json({ success: true, status: 'solved' });
+    } catch (error: any) {
+      console.error("[LiveChat] Finish session error:", error);
+      res.status(500).json({ error: "Failed to end chat session" });
+    }
+  });
   // GET /api/public/live-chat/check-proactive/:visitorId - Check if agent started a proactive chat
   app.get("/api/public/live-chat/check-proactive/:visitorId", async (req: Request, res: Response) => {
     const { visitorId } = req.params;

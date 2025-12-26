@@ -1002,6 +1002,26 @@ export default function ChatWidgetPreviewPage() {
     }
   };
 
+
+  // Handle visitor finishing the chat
+  const handleFinishChat = async () => {
+    if (!chatSessionId) return;
+    
+    try {
+      const res = await fetch(`/api/public/live-chat/session/${chatSessionId}/finish`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      
+      if (res.ok) {
+        setChatStatus('solved');
+        setShowSatisfactionSurvey(true);
+        console.log('[Chat] Visitor finished chat session');
+      }
+    } catch (error) {
+      console.error('[Chat] Failed to finish chat:', error);
+    }
+  };
   const sendChatMessage = async () => {
     console.log('[Chat] Attempting to send message, sessionId:', chatSessionId, 'input:', chatInput);
     if (!chatSessionId || !chatInput.trim()) {
@@ -2073,6 +2093,17 @@ export default function ChatWidgetPreviewPage() {
                     {connectedAgent ? 'Support Agent' : 'Usually replies in a few minutes'}
                   </p>
                 </div>
+                {/* Finish chat button */}
+                {chatStatus !== 'solved' && (
+                  <button
+                    onClick={handleFinishChat}
+                    className="p-1.5 hover:bg-white/20 rounded-full transition-colors ml-auto"
+                    title="Finish chat"
+                    data-testid="button-finish-chat"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                )}
               </div>
               
               {/* Messages Area */}
