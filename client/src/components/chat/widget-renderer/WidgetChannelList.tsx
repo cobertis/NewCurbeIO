@@ -6,6 +6,7 @@ import { getIconColor } from "./theme-utils";
 interface WidgetChannelListProps {
   config: WidgetConfig;
   onChannelClick?: (channel: string) => void;
+  hideLiveChat?: boolean;
 }
 
 interface ChannelConfig {
@@ -66,7 +67,7 @@ const channelConfigs: ChannelConfig[] = [
   },
 ];
 
-export function WidgetChannelList({ config, onChannelClick }: WidgetChannelListProps) {
+export function WidgetChannelList({ config, onChannelClick, hideLiveChat = false }: WidgetChannelListProps) {
   const iconColor = getIconColor(config.theme);
   
   const orderedChannels = config.channelOrder
@@ -82,14 +83,14 @@ export function WidgetChannelList({ config, onChannelClick }: WidgetChannelListP
   const otherChannels = orderedChannels.filter((c) => c.id !== "liveChat");
 
   return (
-    <div className="space-y-3" data-testid="widget-channel-list">
-      {liveChatChannel && (
+    <div className="space-y-2" data-testid="widget-channel-list">
+      {!hideLiveChat && liveChatChannel && (
         <button
-          className="w-full flex items-center justify-between py-4 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
+          className="w-full flex items-center justify-between py-4 px-4 bg-white rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
           onClick={() => onChannelClick?.(liveChatChannel.id)}
           data-testid={`widget-channel-${liveChatChannel.id}`}
         >
-          <span className="text-base font-medium text-slate-900 dark:text-slate-100">
+          <span className="text-base font-medium text-slate-900">
             {liveChatChannel.getLabel(config)}
           </span>
           <Send className="h-5 w-5" style={{ color: iconColor }} />
@@ -99,11 +100,11 @@ export function WidgetChannelList({ config, onChannelClick }: WidgetChannelListP
       {otherChannels.map((channel) => (
         <button
           key={channel.id}
-          className="w-full flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer"
+          className="w-full flex items-center justify-between py-3 px-4 bg-white rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
           onClick={() => onChannelClick?.(channel.id)}
           data-testid={`widget-channel-${channel.id}`}
         >
-          <span className="text-sm font-medium text-slate-900 dark:text-slate-100">
+          <span className="text-sm font-medium text-slate-700">
             {channel.getLabel(config)}
           </span>
           <span style={{ color: iconColor }}>{channel.icon}</span>
