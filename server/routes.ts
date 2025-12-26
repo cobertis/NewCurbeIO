@@ -28420,6 +28420,8 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       const widgetSettings = {
+        id: widget.id,
+        companyId: widget.companyId,
         colorTheme: widget.colorTheme,
         themeType: widget.themeType,
         customColor: widget.customColor,
