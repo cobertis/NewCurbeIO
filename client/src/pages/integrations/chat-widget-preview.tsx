@@ -1109,10 +1109,21 @@ export default function ChatWidgetPreviewPage() {
       const messageToSend = (messageOverride !== undefined ? messageOverride : initialMessage).trim();
       setSentInitialMessage(messageToSend || 'Hello');
       
+      // DEBUG: Log all values being sent
+      console.log('[Chat] startChatSession - Preparing to send message:', {
+        messageToSend,
+        messageOverride,
+        initialMessage,
+        widgetId,
+        visitorId,
+        sessionId,
+      });
+      
       // Use browserName and osName from earlier detection
       
       // If there's an initial message, send it (this will create the conversation)
       if (messageToSend) {
+        console.log('[Chat] Sending first message to create conversation...');
         const msgRes = await fetch('/api/public/live-chat/message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1231,20 +1242,33 @@ export default function ChatWidgetPreviewPage() {
     }
     sendPreviewToAgent('');
     
+    // Check if this is a pending session (no real conversation yet)
+    const isPendingSession = chatSessionId.startsWith('pending_');
+    
     try {
       const res = await fetch('/api/public/live-chat/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          sessionId: chatSessionId,
+          // For pending sessions, send null so server creates conversation
+          sessionId: isPendingSession ? null : chatSessionId,
           text,
           visitorName: visitorName || 'Website Visitor',
+          // Always include widgetId and visitorId for conversation creation
+          widgetId,
+          visitorId: chatVisitorId,
+          visitorEmail: visitorEmail.trim() || undefined,
+          visitorUrl: window.location.href,
         }),
       });
       
       if (res.ok) {
-        const { message } = await res.json();
+        const { message, conversationId } = await res.json();
         setChatMessages(prev => [...prev, message]);
+        // If server created a new conversation, update the session ID
+        if (conversationId && isPendingSession) {
+          setChatSessionId(conversationId);
+        }
       }
     } catch (error) {
       console.error('Failed to send message:', error);
