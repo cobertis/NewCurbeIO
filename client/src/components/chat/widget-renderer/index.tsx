@@ -146,8 +146,8 @@ export function WidgetRenderer({
         </button>
       )}
 
-      {/* Primary Action - Send us a message (only show if no existing session) */}
-      {config.channels.liveChat && !existingSession && (
+      {/* Primary Action - Send us a message (always show on Home) */}
+      {config.channels.liveChat && (
         <button
           className="w-full flex items-center justify-between py-4 px-5 rounded-xl shadow-md hover:shadow-lg transition-all cursor-pointer mb-4"
           style={{ backgroundColor: iconColor }}

@@ -234,8 +234,8 @@ export default function ChatWidgetPreviewPage() {
         });
         setTargetingChecked(true);
         setPublicLoading(false);
-        // CRITICAL FIX: Force chat flow to preChatForm immediately to show widget home
-        setChatFlowState('preChatForm');
+        // Show widget Home screen (idle state) when data loads
+        setChatFlowState('idle');
       })
       .catch((err) => {
         if (!mounted) return;
@@ -246,8 +246,8 @@ export default function ChatWidgetPreviewPage() {
         setDeviceInfo(null);
         setTargetingChecked(true);
         setPublicLoading(false);
-        // CRITICAL FIX: Force chat flow even on error to prevent infinite loading
-        setChatFlowState('preChatForm');
+        // Show widget Home screen even on error
+        setChatFlowState('idle');
       });
       
     return () => {
