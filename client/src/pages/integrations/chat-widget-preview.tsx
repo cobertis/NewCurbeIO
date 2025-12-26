@@ -2,7 +2,7 @@ import { useParams, Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, X, Monitor, Send, Smartphone, Globe, Check, CheckCheck, Paperclip, Smile, Clock, ThumbsUp, ThumbsDown } from "lucide-react";
+import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, ChevronDown, X, Monitor, Send, Smartphone, Globe, Check, CheckCheck, Paperclip, Smile, Clock, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
@@ -2699,10 +2699,10 @@ export default function ChatWidgetPreviewPage() {
                       </div>
                       <button 
                         onClick={() => setWidgetOpen(false)}
-                        className="p-1 hover:bg-white/20 rounded-full transition-colors"
+                        className="p-1.5 hover:bg-slate-100 rounded-full transition-colors"
                         data-testid="close-widget"
                       >
-                        <X className="h-5 w-5 text-white" />
+                        <ChevronDown className="h-6 w-6 text-slate-500" />
                       </button>
                     </div>
                   </div>
