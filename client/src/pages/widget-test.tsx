@@ -1,29 +1,30 @@
 import { useEffect } from "react";
-import { useLocation } from "wouter";
 
 export default function WidgetTestPage() {
-  const [location] = useLocation();
   const params = new URLSearchParams(window.location.search);
   const token = params.get("token");
 
   useEffect(() => {
     if (!token) return;
 
-    const config = {
-      websiteToken: token,
-      baseUrl: window.location.origin,
-    };
-    (window as any).ChatWidgetConfig = config;
-
     const script = document.createElement("script");
     script.src = `${window.location.origin}/widget/sdk.js`;
     script.async = true;
+    script.onload = () => {
+      if ((window as any).curbeWidgetSDK) {
+        (window as any).curbeWidgetSDK.run({
+          websiteToken: token,
+          baseUrl: window.location.origin,
+        });
+      }
+    };
     document.head.appendChild(script);
 
     return () => {
+      if ((window as any).curbeWidgetSDK) {
+        (window as any).curbeWidgetSDK.shutdown();
+      }
       script.remove();
-      const widgetRoot = document.getElementById("chat-widget-root");
-      if (widgetRoot) widgetRoot.remove();
     };
   }, [token]);
 
