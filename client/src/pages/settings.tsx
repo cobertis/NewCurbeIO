@@ -4172,7 +4172,7 @@ export function WidgetAdminSection() {
       baseUrl: '${baseUrl}'
     };
     var s = d.createElement('script');
-    s.src = '${baseUrl}/widget/chat-widget.js';
+    s.src = '${baseUrl}/widget/sdk.js';
     s.async = true;
     d.head.appendChild(s);
   })(document, window);
