@@ -2546,7 +2546,7 @@ export default function ChatWidgetPreviewPage() {
               
               {/* Finish Chat Confirmation Dialog */}
               {showFinishConfirm && (
-                <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-50 rounded-2xl">
+                <div className="absolute inset-0 bg-black/50 flex items-center justify-center z-[100] rounded-2xl" onClick={(e) => e.stopPropagation()}>
                   <div className="bg-white dark:bg-slate-800 rounded-xl p-5 mx-4 shadow-xl max-w-xs w-full">
                     <h3 className="font-semibold text-slate-900 dark:text-white mb-2">End conversation?</h3>
                     <p className="text-sm text-slate-600 dark:text-slate-400 mb-4">Are you sure you want to end this chat? You will be asked to rate your experience.</p>
@@ -2868,6 +2868,9 @@ export default function ChatWidgetPreviewPage() {
                           onClick={() => {
                             setShowSatisfactionSurvey(false);
                             localStorage.removeItem(`chatSurveyState-${widgetId}`);
+                            // Reset chat state to allow going back to home
+                            setChatFlowState('idle');
+                            resetChatSession();
                           }}
                           className="text-xs text-blue-500 text-center cursor-pointer hover:underline w-full"
                           data-testid="survey-skip"
@@ -3250,7 +3253,7 @@ export default function ChatWidgetPreviewPage() {
               
               {/* Survey Modal Overlay - Textmagic style */}
               {showSurveyModal && (
-                <div className="absolute inset-0 bg-black/30 flex items-center justify-center p-4 rounded-xl z-50">
+                <div className="absolute inset-0 bg-black/30 flex items-center justify-center p-4 rounded-xl z-[100]" onClick={(e) => e.stopPropagation()}>
                   <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-sm p-5">
                     {surveyModalStep === 'rating' ? (
                       <>
@@ -3288,6 +3291,9 @@ export default function ChatWidgetPreviewPage() {
                             setSurveyModalStep('rating');
                             setSurveyRating(null);
                             localStorage.removeItem(`chatSurveyState-${widgetId}`);
+                            // Reset chat state to allow going back to home
+                            setChatFlowState('idle');
+                            resetChatSession();
                           }}
                           className="text-sm text-slate-400 hover:text-slate-600 text-center cursor-pointer w-full"
                           data-testid="survey-modal-skip"
@@ -3361,6 +3367,9 @@ export default function ChatWidgetPreviewPage() {
                               setSurveyModalStep('rating');
                               setSurveyRating(null);
                               setSurveyFeedback('');
+                              // Reset chat state to allow going back to home
+                              setChatFlowState('idle');
+                              resetChatSession();
                             }}
                             className="text-sm text-slate-400 hover:text-slate-600 text-center cursor-pointer w-full"
                             data-testid="survey-modal-skip-feedback"
