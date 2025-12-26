@@ -1,4 +1,4 @@
-import { Send, Phone, Mail } from "lucide-react";
+import { Send, Phone, Mail, ChevronRight, MessageSquare } from "lucide-react";
 import { SiWhatsapp, SiFacebook, SiInstagram, SiTelegram } from "react-icons/si";
 import type { WidgetConfig } from "@shared/widget-config";
 import { getIconColor } from "./theme-utils";
@@ -100,14 +100,20 @@ export function WidgetChannelList({ config, onChannelClick, hideLiveChat = false
       {otherChannels.map((channel) => (
         <button
           key={channel.id}
-          className="w-full flex items-center justify-between py-3 px-4 bg-white rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer"
+          className="w-full flex items-center gap-3 py-4 px-4 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors cursor-pointer"
           onClick={() => onChannelClick?.(channel.id)}
           data-testid={`widget-channel-${channel.id}`}
         >
-          <span className="text-sm font-medium text-slate-700">
+          <span 
+            className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm"
+            style={{ color: iconColor }}
+          >
+            {channel.icon}
+          </span>
+          <span className="flex-1 text-left text-sm font-medium text-slate-900">
             {channel.getLabel(config)}
           </span>
-          <span style={{ color: iconColor }}>{channel.icon}</span>
+          <ChevronRight className="h-5 w-5 text-slate-400" />
         </button>
       ))}
     </div>
