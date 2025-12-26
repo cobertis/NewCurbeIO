@@ -5089,7 +5089,7 @@ export default function ChatWidgetEditPage() {
                     </div>
                   </div>
                 ) : (
-                  <div className="relative">
+                  <div className="relative pb-20">
                     <WidgetRenderer 
                       config={mapChatWidgetToConfig(widget)}
                       mode="preview"
@@ -5107,7 +5107,7 @@ export default function ChatWidgetEditPage() {
                     />
                     
                     <div 
-                      className="absolute -bottom-16 right-0 flex items-center justify-center rounded-full shadow-xl cursor-pointer"
+                      className="absolute bottom-0 right-0 flex items-center justify-center rounded-full shadow-xl cursor-pointer"
                       style={{ 
                         background: currentBackground,
                         width: "56px",
