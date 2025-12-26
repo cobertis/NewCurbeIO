@@ -4010,7 +4010,7 @@ function AutomationsTab() {
   );
 }
 
-function WidgetAdminSection() {
+export function WidgetAdminSection() {
   const { toast } = useToast();
   const [selectedWidget, setSelectedWidget] = useState<WidgetConfig | null>(null);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);

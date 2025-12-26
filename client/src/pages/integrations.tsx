@@ -19,7 +19,7 @@ import { SiWhatsapp, SiInstagram, SiFacebook, SiTiktok, SiTelegram } from "react
 import { CheckCircle, XCircle, Clock, AlertTriangle, Plus, Trash2, RefreshCw, ExternalLink, Settings, HelpCircle, ChevronDown, ChevronLeft, ChevronRight, Info, User as UserIcon, Users, Phone, Mail, Building, CreditCard, Plug, MessageSquare, MessageCircle, Zap, Shield, Bell, UsersRound, Palette, PlayCircle, CheckCircle2 } from "lucide-react";
 import type { ChannelConnection, User } from "@shared/schema";
 import Billing from "@/pages/billing";
-import SettingsPage from "@/pages/settings";
+import SettingsPage, { WidgetAdminSection } from "@/pages/settings";
 import SmsVoice, { SmsVoiceContent } from "@/pages/sms-voice";
 import { WhiteLabelSettings } from "@/components/white-label-settings";
 import EmailIntegration from "@/pages/email-integration";
@@ -2011,6 +2011,12 @@ export default function IntegrationsPage() {
           <div>
             <SettingsBreadcrumb pageName="White Label" />
             <WhiteLabelSettings />
+          </div>
+        )}
+        {activeView === "chat-widget" && (
+          <div>
+            <SettingsBreadcrumb pageName="Live Chat Widget" />
+            <WidgetAdminSection />
           </div>
         )}
       </div>
