@@ -1019,6 +1019,7 @@ export default function ChatWidgetPreviewPage() {
       setChatVisitorId(visitorId);
       setShowPreChatForm(false);
       setIsWaitingForAgent(true);
+      setActiveChannel('liveChat'); // Ensure chat view is shown
       
       // Save visitor profile to localStorage for returning visitors (Task 3)
       if (visitorName.trim() || visitorEmail.trim()) {
@@ -1076,7 +1077,8 @@ export default function ChatWidgetPreviewPage() {
         setInitialMessage('');
       } else {
         // No message - don't create conversation yet, user can type one
-        setChatSessionId(sessionId);
+        // Use visitorId as temporary session ID when server delays session creation
+        setChatSessionId(sessionId || `pending_${visitorId}`);
         setChatMessages([]);
       }
     } catch (error) {
