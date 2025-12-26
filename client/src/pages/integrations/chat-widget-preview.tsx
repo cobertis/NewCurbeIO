@@ -104,9 +104,12 @@ export default function ChatWidgetPreviewPage() {
 
   // Live chat state
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
-  const [chatVisitorId, setChatVisitorId] = useState<string | null>(null);
   const [forceNewSession, setForceNewSession] = useState(false);
   const [chatMessages, setChatMessages] = useState<Array<{ id: string; text: string; direction: string; createdAt: string }>>([]);
+  // Pending messages for idempotency tracking (Intercom-style)
+  const [pendingMessages, setPendingMessages] = useState<Map<string, { text: string; createdAt: string }>>(new Map());
+  // Last WebSocket event ID for resync on reconnect
+  const [lastEventId, setLastEventId] = useState<string | null>(null);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
   const [visitorName, setVisitorName] = useState('');
@@ -484,9 +487,17 @@ export default function ChatWidgetPreviewPage() {
     }
     
     const connectWebSocket = () => {
-      // Build WebSocket URL
+      // Build WebSocket URL with lastEventId for resync on reconnect
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws/live-chat/${chatSessionId}?widgetId=${widgetId}&companyId=${stableCompanyId}`;
+      let wsUrl = `${protocol}//${window.location.host}/ws/live-chat/${chatSessionId}?widgetId=${widgetId}&companyId=${stableCompanyId}`;
+      // Include deviceId for persistent identity
+      if (deviceId) {
+        wsUrl += `&deviceId=${deviceId}`;
+      }
+      // Include lastEventId for reconnection resync
+      if (lastEventId) {
+        wsUrl += `&lastEventId=${lastEventId}`;
+      }
       
       console.log('[LiveChat WS] Connecting to:', wsUrl);
       
@@ -544,13 +555,30 @@ export default function ChatWidgetPreviewPage() {
                 }));
                 break;
                 
+              case 'message_created':
               case 'new_message':
                 // Handle incoming messages via WebSocket (real-time)
+                // Track eventId for reconnection resync
+                if (data.eventId) {
+                  setLastEventId(data.eventId);
+                }
                 if (data.message) {
+                  // Reconcile pending messages by clientMessageId (idempotency)
+                  if (data.message.clientMessageId) {
+                    setPendingMessages(prev => {
+                      const next = new Map(prev);
+                      next.delete(data.message.clientMessageId);
+                      return next;
+                    });
+                  }
                   setChatMessages(prev => {
                     // Check if message already exists to avoid duplicates
                     if (prev.some(m => m.id === data.message.id)) {
                       return prev;
+                    }
+                    // Also check by clientMessageId for pending messages
+                    if (data.message.clientMessageId && prev.some(m => (m as any).clientMessageId === data.message.clientMessageId)) {
+                      return prev.map(m => (m as any).clientMessageId === data.message.clientMessageId ? data.message : m);
                     }
                     return [...prev, data.message].sort((a, b) => 
                       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
@@ -669,7 +697,7 @@ export default function ChatWidgetPreviewPage() {
         liveChatWsRef.current = null;
       }
     };
-  }, [chatSessionId, widgetId, stableCompanyId]);
+  }, [chatSessionId, widgetId, stableCompanyId, deviceId, lastEventId]);
 
   // Track live visitor via heartbeat - runs always when component is mounted
   useEffect(() => {
@@ -862,8 +890,6 @@ export default function ChatWidgetPreviewPage() {
     
     setOfflineMessageLoading(true);
     try {
-      const visitorIdStored = localStorage.getItem(`chat_visitor_${widgetId}`);
-      
       // For pending sessions, send null instead of the pending ID
       const effectiveSessionId = chatSessionId?.startsWith('pending_') ? null : chatSessionId;
       
@@ -872,7 +898,8 @@ export default function ChatWidgetPreviewPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           widgetId,
-          visitorId: visitorIdStored || chatVisitorId,
+          deviceId, // Use persistent deviceId (Intercom-style)
+          contactId, // Include contactId from bootstrap
           sessionId: effectiveSessionId,
           visitorName: visitorName || 'Website Visitor',
           visitorEmail: visitorEmail || undefined,
@@ -1105,12 +1132,33 @@ export default function ChatWidgetPreviewPage() {
   };
 
   // Start a completely new chat (clears solved session reference)
+  // Intercom-style: Check for open conversations first before creating new
   const startNewChat = () => {
+    // Check if there's already an open conversation from bootstrap
+    const openConversation = allSessions.find(s => s.status === 'open' || s.status === 'waiting' || s.status === 'pending');
+    
+    if (openConversation) {
+      // Resume the existing open conversation instead of creating a new one
+      console.log('[Chat] Found open conversation, resuming:', openConversation.sessionId);
+      loadExistingMessages(openConversation.sessionId);
+      setChatFlowState('activeChat');
+      setActiveChannel('liveChat');
+      return;
+    }
+    
+    // No open conversation - create new
     resetChatSession();
     
     // Always show pre-chat form so user can write their message
     setChatFlowState('preChatForm');
     console.log('[Chat] Starting new chat - showing pre-chat form');
+  };
+  
+  // Force start a new chat even if open conversation exists
+  const forceStartNewChat = () => {
+    resetChatSession();
+    setChatFlowState('preChatForm');
+    console.log('[Chat] Force starting new chat - showing pre-chat form');
   };
 
   // Show survey modal from solved chat view
@@ -1138,6 +1186,37 @@ export default function ChatWidgetPreviewPage() {
     return date.toLocaleDateString();
   };
 
+  // Identify visitor for merge (Intercom-style) - call when visitor provides email/name
+  const identifyVisitor = async (email?: string, name?: string) => {
+    if (!widgetId || !deviceId) return;
+    if (!email && !name) return; // Nothing to identify with
+    
+    try {
+      console.log('[Chat] Identifying visitor with email:', email, 'name:', name);
+      const res = await fetch('/api/messenger/identify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          widgetId,
+          deviceId,
+          email: email || undefined,
+          name: name || undefined,
+        }),
+      });
+      
+      if (res.ok) {
+        const data = await res.json();
+        // Update contactId if server returns a merged contact
+        if (data.contactId) {
+          setContactId(data.contactId);
+        }
+        console.log('[Chat] Visitor identified successfully:', data);
+      }
+    } catch (error) {
+      console.error('[Chat] Failed to identify visitor:', error);
+    }
+  };
+  
   // Live chat functions
   const startChatSession = async (overrideForceNew?: boolean, messageOverride?: string) => {
     if (!widgetId) return;
@@ -1146,7 +1225,7 @@ export default function ChatWidgetPreviewPage() {
     // The ref is the source of truth since it's set synchronously in resetChatSession
     const shouldForceNew = overrideForceNew ?? forceNewSessionRef.current;
     
-    console.log('[Chat] startChatSession - shouldForceNew:', shouldForceNew, 'ref:', forceNewSessionRef.current);
+    console.log('[Chat] startChatSession - shouldForceNew:', shouldForceNew, 'ref:', forceNewSessionRef.current, 'deviceId:', deviceId);
     
     // Clear the forceNewSession flag after reading it
     if (forceNewSessionRef.current) {
@@ -1156,13 +1235,6 @@ export default function ChatWidgetPreviewPage() {
     
     setChatLoading(true);
     try {
-      // Get or create visitor ID from localStorage
-      let storedVisitorId = localStorage.getItem(`chat_visitor_${widgetId}`);
-      if (!storedVisitorId) {
-        storedVisitorId = `visitor_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        localStorage.setItem(`chat_visitor_${widgetId}`, storedVisitorId);
-      }
-      
       // Detect browser and OS from userAgent
       const ua = navigator.userAgent;
       let browserName = 'Unknown';
@@ -1181,14 +1253,14 @@ export default function ChatWidgetPreviewPage() {
       else if (ua.includes('Android')) osName = 'Android';
       else if (ua.includes('iPhone') || ua.includes('iPad')) osName = 'iOS';
       
-      // Create session with visitor info and metadata
+      // Create session with deviceId (Intercom-style persistent identity)
       const sessionRes = await fetch('/api/public/live-chat/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           widgetId,
-          visitorId: storedVisitorId,
-          deviceId,
+          deviceId, // Use persistent deviceId instead of visitor ID
+          contactId, // Include contactId from bootstrap if available
           visitorName: visitorName || 'Website Visitor',
           visitorEmail: visitorEmail.trim() || undefined,
           visitorUrl: window.location.href,
@@ -1202,7 +1274,6 @@ export default function ChatWidgetPreviewPage() {
       
       const { sessionId, visitorId, pendingSession } = await sessionRes.json();
       
-      setChatVisitorId(visitorId);
       setIsWaitingForAgent(true);
       setActiveChannel('liveChat'); // Ensure chat view is shown
       
@@ -1223,13 +1294,15 @@ export default function ChatWidgetPreviewPage() {
         console.error('[Chat] Failed to clear survey state:', e);
       }
       
-      // Save visitor profile to localStorage for returning visitors (Task 3)
+      // Save visitor profile to localStorage for returning visitors
       if (visitorName.trim() || visitorEmail.trim()) {
         try {
           localStorage.setItem(`chatVisitorProfile-${widgetId}`, JSON.stringify({
             name: visitorName.trim(),
             email: visitorEmail.trim(),
           }));
+          // Call identify to merge visitor history (Intercom-style)
+          identifyVisitor(visitorEmail.trim() || undefined, visitorName.trim() || undefined);
         } catch (e) {
           console.error('[Chat] Failed to save visitor profile:', e);
         }
@@ -1240,6 +1313,9 @@ export default function ChatWidgetPreviewPage() {
       const messageToSend = (messageOverride !== undefined ? messageOverride : initialMessage).trim();
       setSentInitialMessage(messageToSend || 'Hello');
       
+      // Generate clientMessageId for idempotency
+      const clientMessageId = crypto.randomUUID();
+      
       // If there's an initial message, send it (this will create the conversation)
       if (messageToSend) {
         const msgRes = await fetch('/api/public/live-chat/message', {
@@ -1248,9 +1324,11 @@ export default function ChatWidgetPreviewPage() {
           body: JSON.stringify({
             sessionId: sessionId || null,
             text: messageToSend,
+            clientMessageId, // Include for idempotency
             visitorName: visitorName || 'Website Visitor',
             widgetId,
-            visitorId,
+            deviceId, // Use deviceId instead of visitorId
+            contactId, // Include contactId from bootstrap
             visitorEmail: visitorEmail.trim() || undefined,
             visitorUrl: window.location.href,
             visitorBrowser: browserName,
@@ -1264,7 +1342,7 @@ export default function ChatWidgetPreviewPage() {
           // Transition to active chat state BEFORE setting sessionId (state machine controls rendering)
           setChatFlowState('activeChat');
           setChatSessionId(conversationId || sessionId);
-          setChatMessages([message]);
+          setChatMessages([{ ...message, clientMessageId }]);
           // Update existingSession to point to the new chat
           setExistingSession({
             sessionId: conversationId || sessionId,
@@ -1281,8 +1359,8 @@ export default function ChatWidgetPreviewPage() {
         // No message - don't create conversation yet, user can type one
         // Transition to active chat state BEFORE setting sessionId (state machine controls rendering)
         setChatFlowState('activeChat');
-        // Use visitorId as temporary session ID when server delays session creation
-        setChatSessionId(sessionId || `pending_${visitorId}`);
+        // Use deviceId as temporary session ID when server delays session creation
+        setChatSessionId(sessionId || `pending_${deviceId}`);
         setChatMessages([]);
       }
     } catch (error) {
@@ -1364,8 +1442,27 @@ export default function ChatWidgetPreviewPage() {
     // Check if this is a pending session (no real conversation yet)
     const isPendingSession = chatSessionId.startsWith('pending_');
     
+    // Generate clientMessageId for idempotency (Intercom-style)
+    const clientMessageId = crypto.randomUUID();
+    
+    // Add to pending messages for UI feedback while waiting for server confirmation
+    const pendingMessage = {
+      id: `pending_${clientMessageId}`,
+      text,
+      direction: 'inbound',
+      createdAt: new Date().toISOString(),
+      clientMessageId,
+      pending: true,
+    };
+    setPendingMessages(prev => {
+      const next = new Map(prev);
+      next.set(clientMessageId, { text, createdAt: pendingMessage.createdAt });
+      return next;
+    });
+    // Optimistically add to messages list
+    setChatMessages(prev => [...prev, pendingMessage as any]);
+    
     try {
-      const clientMessageId = crypto.randomUUID();
       const res = await fetch('/api/public/live-chat/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1375,10 +1472,10 @@ export default function ChatWidgetPreviewPage() {
           text,
           clientMessageId,
           visitorName: visitorName || 'Website Visitor',
-          // Always include widgetId and visitorId for conversation creation
+          // Always include widgetId and deviceId for conversation creation (Intercom-style)
           widgetId,
-          visitorId: chatVisitorId,
           deviceId,
+          contactId, // Use contactId from bootstrap
           visitorEmail: visitorEmail.trim() || undefined,
           visitorUrl: window.location.href,
         }),
@@ -1386,14 +1483,32 @@ export default function ChatWidgetPreviewPage() {
       
       if (res.ok) {
         const { message, conversationId } = await res.json();
-        setChatMessages(prev => [...prev, message]);
+        // Replace pending message with confirmed message
+        setChatMessages(prev => prev.map(m => 
+          (m as any).clientMessageId === clientMessageId ? { ...message, clientMessageId } : m
+        ));
+        // Remove from pending
+        setPendingMessages(prev => {
+          const next = new Map(prev);
+          next.delete(clientMessageId);
+          return next;
+        });
         // If server created a new conversation, update the session ID
         if (conversationId && isPendingSession) {
           setChatSessionId(conversationId);
         }
+      } else {
+        // Mark pending message as failed
+        setChatMessages(prev => prev.map(m => 
+          (m as any).clientMessageId === clientMessageId ? { ...m, failed: true } : m
+        ));
       }
     } catch (error) {
       console.error('Failed to send message:', error);
+      // Mark pending message as failed
+      setChatMessages(prev => prev.map(m => 
+        (m as any).clientMessageId === clientMessageId ? { ...m, failed: true } : m
+      ));
     }
   };
 
