@@ -30,11 +30,11 @@ export function WidgetRenderer({ config, mode, onClose, onChannelClick }: Widget
       <WidgetHeader config={config} onClose={onClose} />
 
       <div className="mt-20 mb-6">
-        <h3 className="text-2xl font-bold text-slate-900 leading-tight">
+        <h3 className="font-bold text-slate-900 leading-tight" style={{ fontSize: "26px" }}>
           {config.welcomeTitle}
         </h3>
         {config.welcomeMessage && (
-          <p className="text-base text-slate-600 mt-1">
+          <p className="font-bold text-slate-900 leading-tight" style={{ fontSize: "26px" }}>
             {config.welcomeMessage}
           </p>
         )}
