@@ -28949,7 +28949,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         .limit(1);
       
       if (!conversation) {
-        return res.status(404).json({ error: "Session not found" });
+        return res.json({ messages: [], agent: null, status: 'pending' });
       }
       
       // Update conversation status to solved
@@ -29061,7 +29061,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       `);
       
       if (convResult.rows.length === 0) {
-        return res.status(404).json({ error: "Session not found" });
+        return res.json({ messages: [], agent: null, status: 'pending' });
       }
       
       const conversation = convResult.rows[0] as any;

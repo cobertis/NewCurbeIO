@@ -233,6 +233,8 @@ export default function ChatWidgetPreviewPage() {
         });
         setTargetingChecked(true);
         setPublicLoading(false);
+        // CRITICAL FIX: Force chat flow to preChatForm immediately to show widget home
+        setChatFlowState('preChatForm');
       })
       .catch((err) => {
         if (!mounted) return;
@@ -243,6 +245,8 @@ export default function ChatWidgetPreviewPage() {
         setDeviceInfo(null);
         setTargetingChecked(true);
         setPublicLoading(false);
+        // CRITICAL FIX: Force chat flow even on error to prevent infinite loading
+        setChatFlowState('preChatForm');
       });
       
     return () => {
