@@ -177,6 +177,8 @@ export class AiIngestionService {
     const maxPages = config?.maxPages ?? 10;
     const sameDomainOnly = config?.sameDomainOnly ?? true;
     
+    console.log(`[AI-Ingestion] Starting URL sync: ${url}, maxPages: ${maxPages}`);
+    
     const visited = new Set<string>();
     const queue: string[] = [url];
     let pagesProcessed = 0;
@@ -194,20 +196,36 @@ export class AiIngestionService {
       visited.add(currentUrl);
 
       try {
+        console.log(`[AI-Ingestion] Fetching: ${currentUrl}`);
         const response = await fetch(currentUrl, {
-          headers: { "User-Agent": "CurbeKBBot/1.0" },
+          headers: { 
+            "User-Agent": "Mozilla/5.0 (compatible; CurbeKBBot/1.0; +https://curbe.io)",
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+          },
           signal: AbortSignal.timeout(30000),
         });
 
-        if (!response.ok) continue;
+        if (!response.ok) {
+          console.log(`[AI-Ingestion] HTTP ${response.status} for ${currentUrl}`);
+          continue;
+        }
         
         const contentType = response.headers.get("content-type") || "";
-        if (!contentType.includes("text/html")) continue;
+        console.log(`[AI-Ingestion] Content-Type: ${contentType}`);
+        if (!contentType.includes("text/html")) {
+          console.log(`[AI-Ingestion] Skipping non-HTML content: ${contentType}`);
+          continue;
+        }
 
         const html = await response.text();
+        console.log(`[AI-Ingestion] HTML length: ${html.length}`);
         const { title, content, links } = this.parseHtml(html, currentUrl);
+        console.log(`[AI-Ingestion] Parsed content length: ${content.length}, title: ${title}`);
 
-        if (!content || content.length < 100) continue;
+        if (!content || content.length < 100) {
+          console.log(`[AI-Ingestion] Content too short (${content.length} chars), skipping`);
+          continue;
+        }
 
         const contentHash = crypto.createHash("sha256").update(content).digest("hex");
         
@@ -259,8 +277,8 @@ export class AiIngestionService {
             } catch {}
           }
         }
-      } catch (e) {
-        console.error(`[AI-Ingestion] Error processing ${currentUrl}:`, e);
+      } catch (e: any) {
+        console.error(`[AI-Ingestion] Error processing ${currentUrl}:`, e?.message || e);
       }
     }
 
