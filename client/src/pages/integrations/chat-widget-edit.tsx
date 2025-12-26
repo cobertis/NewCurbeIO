@@ -4171,8 +4171,10 @@ export default function ChatWidgetEditPage() {
                             className="h-10 w-auto mb-4 rounded"
                           />
                         )}
-                        <h4 className="text-2xl font-bold">{widget.welcomeTitle}</h4>
-                        <p className="text-base opacity-90 mt-3">{widget.welcomeMessage}</p>
+                        <div className="font-bold" style={{ fontSize: '24px', lineHeight: '1.3' }}>
+                          <div>Hi there 👋</div>
+                          <div>How can we help?</div>
+                        </div>
                       </div>
                       
                       <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
@@ -4407,8 +4409,10 @@ export default function ChatWidgetEditPage() {
                             className="h-10 w-auto mb-4 rounded"
                           />
                         )}
-                        <h4 className="text-2xl font-bold">{widget.welcomeTitle}</h4>
-                        <p className="text-base opacity-90 mt-3">{widget.welcomeMessage}</p>
+                        <div className="font-bold" style={{ fontSize: '24px', lineHeight: '1.3' }}>
+                          <div>Hi there 👋</div>
+                          <div>How can we help?</div>
+                        </div>
                       </div>
                       
                       <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
@@ -4459,8 +4463,10 @@ export default function ChatWidgetEditPage() {
                             className="h-10 w-auto mb-4 rounded"
                           />
                         )}
-                        <h4 className="text-2xl font-bold">{widget.welcomeTitle}</h4>
-                        <p className="text-base opacity-90 mt-3">{widget.welcomeMessage}</p>
+                        <div className="font-bold" style={{ fontSize: '24px', lineHeight: '1.3' }}>
+                          <div>Hi there 👋</div>
+                          <div>How can we help?</div>
+                        </div>
                       </div>
                       
                       <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
@@ -5058,8 +5064,10 @@ export default function ChatWidgetEditPage() {
                             className="h-10 w-auto mb-4 rounded"
                           />
                         )}
-                        <h4 className="text-2xl font-bold">{widget.welcomeTitle}</h4>
-                        <p className="text-base opacity-90 mt-3">{widget.welcomeMessage}</p>
+                        <div className="font-bold" style={{ fontSize: '24px', lineHeight: '1.3' }}>
+                          <div>Hi there 👋</div>
+                          <div>How can we help?</div>
+                        </div>
                       </div>
                       
                       <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
