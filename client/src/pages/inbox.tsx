@@ -563,8 +563,7 @@ export default function InboxPage() {
     mutationFn: async ({ conversationId, lastMessages }: { conversationId: string; lastMessages: Array<{ direction: string; text: string }> }) => {
       return apiRequest("POST", "/api/ai/copilot/draft", { conversationId, lastMessages });
     },
-    onSuccess: async (response: any) => {
-      const data = await response.json();
+    onSuccess: (data: any) => {
       if (data.success && data.draft) {
         setCopilotDraft(data.draft);
         setCopilotSource(data.source || null);
@@ -600,8 +599,7 @@ export default function InboxPage() {
         question 
       });
     },
-    onSuccess: async (response: any) => {
-      const data = await response.json();
+    onSuccess: (data: any) => {
       setPulseAiMessages(prev => prev.map(m => 
         m.isLoading ? { role: "assistant" as const, content: data.draft || data.draftReply || "I couldn't find relevant information." } : m
       ));
