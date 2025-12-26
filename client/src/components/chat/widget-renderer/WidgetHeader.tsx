@@ -49,11 +49,11 @@ export function WidgetHeader({ config, onClose }: WidgetHeaderProps) {
           ))}
         </div>
         <button
-          className="p-1.5 hover:bg-slate-100 rounded-full transition-colors"
+          className="p-1.5 hover:bg-slate-100 rounded-full transition-colors z-10"
           onClick={onClose}
           data-testid="widget-close-button"
         >
-          <ChevronDown className="h-5 w-5 text-slate-500" />
+          <ChevronDown className="h-6 w-6 text-slate-500" />
         </button>
       </div>
     </div>
