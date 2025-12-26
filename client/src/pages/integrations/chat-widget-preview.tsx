@@ -196,6 +196,7 @@ export default function ChatWidgetPreviewPage() {
   const connectedAgentRef = useRef<typeof connectedAgent>(null);
   const lastSeenMessageTimeRef = useRef<number>(0);
   const initialMessageInputRef = useRef<HTMLTextAreaElement>(null);
+  const forceNewSessionRef = useRef<boolean>(false);
 
   // SINGLE SOURCE OF TRUTH: Always use public API for widget data
   useEffect(() => {
@@ -972,9 +973,11 @@ export default function ChatWidgetPreviewPage() {
     setChatFlowState('idle');
     
     // Mark that next session should be forced new (not resume old)
+    // Use BOTH state and ref for robustness - ref updates immediately
     setForceNewSession(true);
+    forceNewSessionRef.current = true;
     
-    console.log('[Chat] Session reset - all state cleared, forceNewSession=true');
+    console.log('[Chat] Session reset - all state cleared, forceNewSession=true (ref and state)');
   };
 
   // Start a completely new chat (clears solved session reference)
@@ -1015,11 +1018,15 @@ export default function ChatWidgetPreviewPage() {
   const startChatSession = async (overrideForceNew?: boolean, messageOverride?: string) => {
     if (!widgetId) return;
     
-    // Use override if provided, OR use forceNewSession state (set by resetChatSession)
-    const shouldForceNew = overrideForceNew ?? forceNewSession;
+    // Use override if provided, OR use ref (ref updates immediately, state is async)
+    // The ref is the source of truth since it's set synchronously in resetChatSession
+    const shouldForceNew = overrideForceNew ?? forceNewSessionRef.current;
+    
+    console.log('[Chat] startChatSession - shouldForceNew:', shouldForceNew, 'ref:', forceNewSessionRef.current);
     
     // Clear the forceNewSession flag after reading it
-    if (forceNewSession) {
+    if (forceNewSessionRef.current) {
+      forceNewSessionRef.current = false;
       setForceNewSession(false);
     }
     
