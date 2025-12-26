@@ -75,6 +75,9 @@ function QRCodeDisplay({ value, size }: { value: string; size: number }) {
   return <img src={qrDataUrl} alt="QR Code" width={size} height={size} />;
 }
 
+// State machine for chat flow - ensures only one view renders at a time
+type ChatFlowState = 'idle' | 'preChatForm' | 'activeChat' | 'postChatSurvey';
+
 export default function ChatWidgetPreviewPage() {
   const { id: widgetId } = useParams<{ id: string }>();
   const [location] = useLocation();
@@ -92,6 +95,9 @@ export default function ChatWidgetPreviewPage() {
   const [testUrl, setTestUrl] = useState<string>('https://example.com/contact');
   const [publicWidgetData, setPublicWidgetData] = useState<any>(null);
   const [publicLoading, setPublicLoading] = useState(true);
+  
+  // State machine for chat widget flow - controls which view is shown
+  const [chatFlowState, setChatFlowState] = useState<ChatFlowState>('idle');
   
   // Detect if we're in public mode (URL starts with /widget/)
   const isPublicMode = location.startsWith('/widget/');
@@ -910,31 +916,69 @@ export default function ChatWidgetPreviewPage() {
     }
   };
 
-  // Start a completely new chat (clears solved session reference)
-  const startNewChat = () => {
-    // Clear existing session reference but keep visitor profile
-    // Keep existingSession for solved chat history - will update after new chat is created
-    setSolvedChatData(null);
-    setViewingSolvedChat(false);
+  // Reset all chat session state - ensures clean slate for new chats
+  const resetChatSession = () => {
+    // Clear all chat-related state
     setChatSessionId(null);
     setChatMessages([]);
     setConnectedAgent(null);
+    setChatStatus(null);
     setIsWaitingForAgent(true);
-    setShowPreChatForm(false); // Show the initial message form
+    setShowPreChatForm(false);
     setInitialMessage('');
     setSentInitialMessage('');
+    setShowOfflineFallback(false);
+    
+    // Clear all survey state
+    setShowSatisfactionSurvey(false);
+    setSurveySubmitted(false);
     setSurveyRating(null);
     setSurveyFeedback('');
-    setSurveySubmitted(false);
-    setShowSurveyModal(false);
     
-    // Clear the survey state from localStorage
+    // Clear solved chat state
+    setSolvedChatData(null);
+    setViewingSolvedChat(false);
+    setShowSurveyModal(false);
+    setShowFinishConfirm(false);
+    
+    // Clear localStorage survey state
     if (widgetId) {
-      localStorage.removeItem(`chatSurveyState-${widgetId}`);
+      try {
+        localStorage.removeItem(`chatSurveyState-${widgetId}`);
+      } catch (e) {
+        console.error('[Chat] Failed to clear survey state:', e);
+      }
     }
     
-    setForceNewChat(true); // Signal that we want a new chat
-    console.log('[Chat] Starting new chat - cleared previous session, forceNewChat=true');
+    // Reset flow state to idle
+    setChatFlowState('idle');
+    
+    console.log('[Chat] Session reset - all state cleared');
+  };
+
+  // Start a completely new chat (clears solved session reference)
+  const startNewChat = () => {
+    resetChatSession();
+    setForceNewChat(true);
+    
+    // Check for stored profile to decide flow
+    const storedProfile = localStorage.getItem(`chatVisitorProfile-${widgetId}`);
+    if (storedProfile) {
+      try {
+        const profile = JSON.parse(storedProfile);
+        if (profile.name || profile.email) {
+          // Has profile - start chat directly
+          startChatSession(true);
+          return;
+        }
+      } catch (e) {
+        console.error('[Chat] Failed to parse stored profile:', e);
+      }
+    }
+    
+    // No profile - show pre-chat form
+    setChatFlowState('preChatForm');
+    console.log('[Chat] Starting new chat - showing pre-chat form');
   };
 
   // Show survey modal from solved chat view
@@ -1090,6 +1134,8 @@ export default function ChatWidgetPreviewPage() {
             rating: null,
             feedback: null,
           });
+          // Transition to active chat state
+          setChatFlowState('activeChat');
         }
         setInitialMessage('');
       } else {
@@ -1097,6 +1143,8 @@ export default function ChatWidgetPreviewPage() {
         // Use visitorId as temporary session ID when server delays session creation
         setChatSessionId(sessionId || `pending_${visitorId}`);
         setChatMessages([]);
+        // Transition to active chat state
+        setChatFlowState('activeChat');
       }
     } catch (error) {
       console.error('Failed to start chat:', error);
@@ -1148,8 +1196,10 @@ export default function ChatWidgetPreviewPage() {
       
       if (res.ok) {
         setChatStatus('solved');
+        // Transition to post-chat survey via state machine
+        setChatFlowState('postChatSurvey');
         setShowSatisfactionSurvey(true);
-        console.log('[Chat] Visitor finished chat session');
+        console.log('[Chat] Visitor finished chat session - showing survey');
       }
     } catch (error) {
       console.error('[Chat] Failed to finish chat:', error);
@@ -1214,6 +1264,12 @@ export default function ChatWidgetPreviewPage() {
           localStorage.removeItem(`chatSurveyState-${widgetId}`);
         }
         console.log('[Chat] Satisfaction survey submitted successfully');
+        
+        // After survey submission, reset to idle state for clean next session
+        setTimeout(() => {
+          resetChatSession();
+          setActiveChannel(null);
+        }, 2000);
       }
     } catch (error) {
       console.error('Failed to submit satisfaction survey:', error);
@@ -1253,9 +1309,10 @@ export default function ChatWidgetPreviewPage() {
             setShowOfflineFallback(false);
           }
           
-          // Detect when chat is solved and show satisfaction survey
+          // Detect when chat is solved and transition to survey via state machine
           if (status === 'solved' && chatStatus !== 'solved' && !surveySubmitted) {
             setChatStatus('solved');
+            setChatFlowState('postChatSurvey');
             setShowSatisfactionSurvey(true);
           } else if (status) {
             setChatStatus(status);
@@ -2882,8 +2939,107 @@ export default function ChatWidgetPreviewPage() {
             </div>
           ) : (
             <div className="relative" style={{ height: '680px' }}>
-              {/* Home screen using WidgetRenderer - shown when no special overlays are active */}
-              {!showPreChatForm && effectiveWidgetData?.widget ? (
+              {/* State machine controlled rendering - only one view at a time */}
+              {chatFlowState === 'preChatForm' || showPreChatForm ? (
+                /* Pre-chat form - controlled by state machine */
+                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 h-full">
+                  {/* Header with logo and agent photos - gradient background */}
+                  <div 
+                    className="px-5 py-4 flex items-center justify-between"
+                    style={{ background: currentBackground }}
+                  >
+                    {/* Logo */}
+                    <div className="flex items-center">
+                      {widget.branding?.customLogo ? (
+                        <img src={widget.branding.customLogo} alt="Logo" className="h-6 object-contain brightness-0 invert" />
+                      ) : (
+                        <span className="font-semibold text-white text-lg">
+                          {widget.welcomeTitle?.split(' ')[0] || 'Support'}
+                        </span>
+                      )}
+                    </div>
+                    
+                    {/* Agent photos + close button */}
+                    <div className="flex items-center gap-3">
+                      <div className="flex -space-x-2">
+                        {[1, 2, 3].map((i) => (
+                          <div key={i} className="w-8 h-8 rounded-full border-2 border-white bg-white/20 flex items-center justify-center text-white text-xs font-medium">
+                            <User className="h-4 w-4" />
+                          </div>
+                        ))}
+                      </div>
+                      <button
+                        onClick={() => { 
+                          setShowPreChatForm(false); 
+                          setChatFlowState('idle');
+                        }}
+                        className="p-1.5 hover:bg-white/10 rounded-full transition-colors"
+                        data-testid="button-close-prechat"
+                      >
+                        <X className="h-5 w-5 text-white" />
+                      </button>
+                    </div>
+                  </div>
+                  
+                  {/* Form content - managed by existing pre-chat form logic */}
+                  <div className="p-5 space-y-4">
+                    <h3 className="text-lg font-semibold text-slate-900 dark:text-white">
+                      {widget.liveChatSettings?.preChatForm?.title || "Start a conversation"}
+                    </h3>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      {widget.liveChatSettings?.preChatForm?.subtitle || "Enter your details to begin"}
+                    </p>
+                    
+                    <div className="space-y-3">
+                      <input
+                        type="text"
+                        placeholder="Your name"
+                        value={visitorName}
+                        onChange={(e) => setVisitorName(e.target.value)}
+                        className="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-lg text-sm dark:bg-slate-800"
+                        data-testid="input-visitor-name"
+                      />
+                      <input
+                        type="email"
+                        placeholder="Your email"
+                        value={visitorEmail}
+                        onChange={(e) => setVisitorEmail(e.target.value)}
+                        className="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-lg text-sm dark:bg-slate-800"
+                        data-testid="input-visitor-email"
+                      />
+                      <textarea
+                        placeholder="How can we help?"
+                        value={initialMessage}
+                        onChange={(e) => setInitialMessage(e.target.value)}
+                        rows={3}
+                        className="w-full p-3 border border-slate-200 dark:border-slate-700 rounded-lg text-sm resize-none dark:bg-slate-800"
+                        data-testid="input-initial-message"
+                      />
+                    </div>
+                    
+                    <button
+                      onClick={() => startChatSession()}
+                      disabled={chatLoading}
+                      className="w-full py-3 rounded-lg text-white font-medium transition-all hover:opacity-90 disabled:opacity-50"
+                      style={{ background: currentBackground }}
+                      data-testid="button-start-chat"
+                    >
+                      {chatLoading ? (
+                        <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                      ) : (
+                        "Start Chat"
+                      )}
+                    </button>
+                  </div>
+                  
+                  {/* Footer */}
+                  <div className="absolute bottom-0 left-0 right-0 py-2 border-t border-slate-100 dark:border-slate-700 text-center bg-slate-50 dark:bg-slate-800/50">
+                    <p className="text-[10px] text-slate-400 flex items-center justify-center gap-1">
+                      Powered by <img src={curbeLogo} alt="Curbe" className="h-2.5 w-auto inline-block opacity-60" />
+                    </p>
+                  </div>
+                </div>
+              ) : chatFlowState === 'idle' && effectiveWidgetData?.widget ? (
                 <WidgetRenderer 
                   config={mapChatWidgetToConfig(effectiveWidgetData.widget)}
                   mode="embed"
@@ -2894,11 +3050,16 @@ export default function ChatWidgetPreviewPage() {
                   onClose={() => setWidgetOpen(false)}
                   onChannelClick={(channel) => {
                     if (channel === 'liveChat') {
+                      // Reset session state first to ensure clean slate
+                      resetChatSession();
+                      
                       const storedProfile = localStorage.getItem(`chatVisitorProfile-${widgetId}`);
                       if (storedProfile) {
                         try {
                           const profile = JSON.parse(storedProfile);
                           if (profile.name || profile.email) {
+                            // Has profile - start chat directly
+                            setChatFlowState('activeChat');
                             startChatSession();
                             return;
                           }
@@ -2906,6 +3067,8 @@ export default function ChatWidgetPreviewPage() {
                           console.error('[Chat] Failed to parse stored profile:', e);
                         }
                       }
+                      // No profile - show pre-chat form
+                      setChatFlowState('preChatForm');
                       setShowPreChatForm(true);
                     } else {
                       setActiveChannel(channel);
@@ -2941,211 +3104,28 @@ export default function ChatWidgetPreviewPage() {
                     }
                   }}
                   onStartNewChat={() => {
-                    // Clear any existing solved chat state
-                    setSolvedChatData(null);
-                    setViewingSolvedChat(false);
-                    setChatSessionId(null);
-                    setChatMessages([]);
-                    setConnectedAgent(null);
-                    setSurveyRating(null);
-                    setSurveyFeedback('');
-                    setSurveySubmitted(false);
-                    setShowSurveyModal(false);
+                    // Use state machine to start a new chat cleanly
+                    resetChatSession();
+                    setForceNewChat(true);
                     
                     const storedProfile = localStorage.getItem(`chatVisitorProfile-${widgetId}`);
                     if (storedProfile) {
                       try {
                         const profile = JSON.parse(storedProfile);
                         if (profile.name || profile.email) {
-                          setForceNewChat(true);
-                          startChatSession(true); // Pass true directly to avoid React state timing issue
+                          setChatFlowState('activeChat');
+                          startChatSession(true);
                           return;
                         }
                       } catch (e) {
                         console.error('[Chat] Failed to parse stored profile:', e);
                       }
                     }
-                    setForceNewChat(true);
+                    // No profile - show pre-chat form
+                    setChatFlowState('preChatForm');
                     setShowPreChatForm(true);
                   }}
                 />
-              ) : showPreChatForm ? (
-                <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 h-full">
-                  {/* Header with logo and agent photos - gradient background */}
-                  <div 
-                    className="px-5 py-4 flex items-center justify-between"
-                    style={{ background: currentBackground }}
-                  >
-                    {/* Logo */}
-                    <div className="flex items-center">
-                      {widget.branding?.customLogo ? (
-                        <img src={widget.branding.customLogo} alt="Logo" className="h-6 object-contain brightness-0 invert" />
-                      ) : (
-                        <span className="font-semibold text-white text-lg">
-                          {widget.welcomeTitle?.split(' ')[0] || 'Support'}
-                        </span>
-                      )}
-                    </div>
-                    
-                    {/* Agent photos + close button */}
-                    <div className="flex items-center gap-3">
-                      <div className="flex -space-x-2">
-                        {[1, 2, 3].map((i) => (
-                          <div 
-                            key={i}
-                            className="w-8 h-8 rounded-full bg-white/30 border-2 border-white flex items-center justify-center overflow-hidden"
-                          >
-                            <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-400" />
-                          </div>
-                        ))}
-                      </div>
-                      <button 
-                        onClick={() => setWidgetOpen(false)}
-                        className="p-1.5 hover:bg-slate-100 rounded-full transition-colors"
-                        data-testid="close-widget"
-                      >
-                        <ChevronDown className="h-6 w-6 text-slate-500" />
-                      </button>
-                    </div>
-                  </div>
-                  
-                  {/* Main content area - white background */}
-                  <div className="flex-1 p-5 flex flex-col">
-                    {/* Welcome text - black on white */}
-                    <div className="mb-6">
-                      <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-tight">
-                        {widget.welcomeTitle || "Hi there 👋"}
-                      </h3>
-                      <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-tight">
-                        {widget.welcomeMessage || "How can we help?"}
-                      </h3>
-                    </div>
-                    
-                    {/* Offline status banner */}
-                    {!scheduleStatus.isOnline && (
-                      <div className="bg-amber-50 dark:bg-amber-900/30 rounded-lg px-4 py-3 mb-4">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
-                          <span className="text-sm font-medium text-amber-800 dark:text-amber-200">We're currently offline</span>
-                        </div>
-                        {scheduleStatus.nextAvailable && (
-                          <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 ml-4">
-                            Back {scheduleStatus.nextAvailable}
-                          </p>
-                        )}
-                      </div>
-                    )}
-                    
-                    {/* Existing session card */}
-                    {existingSession && !chatSessionId && !showPreChatForm && (
-                      <button
-                        onClick={existingSession.status === 'solved' || existingSession.status === 'closed' ? viewSolvedChat : resumeChat}
-                        disabled={chatLoading}
-                        className="w-full bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 flex items-center justify-between hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors mb-3"
-                        data-testid="back-to-chat-link"
-                      >
-                        <span className="text-base font-medium text-slate-900 dark:text-slate-100">Back to your chat</span>
-                        {chatLoading ? (
-                          <Loader2 className="h-5 w-5 animate-spin" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
-                        ) : (
-                          <Send className="h-5 w-5" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
-                        )}
-                      </button>
-                    )}
-
-                    {/* Pre-chat form */}
-                    {widget.channels?.liveChat && !chatSessionId && showPreChatForm && (
-                      <div className="bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 p-4 space-y-3">
-                        <h5 className="text-sm font-semibold text-slate-900 dark:text-slate-100">
-                          {widget.liveChatSettings?.preChatForm?.title || "Chat with our agent"}
-                        </h5>
-                        <div className="space-y-3">
-                          <div className="space-y-1">
-                            <span className="text-xs text-slate-500 font-medium">
-                              Name {widget.liveChatSettings?.preChatForm?.nameFieldRequired && <span className="text-red-500">*</span>}
-                            </span>
-                            <input 
-                              type="text"
-                              value={visitorName}
-                              onChange={(e) => setVisitorName(e.target.value)}
-                              placeholder="Enter your name"
-                              className="w-full p-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                              data-testid="visitor-name-input"
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <span className="text-xs text-slate-500 font-medium">
-                              Email {widget.liveChatSettings?.preChatForm?.emailFieldRequired !== false && <span className="text-red-500">*</span>}
-                            </span>
-                            <input 
-                              type="email"
-                              value={visitorEmail}
-                              onChange={(e) => setVisitorEmail(e.target.value)}
-                              placeholder="your@email.com"
-                              className="w-full p-2.5 border border-slate-200 dark:border-slate-600 rounded-lg text-sm bg-white dark:bg-slate-700 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                              data-testid="visitor-email-input"
-                            />
-                          </div>
-                        </div>
-                        <button 
-                          onClick={() => startChatSession()}
-                          disabled={chatLoading || (widget.liveChatSettings?.preChatForm?.emailFieldRequired !== false && !visitorEmail.trim())}
-                          className="w-full py-2.5 px-4 rounded-lg text-white text-sm font-medium disabled:opacity-50 flex items-center justify-center gap-2"
-                          style={{ background: currentBackground }}
-                          data-testid="submit-prechat-button"
-                        >
-                          {chatLoading && <Loader2 className="h-4 w-4 animate-spin" />}
-                          {widget.liveChatSettings?.preChatForm?.buttonLabel || "Start chat"}
-                        </button>
-                        <button 
-                          onClick={() => setShowPreChatForm(false)}
-                          className="flex items-center gap-2 text-sm text-slate-500 hover:text-slate-700"
-                        >
-                          <ChevronLeft className="h-4 w-4" />
-                          Select another channel
-                        </button>
-                      </div>
-                    )}
-                    
-                    {/* Other channel buttons (when existing session is shown) */}
-                    {!chatSessionId && !showPreChatForm && enabledChannels.filter((id: string) => id !== "liveChat").map((channelId: string) => {
-                      const channel = channelIcons[channelId];
-                      if (!channel) return null;
-                      
-                      let channelLabel = channel.label;
-                      if (channelId === "sms") {
-                        channelLabel = widget.smsSettings?.welcomeScreen?.channelName || "Text us";
-                      } else if (channelId === "whatsapp") {
-                        channelLabel = widget.whatsappSettings?.welcomeScreen?.channelName || "Chat on WhatsApp";
-                      } else if (channelId === "email") {
-                        channelLabel = widget.emailSettings?.welcomeScreen?.channelName || "Send an email";
-                      }
-                      
-                      return (
-                        <button
-                          key={channelId}
-                          onClick={() => setActiveChannel(channelId)}
-                          className="w-full flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors"
-                          data-testid={`channel-${channelId}`}
-                        >
-                          <div className="flex items-center gap-3">
-                            <div style={{ color: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : currentColor.hex }}>
-                              {channel.icon}
-                            </div>
-                            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{channelLabel}</span>
-                          </div>
-                          <ChevronRight className="h-4 w-4 text-slate-400" />
-                        </button>
-                      );
-                    })}
-                  </div>
-                  
-                  <div className="p-2 border-t text-center">
-                    <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
-                      Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
-                    </p>
-                  </div>
-                </div>
               ) : null}
               
               {/* Offline status overlay for WidgetRenderer mode */}
