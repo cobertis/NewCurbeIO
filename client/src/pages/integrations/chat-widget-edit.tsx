@@ -4454,80 +4454,82 @@ export default function ChatWidgetEditPage() {
                   </div>
                 ) : expandedChannel === "liveChat" ? (
                   <div className="relative">
-                    <div className="rounded-xl overflow-hidden shadow-lg" style={{ background: currentBackground }}>
-                      <div className="p-6 text-white">
-                        {widget.branding?.customLogo && (
-                          <img 
-                            src={widget.branding.customLogo} 
-                            alt="Logo" 
-                            className="h-10 w-auto mb-4 rounded"
-                          />
-                        )}
-                        <div className="font-bold" style={{ fontSize: '24px', lineHeight: '1.3' }}>
-                          <div>Hi there 👋</div>
-                          <div>How can we help?</div>
+                    <div className="rounded-2xl overflow-hidden shadow-lg bg-white dark:bg-slate-900">
+                      {/* Header with logo and agent photos */}
+                      <div className="px-5 py-4 flex items-center justify-between" style={{ background: currentBackground }}>
+                        <div className="flex items-center">
+                          {widget.branding?.customLogo ? (
+                            <img src={widget.branding.customLogo} alt="Logo" className="h-6 object-contain brightness-0 invert" />
+                          ) : (
+                            <span className="font-semibold text-white text-lg">Support</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex -space-x-2">
+                            {[1, 2, 3].map((i) => (
+                              <div key={i} className="w-8 h-8 rounded-full bg-white/30 border-2 border-white overflow-hidden">
+                                <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-400" />
+                              </div>
+                            ))}
+                          </div>
+                          <button className="p-1 hover:bg-white/20 rounded-full transition-colors">
+                            <X className="h-5 w-5 text-white" />
+                          </button>
                         </div>
                       </div>
                       
-                      <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
-                        <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-700">
-                          <h5 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-3">
-                            How can we help you today?
-                          </h5>
-                          <div className="space-y-3">
-                            <div>
-                              <Label className="text-xs text-slate-500">
-                                {widget.liveChatSettings?.welcomeScreen?.fieldLabel || "Message"}
-                              </Label>
-                              <Textarea placeholder="Type your message here" disabled className="mt-1" rows={3} />
-                            </div>
-                          </div>
-                          <Button className="w-full mt-3" style={{ background: currentBackground }}>
-                            {widget.liveChatSettings?.welcomeScreen?.buttonLabel || "Start chat"}
-                          </Button>
+                      {/* Main content - white background */}
+                      <div className="p-5">
+                        {/* Welcome text in BLACK */}
+                        <div className="mb-6">
+                          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-tight">Hi there 👋</h3>
+                          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-tight">How can we help?</h3>
                         </div>
                         
+                        {/* Send us a message button */}
+                        {widget.channels?.liveChat && (
+                          <div className="flex items-center justify-between py-4 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 mb-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
+                            <span className="text-base font-medium text-slate-900 dark:text-slate-100">Send us a message</span>
+                            <Send className="h-5 w-5" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
+                          </div>
+                        )}
+                        
                         {widget.channels?.sms?.enabled && (
-                          <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
-                            <div className="flex items-center gap-3">
-                              <MessageSquare className="h-5 w-5 text-blue-500" />
-                              <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Send a text</span>
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-slate-400" />
+                          <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 mb-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
+                            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{widget.smsSettings?.welcomeScreen?.channelName || "Text us"}</span>
+                            <Send className="h-5 w-5" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
                           </div>
                         )}
                         
                         {widget.channels?.phone?.enabled && (
-                          <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
-                            <div className="flex items-center gap-3">
-                              <Phone className="h-5 w-5 text-green-500" />
-                              <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Call us</span>
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-slate-400" />
+                          <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 mb-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
+                            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{widget.callSettings?.callUsScreen?.title || "Call us"}</span>
+                            <Send className="h-5 w-5" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
                           </div>
                         )}
                         
                         {widget.channels?.whatsapp?.enabled && (
-                          <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
-                            <div className="flex items-center gap-3">
-                              <SiWhatsapp className="h-5 w-5 text-[#25D366]" />
-                              <span className="text-sm font-medium text-slate-900 dark:text-slate-100">WhatsApp</span>
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-slate-400" />
+                          <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 mb-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
+                            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{widget.whatsappSettings?.welcomeScreen?.channelName || "Chat on WhatsApp"}</span>
+                            <Send className="h-5 w-5" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
+                          </div>
+                        )}
+                        
+                        {widget.channels?.telegram?.enabled && (
+                          <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 mb-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
+                            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{widget.telegramSettings?.welcomeScreen?.channelName || "Chat on Telegram"}</span>
+                            <Send className="h-5 w-5" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
                           </div>
                         )}
                         
                         {widget.channels?.email?.enabled && (
-                          <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-100 dark:border-slate-700">
-                            <div className="flex items-center gap-3">
-                              <Mail className="h-5 w-5 text-orange-500" />
-                              <span className="text-sm font-medium text-slate-900 dark:text-slate-100">Email us</span>
-                            </div>
-                            <ChevronRight className="h-4 w-4 text-slate-400" />
+                          <div className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 mb-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
+                            <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{widget.emailSettings?.welcomeScreen?.channelName || "Email us"}</span>
+                            <Send className="h-5 w-5" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
                           </div>
                         )}
                         
-                        <div className="text-center pt-2">
+                        <div className="text-center pt-4">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
                             Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                           </p>
@@ -5050,41 +5052,43 @@ export default function ChatWidgetEditPage() {
                   </div>
                 ) : (
                   <div className="relative">
-                    <div 
-                      className="rounded-xl overflow-hidden shadow-lg"
-                      style={{ 
-                        background: currentBackground
-                      }}
-                    >
-                      <div className="p-6 text-white">
-                        {widget.branding?.customLogo && (
-                          <img 
-                            src={widget.branding.customLogo} 
-                            alt="Logo" 
-                            className="h-10 w-auto mb-4 rounded"
-                          />
-                        )}
-                        <div className="font-bold" style={{ fontSize: '24px', lineHeight: '1.3' }}>
-                          <div>Hi there 👋</div>
-                          <div>How can we help?</div>
+                    <div className="rounded-2xl overflow-hidden shadow-lg bg-white dark:bg-slate-900">
+                      {/* Header with logo and agent photos */}
+                      <div className="px-5 py-4 flex items-center justify-between" style={{ background: currentBackground }}>
+                        <div className="flex items-center">
+                          {widget.branding?.customLogo ? (
+                            <img src={widget.branding.customLogo} alt="Logo" className="h-6 object-contain brightness-0 invert" />
+                          ) : (
+                            <span className="font-semibold text-white text-lg">Support</span>
+                          )}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <div className="flex -space-x-2">
+                            {[1, 2, 3].map((i) => (
+                              <div key={i} className="w-8 h-8 rounded-full bg-white/30 border-2 border-white overflow-hidden">
+                                <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-400" />
+                              </div>
+                            ))}
+                          </div>
+                          <button className="p-1 hover:bg-white/20 rounded-full transition-colors">
+                            <X className="h-5 w-5 text-white" />
+                          </button>
                         </div>
                       </div>
                       
-                      <div className="bg-white dark:bg-slate-900 p-5 space-y-4">
+                      {/* Main content - white background */}
+                      <div className="p-5">
+                        {/* Welcome text in BLACK */}
+                        <div className="mb-6">
+                          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-tight">Hi there 👋</h3>
+                          <h3 className="text-2xl font-bold text-slate-900 dark:text-slate-100 leading-tight">How can we help?</h3>
+                        </div>
+                        
+                        {/* Send us a message button */}
                         {widget.channels.liveChat && (
-                          <div className="bg-white dark:bg-slate-800 rounded-xl p-4 shadow-sm border border-slate-100 dark:border-slate-700">
-                            <h5 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-3">
-                              {widget.liveChatSettings?.preChatForm?.title || "How can we help you today?"}
-                            </h5>
-                            <Textarea 
-                              placeholder="Type your message here" 
-                              disabled 
-                              className="mb-3 resize-none" 
-                              rows={3} 
-                            />
-                            <Button className="w-full" style={{ background: currentBackground }}>
-                              {widget.liveChatSettings?.preChatForm?.buttonLabel || widget.liveChatSettings?.welcomeScreen?.buttonLabel || "Start chat"}
-                            </Button>
+                          <div className="flex items-center justify-between py-4 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 mb-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
+                            <span className="text-base font-medium text-slate-900 dark:text-slate-100">Send us a message</span>
+                            <Send className="h-5 w-5" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
                           </div>
                         )}
                         
@@ -5104,29 +5108,26 @@ export default function ChatWidgetEditPage() {
                           
                           const getChannelLabel = () => {
                             switch (channelId) {
-                              case "phone": return "Call us";
-                              case "whatsapp": return widget.whatsappSettings?.welcomeScreen?.channelName || "WhatsApp";
-                              case "email": return widget.emailSettings?.welcomeScreen?.channelName || "Email";
-                              case "sms": return widget.smsSettings?.welcomeScreen?.channelName || "Send a text";
+                              case "phone": return widget.callSettings?.callUsScreen?.title || "Call us";
+                              case "whatsapp": return widget.whatsappSettings?.welcomeScreen?.channelName || "Chat on WhatsApp";
+                              case "email": return widget.emailSettings?.welcomeScreen?.channelName || "Email us";
+                              case "sms": return widget.smsSettings?.welcomeScreen?.channelName || "Text us";
                               case "facebook": return widget.messengerSettings?.welcomeScreen?.channelName || "Messenger";
                               case "instagram": return widget.instagramSettings?.welcomeScreen?.channelName || "Instagram";
-                              case "telegram": return widget.telegramSettings?.welcomeScreen?.channelName || "Telegram";
+                              case "telegram": return widget.telegramSettings?.welcomeScreen?.channelName || "Chat on Telegram";
                               default: return config.label;
                             }
                           };
                           
                           return (
-                            <div key={channelId} className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-100 dark:border-slate-700 cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
-                              <div className="flex items-center gap-3">
-                                <span className={config.iconColor}>{config.icon}</span>
-                                <span className="text-sm font-medium text-slate-700 dark:text-slate-300">{getChannelLabel()}</span>
-                              </div>
-                              <ChevronRight className="h-4 w-4 text-slate-400" />
+                            <div key={channelId} className="flex items-center justify-between py-3 px-4 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 mb-3 hover:bg-slate-50 dark:hover:bg-slate-700/50 transition-colors cursor-pointer">
+                              <span className="text-sm font-medium text-slate-900 dark:text-slate-100">{getChannelLabel()}</span>
+                              <Send className="h-5 w-5" style={{ color: typeof currentBackground === 'string' ? currentBackground : '#3b82f6' }} />
                             </div>
                           );
                         })}
                         
-                        <div className="text-center pt-2">
+                        <div className="text-center pt-4">
                           <p className="text-xs text-slate-400 flex items-center justify-center gap-1">
                             Powered by <a href="https://curbe.io" target="_blank" rel="noopener noreferrer"><img src={curbeLogo} alt="Curbe" className="h-3 w-auto inline-block" /></a>
                           </p>
