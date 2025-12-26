@@ -1666,6 +1666,141 @@ export default function ChatWidgetPreviewPage() {
     );
   };
 
+  const renderChannelContentInline = () => {
+    if (!activeChannel) return null;
+
+    const getPhoneNumber = () => {
+      if (activeChannel === "sms") {
+        return widget.smsSettings?.numberSettings?.numberType === "custom"
+          ? widget.smsSettings?.numberSettings?.customNumber || "+1 833 221 4494"
+          : widget.smsSettings?.numberSettings?.connectedNumber || "+1 833 221 4494";
+      }
+      if (activeChannel === "whatsapp") {
+        return widget.whatsappSettings?.numberSettings?.customNumber || "+1 786 630 2522";
+      }
+      if (activeChannel === "phone") {
+        return widget.callSettings?.numberSettings?.numberType === "custom"
+          ? widget.callSettings?.numberSettings?.customNumber || "+1 833 221 4494"
+          : widget.callSettings?.numbersAndCountries?.entries?.[0]?.phoneNumber || "+1 833 221 4494";
+      }
+      return "";
+    };
+
+    const channelConfig: Record<string, any> = {
+      sms: {
+        title: widget.smsSettings?.messageScreen?.title || "Send us a text message",
+        description: widget.smsSettings?.messageScreen?.description || "Click the button below to send us an SMS.",
+        buttonLabel: widget.smsSettings?.messageScreen?.buttonLabel || "Send SMS",
+        showQR: widget.smsSettings?.messageScreen?.showQRCode ?? true,
+        qrValue: `sms:${getPhoneNumber().replace(/[\s()\-+]/g, '')}`,
+        icon: <MessageSquare className="h-5 w-5" />,
+      },
+      whatsapp: {
+        title: widget.whatsappSettings?.messageScreen?.title || "Message us on WhatsApp",
+        description: widget.whatsappSettings?.messageScreen?.description || "Click the button below or scan the QR code.",
+        buttonLabel: widget.whatsappSettings?.messageScreen?.buttonLabel || "Open chat",
+        showQR: widget.whatsappSettings?.messageScreen?.showQRCode ?? true,
+        qrValue: `https://wa.me/${getPhoneNumber().replace(/[\s()\-+]/g, '')}`,
+        icon: <SiWhatsapp className="h-5 w-5" />,
+      },
+      phone: {
+        title: widget.callSettings?.callUsScreen?.title || "Speak with an agent",
+        description: widget.callSettings?.callUsScreen?.description || "Call us for urgent matters.",
+        buttonLabel: widget.callSettings?.callUsScreen?.buttonLabel || "Call now",
+        showQR: widget.callSettings?.callUsScreen?.showQRCode ?? true,
+        qrValue: `tel:${getPhoneNumber().replace(/[\s()\-+]/g, '')}`,
+        icon: <Phone className="h-5 w-5" />,
+      },
+      email: {
+        title: widget.emailSettings?.formFields?.title || "Get response via email",
+        description: widget.emailSettings?.formFields?.description || "Fill the details and we will reply.",
+        buttonLabel: widget.emailSettings?.formFields?.buttonLabel || "Send email",
+        showQR: false,
+        icon: <Mail className="h-5 w-5" />,
+      },
+      facebook: {
+        title: widget.messengerSettings?.messageUsScreen?.title || "Message us on Facebook",
+        description: widget.messengerSettings?.messageUsScreen?.description || "Click the button below or scan the QR code.",
+        buttonLabel: widget.messengerSettings?.messageUsScreen?.buttonLabel || "Open Facebook",
+        showQR: widget.messengerSettings?.messageUsScreen?.showQRCode ?? true,
+        qrValue: `https://m.me/${widget.messengerSettings?.pageConnection?.pageId || 'curbeio'}`,
+        icon: <SiFacebook className="h-5 w-5" />,
+      },
+      instagram: {
+        title: widget.instagramSettings?.messageUsScreen?.title || "Message us on Instagram",
+        description: widget.instagramSettings?.messageUsScreen?.description || "Click the button below or scan the QR code.",
+        buttonLabel: widget.instagramSettings?.messageUsScreen?.buttonLabel || "Open Instagram",
+        showQR: widget.instagramSettings?.messageUsScreen?.showQRCode ?? true,
+        qrValue: `https://ig.me/m/${widget.instagramSettings?.accountConnection?.username || 'curbeio'}`,
+        icon: <SiInstagram className="h-5 w-5" />,
+      },
+      telegram: {
+        title: widget.telegramSettings?.messageUsScreen?.title || "Message us on Telegram",
+        description: widget.telegramSettings?.messageUsScreen?.description || "Click the button below or scan the QR code.",
+        buttonLabel: widget.telegramSettings?.messageUsScreen?.buttonLabel || "Open Telegram",
+        showQR: widget.telegramSettings?.messageUsScreen?.showQRCode ?? true,
+        qrValue: `https://t.me/${widget.telegramSettings?.botConnection?.botUsername || 'curbeio'}`,
+        icon: <SiTelegram className="h-5 w-5" />,
+      },
+    };
+
+    const config = channelConfig[activeChannel];
+    if (!config) return null;
+
+    return (
+      <div className="py-4 space-y-4">
+        <h4 className="text-lg font-semibold text-slate-900 dark:text-slate-100">{config.title}</h4>
+        <p className="text-sm text-slate-600 dark:text-slate-400">{config.description}</p>
+        
+        {(activeChannel === "sms" || activeChannel === "whatsapp" || activeChannel === "phone") && (
+          <div className="text-center">
+            <p className="text-xl font-bold text-slate-900 dark:text-slate-100">
+              {formatPhoneNumber(getPhoneNumber())}
+            </p>
+          </div>
+        )}
+        
+        {activeChannel === "email" && (
+          <div className="space-y-3">
+            <input type="text" placeholder="Your name" className="w-full p-2 border rounded-lg text-sm" />
+            <input type="email" placeholder="Your email" className="w-full p-2 border rounded-lg text-sm" />
+            <textarea placeholder="Your message" rows={3} className="w-full p-2 border rounded-lg text-sm" />
+          </div>
+        )}
+        
+        <Button className="w-full" style={{ background: currentBackground }}>
+          {config.buttonLabel}
+        </Button>
+        
+        {config.showQR && (
+          <>
+            <div className="flex justify-center py-2">
+              <div className="relative">
+                <div className="absolute -top-1 -left-1 w-5 h-5 border-l-2 border-t-2 border-slate-300 rounded-tl-lg"></div>
+                <div className="absolute -top-1 -right-1 w-5 h-5 border-r-2 border-t-2 border-slate-300 rounded-tr-lg"></div>
+                <div className="absolute -bottom-1 -left-1 w-5 h-5 border-l-2 border-b-2 border-slate-300 rounded-bl-lg"></div>
+                <div className="absolute -bottom-1 -right-1 w-5 h-5 border-r-2 border-b-2 border-slate-300 rounded-br-lg"></div>
+                <div className="p-2">
+                  <QRCodeDisplay value={config.qrValue} size={140} />
+                </div>
+                <div className="absolute inset-0 flex items-center justify-center">
+                  <div className="bg-white p-1.5 rounded-full border-2" style={{ borderColor: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : currentColor.hex }}>
+                    <div style={{ color: typeof currentBackground === 'string' && currentBackground.startsWith('#') ? currentBackground : currentColor.hex }}>
+                      {config.icon}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-slate-400 text-center">
+              {activeChannel === "whatsapp" || activeChannel === "facebook" || activeChannel === "instagram" || activeChannel === "telegram" ? "Scan QR code to open a chat" : activeChannel === "phone" ? "Scan QR code to call" : "Scan QR code to send a text"}
+            </p>
+          </>
+        )}
+      </div>
+    );
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-blue-50 to-white dark:from-slate-900 dark:to-slate-800" data-testid="page-widget-preview">
       <div className="container max-w-4xl mx-auto py-12 px-4">
@@ -2616,8 +2751,6 @@ export default function ChatWidgetPreviewPage() {
                 </p>
               </div>
             </div>
-          ) : activeChannel ? (
-            renderChannelContent()
           ) : (
             <div className="relative" style={{ height: '680px' }}>
               {/* Home screen using WidgetRenderer - shown when no special overlays are active */}
@@ -2659,6 +2792,9 @@ export default function ChatWidgetPreviewPage() {
                   }}
                   isOffline={!scheduleStatus.isOnline}
                   nextAvailable={scheduleStatus.nextAvailable}
+                  activeChannel={activeChannel}
+                  onBackFromChannel={() => setActiveChannel(null)}
+                  channelContent={activeChannel ? renderChannelContentInline() : undefined}
                 />
               ) : showPreChatForm ? (
                 <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 h-full">

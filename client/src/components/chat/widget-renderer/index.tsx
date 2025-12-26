@@ -1,5 +1,5 @@
 import { useRef, useEffect } from "react";
-import { Search, Home, MessageSquare, HelpCircle, Newspaper, ChevronRight, Send } from "lucide-react";
+import { Search, Home, MessageSquare, HelpCircle, Newspaper, ChevronRight, Send, ChevronLeft } from "lucide-react";
 import type { WidgetConfig } from "@shared/widget-config";
 import { WidgetHeader } from "./WidgetHeader";
 import { WidgetChannelList } from "./WidgetChannelList";
@@ -32,6 +32,9 @@ interface WidgetRendererProps {
   helpArticles?: HelpArticle[];
   isOffline?: boolean;
   nextAvailable?: string | null;
+  activeChannel?: string | null;
+  onBackFromChannel?: () => void;
+  channelContent?: React.ReactNode;
 }
 
 const defaultArticles: HelpArticle[] = [
@@ -55,6 +58,9 @@ export function WidgetRenderer({
   helpArticles = defaultArticles,
   isOffline = false,
   nextAvailable,
+  activeChannel,
+  onBackFromChannel,
+  channelContent,
 }: WidgetRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const iconColor = getIconColor(config.theme);
@@ -246,12 +252,28 @@ export function WidgetRenderer({
     >
       {/* Header */}
       <div className="p-4">
-        <WidgetHeader config={config} onClose={onClose} />
+        {activeChannel ? (
+          <div 
+            className="flex items-center gap-2 text-white rounded-xl px-4 py-3"
+            style={{ backgroundColor: iconColor }}
+          >
+            <button 
+              onClick={onBackFromChannel} 
+              className="hover:opacity-80 transition-opacity"
+              data-testid="widget-back-button"
+            >
+              <ChevronLeft className="h-5 w-5" />
+            </button>
+            <span className="font-medium capitalize">{activeChannel}</span>
+          </div>
+        ) : (
+          <WidgetHeader config={config} onClose={onClose} />
+        )}
       </div>
 
       {/* Content */}
       <div className="px-5 flex-1 overflow-y-auto">
-        {renderContent()}
+        {activeChannel && channelContent ? channelContent : renderContent()}
       </div>
 
       {/* Bottom Navigation */}
