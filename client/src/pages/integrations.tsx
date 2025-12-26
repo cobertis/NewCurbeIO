@@ -16,7 +16,7 @@ import { queryClient, apiRequest } from "@/lib/queryClient";
 import { LoadingSpinner } from "@/components/loading-spinner";
 import { cn } from "@/lib/utils";
 import { SiWhatsapp, SiInstagram, SiFacebook, SiTiktok, SiTelegram } from "react-icons/si";
-import { CheckCircle, XCircle, Clock, AlertTriangle, Plus, Trash2, RefreshCw, ExternalLink, Settings, HelpCircle, ChevronDown, ChevronLeft, ChevronRight, Info, User as UserIcon, Users, Phone, Mail, Building, CreditCard, Plug, MessageSquare, MessageCircle, Zap, Shield, Bell, UsersRound, Palette, PlayCircle, CheckCircle2, Bot } from "lucide-react";
+import { CheckCircle, XCircle, Clock, AlertTriangle, Plus, Trash2, RefreshCw, ExternalLink, Settings, HelpCircle, ChevronDown, ChevronLeft, ChevronRight, Info, User as UserIcon, Users, Phone, Mail, Building, CreditCard, MessageSquare, MessageCircle, Zap, Shield, Bell, UsersRound, Palette, PlayCircle, CheckCircle2, Bot } from "lucide-react";
 import type { ChannelConnection, User } from "@shared/schema";
 import Billing from "@/pages/billing";
 import SettingsPage from "@/pages/settings";
@@ -1842,7 +1842,6 @@ export default function IntegrationsPage() {
       { label: "Chat Widget", href: "/settings/chat-widget", icon: MessageCircle, active: activeView === "chat-widget" },
     ],
     features: [
-      { label: "Integrations", href: "/settings/integrations", icon: Plug, active: activeView === "integrations" },
       { label: "Automations", href: "/settings/automations", icon: Zap, active: activeView === "automations" },
       { label: "AI Desk", href: "/settings/ai-desk", icon: Bot, active: activeView === "ai-desk" },
     ],
