@@ -2045,66 +2045,67 @@ export default function ChatWidgetPreviewPage() {
           ) : chatSessionId ? (
             /* Active Live Chat View - Professional Design */
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: '520px' }}>
-              {/* Header with agent info */}
-              <div className="px-4 py-3 text-white flex items-center gap-3" style={{ background: currentBackground }}>
-                <button 
-                  onClick={() => { 
-                    // Keep session in localStorage so visitor can return to chat
-                    // Save current session info for "Back to chat" card
-                    const lastMsg = chatMessages[chatMessages.length - 1];
-                    setExistingSession({
-                      sessionId: chatSessionId,
-                      displayName: connectedAgent?.fullName || visitorName || 'Support Chat',
-                      lastMessage: lastMsg?.text || null,
-                      lastMessageAt: lastMsg?.createdAt || null,
-                    });
-                    setChatSessionId(null); 
-                    setChatMessages([]); 
-                    setConnectedAgent(null); 
-                  }}
-                  className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
-                  data-testid="back-from-chat"
-                >
-                  <ChevronLeft className="h-5 w-5" />
-                </button>
-                <div className="relative">
-                  {connectedAgent?.profileImageUrl ? (
-                    <img 
-                      src={connectedAgent.profileImageUrl} 
-                      alt={connectedAgent.fullName}
-                      className="w-10 h-10 rounded-full object-cover border-2 border-white/30"
-                    />
-                  ) : (
-                    <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center backdrop-blur-sm text-sm font-semibold">
-                      {connectedAgent ? (
-                        `${connectedAgent.firstName?.[0] || ''}${connectedAgent.lastName?.[0] || ''}`.toUpperCase() || 'SA'
+              {/* Header - Clean design like Textmagic */}
+              <div className="px-4 py-4 bg-slate-50 dark:bg-slate-800 border-b border-slate-200 dark:border-slate-700">
+                <div className="flex items-center justify-between">
+                  {/* Logo */}
+                  <div className="flex items-center gap-3">
+                    {widget.branding?.customLogo ? (
+                      <img 
+                        src={widget.branding.customLogo} 
+                        alt="Logo" 
+                        className="h-8 w-auto"
+                      />
+                    ) : (
+                      <span className="font-semibold text-slate-900 dark:text-white text-lg">
+                        {widget.welcomeTitle?.split(' ')[0] || 'Support'}
+                      </span>
+                    )}
+                  </div>
+                  
+                  {/* Agent photos */}
+                  <div className="flex items-center gap-2">
+                    <div className="flex -space-x-2">
+                      {connectedAgent?.profileImageUrl ? (
+                        <img 
+                          src={connectedAgent.profileImageUrl} 
+                          alt={connectedAgent.fullName}
+                          className="w-9 h-9 rounded-full object-cover border-2 border-white dark:border-slate-800 shadow-sm"
+                        />
                       ) : (
-                        <MessageCircle className="h-5 w-5" />
+                        <div className="w-9 h-9 rounded-full flex items-center justify-center text-white text-sm font-semibold border-2 border-white dark:border-slate-800 shadow-sm" style={{ background: currentBackground }}>
+                          {connectedAgent ? (
+                            `${connectedAgent.firstName?.[0] || ''}${connectedAgent.lastName?.[0] || ''}`.toUpperCase() || 'SA'
+                          ) : (
+                            <MessageCircle className="h-4 w-4" />
+                          )}
+                        </div>
                       )}
                     </div>
-                  )}
-                  {/* Online indicator */}
-                  <div className="absolute -bottom-0.5 -right-0.5 w-3.5 h-3.5 bg-green-500 rounded-full border-2 border-white" />
+                    
+                    {/* Close/Finish button */}
+                    {chatStatus !== 'solved' && (
+                      <button
+                        onClick={() => setShowFinishConfirm(true)}
+                        className="p-1.5 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors ml-2"
+                        title="End chat"
+                        data-testid="button-finish-chat"
+                      >
+                        <X className="h-5 w-5 text-slate-500 dark:text-slate-400" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <span className="font-semibold text-sm">
-                    {connectedAgent ? connectedAgent.fullName : 'Live Chat'}
-                  </span>
-                  <p className="text-xs opacity-80">
-                    {connectedAgent ? 'Support Agent' : 'Usually replies in a few minutes'}
+                
+                {/* Greeting text */}
+                <div className="mt-3">
+                  <h4 className="text-xl font-bold text-slate-900 dark:text-white">
+                    {connectedAgent ? `Chat with ${connectedAgent.firstName || connectedAgent.fullName}` : 'Hi there 👋'}
+                  </h4>
+                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-0.5">
+                    {connectedAgent ? 'Support Agent' : 'How can we help?'}
                   </p>
                 </div>
-                {/* Finish chat button */}
-                {chatStatus !== 'solved' && (
-                  <button
-                    onClick={() => setShowFinishConfirm(true)}
-                    className="p-1.5 hover:bg-white/20 rounded-full transition-colors ml-auto"
-                    title="Finish chat"
-                    data-testid="button-finish-chat"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                )}
               </div>
               
               {/* Finish Chat Confirmation Dialog */}
