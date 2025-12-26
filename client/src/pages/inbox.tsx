@@ -46,8 +46,11 @@ import {
   Image,
   Globe,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
+  Sparkles,
+  RotateCcw
 } from "lucide-react";
+import { Link } from "wouter";
 import { SiFacebook, SiInstagram, SiTelegram } from "react-icons/si";
 import Picker from "@emoji-mart/react";
 import data from "@emoji-mart/data";
@@ -206,6 +209,9 @@ export default function InboxPage() {
   const [startChatMessage, setStartChatMessage] = useState("");
   const [copilotDraft, setCopilotDraft] = useState<string | null>(null);
   const [copilotSource, setCopilotSource] = useState<"knowledge_base" | "general" | null>(null);
+  const [rightPanelTab, setRightPanelTab] = useState<"details" | "pulse-ai">("details");
+  const [pulseAiMessages, setPulseAiMessages] = useState<Array<{role: "user" | "assistant", content: string, isLoading?: boolean}>>([]);
+  const [pulseAiInput, setPulseAiInput] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -321,6 +327,13 @@ export default function InboxPage() {
       setMobileView("threads");
     }
   }, [activeView]);
+
+  // Reset right panel tab to details when conversation changes
+  useEffect(() => {
+    setRightPanelTab("details");
+    setPulseAiMessages([]);
+    setPulseAiInput("");
+  }, [selectedConversationId]);
 
   const sendMessageMutation = useMutation({
     mutationFn: async ({ conversationId, text, isInternalNote, files, optimisticId }: { conversationId: string; text: string; isInternalNote?: boolean; files?: File[]; optimisticId: string }) => {
@@ -573,6 +586,48 @@ export default function InboxPage() {
       });
     },
   });
+
+  const pulseAiAskMutation = useMutation({
+    mutationFn: async ({ question, conversationId }: { question: string; conversationId: string }) => {
+      const lastMsgs = messages?.slice(-10).map(m => ({
+        direction: m.direction,
+        text: m.text,
+        createdAt: m.createdAt
+      })) || [];
+      return apiRequest("POST", "/api/ai/copilot/draft", { 
+        conversationId, 
+        lastMessages: lastMsgs,
+        question 
+      });
+    },
+    onSuccess: async (response: any) => {
+      const data = await response.json();
+      setPulseAiMessages(prev => prev.map(m => 
+        m.isLoading ? { role: "assistant" as const, content: data.draft || data.draftReply || "I couldn't find relevant information." } : m
+      ));
+    },
+    onError: () => {
+      setPulseAiMessages(prev => prev.filter(m => !m.isLoading));
+      toast({ title: "Error", description: "Failed to get AI response", variant: "destructive" });
+    }
+  });
+
+  const handlePulseAiSubmit = () => {
+    if (!pulseAiInput.trim() || !selectedConversationId) return;
+    setPulseAiMessages(prev => [
+      ...prev, 
+      { role: "user", content: pulseAiInput },
+      { role: "assistant", content: "", isLoading: true }
+    ]);
+    pulseAiAskMutation.mutate({ question: pulseAiInput, conversationId: selectedConversationId });
+    setPulseAiInput("");
+  };
+
+  const handleInsertPulseAiMessage = (content: string) => {
+    setNewMessage(content);
+    setRightPanelTab("details");
+    toast({ title: "Inserted", description: "AI response has been inserted into the message composer." });
+  };
 
   const handleAiCopilotClick = () => {
     if (copilotDraft) {
@@ -1829,39 +1884,59 @@ export default function InboxPage() {
         {selectedConversation && (
           <>
             <div className="h-[73px] px-4 border-b flex items-center justify-between">
-              <h3 className="font-medium">Details</h3>
+              <div className="flex items-center gap-4">
+                <button 
+                  className={cn("text-sm font-medium transition-colors", rightPanelTab === "details" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
+                  onClick={() => setRightPanelTab("details")}
+                  data-testid="btn-tab-details"
+                >
+                  Details
+                </button>
+                <button 
+                  className={cn("text-sm font-medium flex items-center gap-1 transition-colors", rightPanelTab === "pulse-ai" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
+                  onClick={() => setRightPanelTab("pulse-ai")}
+                  data-testid="btn-tab-pulse-ai"
+                >
+                  <Sparkles className="h-3.5 w-3.5" />
+                  Pulse AI
+                </button>
+              </div>
               <div className="flex items-center gap-1">
-                {isEditingDetails ? (
+                {rightPanelTab === "details" && (
                   <>
-                    <Button variant="ghost" size="sm" onClick={cancelEditing} data-testid="btn-cancel-edit">
-                      Cancel
-                    </Button>
-                    <Button size="sm" onClick={saveContactEdit} data-testid="btn-save-edit">
-                      Save
-                    </Button>
-                  </>
-                ) : (
-                  <TooltipProvider>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={startEditing} data-testid="btn-edit-details">
-                          <Pencil className="h-4 w-4" />
+                    {isEditingDetails ? (
+                      <>
+                        <Button variant="ghost" size="sm" onClick={cancelEditing} data-testid="btn-cancel-edit">
+                          Cancel
                         </Button>
-                      </TooltipTrigger>
-                      <TooltipContent>Edit</TooltipContent>
-                    </Tooltip>
-                  </TooltipProvider>
+                        <Button size="sm" onClick={saveContactEdit} data-testid="btn-save-edit">
+                          Save
+                        </Button>
+                      </>
+                    ) : (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={startEditing} data-testid="btn-edit-details">
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>Edit</TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-search-details">
+                            <Search className="h-4 w-4" />
+                          </Button>
+                        </TooltipTrigger>
+                        <TooltipContent>Search</TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </>
                 )}
-                <TooltipProvider>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-search-details">
-                        <Search className="h-4 w-4" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent>Search</TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -1873,6 +1948,9 @@ export default function InboxPage() {
                 </Button>
               </div>
             </div>
+            
+            {/* Details Tab Content */}
+            {rightPanelTab === "details" && (
             <ScrollArea className="flex-1">
               <div className="p-4 space-y-6">
                 {/* Live Chat Info - Only for live_chat channel */}
@@ -2388,6 +2466,151 @@ export default function InboxPage() {
                 </div>
               </div>
             </ScrollArea>
+            )}
+
+            {/* Pulse AI Tab Content */}
+            {rightPanelTab === "pulse-ai" && (
+              <div className="flex-1 flex flex-col" data-testid="pulse-ai-panel">
+                {/* Pulse AI Header */}
+                <div className="p-4 border-b">
+                  <div className="flex items-center gap-2 mb-3">
+                    <div className="h-8 w-8 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center">
+                      <Sparkles className="h-4 w-4 text-white" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium">Hi, I'm Pulse AI</p>
+                      <p className="text-xs text-muted-foreground">Ask me anything about this conversation.</p>
+                    </div>
+                  </div>
+                  
+                  {/* Instructions Card */}
+                  <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <span className="text-violet-500">•</span>
+                      <span>Highlight any text and click 'Ask Pulse AI'</span>
+                    </div>
+                    <div className="flex items-start gap-2 text-xs text-muted-foreground">
+                      <span className="text-violet-500">•</span>
+                      <span>Or, just type your question in the field below and submit</span>
+                    </div>
+                  </div>
+                  
+                  {/* Manage Sources Link */}
+                  <Link 
+                    href="/pulse-ai" 
+                    className="text-xs text-violet-600 hover:text-violet-700 font-medium mt-3 inline-flex items-center gap-1"
+                    data-testid="link-manage-sources"
+                  >
+                    Manage sources
+                    <ChevronRight className="h-3 w-3" />
+                  </Link>
+                </div>
+                
+                {/* Messages Area */}
+                <ScrollArea className="flex-1 p-4" data-testid="pulse-ai-messages">
+                  <div className="space-y-4">
+                    {pulseAiMessages.length === 0 ? (
+                      <div className="text-center py-8 text-muted-foreground">
+                        <Sparkles className="h-8 w-8 mx-auto mb-2 opacity-30" />
+                        <p className="text-sm">Start a conversation with Pulse AI</p>
+                      </div>
+                    ) : (
+                      pulseAiMessages.map((msg, idx) => (
+                        <div 
+                          key={idx} 
+                          className={cn(
+                            "flex gap-2",
+                            msg.role === "user" ? "justify-end" : "justify-start"
+                          )}
+                          data-testid={`pulse-ai-message-${idx}`}
+                        >
+                          {msg.role === "assistant" && (
+                            <div className="h-6 w-6 rounded-full bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shrink-0">
+                              <Sparkles className="h-3 w-3 text-white" />
+                            </div>
+                          )}
+                          <div 
+                            className={cn(
+                              "rounded-lg px-3 py-2 text-sm max-w-[85%]",
+                              msg.role === "user" 
+                                ? "bg-blue-600 text-white" 
+                                : "bg-muted"
+                            )}
+                          >
+                            {msg.isLoading ? (
+                              <div className="flex items-center gap-2">
+                                <LoadingSpinner fullScreen={false} />
+                                <span className="text-muted-foreground text-xs">Thinking...</span>
+                              </div>
+                            ) : (
+                              <>
+                                <p className="whitespace-pre-wrap">{msg.content}</p>
+                                {msg.role === "assistant" && msg.content && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="mt-2 h-7 text-xs text-violet-600 hover:text-violet-700 px-2"
+                                    onClick={() => handleInsertPulseAiMessage(msg.content)}
+                                    data-testid={`btn-insert-message-${idx}`}
+                                  >
+                                    <Pencil className="h-3 w-3 mr-1" />
+                                    Insert and edit
+                                  </Button>
+                                )}
+                              </>
+                            )}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </ScrollArea>
+                
+                {/* Input Area */}
+                <div className="p-4 border-t space-y-3">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Ask Pulse AI a question..."
+                      value={pulseAiInput}
+                      onChange={(e) => setPulseAiInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          handlePulseAiSubmit();
+                        }
+                      }}
+                      disabled={pulseAiAskMutation.isPending}
+                      data-testid="input-pulse-ai"
+                    />
+                    <Button
+                      onClick={handlePulseAiSubmit}
+                      disabled={!pulseAiInput.trim() || pulseAiAskMutation.isPending}
+                      className="bg-violet-600 hover:bg-violet-700"
+                      data-testid="btn-pulse-ai-send"
+                    >
+                      <Send className="h-4 w-4" />
+                    </Button>
+                  </div>
+                  
+                  {/* Start New Conversation Button */}
+                  {pulseAiMessages.length > 0 && (
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="w-full text-xs text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        setPulseAiMessages([]);
+                        setPulseAiInput("");
+                      }}
+                      data-testid="btn-pulse-ai-new-conversation"
+                    >
+                      <RotateCcw className="h-3 w-3 mr-1" />
+                      Start new conversation
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
           </>
         )}
       </div>
