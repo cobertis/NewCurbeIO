@@ -33,7 +33,7 @@ const channelConfigs: ChannelConfig[] = [
     id: "sms",
     key: "sms",
     getLabel: (config) => config.smsSettings?.welcomeScreen?.channelName || "Text us",
-    icon: <Send className="h-5 w-5" />,
+    icon: <MessageSquare className="h-5 w-5" />,
   },
   {
     id: "phone",
