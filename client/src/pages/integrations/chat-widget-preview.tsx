@@ -283,7 +283,16 @@ export default function ChatWidgetPreviewPage() {
         if (surveyState.showSatisfactionSurvey) setShowSatisfactionSurvey(true);
         if (surveyState.surveyRating !== undefined) setSurveyRating(surveyState.surveyRating);
         if (surveyState.surveyFeedback) setSurveyFeedback(surveyState.surveyFeedback);
-        if (surveyState.chatSessionId) setChatSessionId(surveyState.chatSessionId);
+        if (surveyState.chatSessionId) {
+          setChatSessionId(surveyState.chatSessionId);
+          // Properly set chatFlowState when restoring session from localStorage
+          // If survey is showing, we're in post-chat survey state; otherwise resuming active chat
+          if (surveyState.showSatisfactionSurvey) {
+            setChatFlowState('postChatSurvey');
+          } else {
+            setChatFlowState('activeChat');
+          }
+        }
       }
     } catch (e) {
       console.error('[Chat] Failed to restore survey state:', e);
@@ -1121,6 +1130,8 @@ export default function ChatWidgetPreviewPage() {
         
         if (msgRes.ok) {
           const { message, conversationId } = await msgRes.json();
+          // Transition to active chat state BEFORE setting sessionId (state machine controls rendering)
+          setChatFlowState('activeChat');
           setChatSessionId(conversationId || sessionId);
           setChatMessages([message]);
           setForceNewChat(false); // Reset forceNewChat after successful creation
@@ -1134,17 +1145,15 @@ export default function ChatWidgetPreviewPage() {
             rating: null,
             feedback: null,
           });
-          // Transition to active chat state
-          setChatFlowState('activeChat');
         }
         setInitialMessage('');
       } else {
         // No message - don't create conversation yet, user can type one
+        // Transition to active chat state BEFORE setting sessionId (state machine controls rendering)
+        setChatFlowState('activeChat');
         // Use visitorId as temporary session ID when server delays session creation
         setChatSessionId(sessionId || `pending_${visitorId}`);
         setChatMessages([]);
-        // Transition to active chat state
-        setChatFlowState('activeChat');
       }
     } catch (error) {
       console.error('Failed to start chat:', error);
@@ -2366,7 +2375,7 @@ export default function ChatWidgetPreviewPage() {
                 </p>
               </div>
             </div>
-          ) : chatSessionId ? (
+          ) : chatFlowState === 'activeChat' ? (
             /* Active Live Chat View - Professional Design */
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: '680px' }}>
               {/* Header - Clean design like Textmagic */}
