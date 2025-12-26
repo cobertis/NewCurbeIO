@@ -243,14 +243,13 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
 
   const createSourceMutation = useMutation({
     mutationFn: async (data: SourceFormValues) => {
-      const res = await apiRequest("POST", "/api/ai/kb/sources", {
+      return await apiRequest("POST", "/api/ai/kb/sources", {
         ...data,
         config: { 
           maxPages: data.maxPages || 25, 
           sameDomainOnly: data.sameDomainOnly ?? true 
         },
       });
-      return res.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ai/kb/sources"] });
@@ -269,7 +268,7 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
       for (const url of data.urls) {
         try {
           const hostname = new URL(url).hostname.replace('www.', '');
-          const res = await apiRequest("POST", "/api/ai/kb/sources", {
+          const source = await apiRequest("POST", "/api/ai/kb/sources", {
             type: "url",
             name: hostname,
             url,
@@ -279,7 +278,6 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
               excludeLegal: data.excludeLegal ?? true,
             },
           });
-          const source = await res.json();
           results.push(source);
           // Auto-sync the source immediately after creation
           try {
