@@ -41,6 +41,18 @@ Implements Telnyx WebRTC with specific call options and audio settings. Uses a d
 **Wallet System Architecture:**
 Supports Apple Wallet (PKPass) and Google Wallet with smart links, analytics, and APNs push notifications for proactive payment collection. Key components include dedicated services, PassKit Web Service, and a scheduler for daily payment reminders. The "Cenicienta Strategy" ensures lock-screen persistence for passes by setting `relevantDate` to the end of the day. Pass images are "baked in," with only text/data updated via push notifications.
 
+**AI Desk (Point-like AI Assistant):**
+AI-powered customer support system with knowledge base management and intelligent response capabilities:
+- **Knowledge Base Management:** URL-based document ingestion with web crawling, text chunking (1500 tokens), and embedding generation via OpenAI text-embedding-3-small.
+- **Database Tables:** `ai_assistant_settings`, `ai_kb_sources`, `ai_kb_documents`, `ai_kb_chunks`, `ai_runs`, `ai_action_logs`.
+- **Copilot Mode:** Generates draft reply suggestions for agents with intent detection, confidence scoring, and citation references. Purple "Suggest Reply" button in inbox composer triggers drafts.
+- **Autopilot Mode:** Autonomous response generation with tool execution capabilities. Includes approval workflow for human review when confidence is low or escalation is needed.
+- **Tool Registry:** 6 built-in tools - `search_knowledge_base`, `get_customer_info`, `transfer_to_human`, `create_task`, `update_conversation_status`, `send_message`.
+- **Approval Workflow:** Runs pending approval when: confidence below threshold, needsHuman flag true, or escalation rules apply. Human agents can approve (sends message) or reject with reason.
+- **Activity Logs:** Comprehensive audit trail of all AI runs with input/output text, intent, confidence, tokens used, latency, and action logs.
+- **Settings UI:** Located at `/ai-desk` with tabs for Settings (Copilot/Autopilot toggles), Knowledge Base (source management), Usage (token metrics), and Activity (audit logs).
+- **Key Services:** `ai-desk-service.ts`, `ai-openai-service.ts`, `ai-ingestion-service.ts`, `ai-tool-registry.ts`, `ai-autopilot-service.ts`.
+
 **Chat Widget System (Intercom-style):**
 Multi-tenant embeddable live chat widget with comprehensive instrumentation and Intercom-style invariants:
 - **Device Identity:** Persistent `deviceId` in localStorage scoped per company (`curbe_chat_device_{companyId}`), with migration from legacy keys.
