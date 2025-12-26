@@ -1341,9 +1341,14 @@ export default function ChatWidgetPreviewPage() {
           
           // Detect when chat is solved and transition to survey via state machine
           if (status === 'solved' && chatStatus !== 'solved' && !surveySubmitted) {
+            console.log('[Chat] Status changed to solved, showing survey. surveyEnabled:', effectiveWidgetData?.widget?.liveChatSettings?.satisfactionSurvey?.enabled);
             setChatStatus('solved');
-            setChatFlowState('postChatSurvey');
-            setShowSatisfactionSurvey(true);
+            // Only show survey if enabled in widget settings
+            const surveyEnabled = effectiveWidgetData?.widget?.liveChatSettings?.satisfactionSurvey?.enabled;
+            if (surveyEnabled) {
+              setChatFlowState('postChatSurvey');
+              setShowSatisfactionSurvey(true);
+            }
           } else if (status) {
             setChatStatus(status);
           }
