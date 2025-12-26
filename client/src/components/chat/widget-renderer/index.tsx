@@ -198,7 +198,7 @@ export function WidgetRenderer({
         <div className="py-4 flex flex-col h-full">
           <div className="flex items-center justify-between mb-4">
             <h4 className="font-semibold text-slate-900">Your conversations</h4>
-            {config.channels.liveChat && !activeSession && (
+            {config.channels.liveChat && (
               <button
                 onClick={onStartNewChat}
                 className="text-sm font-medium px-3 py-1.5 rounded-lg"
