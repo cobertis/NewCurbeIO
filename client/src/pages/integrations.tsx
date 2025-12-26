@@ -2018,7 +2018,7 @@ export default function IntegrationsPage() {
         {activeView === "pulse-ai" && (
           <div>
             <SettingsBreadcrumb pageName="Pulse AI" />
-            <AiDeskSettings embedded />
+            <PulseAiSettings embedded />
           </div>
         )}
       </div>
