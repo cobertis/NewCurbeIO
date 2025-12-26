@@ -140,6 +140,7 @@ import { getManagedAccountConfig, buildHeaders } from "./services/telnyx-e911-se
 import { getTelnyxMasterApiKey } from "./services/telnyx-numbers-service";
 import { pbxService } from "./services/pbx-service";
 import { registerWalletRoutes } from "./wallet-routes";
+import { registerAiDeskRoutes } from "./ai-desk-routes";
 import { objectStorage, objectStorageClient } from "./objectStorage";
 // Security constants for document uploads
 const ALLOWED_MIME_TYPES = ['application/pdf', 'image/jpeg', 'image/png', 'image/jpg'];
@@ -569,6 +570,7 @@ export async function registerRoutes(app: Express, sessionStore?: any): Promise<
   // Twilio Status Callback - Update message delivery status
   // Register Wallet Routes (Apple Wallet + Google Wallet)
   registerWalletRoutes(app, requireAuth, requireActiveCompany);
+  registerAiDeskRoutes(app, requireAuth, requireActiveCompany);
   app.post("/api/webhooks/twilio/status", async (req: Request, res: Response) => {
     try {
       // Validate Twilio signature
