@@ -1,6 +1,6 @@
 import { X } from "lucide-react";
 import type { WidgetConfig } from "@shared/widget-config";
-import { getHeaderStyle } from "./theme-utils";
+import { getIconColor } from "./theme-utils";
 
 interface WidgetHeaderProps {
   config: WidgetConfig;
@@ -8,12 +8,11 @@ interface WidgetHeaderProps {
 }
 
 export function WidgetHeader({ config, onClose }: WidgetHeaderProps) {
-  const headerStyle = getHeaderStyle(config.theme);
-
+  const iconColor = getIconColor(config.theme);
+  
   return (
     <div
-      className="px-4 py-3 flex items-center justify-between rounded-xl"
-      style={headerStyle}
+      className="flex items-center justify-between"
       data-testid="widget-header"
     >
       <div className="flex items-center">
@@ -21,11 +20,11 @@ export function WidgetHeader({ config, onClose }: WidgetHeaderProps) {
           <img
             src={config.branding.customLogo}
             alt="Logo"
-            className="h-6 object-contain brightness-0 invert"
+            className="h-6 object-contain"
             data-testid="widget-logo"
           />
         ) : (
-          <span className="font-semibold text-white text-lg" data-testid="widget-company-name">
+          <span className="font-semibold text-slate-900 text-lg" data-testid="widget-company-name">
             {config.branding.companyName || "Support"}
           </span>
         )}
@@ -35,19 +34,20 @@ export function WidgetHeader({ config, onClose }: WidgetHeaderProps) {
           {[1, 2, 3].map((i) => (
             <div
               key={i}
-              className="w-8 h-8 rounded-full bg-white/30 border-2 border-white overflow-hidden"
+              className="w-8 h-8 rounded-full border-2 border-slate-200 overflow-hidden"
+              style={{ backgroundColor: iconColor }}
               data-testid={`widget-avatar-${i}`}
             >
-              <div className="w-full h-full bg-gradient-to-br from-slate-200 to-slate-400" />
+              <div className="w-full h-full bg-gradient-to-br from-white/30 to-white/10" />
             </div>
           ))}
         </div>
         <button
-          className="p-1 hover:bg-white/20 rounded-full transition-colors"
+          className="p-1 hover:bg-slate-200/50 rounded-full transition-colors"
           onClick={onClose}
           data-testid="widget-close-button"
         >
-          <X className="h-5 w-5 text-white" />
+          <X className="h-5 w-5 text-slate-600" />
         </button>
       </div>
     </div>
