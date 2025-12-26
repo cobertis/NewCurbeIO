@@ -2454,6 +2454,138 @@ export default function ChatWidgetPreviewPage() {
                   Powered by <img src={curbeLogo} alt="Curbe" className="h-2.5 w-auto inline-block opacity-60" />
                 </a>
               </div>
+              
+              {/* Survey Modal Overlay for Solved Chat View */}
+              {showSurveyModal && (
+                <div className="absolute inset-0 bg-black/30 flex items-center justify-center p-4 rounded-xl z-[100]" onClick={(e) => e.stopPropagation()}>
+                  <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl w-full max-w-sm p-5">
+                    {surveyModalStep === 'rating' ? (
+                      <>
+                        <h5 className="font-semibold text-slate-900 dark:text-slate-100 text-center mb-2">
+                          How was the help you received?
+                        </h5>
+                        <p className="text-xs text-slate-500 text-center mb-5">
+                          We're always striving to improve and would love your feedback on the experience.
+                        </p>
+                        <div className="flex justify-center gap-8 mb-5">
+                          <button 
+                            onClick={() => {
+                              setSurveyRating(5);
+                              setSurveyModalStep('feedback');
+                            }}
+                            className="w-16 h-16 rounded-full bg-green-500 flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
+                            data-testid="solved-survey-thumbs-up"
+                          >
+                            <ThumbsUp className="h-8 w-8 text-white" />
+                          </button>
+                          <button 
+                            onClick={() => {
+                              setSurveyRating(1);
+                              setSurveyModalStep('feedback');
+                            }}
+                            className="w-16 h-16 rounded-full bg-red-500 flex items-center justify-center hover:scale-110 transition-transform shadow-lg"
+                            data-testid="solved-survey-thumbs-down"
+                          >
+                            <ThumbsDown className="h-8 w-8 text-white" />
+                          </button>
+                        </div>
+                        <button
+                          onClick={() => {
+                            setShowSurveyModal(false);
+                            setSurveyModalStep('rating');
+                            setSurveyRating(null);
+                          }}
+                          className="text-sm text-slate-400 hover:text-slate-600 text-center cursor-pointer w-full"
+                          data-testid="solved-survey-skip"
+                        >
+                          Skip for now
+                        </button>
+                      </>
+                    ) : (
+                      <>
+                        <div className="flex justify-center mb-4">
+                          {surveyRating && surveyRating >= 4 ? (
+                            <div className="w-14 h-14 rounded-full bg-green-500 flex items-center justify-center shadow-lg">
+                              <ThumbsUp className="h-7 w-7 text-white" />
+                            </div>
+                          ) : (
+                            <div className="w-14 h-14 rounded-full bg-red-500 flex items-center justify-center shadow-lg">
+                              <ThumbsDown className="h-7 w-7 text-white" />
+                            </div>
+                          )}
+                        </div>
+                        <h5 className="font-semibold text-slate-900 dark:text-slate-100 text-center mb-2">
+                          {surveyRating && surveyRating >= 4 ? "We are glad you liked it" : "Sorry to hear that"}
+                        </h5>
+                        <p className="text-xs text-slate-500 text-center mb-4">
+                          We're always striving to improve and would love your feedback on the experience.
+                        </p>
+                        <div className="space-y-3">
+                          <div>
+                            <label className="text-xs text-slate-600 dark:text-slate-400 font-medium block mb-1.5">
+                              {surveyRating && surveyRating >= 4 ? "Tell us where we did good" : "Tell us how we can improve"}
+                            </label>
+                            <textarea
+                              value={surveyFeedback}
+                              onChange={(e) => setSurveyFeedback(e.target.value)}
+                              placeholder={surveyRating && surveyRating >= 4 ? "What did you like about this chat?" : "What could we do better?"}
+                              className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-700 outline-none focus:ring-2 focus:ring-blue-500 resize-none"
+                              rows={3}
+                              data-testid="solved-survey-feedback"
+                            />
+                          </div>
+                          <button
+                            onClick={async () => {
+                              if (!surveyRating || !solvedChatData?.sessionId) return;
+                              setSurveySubmitting(true);
+                              try {
+                                await fetch('/api/public/live-chat/satisfaction', {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json' },
+                                  body: JSON.stringify({
+                                    sessionId: solvedChatData.sessionId,
+                                    rating: surveyRating,
+                                    feedback: surveyFeedback || null,
+                                  }),
+                                });
+                                setShowSurveyModal(false);
+                                setSurveyModalStep('rating');
+                                setSolvedChatData({
+                                  ...solvedChatData,
+                                  rating: surveyRating,
+                                  feedback: surveyFeedback || null,
+                                });
+                              } catch (error) {
+                                console.error('Failed to submit survey:', error);
+                              } finally {
+                                setSurveySubmitting(false);
+                              }
+                            }}
+                            disabled={surveySubmitting}
+                            className="w-full py-2.5 px-4 rounded-lg text-white font-medium transition-all disabled:opacity-50"
+                            style={{ background: currentBackground }}
+                            data-testid="solved-survey-submit"
+                          >
+                            {surveySubmitting ? 'Sending...' : 'Send feedback'}
+                          </button>
+                          <button
+                            onClick={() => {
+                              setShowSurveyModal(false);
+                              setSurveyModalStep('rating');
+                              setSurveyRating(null);
+                              setSurveyFeedback('');
+                            }}
+                            className="text-sm text-slate-400 hover:text-slate-600 text-center cursor-pointer w-full"
+                            data-testid="solved-survey-skip-feedback"
+                          >
+                            Skip for now
+                          </button>
+                        </div>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           ) : (chatFlowState === 'activeChat' || chatFlowState === 'postChatSurvey') ? (
             /* Active Live Chat View or Post-Chat Survey - Professional Design */
