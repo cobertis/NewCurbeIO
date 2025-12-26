@@ -44,8 +44,15 @@ import {
   ThumbsUp,
   ThumbsDown,
   BarChart3,
-  PlayCircle
+  PlayCircle,
+  Eye,
+  Layers,
+  Hash,
+  Copy,
+  Check
 } from "lucide-react";
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from "recharts";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { LoadingSpinner } from "@/components/loading-spinner";
@@ -137,6 +144,16 @@ interface AiActionLog {
   createdAt: string;
 }
 
+interface KbChunk {
+  id: string;
+  documentId: string;
+  documentTitle: string | null;
+  documentUrl: string | null;
+  chunkIndex: number;
+  content: string;
+  createdAt: string | null;
+}
+
 const sourceFormSchema = z.object({
   type: z.literal("url"),
   name: z.string().min(1, "Name is required"),
@@ -158,6 +175,8 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
   const [deleteConfirm, setDeleteConfirm] = useState<KbSource | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
+  const [viewChunksSource, setViewChunksSource] = useState<KbSource | null>(null);
+  const [copiedChunkId, setCopiedChunkId] = useState<string | null>(null);
 
   const { data: settings, isLoading: settingsLoading } = useQuery<AiSettings>({
     queryKey: ["/api/ai/settings"],
@@ -178,6 +197,22 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
   const { data: runs, isLoading: runsLoading } = useQuery<AiRun[]>({
     queryKey: ["/api/ai/runs"],
   });
+
+  const { data: chunks, isLoading: chunksLoading } = useQuery<KbChunk[]>({
+    queryKey: ["/api/ai/kb/sources", viewChunksSource?.id, "chunks"],
+    queryFn: async () => {
+      if (!viewChunksSource) return [];
+      const res = await fetch(`/api/ai/kb/sources/${viewChunksSource.id}/chunks`);
+      return res.json();
+    },
+    enabled: !!viewChunksSource,
+  });
+
+  const copyToClipboard = async (text: string, chunkId: string) => {
+    await navigator.clipboard.writeText(text);
+    setCopiedChunkId(chunkId);
+    setTimeout(() => setCopiedChunkId(null), 2000);
+  };
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: Partial<AiSettings>) => {
@@ -719,12 +754,22 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
                       <Button
                         variant="outline"
                         size="sm"
+                        onClick={() => setViewChunksSource(source)}
+                        disabled={source.chunksCount === 0}
+                        data-testid={`button-view-${source.id}`}
+                      >
+                        <Eye className="w-4 h-4 mr-1" />
+                        View
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
                         onClick={() => syncSourceMutation.mutate(source.id)}
                         disabled={source.status === "syncing" || source.status === "queued" || syncSourceMutation.isPending}
                         data-testid={`button-sync-${source.id}`}
                       >
                         <RefreshCw className={`w-4 h-4 mr-1 ${source.status === "syncing" ? "animate-spin" : ""}`} />
-                        {source.status === "queued" ? "Queued" : "Sync now"}
+                        {source.status === "queued" ? "Queued" : "Sync"}
                       </Button>
                       <Button
                         variant="ghost"
@@ -1242,6 +1287,74 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Content Viewer Sheet */}
+      <Sheet open={!!viewChunksSource} onOpenChange={(open) => !open && setViewChunksSource(null)}>
+        <SheetContent className="sm:max-w-2xl overflow-hidden flex flex-col">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
+              <Layers className="w-5 h-5" />
+              Extracted Content
+            </SheetTitle>
+            <SheetDescription>
+              {viewChunksSource?.name} - {chunks?.length || 0} chunks
+            </SheetDescription>
+          </SheetHeader>
+          
+          <ScrollArea className="flex-1 mt-4 -mx-6 px-6">
+            {chunksLoading ? (
+              <div className="py-8">
+                <LoadingSpinner fullScreen={false} message="Loading chunks..." />
+              </div>
+            ) : chunks && chunks.length > 0 ? (
+              <div className="space-y-4 pb-4">
+                {chunks.map((chunk, index) => (
+                  <Card key={chunk.id} className="relative group" data-testid={`chunk-${chunk.id}`}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                          <Hash className="w-4 h-4" />
+                          <span>Chunk {index + 1}</span>
+                          {chunk.documentTitle && (
+                            <>
+                              <span className="text-muted-foreground/50">|</span>
+                              <span className="truncate max-w-[200px]">{chunk.documentTitle}</span>
+                            </>
+                          )}
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => copyToClipboard(chunk.content, chunk.id)}
+                          className="opacity-0 group-hover:opacity-100 transition-opacity"
+                          data-testid={`button-copy-chunk-${chunk.id}`}
+                        >
+                          {copiedChunkId === chunk.id ? (
+                            <Check className="w-4 h-4 text-green-500" />
+                          ) : (
+                            <Copy className="w-4 h-4" />
+                          )}
+                        </Button>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <p className="text-sm whitespace-pre-wrap break-words leading-relaxed">
+                        {chunk.content}
+                      </p>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+              <div className="py-8 text-center text-muted-foreground">
+                <Layers className="w-12 h-12 mx-auto mb-2 opacity-50" />
+                <p>No content chunks found</p>
+                <p className="text-sm">Try syncing the source to extract content</p>
+              </div>
+            )}
+          </ScrollArea>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 

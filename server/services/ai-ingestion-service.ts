@@ -257,20 +257,31 @@ export class AiIngestionService {
 
         const contentHash = crypto.createHash("sha256").update(content).digest("hex");
         
-        const existingDoc = await aiDeskService.getDocumentByHash(companyId, sourceId, contentHash);
-        if (existingDoc) {
-          pagesProcessed++;
-          continue;
+        let doc = await aiDeskService.getDocumentByHash(companyId, sourceId, contentHash);
+        let isNewDoc = false;
+        
+        if (doc) {
+          // Document exists - check if it has chunks
+          const existingChunks = await aiDeskService.listChunks(companyId, doc.id);
+          if (existingChunks.length > 0) {
+            // Document has chunks, skip
+            pagesProcessed++;
+            continue;
+          }
+          // Document exists but has no chunks - we'll recreate them
+          console.log(`[AI-Ingestion] Document ${doc.id} exists but has no chunks, creating chunks...`);
+        } else {
+          // Create new document
+          doc = await aiDeskService.createDocument({
+            companyId,
+            sourceId,
+            title: title || currentUrl,
+            url: currentUrl,
+            contentHash,
+            meta: { fetchedAt: new Date().toISOString() },
+          });
+          isNewDoc = true;
         }
-
-        const doc = await aiDeskService.createDocument({
-          companyId,
-          sourceId,
-          title: title || currentUrl,
-          url: currentUrl,
-          contentHash,
-          meta: { fetchedAt: new Date().toISOString() },
-        });
 
         const chunks = this.chunkText(content);
         
