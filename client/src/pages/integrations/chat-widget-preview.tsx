@@ -2392,7 +2392,7 @@ export default function ChatWidgetPreviewPage() {
                     )}
                   </h4>
                   <p className="text-sm text-white/80 mt-0.5">
-                    {connectedAgent ? 'Support Agent' : 'How can we help?'}
+                    {connectedAgent ? 'Support Agent' : 'We typically reply in a few minutes'}
                   </p>
                 </div>
               </div>
