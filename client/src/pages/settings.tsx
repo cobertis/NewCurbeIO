@@ -4550,6 +4550,17 @@ export function WidgetAdminSection() {
                   </div>
                 </div>
               </div>
+              <div className="flex justify-between items-center pt-2">
+                <p className="text-sm text-muted-foreground">Test your widget in a new window</p>
+                <Button
+                  variant="outline"
+                  onClick={() => window.open(`/widget/test?token=${embedWidget.websiteToken}`, '_blank')}
+                  data-testid="button-test-widget"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Test Widget
+                </Button>
+              </div>
             </div>
           )}
         </DialogContent>

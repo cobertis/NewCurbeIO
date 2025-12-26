@@ -127,6 +127,7 @@ import TelegramPage from "@/pages/integrations/telegram-page";
 import TelegramFlow from "@/pages/integrations/telegram-flow";
 import NotFound from "@/pages/not-found";
 import WidgetFrame from "@/pages/widget-frame";
+import WidgetTestPage from "@/pages/widget-test";
 import { IntercomProvider } from "@/components/intercom/IntercomProvider";
 import { AuthProvider } from "@/hooks/use-auth";
 
@@ -1965,6 +1966,7 @@ function Router() {
         </ProtectedRoute>
       </Route>
       <Route path="/widget/frame" component={WidgetFrame} />
+      <Route path="/widget/test" component={WidgetTestPage} />
       <Route path="/data-deletion" component={DataDeletionPage} />
       <Route path="/l/:slug" component={PublicLandingPage} />
       <Route path="/consent/:token" component={PublicConsentPage} />
