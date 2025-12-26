@@ -112,7 +112,7 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
         name: z.string().min(1),
         url: z.string().url().optional(),
         config: z.object({
-          maxPages: z.number().min(1).max(100).optional(),
+          maxPages: z.number().min(1).max(200).optional(),
           sameDomainOnly: z.boolean().optional(),
         }).optional(),
       });
@@ -156,7 +156,7 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
         name: z.string().min(1).optional(),
         url: z.string().url().optional(),
         config: z.object({
-          maxPages: z.number().min(1).max(100).optional(),
+          maxPages: z.number().min(1).max(200).optional(),
           sameDomainOnly: z.boolean().optional(),
         }).optional(),
       });
@@ -191,7 +191,7 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
       const schema = z.object({
         name: z.string().min(1),
         url: z.string().url(),
-        maxPages: z.number().min(1).max(100).optional(),
+        maxPages: z.number().min(1).max(200).optional(),
         sameDomainOnly: z.boolean().optional(),
         includePaths: z.array(z.string()).optional(),
         excludePaths: z.array(z.string()).optional(),
@@ -204,7 +204,7 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
         name: data.name,
         url: data.url,
         config: {
-          maxPages: data.maxPages ?? 10,
+          maxPages: data.maxPages ?? 25,
           sameDomainOnly: data.sameDomainOnly ?? true,
           includePaths: data.includePaths ?? [],
           excludePaths: data.excludePaths ?? [],

@@ -137,7 +137,8 @@ const sourceFormSchema = z.object({
   type: z.literal("url"),
   name: z.string().min(1, "Name is required"),
   url: z.string().url("Must be a valid URL"),
-  maxPages: z.number().min(1).max(100).optional(),
+  maxPages: z.number().min(1).max(200).optional(),
+  sameDomainOnly: z.boolean().optional(),
 });
 
 type SourceFormValues = z.infer<typeof sourceFormSchema>;
@@ -149,7 +150,10 @@ interface AiDeskSettingsProps {
 export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsProps) {
   const { toast } = useToast();
   const [isSourceDialogOpen, setIsSourceDialogOpen] = useState(false);
+  const [isDocumentDialogOpen, setIsDocumentDialogOpen] = useState(false);
   const [deleteConfirm, setDeleteConfirm] = useState<KbSource | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
 
   const { data: settings, isLoading: settingsLoading } = useQuery<AiSettings>({
     queryKey: ["/api/ai/settings"],
@@ -189,7 +193,10 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
     mutationFn: async (data: SourceFormValues) => {
       const res = await apiRequest("POST", "/api/ai/kb/sources", {
         ...data,
-        config: { maxPages: data.maxPages || 10, sameDomainOnly: true },
+        config: { 
+          maxPages: data.maxPages || 25, 
+          sameDomainOnly: data.sameDomainOnly ?? true 
+        },
       });
       return res.json();
     },
@@ -232,15 +239,57 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
     },
   });
 
+  const handleFileUpload = async () => {
+    if (!selectedFile) return;
+    
+    setIsUploading(true);
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+      formData.append("title", selectedFile.name.replace(/\.[^/.]+$/, ""));
+      
+      const res = await fetch("/api/ai/kb/sources/file", {
+        method: "POST",
+        body: formData,
+        credentials: "include",
+      });
+      
+      if (!res.ok) {
+        const error = await res.json();
+        throw new Error(error.error || "Upload failed");
+      }
+      
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/kb/sources"] });
+      toast({ title: "Document uploaded successfully" });
+      setIsDocumentDialogOpen(false);
+      setSelectedFile(null);
+    } catch (error) {
+      toast({ 
+        title: "Failed to upload document", 
+        description: error instanceof Error ? error.message : "Unknown error",
+        variant: "destructive" 
+      });
+    } finally {
+      setIsUploading(false);
+    }
+  };
+
   const sourceForm = useForm<SourceFormValues>({
     resolver: zodResolver(sourceFormSchema),
     defaultValues: {
       type: "url",
       name: "",
       url: "",
-      maxPages: 10,
+      maxPages: 25,
+      sameDomainOnly: true,
     },
   });
+
+  // Show settings directly if embedded or if there are existing sources
+  const hasExistingSources = (sources?.length ?? 0) > 0;
+  const [showSettings, setShowSettings] = useState(hasExistingSources);
+  const [showAddSourceDialog, setShowAddSourceDialog] = useState(false);
+  const [sourceType, setSourceType] = useState<"url" | "document" | null>(null);
 
   if (settingsLoading) {
     return <LoadingSpinner message="Loading AI settings..." />;
@@ -248,8 +297,11 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
 
   const getStatusBadge = (status: string) => {
     switch (status) {
+      case "ok":
       case "ready":
         return <Badge variant="default" className="bg-green-600"><CheckCircle className="w-3 h-3 mr-1" />Ready</Badge>;
+      case "queued":
+        return <Badge variant="secondary"><Clock className="w-3 h-3 mr-1" />Queued</Badge>;
       case "syncing":
         return <Badge variant="secondary"><RefreshCw className="w-3 h-3 mr-1 animate-spin" />Syncing</Badge>;
       case "failed":
@@ -258,12 +310,6 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
         return <Badge variant="outline"><Clock className="w-3 h-3 mr-1" />Idle</Badge>;
     }
   };
-
-  // Show settings directly if embedded or if there are existing sources
-  const hasExistingSources = (sources?.length ?? 0) > 0;
-  const [showSettings, setShowSettings] = useState(hasExistingSources);
-  const [showAddSourceDialog, setShowAddSourceDialog] = useState(false);
-  const [sourceType, setSourceType] = useState<"url" | "document" | null>(null);
 
   const handleGetStarted = () => {
     setShowAddSourceDialog(true);
@@ -274,6 +320,8 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
     setShowAddSourceDialog(false);
     if (type === "url") {
       setIsSourceDialogOpen(true);
+    } else if (type === "document") {
+      setIsDocumentDialogOpen(true);
     }
     setShowSettings(true);
   };
@@ -558,7 +606,7 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
                 Add websites or documents for AI to learn from
               </p>
             </div>
-            <Button onClick={() => setIsSourceDialogOpen(true)} data-testid="button-add-source">
+            <Button onClick={() => setShowAddSourceDialog(true)} data-testid="button-add-source">
               <Plus className="w-4 h-4 mr-2" />
               Add Source
             </Button>
@@ -574,7 +622,7 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
                 <Button
                   variant="outline"
                   className="mt-4"
-                  onClick={() => setIsSourceDialogOpen(true)}
+                  onClick={() => setShowAddSourceDialog(true)}
                   data-testid="button-add-first-source"
                 >
                   Add your first source
@@ -588,18 +636,27 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
                   <CardContent className="flex items-center justify-between py-4">
                     <div className="flex items-center gap-4">
                       <div className="p-2 bg-muted rounded-lg">
-                        <ExternalLink className="w-5 h-5" />
+                        {source.type === "file" ? (
+                          <FileText className="w-5 h-5" />
+                        ) : (
+                          <Globe className="w-5 h-5" />
+                        )}
                       </div>
                       <div>
                         <p className="font-medium">{source.name}</p>
                         <p className="text-sm text-muted-foreground truncate max-w-md">
-                          {source.url}
+                          {source.type === "file" ? "Uploaded document" : source.url}
                         </p>
                         <div className="flex items-center gap-2 mt-1">
                           {getStatusBadge(source.status)}
                           <span className="text-xs text-muted-foreground">
-                            {source.pagesCount} pages | {source.chunksCount} chunks
+                            {source.type === "url" ? `${source.pagesCount} pages` : ""} {source.chunksCount} chunks
                           </span>
+                          {source.lastSyncedAt && (
+                            <span className="text-xs text-muted-foreground">
+                              Last synced: {new Date(source.lastSyncedAt).toLocaleDateString()}
+                            </span>
+                          )}
                         </div>
                         {source.lastError && (
                           <p className="text-xs text-destructive mt-1">{source.lastError}</p>
@@ -611,11 +668,11 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
                         variant="outline"
                         size="sm"
                         onClick={() => syncSourceMutation.mutate(source.id)}
-                        disabled={source.status === "syncing" || syncSourceMutation.isPending}
+                        disabled={source.status === "syncing" || source.status === "queued" || syncSourceMutation.isPending}
                         data-testid={`button-sync-${source.id}`}
                       >
                         <RefreshCw className={`w-4 h-4 mr-1 ${source.status === "syncing" ? "animate-spin" : ""}`} />
-                        Sync
+                        {source.status === "queued" ? "Queued" : "Sync now"}
                       </Button>
                       <Button
                         variant="ghost"
@@ -956,14 +1013,33 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
                       <Input
                         type="number"
                         min={1}
-                        max={100}
+                        max={200}
                         {...field}
-                        onChange={(e) => field.onChange(parseInt(e.target.value) || 10)}
+                        onChange={(e) => field.onChange(parseInt(e.target.value) || 25)}
                         data-testid="input-source-maxpages"
                       />
                     </FormControl>
-                    <FormDescription>Maximum number of pages to crawl (1-100)</FormDescription>
+                    <FormDescription>Maximum number of pages to crawl (1-200)</FormDescription>
                     <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={sourceForm.control}
+                name="sameDomainOnly"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-0.5">
+                      <FormLabel>Same domain only</FormLabel>
+                      <FormDescription>Only crawl pages from the same domain</FormDescription>
+                    </div>
+                    <FormControl>
+                      <Switch
+                        checked={field.value ?? true}
+                        onCheckedChange={field.onChange}
+                        data-testid="switch-same-domain"
+                      />
+                    </FormControl>
                   </FormItem>
                 )}
               />
@@ -1000,6 +1076,120 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      <Dialog open={showAddSourceDialog} onOpenChange={setShowAddSourceDialog}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Add source</DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-4 py-6">
+            <button
+              onClick={() => handleSelectSourceType("url")}
+              className="flex flex-col items-center justify-center gap-4 p-8 rounded-lg bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-2 border-transparent hover:border-primary"
+              data-testid="button-source-website"
+            >
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <Globe className="w-8 h-8 text-primary" />
+              </div>
+              <div className="text-center">
+                <p className="font-semibold">Website link</p>
+                <p className="text-sm text-muted-foreground">Add link to a public website</p>
+              </div>
+            </button>
+            <button
+              onClick={() => handleSelectSourceType("document")}
+              className="flex flex-col items-center justify-center gap-4 p-8 rounded-lg bg-slate-50 dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors border-2 border-transparent hover:border-primary"
+              data-testid="button-source-document"
+            >
+              <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center">
+                <FileText className="w-8 h-8 text-primary" />
+              </div>
+              <div className="text-center">
+                <p className="font-semibold">Document</p>
+                <p className="text-sm text-muted-foreground">Upload a file from your computer</p>
+              </div>
+            </button>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddSourceDialog(false)}>
+              Cancel
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isDocumentDialogOpen} onOpenChange={setIsDocumentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload Document</DialogTitle>
+            <DialogDescription>
+              Upload a document (PDF, DOCX, TXT, or MD) for AI to learn from
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div 
+              className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors"
+              onClick={() => document.getElementById("file-upload")?.click()}
+              onDragOver={(e) => e.preventDefault()}
+              onDrop={(e) => {
+                e.preventDefault();
+                const file = e.dataTransfer.files[0];
+                if (file) setSelectedFile(file);
+              }}
+            >
+              <input
+                id="file-upload"
+                type="file"
+                className="hidden"
+                accept=".pdf,.docx,.txt,.md,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document,text/plain,text/markdown"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) setSelectedFile(file);
+                }}
+                data-testid="input-file-upload"
+              />
+              {selectedFile ? (
+                <div className="space-y-2">
+                  <FileText className="w-12 h-12 mx-auto text-primary" />
+                  <p className="font-medium">{selectedFile.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                  </p>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={(e) => { e.stopPropagation(); setSelectedFile(null); }}
+                  >
+                    Remove
+                  </Button>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <Upload className="w-12 h-12 mx-auto text-muted-foreground" />
+                  <p className="font-medium">Drop your file here, or click to browse</p>
+                  <p className="text-sm text-muted-foreground">Supports PDF, DOCX, TXT, and MD files (max 50MB)</p>
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button 
+              type="button" 
+              variant="outline" 
+              onClick={() => { setIsDocumentDialogOpen(false); setSelectedFile(null); }}
+            >
+              Cancel
+            </Button>
+            <Button 
+              onClick={handleFileUpload} 
+              disabled={!selectedFile || isUploading}
+              data-testid="button-upload-document"
+            >
+              {isUploading ? <LoadingSpinner fullScreen={false} /> : "Upload & Index"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
