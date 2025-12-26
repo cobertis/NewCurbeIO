@@ -2404,8 +2404,8 @@ export default function ChatWidgetPreviewPage() {
                 </a>
               </div>
             </div>
-          ) : chatFlowState === 'activeChat' ? (
-            /* Active Live Chat View - Professional Design */
+          ) : (chatFlowState === 'activeChat' || chatFlowState === 'postChatSurvey') ? (
+            /* Active Live Chat View or Post-Chat Survey - Professional Design */
             <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: '680px' }}>
               {/* Header - Clean design like Textmagic */}
               <div 
