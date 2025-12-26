@@ -28796,42 +28796,16 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       }
       
       if (solvedConversation) {
-        console.log("[LiveChat] Found solved session for visitor:", finalVisitorId, "Rating:", solvedConversation.satisfactionRating);
-        
-        // Get agent info if was assigned
-        let solvedAgent = null;
-        if (solvedConversation.assignedTo) {
-          const agentResult = await db
-            .select()
-            .from(users)
-            .where(eq(users.id, solvedConversation.assignedTo))
-            .limit(1);
-          
-          if (agentResult.length > 0) {
-            const assignedAgent = agentResult[0];
-            solvedAgent = {
-              id: assignedAgent.id,
-              firstName: assignedAgent.firstName,
-              lastName: assignedAgent.lastName,
-              fullName: ((assignedAgent.firstName || '') + ' ' + (assignedAgent.lastName || '')).trim() || 'Support Agent',
-              profileImageUrl: assignedAgent.avatar,
-            };
-          }
-        }
+        // Previous chat was solved/closed - allow starting a NEW chat
+        // Return sessionId: null so frontend creates new session on first message
+        console.log("[LiveChat] Found solved session for visitor:", finalVisitorId, "- allowing new chat session");
         
         res.set({ "Access-Control-Allow-Origin": "*" });
         return res.json({
-          sessionId: solvedConversation.id,
+          sessionId: null,
           visitorId: finalVisitorId,
-          pendingSession: false,
-          resumed: false,
-          agent: solvedAgent,
-          status: solvedConversation.status,
-          lastMessage: solvedConversation.lastMessage,
-          lastMessageAt: solvedConversation.lastMessageAt,
-          displayName: solvedConversation.displayName,
-          rating: solvedConversation.satisfactionRating,
-          feedback: solvedConversation.satisfactionFeedback,
+          pendingSession: true,
+          previousSessionSolved: true,
         });
       }
       // No open conversation exists - return visitor ID for new session creation on first message
