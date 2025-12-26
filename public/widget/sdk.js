@@ -1,8 +1,12 @@
 (function(window, document) {
   'use strict';
 
-  var STORAGE_KEY = 'curbe_widget_session';
+  var STORAGE_KEY_PREFIX = 'curbe_widget_session_';
   var TOKEN_REFRESH_BUFFER = 24 * 60 * 60 * 1000; // 24 hours before expiry
+
+  function getStorageKey(websiteToken) {
+    return STORAGE_KEY_PREFIX + (websiteToken || 'default');
+  }
 
   var CurbeWidgetSDK = {
     initialized: false,
@@ -154,7 +158,8 @@
 
     getStoredSession: function() {
       try {
-        var stored = localStorage.getItem(STORAGE_KEY);
+        var key = getStorageKey(this.config ? this.config.websiteToken : null);
+        var stored = localStorage.getItem(key);
         return stored ? JSON.parse(stored) : null;
       } catch (e) {
         return null;
@@ -163,7 +168,8 @@
 
     storeSession: function(sessionData) {
       try {
-        localStorage.setItem(STORAGE_KEY, JSON.stringify(sessionData));
+        var key = getStorageKey(this.config ? this.config.websiteToken : null);
+        localStorage.setItem(key, JSON.stringify(sessionData));
       } catch (e) {
         console.warn('Curbe Widget SDK: Failed to store session');
       }
@@ -171,7 +177,8 @@
 
     clearSession: function() {
       try {
-        localStorage.removeItem(STORAGE_KEY);
+        var key = getStorageKey(this.config ? this.config.websiteToken : null);
+        localStorage.removeItem(key);
       } catch (e) {}
       this.token = null;
       this.sessionData = null;
