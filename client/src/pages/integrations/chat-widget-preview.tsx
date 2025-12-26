@@ -464,6 +464,21 @@ export default function ChatWidgetPreviewPage() {
                 });
                 setIsWaitingForAgent(false);
                 setShowOfflineFallback(false);
+                
+                // Update allSessions with agent info
+                setAllSessions(prev => prev.map(session => {
+                  if (session.sessionId === chatSessionId) {
+                    return {
+                      ...session,
+                      agent: {
+                        id: data.agentId || '',
+                        fullName: data.agentName || 'Support Agent',
+                        avatar: data.agentAvatar || null,
+                      },
+                    };
+                  }
+                  return session;
+                }));
                 break;
                 
               case 'new_message':
@@ -479,6 +494,18 @@ export default function ChatWidgetPreviewPage() {
                     );
                   });
                   
+                  // Also update allSessions to keep Messages tab in sync
+                  setAllSessions(prev => prev.map(session => {
+                    if (session.sessionId === chatSessionId) {
+                      return {
+                        ...session,
+                        lastMessage: data.message.text?.substring(0, 100) || session.lastMessage,
+                        lastMessageAt: data.message.createdAt || new Date().toISOString(),
+                      };
+                    }
+                    return session;
+                  }));
+                  
                   // Show notification when widget is minimized and message is from agent
                   if (!widgetOpenRef.current && data.message.direction === 'outbound') {
                     const agent = connectedAgentRef.current;
@@ -493,6 +520,34 @@ export default function ChatWidgetPreviewPage() {
                 
               case 'agent_typing':
                 setAgentTyping(data.isTyping ?? true);
+                break;
+                
+              case 'chat_solved':
+              case 'chat_closed':
+              case 'status_changed':
+                // Update session status in allSessions
+                if (data.status) {
+                  setChatStatus(data.status);
+                  setAllSessions(prev => prev.map(session => {
+                    if (session.sessionId === chatSessionId) {
+                      return {
+                        ...session,
+                        status: data.status,
+                        rating: data.rating ?? session.rating,
+                      };
+                    }
+                    return session;
+                  }));
+                  
+                  // Show survey modal if chat was solved
+                  if ((data.status === 'solved' || data.status === 'closed') && !data.rating) {
+                    const widget = effectiveWidgetData?.widget;
+                    if (widget?.liveChatSettings?.satisfactionSurvey?.enabled) {
+                      setShowSurveyModal(true);
+                      setSurveyModalStep('rating');
+                    }
+                  }
+                }
                 break;
                 
               case 'pong':
@@ -2596,10 +2651,7 @@ export default function ChatWidgetPreviewPage() {
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => {
-                      setChatSessionId(null);
-                      setConnectedAgent(null);
-                      setChatMessages([]);
-                      setChatStatus('active');
+                      resetChatSession();
                       setActiveWidgetTab("home");
                     }}
                     className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-full transition-colors"

@@ -1,0 +1,206 @@
+Javier: tu widget no “se siente Intercom” por una razón aburrida y brutal: **Intercom no es un UI lindo**, es una *máquina de estado* con 3 pilares que casi todo el mundo implementa mal:
+
+1. **Identidad estable (persistente)**
+2. **Conversación estable (thread), no “sesión”**
+3. **Eventos en tiempo real + estados (delivered/seen/unread) bien definidos**
+
+Si cualquiera de esos 3 está flojo, pasa exactamente lo que describes: sesiones raras, “nuevo chat” que hace cosas absurdas, feedback que rompe el hilo, mensajes duplicados o que desaparecen, unread que no cuadra, etc.
+
+A continuación te dejo **cómo funciona Intercom de verdad** (lo mínimo que importa) y luego **la lógica exacta** que tu CRM tiene que copiar.
+
+---
+
+## 1) Cómo funciona Intercom (lo que debes clonar)
+
+### A) Intercom separa *persona* vs *sesión*
+
+* **Persona**: “visitor/lead/user” (una identidad). Intercom usa cookies para reconocer el dispositivo y así recuperar conversaciones previas. ([Intercom][1])
+* **Sesión**: solo contexto temporal (presencia, página actual, etc.). **No** define la conversación.
+
+Error típico tuyo (apuesto fuerte): estás usando `sessionId` como si fuera `contactId`. Resultado: recargas → “otra persona” → chats rotos.
+
+### B) “Visitor/Lead/User” y el merge al identificar
+
+Intercom puede tratar a alguien como visitor/lead y luego, cuando se identifica, **fusiona** el rastro (por cookie) con el usuario identificado. ([Intercom][2])
+(Intercom además tiene el concepto de “lead” y sus verificaciones/edge cases). ([Intercom][3])
+
+### C) Conversación = un thread con partes (messages + eventos)
+
+Intercom modela una conversación con estado (open/closed), asignación y “parts” del hilo. ([Intercom Developers][4])
+Tu sistema debe tener un **conversationId** estable. Si no, “nuevo chat” y “volver al chat” serán un circo.
+
+### D) “Seen” y read receipts no son naïve
+
+Intercom tiene una regla clave: el primer mensaje del cliente no se marca “Seen” solo porque un agente lo abrió; **se marca “Seen” cuando el agente empieza a escribir**. Eso evita falsas expectativas. ([Intercom][5])
+Si tú marcas seen al abrir, tu cliente ve “visto” y luego nadie responde: UX tóxica.
+
+### E) Cookies / device id (persistencia real)
+
+Intercom usa cookies tipo `intercom-device-id-[app_id]` para identificar el dispositivo y recuperar historial; y recomienda “shutdown” al logout para limpiar identidad. ([Intercom][1])
+Tu widget necesita **device_id persistente** (cookie o localStorage) por tenant.
+
+---
+
+## 2) La lógica que Curbe debe implementar (spec sin excusas)
+
+### Entidades mínimas (DB / modelo mental)
+
+**Tenant**
+
+* `tenant_id`
+
+**Contact (persona)**
+
+* `contact_id`
+* `tenant_id`
+* `type`: `anonymous | lead | user`
+* `user_id` (si autenticado en tu app)
+* `email/phone` (si existen)
+* **merge_keys** (para unir identidades)
+* `created_at`
+
+**Device**
+
+* `device_id` (random UUID, persistente)
+* `tenant_id`
+* `contact_id` (nullable al inicio)
+* `last_seen_at`
+
+**Conversation**
+
+* `conversation_id`
+* `tenant_id`
+* `contact_id`
+* `status`: `open | closed`
+* `subject/context` (opcional)
+* `assigned_to` (agent/admin id)
+* `created_at`, `closed_at`
+
+**Message**
+
+* `message_id`
+* `conversation_id`
+* `sender_type`: `contact | agent | system`
+* `body`
+* `client_message_id` (**idempotencia**)
+* `created_at`
+
+**Read state (por participante)**
+
+* `conversation_id`
+* `participant_id` (contact o agent)
+* `last_read_message_id` o `last_read_at`
+
+**Seen state (para emular Intercom)**
+
+* `conversation_id`
+* `contact_last_message_seen_at` (cuando agente *tipea*, no cuando abre) ([Intercom][5])
+
+---
+
+## 3) Máquina de estado del widget (lo que “se siente Intercom”)
+
+### Bootstrap
+
+1. Widget carga → obtiene/crea `device_id` persistente (por tenant).
+2. Llama `GET /messenger/bootstrap?tenant_id&device_id`
+
+   * Respuesta: `contact_id` (si ya existe), conversaciones abiertas recientes, unread count, config.
+
+**Regla de oro:** *reload no crea persona nueva*. Si la recarga te cambia identidad, ya perdiste.
+
+### Identificación (cuando el usuario está logueado en Curbe)
+
+3. Si hay sesión en tu CRM → `POST /messenger/identify`
+
+   * payload: `tenant_id`, `device_id`, `user_id`, `email`, `name`
+   * **y firma** (HMAC/JWT) para que no cualquiera suplante identidad (Intercom lo hace con Identity Verification). ([Intercom][6])
+4. Backend hace **merge**: visitor/lead → user (mismo device) ([Intercom][2])
+
+### Abrir conversación
+
+5. Widget muestra:
+
+* Si existe conversación `open`: la abre (o lista si hay varias).
+* Si no existe: estado “Start a conversation”.
+
+### Enviar mensaje (sin duplicados, sin fantasmas)
+
+6. Al enviar:
+
+* Genera `client_message_id = uuid()`
+* Render optimistic UI (mensaje “pending”)
+* `POST /messages` con `client_message_id`
+* Server responde `message_id` + timestamp → el cliente “reconcilia” (pending → sent)
+
+**Si no tienes idempotencia por `client_message_id`, vas a tener duplicados cuando haya retries.**
+
+### Tiempo real
+
+7. Usa WebSocket o SSE:
+
+* eventos: `message.created`, `conversation.updated`, `typing`, `presence`, `read_state.updated`
+* en reconnect: el cliente manda `last_event_id` y el server re-sincroniza (si no, se pierden mensajes y todo se desordena)
+
+### Read / Seen / Unread (copiando Intercom)
+
+* `read`: cuando el usuario **abre** la conversación, actualizas `last_read_*`
+* `seen` (lo que el cliente percibe como “visto”): **solo** cuando el agente empieza a escribir o envía respuesta ([Intercom][5])
+
+---
+
+## 4) “Nuevo chat” (el bug más común del universo)
+
+Intercom no usa “nuevo chat” como un reset estúpido de sesión. “Nuevo chat” significa:
+
+* Si hay conversación `open` → **sigues en esa** (porque el usuario está literalmente en una conversación viva).
+* “Start new conversation” solo crea una nueva si:
+
+  1. no hay ninguna open, o
+  2. el usuario explícitamente elige “New conversation” y tú **cierras**/archivas la anterior o permites múltiples open con lista clara.
+
+Si hoy tu botón “nuevo chat” está creando un `conversation_id` nuevo cada vez que el usuario abre/cierra el widget, eso es autoboicot. El sistema *nunca* va a sentirse consistente.
+
+---
+
+## 5) Feedback/CSAT (otra trampa)
+
+El feedback no puede “romper” el thread ni crear una conversación nueva. Debe ser:
+
+* un **evento** dentro de la conversación, o
+* una entidad `conversation_rating` asociada al `conversation_id`,
+  y aparece cuando la conversación se marca `closed/resolved`.
+
+Intercom incluso permite exportar transcript, threading, etc. (mismo hilo, no conversaciones fragmentadas). ([Intercom][7])
+
+---
+
+## 6) Lo que le dices a Replit (directo y accionable)
+
+Cópiales esto tal cual como “definición de hecho”:
+
+1. **Dejar de usar sessionId como identidad.** Implementar `device_id` persistente por tenant (cookie/localStorage) y mapear a `contact_id`. (Persistencia tipo Intercom cookies). ([Intercom][1])
+2. **Implementar merge de identidad** en `identify`: `device_id` + `user_id/email` unen visitor/lead → user. ([Intercom][2])
+3. **ConversationId estable**: “nuevo chat” no crea conversación si existe una open; solo si no hay open o el usuario lo pide explícito.
+4. **Mensajes idempotentes** con `client_message_id` + reconciliación optimistic UI.
+5. **Real-time robusto**: SSE/WebSocket con `last_event_id` y resync.
+6. **Seen ≠ opened**: marcar “seen” cuando el agente empieza a tipear (o responde), no cuando abre. ([Intercom][5])
+7. **Feedback** ligado al `conversation_id` al cerrar, no como “nuevo chat”.
+
+---
+
+## 7) Veredicto (la parte incómoda)
+
+Ahora mismo estás intentando arreglar “sensaciones” (UI/bugs) sin fijar **invariantes**. Eso es como pintar un carro sin motor y preguntarte por qué no acelera.
+
+Intercom funciona porque primero resolvió identidad + thread + estados. Tú tienes que imponer ese orden. Si tu equipo/agent sigue parchando pantallas sin arreglar identidad persistente e idempotencia, vas a seguir perdiendo semanas.
+
+Siguiente paso lógico: conviertes lo de arriba en un **documento de spec** y lo usas como checklist de QA (casos: reload, logout/login merge, multi-tenant, reconnect, retry, dos tabs abiertas, etc.). Esa disciplina es literalmente la diferencia entre “chat juguete” y “chat Intercom”.
+
+[1]: https://www.intercom.com/help/en/articles/2361922-intercom-messenger-cookies?utm_source=chatgpt.com "Intercom Messenger Cookies | Intercom Help"
+[2]: https://www.intercom.com/help/en/articles/313-send-targeted-messages-to-visitors-on-your-website?utm_source=chatgpt.com "Send targeted messages to visitors on your website"
+[3]: https://www.intercom.com/help/en/articles/310-how-do-visitors-leads-and-users-work-in-intercom?utm_source=chatgpt.com "How do visitors, leads and users work in Intercom?"
+[4]: https://developers.intercom.com/docs/references/1.1/rest-api/conversations/conversation-model?utm_source=chatgpt.com "Conversation Model"
+[5]: https://www.intercom.com/help/en/articles/258-real-time-messaging-explained?utm_source=chatgpt.com "Real-time messaging explained | Intercom Help"
+[6]: https://www.intercom.com/help/en/articles/7946878-what-is-identity-verification-deprecated?utm_source=chatgpt.com "What is Identity Verification? [Deprecated]"
+[7]: https://www.intercom.com/help/en/articles/7996715-email-threading?utm_source=chatgpt.com "Email threading | Intercom Help"
