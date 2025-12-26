@@ -1021,6 +1021,23 @@ export default function ChatWidgetPreviewPage() {
       setIsWaitingForAgent(true);
       setActiveChannel('liveChat'); // Ensure chat view is shown
       
+      // Clear all survey and solved-chat state for fresh session
+      setShowSatisfactionSurvey(false);
+      setSurveySubmitted(false);
+      setSurveyRating(null);
+      setSurveyFeedback('');
+      setViewingSolvedChat(false);
+      setSolvedChatData(null);
+      setConnectedAgent(null);
+      setChatStatus('waiting');
+      
+      // Clear localStorage survey state for this session
+      try {
+        localStorage.removeItem(`chatSurveyState-${widgetId}`);
+      } catch (e) {
+        console.error('[Chat] Failed to clear survey state:', e);
+      }
+      
       // Save visitor profile to localStorage for returning visitors (Task 3)
       if (visitorName.trim() || visitorEmail.trim()) {
         try {
