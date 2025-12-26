@@ -100,20 +100,20 @@ export function WidgetChannelList({ config, onChannelClick, hideLiveChat = false
       {otherChannels.map((channel) => (
         <button
           key={channel.id}
-          className="w-full flex items-center gap-3 py-4 px-4 bg-slate-50 rounded-2xl hover:bg-slate-100 transition-colors cursor-pointer"
+          className="w-full flex items-center gap-3 py-2.5 px-3 bg-slate-50 rounded-xl hover:bg-slate-100 transition-colors cursor-pointer"
           onClick={() => onChannelClick?.(channel.id)}
           data-testid={`widget-channel-${channel.id}`}
         >
           <span 
-            className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm"
+            className="w-8 h-8 rounded-full bg-white flex items-center justify-center shadow-sm"
             style={{ color: iconColor }}
           >
-            {channel.icon}
+            <span className="[&>svg]:h-4 [&>svg]:w-4">{channel.icon}</span>
           </span>
           <span className="flex-1 text-left text-sm font-medium text-slate-900">
             {channel.getLabel(config)}
           </span>
-          <ChevronRight className="h-5 w-5 text-slate-400" />
+          <ChevronRight className="h-4 w-4 text-slate-400" />
         </button>
       ))}
     </div>
