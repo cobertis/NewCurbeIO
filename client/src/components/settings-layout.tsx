@@ -9,9 +9,9 @@ import {
   Palette,
   User as UserIcon,
   UsersRound,
-  Plug,
   Zap,
-  MessageCircle
+  MessageCircle,
+  Bot
 } from "lucide-react";
 import { SiWhatsapp, SiFacebook, SiInstagram, SiTelegram } from "react-icons/si";
 
@@ -33,8 +33,8 @@ export function SettingsLayout({ children, activeSection }: SettingsLayoutProps)
     if (location.startsWith("/settings/billing")) return "billing";
     if (location.startsWith("/settings/sms-voice")) return "sms-voice";
     if (location.startsWith("/settings/email")) return "email";
-    if (location.startsWith("/settings/integrations")) return "integrations";
     if (location.startsWith("/settings/automations")) return "automations";
+    if (location.startsWith("/settings/ai-desk")) return "ai-desk";
     if (location.startsWith("/settings/whatsapp")) return "whatsapp";
     if (location.startsWith("/settings/facebook")) return "facebook";
     if (location.startsWith("/settings/instagram")) return "instagram";
@@ -65,8 +65,8 @@ export function SettingsLayout({ children, activeSection }: SettingsLayoutProps)
       { label: "Chat Widget", href: "/settings/chat-widget", icon: MessageCircle, active: activeView === "chat-widget" },
     ],
     features: [
-      { label: "Integrations", href: "/settings/integrations", icon: Plug, active: activeView === "integrations" },
       { label: "Automations", href: "/settings/automations", icon: Zap, active: activeView === "automations" },
+      { label: "AI Desk", href: "/settings/ai-desk", icon: Bot, active: activeView === "ai-desk" },
     ],
   };
 
