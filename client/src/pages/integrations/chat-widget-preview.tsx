@@ -888,6 +888,12 @@ export default function ChatWidgetPreviewPage() {
         // Store the sessionId for survey submission (consistent with viewSolvedChat)
         setChatSessionId(sessionId);
         
+        // If chat already has rating/feedback, mark survey as completed to prevent re-prompting
+        if (rating || feedback) {
+          setSurveySubmitted(true);
+          setShowSatisfactionSurvey(false);
+        }
+        
         console.log('[Chat] Viewing solved chat with', sortedMessages.length, 'messages, rating:', rating);
       }
     } catch (error) {
@@ -2276,9 +2282,13 @@ export default function ChatWidgetPreviewPage() {
               <div className="px-4 py-3 text-white flex items-center gap-3" style={{ background: currentBackground }}>
                 <button 
                   onClick={() => { 
+                    // Exit solved chat view and return to Messages tab
                     setViewingSolvedChat(false);
                     setSolvedChatData(null);
                     setChatSessionId(null);
+                    setActiveChannel(null);
+                    setChatFlowState('idle');
+                    setActiveWidgetTab('messages');
                   }}
                   className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
                   data-testid="back-from-solved-chat"
@@ -2383,7 +2393,8 @@ export default function ChatWidgetPreviewPage() {
                 >
                   Start new chat
                 </button>
-                {widget.liveChatSettings?.satisfactionSurvey?.enabled && (
+                {/* Only show Leave feedback if survey is enabled AND no rating exists yet */}
+                {widget.liveChatSettings?.satisfactionSurvey?.enabled && !solvedChatData.rating && (
                   <button
                     onClick={openSurveyFromSolvedChat}
                     className="w-full py-2.5 px-4 rounded-lg text-sm font-medium border-2 bg-transparent"
