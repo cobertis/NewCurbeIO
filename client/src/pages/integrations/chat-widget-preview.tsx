@@ -111,7 +111,6 @@ export default function ChatWidgetPreviewPage() {
   const [visitorName, setVisitorName] = useState('');
   const [visitorEmail, setVisitorEmail] = useState('');
   const [initialMessage, setInitialMessage] = useState('');
-  const [showPreChatForm, setShowPreChatForm] = useState(false);
   const [agentTyping, setAgentTyping] = useState(false);
   const [isWaitingForAgent, setIsWaitingForAgent] = useState(true);
   const [sentInitialMessage, setSentInitialMessage] = useState('');
@@ -163,7 +162,6 @@ export default function ChatWidgetPreviewPage() {
   const [showSurveyModal, setShowSurveyModal] = useState(false);
   const [surveyModalStep, setSurveyModalStep] = useState<'rating' | 'feedback'>('rating');
   const [showOfflineFallback, setShowOfflineFallback] = useState(false);
-  const [forceNewChat, setForceNewChat] = useState(false);
   const [agentsAvailable, setAgentsAvailable] = useState<boolean | null>(null);
   const [offlineMessage, setOfflineMessage] = useState('');
   const [showLeaveMessageForm, setShowLeaveMessageForm] = useState(false);
@@ -205,6 +203,7 @@ export default function ChatWidgetPreviewPage() {
   });
   
   // Fetch widget data from public API when in public mode
+  // This consolidated fetch sets BOTH publicWidgetData AND targeting metadata
   useEffect(() => {
     if (!widgetId || !isPublicMode) {
       setPublicLoading(false);
@@ -217,9 +216,23 @@ export default function ChatWidgetPreviewPage() {
         if (data.widget) {
           setPublicWidgetData({ widget: data.widget });
         }
+        // Also set targeting metadata from the same response
+        setShouldDisplay(data.shouldDisplay ?? true);
+        setVisitorCountry(data.visitorCountry || null);
+        setScheduleStatus(data.scheduleStatus || { isOnline: true, nextAvailable: null });
+        setDeviceInfo(data.deviceInfo || null);
+        setPageUrlInfo({
+          pageUrls: data.targeting?.pageUrls || 'all',
+          urlRules: data.targeting?.urlRules || []
+        });
+        setTargetingChecked(true);
         setPublicLoading(false);
       })
       .catch(() => {
+        setShouldDisplay(true);
+        setScheduleStatus({ isOnline: true, nextAvailable: null });
+        setDeviceInfo(null);
+        setTargetingChecked(true);
         setPublicLoading(false);
       });
   }, [widgetId, isPublicMode]);
@@ -550,33 +563,6 @@ export default function ChatWidgetPreviewPage() {
     
     return () => clearInterval(interval);
   }, [widgetId]);
-
-  // Check targeting rules via public API
-  useEffect(() => {
-    if (!widgetId) return;
-    
-    fetch(`/api/public/chat-widget/${widgetId}`)
-      .then(res => res.json())
-      .then(data => {
-        setShouldDisplay(data.shouldDisplay ?? true);
-        setVisitorCountry(data.visitorCountry || null);
-        setScheduleStatus(data.scheduleStatus || { isOnline: true, nextAvailable: null });
-        setDeviceInfo(data.deviceInfo || null);
-        setPageUrlInfo({
-          pageUrls: data.targeting?.pageUrls || 'all',
-          urlRules: data.targeting?.urlRules || []
-        });
-        setTargetingChecked(true);
-      })
-      .catch(() => {
-        // On error, default to showing widget
-        setShouldDisplay(true);
-        setScheduleStatus({ isOnline: true, nextAvailable: null });
-        setDeviceInfo(null);
-        setTargetingChecked(true);
-      });
-  }, [widgetId]);
-
 
   // Check for existing chat session for returning visitors (show "Back to chat" card)
   // Check for existing session on page load (before widget opens)
@@ -938,7 +924,6 @@ export default function ChatWidgetPreviewPage() {
     setConnectedAgent(null);
     setChatStatus(null);
     setIsWaitingForAgent(true);
-    setShowPreChatForm(false);
     setInitialMessage('');
     setSentInitialMessage('');
     setShowOfflineFallback(false);
@@ -973,7 +958,6 @@ export default function ChatWidgetPreviewPage() {
   // Start a completely new chat (clears solved session reference)
   const startNewChat = () => {
     resetChatSession();
-    setForceNewChat(true);
     
     // Check for stored profile to decide flow
     const storedProfile = localStorage.getItem(`chatVisitorProfile-${widgetId}`);
@@ -1024,8 +1008,8 @@ export default function ChatWidgetPreviewPage() {
   const startChatSession = async (overrideForceNew?: boolean, messageOverride?: string) => {
     if (!widgetId) return;
     
-    // Use override if provided, otherwise use state (override handles React async state issue)
-    const shouldForceNew = overrideForceNew ?? forceNewChat;
+    // Use override if provided, otherwise default to false
+    const shouldForceNew = overrideForceNew ?? false;
     
     setChatLoading(true);
     try {
@@ -1075,7 +1059,6 @@ export default function ChatWidgetPreviewPage() {
       const { sessionId, visitorId, pendingSession } = await sessionRes.json();
       
       setChatVisitorId(visitorId);
-      setShowPreChatForm(false);
       setIsWaitingForAgent(true);
       setActiveChannel('liveChat'); // Ensure chat view is shown
       
@@ -1138,7 +1121,6 @@ export default function ChatWidgetPreviewPage() {
           setChatFlowState('activeChat');
           setChatSessionId(conversationId || sessionId);
           setChatMessages([message]);
-          setForceNewChat(false); // Reset forceNewChat after successful creation
           // Update existingSession to point to the new chat
           setExistingSession({
             sessionId: conversationId || sessionId,
@@ -2872,7 +2854,6 @@ export default function ChatWidgetPreviewPage() {
                   <button
                     onClick={() => {
                       resetChatSession();
-                      setForceNewChat(true);
                       setChatFlowState('idle');
                       setActiveWidgetTab('home');
                     }}
@@ -2891,7 +2872,6 @@ export default function ChatWidgetPreviewPage() {
                   <button
                     onClick={() => {
                       resetChatSession();
-                      setForceNewChat(true);
                       setChatFlowState('idle');
                       setActiveWidgetTab('home');
                     }}
@@ -3001,7 +2981,7 @@ export default function ChatWidgetPreviewPage() {
           ) : (
             <div className="relative" style={{ height: '680px' }}>
               {/* State machine controlled rendering - only one view at a time */}
-              {chatFlowState === 'preChatForm' || showPreChatForm ? (
+              {chatFlowState === 'preChatForm' ? (
                 /* Pre-chat form - controlled by state machine */
                 <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 h-full">
                   {/* Header with logo and agent photos - gradient background */}
@@ -3146,7 +3126,6 @@ export default function ChatWidgetPreviewPage() {
                       }
                       // No profile - show pre-chat form
                       setChatFlowState('preChatForm');
-                      setShowPreChatForm(true);
                     } else {
                       setActiveChannel(channel);
                     }
@@ -3183,7 +3162,6 @@ export default function ChatWidgetPreviewPage() {
                   onStartNewChat={() => {
                     // Use state machine to start a new chat cleanly
                     resetChatSession();
-                    setForceNewChat(true);
                     
                     const storedProfile = localStorage.getItem(`chatVisitorProfile-${widgetId}`);
                     if (storedProfile) {
@@ -3200,7 +3178,6 @@ export default function ChatWidgetPreviewPage() {
                     }
                     // No profile - show pre-chat form
                     setChatFlowState('preChatForm');
-                    setShowPreChatForm(true);
                   }}
                 />
               ) : (
@@ -3213,7 +3190,7 @@ export default function ChatWidgetPreviewPage() {
               )}
               
               {/* Offline status overlay for WidgetRenderer mode */}
-              {!showPreChatForm && effectiveWidgetData?.widget && !scheduleStatus.isOnline && (
+              {chatFlowState !== 'preChatForm' && effectiveWidgetData?.widget && !scheduleStatus.isOnline && (
                 <div className="absolute top-[80px] left-5 right-5 z-10">
                   <div className="bg-amber-50 dark:bg-amber-900/30 rounded-lg px-4 py-3">
                     <div className="flex items-center gap-2">
