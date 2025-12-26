@@ -2054,8 +2054,22 @@ export default function ChatWidgetPreviewPage() {
                 style={{ background: currentBackground }}
               >
                 <div className="flex items-center justify-between">
-                  {/* Logo */}
+                  {/* Back button + Logo */}
                   <div className="flex items-center gap-3">
+                    <button
+                      onClick={() => {
+                        setChatSessionId(null);
+                        setConnectedAgent(null);
+                        setChatMessages([]);
+                        setChatStatus('active');
+                        setActiveWidgetTab("home");
+                      }}
+                      className="p-1.5 hover:bg-white/20 rounded-full transition-colors"
+                      title="Back to home"
+                      data-testid="button-back-to-home"
+                    >
+                      <ChevronLeft className="h-5 w-5 text-white" />
+                    </button>
                     {widget.branding?.customLogo ? (
                       <img 
                         src={widget.branding.customLogo} 
