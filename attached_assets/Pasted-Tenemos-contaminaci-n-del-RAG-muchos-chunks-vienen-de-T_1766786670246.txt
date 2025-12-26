@@ -1,0 +1,88 @@
+Tenemos contaminación del RAG: muchos chunks vienen de Terms & Conditions / Privacy Policy / Cookies y están afectando el retrieval. Implementar filtrado y categorización “legal” para que NO aparezcan en respuestas normales.
+
+1) Excluir páginas legales en el crawl (DEFAULT ON)
+
+En el pipeline de discovery/crawl, antes de encolar una URL:
+
+Si el path match (case-insensitive):
+
+/privacy|privacy-policy|terms|terms-of-service|tos|legal|gdpr|cookie|cookies/i
+entonces:
+
+marcar URL como skipped
+
+reason = "excluded_legal"
+
+NO procesar ni indexar
+
+Adicional:
+
+Si el <title> contiene: “Privacy”, “Terms”, “Cookie”, “Legal”
+también excluir (fallback).
+
+2) Opción configurable por Source
+
+En UI “Add source (Website link)” agregar toggle:
+
+Exclude legal pages (recommended) [ON por default]
+
+Guardar en ai_kb_sources.config:
+
+{ "exclude_legal": true }
+
+
+Si exclude_legal=false, entonces:
+
+sí indexar esas páginas pero con metadata:
+
+ai_kb_documents.meta.category = "legal"
+
+ai_kb_chunks.meta.category = "legal"
+
+3) Retrieval default: NO traer legal
+
+En /api/ai/kb/query:
+
+Por defecto filtrar category != "legal" (o meta->>'category' != 'legal')
+
+Solo incluir legal si:
+
+intent detectado ∈ { "legal", "privacy", "compliance", "refund", "billing_dispute" }
+
+o si request trae include_legal=true
+
+Agregar param opcional:
+
+{ "query":"...", "top_k":5, "include_legal": false }
+
+4) Limpieza para datos ya indexados
+
+Agregar acción en UI por source:
+
+“Purge legal pages”
+Backend:
+
+borrar docs/chunks del source donde meta.category='legal'
+
+o donde page_url match los patterns legales
+Luego permitir “Sync now” para reindexar limpio.
+
+5) Coverage report
+
+En el reporte del crawl agregar:
+
+excluded_legal_count
+
+sample de URLs excluidas por legal rules
+
+6) Tests
+
+Ingest de un site con /privacy y /terms:
+
+con exclude_legal=true no deben existir docs/chunks con esas URLs
+
+con exclude_legal=false deben existir pero con meta.category='legal'
+
+Query normal no debe retornar chunks legales a menos que include_legal=true o intent legal.
+
+Entregar PR separado: “legal filtering + retrieval filter + purge + tests”.

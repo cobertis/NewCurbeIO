@@ -238,6 +238,97 @@ export class AiDeskService {
       ));
   }
 
+  async purgeLegalPages(companyId: string, sourceId: string): Promise<{ documentsDeleted: number; chunksDeleted: number }> {
+    // Legal page URL patterns
+    const legalPatterns = [
+      '%/privacy%',
+      '%/privacy-policy%',
+      '%/terms%',
+      '%/terms-of-service%',
+      '%/terms-and-conditions%',
+      '%/tos%',
+      '%/legal%',
+      '%/gdpr%',
+      '%/cookie%',
+      '%/cookies%',
+      '%/disclaimer%',
+      '%/mobile-alerts-terms%',
+      '%/refund-policy%',
+      '%/ccpa%',
+      '%/acceptable-use%',
+      '%/dmca%',
+    ];
+
+    // Find documents that match legal URL patterns
+    const allDocs = await db
+      .select({ id: aiKbDocuments.id, url: aiKbDocuments.url, title: aiKbDocuments.title })
+      .from(aiKbDocuments)
+      .where(and(
+        eq(aiKbDocuments.companyId, companyId),
+        eq(aiKbDocuments.sourceId, sourceId)
+      ));
+
+    // Filter documents by legal patterns
+    const legalKeywords = ['privacy policy', 'privacy notice', 'terms of service', 'terms of use', 
+      'terms and conditions', 'legal notice', 'cookie policy', 'cookies policy', 'disclaimer', 
+      'gdpr', 'ccpa', 'refund policy', 'acceptable use', 'mobile alerts terms'];
+    
+    const legalDocIds = allDocs
+      .filter(doc => {
+        const urlLower = (doc.url || '').toLowerCase();
+        const titleLower = (doc.title || '').toLowerCase();
+        
+        // Check URL patterns
+        for (const pattern of legalPatterns) {
+          const regex = new RegExp(pattern.replace(/%/g, '.*'), 'i');
+          if (regex.test(urlLower)) return true;
+        }
+        
+        // Check title keywords
+        for (const keyword of legalKeywords) {
+          if (titleLower.includes(keyword)) return true;
+        }
+        
+        return false;
+      })
+      .map(d => d.id);
+
+    if (legalDocIds.length === 0) {
+      return { documentsDeleted: 0, chunksDeleted: 0 };
+    }
+
+    // Count chunks before deleting
+    const chunkCountResult = await db
+      .select({ count: sql<number>`count(*)::int` })
+      .from(aiKbChunks)
+      .where(and(
+        eq(aiKbChunks.companyId, companyId),
+        inArray(aiKbChunks.documentId, legalDocIds)
+      ));
+    const chunksDeleted = chunkCountResult[0]?.count || 0;
+
+    // Delete chunks first (foreign key)
+    await db
+      .delete(aiKbChunks)
+      .where(and(
+        eq(aiKbChunks.companyId, companyId),
+        inArray(aiKbChunks.documentId, legalDocIds)
+      ));
+
+    // Delete documents
+    await db
+      .delete(aiKbDocuments)
+      .where(and(
+        eq(aiKbDocuments.companyId, companyId),
+        inArray(aiKbDocuments.id, legalDocIds)
+      ));
+
+    // Update source counts
+    await this.updateSourceCounts(companyId, sourceId);
+
+    return { documentsDeleted: legalDocIds.length, chunksDeleted };
+  }
+
   async listChunks(companyId: string, documentId: string): Promise<AiKbChunk[]> {
     return db
       .select()

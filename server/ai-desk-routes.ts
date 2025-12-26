@@ -114,6 +114,7 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
         config: z.object({
           maxPages: z.number().min(1).max(200).optional(),
           sameDomainOnly: z.boolean().optional(),
+          excludeLegal: z.boolean().optional(),
         }).optional(),
       });
 
@@ -158,6 +159,7 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
         config: z.object({
           maxPages: z.number().min(1).max(200).optional(),
           sameDomainOnly: z.boolean().optional(),
+          excludeLegal: z.boolean().optional(),
         }).optional(),
       });
 
@@ -193,6 +195,7 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
         url: z.string().url(),
         maxPages: z.number().min(1).max(200).optional(),
         sameDomainOnly: z.boolean().optional(),
+        excludeLegal: z.boolean().optional(),
         includePaths: z.array(z.string()).optional(),
         excludePaths: z.array(z.string()).optional(),
       });
@@ -206,6 +209,7 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
         config: {
           maxPages: data.maxPages ?? 25,
           sameDomainOnly: data.sameDomainOnly ?? true,
+          excludeLegal: data.excludeLegal ?? true,
           includePaths: data.includePaths ?? [],
           excludePaths: data.excludePaths ?? [],
         },
@@ -277,6 +281,27 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
 
       aiIngestionService.syncSource(companyId, req.params.sourceId).catch((err) => {
         console.error("[AI-Desk] Sync error:", err);
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/ai/kb/sources/:sourceId/purge-legal", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = getCompanyId(req);
+      if (!companyId) return res.status(400).json({ error: "No company" });
+
+      const source = await aiDeskService.getKbSource(companyId, req.params.sourceId);
+      if (!source) return res.status(404).json({ error: "Source not found" });
+
+      const result = await aiDeskService.purgeLegalPages(companyId, req.params.sourceId);
+      console.log(`[AI-Desk] Purged legal pages from source ${req.params.sourceId}: ${result.documentsDeleted} docs, ${result.chunksDeleted} chunks`);
+      
+      res.json({ 
+        message: "Legal pages purged", 
+        documentsDeleted: result.documentsDeleted,
+        chunksDeleted: result.chunksDeleted 
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

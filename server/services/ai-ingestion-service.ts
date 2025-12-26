@@ -7,6 +7,64 @@ import path from "path";
 const MAX_CHUNK_SIZE = 1500;
 const CHUNK_OVERLAP = 200;
 
+// Legal page detection patterns
+const LEGAL_URL_PATTERNS = [
+  /\/privacy/i,
+  /\/privacy-policy/i,
+  /\/terms/i,
+  /\/terms-of-service/i,
+  /\/terms-and-conditions/i,
+  /\/tos\b/i,
+  /\/legal/i,
+  /\/gdpr/i,
+  /\/cookie/i,
+  /\/cookies/i,
+  /\/disclaimer/i,
+  /\/mobile-alerts-terms/i,
+  /\/refund-policy/i,
+  /\/ccpa/i,
+  /\/acceptable-use/i,
+  /\/dmca/i,
+];
+
+const LEGAL_TITLE_KEYWORDS = [
+  'privacy policy',
+  'privacy notice',
+  'terms of service',
+  'terms of use',
+  'terms and conditions',
+  'legal notice',
+  'cookie policy',
+  'cookies policy',
+  'disclaimer',
+  'gdpr',
+  'ccpa',
+  'refund policy',
+  'acceptable use',
+  'mobile alerts terms',
+];
+
+function isLegalPage(url: string, title: string): boolean {
+  const urlPath = new URL(url).pathname.toLowerCase();
+  
+  // Check URL patterns
+  for (const pattern of LEGAL_URL_PATTERNS) {
+    if (pattern.test(urlPath)) {
+      return true;
+    }
+  }
+  
+  // Check title keywords
+  const lowerTitle = title.toLowerCase();
+  for (const keyword of LEGAL_TITLE_KEYWORDS) {
+    if (lowerTitle.includes(keyword)) {
+      return true;
+    }
+  }
+  
+  return false;
+}
+
 // Dynamic imports for file processing to handle missing packages gracefully
 let pdfParse: any = null;
 let mammoth: any = null;
@@ -172,10 +230,11 @@ export class AiIngestionService {
     companyId: string,
     sourceId: string,
     url: string,
-    config?: { maxPages?: number; sameDomainOnly?: boolean }
+    config?: { maxPages?: number; sameDomainOnly?: boolean; excludeLegal?: boolean }
   ): Promise<IngestionResult> {
     const maxPages = config?.maxPages ?? 10;
     const sameDomainOnly = config?.sameDomainOnly ?? true;
+    const excludeLegal = config?.excludeLegal !== false; // Default to true
     
     console.log(`[AI-Ingestion] Starting URL sync: ${url}, maxPages: ${maxPages}`);
     
@@ -252,6 +311,12 @@ export class AiIngestionService {
 
         if (!content || content.length < 100) {
           console.log(`[AI-Ingestion] Content too short (${content.length} chars), skipping`);
+          continue;
+        }
+
+        // Check if this is a legal page and should be excluded
+        if (excludeLegal && isLegalPage(currentUrl, title)) {
+          console.log(`[AI-Ingestion] Skipping legal page: ${currentUrl} (title: ${title})`);
           continue;
         }
 

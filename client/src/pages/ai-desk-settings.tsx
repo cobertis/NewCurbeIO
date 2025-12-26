@@ -49,7 +49,8 @@ import {
   Layers,
   Hash,
   Copy,
-  Check
+  Check,
+  ShieldX
 } from "lucide-react";
 import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -186,7 +187,7 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
   const [viewChunksSource, setViewChunksSource] = useState<KbSource | null>(null);
   const [copiedChunkId, setCopiedChunkId] = useState<string | null>(null);
   const [urlInputs, setUrlInputs] = useState<string[]>(['']);
-  const [multiUrlSettings, setMultiUrlSettings] = useState({ maxPages: 25, sameDomainOnly: true });
+  const [multiUrlSettings, setMultiUrlSettings] = useState({ maxPages: 25, sameDomainOnly: true, excludeLegal: true });
 
   const { data: settings, isLoading: settingsLoading } = useQuery<AiSettings>({
     queryKey: ["/api/ai/settings"],
@@ -261,7 +262,7 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
   });
 
   const createMultipleSourcesMutation = useMutation({
-    mutationFn: async (data: { urls: string[]; maxPages: number; sameDomainOnly: boolean }) => {
+    mutationFn: async (data: { urls: string[]; maxPages: number; sameDomainOnly: boolean; excludeLegal: boolean }) => {
       const results = [];
       for (const url of data.urls) {
         try {
@@ -272,7 +273,8 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
             url,
             config: { 
               maxPages: data.maxPages || 25, 
-              sameDomainOnly: data.sameDomainOnly ?? true 
+              sameDomainOnly: data.sameDomainOnly ?? true,
+              excludeLegal: data.excludeLegal ?? true,
             },
           });
           const source = await res.json();
@@ -296,14 +298,14 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
       }
       setIsSourceDialogOpen(false);
       setUrlInputs(['']);
-      setMultiUrlSettings({ maxPages: 25, sameDomainOnly: true });
+      setMultiUrlSettings({ maxPages: 25, sameDomainOnly: true, excludeLegal: true });
     },
     onError: () => {
       // Just close and refresh - no error toast
       queryClient.invalidateQueries({ queryKey: ["/api/ai/kb/sources"] });
       setIsSourceDialogOpen(false);
       setUrlInputs(['']);
-      setMultiUrlSettings({ maxPages: 25, sameDomainOnly: true });
+      setMultiUrlSettings({ maxPages: 25, sameDomainOnly: true, excludeLegal: true });
     },
   });
 
@@ -332,6 +334,24 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
     },
     onError: () => {
       toast({ title: "Failed to delete source", variant: "destructive" });
+    },
+  });
+
+  const purgeLegalMutation = useMutation({
+    mutationFn: async (sourceId: string) => {
+      const res = await apiRequest("POST", `/api/ai/kb/sources/${sourceId}/purge-legal`);
+      return res.json();
+    },
+    onSuccess: (result) => {
+      queryClient.invalidateQueries({ queryKey: ["/api/ai/kb/sources"] });
+      if (result.documentsDeleted > 0) {
+        toast({ title: `Removed ${result.documentsDeleted} legal pages (${result.chunksDeleted} chunks)` });
+      } else {
+        toast({ title: "No legal pages found to remove" });
+      }
+    },
+    onError: () => {
+      toast({ title: "Failed to purge legal pages", variant: "destructive" });
     },
   });
 
@@ -828,6 +848,19 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
                         <RefreshCw className={`w-4 h-4 mr-1 ${source.status === "syncing" ? "animate-spin" : ""}`} />
                         {source.status === "queued" ? "Queued" : "Sync"}
                       </Button>
+                      {source.type === "url" && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => purgeLegalMutation.mutate(source.id)}
+                          disabled={purgeLegalMutation.isPending || source.chunksCount === 0}
+                          title="Remove Privacy Policy, Terms of Service, and other legal pages"
+                          data-testid={`button-purge-legal-${source.id}`}
+                        >
+                          <ShieldX className="w-4 h-4 mr-1" />
+                          Purge Legal
+                        </Button>
+                      )}
                       <Button
                         variant="ghost"
                         size="sm"
@@ -1124,7 +1157,7 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
         setIsSourceDialogOpen(open);
         if (!open) {
           setUrlInputs(['']);
-          setMultiUrlSettings({ maxPages: 25, sameDomainOnly: true });
+          setMultiUrlSettings({ maxPages: 25, sameDomainOnly: true, excludeLegal: true });
         }
       }}>
         <DialogContent className="sm:max-w-lg">
@@ -1213,6 +1246,20 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
                       data-testid="switch-multi-same-domain"
                     />
                   </div>
+                  <div className="flex items-center justify-between rounded-lg border p-3">
+                    <div className="space-y-0.5">
+                      <label className="text-sm font-medium">Exclude legal pages</label>
+                      <p className="text-xs text-muted-foreground">Skip Privacy Policy, Terms of Service, etc.</p>
+                    </div>
+                    <Switch
+                      checked={multiUrlSettings.excludeLegal}
+                      onCheckedChange={(checked) => setMultiUrlSettings(prev => ({ 
+                        ...prev, 
+                        excludeLegal: checked 
+                      }))}
+                      data-testid="switch-exclude-legal"
+                    />
+                  </div>
                 </AccordionContent>
               </AccordionItem>
             </Accordion>
@@ -1224,7 +1271,7 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
               onClick={() => {
                 setIsSourceDialogOpen(false);
                 setUrlInputs(['']);
-                setMultiUrlSettings({ maxPages: 25, sameDomainOnly: true });
+                setMultiUrlSettings({ maxPages: 25, sameDomainOnly: true, excludeLegal: true });
               }}
             >
               Cancel
@@ -1247,6 +1294,7 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
                   urls: validUrls,
                   maxPages: multiUrlSettings.maxPages,
                   sameDomainOnly: multiUrlSettings.sameDomainOnly,
+                  excludeLegal: multiUrlSettings.excludeLegal,
                 });
               }}
               disabled={createMultipleSourcesMutation.isPending || urlInputs.every(u => !u.trim())}
