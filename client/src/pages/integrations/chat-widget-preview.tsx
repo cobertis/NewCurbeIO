@@ -2,7 +2,7 @@ import { useParams, Link, useLocation } from "wouter";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, ChevronDown, X, Monitor, Send, Smartphone, Globe, Check, CheckCheck, Paperclip, Smile, Clock, ThumbsUp, ThumbsDown } from "lucide-react";
+import { ArrowLeft, Copy, Mail, ExternalLink, MessageSquare, MessageCircle, Phone, Loader2, ChevronLeft, ChevronRight, ChevronDown, X, Monitor, Send, Smartphone, Globe, Check, CheckCheck, Paperclip, Smile, Clock, ThumbsUp, ThumbsDown, User } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useState, useEffect, useRef } from "react";
