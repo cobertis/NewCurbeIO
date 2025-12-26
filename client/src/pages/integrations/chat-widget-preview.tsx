@@ -1354,15 +1354,18 @@ export default function ChatWidgetPreviewPage() {
       
       // If there's an initial message, send it (this will create the conversation)
       if (messageToSend) {
+        const clientMessageId = crypto.randomUUID();
         const msgRes = await fetch('/api/public/live-chat/message', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             sessionId: sessionId || null,
             text: messageToSend,
+            clientMessageId,
             visitorName: visitorName || 'Website Visitor',
             widgetId,
             visitorId,
+            deviceId,
             visitorEmail: visitorEmail.trim() || undefined,
             visitorUrl: window.location.href,
             visitorBrowser: browserName,
