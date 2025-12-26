@@ -149,6 +149,21 @@ const toolDefinitions: ToolDefinition[] = [
   },
 ];
 
+const AUTOPILOT_TOOL_LEVELS: Record<number, string[]> = {
+  1: ["send_message", "transfer_to_human"],
+  2: ["send_message", "transfer_to_human", "create_task", "update_conversation_status"],
+  3: ["send_message", "transfer_to_human", "create_task", "update_conversation_status", "create_ticket"],
+};
+
+const COPILOT_TOOLS = [
+  "search_knowledge_base",
+  "get_customer_info",
+  "transfer_to_human",
+  "create_task",
+  "update_conversation_status",
+  "send_message",
+];
+
 export class AiToolRegistry {
   getToolDefinitions(): ToolDefinition[] {
     return toolDefinitions;
@@ -162,6 +177,30 @@ export class AiToolRegistry {
       type: "function" as const,
       function: tool,
     }));
+  }
+
+  getToolsForMode(mode: "copilot" | "autopilot", autopilotLevel: number = 1): Array<{
+    type: "function";
+    function: ToolDefinition;
+  }> {
+    const allowedToolNames = mode === "copilot" 
+      ? COPILOT_TOOLS 
+      : AUTOPILOT_TOOL_LEVELS[autopilotLevel] || AUTOPILOT_TOOL_LEVELS[1];
+
+    return toolDefinitions
+      .filter((tool) => allowedToolNames.includes(tool.name))
+      .map((tool) => ({
+        type: "function" as const,
+        function: tool,
+      }));
+  }
+
+  isToolAllowed(toolName: string, mode: "copilot" | "autopilot", autopilotLevel: number = 1): boolean {
+    const allowedToolNames = mode === "copilot"
+      ? COPILOT_TOOLS
+      : AUTOPILOT_TOOL_LEVELS[autopilotLevel] || AUTOPILOT_TOOL_LEVELS[1];
+
+    return allowedToolNames.includes(toolName);
   }
 
   async executeTool(

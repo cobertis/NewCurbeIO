@@ -34,6 +34,7 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
       const schema = z.object({
         copilotEnabled: z.boolean().optional(),
         autopilotEnabled: z.boolean().optional(),
+        autopilotLevel: z.number().int().min(1).max(3).optional(),
         confidenceThreshold: z.number().min(0).max(1).optional(),
         allowedTools: z.array(z.string()).optional(),
         escalationRules: z.record(z.string()).optional(),

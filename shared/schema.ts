@@ -7341,6 +7341,7 @@ export const aiAssistantSettings = pgTable("ai_assistant_settings", {
   companyId: varchar("company_id").notNull().unique().references(() => companies.id, { onDelete: "cascade" }),
   copilotEnabled: boolean("copilot_enabled").notNull().default(false),
   autopilotEnabled: boolean("autopilot_enabled").notNull().default(false),
+  autopilotLevel: integer("autopilot_level").notNull().default(1), // 1: send_message+transfer, 2: +tasks+status, 3: +tickets
   confidenceThreshold: numeric("confidence_threshold").notNull().default("0.75"),
   allowedTools: jsonb("allowed_tools").default([]), // Array of tool names
   escalationRules: jsonb("escalation_rules").default({}), // { billing: 'human', legal: 'human', etc }
