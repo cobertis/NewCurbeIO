@@ -10,6 +10,22 @@ interface HelpArticle {
   title: string;
 }
 
+interface ChatSession {
+  sessionId: string;
+  displayName: string | null;
+  lastMessage: string | null;
+  lastMessageAt: string | null;
+  createdAt?: string | null;
+  status?: string | null;
+  rating?: number | null;
+  agent?: {
+    id: string;
+    fullName: string;
+    avatar?: string | null;
+  } | null;
+}
+
+// Keep for backwards compatibility
 interface ExistingSession {
   sessionId: string;
   displayName: string;
@@ -35,6 +51,10 @@ interface WidgetRendererProps {
   activeChannel?: string | null;
   onBackFromChannel?: () => void;
   channelContent?: React.ReactNode;
+  // Multiple sessions support
+  sessions?: ChatSession[];
+  onSelectSession?: (sessionId: string) => void;
+  onStartNewChat?: () => void;
 }
 
 const defaultArticles: HelpArticle[] = [
@@ -61,6 +81,9 @@ export function WidgetRenderer({
   activeChannel,
   onBackFromChannel,
   channelContent,
+  sessions = [],
+  onSelectSession,
+  onStartNewChat,
 }: WidgetRendererProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const iconColor = getIconColor(config.theme);
@@ -146,45 +169,138 @@ export function WidgetRenderer({
     </>
   );
 
-  const renderMessagesContent = () => (
-    <div className="flex-1 flex flex-col items-center justify-center py-10">
-      {existingSession ? (
-        <div className="text-center">
-          <MessageSquare className="h-12 w-12 mx-auto mb-4" style={{ color: iconColor }} />
-          <h4 className="font-semibold text-slate-900 mb-2">Your conversation</h4>
-          <p className="text-sm text-slate-500 mb-4">
-            {existingSession.status === 'solved' ? 'This chat has been resolved' : 'Continue your chat'}
-          </p>
-          <button
-            onClick={onResumeChat}
-            className="px-6 py-2 rounded-lg text-white font-medium"
-            style={{ backgroundColor: iconColor }}
-            data-testid="widget-open-messages"
-          >
-            Open chat
-          </button>
+  const formatSessionDate = (dateStr: string | null | undefined) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diff = now.getTime() - date.getTime();
+    const days = Math.floor(diff / (1000 * 60 * 60 * 24));
+    
+    if (days === 0) {
+      return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } else if (days === 1) {
+      return 'Yesterday';
+    } else if (days < 7) {
+      return date.toLocaleDateString([], { weekday: 'short' });
+    }
+    return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
+  };
+
+  const renderMessagesContent = () => {
+    // Use new sessions array if available, otherwise fall back to existingSession
+    const hasMultipleSessions = sessions && sessions.length > 0;
+    
+    if (hasMultipleSessions) {
+      // Check for any active (non-solved) session
+      const activeSession = sessions.find(s => s.status !== 'solved' && s.status !== 'archived');
+      
+      return (
+        <div className="py-4 flex flex-col h-full">
+          <div className="flex items-center justify-between mb-4">
+            <h4 className="font-semibold text-slate-900">Your conversations</h4>
+            {config.channels.liveChat && !activeSession && (
+              <button
+                onClick={onStartNewChat}
+                className="text-sm font-medium px-3 py-1.5 rounded-lg"
+                style={{ backgroundColor: iconColor, color: 'white' }}
+                data-testid="widget-new-chat"
+              >
+                New chat
+              </button>
+            )}
+          </div>
+          
+          <div className="space-y-2 flex-1 overflow-y-auto">
+            {sessions.map((session) => (
+              <button
+                key={session.sessionId}
+                onClick={() => onSelectSession?.(session.sessionId)}
+                className="w-full flex items-start gap-3 p-3 rounded-xl border border-slate-100 hover:bg-slate-50 transition-colors text-left"
+                data-testid={`widget-session-${session.sessionId}`}
+              >
+                <div className="flex-shrink-0 w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center overflow-hidden">
+                  {session.agent?.avatar ? (
+                    <img src={session.agent.avatar} alt="" className="w-full h-full object-cover" />
+                  ) : (
+                    <MessageSquare className="h-5 w-5 text-slate-400" />
+                  )}
+                </div>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between">
+                    <span className="font-medium text-sm text-slate-900 truncate">
+                      {session.agent?.fullName || session.displayName || 'Support'}
+                    </span>
+                    <span className="text-xs text-slate-400 flex-shrink-0 ml-2">
+                      {formatSessionDate(session.lastMessageAt || session.createdAt)}
+                    </span>
+                  </div>
+                  <p className="text-sm text-slate-500 truncate mt-0.5">
+                    {session.lastMessage || 'No messages yet'}
+                  </p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <span className={`text-xs px-2 py-0.5 rounded-full ${
+                      session.status === 'solved' || session.status === 'archived'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-blue-100 text-blue-700'
+                    }`}>
+                      {session.status === 'solved' || session.status === 'archived' ? 'Resolved' : 'Active'}
+                    </span>
+                    {session.rating && (
+                      <span className="text-xs text-amber-500">
+                        {'★'.repeat(session.rating)}
+                      </span>
+                    )}
+                  </div>
+                </div>
+                <ChevronRight className="h-4 w-4 text-slate-400 flex-shrink-0 mt-3" />
+              </button>
+            ))}
+          </div>
         </div>
-      ) : (
-        <div className="text-center">
-          <MessageSquare className="h-12 w-12 mx-auto mb-4 text-slate-300" />
-          <h4 className="font-semibold text-slate-900 mb-2">No messages yet</h4>
-          <p className="text-sm text-slate-500 mb-4">
-            Start a conversation with us
-          </p>
-          {config.channels.liveChat && (
+      );
+    }
+    
+    // Fallback to old single-session behavior
+    return (
+      <div className="flex-1 flex flex-col items-center justify-center py-10">
+        {existingSession ? (
+          <div className="text-center">
+            <MessageSquare className="h-12 w-12 mx-auto mb-4" style={{ color: iconColor }} />
+            <h4 className="font-semibold text-slate-900 mb-2">Your conversation</h4>
+            <p className="text-sm text-slate-500 mb-4">
+              {existingSession.status === 'solved' ? 'This chat has been resolved' : 'Continue your chat'}
+            </p>
             <button
-              onClick={() => onChannelClick?.("liveChat")}
+              onClick={onResumeChat}
               className="px-6 py-2 rounded-lg text-white font-medium"
               style={{ backgroundColor: iconColor }}
-              data-testid="widget-start-chat"
+              data-testid="widget-open-messages"
             >
-              Send us a message
+              Open chat
             </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
+          </div>
+        ) : (
+          <div className="text-center">
+            <MessageSquare className="h-12 w-12 mx-auto mb-4 text-slate-300" />
+            <h4 className="font-semibold text-slate-900 mb-2">No messages yet</h4>
+            <p className="text-sm text-slate-500 mb-4">
+              Start a conversation with us
+            </p>
+            {config.channels.liveChat && (
+              <button
+                onClick={onStartNewChat || (() => onChannelClick?.("liveChat"))}
+                className="px-6 py-2 rounded-lg text-white font-medium"
+                style={{ backgroundColor: iconColor }}
+                data-testid="widget-start-chat"
+              >
+                Send us a message
+              </button>
+            )}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const renderHelpContent = () => (
     <div className="py-4">
