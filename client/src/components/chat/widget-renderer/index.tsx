@@ -135,33 +135,6 @@ export function WidgetRenderer({
         </button>
       )}
 
-      {/* Search Bar */}
-      <button 
-        onClick={onSearchClick}
-        className="w-full relative mb-4"
-        data-testid="widget-search"
-      >
-        <div className="flex items-center px-4 py-3 bg-slate-50 rounded-xl border border-slate-200 hover:bg-slate-100 transition-colors">
-          <Search className="h-4 w-4 text-slate-400 mr-2" />
-          <span className="text-sm text-slate-400">Search for help</span>
-        </div>
-      </button>
-
-      {/* Help Articles */}
-      <div className="space-y-1 mb-4">
-        {helpArticles.slice(0, 4).map((article) => (
-          <button
-            key={article.id}
-            onClick={() => onArticleClick?.(article.id)}
-            className="w-full flex items-center justify-between py-3 px-3 hover:bg-slate-50 rounded-lg transition-colors cursor-pointer text-left"
-            data-testid={`widget-article-${article.id}`}
-          >
-            <span className="text-sm text-slate-700">{article.title}</span>
-            <ChevronRight className="h-4 w-4 text-slate-400" />
-          </button>
-        ))}
-      </div>
-
       {/* Other Channels */}
       <WidgetChannelList config={config} onChannelClick={onChannelClick} hideLiveChat />
     </>
