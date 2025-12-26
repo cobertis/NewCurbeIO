@@ -4087,8 +4087,8 @@ export default function ChatWidgetEditPage() {
                 </CardContent>
               </Card>
             ) : (
-              <Card className="border-slate-200 dark:border-slate-800 sticky top-6">
-                <CardContent className="p-6">
+              <Card className="border-slate-200 dark:border-slate-800 sticky top-6 overflow-visible">
+                <CardContent className="p-6 overflow-visible">
                   <h3 className="text-base font-semibold text-slate-900 dark:text-slate-100 mb-5">Widget preview</h3>
                 
                 {appearanceSubAccordion === "minimized-state" ? (
