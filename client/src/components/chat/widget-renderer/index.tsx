@@ -121,14 +121,15 @@ export function WidgetRenderer({
       {/* Primary Action - Send us a message (only show if no existing session) */}
       {config.channels.liveChat && !existingSession && (
         <button
-          className="w-full flex items-center justify-between py-4 px-4 bg-white rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer mb-3"
+          className="w-full flex items-center justify-between py-4 px-5 rounded-xl shadow-md hover:shadow-lg transition-all cursor-pointer mb-4"
+          style={{ backgroundColor: iconColor }}
           onClick={() => onChannelClick?.("liveChat")}
           data-testid="widget-channel-liveChat"
         >
-          <span className="text-base font-medium text-slate-900">
+          <span className="text-base font-semibold text-white">
             Send us a message
           </span>
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke={iconColor} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <path d="M22 2L11 13" />
             <path d="M22 2L15 22L11 13L2 9L22 2Z" />
           </svg>
