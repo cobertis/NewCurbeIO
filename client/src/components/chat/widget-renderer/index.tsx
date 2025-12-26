@@ -125,27 +125,6 @@ export function WidgetRenderer({
         </div>
       )}
 
-      {/* Existing Session Card */}
-      {existingSession && (
-        <button
-          onClick={onResumeChat}
-          className="w-full flex items-center justify-between py-4 px-4 bg-white rounded-xl border border-slate-200 hover:bg-slate-50 transition-colors cursor-pointer mb-3"
-          data-testid="widget-resume-chat"
-        >
-          <div className="flex flex-col items-start">
-            <span className="text-base font-medium text-slate-900">
-              Back to your chat
-            </span>
-            {existingSession.lastMessage && (
-              <span className="text-xs text-slate-500 truncate max-w-[200px]">
-                {existingSession.lastMessage}
-              </span>
-            )}
-          </div>
-          <Send className="h-5 w-5" style={{ color: iconColor }} />
-        </button>
-      )}
-
       {/* Primary Action - Send us a message (always show on Home) */}
       {config.channels.liveChat && (
         <button
