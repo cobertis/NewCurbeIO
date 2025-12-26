@@ -1890,7 +1890,7 @@ export default function ChatWidgetPreviewPage() {
           >
           {chatLoading ? (
             /* Loading state during transition */
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center" style={{ height: '520px' }}>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col items-center justify-center" style={{ height: '680px' }}>
               <div className="px-4 py-3 text-white w-full" style={{ background: currentBackground }}>
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
@@ -1911,7 +1911,7 @@ export default function ChatWidgetPreviewPage() {
             </div>
           ) : viewingSolvedChat && solvedChatData ? (
             /* Solved Chat View - Textmagic style */
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: '520px' }}>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: '680px' }}>
               {/* Header */}
               <div className="px-4 py-3 text-white flex items-center gap-3" style={{ background: currentBackground }}>
                 <button 
@@ -2047,7 +2047,7 @@ export default function ChatWidgetPreviewPage() {
             </div>
           ) : chatSessionId ? (
             /* Active Live Chat View - Professional Design */
-            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: '520px' }}>
+            <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-700 flex flex-col" style={{ height: '680px' }}>
               {/* Header - Clean design like Textmagic */}
               <div 
                 className="px-4 py-4 border-b border-slate-200 dark:border-slate-700"
@@ -2619,7 +2619,7 @@ export default function ChatWidgetPreviewPage() {
           ) : activeChannel ? (
             renderChannelContent()
           ) : (
-            <div className="relative" style={{ height: '520px' }}>
+            <div className="relative" style={{ height: '680px' }}>
               {/* Home screen using WidgetRenderer - shown when no special overlays are active */}
               {!showPreChatForm && effectiveWidgetData?.widget ? (
                 <WidgetRenderer 
