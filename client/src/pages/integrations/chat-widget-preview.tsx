@@ -859,6 +859,9 @@ export default function ChatWidgetPreviewPage() {
         });
         setViewingSolvedChat(true);
         
+        // Store the sessionId for survey submission (consistent with viewSolvedChat)
+        setChatSessionId(sessionId);
+        
         console.log('[Chat] Viewing solved chat with', sortedMessages.length, 'messages, rating:', rating);
       }
     } catch (error) {
@@ -894,7 +897,8 @@ export default function ChatWidgetPreviewPage() {
           setIsWaitingForAgent(false);
         }
         
-        // Note: WebSocket connects automatically via useEffect when chatSessionId changes
+        // Set the chatSessionId - WebSocket connects automatically via useEffect when this changes
+        setChatSessionId(sessionId);
         
         console.log('[Chat] Loaded active chat with', sortedMessages.length, 'messages');
       }
