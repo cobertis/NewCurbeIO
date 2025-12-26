@@ -197,8 +197,6 @@ export default function ChatWidgetPreviewPage() {
   const initialMessageInputRef = useRef<HTMLTextAreaElement>(null);
 
   // SINGLE SOURCE OF TRUTH: Always use public API for widget data
-  // This API returns both widget config AND targeting metadata
-  // No more dual-fetch complexity - one fetch, one state
   useEffect(() => {
     if (!widgetId) {
       setPublicLoading(false);
@@ -207,12 +205,16 @@ export default function ChatWidgetPreviewPage() {
     }
     
     setPublicLoading(true);
+    console.log('[Widget] Fetching widget data for:', widgetId);
     fetch(`/api/public/chat-widget/${widgetId}`)
-      .then(res => res.json())
+      .then(res => {
+        console.log('[Widget] Response status:', res.status);
+        return res.json();
+      })
       .then(data => {
-        if (data.widget) {
-          setPublicWidgetData({ widget: data.widget });
-        }
+        console.log('[Widget] Data received:', JSON.stringify(data).substring(0, 200));
+        // Set widget data directly - the server returns { widget: {...} }
+        setPublicWidgetData(data);
         setShouldDisplay(data.shouldDisplay ?? true);
         setVisitorCountry(data.visitorCountry || null);
         setScheduleStatus(data.scheduleStatus || { isOnline: true, nextAvailable: null });
@@ -224,7 +226,8 @@ export default function ChatWidgetPreviewPage() {
         setTargetingChecked(true);
         setPublicLoading(false);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.error('[Widget] Fetch error:', err);
         setShouldDisplay(true);
         setScheduleStatus({ isOnline: true, nextAvailable: null });
         setDeviceInfo(null);
