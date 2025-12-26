@@ -1,0 +1,166 @@
+Necesito que el ingestion de URLs haga escaneo completo del sitio (no solo home) con cobertura máxima y que funcione con sitios estáticos y SPAs. Implementar un crawler “Production-grade” con sitemap + crawl + render JS + reporte de cobertura.
+
+1) Objetivo
+
+Dado un root_url, el sistema debe:
+
+descubrir todas las URLs relevantes del sitio (dentro del dominio) hasta límites configurables
+
+extraer el contenido principal de cada página
+
+indexarlo en KB con dedup
+
+devolver un reporte: URLs encontradas, procesadas, fallidas, omitidas y por qué
+
+2) Pipeline de descubrimiento (discovery) — obligatorio
+
+Al iniciar un job:
+
+Normalizar root_url (http/https, slash final, remove fragments).
+
+Intentar obtener URLs por este orden:
+
+robots.txt → detectar Sitemap:
+
+sitemap.xml y sitemap index (recursivo)
+
+si no hay sitemap: crawl BFS desde root
+
+BFS crawler:
+
+solo same_domain_only=true por default
+
+respetar max_pages (default 200), max_depth (default 4)
+
+respetar include_paths[] y exclude_paths[] (opcional)
+
+canonicalización: eliminar #fragment, ordenar query params, remover tracking (utm_*, fbclid, etc.)
+
+evitar loops: calendarios, tags infinitos, paginación sin fin (heurísticas)
+
+no seguir links a assets (jpg/png/css/js/svg/woff/mp4)
+
+Guardar tabla ai_kb_crawl_urls con:
+
+url, status (discovered|queued|fetched|parsed|embedded|failed|skipped)
+
+reason (duplicate|excluded|non_html|blocked|timeout|render_required|auth_required|robots_disallowed)
+
+3) Fetch + extracción (content extraction) — obligatorio
+
+Para cada URL:
+
+Hacer fetch HTTP (con timeouts y retries).
+
+Detectar content-type:
+
+text/html → parse HTML
+
+application/pdf → pipeline PDF (extraer texto)
+
+text/plain|markdown → directo
+
+otros → skip reason non_supported
+
+Extracción HTML:
+
+remover script/style/nav/footer/aside
+
+usar Readability (o equivalente) para main content
+
+fallback a body.innerText si Readability devuelve vacío
+
+Idioma no importa: preservar Unicode/UTF-8, no perder caracteres.
+
+4) Render JS para SPAs (Playwright) — obligatorio
+
+Si el HTML viene “vacío” (ej <div id="root"></div>, o texto < X chars):
+
+activar render con Playwright:
+
+page.goto(url, waitUntil: 'networkidle', timeout: 30s)
+
+esperar main, article, [role=main] o “largest contentful paint” heurística
+
+extraer HTML renderizado → pasar por Readability
+
+bloquear recursos pesados (fonts/video/ads) para acelerar
+
+si falla render → marcar failed con reason render_failed
+
+5) Rate limits, concurrency y resiliencia
+
+Concurrency configurable (default 3)
+
+Retries con backoff
+
+Límite de tamaño de página (ej 2MB HTML) y límites de tokens por página
+
+No colapsar por un sitio grande: cortar por max_pages
+
+6) Deduplicación y resync
+
+content_hash = sha256(normalized_text)
+
+no insertar chunks duplicados
+
+en resync: limpiar chunks obsoletos del source (versioning ya existe)
+
+7) Reporte de cobertura (esto es clave)
+
+Al terminar el job devolver:
+
+{
+  "root_url": "...",
+  "pages_discovered": 320,
+  "pages_queued": 200,
+  "pages_processed": 182,
+  "pages_failed": 18,
+  "skipped_by_reason": {
+    "duplicate": 40,
+    "excluded": 12,
+    "non_html": 30,
+    "blocked": 25,
+    "auth_required": 5,
+    "render_failed": 3
+  },
+  "sample_failed_urls": [...]
+}
+
+
+Mostrar esto en UI del source: “coverage report”.
+
+8) UI changes
+
+En “Add source (Website link)” agregar:
+
+Max pages (default 200)
+
+Max depth (default 4)
+
+Toggle: Enable JS rendering (slower) default ON
+
+Campo Include paths y Exclude paths (chips)
+En el detalle del source mostrar:
+
+progress bar: processed/queued
+
+coverage report + lista de fallos con reason
+
+9) Seguridad multi-tenant
+
+companyId siempre desde sesión server-side
+
+ninguna URL/crawl/run visible entre tenants
+
+10) Tests mínimos
+
+Sitio estático (muchas páginas): debe descubrir > N y procesar > N
+
+SPA (React): debe activar Playwright y extraer texto
+
+Sitemap presente: debe usarlo y procesar varias rutas
+
+Dedup funciona en resync
+
+Entregar PRs separados: discovery+sitemap, Playwright render, coverage report+UI, tests.
