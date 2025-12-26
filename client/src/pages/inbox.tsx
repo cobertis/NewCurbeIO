@@ -48,7 +48,8 @@ import {
   ThumbsUp,
   ThumbsDown,
   Sparkles,
-  RotateCcw
+  RotateCcw,
+  Activity
 } from "lucide-react";
 import { Link } from "wouter";
 import { SiFacebook, SiInstagram, SiTelegram } from "react-icons/si";
@@ -1882,7 +1883,7 @@ export default function InboxPage() {
         {selectedConversation && (
           <>
             <div className="h-[73px] px-4 border-b flex items-center justify-between">
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-6">
                 <button 
                   className={cn("text-sm font-medium transition-colors", rightPanelTab === "details" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
                   onClick={() => setRightPanelTab("details")}
@@ -1891,11 +1892,11 @@ export default function InboxPage() {
                   Details
                 </button>
                 <button 
-                  className={cn("text-sm font-medium flex items-center gap-1 transition-colors", rightPanelTab === "pulse-ai" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
+                  className={cn("text-sm font-medium flex items-center gap-1.5 transition-colors", rightPanelTab === "pulse-ai" ? "text-foreground" : "text-muted-foreground hover:text-foreground")}
                   onClick={() => setRightPanelTab("pulse-ai")}
                   data-testid="btn-tab-pulse-ai"
                 >
-                  <Sparkles className="h-3.5 w-3.5" />
+                  <Activity className="h-3.5 w-3.5" />
                   Pulse AI
                 </button>
               </div>

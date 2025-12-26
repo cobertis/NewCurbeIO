@@ -17,7 +17,8 @@ import {
   Ticket,
   ListTodo,
   DollarSign,
-  Sparkles
+  Sparkles,
+  Activity
 } from "lucide-react";
 import { SiWhatsapp, SiFacebook, SiInstagram } from "react-icons/si";
 import { cn } from "@/lib/utils";
@@ -247,7 +248,7 @@ export default function SmsVoice() {
       { label: "Tickets", href: "/tickets", icon: Ticket },
       { label: "Tasks", href: "/tasks", icon: ListTodo },
       { label: "Deals", href: "/deals", icon: DollarSign },
-      { label: "Point AI", href: "/ai-assistant", icon: Sparkles },
+      { label: "Pulse AI", href: "/pulse-ai", icon: Activity },
     ],
     administration: [
       { label: "Workspace", href: "/settings/company", icon: Building },
