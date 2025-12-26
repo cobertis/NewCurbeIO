@@ -33,7 +33,21 @@ The backend is an Express.js application with TypeScript, providing a RESTful AP
 - **Communication:** Email, SMS/MMS, iMessage, WhatsApp, RCS, Telegram, TikTok.
 - **Billing & Integrations:** Stripe, Telnyx Phone System (full white-label telephony, WebRTC, E911 management, call control application routing).
 - **Automation & Analytics:** Birthday Automation, Dashboard Analytics ("Policy Journeys"), Email Processing.
-- **Specialized Systems:** Landing Page Builder, Unified Contacts Directory, Tab Auto-Save, Duplicate Message Prevention, Custom Domain (White Label), Wallet System (Apple Wallet + Google Wallet).
+- **Specialized Systems:** Landing Page Builder, Unified Contacts Directory, Tab Auto-Save, Duplicate Message Prevention, Custom Domain (White Label), Wallet System (Apple Wallet + Google Wallet), Live Chat Widget (embeddable customer support).
+
+**Live Chat Widget System (Chatwoot-inspired Architecture):**
+An embeddable chat widget for client websites using Chatwoot-style architecture adapted to React/TypeScript/Express. Key components:
+- **SDK**: JavaScript SDK (`/widget/sdk.js`) creates iframe-isolated widgets with postMessage communication for security
+- **Widget Frame**: React application at `/widget/frame` with pre-chat forms, message threading, conversation history
+- **Session Management**: JWT tokens with 180-day expiry, token hashing before storage, automatic session persistence
+- **Security**: HMAC signature verification with timing-safe comparison and buffer length validation, optional mandatory HMAC mode
+- **Contact Identification**: Visitor → Lead → Customer progression with custom attributes and device tracking
+- **Conversation State Machine**: open/pending/resolved/snoozed statuses with priority levels
+- **CSAT Surveys**: Post-conversation satisfaction surveys with rating and feedback collection
+- **Database Tables**: `widget_configs`, `widget_contacts`, `widget_conversations`, `widget_messages`, `widget_csat_responses`, `widget_sessions`
+- **Admin UI**: Settings page for widget configuration, embed code generation, and HMAC secret management
+- **API Routes**: `/api/widget/*` (public) and `/api/widgets/*` (admin) endpoints
+- **Future**: WebSocket integration pending (currently using message polling as fallback)
 
 **Telnyx WebRTC & Telephony:**
 Implements Telnyx WebRTC with specific call options and audio settings. Uses a dual SIP domain architecture: company subdomain for registration/inbound, and `sip.telnyx.com` for outbound PSTN calls. Call control is webhook-driven, and telephony billing includes immediate purchase and monthly recurring charges. Extension-to-extension calling uses pure WebRTC, and SIP forking is enabled.
