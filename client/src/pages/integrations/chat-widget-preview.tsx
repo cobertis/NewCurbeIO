@@ -2628,13 +2628,6 @@ export default function ChatWidgetPreviewPage() {
                   activeTab={activeWidgetTab}
                   onTabChange={(tab) => {
                     setActiveWidgetTab(tab);
-                    if (tab === "messages" && existingSession) {
-                      if (existingSession.status === 'solved' || existingSession.status === 'closed') {
-                        viewSolvedChat();
-                      } else {
-                        resumeChat();
-                      }
-                    }
                   }}
                   onClose={() => setWidgetOpen(false)}
                   onChannelClick={(channel) => {
