@@ -204,6 +204,8 @@ export default function InboxPage() {
   const [startChatDialogOpen, setStartChatDialogOpen] = useState(false);
   const [selectedVisitor, setSelectedVisitor] = useState<LiveVisitor | null>(null);
   const [startChatMessage, setStartChatMessage] = useState("");
+  const [copilotDraft, setCopilotDraft] = useState<string | null>(null);
+  const [copilotSource, setCopilotSource] = useState<"knowledge_base" | "general" | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -543,6 +545,71 @@ export default function InboxPage() {
       });
     },
   });
+
+  const copilotDraftMutation = useMutation({
+    mutationFn: async ({ conversationId, lastMessages }: { conversationId: string; lastMessages: Array<{ direction: string; text: string }> }) => {
+      return apiRequest("POST", "/api/ai/copilot/draft", { conversationId, lastMessages });
+    },
+    onSuccess: async (response: any) => {
+      const data = await response.json();
+      if (data.success && data.draft) {
+        setCopilotDraft(data.draft);
+        setCopilotSource(data.source || null);
+      } else if (data.draftReply) {
+        setCopilotDraft(data.draftReply);
+        setCopilotSource("knowledge_base");
+      } else {
+        toast({
+          title: "No suggestion available",
+          description: "AI couldn't generate a suggestion for this conversation.",
+        });
+      }
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to generate AI suggestion",
+        description: error.message || "Please try again",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleAiCopilotClick = () => {
+    if (copilotDraft) {
+      setCopilotDraft(null);
+      setCopilotSource(null);
+      return;
+    }
+    
+    if (!selectedConversationId || !messages.length) {
+      toast({
+        title: "No conversation selected",
+        description: "Please select a conversation first.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const lastMessages = messages
+      .filter(m => !m.isInternalNote)
+      .slice(-5)
+      .map(m => ({ direction: m.direction, text: m.text }));
+    
+    copilotDraftMutation.mutate({ conversationId: selectedConversationId, lastMessages });
+  };
+
+  const handleInsertDraft = () => {
+    if (copilotDraft) {
+      setNewMessage(copilotDraft);
+      setCopilotDraft(null);
+      setCopilotSource(null);
+    }
+  };
+
+  const handleDismissDraft = () => {
+    setCopilotDraft(null);
+    setCopilotSource(null);
+  };
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -1494,6 +1561,52 @@ export default function InboxPage() {
               "absolute bottom-4 left-4 right-4 rounded-lg border bg-white dark:bg-gray-900 shadow-lg",
               isInternalNote && "bg-yellow-50 dark:bg-yellow-900/20"
             )}>
+              {/* AI Copilot Draft Banner */}
+              {copilotDraft && (
+                <div 
+                  className="mx-4 mt-4 mb-2 p-3 bg-purple-50 dark:bg-purple-900/30 border border-purple-200 dark:border-purple-800 rounded-lg"
+                  data-testid="copilot-draft-banner"
+                >
+                  <div className="flex items-start gap-3">
+                    <Wand2 className="h-4 w-4 text-purple-600 mt-0.5 shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-xs font-medium text-purple-700 dark:text-purple-300">
+                          AI Suggestion
+                        </span>
+                        {copilotSource && (
+                          <Badge variant="secondary" className="text-xs bg-purple-100 dark:bg-purple-800 text-purple-700 dark:text-purple-300">
+                            {copilotSource === "knowledge_base" ? "Knowledge Base" : "General"}
+                          </Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-gray-700 dark:text-gray-300 whitespace-pre-wrap" data-testid="text-copilot-draft">
+                        {copilotDraft}
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 mt-3 ml-7">
+                    <Button
+                      size="sm"
+                      onClick={handleInsertDraft}
+                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                      data-testid="btn-insert-draft"
+                    >
+                      Insert
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={handleDismissDraft}
+                      className="text-muted-foreground hover:text-foreground"
+                      data-testid="btn-dismiss-draft"
+                    >
+                      Dismiss
+                    </Button>
+                  </div>
+                </div>
+              )}
+
               {/* Text Input at top */}
               <div className="p-4 pb-2">
                 <Textarea
@@ -1640,11 +1753,24 @@ export default function InboxPage() {
                   <TooltipProvider>
                     <Tooltip>
                       <TooltipTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-8 w-8" data-testid="btn-ai">
-                          <Wand2 className="h-4 w-4 text-muted-foreground" />
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          className={cn("h-8 w-8", copilotDraft && "bg-purple-100 dark:bg-purple-900/30")}
+                          onClick={handleAiCopilotClick}
+                          disabled={copilotDraftMutation.isPending}
+                          data-testid="btn-ai"
+                        >
+                          <Wand2 className={cn(
+                            "h-4 w-4",
+                            copilotDraft ? "text-purple-600" : "text-muted-foreground",
+                            copilotDraftMutation.isPending && "animate-spin"
+                          )} />
                         </Button>
                       </TooltipTrigger>
-                      <TooltipContent>AI Assistant</TooltipContent>
+                      <TooltipContent>
+                        {copilotDraft ? "Clear AI Suggestion" : "AI Copilot"}
+                      </TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 </div>
@@ -1845,12 +1971,14 @@ export default function InboxPage() {
                           <span className="text-xs text-muted-foreground">Chat ID</span>
                           <span className="text-sm font-medium font-mono">{selectedConversation.id.substring(0, 8)}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-xs text-muted-foreground">Created</span>
-                          <span className="text-sm font-medium">
-                            {format(new Date(selectedConversation.createdAt), "MMM d, yyyy h:mm a")}
-                          </span>
-                        </div>
+                        {(selectedConversation as any).createdAt && (
+                          <div className="flex justify-between">
+                            <span className="text-xs text-muted-foreground">Created</span>
+                            <span className="text-sm font-medium">
+                              {format(new Date((selectedConversation as any).createdAt), "MMM d, yyyy h:mm a")}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
                   </div>
