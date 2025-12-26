@@ -191,6 +191,7 @@ export default function ChatWidgetPreviewPage() {
   const lastPreviewSentRef = useRef<number>(0);
   const liveChatWsRef = useRef<WebSocket | null>(null);
   const wsReconnectAttemptRef = useRef<number>(0);
+  const lastSeenMessageIdRef = useRef<string | null>(null);
   const wsReconnectTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const widgetOpenRef = useRef<boolean>(widgetOpen);
   const connectedAgentRef = useRef<typeof connectedAgent>(null);
@@ -561,7 +562,17 @@ export default function ChatWidgetPreviewPage() {
         
         ws.onopen = () => {
           console.log('[LiveChat WS] Connected successfully');
+          const isReconnect = wsReconnectAttemptRef.current > 0;
           wsReconnectAttemptRef.current = 0; // Reset reconnect attempts on successful connection
+          
+          // INVARIANT E: On reconnect, send resync request with lastSeenMessageId
+          if (isReconnect && lastSeenMessageIdRef.current) {
+            console.log('[LiveChat WS] Sending resync request with lastSeenMessageId:', lastSeenMessageIdRef.current);
+            ws.send(JSON.stringify({ 
+              type: 'resync', 
+              lastSeenMessageId: lastSeenMessageIdRef.current 
+            }));
+          }
         };
         
         ws.onmessage = (event) => {
@@ -609,9 +620,36 @@ export default function ChatWidgetPreviewPage() {
                 }));
                 break;
                 
+              case 'resync_complete':
+                // INVARIANT E: Handle resync response with missed messages
+                console.log('[LiveChat WS] Resync complete, missed messages:', data.missedMessages?.length || 0);
+                if (data.missedMessages && data.missedMessages.length > 0) {
+                  setChatMessages(prev => {
+                    const existingIds = new Set(prev.map(m => m.id));
+                    const newMessages = data.missedMessages.filter((m: any) => !existingIds.has(m.id));
+                    if (newMessages.length === 0) return prev;
+                    
+                    // Update lastSeenMessageId with the latest missed message
+                    const latestMissed = newMessages[newMessages.length - 1];
+                    if (latestMissed?.id) {
+                      lastSeenMessageIdRef.current = latestMissed.id;
+                    }
+                    
+                    return [...prev, ...newMessages].sort((a, b) => 
+                      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+                    );
+                  });
+                }
+                break;
+                
               case 'new_message':
                 // Handle incoming messages via WebSocket (real-time)
                 if (data.message) {
+                  // Track lastSeenMessageId for resync
+                  if (data.message.id) {
+                    lastSeenMessageIdRef.current = data.message.id;
+                  }
+                  
                   setChatMessages(prev => {
                     // Check if message already exists to avoid duplicates
                     if (prev.some(m => m.id === data.message.id)) {
@@ -973,6 +1011,10 @@ export default function ChatWidgetPreviewPage() {
           new Date(a.createdAt || a.created_at).getTime() - new Date(b.createdAt || b.created_at).getTime()
         );
         setChatMessages(sortedMessages);
+        // Initialize lastSeenMessageId for resync
+        if (sortedMessages.length > 0) {
+          lastSeenMessageIdRef.current = sortedMessages[sortedMessages.length - 1].id;
+        }
         setExistingSession(null);
         
         // Restore visitor info from the conversation record
@@ -1100,12 +1142,17 @@ export default function ChatWidgetPreviewPage() {
           new Date(a.createdAt || a.created_at).getTime() - new Date(b.createdAt || b.created_at).getTime()
         );
         
-        setChatMessages(sortedMessages.map((m: any) => ({
+        const mappedMessages = sortedMessages.map((m: any) => ({
           id: m.id || String(Date.now()),
           text: m.body || m.text || '',
           direction: m.direction || 'outbound',
           createdAt: m.createdAt || m.created_at || new Date().toISOString(),
-        })));
+        }));
+        setChatMessages(mappedMessages);
+        // Initialize lastSeenMessageId for resync
+        if (mappedMessages.length > 0) {
+          lastSeenMessageIdRef.current = mappedMessages[mappedMessages.length - 1].id;
+        }
         
         if (agent) {
           setConnectedAgent(agent);

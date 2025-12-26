@@ -2,7 +2,7 @@
 
 ## Overview
 
-This document provides manual and automated test scenarios for validating the chat widget invariants and behavior.
+This document provides the 7 mandatory tests that must pass before merging any chat widget changes. Tests cover Intercom-style invariants for reliable widget behavior.
 
 ---
 
@@ -11,198 +11,218 @@ This document provides manual and automated test scenarios for validating the ch
 1. Navigate to `/integrations/chat-widgets` in the admin dashboard
 2. Click "Preview" on any widget to open the test preview page
 3. Use the "Copy Debug Info" button to capture state at any point
+4. Open browser DevTools for console logs and network inspection
 
 ---
 
-## Test Scenarios
+## Mandatory Tests (7 Tests)
 
-### Scenario 1: Device Identity Persistence
+### Test 1: Reload - Same ConversationId
 
-**Goal**: Verify device identity is persistent across page reloads
+**Goal**: Verify that page reload returns to the same conversation
 
 **Steps**:
 1. Open widget preview
-2. Click "Copy Debug Info" - note the `deviceId`
-3. Refresh the page (F5)
-4. Click "Copy Debug Info" again
-5. Compare deviceId values
+2. Start a new chat, send a message
+3. Note the `conversationId` from "Copy Debug Info"
+4. Reload the page (F5 or Ctrl+R)
+5. Open the widget again
+6. Click "Copy Debug Info" and compare `conversationId`
 
-**Expected**: `deviceId` should be identical after refresh
+**Expected**: `conversationId` should be identical after reload
 
-**Invariant Tested**: Device identity persistence
+**Why it works**:
+- `deviceId` is persisted in localStorage per company
+- On reload, bootstrap fetches existing open conversation for this device
+- Same `deviceId` + same company = same conversation returned
+
+**Logs to check**:
+```
+[ChatWidget] action=bootstrap ... deviceId=xxx conversationId=yyy
+```
 
 ---
 
-### Scenario 2: Single Open Conversation (Invariant A)
+### Test 2: Double-Click Start Chat - Only 1 Conversation
 
-**Goal**: Verify "New Chat" doesn't create duplicate open conversations
+**Goal**: Verify rapid clicks don't create duplicate conversations
 
 **Steps**:
 1. Open widget preview
-2. Send a message to create a conversation
-3. Note the `sessionId`
-4. Close and reopen the widget (or click "New Chat")
-5. Send another message
-6. Check the `sessionId`
+2. Enable Network throttling to "Slow 3G" in DevTools
+3. Type a message in the chat input
+4. Rapidly click the Send button 3-5 times
+5. Check the database for duplicate conversations
 
-**Expected**: Both messages should be in the SAME conversation (same `sessionId`)
-
-**Invariant Tested**: Invariant A - Single Open Conversation per Device
+**Expected**: Only 1 conversation should exist for this device
 
 **Database Verification**:
 ```sql
-SELECT id, device_id, status, channel 
+SELECT id, device_id, status, created_at 
 FROM telnyx_conversations 
 WHERE device_id = '{deviceId}' 
-  AND channel = 'live_chat' 
-  AND status IN ('open', 'waiting');
--- Should return exactly 1 row
+  AND channel = 'live_chat'
+ORDER BY created_at DESC;
+-- Should return 1 open/waiting conversation
 ```
 
----
-
-### Scenario 3: Message Idempotency (Invariant D)
-
-**Goal**: Verify duplicate message sends are prevented
-
-**Steps**:
-1. Open browser DevTools > Network tab
-2. Enable "Slow 3G" network throttling
-3. Send a message
-4. Quickly click send again before response arrives
-5. Check messages in the conversation
-
-**Expected**: Only ONE message should appear, not duplicates
-
-**Invariant Tested**: Invariant D - Message Idempotency
-
-**API Verification**:
-```javascript
-// Send same message twice with same clientMessageId
-const clientMessageId = crypto.randomUUID();
-const body = { 
-  text: 'test', 
-  widgetId: 'xxx', 
-  visitorId: 'yyy', 
-  clientMessageId 
-};
-
-await fetch('/api/public/live-chat/message', { method: 'POST', body: JSON.stringify(body) });
-// Response 1: { success: true, messageId: 'abc', idempotent: false }
-
-await fetch('/api/public/live-chat/message', { method: 'POST', body: JSON.stringify(body) });
-// Response 2: { success: true, messageId: 'abc', idempotent: true }
-```
+**Why it works**:
+- Database has partial unique index `telnyx_conversations_device_open_livechat_unique`
+- Backend checks for existing open conversation before creating new
+- Unique constraint violations are caught and existing record is returned
 
 ---
 
-### Scenario 4: WebSocket Reconnection (Invariant E)
+### Test 3: Two Tabs - No Duplicates, Consistent Unread
 
-**Goal**: Verify messages aren't lost during WebSocket disconnection
-
-**Steps**:
-1. Open widget preview
-2. Send a few messages, note the last message
-3. Disconnect network briefly (airplane mode or DevTools offline)
-4. From another session (agent view), send a message to the conversation
-5. Reconnect network
-6. Check if the agent's message appears
-
-**Expected**: After reconnection, missed messages should appear
-
-**Invariant Tested**: Invariant E - Safe WebSocket Reconnect
-
-**Console Verification**:
-Look for: `[LiveChat WebSocket] Resync complete: X missed messages`
-
----
-
-### Scenario 5: Multi-Tab Behavior
-
-**Goal**: Verify behavior with multiple tabs open
+**Goal**: Verify multi-tab behavior uses same conversation
 
 **Steps**:
 1. Open widget preview in Tab 1
-2. Send a message in Tab 1
-3. Open widget preview in new Tab 2 (same browser)
+2. Send a message, note the `sessionId`
+3. Open widget preview in a NEW Tab 2 (same browser)
 4. Check if Tab 2 shows the same conversation
+5. Send a message from Tab 2
+6. Check Tab 1 - message should appear via WebSocket
 
-**Expected**: 
-- Both tabs should show the same conversation (same deviceId)
-- Messages sent in one tab should appear in both
+**Expected**:
+- Both tabs share the same `deviceId` (from localStorage)
+- Both tabs show the same `conversationId`
+- Messages sent in one appear in both
+- No duplicate messages in the conversation
 
-**Why**: Both tabs share the same localStorage deviceId
+**Why it works**:
+- `deviceId` is stored in localStorage (shared across tabs)
+- Same `deviceId` = same conversation for both tabs
+- WebSocket broadcasts to all connections for a session
+- Client deduplicates by message ID
 
 ---
 
-### Scenario 6: Rapid Reload Loop
+### Test 4: WS Disconnect 10s - Resync No Lost Messages
 
-**Goal**: Verify system handles rapid page reloads
+**Goal**: Verify WebSocket reconnection recovers missed messages
 
 **Steps**:
-1. Open widget preview
-2. Send a message to create conversation
-3. Rapidly refresh page 5-10 times (F5 repeatedly)
-4. Check conversation state
+1. Open widget preview, start a conversation
+2. In DevTools Network tab, right-click and "Block WebSocket connections"
+3. Wait 10 seconds
+4. From admin inbox (another tab), send a message TO this conversation
+5. Unblock WebSocket connections
+6. Wait for automatic reconnection
 
 **Expected**:
-- Same conversation should persist
-- No duplicate conversations created
-- Messages preserved
+- WebSocket reconnects automatically
+- Missed message appears after reconnection
+- No duplicate messages
+- Console shows: `[LiveChat WS] Resync complete, missed messages: X`
+
+**Console Logs to verify**:
+```
+[LiveChat WS] Disconnected, code: 1006
+[LiveChat WS] Reconnecting in 1000ms (attempt 1/5)
+[LiveChat WS] Connected successfully
+[LiveChat WS] Sending resync request with lastSeenMessageId: xxx
+[LiveChat WS] Resync complete, missed messages: 1
+```
+
+**Why it works**:
+- Client tracks `lastSeenMessageId` for all received messages
+- On reconnect, client sends `{ type: 'resync', lastSeenMessageId }`
+- Server queries messages after that ID and returns them
+- Client merges missed messages, deduplicating by ID
+
+---
+
+### Test 5: Survey - No New Conversation, Doesn't Block History
+
+**Goal**: Verify satisfaction survey doesn't create new conversation or break reopening
+
+**Steps**:
+1. Open widget, send a message to create conversation
+2. Have an agent accept and solve the conversation
+3. Submit the satisfaction survey (if enabled)
+4. Close the widget
+5. Reopen the widget
+6. Click on the solved conversation in Messages tab
+
+**Expected**:
+- Survey submission doesn't create a new conversation
+- Solved conversation is still visible in Messages tab
+- Clicking on it shows the full message history
+- Sending a new message reopens the same conversation (status: waiting)
 
 **Database Verification**:
 ```sql
-SELECT COUNT(*) as conv_count
+SELECT id, status, satisfaction_rating, satisfaction_submitted_at
 FROM telnyx_conversations 
 WHERE device_id = '{deviceId}' 
-  AND channel = 'live_chat';
--- Should return 1 (or very few if solved/archived exist)
+ORDER BY created_at DESC;
+-- Should show 1 conversation with rating data
+```
+
+**Why it works**:
+- Survey is a PATCH on existing conversation, not POST creating new
+- `pending_` session check prevents survey on non-existent conversations
+- Reopen logic in message endpoint changes status to "waiting"
+
+---
+
+### Test 6: Cross-Domain Same Company - Same Conversation
+
+**Goal**: Verify device identity is per-company, not per-domain
+
+**Steps**:
+1. Open widget on Domain A (e.g., localhost:5000)
+2. Send a message, note the `deviceId` and `conversationId`
+3. Open widget on Domain B (same company, e.g., different page)
+4. Check the `deviceId` and `conversationId`
+
+**Expected**:
+- `deviceId` is identical across both domains (same company)
+- `conversationId` is identical (same open conversation)
+
+**Why it works**:
+- `deviceId` storage key is `curbe_device_id:{companyId}` not per-widget/domain
+- Same company = same localStorage key = same device identity
+- Bootstrap returns existing open conversation for this device
+
+**Console Log**:
+```
+[Device Identity] Created new deviceId for company: {companyId}
 ```
 
 ---
 
-### Scenario 7: Race Condition - Simultaneous Messages
+### Test 7: Cross-Company - Never Mix Conversations
 
-**Goal**: Verify handling of simultaneous message sends
+**Goal**: Verify conversations are isolated between companies
 
 **Steps**:
-```javascript
-// Browser console test
-const promises = [];
-for (let i = 0; i < 5; i++) {
-  promises.push(fetch('/api/public/live-chat/message', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      text: `Message ${i}`,
-      widgetId: '{widgetId}',
-      visitorId: '{visitorId}',
-      deviceId: '{deviceId}',
-      clientMessageId: crypto.randomUUID()
-    })
-  }));
-}
-const results = await Promise.all(promises);
-console.log('All messages sent:', results.length);
+1. Set up 2 widgets from different companies
+2. Open Widget A (Company A), send a message
+3. Note the `companyId`, `deviceId`, `conversationId`
+4. Open Widget B (Company B)
+5. Check the `companyId`, `deviceId`, `conversationId`
+
+**Expected**:
+- `companyId` is different for each widget
+- `deviceId` is different (scoped per company)
+- `conversationId` is different (company A's conversation not visible in B)
+- Messages from Company A never appear in Company B
+
+**Why it works**:
+- `deviceId` key is `curbe_device_id:{companyId}` (company-scoped)
+- All database queries include `company_id` filter
+- Unique index includes `device_id` (which is per-company)
+
+**Database Verification**:
+```sql
+SELECT c.id, c.company_id, c.device_id
+FROM telnyx_conversations c
+WHERE c.device_id IN ('{deviceIdA}', '{deviceIdB}')
+-- Should show different companies for different device IDs
 ```
-
-**Expected**: All 5 messages should be saved without errors
-
----
-
-### Scenario 8: Cross-Widget Device Identity
-
-**Goal**: Verify device identity is consistent across widgets of same company
-
-**Steps**:
-1. Open preview for Widget A
-2. Note the `deviceId`
-3. Open preview for Widget B (same company)
-4. Note the `deviceId`
-
-**Expected**: Same `deviceId` for both widgets
-
-**Why**: Device identity is per-company, not per-widget
 
 ---
 
@@ -214,14 +234,14 @@ Save as `test-chat-widget.js` and run with Node.js:
 const BASE_URL = 'https://your-app.replit.dev';
 
 async function runTests() {
-  console.log('=== Chat Widget Invariant Tests ===\n');
+  console.log('=== Chat Widget 7 Mandatory Tests ===\n');
   
   const widgetId = 'YOUR_WIDGET_ID';
   const deviceId = crypto.randomUUID();
   const visitorId = crypto.randomUUID();
   
-  // Test 1: Create initial conversation
-  console.log('Test 1: Create conversation');
+  // Test 1: Create conversation and verify reload returns same
+  console.log('Test 1: Reload - Same ConversationId');
   const res1 = await fetch(`${BASE_URL}/api/public/live-chat/message`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -234,77 +254,76 @@ async function runTests() {
     })
   });
   const data1 = await res1.json();
-  console.log('  Session ID:', data1.sessionId);
-  console.log('  PASS: Conversation created\n');
+  const conversationId = data1.sessionId;
+  console.log('  Created conversationId:', conversationId);
   
-  // Test 2: Message idempotency
-  console.log('Test 2: Message idempotency');
-  const clientMessageId = crypto.randomUUID();
-  const res2a = await fetch(`${BASE_URL}/api/public/live-chat/message`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      text: 'Duplicate test',
-      widgetId,
-      visitorId,
-      deviceId,
-      sessionId: data1.sessionId,
-      clientMessageId
-    })
-  });
-  const data2a = await res2a.json();
+  // Simulate reload: bootstrap should return same conversation
+  const bootstrapRes = await fetch(`${BASE_URL}/api/messenger/bootstrap?widgetId=${widgetId}&deviceId=${deviceId}`);
+  const bootstrapData = await bootstrapRes.json();
+  const restoredId = bootstrapData.conversations?.[0]?.id;
   
-  const res2b = await fetch(`${BASE_URL}/api/public/live-chat/message`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      text: 'Duplicate test',
-      widgetId,
-      visitorId,
-      deviceId,
-      sessionId: data1.sessionId,
-      clientMessageId
-    })
-  });
-  const data2b = await res2b.json();
-  
-  if (data2a.messageId === data2b.messageId && data2b.idempotent === true) {
-    console.log('  PASS: Duplicate message handled correctly');
-    console.log('  Message ID:', data2a.messageId);
-    console.log('  Second response idempotent:', data2b.idempotent);
+  if (restoredId === conversationId) {
+    console.log('  PASS: Same conversationId after reload\n');
   } else {
-    console.log('  FAIL: Duplicate messages created');
-    console.log('  First:', data2a);
-    console.log('  Second:', data2b);
+    console.log('  FAIL: Different conversationId', restoredId, '\n');
   }
-  console.log('');
   
-  // Test 3: Single open conversation
-  console.log('Test 3: Single open conversation per device');
-  const res3 = await fetch(`${BASE_URL}/api/public/live-chat/message`, {
+  // Test 2: Double-click protection (message idempotency)
+  console.log('Test 2: Double-click - Only 1 message');
+  const clientMsgId = crypto.randomUUID();
+  const promises = [];
+  for (let i = 0; i < 3; i++) {
+    promises.push(fetch(`${BASE_URL}/api/public/live-chat/message`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        text: 'Duplicate test',
+        widgetId,
+        visitorId,
+        deviceId,
+        sessionId: conversationId,
+        clientMessageId: clientMsgId
+      })
+    }).then(r => r.json()));
+  }
+  const results = await Promise.all(promises);
+  const uniqueMessageIds = new Set(results.map(r => r.messageId));
+  
+  if (uniqueMessageIds.size === 1 && results.some(r => r.idempotent)) {
+    console.log('  PASS: All 3 requests returned same messageId, idempotent detected\n');
+  } else {
+    console.log('  FAIL: Created multiple messages\n');
+  }
+  
+  // Test 3: Two "tabs" using same deviceId
+  console.log('Test 3: Two tabs - Same conversation');
+  const tab2Res = await fetch(`${BASE_URL}/api/public/live-chat/message`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({
-      text: 'New message same device',
+      text: 'From tab 2',
       widgetId,
-      visitorId,
-      deviceId,
-      forceNew: true, // Try to force new conversation
+      visitorId: crypto.randomUUID(), // Different visitorId
+      deviceId, // Same deviceId
       clientMessageId: crypto.randomUUID()
     })
   });
-  const data3 = await res3.json();
+  const tab2Data = await tab2Res.json();
   
-  if (data3.sessionId === data1.sessionId) {
-    console.log('  PASS: Reused existing conversation');
+  if (tab2Data.sessionId === conversationId) {
+    console.log('  PASS: Same conversation for same deviceId\n');
   } else {
-    console.log('  WARN: New conversation created (may be expected if original was solved)');
+    console.log('  FAIL: Different conversation created\n');
   }
-  console.log('  Original Session:', data1.sessionId);
-  console.log('  New Session:', data3.sessionId);
-  console.log('');
+  
+  // Test 7: Cross-company isolation
+  console.log('Test 7: Cross-company - Never mix');
+  const deviceIdCompanyB = crypto.randomUUID();
+  // This would require a different widgetId from a different company
+  console.log('  Manual test required - need widget from different company\n');
   
   console.log('=== Tests Complete ===');
+  console.log('Note: Tests 4-6 require manual testing with browser DevTools');
 }
 
 runTests().catch(console.error);
@@ -312,15 +331,26 @@ runTests().catch(console.error);
 
 ---
 
+## Invariants Reference
+
+| Invariant | Description | Enforcement |
+|-----------|-------------|-------------|
+| A | Single open conversation per device | Partial unique index + backend check |
+| B-C | No duplicate conversations | Check + create pattern |
+| D | Message idempotency | `clientMessageId` + unique index |
+| E | Safe WebSocket resync | `lastSeenMessageId` + server query |
+
+---
+
 ## Debug Checklist
 
-When issues occur, check:
+When issues occur:
 
-1. **Console logs**: Look for `[ChatWidget]` prefixed logs
-2. **Network tab**: Check request/response for `/api/public/live-chat/*` endpoints
-3. **localStorage**: Check `curbe_chat_device_{companyId}` key
-4. **Copy Debug Info**: Use the button to get full state snapshot
-5. **Database**: Query `telnyx_conversations` and `telnyx_messages` tables
+1. **Console logs**: Look for `[ChatWidget]`, `[LiveChat]`, `[Device Identity]` prefixes
+2. **Network tab**: Check `/api/public/live-chat/*` requests/responses
+3. **localStorage**: Check `curbe_device_id:{companyId}` key
+4. **Copy Debug Info**: Use button to get full state snapshot
+5. **Database**: Query `telnyx_conversations` and `telnyx_messages`
 
 ---
 
@@ -328,20 +358,8 @@ When issues occur, check:
 
 | Symptom | Likely Cause | Solution |
 |---------|--------------|----------|
-| Multiple conversations for same visitor | Missing deviceId | Check localStorage, ensure bootstrap runs |
-| Duplicate messages | Missing clientMessageId | Always send clientMessageId from client |
-| Messages lost on refresh | WS not reconnecting | Check resync logic, verify lastSeenMessageId sent |
-| Widget shows wrong company | Widget ID mismatch | Verify widgetId in embed code |
-| Bootstrap fails | CORS or network issue | Check browser console for errors |
-
----
-
-## Performance Benchmarks
-
-| Metric | Target | How to Measure |
-|--------|--------|----------------|
-| Bootstrap latency | < 200ms | DevTools Network tab |
-| Message send latency | < 500ms | DevTools Network tab |
-| WS reconnect time | < 2s | Disconnect/reconnect test |
-| Resync latency | < 300ms | Measure `resync_complete` timing |
-
+| Different conversation after reload | deviceId not persisted | Check localStorage key |
+| Duplicate messages on retry | Missing clientMessageId | Ensure client sends UUID |
+| Messages lost on WS disconnect | Resync not working | Check lastSeenMessageId tracking |
+| Wrong company's messages | Widget/company mismatch | Verify widgetId matches companyId |
+| Survey creates new conversation | Sending to pending session | Check sessionId is not "pending_" |
