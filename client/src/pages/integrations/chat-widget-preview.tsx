@@ -105,6 +105,7 @@ export default function ChatWidgetPreviewPage() {
   // Live chat state
   const [chatSessionId, setChatSessionId] = useState<string | null>(null);
   const [chatVisitorId, setChatVisitorId] = useState<string | null>(null);
+  const [forceNewSession, setForceNewSession] = useState(false);
   const [chatMessages, setChatMessages] = useState<Array<{ id: string; text: string; direction: string; createdAt: string }>>([]);
   const [chatInput, setChatInput] = useState('');
   const [chatLoading, setChatLoading] = useState(false);
@@ -970,7 +971,10 @@ export default function ChatWidgetPreviewPage() {
     // Reset flow state to idle
     setChatFlowState('idle');
     
-    console.log('[Chat] Session reset - all state cleared');
+    // Mark that next session should be forced new (not resume old)
+    setForceNewSession(true);
+    
+    console.log('[Chat] Session reset - all state cleared, forceNewSession=true');
   };
 
   // Start a completely new chat (clears solved session reference)
@@ -1011,8 +1015,13 @@ export default function ChatWidgetPreviewPage() {
   const startChatSession = async (overrideForceNew?: boolean, messageOverride?: string) => {
     if (!widgetId) return;
     
-    // Use override if provided, otherwise default to false
-    const shouldForceNew = overrideForceNew ?? false;
+    // Use override if provided, OR use forceNewSession state (set by resetChatSession)
+    const shouldForceNew = overrideForceNew ?? forceNewSession;
+    
+    // Clear the forceNewSession flag after reading it
+    if (forceNewSession) {
+      setForceNewSession(false);
+    }
     
     setChatLoading(true);
     try {
@@ -3115,22 +3124,7 @@ export default function ChatWidgetPreviewPage() {
                     if (channel === 'liveChat') {
                       // Reset session state first to ensure clean slate
                       resetChatSession();
-                      
-                      const storedProfile = localStorage.getItem(`chatVisitorProfile-${widgetId}`);
-                      if (storedProfile) {
-                        try {
-                          const profile = JSON.parse(storedProfile);
-                          if (profile.name || profile.email) {
-                            // Has profile - start chat directly
-                            setChatFlowState('activeChat');
-                            startChatSession();
-                            return;
-                          }
-                        } catch (e) {
-                          console.error('[Chat] Failed to parse stored profile:', e);
-                        }
-                      }
-                      // No profile - show pre-chat form
+                      // Always show pre-chat form so user can write their message
                       setChatFlowState('preChatForm');
                     } else {
                       setActiveChannel(channel);
@@ -3168,21 +3162,7 @@ export default function ChatWidgetPreviewPage() {
                   onStartNewChat={() => {
                     // Use state machine to start a new chat cleanly
                     resetChatSession();
-                    
-                    const storedProfile = localStorage.getItem(`chatVisitorProfile-${widgetId}`);
-                    if (storedProfile) {
-                      try {
-                        const profile = JSON.parse(storedProfile);
-                        if (profile.name || profile.email) {
-                          setChatFlowState('activeChat');
-                          startChatSession(true);
-                          return;
-                        }
-                      } catch (e) {
-                        console.error('[Chat] Failed to parse stored profile:', e);
-                      }
-                    }
-                    // No profile - show pre-chat form
+                    // Always show pre-chat form so user can write their message
                     setChatFlowState('preChatForm');
                   }}
                 />
