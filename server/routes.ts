@@ -28738,7 +28738,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           eq(telnyxConversations.channel, "live_chat"),
           or(
             eq(telnyxConversations.status, "open"),
-            eq(telnyxConversations.status, "active")
+            eq(telnyxConversations.status, "waiting")
           )
         ),
         orderBy: [desc(telnyxConversations.lastMessageAt)],
