@@ -33,11 +33,6 @@ export function WidgetRenderer({ config, mode, onClose, onChannelClick }: Widget
         <h3 className="font-bold text-slate-900 leading-tight" style={{ fontSize: "26px" }}>
           {config.welcomeTitle}
         </h3>
-        {config.welcomeMessage && (
-          <p className="font-bold text-slate-900 leading-tight" style={{ fontSize: "26px" }}>
-            {config.welcomeMessage}
-          </p>
-        )}
       </div>
 
       <WidgetChannelList config={config} onChannelClick={onChannelClick} />
