@@ -1,0 +1,183 @@
+Implementa en el módulo AI Desk → Knowledge Base un flujo “Add source” igual al screenshot (modal con 2 cards):
+
+UX / UI
+
+En /ai-desk/knowledge agrega botón “Add source”.
+
+Al click abre modal con 2 opciones:
+
+Website link (icono globo)
+
+Document (icono documento)
+
+Website link: formulario con campos:
+
+url (required)
+
+max_pages (default 25, min 1 max 200)
+
+same_domain_only (default true)
+
+(opcional) include_paths[], exclude_paths[]
+
+botón “Create & Sync”
+
+Document: upload (drag/drop) con:
+
+acepta pdf, docx, txt, md (mínimo)
+
+título opcional
+
+botón “Upload & Index”
+
+En la lista de fuentes mostrar estado tipo chips:
+
+idle | queued | syncing | ok | failed
+
+y “last_synced_at”, “pages/chunks”, “error”
+
+Cada source debe tener acciones:
+
+“Sync now”
+
+“View details”
+
+“Delete”
+
+Backend: Data model (Postgres)
+
+Crear/usar tabla ai_kb_sources con:
+
+id, tenant_id
+
+type: url | file
+
+url nullable
+
+file_id nullable
+
+status: idle|queued|syncing|ok|failed
+
+config jsonb (max_pages, same_domain_only, include/exclude)
+
+last_synced_at, last_error
+
+created_at
+
+Para archivos: tabla files o equivalente:
+
+id, tenant_id, storage_key, mime, original_name, size, created_at
+
+En chunks: agregar content_hash sha256 para dedup (IMPORTANTE).
+
+API endpoints (CRM backend)
+
+Nunca recibir tenant_id del browser. Resolver tenant desde sesión/JWT.
+
+Create URL source
+POST /api/ai/kb/sources/url
+Body:
+
+{ "url":"https://docs.site.com", "max_pages":25, "same_domain_only":true }
+
+
+Resp:
+
+{ "source_id":"...", "status":"idle" }
+
+
+Create File source (upload)
+POST /api/ai/kb/sources/file
+
+multipart/form-data con file, title?
+Resp:
+
+{ "source_id":"...", "file_id":"...", "status":"idle" }
+
+
+Sync source (enqueue)
+POST /api/ai/kb/sources/:sourceId/sync
+Resp:
+
+{ "job_id":"...", "status":"queued" }
+
+
+List sources
+GET /api/ai/kb/sources
+
+Delete source
+DELETE /api/ai/kb/sources/:sourceId
+
+debe borrar docs/chunks asociados (cascade) y archivo si aplica
+
+Status polling (opcional)
+GET /api/ai/kb/sources/:sourceId
+Devuelve status + stats (chunks/pages)
+
+Jobs / Workers
+
+Implementar 2 pipelines:
+
+A) URL ingest pipeline
+
+Crawl url (respeta same_domain_only, max_pages)
+
+Extract HTML → texto limpio (remove nav/footer/aside/script/style)
+
+Chunk (ej 800–1200 chars con overlap)
+
+Embeddings + insert chunks
+
+Guardar meta: page_url, title, headers
+
+Status updates: queued → syncing → ok/failed
+
+B) Document ingest pipeline
+
+Guardar archivo (S3/R2/local) → storage_key
+
+Convertir a texto:
+
+PDF: pdf-parse o similar
+
+DOCX: mammoth o similar
+
+TXT/MD directo
+
+Chunk + embeddings + insert chunks
+
+meta: original_name, page si aplica
+
+Dedup obligatorio
+
+content_hash = sha256(normalized_content)
+
+evitar insertar duplicados en re-sync
+
+al re-sync: marcar versión y borrar/archivar chunks obsoletos (no dejar basura)
+
+Integración con motor existente
+
+Si ya existe “crawl/chunk/embed”, reutilizarlo.
+
+Si tenemos gateway externo (ai.curbe.io), el backend puede llamar:
+
+para URL: gateway ingest/url
+
+para query: gateway query
+
+Para archivos: si gateway no soporta upload, implementar ingestion en CRM backend y guardar chunks en la DB del CRM (o extender gateway con ingest/file).
+
+Criterios de aceptación (tests)
+
+Tenant A y B: A no puede ver fuentes/KB de B.
+
+Crear fuente URL, sync, y luego query devuelve citas de ese site.
+
+Subir PDF, indexar, query devuelve fragmentos del PDF.
+
+Re-sync no duplica chunks (dedup funciona).
+
+Delete source borra chunks/docs asociados y no deja huérfanos.
+
+Entregar PRs: (1) UI modal + endpoints, (2) URL pipeline, (3) file pipeline, (4) dedup/resync + tests.

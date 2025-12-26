@@ -55,9 +55,15 @@ export class AiAutopilotService {
     }).returning();
 
     try {
-      const recentMessages = await this.getRecentMessages(conversationId, 10);
-      const kbContext = await this.getKnowledgeBaseContext(companyId, messageContent);
       const conversation = await this.getConversation(companyId, conversationId);
+      if (!conversation) {
+        console.log(`[Autopilot] Conversation ${conversationId} not found for company ${companyId}`);
+        await db.update(aiRuns).set({ status: "failed" }).where(eq(aiRuns.id, runId));
+        return { shouldRespond: false };
+      }
+      
+      const recentMessages = await this.getRecentMessages(companyId, conversationId, 10);
+      const kbContext = await this.getKnowledgeBaseContext(companyId, messageContent);
 
       const systemPrompt = this.buildSystemPrompt(kbContext, conversation);
       const messages = this.buildMessageHistory(recentMessages, messageContent);
@@ -367,13 +373,25 @@ export class AiAutopilotService {
   }
 
   private async getRecentMessages(
+    companyId: string,
     conversationId: string,
     limit: number
   ): Promise<Array<{ role: "user" | "assistant"; content: string }>> {
     const messages = await db
-      .select()
+      .select({
+        direction: telnyxMessages.direction,
+        text: telnyxMessages.text,
+        createdAt: telnyxMessages.createdAt,
+      })
       .from(telnyxMessages)
-      .where(eq(telnyxMessages.conversationId, conversationId))
+      .innerJoin(
+        telnyxConversations,
+        eq(telnyxMessages.conversationId, telnyxConversations.id)
+      )
+      .where(and(
+        eq(telnyxMessages.conversationId, conversationId),
+        eq(telnyxConversations.companyId, companyId)
+      ))
       .orderBy(desc(telnyxMessages.createdAt))
       .limit(limit);
 
