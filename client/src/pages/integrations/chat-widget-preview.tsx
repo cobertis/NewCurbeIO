@@ -1016,7 +1016,7 @@ export default function ChatWidgetPreviewPage() {
   };
 
   // Live chat functions
-  const startChatSession = async (overrideForceNew?: boolean) => {
+  const startChatSession = async (overrideForceNew?: boolean, messageOverride?: string) => {
     if (!widgetId) return;
     
     // Use override if provided, otherwise use state (override handles React async state issue)
@@ -1104,7 +1104,8 @@ export default function ChatWidgetPreviewPage() {
       }
       
       // Save initial message for display in queue view
-      const messageToSend = initialMessage.trim();
+      // Use messageOverride if provided to avoid React state sync issues
+      const messageToSend = (messageOverride !== undefined ? messageOverride : initialMessage).trim();
       setSentInitialMessage(messageToSend || 'Hello');
       
       // Use browserName and osName from earlier detection
@@ -2979,8 +2980,7 @@ export default function ChatWidgetPreviewPage() {
                       </div>
                       <button
                         onClick={() => { 
-                          setShowPreChatForm(false); 
-                          setChatFlowState('idle');
+                          resetChatSession();
                         }}
                         className="p-1.5 hover:bg-white/10 rounded-full transition-colors"
                         data-testid="button-close-prechat"
@@ -3027,7 +3027,10 @@ export default function ChatWidgetPreviewPage() {
                     </div>
                     
                     <button
-                      onClick={() => startChatSession()}
+                      onClick={() => {
+                        // Capture form values at click time to avoid React state sync issues
+                        startChatSession(undefined, initialMessage);
+                      }}
                       disabled={chatLoading}
                       className="w-full py-3 rounded-lg text-white font-medium transition-all hover:opacity-90 disabled:opacity-50"
                       style={{ background: currentBackground }}
