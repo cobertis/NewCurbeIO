@@ -314,8 +314,7 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
   const syncSourceMutation = useMutation({
     mutationFn: async (sourceId: string) => {
       setSyncingSourceId(sourceId);
-      const res = await apiRequest("POST", `/api/ai/kb/sources/${sourceId}/sync`);
-      return res.json();
+      return await apiRequest("POST", `/api/ai/kb/sources/${sourceId}/sync`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/ai/kb/sources"] });
@@ -345,8 +344,7 @@ export default function AiDeskSettingsPage({ embedded = false }: AiDeskSettingsP
   const purgeLegalMutation = useMutation({
     mutationFn: async (sourceId: string) => {
       setPurgingSourceId(sourceId);
-      const res = await apiRequest("POST", `/api/ai/kb/sources/${sourceId}/purge-legal`);
-      return res.json();
+      return await apiRequest("POST", `/api/ai/kb/sources/${sourceId}/purge-legal`);
     },
     onSuccess: (result) => {
       queryClient.invalidateQueries({ queryKey: ["/api/ai/kb/sources"] });
