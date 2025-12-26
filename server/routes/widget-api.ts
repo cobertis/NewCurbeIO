@@ -1,8 +1,9 @@
 import { Express, Request, Response } from "express";
+import crypto from "crypto";
 import { db } from "../db";
 import { 
   widgetConfigs, widgetContacts, widgetConversations, 
-  widgetMessages, widgetCsatResponses 
+  widgetMessages, widgetCsatResponses, users 
 } from "@shared/schema";
 import { eq, and, desc, asc, sql } from "drizzle-orm";
 import { 
@@ -589,6 +590,272 @@ export function registerWidgetApiRoutes(app: Express): void {
     } catch (error) {
       console.error("Error marking as read:", error);
       res.status(500).json({ error: "Failed to mark as read" });
+    }
+  });
+
+  // =====================================================
+  // WIDGET ADMIN API ROUTES
+  // These routes require session authentication for admin users
+  // =====================================================
+
+  async function requireAdminAuth(req: Request, res: Response): Promise<{ user: typeof users.$inferSelect } | null> {
+    const userId = (req as any).session?.userId;
+    if (!userId) {
+      res.status(401).json({ error: "Authentication required" });
+      return null;
+    }
+    
+    const [user] = await db.select()
+      .from(users)
+      .where(eq(users.id, userId))
+      .limit(1);
+    
+    if (!user || !user.companyId) {
+      res.status(401).json({ error: "User not found or not associated with a company" });
+      return null;
+    }
+    
+    if (user.role !== "admin" && user.role !== "superadmin") {
+      res.status(403).json({ error: "Admin access required" });
+      return null;
+    }
+    
+    return { user };
+  }
+
+  function generateWebsiteToken(): string {
+    return crypto.randomBytes(16).toString("hex");
+  }
+
+  function generateHmacToken(): string {
+    return crypto.randomBytes(32).toString("hex");
+  }
+
+  app.get("/api/widget/admin/widgets", async (req: Request, res: Response) => {
+    try {
+      const auth = await requireAdminAuth(req, res);
+      if (!auth) return;
+      
+      const widgets = await db.select()
+        .from(widgetConfigs)
+        .where(eq(widgetConfigs.companyId, auth.user.companyId!))
+        .orderBy(desc(widgetConfigs.createdAt));
+      
+      res.json({ widgets });
+    } catch (error) {
+      console.error("Error fetching widgets:", error);
+      res.status(500).json({ error: "Failed to fetch widgets" });
+    }
+  });
+
+  app.post("/api/widget/admin/widgets", async (req: Request, res: Response) => {
+    try {
+      const auth = await requireAdminAuth(req, res);
+      if (!auth) return;
+      
+      const {
+        name,
+        websiteUrl,
+        allowedDomains,
+        widgetColor,
+        position,
+        welcomeTitle,
+        welcomeTagline,
+        preChatFormEnabled,
+        preChatFormOptions,
+        replyTime,
+        featureFlags,
+        hmacMandatory,
+        showBranding,
+        isActive,
+      } = req.body;
+      
+      const websiteToken = generateWebsiteToken();
+      const hmacToken = generateHmacToken();
+      
+      const [widget] = await db.insert(widgetConfigs).values({
+        companyId: auth.user.companyId!,
+        websiteToken,
+        hmacToken,
+        name: name || "Website Widget",
+        websiteUrl,
+        allowedDomains,
+        widgetColor: widgetColor || "#2563eb",
+        position: position || "right",
+        welcomeTitle: welcomeTitle || "Hi there!",
+        welcomeTagline: welcomeTagline || "We usually reply in a few minutes.",
+        preChatFormEnabled: preChatFormEnabled ?? false,
+        preChatFormOptions,
+        replyTime: replyTime || "in_a_few_minutes",
+        featureFlags: featureFlags ?? 7,
+        hmacMandatory: hmacMandatory ?? false,
+        showBranding: showBranding ?? true,
+        isActive: isActive ?? true,
+      }).returning();
+      
+      res.status(201).json({ widget });
+    } catch (error) {
+      console.error("Error creating widget:", error);
+      res.status(500).json({ error: "Failed to create widget" });
+    }
+  });
+
+  app.get("/api/widget/admin/widgets/:id", async (req: Request, res: Response) => {
+    try {
+      const auth = await requireAdminAuth(req, res);
+      if (!auth) return;
+      
+      const { id } = req.params;
+      
+      const [widget] = await db.select()
+        .from(widgetConfigs)
+        .where(
+          and(
+            eq(widgetConfigs.id, id),
+            eq(widgetConfigs.companyId, auth.user.companyId!)
+          )
+        )
+        .limit(1);
+      
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      res.json({ widget });
+    } catch (error) {
+      console.error("Error fetching widget:", error);
+      res.status(500).json({ error: "Failed to fetch widget" });
+    }
+  });
+
+  app.patch("/api/widget/admin/widgets/:id", async (req: Request, res: Response) => {
+    try {
+      const auth = await requireAdminAuth(req, res);
+      if (!auth) return;
+      
+      const { id } = req.params;
+      const {
+        name,
+        websiteUrl,
+        allowedDomains,
+        widgetColor,
+        position,
+        welcomeTitle,
+        welcomeTagline,
+        preChatFormEnabled,
+        preChatFormOptions,
+        replyTime,
+        featureFlags,
+        hmacMandatory,
+        showBranding,
+        isActive,
+      } = req.body;
+      
+      const [existing] = await db.select()
+        .from(widgetConfigs)
+        .where(
+          and(
+            eq(widgetConfigs.id, id),
+            eq(widgetConfigs.companyId, auth.user.companyId!)
+          )
+        )
+        .limit(1);
+      
+      if (!existing) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      const updateData: any = { updatedAt: new Date() };
+      if (name !== undefined) updateData.name = name;
+      if (websiteUrl !== undefined) updateData.websiteUrl = websiteUrl;
+      if (allowedDomains !== undefined) updateData.allowedDomains = allowedDomains;
+      if (widgetColor !== undefined) updateData.widgetColor = widgetColor;
+      if (position !== undefined) updateData.position = position;
+      if (welcomeTitle !== undefined) updateData.welcomeTitle = welcomeTitle;
+      if (welcomeTagline !== undefined) updateData.welcomeTagline = welcomeTagline;
+      if (preChatFormEnabled !== undefined) updateData.preChatFormEnabled = preChatFormEnabled;
+      if (preChatFormOptions !== undefined) updateData.preChatFormOptions = preChatFormOptions;
+      if (replyTime !== undefined) updateData.replyTime = replyTime;
+      if (featureFlags !== undefined) updateData.featureFlags = featureFlags;
+      if (hmacMandatory !== undefined) updateData.hmacMandatory = hmacMandatory;
+      if (showBranding !== undefined) updateData.showBranding = showBranding;
+      if (isActive !== undefined) updateData.isActive = isActive;
+      
+      const [widget] = await db.update(widgetConfigs)
+        .set(updateData)
+        .where(eq(widgetConfigs.id, id))
+        .returning();
+      
+      res.json({ widget });
+    } catch (error) {
+      console.error("Error updating widget:", error);
+      res.status(500).json({ error: "Failed to update widget" });
+    }
+  });
+
+  app.delete("/api/widget/admin/widgets/:id", async (req: Request, res: Response) => {
+    try {
+      const auth = await requireAdminAuth(req, res);
+      if (!auth) return;
+      
+      const { id } = req.params;
+      
+      const [existing] = await db.select()
+        .from(widgetConfigs)
+        .where(
+          and(
+            eq(widgetConfigs.id, id),
+            eq(widgetConfigs.companyId, auth.user.companyId!)
+          )
+        )
+        .limit(1);
+      
+      if (!existing) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      await db.delete(widgetConfigs)
+        .where(eq(widgetConfigs.id, id));
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting widget:", error);
+      res.status(500).json({ error: "Failed to delete widget" });
+    }
+  });
+
+  app.post("/api/widget/admin/widgets/:id/regenerate-hmac", async (req: Request, res: Response) => {
+    try {
+      const auth = await requireAdminAuth(req, res);
+      if (!auth) return;
+      
+      const { id } = req.params;
+      
+      const [existing] = await db.select()
+        .from(widgetConfigs)
+        .where(
+          and(
+            eq(widgetConfigs.id, id),
+            eq(widgetConfigs.companyId, auth.user.companyId!)
+          )
+        )
+        .limit(1);
+      
+      if (!existing) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      const newHmacToken = generateHmacToken();
+      
+      const [widget] = await db.update(widgetConfigs)
+        .set({ hmacToken: newHmacToken, updatedAt: new Date() })
+        .where(eq(widgetConfigs.id, id))
+        .returning();
+      
+      res.json({ widget });
+    } catch (error) {
+      console.error("Error regenerating HMAC token:", error);
+      res.status(500).json({ error: "Failed to regenerate HMAC token" });
     }
   });
 }
