@@ -28859,7 +28859,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         .from(telnyxConversations)
         .where(and(
           eq(telnyxConversations.companyId, companyId),
-          eq(telnyxConversations.phoneNumber, `livechat_${visitorId}`),
+          sql`${telnyxConversations.phoneNumber} LIKE 'livechat_' || ${visitorId} || '%'`,
           eq(telnyxConversations.channel, "live_chat")
         ))
         .orderBy(desc(telnyxConversations.createdAt));
@@ -28957,7 +28957,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         .select()
         .from(telnyxConversations)
         .where(and(
-          eq(telnyxConversations.phoneNumber, `livechat_${visitorId}`),
+          sql`${telnyxConversations.phoneNumber} LIKE 'livechat_' || ${visitorId} || '%'`,
           eq(telnyxConversations.channel, "live_chat"),
           widgetId ? eq(telnyxConversations.companyPhoneNumber, widgetId as string) : sql`1=1`
         ))
@@ -29135,45 +29135,47 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         }
         
         
-        // Check if there is a solved/archived conversation we can reopen
-        // When forceNew is true, we STILL need to find and reuse the existing conversation
-        // to avoid unique constraint violation - we just clear the old data
-        let solvedConversation = null;
-        [solvedConversation] = await db
-          .select()
-          .from(telnyxConversations)
-          .where(and(
-            eq(telnyxConversations.companyId, widget.companyId),
-            eq(telnyxConversations.phoneNumber, `livechat_${visitorId}`),
-            eq(telnyxConversations.channel, "live_chat"),
-            inArray(telnyxConversations.status, ["solved", "archived"])
-          ))
-          .orderBy(desc(telnyxConversations.createdAt))
-          .limit(1);
         
-        if (solvedConversation) {
-          // Reopen the solved conversation (clears satisfaction data for fresh start)
-          console.log("[LiveChat] Reopening solved conversation:", solvedConversation.id, "for visitor:", visitorId, forceNew ? "(forceNew)" : "");
-          const displayName = visitorName || solvedConversation.displayName || "Website Visitor";
-          await db.update(telnyxConversations)
-            .set({
-              status: "waiting",
-              lastMessage: text.trim().substring(0, 200),
-              lastMessageAt: new Date(),
-              unreadCount: sql`${telnyxConversations.unreadCount} + 1`,
-              displayName,
-              assignedTo: null,
-              satisfactionRating: null,
-              satisfactionFeedback: null,
-              satisfactionSubmittedAt: null,
-            })
-            .where(eq(telnyxConversations.id, solvedConversation.id));
+        // Check if there is a solved/archived conversation we can reopen
+        // ONLY reopen if forceNew is NOT true - when forceNew is true, always create a brand new session
+        let solvedConversation = null;
+        if (!forceNew) {
+          [solvedConversation] = await db
+            .select()
+            .from(telnyxConversations)
+            .where(and(
+              eq(telnyxConversations.companyId, widget.companyId),
+              sql`${telnyxConversations.phoneNumber} LIKE 'livechat_' || ${visitorId} || '%'`,
+              eq(telnyxConversations.channel, "live_chat"),
+              inArray(telnyxConversations.status, ["solved", "archived"])
+            ))
+            .orderBy(desc(telnyxConversations.createdAt))
+            .limit(1);
           
-          conversation = { ...solvedConversation, status: "waiting" };
-          
-          // Broadcast update to notify agents of reopened chat
-          const { broadcastConversationUpdate } = await import("./websocket");
-          broadcastConversationUpdate(widget.companyId);
+          if (solvedConversation) {
+            // Reopen the solved conversation (clears satisfaction data for fresh start)
+            console.log("[LiveChat] Reopening solved conversation:", solvedConversation.id, "for visitor:", visitorId);
+            const displayName = visitorName || solvedConversation.displayName || "Website Visitor";
+            await db.update(telnyxConversations)
+              .set({
+                status: "waiting",
+                lastMessage: text.trim().substring(0, 200),
+                lastMessageAt: new Date(),
+                unreadCount: sql`${telnyxConversations.unreadCount} + 1`,
+                displayName,
+                assignedTo: null,
+                satisfactionRating: null,
+                satisfactionFeedback: null,
+                satisfactionSubmittedAt: null,
+              })
+              .where(eq(telnyxConversations.id, solvedConversation.id));
+            
+            conversation = { ...solvedConversation, status: "waiting" };
+            
+            // Broadcast update to notify agents of reopened chat
+            const { broadcastConversationUpdate } = await import("./websocket");
+            broadcastConversationUpdate(widget.companyId);
+          }
         }
 
         // Fetch geolocation
@@ -29193,7 +29195,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         const displayName = visitorName || "Website Visitor";
         const [newConv] = await db.insert(telnyxConversations).values({
           companyId: widget.companyId,
-          phoneNumber: `livechat_${visitorId}`,
+          phoneNumber: forceNew ? `livechat_${visitorId}_${Date.now()}` : `livechat_${visitorId}`,
           displayName,
           email: visitorEmail || null,
           companyPhoneNumber: widgetId,
@@ -39275,7 +39277,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
         .from(telnyxConversations)
         .where(and(
           eq(telnyxConversations.companyId, companyId),
-          eq(telnyxConversations.phoneNumber, `livechat_${visitorId}`),
+          sql`${telnyxConversations.phoneNumber} LIKE 'livechat_' || ${visitorId} || '%'`,
           eq(telnyxConversations.channel, "live_chat")
         ));
       
@@ -39286,7 +39288,7 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
           .insert(telnyxConversations)
           .values({
             companyId,
-            phoneNumber: `livechat_${visitorId}`,
+            phoneNumber: forceNew ? `livechat_${visitorId}_${Date.now()}` : `livechat_${visitorId}`,
             companyPhoneNumber: widget.id,
             channel: "live_chat",
             status: "open",
