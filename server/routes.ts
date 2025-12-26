@@ -95,7 +95,7 @@ import {
 import { encryptToken, decryptToken } from "./crypto";
 import { db } from "./db";
 import { and, eq, ne, gte, lte, desc, asc, or, sql, inArray, count, isNotNull, isNull, not } from "drizzle-orm";
-import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, oauthStates, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, chatWidgets, liveWidgetVisitors } from "@shared/schema";
+import { landingBlocks, tasks as tasksTable, landingLeads as leadsTable, quoteMembers as quoteMembersTable, policyMembers as policyMembersTable, manualContacts as manualContactsTable, birthdayGreetingHistory, birthdayPendingMessages, quotes, policies, manualBirthdays, channelConnections, waConversations, waMessages, waWebhookLogs, oauthStates, callLogs, voicemails, deploymentJobs, subscriptions, wallets, companies, telephonySettings, contacts, telnyxPhoneNumbers, telephonyCredentials, telnyxGlobalPricing, users, pbxExtensions, pbxQueues, pbxAudioFiles, pbxIvrs, pbxQueueAds, telnyxBrands, companySettings, telnyxConversations, telnyxMessages, mmsMediaCache, telegramConnectCodes, telegramChatLinks, telegramParticipants, telegramConversations, telegramMessages, userTelegramBots, complianceApplications, insertComplianceApplicationSchema, chatWidgets, liveWidgetVisitors, liveChatDevices } from "@shared/schema";
 import { encryptToken, decryptToken } from "./crypto";
 // NOTE: All encryption and masking functions removed per user requirement
 // All sensitive data (SSN, income, immigration documents) is stored and returned as plain text
@@ -28677,6 +28677,258 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
       text: isActive ? previewInfo?.text : null
     });
   });
+
+  // =====================================================
+  // MESSENGER BOOTSTRAP & IDENTIFY ENDPOINTS (Intercom-style)
+  // =====================================================
+
+  // GET /api/messenger/bootstrap - Called when widget loads to restore identity
+  app.get("/api/messenger/bootstrap", async (req: Request, res: Response) => {
+    const { widgetId, deviceId } = req.query;
+    
+    res.set({ "Access-Control-Allow-Origin": "*" });
+    
+    if (!widgetId || !deviceId) {
+      return res.status(400).json({ error: "widgetId and deviceId are required" });
+    }
+    
+    try {
+      // Verify widget exists and get config
+      const widget = await db.query.chatWidgets.findFirst({
+        where: eq(chatWidgets.id, widgetId as string)
+      });
+      
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      const companyId = widget.companyId;
+      
+      // Find or create device record
+      let device = await db.query.liveChatDevices.findFirst({
+        where: and(
+          eq(liveChatDevices.deviceId, deviceId as string),
+          eq(liveChatDevices.widgetId, widgetId as string)
+        )
+      });
+      
+      if (!device) {
+        // Create new device record (anonymous)
+        const [newDevice] = await db.insert(liveChatDevices).values({
+          deviceId: deviceId as string,
+          companyId,
+          widgetId: widgetId as string,
+          contactType: "anonymous",
+          lastSeenAt: new Date(),
+        }).returning();
+        device = newDevice;
+        console.log(`[Messenger] Created new device: ${deviceId}`);
+      } else {
+        // Update last seen timestamp
+        await db.update(liveChatDevices)
+          .set({ lastSeenAt: new Date(), updatedAt: new Date() })
+          .where(eq(liveChatDevices.id, device.id));
+      }
+      
+      // Get open conversations for this device
+      const openConversations = await db.query.telnyxConversations.findMany({
+        where: and(
+          eq(telnyxConversations.deviceId, deviceId as string),
+          eq(telnyxConversations.companyId, companyId),
+          eq(telnyxConversations.channel, "live_chat"),
+          or(
+            eq(telnyxConversations.status, "open"),
+            eq(telnyxConversations.status, "active")
+          )
+        ),
+        orderBy: [desc(telnyxConversations.lastMessageAt)],
+        limit: 10
+      });
+      
+      // Get recent conversations (last 20, including closed)
+      const recentConversations = await db.query.telnyxConversations.findMany({
+        where: and(
+          eq(telnyxConversations.deviceId, deviceId as string),
+          eq(telnyxConversations.companyId, companyId),
+          eq(telnyxConversations.channel, "live_chat")
+        ),
+        orderBy: [desc(telnyxConversations.lastMessageAt)],
+        limit: 20
+      });
+      
+      // Calculate total unread count
+      let unreadCount = 0;
+      for (const conv of openConversations) {
+        unreadCount += conv.unreadCount || 0;
+      }
+      
+      // Return bootstrap data
+      res.json({
+        success: true,
+        contactId: device.contactId,
+        contactType: device.contactType,
+        email: device.email,
+        name: device.name,
+        openConversations: openConversations.map(c => ({
+          id: c.id,
+          status: c.status,
+          unreadCount: c.unreadCount,
+          lastMessage: c.lastMessage,
+          lastMessageAt: c.lastMessageAt,
+        })),
+        recentConversations: recentConversations.map(c => ({
+          id: c.id,
+          status: c.status,
+          createdAt: c.createdAt,
+          lastMessageAt: c.lastMessageAt,
+        })),
+        unreadCount,
+        widget: {
+          id: widget.id,
+          name: widget.name,
+          primaryColor: widget.primaryColor,
+          welcomeMessage: widget.welcomeMessage,
+          offlineMessage: widget.offlineMessage,
+          position: widget.position,
+          showLauncher: widget.showLauncher,
+        }
+      });
+    } catch (error: any) {
+      console.error("[Messenger] Bootstrap error:", error);
+      res.status(500).json({ error: "Failed to bootstrap messenger" });
+    }
+  });
+
+  // POST /api/messenger/identify - Called when user logs in to identify/upgrade device
+  app.post("/api/messenger/identify", async (req: Request, res: Response) => {
+    const { widgetId, deviceId, userId, email, name } = req.body;
+    
+    res.set({ "Access-Control-Allow-Origin": "*" });
+    
+    if (!widgetId || !deviceId) {
+      return res.status(400).json({ error: "widgetId and deviceId are required" });
+    }
+    
+    if (!userId && !email) {
+      return res.status(400).json({ error: "userId or email is required to identify" });
+    }
+    
+    try {
+      // Verify widget exists
+      const widget = await db.query.chatWidgets.findFirst({
+        where: eq(chatWidgets.id, widgetId)
+      });
+      
+      if (!widget) {
+        return res.status(404).json({ error: "Widget not found" });
+      }
+      
+      const companyId = widget.companyId;
+      
+      // Find or create device record
+      let device = await db.query.liveChatDevices.findFirst({
+        where: and(
+          eq(liveChatDevices.deviceId, deviceId),
+          eq(liveChatDevices.widgetId, widgetId)
+        )
+      });
+      
+      const wasAnonymous = !device || device.contactType === "anonymous";
+      let mergedConversationCount = 0;
+      
+      // Generate contactId if needed
+      const contactId = device?.contactId || `contact_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+      
+      // Determine contact type based on userId presence
+      const contactType = userId ? "user" : "lead";
+      
+      if (!device) {
+        // Create new identified device
+        const [newDevice] = await db.insert(liveChatDevices).values({
+          deviceId,
+          companyId,
+          widgetId,
+          contactId,
+          contactType,
+          userId: userId || null,
+          email: email || null,
+          name: name || null,
+          lastSeenAt: new Date(),
+        }).returning();
+        device = newDevice;
+        console.log(`[Messenger] Created identified device: ${deviceId} as ${contactType}`);
+      } else {
+        // Update existing device with identity
+        await db.update(liveChatDevices)
+          .set({
+            contactId,
+            contactType,
+            userId: userId || device.userId,
+            email: email || device.email,
+            name: name || device.name,
+            lastSeenAt: new Date(),
+            updatedAt: new Date(),
+          })
+          .where(eq(liveChatDevices.id, device.id));
+        
+        console.log(`[Messenger] Upgraded device ${deviceId} from ${device.contactType} to ${contactType}`);
+      }
+      
+      // If device was anonymous, look for other devices with same email and merge conversations
+      if (wasAnonymous && email) {
+        // Find other devices with same email that might have conversations
+        const otherDevices = await db.query.liveChatDevices.findMany({
+          where: and(
+            eq(liveChatDevices.email, email),
+            eq(liveChatDevices.companyId, companyId),
+            ne(liveChatDevices.deviceId, deviceId)
+          )
+        });
+        
+        // Reassign conversations from other devices to this device
+        for (const otherDevice of otherDevices) {
+          const result = await db.update(telnyxConversations)
+            .set({
+              deviceId: deviceId,
+              updatedAt: new Date(),
+            })
+            .where(and(
+              eq(telnyxConversations.deviceId, otherDevice.deviceId),
+              eq(telnyxConversations.companyId, companyId),
+              eq(telnyxConversations.channel, "live_chat")
+            ));
+          
+          mergedConversationCount += result.rowCount || 0;
+          
+          // Mark old device as merged
+          await db.update(liveChatDevices)
+            .set({
+              mergedFromDeviceId: deviceId,
+              updatedAt: new Date(),
+            })
+            .where(eq(liveChatDevices.id, otherDevice.id));
+        }
+        
+        if (mergedConversationCount > 0) {
+          console.log(`[Messenger] Merged ${mergedConversationCount} conversations to device ${deviceId}`);
+        }
+      }
+      
+      res.json({
+        success: true,
+        contactId,
+        contactType,
+        mergedConversationCount,
+        message: wasAnonymous 
+          ? `Device upgraded from anonymous to ${contactType}` 
+          : `Device already identified as ${contactType}`
+      });
+    } catch (error: any) {
+      console.error("[Messenger] Identify error:", error);
+      res.status(500).json({ error: "Failed to identify device" });
+    }
+  });
+
 
   // POST /api/public/live-chat/session - Create or resume a live chat session
   app.post("/api/public/live-chat/session", async (req: Request, res: Response) => {

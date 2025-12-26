@@ -6651,11 +6651,19 @@ export const telnyxConversations = pgTable("telnyx_conversations", {
   satisfactionRating: integer("satisfaction_rating"), // 1-5 rating from visitor
   satisfactionFeedback: text("satisfaction_feedback"), // Optional text feedback
   satisfactionSubmittedAt: timestamp("satisfaction_submitted_at"), // When survey was submitted
+  
+  // Intercom-style read/seen tracking
+  deviceId: varchar("device_id"), // Reference to the device that owns this conversation
+  visitorLastReadAt: timestamp("visitor_last_read_at"), // When visitor last read the conversation
+  agentLastReadAt: timestamp("agent_last_read_at"), // When agent last read the conversation
+  agentSeenAt: timestamp("agent_seen_at"), // When agent started typing/responded (Intercom-style "seen")
+  
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => ({
   // Unique conversation per phone number pair per company
   companyPhoneUnique: uniqueIndex("telnyx_conversations_company_phone_unique").on(table.companyId, table.phoneNumber, table.companyPhoneNumber),
+  deviceIdIdx: index("telnyx_conversations_device_id_idx").on(table.deviceId),
 }));
 
 export const insertTelnyxConversationSchema = createInsertSchema(telnyxConversations).omit({
@@ -6679,14 +6687,17 @@ export const telnyxMessages = pgTable("telnyx_messages", {
   mediaUrls: text("media_urls").array(), // Array of media URLs for MMS attachments
   status: telnyxMessageStatusEnum("status").notNull().default("pending"), // Message delivery status
   telnyxMessageId: text("telnyx_message_id"), // Telnyx API message ID for tracking
+  clientMessageId: varchar("client_message_id"), // Client-generated UUID for idempotency (Intercom-style)
   sentBy: varchar("sent_by").references(() => users.id, { onDelete: "set null" }), // User who sent outbound messages
   sentAt: timestamp("sent_at"), // When message was sent
   deliveredAt: timestamp("delivered_at"), // When message was delivered
+  readAt: timestamp("read_at"), // When message was read by recipient
   errorMessage: text("error_message"), // Error details if failed
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (table) => ({
   conversationIdx: index("telnyx_messages_conversation_idx").on(table.conversationId),
   telnyxMessageIdIdx: index("telnyx_messages_telnyx_id_idx").on(table.telnyxMessageId),
+  clientMessageIdIdx: index("telnyx_messages_client_message_id_idx").on(table.clientMessageId),
 }));
 
 export const insertTelnyxMessageSchema = createInsertSchema(telnyxMessages).omit({
@@ -7150,3 +7161,73 @@ export const insertLiveWidgetVisitorSchema = createInsertSchema(liveWidgetVisito
 
 export type LiveWidgetVisitor = typeof liveWidgetVisitors.$inferSelect;
 export type InsertLiveWidgetVisitor = z.infer<typeof insertLiveWidgetVisitorSchema>;
+
+// =====================================================
+// LIVE CHAT DEVICES (Intercom-style persistent identity)
+// =====================================================
+
+export const liveChatContactTypeEnum = pgEnum("live_chat_contact_type", ["anonymous", "lead", "user"]);
+
+export const liveChatDevices = pgTable("live_chat_devices", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  deviceId: varchar("device_id").notNull(), // UUID persistente por dispositivo
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  widgetId: varchar("widget_id").references(() => chatWidgets.id, { onDelete: "set null" }),
+  contactId: varchar("contact_id"), // Nullable al inicio, se llena cuando se identifica
+  contactType: liveChatContactTypeEnum("contact_type").notNull().default("anonymous"),
+  
+  // Contact info when identified
+  userId: varchar("user_id"), // Si el usuario está logueado en la app del cliente
+  email: text("email"),
+  name: text("name"),
+  
+  // Merge tracking
+  mergedFromDeviceId: varchar("merged_from_device_id"), // Si este dispositivo fue fusionado desde otro
+  
+  // Session tracking
+  lastSeenAt: timestamp("last_seen_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => ({
+  deviceWidgetUnique: unique("live_chat_devices_device_widget_unique").on(table.deviceId, table.widgetId),
+  companyIdIdx: index("live_chat_devices_company_id_idx").on(table.companyId),
+  contactIdIdx: index("live_chat_devices_contact_id_idx").on(table.contactId),
+  lastSeenIdx: index("live_chat_devices_last_seen_idx").on(table.lastSeenAt),
+}));
+
+export const insertLiveChatDeviceSchema = createInsertSchema(liveChatDevices).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type LiveChatDevice = typeof liveChatDevices.$inferSelect;
+export type InsertLiveChatDevice = z.infer<typeof insertLiveChatDeviceSchema>;
+
+// =====================================================
+// LIVE CHAT CONVERSATION RATINGS (tied to conversation, not session)
+// =====================================================
+
+export const liveChatConversationRatings = pgTable("live_chat_conversation_ratings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  conversationId: varchar("conversation_id").notNull().references(() => telnyxConversations.id, { onDelete: "cascade" }),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: "cascade" }),
+  deviceId: varchar("device_id"), // Reference to the device that submitted the rating
+  
+  rating: integer("rating").notNull(), // 1-5 rating
+  feedback: text("feedback"), // Optional text feedback
+  
+  submittedAt: timestamp("submitted_at").notNull().defaultNow(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (table) => ({
+  conversationUnique: unique("live_chat_ratings_conversation_unique").on(table.conversationId),
+  companyIdIdx: index("live_chat_ratings_company_id_idx").on(table.companyId),
+}));
+
+export const insertLiveChatConversationRatingSchema = createInsertSchema(liveChatConversationRatings).omit({
+  id: true,
+  createdAt: true,
+});
+
+export type LiveChatConversationRating = typeof liveChatConversationRatings.$inferSelect;
+export type InsertLiveChatConversationRating = z.infer<typeof insertLiveChatConversationRatingSchema>;
