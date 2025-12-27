@@ -115,19 +115,46 @@ app.get('/widget-script.js', (req, res) => {
   }
   window.__curbeWidgetInitialized = true;
   
+  // Size constants
+  var BUTTON_SIZE = 80; // 56px button + padding
+  var PANEL_WIDTH = 420;
+  var PANEL_HEIGHT = 650;
+  
   // Create iframe that contains everything (button + chat panel)
   var iframe = document.createElement('iframe');
   iframe.id = 'curbe-widget-iframe';
   iframe.src = 'https://app.curbe.io/widget/' + widgetCode;
-  iframe.style.cssText = 'position: fixed; bottom: 0; right: 0; width: 420px; height: 650px; max-width: 100vw; max-height: 100vh; border: none; z-index: 2147483647; background: transparent; pointer-events: none;';
+  // Start with button-only size
+  iframe.style.cssText = 'position: fixed; bottom: 0; right: 0; width: ' + BUTTON_SIZE + 'px; height: ' + BUTTON_SIZE + 'px; border: none; z-index: 2147483647; background: transparent;';
   iframe.allow = 'microphone; camera; geolocation';
   iframe.setAttribute('allowtransparency', 'true');
   document.body.appendChild(iframe);
   
-  // Enable pointer events inside iframe for clickable areas
-  iframe.onload = function() {
-    iframe.style.pointerEvents = 'auto';
-  };
+  // Listen for messages from widget to resize iframe
+  window.addEventListener('message', function(event) {
+    // Verify origin in production
+    if (event.data && event.data.type === 'curbe-widget-resize') {
+      if (event.data.open) {
+        // Expand for panel + button
+        var isMobile = window.innerWidth < 480;
+        if (isMobile) {
+          iframe.style.width = '100vw';
+          iframe.style.height = '100vh';
+          iframe.style.bottom = '0';
+          iframe.style.right = '0';
+        } else {
+          iframe.style.width = PANEL_WIDTH + 'px';
+          iframe.style.height = PANEL_HEIGHT + 'px';
+          iframe.style.maxWidth = '100vw';
+          iframe.style.maxHeight = '100vh';
+        }
+      } else {
+        // Shrink to button only
+        iframe.style.width = BUTTON_SIZE + 'px';
+        iframe.style.height = BUTTON_SIZE + 'px';
+      }
+    }
+  });
   
   console.log('[CurbeWidget] Initialized with code:', widgetCode);
 })();
@@ -149,20 +176,22 @@ app.get('/widget/:widgetId', (req, res, next) => {
     return next();
   }
   
-  // In development, serve through Vite's dev server
+  // Base styles for both dev and production
+  const baseStyles = `
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { width: 100%; height: 100%; background: transparent !important; overflow: hidden; }
+    #curbe-widget-root { position: fixed; inset: auto 24px 24px auto; z-index: 2147483647; background: transparent; width: auto; height: auto; }
+  `;
+  
+  // In development, serve with Vite dev server scripts
   if (process.env.NODE_ENV !== 'production') {
-    // Let Vite handle it - it will serve embed.html with the widget ID
     const embedHtml = `<!DOCTYPE html>
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
     <title>Curbe Chat Widget</title>
-    <style>
-      * { margin: 0; padding: 0; box-sizing: border-box; }
-      html, body { width: 100%; height: 100%; background: transparent !important; overflow: hidden; }
-      #curbe-widget-root { position: fixed; inset: auto 24px 24px auto; z-index: 2147483647; background: transparent; width: auto; height: auto; }
-    </style>
+    <style>${baseStyles}</style>
     <script type="module" src="/@vite/client"></script>
     <script type="module">
       import RefreshRuntime from "/@react-refresh"
@@ -185,9 +214,26 @@ app.get('/widget/:widgetId', (req, res, next) => {
     return;
   }
   
-  // In production, serve the pre-built embed page
-  // For now, let's do the same (this will need to be updated for production builds)
-  next();
+  // In production, serve static embed HTML with injected widget ID
+  const productionHtml = `<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Curbe Chat Widget</title>
+    <style>${baseStyles}</style>
+    <script type="module" crossorigin src="/assets/embed.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/embed.css">
+  </head>
+  <body>
+    <div id="curbe-widget-root"></div>
+    <script>window.__CURBE_WIDGET_ID = "${widgetId}";</script>
+  </body>
+</html>`;
+  
+  res.setHeader('Content-Type', 'text/html; charset=utf-8');
+  res.setHeader('Access-Control-Allow-Origin', '*');
+  res.send(productionHtml);
 });
 
 // Configure PostgreSQL session store for persistent sessions

@@ -39,6 +39,16 @@ export function WidgetEmbedRoot({ widgetId }: WidgetEmbedRootProps) {
     return () => window.removeEventListener("resize", checkMobile);
   }, []);
 
+  // Notify parent frame about open/close state to resize iframe
+  useEffect(() => {
+    if (window.parent && window.parent !== window) {
+      window.parent.postMessage(
+        { type: "curbe-widget-resize", open: isOpen },
+        "*"
+      );
+    }
+  }, [isOpen]);
+
   // Fetch widget data
   useEffect(() => {
     if (!widgetId) return;
