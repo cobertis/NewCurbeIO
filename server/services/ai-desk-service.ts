@@ -9,6 +9,7 @@ import {
   aiRuns,
   aiActionLogs,
   aiOutboxMessages,
+  pulseAiChatMessages,
   type AiKbFile,
   type InsertAiKbFile,
   type AiKbSource,
@@ -25,6 +26,8 @@ import {
   type InsertAiActionLog,
   type AiOutboxMessage,
   type InsertAiOutboxMessage,
+  type PulseAiChatMessage,
+  type InsertPulseAiChatMessage,
 } from "@shared/schema";
 
 export class AiDeskService {
@@ -797,6 +800,35 @@ export class AiDeskService {
       intentDistribution,
       dailyStats,
     };
+  }
+
+  // =====================================================
+  // Pulse AI Chat Messages (per conversation persistence)
+  // =====================================================
+
+  async getPulseAiChatMessages(companyId: string, conversationId: string): Promise<PulseAiChatMessage[]> {
+    return db
+      .select()
+      .from(pulseAiChatMessages)
+      .where(and(
+        eq(pulseAiChatMessages.companyId, companyId),
+        eq(pulseAiChatMessages.conversationId, conversationId)
+      ))
+      .orderBy(asc(pulseAiChatMessages.createdAt));
+  }
+
+  async createPulseAiChatMessage(data: InsertPulseAiChatMessage): Promise<PulseAiChatMessage> {
+    const [message] = await db.insert(pulseAiChatMessages).values(data).returning();
+    return message;
+  }
+
+  async clearPulseAiChatMessages(companyId: string, conversationId: string): Promise<void> {
+    await db
+      .delete(pulseAiChatMessages)
+      .where(and(
+        eq(pulseAiChatMessages.companyId, companyId),
+        eq(pulseAiChatMessages.conversationId, conversationId)
+      ));
   }
 }
 

@@ -586,4 +586,58 @@ export function registerAiDeskRoutes(app: Express, requireAuth: any, requireActi
       res.status(500).json({ error: error.message });
     }
   });
+
+  // =====================================================
+  // Pulse AI Chat Messages (per conversation persistence)
+  // =====================================================
+
+  app.get("/api/ai/conversations/:conversationId/chat-messages", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = getCompanyId(req);
+      if (!companyId) return res.status(400).json({ error: "No company" });
+
+      const { conversationId } = req.params;
+      const messages = await aiDeskService.getPulseAiChatMessages(companyId, conversationId);
+      res.json(messages);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/ai/conversations/:conversationId/chat-messages", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = getCompanyId(req);
+      if (!companyId) return res.status(400).json({ error: "No company" });
+
+      const { conversationId } = req.params;
+      const schema = z.object({
+        role: z.enum(["user", "assistant"]),
+        content: z.string().min(1),
+      });
+
+      const data = schema.parse(req.body);
+      const message = await aiDeskService.createPulseAiChatMessage({
+        companyId,
+        conversationId,
+        role: data.role,
+        content: data.content,
+      });
+      res.json(message);
+    } catch (error: any) {
+      res.status(400).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/ai/conversations/:conversationId/chat-messages", requireAuth, requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const companyId = getCompanyId(req);
+      if (!companyId) return res.status(400).json({ error: "No company" });
+
+      const { conversationId } = req.params;
+      await aiDeskService.clearPulseAiChatMessages(companyId, conversationId);
+      res.json({ success: true });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
 }
