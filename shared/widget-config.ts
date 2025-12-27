@@ -366,5 +366,6 @@ export function mapChatWidgetToConfig(widget: ChatWidget): WidgetConfig {
     instagramSettings: widget.instagramSettings as InstagramSettings | undefined,
     telegramSettings: widget.telegramSettings as TelegramSettings | undefined,
     channelOrder: widget.channelOrder || ["liveChat", "email", "sms", "phone", "whatsapp", "facebook", "instagram", "telegram"],
+    teamMembers: (widget as any).teamMembers as TeamMember[] | undefined,
   };
 }
