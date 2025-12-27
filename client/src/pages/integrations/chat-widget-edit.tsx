@@ -2494,35 +2494,7 @@ export default function ChatWidgetEditPage() {
     },
   };
 
-  const embedCode = `<script>
-(function() {
-  var widgetId = "${widgetId}";
-  var apiBase = "https://app.curbe.io";
-  
-  fetch(apiBase + "/api/public/chat-widget/" + widgetId)
-    .then(function(res) { return res.json(); })
-    .then(function(data) {
-      if (!data.shouldDisplay) {
-        console.log("[Curbe Widget] Hidden for country: " + data.visitorCountry);
-        return;
-      }
-      var script = document.createElement("script");
-      script.src = "https://app.curbe.io/widget-script.js";
-      script.setAttribute("data-code", widgetId);
-      script.setAttribute("data-config", JSON.stringify(data.widget));
-      script.defer = true;
-      document.body.appendChild(script);
-    })
-    .catch(function(err) {
-      console.error("[Curbe Widget] Error:", err);
-      var script = document.createElement("script");
-      script.src = "https://app.curbe.io/widget-script.js";
-      script.setAttribute("data-code", widgetId);
-      script.defer = true;
-      document.body.appendChild(script);
-    });
-})();
-</script>`;
+  const embedCode = `<script src="https://app.curbe.io/widget-script.js?code=${widgetId}" defer></script>`;
 
   const updateLocalWidget = (updates: Partial<WidgetConfig>) => {
     setLocalWidget(prev => ({ ...prev, ...updates }));
