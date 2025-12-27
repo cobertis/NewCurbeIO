@@ -27049,6 +27049,696 @@ END COMMENTED OUT - Old WhatsApp Evolution API routes */
   });
 
   // =====================================================
+  // META WHATSAPP TEMPLATES CRUD
+  // =====================================================
+
+  // GET /api/whatsapp/meta/templates - List all templates for the company's WABA
+  app.get("/api/whatsapp/meta/templates", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+
+      // Get WhatsApp channel connection
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "whatsapp"),
+          eq(channelConnections.status, "active")
+        )
+      });
+
+      if (!connection) {
+        return res.status(400).json({ error: "WhatsApp is not connected. Please connect your WhatsApp Business account first." });
+      }
+
+      if (!connection.accessTokenEnc || !connection.wabaId) {
+        return res.status(400).json({ error: "WhatsApp connection is incomplete. Please reconnect your account." });
+      }
+
+      const accessToken = decryptToken(connection.accessTokenEnc);
+      const graphVersion = process.env.META_GRAPH_VERSION || "v21.0";
+      const wabaId = connection.wabaId;
+
+      console.log(`[WhatsApp Templates] Fetching templates for WABA ${wabaId}`);
+
+      const apiUrl = `https://graph.facebook.com/${graphVersion}/${wabaId}/message_templates?access_token=${accessToken}`;
+
+      const response = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+
+      const responseData = await response.json() as any;
+
+      if (!response.ok) {
+        console.error("[WhatsApp Templates] Meta API error:", responseData);
+        const metaError = responseData?.error;
+        return res.status(response.status).json({
+          error: metaError?.message || "Failed to fetch templates",
+          code: metaError?.code || "META_API_ERROR",
+          details: metaError
+        });
+      }
+
+      console.log(`[WhatsApp Templates] Successfully fetched ${responseData.data?.length || 0} templates`);
+
+      return res.json({
+        success: true,
+        templates: responseData.data || [],
+        paging: responseData.paging || null
+      });
+
+    } catch (error) {
+      console.error("[WhatsApp Templates] Error fetching templates:", error);
+      return res.status(500).json({ error: "Failed to fetch templates" });
+    }
+  });
+
+  // GET /api/whatsapp/meta/templates/:templateName - Get template details by name
+  app.get("/api/whatsapp/meta/templates/:templateName", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const { templateName } = req.params;
+
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+
+      if (!templateName) {
+        return res.status(400).json({ error: "Template name is required" });
+      }
+
+      // Get WhatsApp channel connection
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "whatsapp"),
+          eq(channelConnections.status, "active")
+        )
+      });
+
+      if (!connection) {
+        return res.status(400).json({ error: "WhatsApp is not connected. Please connect your WhatsApp Business account first." });
+      }
+
+      if (!connection.accessTokenEnc || !connection.wabaId) {
+        return res.status(400).json({ error: "WhatsApp connection is incomplete. Please reconnect your account." });
+      }
+
+      const accessToken = decryptToken(connection.accessTokenEnc);
+      const graphVersion = process.env.META_GRAPH_VERSION || "v21.0";
+      const wabaId = connection.wabaId;
+
+      console.log(`[WhatsApp Templates] Fetching template details for "${templateName}" from WABA ${wabaId}`);
+
+      const apiUrl = `https://graph.facebook.com/${graphVersion}/${wabaId}/message_templates?name=${encodeURIComponent(templateName)}&access_token=${accessToken}`;
+
+      const response = await fetch(apiUrl, {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json"
+        }
+      });
+
+      const responseData = await response.json() as any;
+
+      if (!response.ok) {
+        console.error("[WhatsApp Templates] Meta API error:", responseData);
+        const metaError = responseData?.error;
+        return res.status(response.status).json({
+          error: metaError?.message || "Failed to fetch template details",
+          code: metaError?.code || "META_API_ERROR",
+          details: metaError
+        });
+      }
+
+      const templates = responseData.data || [];
+      if (templates.length === 0) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+
+      console.log(`[WhatsApp Templates] Successfully fetched template "${templateName}"`);
+
+      return res.json({
+        success: true,
+        template: templates[0],
+        allVersions: templates
+      });
+
+    } catch (error) {
+      console.error("[WhatsApp Templates] Error fetching template details:", error);
+      return res.status(500).json({ error: "Failed to fetch template details" });
+    }
+  });
+
+  // POST /api/whatsapp/meta/templates - Create a new template
+  app.post("/api/whatsapp/meta/templates", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+
+      const { name, language, category, components } = req.body;
+
+      // Validate required fields
+      if (!name || !language || !category || !components) {
+        return res.status(400).json({ 
+          error: "Missing required fields. Required: name, language, category, components" 
+        });
+      }
+
+      // Validate category
+      const validCategories = ["MARKETING", "UTILITY", "AUTHENTICATION"];
+      if (!validCategories.includes(category)) {
+        return res.status(400).json({ 
+          error: `Invalid category. Must be one of: ${validCategories.join(", ")}` 
+        });
+      }
+
+      // Validate components is an array
+      if (!Array.isArray(components)) {
+        return res.status(400).json({ error: "Components must be an array" });
+      }
+
+      // Get WhatsApp channel connection
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "whatsapp"),
+          eq(channelConnections.status, "active")
+        )
+      });
+
+      if (!connection) {
+        return res.status(400).json({ error: "WhatsApp is not connected. Please connect your WhatsApp Business account first." });
+      }
+
+      if (!connection.accessTokenEnc || !connection.wabaId) {
+        return res.status(400).json({ error: "WhatsApp connection is incomplete. Please reconnect your account." });
+      }
+
+      const accessToken = decryptToken(connection.accessTokenEnc);
+      const graphVersion = process.env.META_GRAPH_VERSION || "v21.0";
+      const wabaId = connection.wabaId;
+
+      console.log(`[WhatsApp Templates] Creating template "${name}" for WABA ${wabaId}`);
+
+      const apiUrl = `https://graph.facebook.com/${graphVersion}/${wabaId}/message_templates`;
+
+      const templatePayload = {
+        name,
+        language,
+        category,
+        components
+      };
+
+      const response = await fetch(apiUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(templatePayload)
+      });
+
+      const responseData = await response.json() as any;
+
+      if (!response.ok) {
+        console.error("[WhatsApp Templates] Meta API error creating template:", responseData);
+        const metaError = responseData?.error;
+        return res.status(response.status).json({
+          error: metaError?.message || "Failed to create template",
+          code: metaError?.code || "META_API_ERROR",
+          details: metaError
+        });
+      }
+
+      console.log(`[WhatsApp Templates] Successfully created template "${name}" with ID: ${responseData.id}`);
+
+      return res.json({
+        success: true,
+        templateId: responseData.id,
+        status: responseData.status || "PENDING"
+      });
+
+    } catch (error) {
+      console.error("[WhatsApp Templates] Error creating template:", error);
+      return res.status(500).json({ error: "Failed to create template" });
+    }
+  });
+
+  // DELETE /api/whatsapp/meta/templates/:templateName - Delete a template
+  app.delete("/api/whatsapp/meta/templates/:templateName", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const { templateName } = req.params;
+
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+
+      if (!templateName) {
+        return res.status(400).json({ error: "Template name is required" });
+      }
+
+      // Get WhatsApp channel connection
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "whatsapp"),
+          eq(channelConnections.status, "active")
+        )
+      });
+
+      if (!connection) {
+        return res.status(400).json({ error: "WhatsApp is not connected. Please connect your WhatsApp Business account first." });
+      }
+
+      if (!connection.accessTokenEnc || !connection.wabaId) {
+        return res.status(400).json({ error: "WhatsApp connection is incomplete. Please reconnect your account." });
+      }
+
+      const accessToken = decryptToken(connection.accessTokenEnc);
+      const graphVersion = process.env.META_GRAPH_VERSION || "v21.0";
+      const wabaId = connection.wabaId;
+
+      console.log(`[WhatsApp Templates] Deleting template "${templateName}" from WABA ${wabaId}`);
+
+      const apiUrl = `https://graph.facebook.com/${graphVersion}/${wabaId}/message_templates?name=${encodeURIComponent(templateName)}`;
+
+      const response = await fetch(apiUrl, {
+        method: "DELETE",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json"
+        }
+      });
+
+      const responseData = await response.json() as any;
+
+      if (!response.ok) {
+        console.error("[WhatsApp Templates] Meta API error deleting template:", responseData);
+        const metaError = responseData?.error;
+        return res.status(response.status).json({
+          error: metaError?.message || "Failed to delete template",
+          code: metaError?.code || "META_API_ERROR",
+          details: metaError
+        });
+      }
+
+      console.log(`[WhatsApp Templates] Successfully deleted template "${templateName}"`);
+
+      return res.json({
+        success: true,
+        message: `Template "${templateName}" deleted successfully`
+      });
+
+    } catch (error) {
+      console.error("[WhatsApp Templates] Error deleting template:", error);
+      return res.status(500).json({ error: "Failed to delete template" });
+    }
+  });
+
+
+  // =====================================================
+  // META WHATSAPP MEDIA UPLOAD & SEND
+  // =====================================================
+
+  // Allowed media types and size limits for WhatsApp
+  const WHATSAPP_MEDIA_LIMITS: Record<string, { maxSize: number; mimeTypes: string[] }> = {
+    image: { maxSize: 16 * 1024 * 1024, mimeTypes: ['image/jpeg', 'image/png'] },
+    video: { maxSize: 16 * 1024 * 1024, mimeTypes: ['video/mp4', 'video/3gpp'] },
+    audio: { maxSize: 16 * 1024 * 1024, mimeTypes: ['audio/aac', 'audio/mp4', 'audio/mpeg', 'audio/amr', 'audio/ogg'] },
+    document: { maxSize: 100 * 1024 * 1024, mimeTypes: ['application/pdf', 'application/vnd.ms-powerpoint', 'application/msword', 'application/vnd.ms-excel', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document', 'application/vnd.openxmlformats-officedocument.presentationml.presentation', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'text/plain'] },
+    sticker: { maxSize: 500 * 1024, mimeTypes: ['image/webp'] }
+  };
+
+  // Multer storage for WhatsApp media uploads
+  const whatsappMediaStorage = multer.memoryStorage();
+  const whatsappMediaUpload = multer({
+    storage: whatsappMediaStorage,
+    limits: { fileSize: 100 * 1024 * 1024 } // 100MB max (documents)
+  });
+
+  // POST /api/whatsapp/meta/media/upload - Upload media to Meta
+  app.post("/api/whatsapp/meta/media/upload", requireActiveCompany, whatsappMediaUpload.single('file'), async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+
+      // Get WhatsApp channel connection
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "whatsapp"),
+          eq(channelConnections.status, "active")
+        )
+      });
+
+      if (!connection) {
+        return res.status(400).json({ error: "WhatsApp is not connected. Please connect your WhatsApp Business account first." });
+      }
+
+      if (!connection.accessTokenEnc || !connection.phoneNumberId) {
+        return res.status(400).json({ error: "WhatsApp connection is incomplete. Please reconnect your account." });
+      }
+
+      // Check for file upload
+      const file = req.file;
+      if (!file) {
+        return res.status(400).json({ error: "No file uploaded. Please provide a file." });
+      }
+
+      const mimeType = file.mimetype;
+      const fileName = file.originalname;
+      const fileBuffer = file.buffer;
+
+      // Determine media type and validate
+      let mediaCategory: string | null = null;
+      for (const [category, limits] of Object.entries(WHATSAPP_MEDIA_LIMITS)) {
+        if (limits.mimeTypes.includes(mimeType)) {
+          mediaCategory = category;
+          if (fileBuffer.length > limits.maxSize) {
+            const maxSizeMB = Math.round(limits.maxSize / (1024 * 1024));
+            console.error(`[WhatsApp Media] File size ${fileBuffer.length} exceeds limit ${limits.maxSize} for ${category}`);
+            return res.status(400).json({ 
+              error: `File too large. Maximum size for ${category} is ${maxSizeMB}MB.`,
+              code: "FILE_TOO_LARGE"
+            });
+          }
+          break;
+        }
+      }
+
+      if (!mediaCategory) {
+        console.error(`[WhatsApp Media] Unsupported MIME type: ${mimeType}`);
+        return res.status(400).json({ 
+          error: `Unsupported file type: ${mimeType}. Supported types: JPEG, PNG, MP4, 3GPP, AAC, MP3, AMR, OGG, PDF, DOCX, PPTX, XLSX, TXT, WEBP`,
+          code: "UNSUPPORTED_MIME_TYPE"
+        });
+      }
+
+      // Decrypt access token
+      const accessToken = decryptToken(connection.accessTokenEnc);
+      const phoneNumberId = connection.phoneNumberId;
+      const graphVersion = process.env.META_GRAPH_VERSION || "v21.0";
+
+      console.log(`[WhatsApp Media] Uploading ${mediaCategory} (${fileName}, ${mimeType}, ${fileBuffer.length} bytes) to phone ${phoneNumberId}`);
+
+      // Build form-data for Meta API
+      const FormData = (await import("form-data")).default;
+      const formData = new FormData();
+      formData.append('messaging_product', 'whatsapp');
+      formData.append('file', fileBuffer, { filename: fileName, contentType: mimeType });
+      formData.append('type', mimeType);
+
+      const apiUrl = `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/media`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          ...formData.getHeaders()
+        },
+        body: formData as any
+      });
+
+      const responseData = await response.json() as any;
+
+      if (!response.ok) {
+        console.error("[WhatsApp Media] Meta API error:", responseData);
+        const metaError = responseData?.error;
+        return res.status(response.status).json({
+          error: metaError?.message || "Failed to upload media to Meta",
+          code: metaError?.code || "META_API_ERROR",
+          details: metaError
+        });
+      }
+
+      console.log(`[WhatsApp Media] Successfully uploaded media. ID: ${responseData.id}`);
+
+      return res.json({
+        success: true,
+        mediaId: responseData.id,
+        mediaType: mediaCategory
+      });
+
+    } catch (error) {
+      console.error("[WhatsApp Media] Error uploading media:", error);
+      return res.status(500).json({ error: "Failed to upload media" });
+    }
+  });
+
+  // GET /api/whatsapp/meta/media/:mediaId - Get media URL for downloading
+  app.get("/api/whatsapp/meta/media/:mediaId", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      const { mediaId } = req.params;
+
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+
+      if (!mediaId) {
+        return res.status(400).json({ error: "Media ID is required" });
+      }
+
+      // Get WhatsApp channel connection
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "whatsapp"),
+          eq(channelConnections.status, "active")
+        )
+      });
+
+      if (!connection) {
+        return res.status(400).json({ error: "WhatsApp is not connected. Please connect your WhatsApp Business account first." });
+      }
+
+      if (!connection.accessTokenEnc) {
+        return res.status(400).json({ error: "WhatsApp connection is incomplete. Please reconnect your account." });
+      }
+
+      const accessToken = decryptToken(connection.accessTokenEnc);
+      const graphVersion = process.env.META_GRAPH_VERSION || "v21.0";
+
+      console.log(`[WhatsApp Media] Fetching media URL for ID: ${mediaId}`);
+
+      const apiUrl = `https://graph.facebook.com/${graphVersion}/${mediaId}`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'GET',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`
+        }
+      });
+
+      const responseData = await response.json() as any;
+
+      if (!response.ok) {
+        console.error("[WhatsApp Media] Meta API error fetching media:", responseData);
+        const metaError = responseData?.error;
+        return res.status(response.status).json({
+          error: metaError?.message || "Failed to fetch media URL",
+          code: metaError?.code || "META_API_ERROR",
+          details: metaError
+        });
+      }
+
+      console.log(`[WhatsApp Media] Got media URL for ${mediaId}: ${responseData.url ? 'success' : 'no url'}`);
+
+      return res.json({
+        id: responseData.id,
+        url: responseData.url,
+        mimeType: responseData.mime_type,
+        sha256: responseData.sha256,
+        fileSize: responseData.file_size
+      });
+
+    } catch (error) {
+      console.error("[WhatsApp Media] Error fetching media URL:", error);
+      return res.status(500).json({ error: "Failed to fetch media URL" });
+    }
+  });
+
+  // POST /api/whatsapp/meta/send-media - Send media message using media_id
+  app.post("/api/whatsapp/meta/send-media", requireActiveCompany, async (req: Request, res: Response) => {
+    try {
+      const user = req.user as any;
+      if (!user.companyId) {
+        return res.status(400).json({ error: "No company associated with user" });
+      }
+
+      const { conversationId, mediaId, mediaType, caption, filename } = req.body;
+
+      if (!conversationId) {
+        return res.status(400).json({ error: "conversationId is required" });
+      }
+
+      if (!mediaId) {
+        return res.status(400).json({ error: "mediaId is required" });
+      }
+
+      if (!mediaType || !['image', 'video', 'audio', 'document', 'sticker'].includes(mediaType)) {
+        return res.status(400).json({ error: "mediaType must be one of: image, video, audio, document, sticker" });
+      }
+
+      // Get WhatsApp channel connection
+      const connection = await db.query.channelConnections.findFirst({
+        where: and(
+          eq(channelConnections.companyId, user.companyId),
+          eq(channelConnections.channel, "whatsapp"),
+          eq(channelConnections.status, "active")
+        )
+      });
+
+      if (!connection) {
+        return res.status(400).json({ error: "WhatsApp is not connected. Please connect your WhatsApp Business account first." });
+      }
+
+      if (!connection.accessTokenEnc || !connection.phoneNumberId) {
+        return res.status(400).json({ error: "WhatsApp connection is incomplete. Please reconnect your account." });
+      }
+
+      // Get conversation to find recipient
+      const conversation = await db.query.waConversations.findFirst({
+        where: and(
+          eq(waConversations.id, conversationId),
+          eq(waConversations.companyId, user.companyId)
+        )
+      });
+
+      if (!conversation) {
+        return res.status(404).json({ error: "Conversation not found" });
+      }
+
+      const contactWaId = conversation.contactWaId;
+      if (!contactWaId) {
+        return res.status(400).json({ error: "Contact WhatsApp ID not found" });
+      }
+
+      // Decrypt access token
+      const accessToken = decryptToken(connection.accessTokenEnc);
+      const phoneNumberId = connection.phoneNumberId;
+      const graphVersion = process.env.META_GRAPH_VERSION || "v21.0";
+
+      // Check 24-hour window by finding last INBOUND message from this contact
+      const lastInboundMessage = await db.query.waMessages.findFirst({
+        where: and(
+          eq(waMessages.conversationId, conversationId),
+          eq(waMessages.direction, "inbound")
+        ),
+        orderBy: [desc(waMessages.timestamp)]
+      });
+
+      const now = new Date();
+      const twentyFourHoursAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+      const isWithin24Hours = lastInboundMessage?.timestamp && 
+        new Date(lastInboundMessage.timestamp) > twentyFourHoursAgo;
+
+      if (!isWithin24Hours) {
+        return res.status(400).json({ 
+          error: "Cannot send media messages outside the 24-hour window. Please use a template message.",
+          code: "OUTSIDE_24H_WINDOW"
+        });
+      }
+
+      console.log(`[WhatsApp Media] Sending ${mediaType} message with media ID: ${mediaId} to ${contactWaId}`);
+
+      // Build message payload based on media type
+      const mediaPayload: any = { id: mediaId };
+      
+      // Add caption for types that support it (image, video, document)
+      if (caption && ['image', 'video', 'document'].includes(mediaType)) {
+        mediaPayload.caption = caption;
+      }
+      
+      // Add filename for documents
+      if (filename && mediaType === 'document') {
+        mediaPayload.filename = filename;
+      }
+
+      const messagePayload = {
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: contactWaId,
+        type: mediaType,
+        [mediaType]: mediaPayload
+      };
+
+      const apiUrl = `https://graph.facebook.com/${graphVersion}/${phoneNumberId}/messages`;
+      
+      const response = await fetch(apiUrl, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(messagePayload)
+      });
+
+      const responseData = await response.json() as any;
+
+      if (!response.ok) {
+        console.error("[WhatsApp Media] Meta API error sending media:", responseData);
+        const metaError = responseData?.error;
+        return res.status(response.status).json({
+          error: metaError?.message || "Failed to send media message",
+          code: metaError?.code || "META_API_ERROR",
+          details: metaError
+        });
+      }
+
+      const messageId = responseData.messages?.[0]?.id;
+      console.log(`[WhatsApp Media] Successfully sent media message. WAMID: ${messageId}`);
+
+      // Save message to database
+      const savedMessage = await db.insert(waMessages).values({
+        conversationId,
+        companyId: user.companyId,
+        wamid: messageId,
+        direction: "outbound",
+        type: mediaType,
+        content: caption || null,
+        mediaUrl: `media:${mediaId}`, // Store media reference
+        mediaType: mediaType,
+        status: "sent",
+        timestamp: now
+      }).returning();
+
+      // Update conversation with last message
+      await db.update(waConversations)
+        .set({ 
+          lastMessageAt: now,
+          lastMessagePreview: caption ? caption.substring(0, 100) : `[${mediaType}]`,
+          updatedAt: now
+        })
+        .where(eq(waConversations.id, conversationId));
+
+      // Broadcast update
+      broadcastWhatsAppMessage(user.companyId, savedMessage[0]);
+
+      return res.json({
+        success: true,
+        messageId: messageId,
+        message: savedMessage[0]
+      });
+
+    } catch (error) {
+      console.error("[WhatsApp Media] Error sending media message:", error);
+      return res.status(500).json({ error: "Failed to send media message" });
+    }
+  });
+
+  // =====================================================
   // INSTAGRAM DIRECT OAUTH INTEGRATION
   // =====================================================
 
