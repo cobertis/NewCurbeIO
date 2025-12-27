@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+    <title>Curbe Chat Widget</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      html, body {
+        width: 100%;
+        height: 100%;
+        background: transparent !important;
+        overflow: hidden;
+      }
+      #curbe-widget-root {
+        position: fixed;
+        inset: auto 24px 24px auto;
+        z-index: 2147483647;
+        background: transparent;
+        width: auto;
+        height: auto;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="curbe-widget-root"></div>
+    <script>
+      window.__CURBE_WIDGET_ID = "__WIDGET_ID__";
+    </script>
+    <script type="module" src="/src/embed/main.tsx"></script>
+  </body>
+</html>

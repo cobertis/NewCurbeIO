@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from "react";
 import { useParams } from "wouter";
-import { Loader2 } from "lucide-react";
+import { MessageCircle, Loader2 } from "lucide-react";
 import { WidgetRenderer } from "@/components/chat/widget-renderer";
 import { mapChatWidgetToConfig } from "@shared/widget-config";
 import type { ChatWidget } from "@shared/schema";
@@ -23,6 +23,7 @@ export default function ChatWidgetEmbed() {
   const [widgetData, setWidgetData] = useState<WidgetResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
   const [activeTab, setActiveTab] = useState<"home" | "messages" | "help" | "news">("home");
 
   useEffect(() => {
@@ -36,11 +37,6 @@ export default function ChatWidgetEmbed() {
       .then(data => {
         setWidgetData(data);
         setLoading(false);
-        
-        const buttonColor = data.widget?.branding?.primaryColor || 
-                           data.widget?.branding?.gradientStart || 
-                           "#2563eb";
-        window.parent.postMessage({ type: "curbe-widget-config", buttonColor }, "*");
       })
       .catch(err => {
         setError(err.message);
@@ -49,7 +45,7 @@ export default function ChatWidgetEmbed() {
   }, [id]);
 
   const handleClose = useCallback(() => {
-    window.parent.postMessage({ type: "curbe-widget-close" }, "*");
+    setIsOpen(false);
   }, []);
 
   const handleChannelClick = useCallback((channel: string) => {
@@ -58,32 +54,67 @@ export default function ChatWidgetEmbed() {
 
   if (loading) {
     return (
-      <div className="h-full w-full flex items-center justify-center bg-white">
-        <Loader2 className="h-8 w-8 animate-spin text-blue-500" />
+      <div className="fixed bottom-5 right-5 w-14 h-14 rounded-full bg-blue-500 flex items-center justify-center shadow-lg">
+        <Loader2 className="h-6 w-6 animate-spin text-white" />
       </div>
     );
   }
 
   if (error || !widgetData) {
-    return (
-      <div className="h-full w-full flex items-center justify-center bg-white">
-        <p className="text-red-500 text-sm">{error || "Widget not found"}</p>
-      </div>
-    );
+    return null;
   }
 
   const config = mapChatWidgetToConfig(widgetData.widget);
+  const branding = widgetData.widget.branding as { primaryColor?: string; gradientStart?: string; gradientEnd?: string } | null;
+  const buttonColor = branding?.primaryColor || branding?.gradientStart || "#2563eb";
+  const buttonGradient = branding?.gradientStart && branding?.gradientEnd
+    ? `linear-gradient(135deg, ${branding.gradientStart}, ${branding.gradientEnd})`
+    : buttonColor;
 
   return (
-    <div className="h-full w-full bg-white" style={{ fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif" }}>
-      <WidgetRenderer
-        config={config}
-        mode="embed"
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
-        onClose={handleClose}
-        onChannelClick={handleChannelClick}
-      />
+    <div 
+      className="fixed bottom-0 right-0 z-[2147483647]" 
+      style={{ 
+        fontFamily: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif",
+        pointerEvents: "none"
+      }}
+    >
+      {isOpen ? (
+        <div 
+          className="absolute bottom-5 right-5"
+          style={{ 
+            width: "380px", 
+            maxWidth: "calc(100vw - 40px)",
+            pointerEvents: "auto"
+          }}
+        >
+          <div 
+            className="bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col"
+            style={{ height: "min(580px, calc(100vh - 100px))" }}
+          >
+            <WidgetRenderer
+              config={config}
+              mode="embed"
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              onClose={handleClose}
+              onChannelClick={handleChannelClick}
+            />
+          </div>
+        </div>
+      ) : (
+        <button
+          onClick={() => setIsOpen(true)}
+          className="absolute bottom-5 right-5 w-14 h-14 rounded-full flex items-center justify-center text-white shadow-lg hover:scale-105 transition-transform"
+          style={{ 
+            background: buttonGradient,
+            pointerEvents: "auto"
+          }}
+          data-testid="button-open-widget"
+        >
+          <MessageCircle className="h-6 w-6" />
+        </button>
+      )}
     </div>
   );
 }
